@@ -45,15 +45,29 @@ enum CompanySize {
 }
 
 enum ActivityType {
+  // Manual
   note
   call
   email
   meeting
+  // Sistema (automáticas)
+  stage_change
+  product_added
+  product_removed
+  task_created
+  task_completed
 }
 
 enum DiscountType {
   percentage
   fixed
+}
+
+enum DealPriority {
+  low
+  medium
+  high
+  urgent
 }
 
 // -----------------------------------------------------------------------------
@@ -196,6 +210,8 @@ model Deal {
 
   // Dados do Negócio
   title             String
+  priority          DealPriority @default(medium)
+  notes             String?      @db.Text  // Observações gerais
   // Valor total é CALCULADO a partir dos DealProducts
   expectedCloseDate DateTime? @map("expected_close_date")
   
