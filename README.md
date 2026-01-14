@@ -124,6 +124,46 @@ Crie um arquivo `.env` na raiz baseado no `.env.example`:
 
 ---
 
+## 📦 Convenção de Commits
+
+Seguimos o padrão **Conventional Commits**:
+
+```
+<type>(<scope>): <description>
+```
+
+### Tipos
+
+| Tipo       | Uso                                              |
+| ---------- | ------------------------------------------------ |
+| `feat`     | Nova funcionalidade                              |
+| `fix`      | Correção de bug                                  |
+| `refactor` | Refatoração de código (sem mudar funcionalidade) |
+| `chore`    | Tarefas de manutenção (deps, configs)            |
+| `docs`     | Documentação                                     |
+| `style`    | Formatação (sem mudar lógica)                    |
+| `test`     | Adição/correção de testes                        |
+
+### Scopes Comuns
+
+- `schema` - Mudanças no Prisma schema
+- `deal`, `contact`, `product` - Módulos específicos
+- `pipeline`, `kanban` - Funcionalidades de pipeline
+- `ui` - Componentes de interface
+- `auth` - Autenticação
+- `deps` - Dependências
+
+### Exemplos
+
+```bash
+git commit -m "feat(deal): add mark won/lost actions"
+git commit -m "refactor(kanban): improve card design"
+git commit -m "chore(deps): add shadcn tabs component"
+git commit -m "fix(auth): handle expired session"
+```
+
+---
+
 ## 🧪 Testes (Futuro)
 
 - Usaremos Jest/Vitest.
