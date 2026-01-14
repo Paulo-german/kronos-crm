@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Dialog } from '@/_components/ui/dialog'
 import { KanbanBoard } from './kanban-board'
 import { DealDialogContent } from './deal-dialog-content'
@@ -21,7 +22,6 @@ interface PipelineClientProps {
 interface DealDialogState {
   isOpen: boolean
   stageId: string
-  deal: DealDto | null
 }
 
 export const PipelineClient = ({
@@ -29,10 +29,10 @@ export const PipelineClient = ({
   dealsByStage,
   contacts,
 }: PipelineClientProps) => {
+  const router = useRouter()
   const [dialogState, setDialogState] = useState<DealDialogState>({
     isOpen: false,
     stageId: '',
-    deal: null,
   })
 
   if (!pipeline) {
@@ -43,23 +43,18 @@ export const PipelineClient = ({
     setDialogState({
       isOpen: true,
       stageId,
-      deal: null,
     })
   }
 
   const handleDealClick = (deal: DealDto) => {
-    setDialogState({
-      isOpen: true,
-      stageId: deal.stageId,
-      deal,
-    })
+    // Navega para a página de detalhes do deal
+    router.push(`/pipeline/deal/${deal.id}`)
   }
 
   const closeDialog = () => {
     setDialogState({
       isOpen: false,
       stageId: '',
-      deal: null,
     })
   }
 
@@ -77,24 +72,8 @@ export const PipelineClient = ({
         onOpenChange={(open) => !open && closeDialog()}
       >
         <DealDialogContent
-          key={
-            dialogState.deal
-              ? `edit-${dialogState.deal.id}`
-              : `new-${dialogState.stageId}`
-          }
-          defaultValues={
-            dialogState.deal
-              ? {
-                  id: dialogState.deal.id,
-                  title: dialogState.deal.title,
-                  stageId: dialogState.deal.stageId,
-                  contactId: dialogState.deal.contactId || undefined,
-                  companyId: dialogState.deal.companyId || undefined,
-                  expectedCloseDate:
-                    dialogState.deal.expectedCloseDate || undefined,
-                }
-              : { stageId: dialogState.stageId }
-          }
+          key={`new-${dialogState.stageId}`}
+          defaultValues={{ stageId: dialogState.stageId }}
           stages={pipeline.stages}
           contacts={contacts}
           setIsOpen={(open) => {

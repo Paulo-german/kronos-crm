@@ -14,7 +14,7 @@ import {
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 import { KanbanColumn } from './kanban-column'
-import { KanbanCard } from './kanban-card'
+import KanbanCard from './kanban-card'
 import { KanbanSearch } from './kanban-search'
 import { moveDealToStage } from '@/_actions/deal/move-deal-to-stage'
 import type { PipelineWithStagesDto } from '@/_data-access/pipeline/get-user-pipeline'

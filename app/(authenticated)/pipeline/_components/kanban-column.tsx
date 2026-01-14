@@ -4,7 +4,7 @@ import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { Plus, Trophy, XCircle } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
-import { KanbanCard } from './kanban-card'
+import KanbanCard from './kanban-card'
 import type { StageDto } from '@/_data-access/pipeline/get-user-pipeline'
 import type { DealDto } from '@/_data-access/deal/get-deals-by-pipeline'
 

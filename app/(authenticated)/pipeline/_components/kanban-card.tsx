@@ -1,9 +1,19 @@
 'use client'
 
+import { useState } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Calendar, Building2, User } from 'lucide-react'
+import { useAction } from 'next-safe-action/hooks'
+import { toast } from 'sonner'
 import { Card, CardContent } from '@/_components/ui/card'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/_components/ui/select'
+import { updateDealPriority } from '@/_actions/deal/update-deal-priority'
 import type { DealDto } from '@/_data-access/deal/get-deals-by-pipeline'
 
 interface KanbanCardProps {
@@ -11,7 +21,16 @@ interface KanbanCardProps {
   onClick?: () => void
 }
 
-export function KanbanCard({ deal, onClick }: KanbanCardProps) {
+const priorityConfig = {
+  low: { label: 'Baixa', color: 'bg-muted text-muted-foreground' },
+  medium: { label: 'Média', color: 'bg-primary/20 text-primary' },
+  high: { label: 'Alta', color: 'bg-amber-500/20 text-amber-500' },
+  urgent: { label: 'Urgente', color: 'bg-destructive/20 text-destructive' },
+}
+
+const KanbanCard = ({ deal, onClick }: KanbanCardProps) => {
+  const [priority, setPriority] = useState(deal.priority)
+
   const {
     attributes,
     listeners,
@@ -29,19 +48,35 @@ export function KanbanCard({ deal, onClick }: KanbanCardProps) {
     transition,
   }
 
+  const { execute: executeUpdatePriority } = useAction(updateDealPriority, {
+    onError: ({ error }) => {
+      // Rollback
+      setPriority(deal.priority)
+      toast.error(error.serverError || 'Erro ao atualizar prioridade.')
+    },
+  })
+
   // Formata valor para BRL
   const formattedValue = new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
   }).format(deal.totalValue)
 
-  // Formata data
-  const formattedDate = deal.expectedCloseDate
-    ? new Intl.DateTimeFormat('pt-BR', {
-        day: '2-digit',
-        month: 'short',
-      }).format(new Date(deal.expectedCloseDate))
-    : null
+  const handlePriorityChange = (newPriority: string) => {
+    const validPriority = newPriority as 'low' | 'medium' | 'high' | 'urgent'
+    // Optimistic update
+    setPriority(validPriority)
+    // Sync with server
+    executeUpdatePriority({ dealId: deal.id, priority: validPriority })
+  }
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Não abre o modal se clicou no select
+    if ((e.target as HTMLElement).closest('[data-priority-select]')) {
+      return
+    }
+    onClick?.()
+  }
 
   return (
     <Card
@@ -49,41 +84,52 @@ export function KanbanCard({ deal, onClick }: KanbanCardProps) {
       style={style}
       {...attributes}
       {...listeners}
-      className={`cursor-grab border-border bg-card transition-shadow hover:shadow-md ${
-        isDragging ? 'opacity-50 shadow-lg' : ''
+      className={`cursor-grab border-border bg-card transition-all hover:border-primary/50 hover:shadow-[0_0_15px_-5px_var(--color-primary)] ${
+        isDragging ? 'opacity-50 shadow-lg ring-2 ring-primary' : ''
       }`}
-      onClick={onClick}
+      onClick={handleCardClick}
     >
-      <CardContent className="space-y-3 p-6">
-        <p className="line-clamp-2 font-medium">{deal.title}</p>
+      <CardContent className="space-y-3 p-4">
+        {/* Header: Título do Deal + Prioridade */}
+        <div className="flex items-start justify-between gap-2">
+          <p className="line-clamp-2 flex-1 font-medium">{deal.title}</p>
 
-        {deal.totalValue > 0 && (
-          <p className="text-sm font-semibold text-primary">{formattedValue}</p>
+          <div data-priority-select onClick={(e) => e.stopPropagation()}>
+            <Select value={priority} onValueChange={handlePriorityChange}>
+              <SelectTrigger
+                className={`h-7 w-auto gap-1 border-0 px-2 text-xs ${priorityConfig[priority].color}`}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(priorityConfig).map(([key, config]) => (
+                  <SelectItem key={key} value={key}>
+                    <span className={`text-xs ${config.color}`}>
+                      {config.label}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Contato */}
+        {deal.contactName && (
+          <p className="text-sm text-muted-foreground">{deal.contactName}</p>
         )}
 
-        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          {deal.contactName && (
-            <span className="flex items-center gap-1">
-              <User className="h-3 w-3" />
-              {deal.contactName}
+        {/* Footer: Valor */}
+        {deal.totalValue > 0 && (
+          <div className="pt-1">
+            <span className="inline-block rounded-md bg-[#00b37e]/20 px-3 py-1.5 text-sm font-semibold text-[#00b37e]">
+              {formattedValue}
             </span>
-          )}
-
-          {deal.companyName && (
-            <span className="flex items-center gap-1">
-              <Building2 className="h-3 w-3" />
-              {deal.companyName}
-            </span>
-          )}
-
-          {formattedDate && (
-            <span className="flex items-center gap-1">
-              <Calendar className="h-3 w-3" />
-              {formattedDate}
-            </span>
-          )}
-        </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   )
 }
+
+export default KanbanCard
