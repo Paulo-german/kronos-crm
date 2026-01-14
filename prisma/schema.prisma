@@ -1,0 +1,285 @@
+// -----------------------------------------------------------------------------
+// KRONOS CRM - SCHEMA DE REFERÊNCIA (V1.0)
+// Baseado na Arquitetura V3.1 ("05. Kronos Architecture")
+// -----------------------------------------------------------------------------
+// Este arquivo serve de guia para quando iniciarmos o projeto Next.js real.
+// O Schema final deve ser copiado para /prisma/schema.prisma no projeto.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// -----------------------------------------------------------------------------
+// ENUMS
+// -----------------------------------------------------------------------------
+
+enum Role {
+  owner
+  admin
+  member
+}
+
+enum BillingPlan {
+  free
+  pro
+  enterprise
+}
+
+enum SubscriptionStatus {
+  active
+  past_due
+  canceled
+  trialing // Adicionei trialing que é comum no Stripe
+}
+
+enum CompanySize {
+  SIZE_1_10   @map("1-10")
+  SIZE_11_50  @map("11-50")
+  SIZE_50_PLUS @map("50+")
+}
+
+enum ActivityType {
+  note
+  call
+  email
+  meeting
+}
+
+enum DiscountType {
+  percentage
+  fixed
+}
+
+// -----------------------------------------------------------------------------
+// MODELS
+// -----------------------------------------------------------------------------
+
+// Tabela de Perfil do Usuário (Espelho do auth.users do Supabase)
+// Trigger no Supabase deve criar esta linha ao registrar.
+model User {
+  id                 String             @id @default(uuid()) // Idealmente @db.Uuid se o provider permitir, ou mapear para id do auth
+  email              String             @unique
+  fullName           String?            @map("full_name")
+  role               Role               @default(owner)
+  avatarUrl          String?            @map("avatar_url")
+  
+  // Billing
+  billingPlan        BillingPlan        @default(free) @map("billing_plan")
+  stripeCustomerId   String?            @map("stripe_customer_id")
+  subscriptionStatus SubscriptionStatus @default(active) @map("subscription_status")
+
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  // Relacionamentos
+  companiesOwned     Company[]          @relation("CompanyOwner")
+  contactsOwned      Contact[]          @relation("ContactOwner")
+  pipelinesCreated   Pipeline[]
+  dealsAssigned      Deal[]             @relation("DealAssignee")
+  tasksAssigned      Task[]             @relation("TaskAssignee")
+  tasksCreated       Task[]             @relation("TaskCreator")
+  subscriptions      Subscription[]
+  productsOwned      Product[]          @relation("ProductOwner")
+
+  @@map("users")
+}
+
+model Subscription {
+  id                   String   @id @default(uuid())
+  userId               String   @map("user_id")
+  stripeSubscriptionId String   @unique @map("stripe_subscription_id")
+  planId               String   @map("plan_id")
+  status               String   // Status "cru" do Stripe se precisar, ou usar o enum mapeado no User
+  currentPeriodEnd     DateTime @map("current_period_end")
+
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+model Company {
+  id        String       @id @default(uuid())
+  name      String
+  domain    String?
+  industry  String?
+  size      CompanySize?
+  address   String?
+  
+  ownerId   String       @map("owner_id")
+  owner     User         @relation("CompanyOwner", fields: [ownerId], references: [id])
+
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  // Relacionamentos
+  contacts  Contact[]
+  deals     Deal[]
+
+  @@map("companies")
+}
+
+model Contact {
+  id              String   @id @default(uuid())
+  
+  // Owner direto do contato (Multi-tenancy)
+  ownerId         String   @map("owner_id")
+  owner           User     @relation("ContactOwner", fields: [ownerId], references: [id])
+  
+  // Relacionamento Opcional com Empresa (Pode ser B2C ou B2B)
+  companyId       String?  @map("company_id")
+  company         Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  name            String
+  email           String?
+  phone           String?
+  role            String?  // Cargo no B2B
+  cpf             String?  // B2C
+  isDecisionMaker Boolean  @default(false) @map("is_decision_maker")
+
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relacionamentos
+  deals           Deal[]
+
+  @@map("contacts")
+}
+
+model Pipeline {
+  id          String   @id @default(uuid())
+  name        String
+  createdBy   String   @map("created_by")
+  creator     User     @relation(fields: [createdBy], references: [id])
+
+  // Etapas especiais (apenas 1 de cada por pipeline)
+  wonStageId  String?  @map("won_stage_id")
+  lostStageId String?  @map("lost_stage_id")
+
+  stages      PipelineStage[]
+
+  @@map("pipelines")
+}
+
+model PipelineStage {
+  id         String   @id @default(uuid())
+  pipelineId String   @map("pipeline_id")
+  pipeline   Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  
+  name       String
+  position   Int      // 1, 2, 3...
+  color      String?  // Cor hex do card no Kanban (ex: "#22c55e")
+
+  deals      Deal[]
+
+  @@map("pipeline_stages")
+}
+
+model Deal {
+  id              String   @id @default(uuid())
+  
+  // Pipeline
+  pipelineStageId String   @map("pipeline_stage_id")
+  stage           PipelineStage @relation(fields: [pipelineStageId], references: [id])
+
+  // Quem é o cliente? (Híbrido B2B/B2C)
+  companyId       String?  @map("company_id")
+  company         Company? @relation(fields: [companyId], references: [id])
+  
+  contactId       String?  @map("contact_id")
+  contact         Contact? @relation(fields: [contactId], references: [id])
+
+  // Dados do Negócio
+  title             String
+  // Valor total é CALCULADO a partir dos DealProducts
+  expectedCloseDate DateTime? @map("expected_close_date")
+  
+  assignedTo        String   @map("assigned_to")
+  assignee          User     @relation("DealAssignee", fields: [assignedTo], references: [id])
+
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  // Relacionamentos
+  dealProducts      DealProduct[]
+  tasks             Task[]
+  activities        Activity[]
+
+  @@map("deals")
+}
+
+model Task {
+  id          String    @id @default(uuid())
+  dealId      String    @map("deal_id")
+  deal        Deal      @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  title       String
+  dueDate     DateTime? @map("due_date")
+  isCompleted Boolean   @default(false) @map("is_completed")
+
+  assignedTo  String    @map("assigned_to")
+  assignee    User      @relation("TaskAssignee", fields: [assignedTo], references: [id])
+
+  createdBy   String    @map("created_by")
+  creator     User      @relation("TaskCreator", fields: [createdBy], references: [id])
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@map("tasks")
+}
+
+model Activity {
+  id        String       @id @default(uuid())
+  dealId    String       @map("deal_id")
+  deal      Deal         @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  type      ActivityType
+  content   String       @db.Text
+  
+  createdAt DateTime     @default(now()) @map("created_at")
+
+  @@map("activities")
+}
+
+// -----------------------------------------------------------------------------
+// PRODUTOS
+// -----------------------------------------------------------------------------
+
+model Product {
+  id          String   @id @default(uuid())
+  ownerId     String   @map("owner_id")
+  owner       User     @relation("ProductOwner", fields: [ownerId], references: [id])
+
+  name        String
+  description String?
+  price       Decimal  @db.Decimal(15, 2) // Preço unitário padrão
+  isActive    Boolean  @default(true) @map("is_active")
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  dealProducts DealProduct[]
+
+  @@map("products")
+}
+
+model DealProduct {
+  id            String       @id @default(uuid())
+  dealId        String       @map("deal_id")
+  deal          Deal         @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  productId     String       @map("product_id")
+  product       Product      @relation(fields: [productId], references: [id])
+
+  quantity      Int          @default(1)
+  unitPrice     Decimal      @db.Decimal(15, 2) @map("unit_price") // Preço negociado
+  
+  discountType  DiscountType @default(percentage) @map("discount_type")
+  discountValue Decimal      @default(0) @db.Decimal(15, 2) @map("discount_value")
+
+  @@map("deal_products")
+}

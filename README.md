@@ -1,36 +1,130 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Kronos CRM
 
-## Getting Started
+> **Sales AI Hub** - CRM B2B/B2C estruturado, ágil e seguro.
 
-First, run the development server:
+---
+
+## 🚀 Comandos Essenciais
+
+**Dependências:**
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+**Development:**
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+pnpm dev
+# acess: http://localhost:3000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+**Prisma (Banco de Dados):**
 
-## Learn More
+```bash
+pnpm prisma generate    # Atualiza tipos do client
+pnpm prisma migrate dev # Aplica mudanças no banco
+pnpm prisma studio      # Visualiza dados no navegador
+```
 
-To learn more about Next.js, take a look at the following resources:
+**Quality Assurance:**
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+pnpm lint      # Verifica erros de ESLint
+pnpm format    # Formata código com Prettier (se houver script)
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## 🌍 Variáveis de Ambiente
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Crie um arquivo `.env` na raiz baseado no `.env.example`:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Variável                        | Descrição                                                     |
+| ------------------------------- | ------------------------------------------------------------- |
+| `DATABASE_URL`                  | String de conexão do PostgreSQL (Supabase Transaction Pooler) |
+| `DIRECT_URL`                    | Conexão direta (Session Pooler) para migrations               |
+| `NEXT_PUBLIC_SUPABASE_URL`      | URL do Projeto Supabase                                       |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Chave pública anônima                                         |
+
+---
+
+## 🛠️ Stack & Dependências Internas
+
+- **Database:** PostgreSQL (via Supabase)
+- **ORM:** Prisma
+- **Auth:** Supabase Auth (SSR)
+- **Estilização:** Tailwind CSS + Shadcn/ui (Radix Primitives)
+- **Server Actions:** `next-safe-action` (validação e type-safety)
+- **Forms:** `react-hook-form` + `zod`
+
+---
+
+## 📝 Regras de Codificação
+
+### Padrão Geral
+
+- **Idioma:** Todo código deve ser em **Inglês** (variáveis, funções, rotas). Comentários podem ser em **Português**.
+- **Legibilidade:** Evite métodos longos. Se cresceu, quebre em funções menores.
+- **Comentários:** O código deve ser auto-explicativo. Use comentários apenas para explicar o _PORQUÊ_ de decisões complexas, não o _O QUE_ o código faz.
+- **Magic Numbers:** Mova para constantes (`const MAX_RETRY = 3`).
+
+### TypeScript & JS Moderno
+
+- **Pacotes:** Use `pnpm` exclusivamente.
+- **Declaração:** Prefira `const` sempre. Use `let` apenas se necessário reatribuir.
+- **Tipagem:** Use `interface` para objetos e `type` para uniões/interseções complexas.
+- **Async:** Sempre use `async/await` (evite `.then()`).
+- **Validação:** Não ignore erros de TS (`any` é proibido).
+
+### Estrutura de Métodos
+
+- **Nome:** Verbo + Substantivo (ex: `getUser`, `createCompany`).
+- **Fluxo:** Evite `else`. Use **Early Returns**.
+
+  ```ts
+  // ✅ Bom
+  if (!user) return null
+  return user.data
+
+  // ❌ Ruim
+  if (user) {
+    return user.data
+  } else {
+    return null
+  }
+  ```
+
+---
+
+## 🔐 Regras de Segurança & Arquitetura
+
+### 1. Separação de Responsabilidades (Hexagonal/MVC inspired)
+
+- **`_actions` (Controller/Driver):** Recebe input, valida, chama serviços.
+- **`_data-access` (Repository/Resource):** Único lugar que toca o banco (Prisma) para leitura.
+- **`app/` (View/Application):** Interface do usuário.
+
+### 2. Autenticação & Contexto
+
+- Use `authActionClient` para qualquer action que precise de usuário logado.
+- Nunca confie no ID enviado pelo front-end para operações críticas. Use `ctx.userId` injetado pelo middleware.
+
+### 3. Banco de Dados (Postgres)
+
+- **Tabelas e Colunas:** No banco de dados use **snake_case** (ex: `created_at`, `user_id`).
+- **Código (Prisma):** No schema/código use **camelCase** e mapeie para o banco com `@map`.
+  ```prisma
+  model User {
+    fullName String @map("full_name") // Code: camel, DB: snake
+  }
+  ```
+- Todas as tabelas devem ter `id` (UUID), `created_at` e `updated_at`.
+- Filtre dados sempre pelo dono (`ownerId`) para garantir multi-tenancy.
+
+---
+
+## 🧪 Testes (Futuro)
+
+- Usaremos Jest/Vitest.
+- Foco em testes de integração para Server Actions críticas.
