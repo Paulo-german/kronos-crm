@@ -53,7 +53,17 @@ export const moveDealToStage = authActionClient
       data: { pipelineStageId: data.stageId },
     })
 
+    // Registra atividade de mudança de etapa
+    await db.activity.create({
+      data: {
+        type: 'stage_change',
+        content: `${deal.stage.name} → ${newStage.name}`,
+        dealId: data.dealId,
+      },
+    })
+
     revalidatePath('/pipeline')
+    revalidatePath(`/pipeline/deal/${data.dealId}`)
 
     return { success: true, moved: true }
   })

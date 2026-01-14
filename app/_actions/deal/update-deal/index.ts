@@ -54,6 +54,8 @@ export const updateDeal = authActionClient
       where: { id: data.id },
       data: {
         title: data.title,
+        priority: data.priority,
+        notes: data.notes,
         contactId: data.contactId,
         companyId: data.companyId,
         expectedCloseDate: data.expectedCloseDate,

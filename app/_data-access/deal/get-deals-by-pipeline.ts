@@ -5,6 +5,7 @@ export interface DealDto {
   id: string
   title: string
   stageId: string
+  priority: 'low' | 'medium' | 'high' | 'urgent'
   contactId: string | null
   contactName: string | null
   companyId: string | null
@@ -89,6 +90,7 @@ export const getDealsByPipeline = async (
       id: deal.id,
       title: deal.title,
       stageId: deal.pipelineStageId,
+      priority: deal.priority,
       contactId: deal.contactId,
       contactName: deal.contact?.name ?? null,
       companyId: deal.companyId,
