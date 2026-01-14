@@ -1,0 +1,42 @@
+import { type EmailOtpType } from '@supabase/supabase-js'
+import { type NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/_lib/supabase/server'
+
+/**
+ * Rota de callback para confirmação de email.
+ * O Supabase redireciona para cá quando o usuário clica no link de confirmação.
+ *
+ * Fluxo:
+ * 1. Usuário clica no link do email (ex: ?token_hash=xxx&type=signup)
+ * 2. Esta rota valida o token com o Supabase
+ * 3. Se válido, redireciona para o dashboard (logado)
+ * 4. Se inválido, redireciona para uma página de erro
+ */
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url)
+  const tokenHash = searchParams.get('token_hash')
+  const type = searchParams.get('type') as EmailOtpType | null
+
+  if (tokenHash && type) {
+    const supabase = await createClient()
+
+    const { error } = await supabase.auth.verifyOtp({
+      type,
+      token_hash: tokenHash,
+    })
+
+    if (!error) {
+      console.log(
+        '✅ Email confirmado com sucesso! Redirecionando para dashboard...',
+      )
+      // Força redirecionamento para dashboard limpo
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    } else {
+      console.error('❌ Erro na confirmação de email:', error.message)
+    }
+  }
+
+  // Se algo deu errado, redireciona para página de erro
+  // TODO: Criar uma página de erro amigável
+  return NextResponse.redirect(new URL('/auth/auth-code-error', request.url))
+}
