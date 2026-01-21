@@ -56,12 +56,20 @@ export default {
         },
         // Kronos Specific Extended Palette
         kronos: {
-          purple: 'var(--kronos-purple)',
+          purple: 'var(--kronos-purple)', // Keep as var for legacy if needed, or update to HSL if available
           'purple-light': 'var(--kronos-purple-light)',
-          green: 'var(--kronos-green)',
+
+          // Updated to use HSL variable for opacity support (bg-kronos-green/20)
+          green: 'hsl(var(--kronos-green-hsl))',
           'green-light': 'var(--kronos-green-light)',
+
           cyan: 'var(--kronos-cyan)',
           pink: 'var(--kronos-pink)',
+
+          // New Semantic Colors
+          blue: 'hsl(var(--kronos-blue))',
+          red: 'hsl(var(--kronos-red))',
+          yellow: 'hsl(var(--kronos-yellow))',
         },
       },
       borderRadius: {

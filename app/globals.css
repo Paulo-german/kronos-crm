@@ -5,35 +5,35 @@
 @layer base {
   :root {
     /* Base Colors (Zinc/Natural for Light Mode) */
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%; /* #09090b - Zinc 950 */
+    --background: 0 0% 100%; /* hsl(0 0% 100%) */
+    --foreground: 240 10% 3.9%; /* hsl(240 10% 3.9%) */
 
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card: 0 0% 100%; /* hsl(0 0% 100%) */
+    --card-foreground: 240 10% 3.9%; /* hsl(240 10% 3.9%) */
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%; /* hsl(0 0% 100%) */
+    --popover-foreground: 240 10% 3.9%; /* hsl(240 10% 3.9%) */
 
     /* Primary: Kronos Purple */
-    --primary: 261 74% 62%; /* #8257e5 */
-    --primary-foreground: 0 0% 98%;
+    --primary: 261 74% 62%; /* hsl(261 74% 62%) */
+    --primary-foreground: 0 0% 98%; /* hsl(0 0% 98%) */
 
     /* Secondary: Kronos Cyan-ish/Light Zinc */
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
+    --secondary: 240 4.8% 95.9%; /* hsl(240 4.8% 95.9%) */
+    --secondary-foreground: 240 5.9% 10%; /* hsl(240 5.9% 10%) */
 
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
+    --muted: 240 4.8% 95.9%; /* hsl(240 4.8% 95.9%) */
+    --muted-foreground: 240 3.8% 46.1%; /* hsl(240 3.8% 46.1%) */
 
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
+    --accent: 240 4.8% 95.9%; /* hsl(240 4.8% 95.9%) */
+    --accent-foreground: 240 5.9% 10%; /* hsl(240 5.9% 10%) */
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 84.2% 60.2%; /* hsl(0 84.2% 60.2%) */
+    --destructive-foreground: 0 0% 98%; /* hsl(0 0% 98%) */
 
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 261 74% 62%; /* Ring matches Primary */
+    --border: 240 5.9% 90%; /* hsl(240 5.9% 90%) */
+    --input: 240 5.9% 90%; /* hsl(240 5.9% 90%) */
+    --ring: 261 74% 62%; /* hsl(261 74% 62%) */
 
     --radius: 0.5rem;
 
@@ -46,40 +46,50 @@
 
     --kronos-cyan: #61dafb;
     --kronos-pink: #ff79c6;
+
+    /* STATUS COLORS (HSL for Tailwind Opacity) */
+    /* Blue: In Progress */
+    --kronos-blue: 217 91% 60%; /* hsl(217 91% 60%) */
+    /* Red: Lost/Delete */
+    --kronos-red: 0 84% 60%; /* hsl(0 84% 60%) */
+    /* Yellow: Paused/Warning */
+    --kronos-yellow: 45 93% 47%; /* hsl(45 93% 47%) */
+    /* Green: Won/Success (HSL version of #00b37e) */
+    --kronos-green-hsl: 162 100% 35%; /* hsl(162 100% 35%) */
   }
 
   .dark {
     /* Base Colors (Zinc for Dark Mode - Matches Design System #09090b) */
-    --background: 240 10% 3.9%; /* #09090b */
-    --foreground: 0 0% 98%;
+    --background: 240 10% 3.9%; /* hsl(240 10% 3.9%) */
+    --foreground: 0 0% 98%; /* hsl(0 0% 98%) */
 
     /* Surface: #18181b (Zinc 900) - For Cards, Sidebars, Modals */
-    --card: 240 5.9% 10%;
-    --card-foreground: 0 0% 98%;
+    --card: 240 5.9% 10%; /* hsl(240 5.9% 10%) */
+    --card-foreground: 0 0% 98%; /* hsl(0 0% 98%) */
 
-    --popover: 240 5.9% 10%; /* Matches Card for consistency */
-    --popover-foreground: 0 0% 98%;
+    --popover: 240 5.9% 10%; /* hsl(240 5.9% 10%) */
+    --popover-foreground: 0 0% 98%; /* hsl(0 0% 98%) */
 
     /* Primary: Kronos Purple */
-    --primary: 261 74% 62%; /* #8257e5 */
-    --primary-foreground: 0 0% 98%;
+    --primary: 261 74% 62%; /* hsl(261 74% 62%) */
+    --primary-foreground: 0 0% 98%; /* hsl(0 0% 98%) */
 
     /* Secondary: Darker Zinc */
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 240 3.7% 15.9%; /* hsl(240 3.7% 15.9%) */
+    --secondary-foreground: 0 0% 98%; /* hsl(0 0% 98%) */
 
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
+    --muted: 240 3.7% 15.9%; /* hsl(240 3.7% 15.9%) */
+    --muted-foreground: 240 5% 64.9%; /* hsl(240 5% 64.9%) */
 
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 240 3.7% 15.9%; /* hsl(240 3.7% 15.9%) */
+    --accent-foreground: 0 0% 98%; /* hsl(0 0% 98%) */
 
-    --destructive: 0 62.8% 50.6%;
-    --destructive-foreground: 0 62.8% 60.6%;
+    --destructive: 0 62.8% 50.6%; /* hsl(0 62.8% 50.6%) */
+    --destructive-foreground: 0 62.8% 60.6%; /* hsl(0 62.8% 60.6%) */
 
-    --border: 240 3.7% 15.9%; /* #27272a ~ Zinc 800 */
-    --input: 240 3.7% 15.9%;
-    --ring: 261 74% 62%;
+    --border: 240 3.7% 15.9%; /* hsl(240 3.7% 15.9%) */
+    --input: 240 3.7% 15.9%; /* hsl(240 3.7% 15.9%) */
+    --ring: 261 74% 62%; /* hsl(261 74% 62%) */
   }
 }
 
