@@ -1,3 +1,4 @@
+import { db } from '@/_lib/prisma'
 import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
@@ -26,7 +27,7 @@ export async function seedPipelineForUser({
   pipelineName = 'Pipeline Principal',
 }: SeedPipelineParams) {
   // Verifica se já existe pipeline para este usuário
-  const existingPipeline = await prisma.pipeline.findFirst({
+  const existingPipeline = await db.pipeline.findFirst({
     where: { createdBy: userId },
   })
 
@@ -38,7 +39,7 @@ export async function seedPipelineForUser({
   console.log(`🌱 Criando pipeline padrão para usuário ${userId}...`)
 
   // Cria pipeline com etapas
-  const pipeline = await prisma.pipeline.create({
+  const pipeline = await db.pipeline.create({
     data: {
       name: pipelineName,
       createdBy: userId,
@@ -51,20 +52,6 @@ export async function seedPipelineForUser({
     },
   })
 
-  // Define etapas de ganho e perda
-  const wonStage = pipeline.stages.find((s) => s.name === 'Ganho')
-  const lostStage = pipeline.stages.find((s) => s.name === 'Perdido')
-
-  if (wonStage && lostStage) {
-    await prisma.pipeline.update({
-      where: { id: pipeline.id },
-      data: {
-        wonStageId: wonStage.id,
-        lostStageId: lostStage.id,
-      },
-    })
-  }
-
   console.log(
     `✅ Pipeline "${pipelineName}" criado com ${pipeline.stages.length} etapas.`,
   )
@@ -76,7 +63,7 @@ async function main() {
   console.log('🌱 Iniciando seed...')
 
   // Busca todos os usuários que não têm pipeline
-  const usersWithoutPipeline = await prisma.user.findMany({
+  const usersWithoutPipeline = await db.user.findMany({
     where: {
       pipelinesCreated: {
         none: {},
@@ -102,5 +89,5 @@ main()
     process.exit(1)
   })
   .finally(async () => {
-    await prisma.$disconnect()
+    await db.$disconnect()
   })

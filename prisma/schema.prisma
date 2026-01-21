@@ -70,6 +70,13 @@ enum DealPriority {
   urgent
 }
 
+enum DealStatus {
+  OPEN   // Novo ou Em Andamento (default)
+  WON    // Vendido/Ganho
+  LOST   // Perdido
+  PAUSED // Pausado (On Hold)
+}
+
 // -----------------------------------------------------------------------------
 // MODELS
 // -----------------------------------------------------------------------------
@@ -171,10 +178,6 @@ model Pipeline {
   createdBy   String   @map("created_by")
   creator     User     @relation(fields: [createdBy], references: [id])
 
-  // Etapas especiais (apenas 1 de cada por pipeline)
-  wonStageId  String?  @map("won_stage_id")
-  lostStageId String?  @map("lost_stage_id")
-
   stages      PipelineStage[]
 
   @@map("pipelines")
@@ -211,7 +214,10 @@ model Deal {
   // Dados do Negócio
   title             String
   priority          DealPriority @default(medium)
+  status            DealStatus   @default(OPEN)
   notes             String?      @db.Text  // Observações gerais
+  lostReason        String?      // Motivo da perda (ex: "Preço alto", "Concorrência")
+  pausedAt          DateTime?    @map("paused_at") // Data em que foi pausado
   // Valor total é CALCULADO a partir dos DealProducts
   expectedCloseDate DateTime? @map("expected_close_date")
   
