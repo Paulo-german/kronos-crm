@@ -10,25 +10,26 @@ interface DealPageProps {
 
 const DealPage = async ({ params }: DealPageProps) => {
   const { id } = await params
-
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
-
   if (!user) {
     redirect('/login')
   }
 
   const deal = await getDealDetails(id, user.id)
-
   if (!deal) {
     redirect('/pipeline')
   }
 
   const products = await getProducts(user.id)
 
-  return <DealDetailClient deal={deal} products={products} />
+  return (
+    <div className="h-full w-full">
+      <DealDetailClient deal={deal} products={products} />
+    </div>
+  )
 }
 
 export default DealPage

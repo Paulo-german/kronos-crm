@@ -1,6 +1,7 @@
 import { AppSidebar } from '@/_components/app-sidebar'
 import { Header } from '@/_components/header'
 import { Toaster } from 'sonner'
+import { ContentWrapper } from './_components/content-wrapper'
 
 interface AuthenticatedLayoutProps {
   children: React.ReactNode
@@ -12,7 +13,7 @@ const AuthenticatedLayout = ({ children }: AuthenticatedLayoutProps) => {
       <AppSidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header />
-        <main className="flex-1 overflow-y-auto p-4 md:p-8">{children}</main>
+        <ContentWrapper>{children}</ContentWrapper>
       </div>
       <Toaster richColors position="top-right" />
     </div>

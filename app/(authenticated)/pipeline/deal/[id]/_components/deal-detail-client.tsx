@@ -73,7 +73,7 @@ const DealDetailClient = ({ deal, products }: DealDetailClientProps) => {
   }
 
   return (
-    <div className="flex min-h-screen flex-col gap-6 bg-background p-6">
+    <div className="flex h-screen flex-col gap-6 bg-background p-6">
       {/* Header */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
