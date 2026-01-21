@@ -16,6 +16,9 @@ import {
 import { updateDealPriority } from '@/_actions/deal/update-deal-priority'
 import { formatCurrency } from '@/_helpers/format-currency'
 import type { DealDto } from '@/_data-access/deal/get-deals-by-pipeline'
+import { Badge } from '@/_components/ui/badge'
+import { CircleIcon } from 'lucide-react'
+import { Label } from '@/_components/ui/label'
 
 interface KanbanCardProps {
   deal: DealDto
@@ -23,10 +26,40 @@ interface KanbanCardProps {
 }
 
 const priorityConfig = {
-  low: { label: 'Baixa', color: 'bg-muted text-muted-foreground' },
-  medium: { label: 'Média', color: 'bg-primary/20 text-primary' },
-  high: { label: 'Alta', color: 'bg-amber-500/20 text-amber-500' },
-  urgent: { label: 'Urgente', color: 'bg-destructive/20 text-destructive' },
+  low: {
+    label: 'BAIXA',
+    color: 'border-muted-foreground/30 text-muted-foreground',
+  },
+  medium: { label: 'MÉDIA', color: 'border-kronos-blue/40 text-kronos-blue' },
+  high: { label: 'ALTA', color: 'border-kronos-yellow/40 text-kronos-yellow' },
+  urgent: { label: 'URGENTE', color: 'border-kronos-red/40 text-kronos-red' },
+}
+
+const statusConfig = {
+  OPEN: {
+    label: 'NOVO',
+    color:
+      'bg-kronos-blue/10 text-kronos-blue border-kronos-blue/20 hover:bg-kronos-blue/20',
+    variant: 'secondary' as const,
+  },
+  WON: {
+    label: 'VENDIDO',
+    color:
+      'bg-kronos-green/10 text-kronos-green border-kronos-green/20 hover:bg-kronos-green/20',
+    variant: 'secondary' as const,
+  },
+  LOST: {
+    label: 'PERDIDO',
+    color:
+      'bg-kronos-red/10 text-kronos-red border-kronos-red/20 hover:bg-kronos-red/20',
+    variant: 'secondary' as const,
+  },
+  PAUSED: {
+    label: 'PAUSADO',
+    color:
+      'bg-kronos-yellow/10 text-kronos-yellow border-kronos-yellow/20 hover:bg-kronos-yellow/20',
+    variant: 'secondary' as const,
+  },
 }
 
 const KanbanCard = ({ deal, onClick }: KanbanCardProps) => {
@@ -76,35 +109,52 @@ const KanbanCard = ({ deal, onClick }: KanbanCardProps) => {
     onClick?.()
   }
 
+  // Se for arrastado, aumentar opacidade para dar destaque
+  const draggingClass = isDragging
+    ? 'opacity-30 ring-2 ring-primary rotate-2'
+    : ''
+
   return (
     <Card
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
-      className={`cursor-grab border-border bg-card transition-all hover:border-primary/50 hover:shadow-[0_0_15px_-5px_var(--color-primary)] ${
-        isDragging ? 'opacity-50 shadow-lg ring-2 ring-primary' : ''
-      }`}
+      className={`relative cursor-grab border-border bg-card shadow-none transition-all hover:bg-card/80 ${draggingClass}`}
       onClick={handleCardClick}
     >
-      <CardContent className="space-y-3 p-4">
-        {/* Header: Título do Deal + Prioridade */}
+      <CardContent className="flex flex-col gap-3 p-3.5">
+        {/* 1. Topo: Badge de Status + Prioridade */}
         <div className="flex items-start justify-between gap-2">
-          <p className="line-clamp-2 flex-1 font-medium">{deal.title}</p>
+          {/* Badge de Status */}
+          {statusConfig[deal.status] && (
+            <Badge
+              variant="outline"
+              className={`h-6 gap-1.5 px-2 text-[10px] font-semibold transition-colors ${statusConfig[deal.status].color}`}
+            >
+              <CircleIcon className="h-1.5 w-1.5 fill-current" />
+              {statusConfig[deal.status].label}
+            </Badge>
+          )}
 
-          <div data-priority-select onClick={(e) => e.stopPropagation()}>
+          {/* Prioridade (Compacta) */}
+          <div
+            className="flex flex-col gap-0.5"
+            data-priority-select
+            onClick={(e) => e.stopPropagation()}
+          >
             <Select value={priority} onValueChange={handlePriorityChange}>
               <SelectTrigger
-                className={`h-7 w-auto gap-1 border-0 px-2 text-xs ${priorityConfig[priority].color}`}
+                className={`h-6 w-auto border bg-transparent px-2 text-[9px] font-medium focus:ring-0 focus:ring-offset-0 ${priorityConfig[priority].color}`}
               >
-                <SelectValue />
+                <div className="flex items-center gap-1 overflow-hidden">
+                  <SelectValue />
+                </div>
               </SelectTrigger>
               <SelectContent>
                 {Object.entries(priorityConfig).map(([key, config]) => (
-                  <SelectItem key={key} value={key}>
-                    <span className={`text-xs ${config.color}`}>
-                      {config.label}
-                    </span>
+                  <SelectItem key={key} value={key} className="text-xs">
+                    <span className={config.color}>{config.label}</span>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -112,17 +162,55 @@ const KanbanCard = ({ deal, onClick }: KanbanCardProps) => {
           </div>
         </div>
 
-        {/* Contato */}
-        {deal.contactName && (
-          <p className="text-sm text-muted-foreground">{deal.contactName}</p>
-        )}
+        {/* 2. Sub-topo: Título do Deal */}
+        <div>
+          <p className="line-clamp-2 cursor-pointer text-base font-semibold leading-tight text-foreground hover:text-primary">
+            {deal.title}
+          </p>
+        </div>
 
-        {/* Footer: Valor */}
-        {deal.totalValue > 0 && (
-          <div className="pt-1">
-            <span className="inline-block rounded-md bg-[#00b37e]/20 px-3 py-1.5 text-sm font-semibold text-[#00b37e]">
-              {formattedValue}
-            </span>
+        {/* 3. Meio: Grid de Contato + Valor */}
+        <div className="grid grid-cols-2 gap-3">
+          {/* Coluna Contato */}
+          <div className="flex flex-col gap-1">
+            <Label className="text-[10px] uppercase text-muted-foreground">
+              Contato
+            </Label>
+            <div className="flex h-6 items-center truncate text-xs font-medium text-foreground">
+              {deal.contactName || (
+                <span className="italic text-muted-foreground">N/A</span>
+              )}
+            </div>
+          </div>
+
+          {/* Coluna Valor */}
+          <div className="flex flex-col gap-1">
+            <Label className="text-[10px] uppercase text-muted-foreground">
+              Valor Negociado
+            </Label>
+            <div className="flex h-6 items-center">
+              {deal.totalValue > 0 ? (
+                <span className="bg-kronos-green/10 inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold text-kronos-green">
+                  {formattedValue}
+                </span>
+              ) : (
+                <span className="text-xs italic text-muted-foreground">
+                  Não definido
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* 4. Base: Observações */}
+        {deal.notes && (
+          <div className="flex flex-col gap-1 border-t border-border/50 pt-2">
+            <Label className="text-[10px] uppercase text-muted-foreground">
+              Observações
+            </Label>
+            <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+              {deal.notes}
+            </p>
           </div>
         )}
       </CardContent>
