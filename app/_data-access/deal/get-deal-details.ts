@@ -29,6 +29,7 @@ export interface DealTaskDto {
 export interface DealDetailsDto {
   id: string
   title: string
+  status: 'OPEN' | 'WON' | 'LOST' | 'PAUSED'
   priority: 'low' | 'medium' | 'high' | 'urgent'
   notes: string | null
   expectedCloseDate: Date | null
@@ -40,8 +41,6 @@ export interface DealDetailsDto {
   stageColor: string | null
   // Pipeline info
   pipelineId: string
-  wonStageId: string | null
-  lostStageId: string | null
   // Contact & Company
   contactId: string | null
   contactName: string | null
@@ -74,8 +73,6 @@ export const getDealDetails = async (
           pipeline: {
             select: {
               id: true,
-              wonStageId: true,
-              lostStageId: true,
             },
           },
         },
@@ -127,6 +124,7 @@ export const getDealDetails = async (
   return {
     id: deal.id,
     title: deal.title,
+    status: deal.status,
     priority: deal.priority,
     notes: deal.notes,
     expectedCloseDate: deal.expectedCloseDate,
@@ -136,8 +134,6 @@ export const getDealDetails = async (
     stageName: deal.stage.name,
     stageColor: deal.stage.color,
     pipelineId: deal.stage.pipeline.id,
-    wonStageId: deal.stage.pipeline.wonStageId,
-    lostStageId: deal.stage.pipeline.lostStageId,
     contactId: deal.contactId,
     contactName: deal.contact?.name ?? null,
     companyId: deal.companyId,

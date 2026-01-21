@@ -8,7 +8,7 @@ import { revalidatePath } from 'next/cache'
 export const markDealLost = authActionClient
   .schema(markDealLostSchema)
   .action(async ({ parsedInput: data, ctx }) => {
-    // Busca deal e pipeline
+    // Busca deal e valida ownership
     const deal = await db.deal.findFirst({
       where: {
         id: data.dealId,
@@ -18,31 +18,16 @@ export const markDealLost = authActionClient
           },
         },
       },
-      include: {
-        stage: {
-          include: {
-            pipeline: true,
-          },
-        },
-      },
     })
 
     if (!deal) {
       throw new Error('Deal não encontrado ou não pertence a você.')
     }
 
-    const pipeline = deal.stage.pipeline
-
-    if (!pipeline.lostStageId) {
-      throw new Error('Nenhuma etapa de perda configurada no pipeline.')
-    }
-
-    // Move deal para etapa de perda
+    // Atualiza status do deal para LOST
     await db.deal.update({
       where: { id: data.dealId },
-      data: {
-        pipelineStageId: pipeline.lostStageId,
-      },
+      data: { status: 'LOST' },
     })
 
     // Registra atividade
