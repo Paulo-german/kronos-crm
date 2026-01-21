@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from '@/_components/ui/select'
 import { updateDealPriority } from '@/_actions/deal/update-deal-priority'
+import { formatCurrency } from '@/_helpers/format-currency'
 import type { DealDto } from '@/_data-access/deal/get-deals-by-pipeline'
 
 interface KanbanCardProps {
@@ -57,10 +58,7 @@ const KanbanCard = ({ deal, onClick }: KanbanCardProps) => {
   })
 
   // Formata valor para BRL
-  const formattedValue = new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(deal.totalValue)
+  const formattedValue = formatCurrency(deal.totalValue)
 
   const handlePriorityChange = (newPriority: string) => {
     const validPriority = newPriority as 'low' | 'medium' | 'high' | 'urgent'

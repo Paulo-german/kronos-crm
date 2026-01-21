@@ -4,17 +4,11 @@ import { notFound } from 'next/navigation'
 import { Button } from '@/_components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import { ArrowLeft, Package, DollarSign, FileText } from 'lucide-react'
+import { formatCurrency } from '@/_helpers/format-currency'
 import Link from 'next/link'
 
 interface ProductDetailsPageProps {
   params: Promise<{ id: string }>
-}
-
-const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(value)
 }
 
 const ProductDetailsPage = async ({ params }: ProductDetailsPageProps) => {

@@ -46,6 +46,7 @@ import { addDealProduct } from '@/_actions/deal/add-deal-product'
 import { removeDealProduct } from '@/_actions/deal/remove-deal-product'
 import type { DealDetailsDto } from '@/_data-access/deal/get-deal-details'
 import type { ProductDto } from '@/_data-access/product/get-products'
+import { formatCurrency } from '@/_helpers/format-currency'
 
 interface TabProductsProps {
   deal: DealDetailsDto
@@ -111,13 +112,6 @@ const TabProducts = ({ deal, products }: TabProductsProps) => {
       discountType: 'percentage',
       discountValue: 0,
     })
-  }
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(value)
   }
 
   // Produtos não adicionados ao deal

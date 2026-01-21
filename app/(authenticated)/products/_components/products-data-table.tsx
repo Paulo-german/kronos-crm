@@ -5,17 +5,11 @@ import { Package } from 'lucide-react'
 import Link from 'next/link'
 import { DataTable } from '@/_components/data-table'
 import type { ProductDto } from '@/_data-access/product/get-products'
+import { formatCurrency } from '@/_helpers/format-currency'
 import ProductTableDropdownMenu from './table-dropdown-menu'
 
 interface ProductsDataTableProps {
   products: ProductDto[]
-}
-
-const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(value)
 }
 
 export function ProductsDataTable({ products }: ProductsDataTableProps) {

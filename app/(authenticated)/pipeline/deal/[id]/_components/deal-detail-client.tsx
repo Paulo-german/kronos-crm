@@ -11,6 +11,7 @@ import { Badge } from '@/_components/ui/badge'
 import { markDealWon } from '@/_actions/deal/mark-deal-won'
 import { markDealLost } from '@/_actions/deal/mark-deal-lost'
 import type { DealDetailsDto } from '@/_data-access/deal/get-deal-details'
+import { formatCurrency } from '@/_helpers/format-currency'
 import type { ContactDto } from '@/_data-access/contact/get-contacts'
 import type { ProductDto } from '@/_data-access/product/get-products'
 import TabSummary from '@/(authenticated)/pipeline/deal/[id]/_components/tab-summary'
@@ -67,10 +68,7 @@ const DealDetailClient = ({
 
   const isPending = isMarkingWon || isMarkingLost
 
-  const formattedValue = new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(deal.totalValue)
+  const formattedValue = formatCurrency(deal.totalValue)
 
   const handleMarkWon = () => {
     if (!deal.wonStageId) {
