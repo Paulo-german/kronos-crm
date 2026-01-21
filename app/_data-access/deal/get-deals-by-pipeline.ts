@@ -5,6 +5,7 @@ export interface DealDto {
   id: string
   title: string
   stageId: string
+  status: 'OPEN' | 'WON' | 'LOST' | 'PAUSED'
   priority: 'low' | 'medium' | 'high' | 'urgent'
   contactId: string | null
   contactName: string | null
@@ -12,6 +13,7 @@ export interface DealDto {
   companyName: string | null
   expectedCloseDate: Date | null
   totalValue: number
+  notes: string | null
   createdAt: Date
 }
 
@@ -24,29 +26,15 @@ export interface DealsByStageDto {
  * Multi-tenancy via pipeline.createdBy
  */
 export const getDealsByPipeline = async (
-  pipelineId: string,
-  userId: string,
+  stageIds: string[],
 ): Promise<DealsByStageDto> => {
-  // Verifica ownership do pipeline
-  const pipeline = await db.pipeline.findFirst({
-    where: {
-      id: pipelineId,
-      createdBy: userId,
-    },
-    include: {
-      stages: {
-        select: { id: true },
-      },
-    },
-  })
-
-  if (!pipeline) return {}
+  if (stageIds.length === 0) return {}
 
   // Busca todos os deals das etapas deste pipeline
   const deals = await db.deal.findMany({
     where: {
       pipelineStageId: {
-        in: pipeline.stages.map((s) => s.id),
+        in: stageIds,
       },
     },
     include: {
@@ -71,8 +59,8 @@ export const getDealsByPipeline = async (
   const result: DealsByStageDto = {}
 
   // Inicializa todas as stages com arrays vazios
-  for (const stage of pipeline.stages) {
-    result[stage.id] = []
+  for (const stageId of stageIds) {
+    result[stageId] = []
   }
 
   for (const deal of deals) {
@@ -90,6 +78,7 @@ export const getDealsByPipeline = async (
       id: deal.id,
       title: deal.title,
       stageId: deal.pipelineStageId,
+      status: deal.status,
       priority: deal.priority,
       contactId: deal.contactId,
       contactName: deal.contact?.name ?? null,
@@ -97,6 +86,7 @@ export const getDealsByPipeline = async (
       companyName: deal.company?.name ?? null,
       expectedCloseDate: deal.expectedCloseDate,
       totalValue,
+      notes: deal.notes,
       createdAt: deal.createdAt,
     })
   }
