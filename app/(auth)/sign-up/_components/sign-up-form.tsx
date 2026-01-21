@@ -17,6 +17,7 @@ import InputPassword from '../../login/_components/input-password'
 import { signUpSchema, SignUpSchema } from '@/_actions/auth/sign-up/schema'
 import { useAction } from 'next-safe-action/hooks'
 import { signUp } from '@/_actions/auth/sign-up'
+import { PasswordChecklist } from './password-checklist'
 
 const SignUpForm = () => {
   const form = useForm<SignUpSchema>({
@@ -27,6 +28,8 @@ const SignUpForm = () => {
       password: '',
     },
   })
+
+  const password = form.watch('password')
 
   const { execute, status } = useAction(signUp, {
     onError: (error) => {
@@ -65,7 +68,7 @@ const SignUpForm = () => {
             <FormItem>
               <FormLabel>Email</FormLabel>
               <FormControl>
-                <Input placeholder="seu@email.com" {...field} />
+                <Input placeholder="comercial@email.com" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -81,6 +84,7 @@ const SignUpForm = () => {
                 <InputPassword {...field} />
               </FormControl>
               <FormMessage />
+              <PasswordChecklist value={password} />
             </FormItem>
           )}
         />

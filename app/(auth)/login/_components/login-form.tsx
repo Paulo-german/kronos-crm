@@ -62,7 +62,7 @@ const LoginForm = () => {
             <FormItem>
               <FormLabel>Email</FormLabel>
               <FormControl>
-                <Input placeholder="email" {...field} />
+                <Input placeholder="Digite seu email" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

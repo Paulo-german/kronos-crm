@@ -26,7 +26,7 @@ const SignUpPage = () => {
               <h1 className="text-2xl font-semibold">Crie sua conta</h1>
             </CardTitle>
             <CardDescription>
-              <p className="text-sm">Comece a usar o Kronos CRM agora</p>
+              <p className="text-sm">Comece a vender mais com a Kronos</p>
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -34,7 +34,10 @@ const SignUpPage = () => {
           </CardContent>
           <CardFooter className="flex items-center justify-center gap-1 text-sm text-muted-foreground">
             <p>Já tem uma conta?</p>
-            <Link className="font-semibold" href="/login">
+            <Link
+              className="font-semibold text-primary hover:text-primary-foreground"
+              href="/login"
+            >
               Fazer login
             </Link>
           </CardFooter>

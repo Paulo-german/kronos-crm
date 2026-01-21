@@ -11,7 +11,7 @@ const InputPassword = ({ ...rest }) => {
     <div className="relative">
       <Input
         type={showPassword ? 'text' : 'password'}
-        placeholder="Digite sua senha..."
+        placeholder="Digite sua senha"
         {...rest}
       />
       <Button
