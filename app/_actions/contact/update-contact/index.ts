@@ -37,13 +37,15 @@ export const updateContact = authActionClient
     await db.contact.update({
       where: { id: data.id },
       data: {
-        name: data.name,
-        email: data.email || null,
-        phone: data.phone || null,
-        role: data.role || null,
-        cpf: data.cpf || null,
-        companyId: data.companyId || null,
-        isDecisionMaker: data.isDecisionMaker,
+        ...(data.name !== undefined && { name: data.name }),
+        ...(data.email !== undefined && { email: data.email || null }),
+        ...(data.phone !== undefined && { phone: data.phone || null }),
+        ...(data.role !== undefined && { role: data.role || null }),
+        ...(data.cpf !== undefined && { cpf: data.cpf || null }),
+        ...(data.companyId !== undefined && { companyId: data.companyId }),
+        ...(data.isDecisionMaker !== undefined && {
+          isDecisionMaker: data.isDecisionMaker,
+        }),
       },
     })
 

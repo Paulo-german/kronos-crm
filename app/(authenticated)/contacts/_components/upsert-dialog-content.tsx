@@ -21,7 +21,7 @@ import {
 } from '@/_components/ui/form'
 import { Input } from '@/_components/ui/input'
 import { Button } from '@/_components/ui/button'
-import { Checkbox } from '@/_components/ui/checkbox'
+import { Switch } from '@/_components/ui/switch'
 import { createContact } from '@/_actions/contact/create-contact'
 import { updateContact } from '@/_actions/contact/update-contact'
 import {
@@ -221,15 +221,15 @@ const UpsertContactDialogContent = ({
               control={form.control}
               name="isDecisionMaker"
               render={({ field }) => (
-                <FormItem className="mt-8 flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                <FormItem className="mt-8 flex flex-row items-center space-x-3 space-y-0 rounded-md border px-4">
                   <FormControl>
-                    <Checkbox
+                    <Switch
                       checked={field.value}
                       onCheckedChange={field.onChange}
                     />
                   </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel>Tomador de decisão?</FormLabel>
+                  <div className="leading-none">
+                    <FormLabel>Tomador de decisão</FormLabel>
                   </div>
                 </FormItem>
               )}

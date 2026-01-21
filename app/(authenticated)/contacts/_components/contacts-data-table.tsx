@@ -68,7 +68,7 @@ export function ContactsDataTable({
       cell: ({ row }) => {
         const companyName = row.getValue('companyName') as string | null
         if (!companyName) {
-          return <Badge variant="outline">B2C</Badge>
+          return '-'
         }
         return (
           <div className="flex items-center gap-2">

@@ -65,7 +65,7 @@ const ContactTableDropdownMenu = ({
               </DropdownMenuItem>
             </DialogTrigger>
             <AlertDialogTrigger asChild>
-              <DropdownMenuItem className="gap-1.5 text-destructive hover:text-destructive">
+              <DropdownMenuItem className="gap-1.5 text-destructive hover:text-destructive-foreground focus:text-destructive-foreground">
                 <TrashIcon size={16} />
                 Deletar
               </DropdownMenuItem>
