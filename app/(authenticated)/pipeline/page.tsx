@@ -28,7 +28,7 @@ const PipelinePage = async () => {
 
   // Busca deals e contatos em paralelo
   const [dealsByStage, contacts] = await Promise.all([
-    pipeline ? getDealsByPipeline(pipeline.id, user.id) : {},
+    pipeline ? getDealsByPipeline(pipeline.stages.map((s) => s.id)) : {},
     getContacts(user.id),
   ])
 

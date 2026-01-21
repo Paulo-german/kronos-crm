@@ -149,8 +149,6 @@ export function KanbanBoard({
               key={stage.id}
               stage={stage}
               deals={filteredDealsByStage[stage.id] || []}
-              isWonStage={stage.id === pipeline.wonStageId}
-              isLostStage={stage.id === pipeline.lostStageId}
               onAddDeal={onAddDeal}
               onDealClick={onDealClick}
             />

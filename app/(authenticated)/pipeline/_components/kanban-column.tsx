@@ -2,7 +2,7 @@
 
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import { Plus, Trophy, XCircle } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import KanbanCard from './kanban-card'
 import type { StageDto } from '@/_data-access/pipeline/get-user-pipeline'
@@ -11,8 +11,6 @@ import type { DealDto } from '@/_data-access/deal/get-deals-by-pipeline'
 interface KanbanColumnProps {
   stage: StageDto
   deals: DealDto[]
-  isWonStage?: boolean
-  isLostStage?: boolean
   onAddDeal: (stageId: string) => void
   onDealClick: (deal: DealDto) => void
 }
@@ -20,8 +18,6 @@ interface KanbanColumnProps {
 export function KanbanColumn({
   stage,
   deals,
-  isWonStage,
-  isLostStage,
   onAddDeal,
   onDealClick,
 }: KanbanColumnProps) {
@@ -45,10 +41,6 @@ export function KanbanColumn({
             style={{ backgroundColor: stage.color || '#6b7280' }}
           />
           <span className="font-medium">{stage.name}</span>
-
-          {/* Ícone especial */}
-          {isWonStage && <Trophy className="h-4 w-4 text-green-500" />}
-          {isLostStage && <XCircle className="h-4 w-4 text-red-500" />}
 
           {/* Contador */}
           <span className="text-xs text-muted-foreground">
