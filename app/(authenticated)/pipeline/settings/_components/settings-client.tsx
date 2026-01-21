@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useId } from 'react'
+import { useState, useId, useEffect } from 'react'
 import {
   DndContext,
   closestCenter,
@@ -21,7 +21,6 @@ import { toast } from 'sonner'
 
 import { SortableStageRow } from './sortable-stage-row'
 import { AddStageButton } from './add-stage-button'
-import { WonLostSelectors } from './won-lost-selectors'
 import { reorderStages } from '@/_actions/pipeline/reorder-stages'
 import type {
   PipelineWithStagesDto,
@@ -35,6 +34,11 @@ interface SettingsClientProps {
 export function SettingsClient({ pipeline }: SettingsClientProps) {
   // ID estável para evitar hydration mismatch
   const dndContextId = useId()
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   // Estado local para optimistic reordering
   const [stages, setStages] = useState<StageDto[]>(pipeline.stages)
@@ -86,39 +90,42 @@ export function SettingsClient({ pipeline }: SettingsClientProps) {
           Arraste para reordenar, clique no lápis para editar.
         </p>
 
-        <DndContext
-          id={dndContextId}
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext
-            items={stages.map((stage) => stage.id)}
-            strategy={verticalListSortingStrategy}
+        {isMounted ? (
+          <DndContext
+            id={dndContextId}
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
           >
-            <div className="space-y-2">
-              {stages.map((stage) => (
-                <SortableStageRow
-                  key={stage.id}
-                  stage={stage}
-                  isWon={stage.id === pipeline.wonStageId}
-                  isLost={stage.id === pipeline.lostStageId}
-                />
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
+            <SortableContext
+              items={stages.map((stage) => stage.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="space-y-2">
+                {stages.map((stage) => (
+                  <SortableStageRow
+                    key={stage.id}
+                    stage={stage}
+                    allStages={stages}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        ) : (
+          <div className="space-y-2">
+            {stages.map((stage) => (
+              <SortableStageRow
+                key={stage.id}
+                stage={stage}
+                allStages={stages}
+              />
+            ))}
+          </div>
+        )}
 
         <AddStageButton pipelineId={pipeline.id} />
       </div>
-
-      {/* Won/Lost configuration */}
-      <WonLostSelectors
-        pipelineId={pipeline.id}
-        stages={stages}
-        wonStageId={pipeline.wonStageId}
-        lostStageId={pipeline.lostStageId}
-      />
     </div>
   )
 }

@@ -12,8 +12,6 @@ export interface StageDto {
 export interface PipelineWithStagesDto {
   id: string
   name: string
-  wonStageId: string | null
-  lostStageId: string | null
   stages: StageDto[]
 }
 
@@ -47,8 +45,6 @@ export const getUserPipeline = async (
   return {
     id: pipeline.id,
     name: pipeline.name,
-    wonStageId: pipeline.wonStageId,
-    lostStageId: pipeline.lostStageId,
     stages: pipeline.stages.map((stage) => ({
       id: stage.id,
       name: stage.name,

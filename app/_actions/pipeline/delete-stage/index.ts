@@ -35,16 +35,6 @@ export const deleteStage = authActionClient
       )
     }
 
-    // Bloqueia exclusão de etapas especiais (ganho/perda)
-    if (
-      stage.pipeline.wonStageId === data.id ||
-      stage.pipeline.lostStageId === data.id
-    ) {
-      throw new Error(
-        'Não é possível excluir a etapa de Ganho ou Perdido. Altere a configuração do pipeline primeiro.',
-      )
-    }
-
     await db.pipelineStage.delete({
       where: { id: data.id },
     })

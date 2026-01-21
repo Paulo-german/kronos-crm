@@ -10,22 +10,19 @@ import { Button } from '@/_components/ui/button'
 import { Input } from '@/_components/ui/input'
 import { deleteStage } from '@/_actions/pipeline/delete-stage'
 import { updateStage } from '@/_actions/pipeline/update-stage'
+import { DeleteStageDialog } from './delete-stage-dialog'
 import type { StageDto } from '@/_data-access/pipeline/get-user-pipeline'
 
 interface SortableStageRowProps {
   stage: StageDto
-  isWon: boolean
-  isLost: boolean
+  allStages: StageDto[]
 }
 
-export function SortableStageRow({
-  stage,
-  isWon,
-  isLost,
-}: SortableStageRowProps) {
+export function SortableStageRow({ stage, allStages }: SortableStageRowProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [name, setName] = useState(stage.name)
   const [color, setColor] = useState(stage.color || '#6b7280')
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
   const {
     attributes,
@@ -78,10 +75,20 @@ export function SortableStageRow({
   }
 
   const handleDelete = () => {
+    // Se tem deals, abre modal para migração
+    if (stage.dealCount > 0) {
+      setShowDeleteDialog(true)
+      return
+    }
+
+    // Se não tem deals, confirma e deleta diretamente
     if (confirm('Tem certeza que deseja excluir esta etapa?')) {
       executeDelete({ id: stage.id })
     }
   }
+
+  // Etapas disponíveis para migração (excluindo a própria etapa)
+  const availableStages = allStages.filter((s) => s.id !== stage.id)
 
   const isPending = isUpdating || isDeleting
 
@@ -121,18 +128,6 @@ export function SortableStageRow({
         />
       ) : (
         <span className="flex-1 font-medium">{stage.name}</span>
-      )}
-
-      {/* Special badges */}
-      {isWon && (
-        <span className="rounded bg-green-500/20 px-2 py-0.5 text-xs text-green-600">
-          Ganho
-        </span>
-      )}
-      {isLost && (
-        <span className="rounded bg-red-500/20 px-2 py-0.5 text-xs text-red-600">
-          Perdido
-        </span>
       )}
 
       {/* Deal count */}
@@ -179,6 +174,14 @@ export function SortableStageRow({
           </Button>
         </>
       )}
+
+      {/* Dialog de Reatribuição */}
+      <DeleteStageDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        stage={stage}
+        availableStages={availableStages}
+      />
     </div>
   )
 }
