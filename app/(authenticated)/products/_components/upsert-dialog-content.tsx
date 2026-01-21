@@ -1,6 +1,6 @@
 'use client'
 
-import { Dispatch, SetStateAction } from 'react'
+import { Dispatch, SetStateAction, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAction } from 'next-safe-action/hooks'
@@ -32,11 +32,13 @@ import {
 interface UpsertProductDialogContentProps {
   defaultValues?: ProductInput & { id?: string }
   setIsOpen: Dispatch<SetStateAction<boolean>>
+  isOpen: boolean
 }
 
 const UpsertProductDialogContent = ({
   defaultValues,
   setIsOpen,
+  isOpen,
 }: UpsertProductDialogContentProps) => {
   const isEditing = !!defaultValues?.id
 
@@ -48,6 +50,18 @@ const UpsertProductDialogContent = ({
       price: 0,
     },
   })
+
+  useEffect(() => {
+    if (isOpen) {
+      form.reset(
+        defaultValues || {
+          name: '',
+          description: '',
+          price: 0,
+        },
+      )
+    }
+  }, [isOpen, form, defaultValues])
 
   const { execute: executeCreate, isPending: isCreating } = useAction(
     createProduct,
