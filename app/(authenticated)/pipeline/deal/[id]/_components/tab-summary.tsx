@@ -17,11 +17,9 @@ import {
 } from '@/_components/ui/select'
 import { updateDeal } from '@/_actions/deal/update-deal'
 import type { DealDetailsDto } from '@/_data-access/deal/get-deal-details'
-import type { ContactDto } from '@/_data-access/contact/get-contacts'
 
 interface TabSummaryProps {
   deal: DealDetailsDto
-  contacts: ContactDto[]
 }
 
 const priorityOptions = [
@@ -31,7 +29,7 @@ const priorityOptions = [
   { value: 'urgent', label: 'Urgente' },
 ]
 
-const TabSummary = ({ deal, contacts }: TabSummaryProps) => {
+const TabSummary = ({ deal }: TabSummaryProps) => {
   const [editingField, setEditingField] = useState<string | null>(null)
   const [editValue, setEditValue] = useState<string>('')
 

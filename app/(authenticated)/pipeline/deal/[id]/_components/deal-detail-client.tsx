@@ -12,7 +12,6 @@ import { markDealWon } from '@/_actions/deal/mark-deal-won'
 import { markDealLost } from '@/_actions/deal/mark-deal-lost'
 import type { DealDetailsDto } from '@/_data-access/deal/get-deal-details'
 import { formatCurrency } from '@/_helpers/format-currency'
-import type { ContactDto } from '@/_data-access/contact/get-contacts'
 import type { ProductDto } from '@/_data-access/product/get-products'
 import TabSummary from '@/(authenticated)/pipeline/deal/[id]/_components/tab-summary'
 import TabProducts from '@/(authenticated)/pipeline/deal/[id]/_components/tab-products'
@@ -21,7 +20,6 @@ import TabTasks from '@/(authenticated)/pipeline/deal/[id]/_components/tab-tasks
 
 interface DealDetailClientProps {
   deal: DealDetailsDto
-  contacts: ContactDto[]
   products: ProductDto[]
 }
 
@@ -32,11 +30,7 @@ const priorityConfig = {
   urgent: { label: 'Urgente', color: 'bg-red-500/20 text-red-500' },
 }
 
-const DealDetailClient = ({
-  deal,
-  contacts,
-  products,
-}: DealDetailClientProps) => {
+const DealDetailClient = ({ deal, products }: DealDetailClientProps) => {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState('summary')
 
@@ -71,18 +65,10 @@ const DealDetailClient = ({
   const formattedValue = formatCurrency(deal.totalValue)
 
   const handleMarkWon = () => {
-    if (!deal.wonStageId) {
-      toast.error('Nenhuma etapa de ganho configurada no pipeline.')
-      return
-    }
     executeMarkWon({ dealId: deal.id })
   }
 
   const handleMarkLost = () => {
-    if (!deal.lostStageId) {
-      toast.error('Nenhuma etapa de perda configurada no pipeline.')
-      return
-    }
     executeMarkLost({ dealId: deal.id })
   }
 
@@ -105,7 +91,7 @@ const DealDetailClient = ({
               size="sm"
               className="bg-[#00b37e] text-white hover:bg-[#04d361] hover:shadow-[0_0_20px_-5px_#00b37e]"
               onClick={handleMarkWon}
-              disabled={isPending || deal.stageId === deal.wonStageId}
+              disabled={isPending || deal.status === 'WON'}
             >
               <Trophy className="mr-2 h-4 w-4" />
               Ganhou
@@ -115,7 +101,7 @@ const DealDetailClient = ({
               size="sm"
               className="border-destructive text-destructive hover:bg-destructive hover:text-white"
               onClick={handleMarkLost}
-              disabled={isPending || deal.stageId === deal.lostStageId}
+              disabled={isPending || deal.status === 'LOST'}
             >
               <XCircle className="mr-2 h-4 w-4" />
               Perdeu
@@ -162,7 +148,7 @@ const DealDetailClient = ({
         </TabsList>
 
         <TabsContent value="summary" className="mt-4">
-          <TabSummary deal={deal} contacts={contacts} />
+          <TabSummary deal={deal} />
         </TabsContent>
 
         <TabsContent value="products" className="mt-4">

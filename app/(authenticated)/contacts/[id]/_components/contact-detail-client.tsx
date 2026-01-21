@@ -12,13 +12,11 @@ import {
   AxeIcon,
 } from 'lucide-react'
 
-import { Badge } from '@/_components/ui/badge'
 import { Button } from '@/_components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import { Switch } from '@/_components/ui/switch'
 import { Label } from '@/_components/ui/label'
 
-import type { UpdateContactInput } from '@/_actions/contact/update-contact/schema'
 import type { ContactDetailDto } from '@/_data-access/contact/get-contact-by-id'
 import type { CompanyDto } from '@/_data-access/company/get-companies'
 import { InlineTextField } from '@/_components/inline-text-field'
