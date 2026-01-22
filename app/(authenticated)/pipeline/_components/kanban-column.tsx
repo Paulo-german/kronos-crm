@@ -28,7 +28,7 @@ export function KanbanColumn({
 
   return (
     <div
-      className={`flex h-full w-96 shrink-0 flex-col rounded-lg border ${
+      className={`flex h-full w-96 shrink-0 flex-col rounded-lg border bg-secondary/20 ${
         isOver ? 'border-primary bg-muted/50' : 'bg-muted/30'
       }`}
     >
@@ -43,8 +43,8 @@ export function KanbanColumn({
           <span className="font-medium">{stage.name}</span>
 
           {/* Contador */}
-          <span className="text-xs text-muted-foreground">
-            ({deals.length})
+          <span className="rounded-sm border border-kronos-purple bg-background px-2 py-1 text-xs text-kronos-purple">
+            {deals.length}
           </span>
         </div>
         <Button
@@ -58,7 +58,10 @@ export function KanbanColumn({
       </div>
 
       {/* Cards */}
-      <div ref={setNodeRef} className="flex-1 space-y-2 overflow-y-auto p-2">
+      <div
+        ref={setNodeRef}
+        className="[&::-webkit-scrollbar-thumb]:bg-kronos-purple/50 flex-1 space-y-2 overflow-y-auto p-2 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-kronos-purple [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-0.5"
+      >
         <SortableContext
           items={deals.map((d) => d.id)}
           strategy={verticalListSortingStrategy}

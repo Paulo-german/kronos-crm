@@ -85,7 +85,7 @@ const ActivityTimeline = ({ deal }: ActivityTimelineProps) => {
   }
 
   return (
-    <Card className="border-muted/40 bg-gradient-to-br from-background to-muted/20">
+    <Card className="border-none bg-transparent">
       <CardHeader className="pb-3">
         <CardTitle className="text-base font-semibold">
           Histórico de Atividades

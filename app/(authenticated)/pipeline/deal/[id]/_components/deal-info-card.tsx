@@ -71,7 +71,7 @@ const DealInfoCard = ({ deal }: DealInfoCardProps) => {
   }
 
   return (
-    <Card className="border-muted/40 bg-gradient-to-br from-background to-muted/20">
+    <Card className="border-border/50 bg-secondary/20">
       <CardHeader className="pb-3">
         <CardTitle className="text-base font-semibold">
           Informações da Negociação
@@ -85,7 +85,7 @@ const DealInfoCard = ({ deal }: DealInfoCardProps) => {
               <Input
                 value={titleValue}
                 onChange={(e) => setTitleValue(e.target.value)}
-                className="text-lg font-bold"
+                className="text-lg font-medium"
                 placeholder="Título do deal"
               />
               <Button
@@ -97,7 +97,7 @@ const DealInfoCard = ({ deal }: DealInfoCardProps) => {
                 <Check className="h-4 w-4 text-kronos-green" />
               </Button>
               <Button size="icon" variant="ghost" onClick={handleCancelTitle}>
-                <X className="text-kronos-red h-4 w-4" />
+                <X className="h-4 w-4 text-kronos-red" />
               </Button>
             </div>
           ) : (

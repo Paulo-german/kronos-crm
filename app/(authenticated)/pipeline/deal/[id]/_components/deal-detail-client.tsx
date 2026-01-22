@@ -79,10 +79,14 @@ const DealDetailClient = ({ deal, products }: DealDetailClientProps) => {
     markDealWon,
     {
       onSuccess: () => {
-        toast.success('🎉 Deal marcado como ganho!')
+        toast.success('🎉 Deal marcado como ganho!', {
+          position: 'bottom-right',
+        })
       },
       onError: ({ error }) => {
-        toast.error(error.serverError || 'Erro ao marcar como ganho.')
+        toast.error(error.serverError || 'Erro ao marcar como ganho.', {
+          position: 'bottom-right',
+        })
       },
     },
   )
@@ -91,10 +95,14 @@ const DealDetailClient = ({ deal, products }: DealDetailClientProps) => {
     markDealLost,
     {
       onSuccess: () => {
-        toast.success('Deal marcado como perdido.')
+        toast.success('Deal marcado como perdido.', {
+          position: 'bottom-right',
+        })
       },
       onError: ({ error }) => {
-        toast.error(error.serverError || 'Erro ao marcar como perdido.')
+        toast.error(error.serverError || 'Erro ao marcar como perdido.', {
+          position: 'bottom-right',
+        })
       },
     },
   )
@@ -103,10 +111,14 @@ const DealDetailClient = ({ deal, products }: DealDetailClientProps) => {
     reopenDeal,
     {
       onSuccess: () => {
-        toast.success('Negociação retomada com sucesso!')
+        toast.success('Negociação retomada com sucesso!', {
+          position: 'bottom-right',
+        })
       },
       onError: ({ error }) => {
-        toast.error(error.serverError || 'Erro ao retomar negociação.')
+        toast.error(error.serverError || 'Erro ao retomar negociação.', {
+          position: 'bottom-right',
+        })
       },
     },
   )
@@ -141,7 +153,7 @@ const DealDetailClient = ({ deal, products }: DealDetailClientProps) => {
             Voltar
           </Button>
 
-          <div className="flex gap-2.5">
+          <div className="mt-4 flex gap-2.5">
             {deal.status === 'WON' || deal.status === 'LOST' ? (
               <Button
                 onClick={handleReopen}
@@ -154,7 +166,7 @@ const DealDetailClient = ({ deal, products }: DealDetailClientProps) => {
             ) : (
               <>
                 <Button
-                  className="hover:bg-kronos-green/80 bg-kronos-green text-white hover:text-white/80"
+                  className="bg-kronos-green text-white hover:bg-kronos-green/80 hover:text-white/80"
                   onClick={handleMarkWon}
                   disabled={isPending}
                 >
@@ -163,7 +175,7 @@ const DealDetailClient = ({ deal, products }: DealDetailClientProps) => {
                 </Button>
                 <Button
                   variant="destructive"
-                  className="hover:bg-kronos-red/80 bg-kronos-red text-white hover:text-white/80"
+                  className="bg-kronos-red text-white hover:bg-kronos-red/80 hover:text-white/80"
                   onClick={handleMarkLost}
                   disabled={isPending}
                 >
@@ -201,14 +213,23 @@ const DealDetailClient = ({ deal, products }: DealDetailClientProps) => {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="h-fit">
-        <TabsList className="grid h-11 w-full grid-cols-3">
-          <TabsTrigger value="summary" className="py-2">
+        <TabsList className="grid h-12 w-full grid-cols-3 border border-border/50 bg-tab/30">
+          <TabsTrigger
+            value="summary"
+            className="py-2 data-[state=active]:bg-card/80"
+          >
             Resumo
           </TabsTrigger>
-          <TabsTrigger value="products" className="py-2">
+          <TabsTrigger
+            value="products"
+            className="py-2 data-[state=active]:bg-card/80"
+          >
             Produtos
           </TabsTrigger>
-          <TabsTrigger value="tasks" className="py-2">
+          <TabsTrigger
+            value="tasks"
+            className="py-2 data-[state=active]:bg-card/80"
+          >
             Tarefas
           </TabsTrigger>
         </TabsList>

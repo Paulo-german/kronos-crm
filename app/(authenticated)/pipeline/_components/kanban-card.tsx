@@ -19,6 +19,11 @@ import type { DealDto } from '@/_data-access/deal/get-deals-by-pipeline'
 import { Badge } from '@/_components/ui/badge'
 import { CircleIcon } from 'lucide-react'
 import { Label } from '@/_components/ui/label'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/_components/ui/tooltip'
 
 interface KanbanCardProps {
   deal: DealDto
@@ -108,6 +113,11 @@ const KanbanCard = ({ deal, onClick }: KanbanCardProps) => {
     }
     onClick?.()
   }
+  const getInitials = (name: string) => {
+    const parts = name.trim().split(' ')
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase()
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+  }
 
   // Se for arrastado, aumentar opacidade para dar destaque
   const draggingClass = isDragging
@@ -176,8 +186,21 @@ const KanbanCard = ({ deal, onClick }: KanbanCardProps) => {
             <Label className="text-[10px] uppercase text-muted-foreground">
               Contato
             </Label>
-            <div className="flex h-6 items-center truncate text-xs font-medium text-foreground">
-              {deal.contactName || (
+            <div className="flex h-6 cursor-default items-center truncate text-xs font-medium text-foreground">
+              {deal.contactName ? (
+                <Tooltip>
+                  <div className="flex items-center gap-1">
+                    <TooltipTrigger asChild>
+                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-background text-[10px] text-kronos-purple">
+                        {getInitials(deal.contactName)}
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{deal.contactName}</p>
+                    </TooltipContent>
+                  </div>
+                </Tooltip>
+              ) : (
                 <span className="italic text-muted-foreground">N/A</span>
               )}
             </div>
@@ -190,7 +213,7 @@ const KanbanCard = ({ deal, onClick }: KanbanCardProps) => {
             </Label>
             <div className="flex h-6 items-center">
               {deal.totalValue > 0 ? (
-                <span className="bg-kronos-green/10 inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold text-kronos-green">
+                <span className="inline-flex items-center rounded-md bg-kronos-green/10 px-2 py-0.5 text-xs font-bold text-kronos-green">
                   {formattedValue}
                 </span>
               ) : (

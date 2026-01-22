@@ -120,7 +120,7 @@ const TabProducts = ({ deal, products }: TabProductsProps) => {
   )
 
   return (
-    <Card>
+    <Card className="border-border/50 bg-secondary/20">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-lg">Produtos</CardTitle>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -208,76 +208,78 @@ const TabProducts = ({ deal, products }: TabProductsProps) => {
           </div>
         ) : (
           <>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Produto</TableHead>
-                  <TableHead className="text-right">Qtd</TableHead>
-                  <TableHead className="text-right">Preço Unit.</TableHead>
-                  <TableHead className="text-right">Desconto</TableHead>
-                  <TableHead className="text-right">Subtotal</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {deal.products.map((product) => (
-                  <TableRow key={product.id}>
-                    <TableCell className="font-medium">
-                      {product.productName}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {product.quantity}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatCurrency(product.unitPrice)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {product.discountType === 'percentage'
-                        ? `${product.discountValue}%`
-                        : formatCurrency(product.discountValue)}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {formatCurrency(product.subtotal)}
-                    </TableCell>
-                    <TableCell>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            disabled={isRemoving}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>
-                              Remover produto?
-                            </AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Tem certeza que deseja remover &quot;
-                              {product.productName}&quot; deste deal?
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() =>
-                                executeRemove({ dealProductId: product.id })
-                              }
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Remover
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </TableCell>
+            <div className="overflow-hidden rounded-md border border-border/50">
+              <Table className="bg-secondary/20">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Produto</TableHead>
+                    <TableHead className="text-right">Qtd</TableHead>
+                    <TableHead className="text-right">Preço Unit.</TableHead>
+                    <TableHead className="text-right">Desconto</TableHead>
+                    <TableHead className="text-right">Subtotal</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody className="bg-card">
+                  {deal.products.map((product) => (
+                    <TableRow key={product.id}>
+                      <TableCell className="font-medium">
+                        {product.productName}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {product.quantity}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatCurrency(product.unitPrice)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {product.discountType === 'percentage'
+                          ? `${product.discountValue}%`
+                          : formatCurrency(product.discountValue)}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        {formatCurrency(product.subtotal)}
+                      </TableCell>
+                      <TableCell>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              disabled={isRemoving}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                Remover produto?
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Tem certeza que deseja remover &quot;
+                                {product.productName}&quot; deste deal?
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() =>
+                                  executeRemove({ dealProductId: product.id })
+                                }
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Remover
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
             <div className="mt-4 flex justify-end border-t border-border pt-4">
               <div className="text-right">
                 <span className="text-sm text-muted-foreground">Total: </span>

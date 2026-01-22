@@ -63,7 +63,7 @@ const ContactWidget = ({ deal }: ContactWidgetProps) => {
   }
 
   return (
-    <Card className="border-muted/40 bg-gradient-to-br from-background to-muted/20">
+    <Card className="border-border/50 bg-secondary/20">
       <CardHeader className="pb-3">
         <CardTitle className="text-base font-semibold">Contato</CardTitle>
       </CardHeader>

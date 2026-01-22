@@ -41,7 +41,7 @@ const NotesSection = ({ deal }: NotesSectionProps) => {
   }
 
   return (
-    <Card className="border-muted/40 bg-gradient-to-br from-background to-muted/20">
+    <Card className="border-border/50 bg-secondary/20">
       <CardHeader className="flex flex-row items-center justify-between pb-3">
         <CardTitle className="flex items-center gap-2 text-base font-semibold">
           <FileText className="h-4 w-4 text-muted-foreground" />
