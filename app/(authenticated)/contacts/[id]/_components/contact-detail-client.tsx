@@ -22,6 +22,7 @@ import type { CompanyDto } from '@/_data-access/company/get-companies'
 import { InlineTextField } from '@/_components/inline-text-field'
 import { InlineSelectField } from '@/_components/inline-select-field'
 import { useContactFieldUpdate } from '@/_hooks/use-contact-field-update'
+import { formatPhone } from '@/_helpers/format-phone'
 
 interface ContactDetailClientProps {
   contact: ContactDetailDto
@@ -102,7 +103,7 @@ const ContactDetailClient = ({
               <Phone className="h-4 w-4 text-muted-foreground" />
               <span className="w-16 text-muted-foreground">Telefone:</span>
               <InlineTextField
-                value={contact.phone}
+                value={formatPhone(contact.phone)}
                 onSave={(value) => updateField('phone', value)}
                 isPending={isPending}
                 placeholder="Adicionar telefone"

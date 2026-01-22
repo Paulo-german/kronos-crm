@@ -5,6 +5,7 @@ import { Mail, Phone, Building2 } from 'lucide-react'
 import { Badge } from '@/_components/ui/badge'
 import Link from 'next/link'
 import { DataTable } from '@/_components/data-table'
+import { formatPhone } from '@/_helpers/format-phone'
 import type { ContactDto } from '@/_data-access/contact/get-contacts'
 import type { CompanyDto } from '@/_data-access/company/get-companies'
 import ContactTableDropdownMenu from './table-dropdown-menu'
@@ -57,7 +58,7 @@ export function ContactsDataTable({
         return (
           <div className="flex items-center gap-2">
             <Phone className="h-4 w-4 text-muted-foreground" />
-            {phone}
+            {formatPhone(phone)}
           </div>
         )
       },

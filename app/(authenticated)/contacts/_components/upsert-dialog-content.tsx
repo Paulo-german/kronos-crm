@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
+import type { NumberFormatValues } from 'react-number-format'
 import {
   DialogContent,
   DialogDescription,
@@ -29,6 +30,7 @@ import {
   type ContactInput,
 } from '@/_actions/contact/create-contact/schema'
 import { CompanyCombobox } from './company-combobox'
+import { PhoneInput } from '@/_components/ui/phone-input'
 
 interface UpsertContactDialogContentProps {
   defaultValues?: ContactInput & { id?: string }
@@ -148,10 +150,12 @@ const UpsertContactDialogContent = ({
                 <FormItem>
                   <FormLabel>Telefone</FormLabel>
                   <FormControl>
-                    <Input
+                    <PhoneInput
                       placeholder="(11) 99999-9999"
                       value={field.value || ''}
-                      onChange={field.onChange}
+                      onValueChange={(values: NumberFormatValues) =>
+                        field.onChange(values.value)
+                      }
                     />
                   </FormControl>
                   <FormMessage />

@@ -26,6 +26,13 @@ export interface DealTaskDto {
   isCompleted: boolean
 }
 
+export interface PipelineStageDto {
+  id: string
+  name: string
+  position: number
+  color: string | null
+}
+
 export interface DealDetailsDto {
   id: string
   title: string
@@ -41,11 +48,21 @@ export interface DealDetailsDto {
   stageColor: string | null
   // Pipeline info
   pipelineId: string
-  // Contact & Company
+  availableStages: PipelineStageDto[]
+  // Contact (detailed)
   contactId: string | null
   contactName: string | null
+  contactEmail: string | null
+  contactPhone: string | null
+  contactRole: string | null
+  // Company (detailed)
   companyId: string | null
   companyName: string | null
+  companyDomain: string | null
+  companyIndustry: string | null
+  // Assignee
+  assigneeId: string
+  assigneeName: string | null
   // Calculated
   totalValue: number
   // Related data
@@ -73,15 +90,34 @@ export const getDealDetails = async (
           pipeline: {
             select: {
               id: true,
+              stages: {
+                orderBy: {
+                  position: 'asc',
+                },
+              },
             },
           },
         },
       },
       contact: {
-        select: { name: true },
+        select: {
+          name: true,
+          email: true,
+          phone: true,
+          role: true,
+        },
       },
       company: {
-        select: { name: true },
+        select: {
+          name: true,
+          domain: true,
+          industry: true,
+        },
+      },
+      assignee: {
+        select: {
+          fullName: true,
+        },
       },
       dealProducts: {
         include: {
@@ -134,10 +170,23 @@ export const getDealDetails = async (
     stageName: deal.stage.name,
     stageColor: deal.stage.color,
     pipelineId: deal.stage.pipeline.id,
+    availableStages: deal.stage.pipeline.stages.map((stage) => ({
+      id: stage.id,
+      name: stage.name,
+      position: stage.position,
+      color: stage.color,
+    })),
     contactId: deal.contactId,
     contactName: deal.contact?.name ?? null,
+    contactEmail: deal.contact?.email ?? null,
+    contactPhone: deal.contact?.phone ?? null,
+    contactRole: deal.contact?.role ?? null,
     companyId: deal.companyId,
     companyName: deal.company?.name ?? null,
+    companyDomain: deal.company?.domain ?? null,
+    companyIndustry: deal.company?.industry ?? null,
+    assigneeId: deal.assignedTo,
+    assigneeName: deal.assignee?.fullName ?? null,
     totalValue,
     products,
     activities: deal.activities.map((a) => ({

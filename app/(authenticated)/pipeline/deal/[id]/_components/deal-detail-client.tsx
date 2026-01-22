@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
-import { ArrowLeft, Trophy, XCircle } from 'lucide-react'
+import { ArrowLeft, CircleIcon, Trophy, XCircle } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/_components/ui/tabs'
 import { Badge } from '@/_components/ui/badge'
@@ -15,7 +15,6 @@ import { formatCurrency } from '@/_helpers/format-currency'
 import type { ProductDto } from '@/_data-access/product/get-products'
 import TabSummary from '@/(authenticated)/pipeline/deal/[id]/_components/tab-summary'
 import TabProducts from '@/(authenticated)/pipeline/deal/[id]/_components/tab-products'
-import TabActivities from '@/(authenticated)/pipeline/deal/[id]/_components/tab-activities'
 import TabTasks from '@/(authenticated)/pipeline/deal/[id]/_components/tab-tasks'
 
 interface DealDetailClientProps {
@@ -24,10 +23,51 @@ interface DealDetailClientProps {
 }
 
 const priorityConfig = {
-  low: { label: 'Baixa', color: 'bg-zinc-500/20 text-zinc-400' },
-  medium: { label: 'Média', color: 'bg-primary/20 text-primary' },
-  high: { label: 'Alta', color: 'bg-amber-500/20 text-amber-500' },
-  urgent: { label: 'Urgente', color: 'bg-red-500/20 text-red-500' },
+  low: {
+    label: 'BAIXA',
+    color:
+      'bg-zinc-500/20 text-zinc-400 hover:bg-zinc-500/20 hover:text-zinc-400',
+  },
+  medium: {
+    label: 'MÉDIA',
+    color: 'bg-primary/20 text-primary hover:bg-primary/20 hover:text-primary',
+  },
+  high: {
+    label: 'ALTA',
+    color:
+      'bg-amber-500/20 text-amber-500 hover:bg-amber-500/20 hover:text-amber-500',
+  },
+  urgent: {
+    label: 'URGENTE',
+    color: 'bg-red-500/20 text-red-500 hover:bg-red-500/20 hover:text-red-500',
+  },
+}
+
+const statusConfig = {
+  OPEN: {
+    label: 'NOVO',
+    color:
+      'bg-kronos-blue/10 text-kronos-blue border-kronos-blue/20 hover:bg-kronos-blue/20',
+    variant: 'secondary' as const,
+  },
+  WON: {
+    label: 'VENDIDO',
+    color:
+      'bg-kronos-green/10 text-kronos-green border-kronos-green/20 hover:bg-kronos-green/20',
+    variant: 'secondary' as const,
+  },
+  LOST: {
+    label: 'PERDIDO',
+    color:
+      'bg-kronos-red/10 text-kronos-red border-kronos-red/20 hover:bg-kronos-red/20',
+    variant: 'secondary' as const,
+  },
+  PAUSED: {
+    label: 'PAUSADO',
+    color:
+      'bg-kronos-yellow/10 text-kronos-yellow border-kronos-yellow/20 hover:bg-kronos-yellow/20',
+    variant: 'secondary' as const,
+  },
 }
 
 const DealDetailClient = ({ deal, products }: DealDetailClientProps) => {
@@ -39,7 +79,6 @@ const DealDetailClient = ({ deal, products }: DealDetailClientProps) => {
     {
       onSuccess: () => {
         toast.success('🎉 Deal marcado como ganho!')
-        router.push('/pipeline')
       },
       onError: ({ error }) => {
         toast.error(error.serverError || 'Erro ao marcar como ganho.')
@@ -52,7 +91,6 @@ const DealDetailClient = ({ deal, products }: DealDetailClientProps) => {
     {
       onSuccess: () => {
         toast.success('Deal marcado como perdido.')
-        router.push('/pipeline')
       },
       onError: ({ error }) => {
         toast.error(error.serverError || 'Erro ao marcar como perdido.')
@@ -73,7 +111,7 @@ const DealDetailClient = ({ deal, products }: DealDetailClientProps) => {
   }
 
   return (
-    <div className="flex h-screen flex-col gap-6 bg-background p-6">
+    <div className="flex h-fit flex-col gap-6 bg-background p-6">
       {/* Header */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
@@ -86,24 +124,22 @@ const DealDetailClient = ({ deal, products }: DealDetailClientProps) => {
             Voltar
           </Button>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2.5">
             <Button
-              size="sm"
-              className="bg-[#00b37e] text-white hover:bg-[#04d361] hover:shadow-[0_0_20px_-5px_#00b37e]"
+              className="hover:bg-kronos-green/80 bg-kronos-green text-white hover:text-white/80"
               onClick={handleMarkWon}
               disabled={isPending || deal.status === 'WON'}
             >
-              <Trophy className="mr-2 h-4 w-4" />
+              <Trophy className="h-4 w-4" />
               Ganhou
             </Button>
             <Button
-              variant="outline"
-              size="sm"
-              className="border-destructive text-destructive hover:bg-destructive hover:text-white"
+              variant="destructive"
+              className="hover:bg-kronos-red/80 bg-kronos-red text-white hover:text-white/80"
               onClick={handleMarkLost}
               disabled={isPending || deal.status === 'LOST'}
             >
-              <XCircle className="mr-2 h-4 w-4" />
+              <XCircle className="h-4 w-4" />
               Perdeu
             </Button>
           </div>
@@ -111,27 +147,22 @@ const DealDetailClient = ({ deal, products }: DealDetailClientProps) => {
 
         <div className="space-y-2">
           <h1 className="text-2xl font-bold">{deal.title}</h1>
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge className={priorityConfig[deal.priority].color}>
-              {priorityConfig[deal.priority].label}
-            </Badge>
-            <Badge
-              variant="outline"
-              style={{ borderColor: deal.stageColor || '#6b7280' }}
-            >
-              {deal.stageName}
-            </Badge>
-            {deal.contactName && (
-              <span className="text-sm text-muted-foreground">
-                {deal.contactName}
-              </span>
-            )}
-            {deal.companyName && (
-              <span className="text-sm text-muted-foreground">
-                • {deal.companyName}
-              </span>
-            )}
-            <span className="ml-auto text-lg font-semibold text-primary">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="mt-4 flex items-center gap-2">
+              <Badge
+                variant="outline"
+                className={`h-6 gap-1.5 px-2 text-xs font-semibold transition-colors ${statusConfig[deal.status].color}`}
+              >
+                <CircleIcon className="h-1.5 w-1.5 fill-current" />
+                {statusConfig[deal.status].label}
+              </Badge>
+              <Badge
+                className={`h-6 gap-1.5 px-2 text-xs font-semibold transition-colors ${priorityConfig[deal.priority].color}`}
+              >
+                {priorityConfig[deal.priority].label}
+              </Badge>
+            </div>
+            <span className="text-lg font-semibold text-primary">
               {formattedValue}
             </span>
           </div>
@@ -139,12 +170,17 @@ const DealDetailClient = ({ deal, products }: DealDetailClientProps) => {
       </div>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="summary">Resumo</TabsTrigger>
-          <TabsTrigger value="products">Produtos</TabsTrigger>
-          <TabsTrigger value="activities">Atividades</TabsTrigger>
-          <TabsTrigger value="tasks">Tarefas</TabsTrigger>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="h-fit">
+        <TabsList className="grid h-11 w-full grid-cols-3">
+          <TabsTrigger value="summary" className="py-2">
+            Resumo
+          </TabsTrigger>
+          <TabsTrigger value="products" className="py-2">
+            Produtos
+          </TabsTrigger>
+          <TabsTrigger value="tasks" className="py-2">
+            Tarefas
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="summary" className="mt-4">
@@ -153,10 +189,6 @@ const DealDetailClient = ({ deal, products }: DealDetailClientProps) => {
 
         <TabsContent value="products" className="mt-4">
           <TabProducts deal={deal} products={products} />
-        </TabsContent>
-
-        <TabsContent value="activities" className="mt-4">
-          <TabActivities deal={deal} />
         </TabsContent>
 
         <TabsContent value="tasks" className="mt-4">

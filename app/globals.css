@@ -85,7 +85,7 @@
     --accent-foreground: 0 0% 98%; /* hsl(0 0% 98%) */
 
     --destructive: 0 62.8% 50.6%; /* hsl(0 62.8% 50.6%) */
-    --destructive-foreground: 0 62.8% 60.6%; /* hsl(0 62.8% 60.6%) */
+    --destructive-foreground: 0 0% 98%; /* hsl(0 0% 98%) */
 
     --border: 240 3.7% 15.9%; /* hsl(240 3.7% 15.9%) */
     --input: 240 3.7% 15.9%; /* hsl(240 3.7% 15.9%) */

@@ -4,6 +4,7 @@ import { authActionClient } from '@/_lib/safe-action'
 import { markDealLostSchema } from './schema'
 import { db } from '@/_lib/prisma'
 import { revalidatePath } from 'next/cache'
+import { ActivityType } from '@prisma/client'
 
 export const markDealLost = authActionClient
   .schema(markDealLostSchema)
@@ -33,7 +34,7 @@ export const markDealLost = authActionClient
     // Registra atividade
     await db.activity.create({
       data: {
-        type: 'stage_change',
+        type: ActivityType.deal_lost,
         content: 'Deal marcado como PERDIDO',
         dealId: data.dealId,
       },

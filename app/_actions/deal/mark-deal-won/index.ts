@@ -4,6 +4,7 @@ import { authActionClient } from '@/_lib/safe-action'
 import { markDealWonSchema } from './schema'
 import { db } from '@/_lib/prisma'
 import { revalidatePath } from 'next/cache'
+import { ActivityType } from '@prisma/client'
 
 export const markDealWon = authActionClient
   .schema(markDealWonSchema)
@@ -33,7 +34,7 @@ export const markDealWon = authActionClient
     // Registra atividade
     await db.activity.create({
       data: {
-        type: 'stage_change',
+        type: ActivityType.deal_won,
         content: 'Deal marcado como GANHO 🎉',
         dealId: data.dealId,
       },

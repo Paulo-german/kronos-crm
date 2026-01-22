@@ -56,6 +56,8 @@ enum ActivityType {
   product_removed
   task_created
   task_completed
+  deal_won
+  deal_lost
 }
 
 enum DiscountType {
