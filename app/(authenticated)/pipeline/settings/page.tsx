@@ -1,7 +1,8 @@
 import { createClient } from '@/_lib/supabase/server'
 import { getUserPipeline } from '@/_data-access/pipeline/get-user-pipeline'
 import { SettingsClient } from '@/(authenticated)/pipeline/settings/_components/settings-client'
-import { seedPipelineForUser } from '@/../prisma/seed'
+
+import { createDefaultPipeline } from '@/_data-access/pipeline/create-default-pipeline'
 import Link from 'next/link'
 import { Button } from '@/_components/ui/button'
 import { ArrowLeft } from 'lucide-react'
@@ -18,7 +19,7 @@ const PipelineSettingsPage = async () => {
   let pipeline = await getUserPipeline(user.id)
 
   if (!pipeline) {
-    await seedPipelineForUser({ userId: user.id })
+    await createDefaultPipeline({ userId: user.id })
     pipeline = await getUserPipeline(user.id)
   }
 

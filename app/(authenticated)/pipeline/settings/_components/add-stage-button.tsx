@@ -22,14 +22,12 @@ interface AddStageButtonProps {
 export function AddStageButton({ pipelineId }: AddStageButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [name, setName] = useState('')
-  const [color, setColor] = useState('#6b7280')
 
   const { execute, isPending } = useAction(createStage, {
     onSuccess: () => {
       toast.success('Etapa criada!')
       setIsOpen(false)
       setName('')
-      setColor('#6b7280')
     },
     onError: ({ error }) => {
       toast.error(error.serverError || 'Erro ao criar etapa.')
@@ -39,7 +37,7 @@ export function AddStageButton({ pipelineId }: AddStageButtonProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim()) return
-    execute({ pipelineId, name, color })
+    execute({ pipelineId, name })
   }
 
   return (
@@ -56,12 +54,6 @@ export function AddStageButton({ pipelineId }: AddStageButtonProps) {
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="flex items-center gap-3">
-            <input
-              type="color"
-              value={color}
-              onChange={(e) => setColor(e.target.value)}
-              className="h-10 w-10 cursor-pointer rounded border-0"
-            />
             <Input
               placeholder="Nome da etapa"
               value={name}

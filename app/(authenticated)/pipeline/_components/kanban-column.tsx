@@ -35,11 +35,6 @@ export function KanbanColumn({
       {/* Header */}
       <div className="flex items-center justify-between border-b p-3">
         <div className="flex items-center gap-2">
-          {/* Indicador de cor */}
-          <div
-            className="h-3 w-3 rounded-full"
-            style={{ backgroundColor: stage.color || '#6b7280' }}
-          />
           <span className="font-medium">{stage.name}</span>
 
           {/* Contador */}

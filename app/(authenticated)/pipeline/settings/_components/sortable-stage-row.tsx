@@ -21,7 +21,7 @@ interface SortableStageRowProps {
 export function SortableStageRow({ stage, allStages }: SortableStageRowProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [name, setName] = useState(stage.name)
-  const [color, setColor] = useState(stage.color || '#6b7280')
+
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
   const {
@@ -65,12 +65,12 @@ export function SortableStageRow({ stage, allStages }: SortableStageRowProps) {
   )
 
   const handleSave = () => {
-    executeUpdate({ id: stage.id, name, color })
+    executeUpdate({ id: stage.id, name })
   }
 
   const handleCancel = () => {
     setName(stage.name)
-    setColor(stage.color || '#6b7280')
+
     setIsEditing(false)
   }
 
@@ -109,15 +109,6 @@ export function SortableStageRow({ stage, allStages }: SortableStageRowProps) {
       >
         <GripVertical className="h-5 w-5" />
       </button>
-
-      {/* Color picker */}
-      <input
-        type="color"
-        value={color}
-        onChange={(e) => setColor(e.target.value)}
-        disabled={!isEditing}
-        className="h-8 w-8 cursor-pointer rounded border-0"
-      />
 
       {/* Name */}
       {isEditing ? (

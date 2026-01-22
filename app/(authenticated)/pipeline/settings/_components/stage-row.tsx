@@ -19,7 +19,6 @@ interface StageRowProps {
 export function StageRow({ stage, isWon, isLost }: StageRowProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [name, setName] = useState(stage.name)
-  const [color, setColor] = useState(stage.color || '#6b7280')
 
   const { execute: executeUpdate, isPending: isUpdating } = useAction(
     updateStage,
@@ -47,12 +46,12 @@ export function StageRow({ stage, isWon, isLost }: StageRowProps) {
   )
 
   const handleSave = () => {
-    executeUpdate({ id: stage.id, name, color })
+    executeUpdate({ id: stage.id, name })
   }
 
   const handleCancel = () => {
     setName(stage.name)
-    setColor(stage.color || '#6b7280')
+
     setIsEditing(false)
   }
 
@@ -68,15 +67,6 @@ export function StageRow({ stage, isWon, isLost }: StageRowProps) {
     <div className="flex items-center gap-3 rounded-lg border bg-card p-3">
       {/* Drag handle */}
       <GripVertical className="h-5 w-5 cursor-grab text-muted-foreground" />
-
-      {/* Color picker */}
-      <input
-        type="color"
-        value={color}
-        onChange={(e) => setColor(e.target.value)}
-        disabled={!isEditing}
-        className="h-8 w-8 cursor-pointer rounded border-0"
-      />
 
       {/* Name */}
       {isEditing ? (
