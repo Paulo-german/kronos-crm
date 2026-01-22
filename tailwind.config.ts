@@ -20,6 +20,10 @@ export default {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
+        tab: {
+          DEFAULT: 'hsl(var(--tab))',
+          foreground: 'hsl(var(--tab-foreground))',
+        },
         popover: {
           DEFAULT: 'hsl(var(--popover))',
           foreground: 'hsl(var(--popover-foreground))',
@@ -56,7 +60,7 @@ export default {
         },
         // Kronos Specific Extended Palette
         kronos: {
-          purple: 'var(--kronos-purple)', // Keep as var for legacy if needed, or update to HSL if available
+          purple: 'hsl(var(--kronos-purple-hsl))', // Updated to HSL for opacity support
           'purple-light': 'var(--kronos-purple-light)',
 
           // Updated to use HSL variable for opacity support (bg-kronos-green/20)

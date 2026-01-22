@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Plus_Jakarta_Sans, Martian_Mono } from 'next/font/google'
 import './globals.css'
 import { ThemeProvider } from '@/_components/theme-provider'
+import { TooltipProvider } from './_components/ui/tooltip'
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -36,7 +37,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <TooltipProvider>{children}</TooltipProvider>
         </ThemeProvider>
       </body>
     </html>

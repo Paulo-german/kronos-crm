@@ -5,11 +5,14 @@
 @layer base {
   :root {
     /* Base Colors (Zinc/Natural for Light Mode) */
-    --background: 0 0% 100%; /* hsl(0 0% 100%) */
+    --background: 0 0% 97%; /* hsl(0 0% 97%) */
     --foreground: 240 10% 3.9%; /* hsl(240 10% 3.9%) */
 
-    --card: 0 0% 100%; /* hsl(0 0% 100%) */
+    --card: 0 0% 97%; /* hsl(0 0% 97%) */
     --card-foreground: 240 10% 3.9%; /* hsl(240 10% 3.9%) */
+
+    --tab: 0 0% 90%; /* hsl(0 0% 90%) */
+    --tab-foreground: 240 10% 3.9%; /* hsl(240 10% 3.9%) */
 
     --popover: 0 0% 100%; /* hsl(0 0% 100%) */
     --popover-foreground: 240 10% 3.9%; /* hsl(240 10% 3.9%) */
@@ -19,7 +22,7 @@
     --primary-foreground: 0 0% 98%; /* hsl(0 0% 98%) */
 
     /* Secondary: Kronos Cyan-ish/Light Zinc */
-    --secondary: 240 4.8% 95.9%; /* hsl(240 4.8% 95.9%) */
+    --secondary: 240 4.8% 80%; /* hsl(240 4.8% 80%) */
     --secondary-foreground: 240 5.9% 10%; /* hsl(240 5.9% 10%) */
 
     --muted: 240 4.8% 95.9%; /* hsl(240 4.8% 95.9%) */
@@ -31,7 +34,7 @@
     --destructive: 0 84.2% 60.2%; /* hsl(0 84.2% 60.2%) */
     --destructive-foreground: 0 0% 98%; /* hsl(0 0% 98%) */
 
-    --border: 240 5.9% 90%; /* hsl(240 5.9% 90%) */
+    --border: 240 5.9% 80%; /* hsl(240 5.9% 80%) */
     --input: 240 5.9% 90%; /* hsl(240 5.9% 90%) */
     --ring: 261 74% 62%; /* hsl(261 74% 62%) */
 
@@ -39,6 +42,7 @@
 
     /* KRONOS SPECIFIC COLORS */
     --kronos-purple: #8257e5;
+    --kronos-purple-hsl: 261 74% 62%; /* hsl(261 74% 62%) - HEX: #8257e5 */
     --kronos-purple-light: #996dff;
 
     --kronos-green: #00b37e;
@@ -66,6 +70,10 @@
     /* Surface: #18181b (Zinc 900) - For Cards, Sidebars, Modals */
     --card: 240 5.9% 10%; /* hsl(240 5.9% 10%) */
     --card-foreground: 0 0% 98%; /* hsl(0 0% 98%) */
+
+    /* Tab: #18181b (Zinc 900) - For Cards, Sidebars, Modals */
+    --tab: 240 5.9% 10%; /* hsl(240 5.9% 10%) */
+    --tab-foreground: 0 0% 98%; /* hsl(0 0% 98%) */
 
     --popover: 240 5.9% 10%; /* hsl(240 5.9% 10%) */
     --popover-foreground: 0 0% 98%; /* hsl(0 0% 98%) */
@@ -119,7 +127,7 @@
   }
 
   .text-gradient-kronos {
-    @apply bg-gradient-to-r from-[--kronos-purple] via-[--kronos-pink] to-[--kronos-cyan] bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-[--kronos-purple] via-[--kronos-cyan] to-[--kronos-green] bg-clip-text text-transparent;
   }
 
   .animate-gradient {

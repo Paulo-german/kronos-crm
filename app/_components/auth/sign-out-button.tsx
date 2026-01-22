@@ -12,7 +12,7 @@ export const SignOutButton = () => {
     <Button
       variant="ghost"
       size="sm"
-      className="text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+      className="w-full justify-start text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
       onClick={() => execute()}
       disabled={status === 'executing'}
     >
