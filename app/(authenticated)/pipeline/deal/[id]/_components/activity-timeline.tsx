@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   Trophy,
   XCircle,
+  RotateCcw,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import type { DealDetailsDto } from '@/_data-access/deal/get-deal-details'
@@ -64,6 +65,11 @@ const activityConfig: Record<
     icon: XCircle,
     label: 'Negócio Perdido',
     color: 'text-red-500',
+  },
+  deal_reopened: {
+    icon: RotateCcw,
+    label: 'Negócio Reaberto',
+    color: 'text-blue-400',
   },
 }
 

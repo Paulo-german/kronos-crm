@@ -58,6 +58,7 @@ enum ActivityType {
   task_completed
   deal_won
   deal_lost
+  deal_reopened
 }
 
 enum DiscountType {

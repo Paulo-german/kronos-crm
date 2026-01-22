@@ -4,12 +4,13 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
-import { ArrowLeft, CircleIcon, Trophy, XCircle } from 'lucide-react'
+import { ArrowLeft, CircleIcon, Trophy, XCircle, RotateCcw } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/_components/ui/tabs'
 import { Badge } from '@/_components/ui/badge'
 import { markDealWon } from '@/_actions/deal/mark-deal-won'
 import { markDealLost } from '@/_actions/deal/mark-deal-lost'
+import { reopenDeal } from '@/_actions/deal/reopen-deal'
 import type { DealDetailsDto } from '@/_data-access/deal/get-deal-details'
 import { formatCurrency } from '@/_helpers/format-currency'
 import type { ProductDto } from '@/_data-access/product/get-products'
@@ -98,7 +99,19 @@ const DealDetailClient = ({ deal, products }: DealDetailClientProps) => {
     },
   )
 
-  const isPending = isMarkingWon || isMarkingLost
+  const { execute: executeReopen, isPending: isReopening } = useAction(
+    reopenDeal,
+    {
+      onSuccess: () => {
+        toast.success('Negociação retomada com sucesso!')
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError || 'Erro ao retomar negociação.')
+      },
+    },
+  )
+
+  const isPending = isMarkingWon || isMarkingLost || isReopening
 
   const formattedValue = formatCurrency(deal.totalValue)
 
@@ -108,6 +121,10 @@ const DealDetailClient = ({ deal, products }: DealDetailClientProps) => {
 
   const handleMarkLost = () => {
     executeMarkLost({ dealId: deal.id })
+  }
+
+  const handleReopen = () => {
+    executeReopen({ dealId: deal.id })
   }
 
   return (
@@ -125,23 +142,36 @@ const DealDetailClient = ({ deal, products }: DealDetailClientProps) => {
           </Button>
 
           <div className="flex gap-2.5">
-            <Button
-              className="hover:bg-kronos-green/80 bg-kronos-green text-white hover:text-white/80"
-              onClick={handleMarkWon}
-              disabled={isPending || deal.status === 'WON'}
-            >
-              <Trophy className="h-4 w-4" />
-              Ganhou
-            </Button>
-            <Button
-              variant="destructive"
-              className="hover:bg-kronos-red/80 bg-kronos-red text-white hover:text-white/80"
-              onClick={handleMarkLost}
-              disabled={isPending || deal.status === 'LOST'}
-            >
-              <XCircle className="h-4 w-4" />
-              Perdeu
-            </Button>
+            {deal.status === 'WON' || deal.status === 'LOST' ? (
+              <Button
+                onClick={handleReopen}
+                disabled={isPending}
+                variant="outline"
+              >
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Retomar Negociação
+              </Button>
+            ) : (
+              <>
+                <Button
+                  className="hover:bg-kronos-green/80 bg-kronos-green text-white hover:text-white/80"
+                  onClick={handleMarkWon}
+                  disabled={isPending}
+                >
+                  <Trophy className="h-4 w-4" />
+                  Ganhou
+                </Button>
+                <Button
+                  variant="destructive"
+                  className="hover:bg-kronos-red/80 bg-kronos-red text-white hover:text-white/80"
+                  onClick={handleMarkLost}
+                  disabled={isPending}
+                >
+                  <XCircle className="h-4 w-4" />
+                  Perdeu
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
