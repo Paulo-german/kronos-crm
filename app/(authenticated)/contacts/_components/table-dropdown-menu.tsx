@@ -40,7 +40,7 @@ const ContactTableDropdownMenu = ({
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogIsOpen}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
+            <Button variant="ghost" className="h-8 w-6 p-0">
               <MoreHorizontalIcon size={16} />
             </Button>
           </DropdownMenuTrigger>

@@ -1,7 +1,19 @@
 'use client'
 
 import { ColumnDef } from '@tanstack/react-table'
-import { Mail, Phone, Building2 } from 'lucide-react'
+import {
+  Mail,
+  Phone,
+  Building2,
+  UserIcon,
+  MailIcon,
+  PhoneIcon,
+  BuildingIcon,
+  Building2Icon,
+  User2Icon,
+  AxeIcon,
+  MoreHorizontalIcon,
+} from 'lucide-react'
 import { Badge } from '@/_components/ui/badge'
 import Link from 'next/link'
 import { DataTable } from '@/_components/data-table'
@@ -22,13 +34,18 @@ export function ContactsDataTable({
   const columns: ColumnDef<ContactDto>[] = [
     {
       accessorKey: 'name',
-      header: 'Nome',
+      header: () => (
+        <div className="flex items-center gap-2">
+          <UserIcon className="h-4 w-4 text-muted-foreground" />
+          <span>Nome</span>
+        </div>
+      ),
       cell: ({ row }) => {
         const contact = row.original
         return (
           <Link
             href={`/contacts/${contact.id}`}
-            className="font-medium hover:underline"
+            className="ml-2 font-medium hover:underline"
           >
             {contact.name}
           </Link>
@@ -37,51 +54,58 @@ export function ContactsDataTable({
     },
     {
       accessorKey: 'email',
-      header: 'Email',
+      header: () => (
+        <div className="flex items-center gap-2">
+          <MailIcon className="h-4 w-4 text-muted-foreground" />
+          <span>Email</span>
+        </div>
+      ),
       cell: ({ row }) => {
         const email = row.getValue('email') as string | null
         if (!email) return <span className="text-muted-foreground">-</span>
-        return (
-          <div className="flex items-center gap-2">
-            <Mail className="h-4 w-4 text-muted-foreground" />
-            {email}
-          </div>
-        )
+        return <div className="flex items-center gap-2">{email}</div>
       },
     },
     {
       accessorKey: 'phone',
-      header: 'Telefone',
+      header: () => (
+        <div className="flex items-center gap-2">
+          <PhoneIcon className="h-4 w-4 text-muted-foreground" />
+          <span>Telefone</span>
+        </div>
+      ),
       cell: ({ row }) => {
         const phone = row.getValue('phone') as string | null
         if (!phone) return <span className="text-muted-foreground">-</span>
         return (
-          <div className="flex items-center gap-2">
-            <Phone className="h-4 w-4 text-muted-foreground" />
-            {formatPhone(phone)}
-          </div>
+          <div className="flex items-center gap-2">{formatPhone(phone)}</div>
         )
       },
     },
     {
       accessorKey: 'companyName',
-      header: 'Empresa',
+      header: () => (
+        <div className="flex items-center gap-2">
+          <Building2Icon className="h-4 w-4 text-muted-foreground" />
+          <span>Empresa</span>
+        </div>
+      ),
       cell: ({ row }) => {
         const companyName = row.getValue('companyName') as string | null
         if (!companyName) {
           return '-'
         }
-        return (
-          <div className="flex items-center gap-2">
-            <Building2 className="h-4 w-4 text-muted-foreground" />
-            {companyName}
-          </div>
-        )
+        return <div className="flex items-center gap-2">{companyName}</div>
       },
     },
     {
       accessorKey: 'role',
-      header: 'Cargo',
+      header: () => (
+        <div className="flex items-center gap-2">
+          <User2Icon className="h-4 w-4 text-muted-foreground" />
+          <span>Cargo</span>
+        </div>
+      ),
       cell: ({ row }) => {
         const role = row.getValue('role') as string | null
         return role || <span className="text-muted-foreground">-</span>
@@ -89,7 +113,12 @@ export function ContactsDataTable({
     },
     {
       accessorKey: 'isDecisionMaker',
-      header: 'Decisor',
+      header: () => (
+        <div className="flex items-center gap-2">
+          <AxeIcon className="h-4 w-4 text-muted-foreground" />
+          <span>Decisor</span>
+        </div>
+      ),
       cell: ({ row }) => {
         const isDecisionMaker = row.getValue('isDecisionMaker') as boolean
         return isDecisionMaker ? (
