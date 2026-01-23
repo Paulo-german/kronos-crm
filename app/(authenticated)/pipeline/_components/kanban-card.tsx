@@ -47,6 +47,12 @@ const statusConfig = {
       'bg-kronos-blue/10 text-kronos-blue border-kronos-blue/20 hover:bg-kronos-blue/20',
     variant: 'secondary' as const,
   },
+  IN_PROGRESS: {
+    label: 'EM ANDAMENTO',
+    color:
+      'bg-kronos-purple/10 text-kronos-purple border-kronos-purple/20 hover:bg-kronos-purple/20',
+    variant: 'secondary' as const,
+  },
   WON: {
     label: 'VENDIDO',
     color:

@@ -5,7 +5,7 @@ export interface DealDto {
   id: string
   title: string
   stageId: string
-  status: 'OPEN' | 'WON' | 'LOST' | 'PAUSED'
+  status: 'OPEN' | 'IN_PROGRESS' | 'WON' | 'LOST' | 'PAUSED'
   priority: 'low' | 'medium' | 'high' | 'urgent'
   contactId: string | null
   contactName: string | null

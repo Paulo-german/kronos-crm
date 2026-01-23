@@ -50,7 +50,11 @@ export const moveDealToStage = authActionClient
 
     await db.deal.update({
       where: { id: data.dealId },
-      data: { pipelineStageId: data.stageId },
+      data: {
+        pipelineStageId: data.stageId,
+        // Se o deal estiver OPEN (novo), muda para IN_PROGRESS ao mover
+        ...(deal.status === 'OPEN' && { status: 'IN_PROGRESS' }),
+      },
     })
 
     // Registra atividade de mudança de etapa

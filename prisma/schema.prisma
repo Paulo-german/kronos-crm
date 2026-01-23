@@ -74,10 +74,11 @@ enum DealPriority {
 }
 
 enum DealStatus {
-  OPEN   // Novo ou Em Andamento (default)
-  WON    // Vendido/Ganho
-  LOST   // Perdido
-  PAUSED // Pausado (On Hold)
+  OPEN        // Novo (recém criado, ainda no stage inicial)
+  IN_PROGRESS // Em Andamento (já moveu do stage inicial)
+  WON         // Vendido/Ganho
+  LOST        // Perdido
+  PAUSED      // Pausado (On Hold)
 }
 
 // -----------------------------------------------------------------------------
