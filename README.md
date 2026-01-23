@@ -122,6 +122,61 @@ Crie um arquivo `.env` na raiz baseado no `.env.example`:
 - Todas as tabelas devem ter `id` (UUID), `created_at` e `updated_at`.
 - Filtre dados sempre pelo dono (`ownerId`) para garantir multi-tenancy.
 
+### 4. Cache (Next.js Data Cache)
+
+Usamos uma estratégia de **cache manual** com `unstable_cache` + `revalidateTag` para otimizar performance.
+
+#### **Estratégia Atual**
+
+- **`_data-access`:** Funções de leitura usam `cache()` (React) + `unstable_cache()` (Next.js)
+- **`_actions`:** Server Actions **DEVEM** invalidar o cache ao modificar dados
+
+#### **Exemplo: Pipeline (Implementado)**
+
+**Data Access** (`_data-access/pipeline/get-user-pipeline.ts`):
+
+```ts
+export const getUserPipeline = cache(async (userId: string) => {
+  const getCachedPipeline = unstable_cache(
+    async () => fetchUserPipelineFromDb(userId),
+    [`user-pipeline-${userId}`],
+    {
+      tags: [`pipeline:${userId}`],
+      revalidate: 3600, // Cache de 1 hora (opcional - pode remover para cache infinito)
+    },
+  )
+  return getCachedPipeline()
+})
+```
+
+**Actions** (`_actions/pipeline/...`):
+
+```ts
+import { revalidateTag } from 'next/cache'
+
+export async function updatePipelineStage() {
+  // ... mutação no banco ...
+
+  // ✅ OBRIGATÓRIO: Invalida cache
+  revalidateTag(`pipeline:${userId}`)
+}
+```
+
+#### **Tags de Cache por Módulo**
+
+| Módulo   | Tag                  | Status       | Invalidar em                               |
+| -------- | -------------------- | ------------ | ------------------------------------------ |
+| Pipeline | `pipeline:${userId}` | ✅ Ativo     | create/update/delete pipeline stages/deals |
+| Deals    | `deals:${userId}`    | 🔄 Planejado | create/update/delete/move deals            |
+| Contacts | `contacts:${userId}` | 🔄 Planejado | create/update/delete contacts              |
+| Products | `products:${userId}` | 🔄 Planejado | create/update/delete products              |
+| Tasks    | `tasks:${userId}`    | 🔄 Planejado | create/update/complete/delete tasks        |
+
+#### **Regra de Ouro**
+
+> **Toda Server Action que modifica dados DEVE chamar `revalidateTag` com as tags relevantes.**  
+> Se esquecer, o usuário verá dados stale até o cache expirar (`revalidate` time).
+
 ---
 
 ## 📦 Convenção de Commits
