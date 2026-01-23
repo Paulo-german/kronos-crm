@@ -3,7 +3,7 @@ import { getUserPipeline } from '@/_data-access/pipeline/get-user-pipeline'
 import { getDealsByPipeline } from '@/_data-access/deal/get-deals-by-pipeline'
 import { getContacts } from '@/_data-access/contact/get-contacts'
 import { PipelineClient } from '@/(authenticated)/pipeline/_components/pipeline-client'
-import { seedPipelineForUser } from '@/../prisma/seed'
+import { createDefaultPipeline } from '@/_actions/pipeline/create-default-pipeline'
 
 import Link from 'next/link'
 import { Button } from '@/_components/ui/button'
@@ -18,17 +18,17 @@ const PipelinePage = async () => {
   if (!user) return null
 
   // Busca pipeline do usuário (ou cria se não existir)
-  let pipeline = await getUserPipeline(user.id)
+  const pipeline = await getUserPipeline(user.id)
 
-  // Se não existir, cria o pipeline padrão
-  if (!pipeline) {
-    await seedPipelineForUser({ userId: user.id })
-    pipeline = await getUserPipeline(user.id)
-  }
+  // Se não existir, cria o pipeline padrão (que já retorna o objeto criado)
+  const finalPipeline =
+    pipeline || (await createDefaultPipeline({ userId: user.id }))
 
   // Busca deals e contatos em paralelo
   const [dealsByStage, contacts] = await Promise.all([
-    pipeline ? getDealsByPipeline(pipeline.stages.map((s) => s.id)) : {},
+    finalPipeline
+      ? getDealsByPipeline(finalPipeline.stages.map((s) => s.id))
+      : {},
     getContacts(user.id),
   ])
 
@@ -49,7 +49,7 @@ const PipelinePage = async () => {
         </Button>
       </div>
       <PipelineClient
-        pipeline={pipeline}
+        pipeline={finalPipeline}
         dealsByStage={dealsByStage}
         contacts={contacts}
       />

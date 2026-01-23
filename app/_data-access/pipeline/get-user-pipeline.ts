@@ -61,7 +61,6 @@ export const getUserPipeline = cache(async (userId: string) => {
     [`user-pipeline-${userId}`],
     {
       tags: [`pipeline:${userId}`],
-      revalidate: 3600, // Revalida a cada 1 hora se não houver invalidação manual
     },
   )
 

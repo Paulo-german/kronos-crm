@@ -1,62 +1,9 @@
 import { db } from '@/_lib/prisma'
 import { PrismaClient } from '@prisma/client'
 
-const prisma = new PrismaClient()
+// const prisma = new PrismaClient() // Removed unused instantiation
 
-// Configuração do Pipeline Padrão
-const DEFAULT_STAGES = [
-  { name: 'Lead', color: '#6b7280', position: 1 },
-  { name: 'Qualificação', color: '#3b82f6', position: 2 },
-  { name: 'Proposta', color: '#f59e0b', position: 3 },
-  { name: 'Negociação', color: '#8b5cf6', position: 4 },
-  { name: 'Ganho', color: '#22c55e', position: 5 },
-  { name: 'Perdido', color: '#ef4444', position: 6 },
-]
-
-interface SeedPipelineParams {
-  userId: string
-  pipelineName?: string
-}
-
-/**
- * Cria um pipeline padrão para o usuário
- * Se o usuário já tiver um pipeline, não cria outro
- */
-export async function seedPipelineForUser({
-  userId,
-  pipelineName = 'Pipeline Principal',
-}: SeedPipelineParams) {
-  // Verifica se já existe pipeline para este usuário
-  const existingPipeline = await db.pipeline.findFirst({
-    where: { createdBy: userId },
-  })
-
-  if (existingPipeline) {
-    console.log(`ℹ️ Usuário ${userId} já possui pipeline. Pulando seed.`)
-    return existingPipeline
-  }
-
-  console.log(`🌱 Criando pipeline padrão para usuário ${userId}...`)
-
-  // Cria pipeline com etapas
-  const pipeline = await db.pipeline.create({
-    data: {
-      name: pipelineName,
-      createdBy: userId,
-      stages: {
-        create: DEFAULT_STAGES,
-      },
-    },
-    include: {
-      stages: true,
-    },
-  })
-
-  console.log(
-    `✅ Pipeline "${pipelineName}" criado com ${pipeline.stages.length} etapas.`,
-  )
-  return pipeline
-}
+import { createDefaultPipeline } from '@/_actions/pipeline/create-default-pipeline'
 
 // Execução direta via CLI: pnpm prisma db seed
 async function main() {
@@ -77,7 +24,7 @@ async function main() {
   }
 
   for (const user of usersWithoutPipeline) {
-    await seedPipelineForUser({ userId: user.id })
+    await createDefaultPipeline({ userId: user.id })
   }
 
   console.log('✅ Seed concluído!')

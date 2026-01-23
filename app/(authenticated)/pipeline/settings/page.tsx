@@ -2,7 +2,7 @@ import { createClient } from '@/_lib/supabase/server'
 import { getUserPipeline } from '@/_data-access/pipeline/get-user-pipeline'
 import { SettingsClient } from '@/(authenticated)/pipeline/settings/_components/settings-client'
 
-import { createDefaultPipeline } from '@/_data-access/pipeline/create-default-pipeline'
+import { createDefaultPipeline } from '@/_actions/pipeline/create-default-pipeline'
 import Link from 'next/link'
 import { Button } from '@/_components/ui/button'
 import { ArrowLeft } from 'lucide-react'
@@ -16,20 +16,11 @@ const PipelineSettingsPage = async () => {
   if (!user) return null
 
   // Busca pipeline do usuário (ou cria se não existir)
-  let pipeline = await getUserPipeline(user.id)
+  const pipeline = await getUserPipeline(user.id)
 
-  if (!pipeline) {
-    await createDefaultPipeline({ userId: user.id })
-    pipeline = await getUserPipeline(user.id)
-  }
-
-  if (!pipeline) {
-    return (
-      <div className="text-muted-foreground">
-        Erro ao carregar pipeline. Tente recarregar a página.
-      </div>
-    )
-  }
+  // Se não existir, cria o pipeline padrão (que já retorna o objeto criado)
+  const finalPipeline =
+    pipeline || (await createDefaultPipeline({ userId: user.id }))
 
   return (
     <div className="space-y-6">
@@ -47,7 +38,7 @@ const PipelineSettingsPage = async () => {
         </div>
       </div>
 
-      <SettingsClient pipeline={pipeline} />
+      <SettingsClient pipeline={finalPipeline} />
     </div>
   )
 }
