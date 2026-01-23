@@ -61,6 +61,15 @@ enum ActivityType {
   deal_reopened
 }
 
+enum TaskType {
+  TASK // "Tarefa Genérica"
+  MEETING // "Reunião"
+  CALL // "Ligação"
+  WHATSAPP // "WhatsApp"
+  VISIT // "Visita"
+  EMAIL // "E-mail"
+}
+
 enum DiscountType {
   percentage
   fixed
@@ -245,6 +254,7 @@ model Task {
   deal        Deal?     @relation(fields: [dealId], references: [id], onDelete: Cascade)
 
   title       String
+  type        TaskType  @default(TASK)
   dueDate     DateTime? @map("due_date")
   isCompleted Boolean   @default(false) @map("is_completed")
 
