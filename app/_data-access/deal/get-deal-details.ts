@@ -36,7 +36,7 @@ export interface PipelineStageDto {
 export interface DealDetailsDto {
   id: string
   title: string
-  status: 'OPEN' | 'WON' | 'LOST' | 'PAUSED'
+  status: 'OPEN' | 'IN_PROGRESS' | 'WON' | 'LOST' | 'PAUSED'
   priority: 'low' | 'medium' | 'high' | 'urgent'
   notes: string | null
   expectedCloseDate: Date | null
