@@ -1,6 +1,7 @@
 import { createClient } from '@/_lib/supabase/server'
 import { getTasks } from '@/_data-access/task/get-tasks'
-import { TasksDataTable } from '@/(authenticated)/tasks/_components/tasks-data-table'
+import { getDealsOptions } from '@/_data-access/deal/get-deals-options'
+import TasksDataTable from '@/(authenticated)/tasks/_components/tasks-data-table'
 import CreateTaskButton from '@/(authenticated)/tasks/_components/create-task-button'
 
 const TasksPage = async () => {
@@ -12,9 +13,7 @@ const TasksPage = async () => {
   if (!user) return null
 
   const tasks = await getTasks(user.id)
-
-  // Opcional: Aqui poderíamos filtrar "Vencidas" e "Hoje" se quiséssemos passar dados pré-filtrados
-  // mas o DataTable também pode ter filtros. Por enquanto seguiremos o padrão Products.
+  const dealOptions = await getDealsOptions(user.id)
 
   return (
     <div className="space-y-6">
@@ -22,12 +21,13 @@ const TasksPage = async () => {
         <div>
           <h1 className="text-2xl font-bold">Tarefas</h1>
           <p className="text-muted-foreground">
-            Gerencie suas tarefas e pendências ("Getting Things Done").
+            Gerencie suas tarefas e pendências (&quot;Getting Things
+            Done&quot;).
           </p>
         </div>
-        <CreateTaskButton />
+        <CreateTaskButton dealOptions={dealOptions} />
       </div>
-      <TasksDataTable tasks={tasks} />
+      <TasksDataTable tasks={tasks} dealOptions={dealOptions} />
     </div>
   )
 }

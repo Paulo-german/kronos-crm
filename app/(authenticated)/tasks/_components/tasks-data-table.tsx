@@ -7,10 +7,16 @@ import {
   Circle,
   LinkIcon,
   MoreHorizontal,
+  Users,
+  Phone,
+  MessageCircle,
+  Briefcase,
+  Mail,
 } from 'lucide-react'
 import Link from 'next/link'
 import { DataTable } from '@/_components/data-table'
 import type { TaskDto } from '@/_data-access/task/get-tasks'
+import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
 import TaskTableDropdownMenu from './table-dropdown-menu'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -22,17 +28,66 @@ import { cn } from '@/_lib/utils'
 
 interface TasksDataTableProps {
   tasks: TaskDto[]
+  dealOptions: DealOptionDto[]
 }
 
-export function TasksDataTable({ tasks }: TasksDataTableProps) {
+const TASK_TYPE_ICONS: Record<string, React.ReactNode> = {
+  TASK: (
+    <div className="flex items-center gap-2">
+      <CheckCircle2 className="h-4 w-4 text-slate-500" />
+      <span>Tarefa</span>
+    </div>
+  ),
+  MEETING: (
+    <div className="flex items-center gap-2">
+      <Users className="h-4 w-4 text-blue-500" />
+      <span>Reunião</span>
+    </div>
+  ),
+  CALL: (
+    <div className="flex items-center gap-2">
+      <Phone className="h-4 w-4 text-green-500" />
+      <span>Chamada</span>
+    </div>
+  ),
+  WHATSAPP: (
+    <div className="flex items-center gap-2">
+      <MessageCircle className="h-4 w-4 text-emerald-500" />
+      <span>Whatsapp</span>
+    </div>
+  ),
+  VISIT: (
+    <div className="flex items-center gap-2">
+      <Briefcase className="h-4 w-4 text-purple-500" />
+      <span>Visita</span>
+    </div>
+  ),
+  EMAIL: (
+    <div className="flex items-center gap-2">
+      <Mail className="h-4 w-4 text-yellow-500" />
+      <span>Email</span>
+    </div>
+  ),
+}
+
+const TasksDataTable = ({ tasks, dealOptions }: TasksDataTableProps) => {
   const { execute: executeToggle } = useAction(toggleTaskStatus, {
+    onSuccess: () => toast.success('Status da tarefa atualizado com sucesso.'),
     onError: () => toast.error('Erro ao atualizar status da tarefa.'),
   })
 
-  // Optimistic UI local seria ideal aqui, mas vamos usar o fallback do hook por enquanto
-  // O DataTable do shadcn não tem optimistic built-in fácil sem setup extra.
-
   const columns: ColumnDef<TaskDto>[] = [
+    {
+      header: 'Tipo',
+      cell: ({ row }) => {
+        const type = row.original.type as string
+        return (
+          <div title={type} className="flex w-fit items-center justify-center">
+            {TASK_TYPE_ICONS[type] || TASK_TYPE_ICONS['TASK']}
+          </div>
+        )
+      },
+    },
     {
       accessorKey: 'isCompleted',
       header: 'Status',
@@ -114,7 +169,7 @@ export function TasksDataTable({ tasks }: TasksDataTableProps) {
 
         return (
           <span className={cn(isOverdue && 'font-medium text-red-500')}>
-            {format(date, 'PPP', { locale: ptBR })}
+            {format(date, 'PPP p', { locale: ptBR })}
           </span>
         )
       },
@@ -123,10 +178,12 @@ export function TasksDataTable({ tasks }: TasksDataTableProps) {
       id: 'actions',
       cell: ({ row }) => {
         const task = row.original
-        return <TaskTableDropdownMenu task={task} />
+        return <TaskTableDropdownMenu task={task} dealOptions={dealOptions} />
       },
     },
   ]
 
   return <DataTable columns={columns} data={tasks} />
 }
+
+export default TasksDataTable

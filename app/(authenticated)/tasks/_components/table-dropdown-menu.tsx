@@ -14,16 +14,19 @@ import {
   DropdownMenuTrigger,
 } from '@/_components/ui/dropdown-menu'
 import { TaskDto } from '@/_data-access/task/get-tasks'
+import { DealOptionDto } from '@/_data-access/deal/get-deals-options'
 import { UpsertTaskDialogContent } from './upsert-dialog-content'
-import { AlertDialog, AlertDialogTrigger } from '@/_components/ui/alert-dialog'
+import { AlertDialog } from '@radix-ui/react-alert-dialog'
 import { DeleteTaskDialogContent } from './delete-dialog-content'
 
 interface TaskTableDropdownMenuProps {
   task: TaskDto
+  dealOptions: DealOptionDto[]
 }
 
 export default function TaskTableDropdownMenu({
   task,
+  dealOptions,
 }: TaskTableDropdownMenuProps) {
   const [upsertIsOpen, setUpsertIsOpen] = useState(false)
   const [deleteIsOpen, setDeleteIsOpen] = useState(false)
@@ -35,6 +38,7 @@ export default function TaskTableDropdownMenu({
         <UpsertTaskDialogContent
           defaultValues={task}
           setIsOpen={setUpsertIsOpen}
+          dealOptions={dealOptions}
         />
       </Dialog>
 
