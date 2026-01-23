@@ -241,8 +241,8 @@ model Deal {
 
 model Task {
   id          String    @id @default(uuid())
-  dealId      String    @map("deal_id")
-  deal        Deal      @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  dealId      String?   @map("deal_id")
+  deal        Deal?     @relation(fields: [dealId], references: [id], onDelete: Cascade)
 
   title       String
   dueDate     DateTime? @map("due_date")
