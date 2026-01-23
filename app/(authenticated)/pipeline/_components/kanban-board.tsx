@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useOptimistic, startTransition } from 'react'
 import {
   DndContext,
   DragEndEvent,
@@ -30,6 +30,13 @@ interface KanbanBoardProps {
   onDealClick: (deal: DealDto) => void
 }
 
+type OptimisticAction = {
+  type: 'move'
+  dealId: string
+  fromStageId: string
+  toStageId: string
+}
+
 export function KanbanBoard({
   pipeline,
   dealsByStage,
@@ -38,6 +45,35 @@ export function KanbanBoard({
 }: KanbanBoardProps) {
   const [activeId, setActiveId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+
+  // Optimistic state: atualiza instantaneamente a UI antes do servidor responder
+  const [optimisticDeals, setOptimisticDeals] = useOptimistic(
+    dealsByStage,
+    (state: DealsByStageDto, action: OptimisticAction) => {
+      if (action.type === 'move') {
+        const newState = { ...state }
+        const deal = newState[action.fromStageId]?.find(
+          (d) => d.id === action.dealId,
+        )
+
+        if (!deal) return state
+
+        // Remove da coluna antiga
+        newState[action.fromStageId] = newState[action.fromStageId].filter(
+          (d) => d.id !== action.dealId,
+        )
+
+        // Adiciona na nova coluna
+        if (!newState[action.toStageId]) {
+          newState[action.toStageId] = []
+        }
+        newState[action.toStageId] = [...newState[action.toStageId], deal]
+
+        return newState
+      }
+      return state
+    },
+  )
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -53,18 +89,19 @@ export function KanbanBoard({
     },
     onError: ({ error }) => {
       toast.error(error.serverError || 'Erro ao mover deal.')
+      // O useOptimistic reverte automaticamente em caso de erro
     },
   })
 
-  // Filtra deals pela busca
+  // Filtra deals pela busca (usa optimisticDeals em vez de dealsByStage)
   const filteredDealsByStage = useMemo(() => {
-    if (!searchQuery.trim()) return dealsByStage
+    if (!searchQuery.trim()) return optimisticDeals
 
     const query = searchQuery.toLowerCase()
     const filtered: DealsByStageDto = {}
 
-    for (const stageId of Object.keys(dealsByStage)) {
-      filtered[stageId] = dealsByStage[stageId].filter(
+    for (const stageId of Object.keys(optimisticDeals)) {
+      filtered[stageId] = optimisticDeals[stageId].filter(
         (deal) =>
           deal.title.toLowerCase().includes(query) ||
           deal.contactName?.toLowerCase().includes(query) ||
@@ -73,17 +110,17 @@ export function KanbanBoard({
     }
 
     return filtered
-  }, [dealsByStage, searchQuery])
+  }, [optimisticDeals, searchQuery])
 
-  // Encontra o deal ativo para o overlay
+  // Encontra o deal ativo para o overlay (usa optimisticDeals)
   const activeDeal = useMemo(() => {
     if (!activeId) return null
-    for (const deals of Object.values(dealsByStage)) {
+    for (const deals of Object.values(optimisticDeals)) {
       const found = deals.find((d) => d.id === activeId)
       if (found) return found
     }
     return null
-  }, [activeId, dealsByStage])
+  }, [activeId, optimisticDeals])
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string)
@@ -106,7 +143,7 @@ export function KanbanBoard({
       targetStageId = overId
     } else {
       // Se soltou sobre outro deal, pega a stage desse deal
-      for (const [stageId, deals] of Object.entries(dealsByStage)) {
+      for (const [stageId, deals] of Object.entries(optimisticDeals)) {
         if (deals.some((d) => d.id === overId)) {
           targetStageId = stageId
           break
@@ -118,7 +155,7 @@ export function KanbanBoard({
 
     // Encontra a stage atual do deal
     let currentStageId: string | null = null
-    for (const [stageId, deals] of Object.entries(dealsByStage)) {
+    for (const [stageId, deals] of Object.entries(optimisticDeals)) {
       if (deals.some((d) => d.id === dealId)) {
         currentStageId = stageId
         break
@@ -127,7 +164,18 @@ export function KanbanBoard({
 
     // Só move se mudou de stage
     if (currentStageId && currentStageId !== targetStageId) {
-      executeMove({ dealId, stageId: targetStageId })
+      startTransition(() => {
+        // 1. Atualiza a UI imediatamente (Optimistic Update)
+        setOptimisticDeals({
+          type: 'move',
+          dealId,
+          fromStageId: currentStageId!,
+          toStageId: targetStageId!,
+        })
+
+        // 2. Chama o servidor em background
+        executeMove({ dealId, stageId: targetStageId! })
+      })
     }
   }
 
