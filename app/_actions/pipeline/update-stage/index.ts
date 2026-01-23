@@ -3,7 +3,7 @@
 import { authActionClient } from '@/_lib/safe-action'
 import { updateStageSchema } from './schema'
 import { db } from '@/_lib/prisma'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 
 export const updateStage = authActionClient
   .schema(updateStageSchema)
@@ -33,6 +33,7 @@ export const updateStage = authActionClient
 
     revalidatePath('/pipeline')
     revalidatePath('/pipeline/settings')
+    revalidateTag(`pipeline:${ctx.userId}`)
 
     return { success: true }
   })
