@@ -9,7 +9,9 @@ import { Card, CardContent } from '@/_components/ui/card'
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/_components/ui/select'
@@ -44,7 +46,7 @@ const statusConfig = {
   OPEN: {
     label: 'NOVO',
     color:
-      'bg-kronos-blue/10 text-kronos-blue border-kronos-blue/20 hover:bg-kronos-blue/20',
+      'bg-kronos-blue/10 text-kronos-blue border border-kronos-blue/20 hover:bg-kronos-blue/20',
     variant: 'secondary' as const,
   },
   IN_PROGRESS: {
@@ -139,9 +141,9 @@ const KanbanCard = ({ deal, onClick }: KanbanCardProps) => {
       className={`relative cursor-grab border-border bg-card shadow-none transition-all hover:bg-card/80 ${draggingClass}`}
       onClick={handleCardClick}
     >
-      <CardContent className="flex flex-col gap-3 p-3.5">
+      <CardContent className="flex flex-col gap-4 p-3.5">
         {/* 1. Topo: Badge de Status + Prioridade */}
-        <div className="flex items-start justify-between gap-2">
+        <div>
           {/* Badge de Status */}
           {statusConfig[deal.status] && (
             <Badge
@@ -152,39 +154,11 @@ const KanbanCard = ({ deal, onClick }: KanbanCardProps) => {
               {statusConfig[deal.status].label}
             </Badge>
           )}
-
-          {/* Prioridade (Compacta) */}
-          <div
-            className="flex flex-col gap-0.5"
-            data-priority-select
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Select value={priority} onValueChange={handlePriorityChange}>
-              <SelectTrigger
-                className={`h-6 w-auto border bg-transparent px-2 text-[9px] font-medium focus:ring-0 focus:ring-offset-0 ${priorityConfig[priority].color}`}
-              >
-                <div className="flex items-center gap-1 overflow-hidden">
-                  <SelectValue />
-                </div>
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(priorityConfig).map(([key, config]) => (
-                  <SelectItem key={key} value={key} className="text-xs">
-                    <span className={config.color}>{config.label}</span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
         </div>
-
         {/* 2. Sub-topo: Título do Deal */}
-        <div>
-          <p className="line-clamp-2 cursor-pointer text-base font-semibold leading-tight text-foreground hover:text-primary">
-            {deal.title}
-          </p>
-        </div>
-
+        <p className="line-clamp-2 cursor-pointer text-base font-semibold leading-tight text-foreground hover:text-primary">
+          {deal.title}
+        </p>
         {/* 3. Meio: Grid de Contato + Valor */}
         <div className="flex gap-4">
           {/* Coluna Contato */}
@@ -235,6 +209,34 @@ const KanbanCard = ({ deal, onClick }: KanbanCardProps) => {
                 <p className="space-x-5">Valor único {formattedValue}</p>
               </TooltipContent>
             </Tooltip>
+          </div>
+          {/* Prioridade (Compacta) */}
+          <div
+            className="flex flex-col gap-0.5"
+            data-priority-select
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Select value={priority} onValueChange={handlePriorityChange}>
+              <SelectTrigger
+                className={`h-6 w-auto border bg-transparent px-2 text-[9px] font-medium focus:ring-0 focus:ring-offset-0 ${priorityConfig[priority].color}`}
+              >
+                <div className="flex items-center gap-1 overflow-hidden">
+                  <SelectValue />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectLabel className="px-2 py-1.5 text-xs font-bold uppercase text-muted-foreground">
+                    Prioridade
+                  </SelectLabel>
+                  {Object.entries(priorityConfig).map(([key, config]) => (
+                    <SelectItem key={key} value={key} className="text-[10px]">
+                      <span className={config.color}>{config.label}</span>
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
