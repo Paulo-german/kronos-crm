@@ -3,7 +3,7 @@
 import { authActionClient } from '@/_lib/safe-action'
 import { markDealWonSchema } from './schema'
 import { db } from '@/_lib/prisma'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { ActivityType } from '@prisma/client'
 
 export const markDealWon = authActionClient
@@ -42,6 +42,7 @@ export const markDealWon = authActionClient
 
     revalidatePath('/pipeline')
     revalidatePath(`/pipeline/deal/${data.dealId}`)
+    revalidateTag(`pipeline:${ctx.userId}`)
 
     return { success: true }
   })

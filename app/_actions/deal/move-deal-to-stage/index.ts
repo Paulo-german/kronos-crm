@@ -3,7 +3,7 @@
 import { authActionClient } from '@/_lib/safe-action'
 import { moveDealToStageSchema } from './schema'
 import { db } from '@/_lib/prisma'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 
 export const moveDealToStage = authActionClient
   .schema(moveDealToStageSchema)
@@ -64,6 +64,7 @@ export const moveDealToStage = authActionClient
 
     revalidatePath('/pipeline')
     revalidatePath(`/pipeline/deal/${data.dealId}`)
+    revalidateTag(`pipeline:${ctx.userId}`)
 
     return { success: true, moved: true }
   })

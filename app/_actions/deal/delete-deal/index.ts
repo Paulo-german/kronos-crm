@@ -3,7 +3,7 @@
 import { authActionClient } from '@/_lib/safe-action'
 import { deleteDealSchema } from './schema'
 import { db } from '@/_lib/prisma'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 
 export const deleteDeal = authActionClient
   .schema(deleteDealSchema)
@@ -29,6 +29,7 @@ export const deleteDeal = authActionClient
     })
 
     revalidatePath('/pipeline')
+    revalidateTag(`pipeline:${ctx.userId}`)
 
     return { success: true }
   })
