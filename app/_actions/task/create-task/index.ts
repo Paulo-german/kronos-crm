@@ -18,6 +18,8 @@ export const createTask = authActionClient
         dealId: dealIdValue,
         assignedTo: ctx.userId,
         createdBy: ctx.userId,
+        type: data.type,
+        isCompleted: data.isCompleted ?? false,
       },
     })
 

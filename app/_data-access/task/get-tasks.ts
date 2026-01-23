@@ -5,6 +5,7 @@ import { db } from '@/_lib/prisma'
 export type TaskDto = {
   id: string
   title: string
+  type: string // Vamos tipar como string no DTO para simplificar no front, ou importar TaskType
   dueDate: Date | null
   isCompleted: boolean
   dealId: string | null
@@ -27,6 +28,7 @@ export const getTasks = async (userId: string): Promise<TaskDto[]> => {
     select: {
       id: true,
       title: true,
+      type: true,
       dueDate: true,
       isCompleted: true,
       dealId: true,

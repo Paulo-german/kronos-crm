@@ -27,6 +27,8 @@ export const updateTask = authActionClient
       data: {
         title: data.title,
         dueDate: data.dueDate ?? null,
+        type: data.type,
+        isCompleted: data.isCompleted,
         dealId: dealIdValue,
       },
     })
