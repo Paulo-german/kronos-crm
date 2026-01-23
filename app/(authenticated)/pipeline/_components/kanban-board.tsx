@@ -22,6 +22,14 @@ import type {
   DealDto,
   DealsByStageDto,
 } from '@/_data-access/deal/get-deals-by-pipeline'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/_components/ui/select'
+import { ArrowUpDown } from 'lucide-react'
 
 interface KanbanBoardProps {
   pipeline: PipelineWithStagesDto
@@ -37,6 +45,21 @@ type OptimisticAction = {
   toStageId: string
 }
 
+type SortOption =
+  | 'created-desc'
+  | 'created-asc'
+  | 'value-desc'
+  | 'value-asc'
+  | 'priority-desc'
+  | 'title-asc'
+
+const priorityWeight: Record<string, number> = {
+  urgent: 4,
+  high: 3,
+  medium: 2,
+  low: 1,
+}
+
 export function KanbanBoard({
   pipeline,
   dealsByStage,
@@ -45,6 +68,7 @@ export function KanbanBoard({
 }: KanbanBoardProps) {
   const [activeId, setActiveId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState<SortOption>('created-desc')
 
   // Optimistic state: atualiza instantaneamente a UI antes do servidor responder
   const [optimisticDeals, setOptimisticDeals] = useOptimistic(
@@ -93,24 +117,54 @@ export function KanbanBoard({
     },
   })
 
-  // Filtra deals pela busca (usa optimisticDeals em vez de dealsByStage)
+  // Filtra e Ordena deals
   const filteredDealsByStage = useMemo(() => {
-    if (!searchQuery.trim()) return optimisticDeals
-
-    const query = searchQuery.toLowerCase()
     const filtered: DealsByStageDto = {}
+    const query = searchQuery.toLowerCase().trim()
 
-    for (const stageId of Object.keys(optimisticDeals)) {
-      filtered[stageId] = optimisticDeals[stageId].filter(
-        (deal) =>
-          deal.title.toLowerCase().includes(query) ||
-          deal.contactName?.toLowerCase().includes(query) ||
-          deal.companyName?.toLowerCase().includes(query),
-      )
+    for (const [stageId, deals] of Object.entries(optimisticDeals)) {
+      // Filtro de Busca
+      let stageDeals = deals
+
+      if (query) {
+        stageDeals = deals.filter(
+          (deal) =>
+            deal.title.toLowerCase().includes(query) ||
+            deal.contactName?.toLowerCase().includes(query) ||
+            deal.companyName?.toLowerCase().includes(query),
+        )
+      }
+
+      // Ordenação
+      filtered[stageId] = [...stageDeals].sort((a, b) => {
+        switch (sortBy) {
+          case 'created-desc':
+            return (
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            )
+          case 'created-asc':
+            return (
+              new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+            )
+          case 'value-desc':
+            return b.totalValue - a.totalValue
+          case 'value-asc':
+            return a.totalValue - b.totalValue
+          case 'priority-desc':
+            return (
+              (priorityWeight[b.priority] || 0) -
+              (priorityWeight[a.priority] || 0)
+            )
+          case 'title-asc':
+            return a.title.localeCompare(b.title)
+          default:
+            return 0
+        }
+      })
     }
 
     return filtered
-  }, [optimisticDeals, searchQuery])
+  }, [optimisticDeals, searchQuery, sortBy])
 
   // Encontra o deal ativo para o overlay (usa optimisticDeals)
   const activeDeal = useMemo(() => {
@@ -181,8 +235,28 @@ export function KanbanBoard({
 
   return (
     <div className="flex h-full flex-col gap-4">
-      {/* Search bar */}
-      <KanbanSearch value={searchQuery} onChange={setSearchQuery} />
+      {/* Search and Sort bar */}
+      <div className="flex items-center gap-2">
+        <KanbanSearch value={searchQuery} onChange={setSearchQuery} />
+
+        <Select
+          value={sortBy}
+          onValueChange={(v) => setSortBy(v as SortOption)}
+        >
+          <SelectTrigger className="w-[180px]">
+            <ArrowUpDown className="mr-2 h-4 w-4 text-muted-foreground" />
+            <SelectValue placeholder="Ordenar por" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="created-desc">Mais Recentes</SelectItem>
+            <SelectItem value="created-asc">Mais Antigos</SelectItem>
+            <SelectItem value="value-desc">Maior Valor</SelectItem>
+            <SelectItem value="value-asc">Menor Valor</SelectItem>
+            <SelectItem value="priority-desc">Prioridade</SelectItem>
+            <SelectItem value="title-asc">A-Z</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
       {/* Kanban board */}
       <DndContext
