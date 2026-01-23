@@ -38,7 +38,7 @@ export function KanbanColumn({
           <span className="font-medium">{stage.name}</span>
 
           {/* Contador */}
-          <span className="rounded-sm border border-kronos-purple bg-background px-2 py-1 text-xs text-kronos-purple">
+          <span className="rounded-sm border border-border bg-background px-2 py-1 text-xs font-bold text-kronos-purple">
             {deals.length}
           </span>
         </div>
@@ -55,7 +55,7 @@ export function KanbanColumn({
       {/* Cards */}
       <div
         ref={setNodeRef}
-        className="[&::-webkit-scrollbar-thumb]:bg-kronos-purple/50 flex-1 space-y-2 overflow-y-auto p-2 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-kronos-purple [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-0.5"
+        className="flex-1 space-y-2 overflow-y-auto p-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border hover:[&::-webkit-scrollbar-thumb]:bg-kronos-purple [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-0.5"
       >
         <SortableContext
           items={deals.map((d) => d.id)}

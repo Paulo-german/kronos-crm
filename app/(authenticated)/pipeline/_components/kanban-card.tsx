@@ -17,7 +17,7 @@ import { updateDealPriority } from '@/_actions/deal/update-deal-priority'
 import { formatCurrency } from '@/_helpers/format-currency'
 import type { DealDto } from '@/_data-access/deal/get-deals-by-pipeline'
 import { Badge } from '@/_components/ui/badge'
-import { CircleIcon } from 'lucide-react'
+import { CircleIcon, DollarSignIcon } from 'lucide-react'
 import { Label } from '@/_components/ui/label'
 import {
   Tooltip,
@@ -180,18 +180,18 @@ const KanbanCard = ({ deal, onClick }: KanbanCardProps) => {
         </div>
 
         {/* 3. Meio: Grid de Contato + Valor */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="flex gap-4">
           {/* Coluna Contato */}
           <div className="flex flex-col gap-1">
-            <Label className="text-[10px] uppercase text-muted-foreground">
+            {/* <Label className="text-[10px] uppercase text-muted-foreground">
               Contato
-            </Label>
+            </Label> */}
             <div className="flex h-6 cursor-default items-center truncate text-xs font-medium text-foreground">
               {deal.contactName ? (
                 <Tooltip>
                   <div className="flex items-center gap-1">
                     <TooltipTrigger asChild>
-                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-background text-[10px] text-kronos-purple">
+                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-[10px] font-bold text-kronos-purple">
                         {getInitials(deal.contactName)}
                       </div>
                     </TooltipTrigger>
@@ -201,27 +201,34 @@ const KanbanCard = ({ deal, onClick }: KanbanCardProps) => {
                   </div>
                 </Tooltip>
               ) : (
-                <span className="italic text-muted-foreground">N/A</span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-[10px] font-bold italic text-muted-foreground">
+                      N/A
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Sem contato associado</p>
+                  </TooltipContent>
+                </Tooltip>
               )}
             </div>
           </div>
 
           {/* Coluna Valor */}
           <div className="flex flex-col gap-1">
-            <Label className="text-[10px] uppercase text-muted-foreground">
-              Valor Negociado
-            </Label>
-            <div className="flex h-6 items-center">
-              {deal.totalValue > 0 ? (
-                <span className="inline-flex items-center rounded-md bg-kronos-green/10 px-2 py-0.5 text-xs font-bold text-kronos-green">
-                  {formattedValue}
-                </span>
-              ) : (
-                <span className="text-xs italic text-muted-foreground">
-                  Não definido
-                </span>
-              )}
-            </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex h-6 items-center">
+                  <span className="inline-flex items-center rounded-md text-xs font-bold text-foreground">
+                    {formattedValue}
+                  </span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="space-x-5">Valor único {formattedValue}</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
         </div>
 
