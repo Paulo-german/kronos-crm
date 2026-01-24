@@ -23,18 +23,18 @@ export const updateDeal = authActionClient
     if (!deal) {
       throw new Error('Deal não encontrado ou não pertence a você.')
     }
+    const contact = data.contactId
+      ? await db.contact.findFirst({
+          where: {
+            id: data.contactId,
+            ownerId: ctx.userId,
+          },
+        })
+      : null
 
     // Valida contato se informado
-    if (data.contactId) {
-      const contact = await db.contact.findFirst({
-        where: {
-          id: data.contactId,
-          ownerId: ctx.userId,
-        },
-      })
-      if (!contact) {
-        throw new Error('Contato não encontrado ou não pertence a você.')
-      }
+    if (data.contactId && !contact) {
+      throw new Error('Contato não encontrado ou não pertence a você.')
     }
 
     // Valida empresa se informada
@@ -50,13 +50,42 @@ export const updateDeal = authActionClient
       }
     }
 
+    // Handle Contact Update (N:N Migration)
+    if (typeof data.contactId !== 'undefined') {
+      // 1. Unmark current primaries
+      await db.dealContact.updateMany({
+        where: { dealId: data.id, isPrimary: true },
+        data: { isPrimary: false },
+      })
+
+      // 2. If new contact provided, set as primary
+      if (data.contactId) {
+        await db.dealContact.upsert({
+          where: {
+            dealId_contactId: {
+              dealId: data.id,
+              contactId: data.contactId,
+            },
+          },
+          create: {
+            dealId: data.id,
+            contactId: data.contactId,
+            isPrimary: true,
+            role: contact?.role,
+          },
+          update: {
+            isPrimary: true,
+          },
+        })
+      }
+    }
+
     await db.deal.update({
       where: { id: data.id },
       data: {
         title: data.title,
         priority: data.priority,
         notes: data.notes,
-        contactId: data.contactId,
         companyId: data.companyId,
         expectedCloseDate: data.expectedCloseDate,
       },

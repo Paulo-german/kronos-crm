@@ -33,6 +33,16 @@ export interface PipelineStageDto {
   color: string | null
 }
 
+export interface DealContactDto {
+  contactId: string
+  name: string
+  email: string | null
+  phone: string | null
+  role: string | null // Role specific to this deal (e.g. Decisor)
+  isPrimary: boolean
+  contactOriginalRole: string | null // Role from the contact card
+}
+
 export interface DealDetailsDto {
   id: string
   title: string
@@ -49,12 +59,8 @@ export interface DealDetailsDto {
   // Pipeline info
   pipelineId: string
   availableStages: PipelineStageDto[]
-  // Contact (detailed)
-  contactId: string | null
-  contactName: string | null
-  contactEmail: string | null
-  contactPhone: string | null
-  contactRole: string | null
+  // Contacts (N:N)
+  contacts: DealContactDto[]
   // Company (detailed)
   companyId: string | null
   companyName: string | null
@@ -99,12 +105,9 @@ export const getDealDetails = async (
           },
         },
       },
-      contact: {
-        select: {
-          name: true,
-          email: true,
-          phone: true,
-          role: true,
+      contacts: {
+        include: {
+          contact: true,
         },
       },
       company: {
@@ -176,11 +179,15 @@ export const getDealDetails = async (
       position: stage.position,
       color: stage.color,
     })),
-    contactId: deal.contactId,
-    contactName: deal.contact?.name ?? null,
-    contactEmail: deal.contact?.email ?? null,
-    contactPhone: deal.contact?.phone ?? null,
-    contactRole: deal.contact?.role ?? null,
+    contacts: deal.contacts.map((dc) => ({
+      contactId: dc.contactId,
+      name: dc.contact.name,
+      email: dc.contact.email,
+      phone: dc.contact.phone,
+      role: dc.contact.role, // Agora mostrando o cargo do contato
+      isPrimary: dc.isPrimary,
+      contactOriginalRole: dc.role, // Invertendo para manter o dado se necessário futuramente
+    })),
     companyId: deal.companyId,
     companyName: deal.company?.name ?? null,
     companyDomain: deal.company?.domain ?? null,

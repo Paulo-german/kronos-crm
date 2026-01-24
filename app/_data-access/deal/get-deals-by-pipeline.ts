@@ -1,12 +1,14 @@
 import 'server-only'
 import { db } from '@/_lib/prisma'
+// Importe os tipos gerados pelo Prisma para evitar erros de tipagem
+import { DealStatus, DealPriority } from '@prisma/client'
 
 export interface DealDto {
   id: string
   title: string
   stageId: string
-  status: 'OPEN' | 'IN_PROGRESS' | 'WON' | 'LOST' | 'PAUSED'
-  priority: 'low' | 'medium' | 'high' | 'urgent'
+  status: DealStatus
+  priority: DealPriority
   contactId: string | null
   contactName: string | null
   companyId: string | null
@@ -21,16 +23,18 @@ export interface DealsByStageDto {
   [stageId: string]: DealDto[]
 }
 
-/**
- * Busca todos os deals do pipeline agrupados por stageId
- * Multi-tenancy via pipeline.createdBy
- */
 export const getDealsByPipeline = async (
   stageIds: string[],
 ): Promise<DealsByStageDto> => {
   if (stageIds.length === 0) return {}
 
-  // Busca todos os deals das etapas deste pipeline
+  // 1. Inicializa estrutura de retorno
+  const result: DealsByStageDto = stageIds.reduce((acc, stageId) => {
+    acc[stageId] = []
+    return acc
+  }, {} as DealsByStageDto)
+
+  // 2. CORREÇÃO PRINCIPAL: Buscamos na tabela 'deal', não 'dealContact'
   const deals = await db.deal.findMany({
     where: {
       pipelineStageId: {
@@ -38,15 +42,28 @@ export const getDealsByPipeline = async (
       },
     },
     include: {
-      contact: {
-        select: { name: true },
+      // Busca a relação N:N (DealContact)
+      contacts: {
+        // Tenta pegar o contato marcado como primário, ou o primeiro que encontrar
+        orderBy: {
+          isPrimary: 'desc',
+        },
+        take: 1,
+        include: {
+          contact: {
+            select: { name: true }, // Traz apenas o nome do contato final
+          },
+        },
       },
       company: {
         select: { name: true },
       },
       dealProducts: {
-        include: {
-          product: true,
+        select: {
+          unitPrice: true,
+          quantity: true,
+          discountType: true,
+          discountValue: true,
         },
       },
     },
@@ -55,40 +72,47 @@ export const getDealsByPipeline = async (
     },
   })
 
-  // Agrupa por stageId e calcula valor total
-  const result: DealsByStageDto = {}
-
-  // Inicializa todas as stages com arrays vazios
-  for (const stageId of stageIds) {
-    result[stageId] = []
-  }
-
+  // 3. Mapeamento dos dados
   for (const deal of deals) {
-    // Calcula valor total do deal baseado nos produtos
+    // Cálculo do valor total (mantido da sua lógica)
     const totalValue = deal.dealProducts.reduce((sum, dp) => {
       const subtotal = Number(dp.unitPrice) * dp.quantity
-      const discount =
-        dp.discountType === 'percentage'
-          ? subtotal * (Number(dp.discountValue) / 100)
-          : Number(dp.discountValue)
+      let discount = 0
+
+      if (dp.discountValue) {
+        discount =
+          dp.discountType === 'percentage'
+            ? subtotal * (Number(dp.discountValue) / 100)
+            : Number(dp.discountValue)
+      }
+
       return sum + (subtotal - discount)
     }, 0)
 
-    result[deal.pipelineStageId].push({
-      id: deal.id,
-      title: deal.title,
-      stageId: deal.pipelineStageId,
-      status: deal.status,
-      priority: deal.priority,
-      contactId: deal.contactId,
-      contactName: deal.contact?.name ?? null,
-      companyId: deal.companyId,
-      companyName: deal.company?.name ?? null,
-      expectedCloseDate: deal.expectedCloseDate,
-      totalValue,
-      notes: deal.notes,
-      createdAt: deal.createdAt,
-    })
+    // Acessa o primeiro contato da lista (agora seguro)
+    // deal.contacts é um array de DealContact. O contato real está dentro de .contact
+    const primaryLink = deal.contacts[0]
+    const contactName = primaryLink?.contact?.name ?? null
+    const contactId = primaryLink?.contactId ?? null
+
+    // Garante que o stage existe no result antes de dar push
+    if (result[deal.pipelineStageId]) {
+      result[deal.pipelineStageId].push({
+        id: deal.id,
+        title: deal.title,
+        stageId: deal.pipelineStageId,
+        status: deal.status,
+        priority: deal.priority, // O Prisma já tipa isso corretamente agora
+        contactId,
+        contactName,
+        companyId: deal.companyId,
+        companyName: deal.company?.name ?? null,
+        expectedCloseDate: deal.expectedCloseDate,
+        totalValue,
+        notes: deal.notes,
+        createdAt: deal.createdAt,
+      })
+    }
   }
 
   return result

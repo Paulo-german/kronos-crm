@@ -22,17 +22,18 @@ export const createDeal = authActionClient
       throw new Error('Etapa não encontrada ou não pertence a você.')
     }
 
+    const contact = data.contactId
+      ? await db.contact.findFirst({
+          where: {
+            id: data.contactId,
+            ownerId: ctx.userId,
+          },
+        })
+      : null
+
     // Valida contato se informado
-    if (data.contactId) {
-      const contact = await db.contact.findFirst({
-        where: {
-          id: data.contactId,
-          ownerId: ctx.userId,
-        },
-      })
-      if (!contact) {
-        throw new Error('Contato não encontrado ou não pertence a você.')
-      }
+    if (data.contactId && !contact) {
+      throw new Error('Contato não encontrado ou não pertence a você.')
     }
 
     // Valida empresa se informada
@@ -52,7 +53,16 @@ export const createDeal = authActionClient
       data: {
         title: data.title,
         pipelineStageId: data.stageId,
-        contactId: data.contactId || null,
+        // Se houver contato, cria como primary
+        contacts: data.contactId
+          ? {
+              create: {
+                contactId: data.contactId,
+                isPrimary: true,
+                role: contact?.role ?? '',
+              },
+            }
+          : undefined,
         companyId: data.companyId || null,
         expectedCloseDate: data.expectedCloseDate || null,
         assignedTo: ctx.userId,
