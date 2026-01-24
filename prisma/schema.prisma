@@ -180,7 +180,7 @@ model Contact {
   updatedAt       DateTime @updatedAt @map("updated_at")
 
   // Relacionamentos
-  deals           Deal[]
+  deals           DealContact[] // Nova relação N:N
 
   @@map("contacts")
 }
@@ -221,8 +221,8 @@ model Deal {
   companyId       String?  @map("company_id")
   company         Company? @relation(fields: [companyId], references: [id])
   
-  contactId       String?  @map("contact_id")
-  contact         Contact? @relation(fields: [contactId], references: [id])
+  // Nova Relação N:N
+  contacts        DealContact[]
 
   // Dados do Negócio
   title             String
@@ -318,4 +318,21 @@ model DealProduct {
   discountValue Decimal      @default(0) @db.Decimal(15, 2) @map("discount_value")
 
   @@map("deal_products")
+}
+
+model DealContact {
+  id        String   @id @default(uuid())
+  
+  dealId    String   @map("deal_id")
+  deal      Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  
+  contactId String   @map("contact_id")
+  contact   Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  
+  // Metadados da Relação
+  role      String?  @default("Stakeholder") // Ex: Decisor, Influenciador
+  isPrimary Boolean  @default(false) @map("is_primary") // Define o contato principal para exibição em listas
+
+  @@unique([dealId, contactId])
+  @@map("deal_contacts")
 }
