@@ -43,9 +43,13 @@ export const getContactById = async (
         },
       },
       deals: {
-        select: {
-          id: true,
-          title: true,
+        include: {
+          deal: {
+            select: {
+              id: true,
+              title: true,
+            },
+          },
         },
       },
     },
@@ -63,7 +67,7 @@ export const getContactById = async (
     isDecisionMaker: contact.isDecisionMaker,
     companyId: contact.companyId,
     company: contact.company,
-    deals: contact.deals,
+    deals: contact.deals.map((deal) => deal.deal),
     createdAt: contact.createdAt,
     updatedAt: contact.updatedAt,
   }

@@ -183,7 +183,17 @@ const TasksDataTable = ({ tasks, dealOptions }: TasksDataTableProps) => {
     },
   ]
 
-  return <DataTable columns={columns} data={tasks} />
+  return (
+    <DataTable
+      columns={columns}
+      data={tasks}
+      enableSelection={true}
+      onDelete={(rows) => {
+        console.log('Deletar tasks:', rows)
+        toast.info(`Simulação: Deletando ${rows.length} tarefas...`)
+      }}
+    />
+  )
 }
 
 export default TasksDataTable

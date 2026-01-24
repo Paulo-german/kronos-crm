@@ -69,5 +69,15 @@ export function ProductsDataTable({ products }: ProductsDataTableProps) {
     },
   ]
 
-  return <DataTable columns={columns} data={products} />
+  return (
+    <DataTable
+      columns={columns}
+      data={products}
+      enableSelection={true}
+      onDelete={(rows) => {
+        console.log('Deletar produtos:', rows)
+        // toast.info(`Simulação: Deletando ${rows.length} produtos...`)
+      }}
+    />
+  )
 }

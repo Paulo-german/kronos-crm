@@ -14,6 +14,7 @@ import { reopenDeal } from '@/_actions/deal/reopen-deal'
 import type { DealDetailsDto } from '@/_data-access/deal/get-deal-details'
 import { formatCurrency } from '@/_helpers/format-currency'
 import type { ProductDto } from '@/_data-access/product/get-products'
+import type { ContactDto } from '@/_data-access/contact/get-contacts'
 import TabSummary from '@/(authenticated)/pipeline/deal/[id]/_components/tab-summary'
 import TabProducts from '@/(authenticated)/pipeline/deal/[id]/_components/tab-products'
 import TabTasks from '@/(authenticated)/pipeline/deal/[id]/_components/tab-tasks'
@@ -21,6 +22,7 @@ import TabTasks from '@/(authenticated)/pipeline/deal/[id]/_components/tab-tasks
 interface DealDetailClientProps {
   deal: DealDetailsDto
   products: ProductDto[]
+  contacts: ContactDto[]
 }
 
 const priorityConfig = {
@@ -77,7 +79,11 @@ const statusConfig = {
   },
 }
 
-const DealDetailClient = ({ deal, products }: DealDetailClientProps) => {
+const DealDetailClient = ({
+  deal,
+  products,
+  contacts,
+}: DealDetailClientProps) => {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState('summary')
 
@@ -241,7 +247,7 @@ const DealDetailClient = ({ deal, products }: DealDetailClientProps) => {
         </TabsList>
 
         <TabsContent value="summary" className="mt-4">
-          <TabSummary deal={deal} />
+          <TabSummary deal={deal} contacts={contacts} />
         </TabsContent>
 
         <TabsContent value="products" className="mt-4">

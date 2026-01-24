@@ -33,7 +33,7 @@ const PipelinePage = async () => {
   ])
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] flex-col space-y-4">
+    <div className="flex h-[calc(100vh-3rem)] flex-col space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Pipeline de Vendas</h1>

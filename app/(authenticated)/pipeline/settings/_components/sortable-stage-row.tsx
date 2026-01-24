@@ -96,7 +96,7 @@ export function SortableStageRow({ stage, allStages }: SortableStageRowProps) {
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-3 rounded-lg border bg-card p-3 ${
+      className={`flex items-center gap-3 rounded-md border bg-card p-3 ${
         isDragging ? 'shadow-lg ring-2 ring-primary' : ''
       }`}
     >

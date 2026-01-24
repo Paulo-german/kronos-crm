@@ -24,7 +24,7 @@ const CompanyOwnerWidget = ({ deal }: CompanyOwnerWidgetProps) => {
             Empresa
           </div>
           {deal.companyId && deal.companyName ? (
-            <div className="space-y-1.5 rounded-lg border bg-muted/30 p-3">
+            <div className="space-y-1.5 rounded-md border bg-muted/30 p-3">
               <p className="font-semibold leading-tight">{deal.companyName}</p>
               <div className="space-y-1">
                 {deal.companyDomain && (

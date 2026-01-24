@@ -142,5 +142,15 @@ export function ContactsDataTable({
     },
   ]
 
-  return <DataTable columns={columns} data={contacts} />
+  return (
+    <DataTable
+      columns={columns}
+      data={contacts}
+      enableSelection={true}
+      onDelete={(rows) => {
+        console.log('Deletar contatos:', rows)
+        // toast.info(`Simulação: Deletando ${rows.length} contatos...`)
+      }}
+    />
+  )
 }

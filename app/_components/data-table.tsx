@@ -5,6 +5,9 @@ import {
   flexRender,
   getCoreRowModel,
   getPaginationRowModel,
+  getSortedRowModel,
+  RowSelectionState,
+  SortingState,
   useReactTable,
 } from '@tanstack/react-table'
 
@@ -24,28 +27,94 @@ import {
   SelectTrigger,
   SelectValue,
 } from './ui/select'
-import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ChevronsUpDownIcon,
+  TrashIcon,
+} from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Checkbox } from './ui/checkbox'
+import { cn } from '@/_lib/utils'
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
+  enableSelection?: boolean
+  onDelete?: (selectedRows: TData[]) => void
 }
 
 export const DataTable = <TData, TValue>({
   columns,
   data,
+  enableSelection = false,
+  onDelete,
 }: DataTableProps<TData, TValue>) => {
+  const [sorting, setSorting] = useState<SortingState>([])
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
+
+  const tableColumns = useMemo(() => {
+    if (!enableSelection) return columns
+
+    const selectionColumn: ColumnDef<TData, TValue> = {
+      id: 'select',
+      header: ({ table }) => (
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && 'indeterminate')
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+          className="translate-y-[2px]"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+          className="translate-y-[2px]"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    }
+
+    return [selectionColumn, ...columns]
+  }, [columns, enableSelection])
+
   const table = useReactTable({
     data,
-    columns,
+    columns: tableColumns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    onSortingChange: setSorting,
+    onRowSelectionChange: setRowSelection,
+    state: {
+      sorting,
+      rowSelection,
+    },
     initialState: {
       pagination: {
         pageSize: 20,
       },
     },
   })
+
+  // Permite deletar passando as linhas inteiras
+  const handleDelete = () => {
+    if (onDelete) {
+      const selectedRows = table
+        .getFilteredSelectedRowModel()
+        .rows.map((row) => row.original)
+      onDelete(selectedRows)
+      table.resetRowSelection()
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -55,16 +124,34 @@ export const DataTable = <TData, TValue>({
             <TableHeader className="sticky top-0 bg-secondary/20 backdrop-blur-sm">
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext(),
-                          )}
-                    </TableHead>
-                  ))}
+                  {headerGroup.headers.map((header) => {
+                    return (
+                      <TableHead key={header.id}>
+                        {header.isPlaceholder ? null : (
+                          <div
+                            className={cn(
+                              'flex items-center gap-2',
+                              header.column.getCanSort() &&
+                                'cursor-pointer select-none text-muted-foreground hover:text-foreground',
+                            )}
+                            onClick={header.column.getToggleSortingHandler()}
+                          >
+                            {flexRender(
+                              header.column.columnDef.header,
+                              header.getContext(),
+                            )}
+                            {{
+                              asc: <ArrowUpIcon className="h-4 w-4" />,
+                              desc: <ArrowDownIcon className="h-4 w-4" />,
+                            }[header.column.getIsSorted() as string] ??
+                              (header.column.getCanSort() ? (
+                                <ChevronsUpDownIcon className="h-4 w-4 opacity-50" />
+                              ) : null)}
+                          </div>
+                        )}
+                      </TableHead>
+                    )
+                  })}
                 </TableRow>
               ))}
             </TableHeader>
@@ -99,6 +186,29 @@ export const DataTable = <TData, TValue>({
           </Table>
         </div>
       </div>
+
+      {enableSelection &&
+        table.getFilteredSelectedRowModel().rows.length > 0 && (
+          <div className="flex items-center justify-between rounded-md border bg-muted/50 px-4 py-2">
+            <span className="text-sm text-muted-foreground">
+              {table.getFilteredSelectedRowModel().rows.length} item(s)
+              selecionado(s).
+            </span>
+            <div className="flex items-center space-x-2">
+              {onDelete && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="h-8"
+                  onClick={handleDelete}
+                >
+                  <TrashIcon className="mr-2 h-4 w-4" />
+                  Deletar
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
 
       <div className="flex items-center justify-end space-x-2">
         <div className="flex items-center space-x-2">

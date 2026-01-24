@@ -1,10 +1,12 @@
 'use client'
 
-import { Dispatch, SetStateAction } from 'react'
+import { Dispatch, SetStateAction, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
+import { Check, ChevronsUpDown } from 'lucide-react'
+import { cn } from '@/_lib/utils'
 import {
   DialogContent,
   DialogDescription,
@@ -28,6 +30,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/_components/ui/select'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/_components/ui/command'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/_components/ui/popover'
 import { createDeal } from '@/_actions/deal/create-deal'
 import { updateDeal } from '@/_actions/deal/update-deal'
 import {
@@ -51,6 +66,7 @@ export function DealDialogContent({
   setIsOpen,
 }: DealDialogContentProps) {
   const isEditing = !!defaultValues?.id
+  const [open, setOpen] = useState(false)
 
   const form = useForm<DealFormInput>({
     resolver: zodResolver(dealFormSchema),
@@ -102,8 +118,8 @@ export function DealDialogContent({
       executeCreate({
         title: data.title,
         stageId: data.stageId,
-        contactId: data.contactId || null,
-        companyId: data.companyId || null,
+        contactId: data.contactId || undefined,
+        companyId: data.companyId || undefined,
         expectedCloseDate: data.expectedCloseDate || undefined,
       })
     }
@@ -177,30 +193,65 @@ export function DealDialogContent({
             control={form.control}
             name="contactId"
             render={({ field }) => (
-              <FormItem>
+              <FormItem className="flex flex-col">
                 <FormLabel>Contato</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  value={field.value || undefined}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um contato" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {contacts.map((contact) => (
-                      <SelectItem key={contact.id} value={contact.id}>
-                        {contact.name}
-                        {contact.companyName && (
-                          <span className="ml-1 text-xs text-muted-foreground">
-                            ({contact.companyName})
-                          </span>
+                <Popover open={open} onOpenChange={setOpen}>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={open}
+                        className={cn(
+                          'w-full justify-between font-normal',
+                          !field.value && 'text-muted-foreground',
                         )}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                      >
+                        {field.value
+                          ? contacts.find(
+                              (contact) => contact.id === field.value,
+                            )?.name
+                          : 'Selecione um contato'}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                    <Command>
+                      <CommandInput placeholder="Buscar contato..." />
+                      <CommandList>
+                        <CommandEmpty>Nenhum contato encontrado.</CommandEmpty>
+                        <CommandGroup>
+                          {contacts.map((contact) => (
+                            <CommandItem
+                              key={contact.id}
+                              value={contact.name}
+                              onSelect={() => {
+                                form.setValue('contactId', contact.id)
+                                setOpen(false)
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  'mr-2 h-4 w-4',
+                                  contact.id === field.value
+                                    ? 'opacity-100'
+                                    : 'opacity-0',
+                                )}
+                              />
+                              {contact.name}
+                              {contact.companyName && (
+                                <span className="ml-1 text-xs text-muted-foreground">
+                                  ({contact.companyName})
+                                </span>
+                              )}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
                 <FormMessage />
               </FormItem>
             )}

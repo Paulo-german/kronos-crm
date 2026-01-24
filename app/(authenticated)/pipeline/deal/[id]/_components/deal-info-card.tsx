@@ -115,7 +115,7 @@ const DealInfoCard = ({ deal }: DealInfoCardProps) => {
         </div>
 
         {/* Valor Total */}
-        <div className="flex items-center gap-3 rounded-lg bg-primary/5 p-3">
+        <div className="flex items-center gap-3 rounded-md bg-primary/5 p-3">
           <div className="rounded-full bg-primary/10 p-2">
             <DollarSign className="h-5 w-5 text-primary" />
           </div>

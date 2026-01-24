@@ -28,7 +28,7 @@ export function KanbanColumn({
 
   return (
     <div
-      className={`flex h-full w-96 shrink-0 flex-col rounded-lg border bg-secondary/20 ${
+      className={`flex h-full w-96 shrink-0 flex-col rounded-md border bg-secondary/20 ${
         isOver ? 'border-primary bg-muted/50' : 'bg-muted/30'
       }`}
     >

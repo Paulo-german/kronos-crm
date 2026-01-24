@@ -87,7 +87,7 @@ const NotesSection = ({ deal }: NotesSectionProps) => {
           </div>
         ) : (
           <div
-            className="min-h-[120px] cursor-pointer rounded-lg border bg-muted/30 p-4 text-sm transition-colors hover:bg-muted/50"
+            className="min-h-[120px] cursor-pointer rounded-md border bg-muted/30 p-4 text-sm transition-colors hover:bg-muted/50"
             onClick={() => setIsEditing(true)}
           >
             {deal.notes ? (
