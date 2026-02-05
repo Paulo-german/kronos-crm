@@ -1,30 +1,35 @@
 import { db } from '@/_lib/prisma'
-import { PrismaClient } from '@prisma/client'
-
-// const prisma = new PrismaClient() // Removed unused instantiation
-
-import { createDefaultPipeline } from '@/_actions/pipeline/create-default-pipeline'
+import { createDefaultPipeline } from '@/_data-access/pipeline/create-default-pipeline'
 
 // Execução direta via CLI: pnpm prisma db seed
 async function main() {
   console.log('🌱 Iniciando seed...')
 
-  // Busca todos os usuários que não têm pipeline
-  const usersWithoutPipeline = await db.user.findMany({
+  // Busca todas as organizações que não têm pipeline
+  const orgsWithoutPipeline = await db.organization.findMany({
     where: {
-      pipelinesCreated: {
+      pipelines: {
         none: {},
+      },
+    },
+    include: {
+      members: {
+        where: { role: 'OWNER' },
+        take: 1,
       },
     },
   })
 
-  if (usersWithoutPipeline.length === 0) {
-    console.log('ℹ️ Todos os usuários já possuem pipeline.')
+  if (orgsWithoutPipeline.length === 0) {
+    console.log('ℹ️ Todas as organizações já possuem pipeline.')
     return
   }
 
-  for (const user of usersWithoutPipeline) {
-    await createDefaultPipeline({ userId: user.id })
+  for (const org of orgsWithoutPipeline) {
+    await createDefaultPipeline({
+      orgId: org.id,
+    })
+    console.log(`✅ Pipeline criado para organização: ${org.name}`)
   }
 
   console.log('✅ Seed concluído!')
