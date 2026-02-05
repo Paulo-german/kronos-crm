@@ -10,6 +10,7 @@ export const updateContactSchema = z
     cpf: z.string().optional(),
     companyId: z.string().uuid().optional().nullable(),
     isDecisionMaker: z.boolean().optional(),
+    assignedTo: z.string().uuid().optional().nullable(), // RBAC: transferência de ownership
   })
   .refine((data) => Object.keys(data).length > 1, {
     message: 'Envie pelo menos um campo para atualizar',

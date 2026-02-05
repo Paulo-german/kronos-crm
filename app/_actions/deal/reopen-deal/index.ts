@@ -1,40 +1,27 @@
 'use server'
 
-import { authActionClient } from '@/_lib/safe-action'
+import { orgActionClient } from '@/_lib/safe-action'
 import { reopenDealSchema } from './schema'
 import { db } from '@/_lib/prisma'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { ActivityType } from '@prisma/client'
+import { findDealWithRBAC, canPerformAction, requirePermission } from '@/_lib/rbac'
 
-export const reopenDeal = authActionClient
+export const reopenDeal = orgActionClient
   .schema(reopenDealSchema)
   .action(async ({ parsedInput: data, ctx }) => {
-    // Busca deal e valida ownership
-    const deal = await db.deal.findFirst({
-      where: {
-        id: data.dealId,
-        stage: {
-          pipeline: {
-            createdBy: ctx.userId,
-          },
-        },
-      },
-    })
+    // 1. Verificar permissão base
+    requirePermission(canPerformAction(ctx, 'deal', 'update'))
 
-    if (!deal) {
-      throw new Error('Deal não encontrado ou não pertence a você.')
-    }
+    // 2. Buscar deal com verificação RBAC
+    await findDealWithRBAC(data.dealId, ctx)
 
-    // Atualiza status do deal para OPEN
+    // 3. Atualiza status do deal para OPEN
     await db.deal.update({
       where: { id: data.dealId },
       data: { status: 'OPEN' },
     })
 
-    // Registra atividade
-    // Como não temos um tipo específico para reabertura, usamos stage_change
-    // ou poderíamos criar um novo, mas vamos usar stage_change por enquanto
-    // já que tecnicamente estamos mudando o status/estágio lógico.
     await db.activity.create({
       data: {
         type: ActivityType.deal_reopened,
@@ -45,6 +32,8 @@ export const reopenDeal = authActionClient
 
     revalidatePath('/pipeline')
     revalidatePath(`/pipeline/deal/${data.dealId}`)
+    revalidateTag(`pipeline:${ctx.orgId}`)
+    revalidateTag(`deals:${ctx.orgId}`)
 
     return { success: true }
   })

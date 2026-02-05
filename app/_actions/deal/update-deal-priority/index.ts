@@ -1,29 +1,21 @@
 'use server'
 
-import { authActionClient } from '@/_lib/safe-action'
+import { orgActionClient } from '@/_lib/safe-action'
 import { updateDealPrioritySchema } from './schema'
 import { db } from '@/_lib/prisma'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
+import { findDealWithRBAC, canPerformAction, requirePermission } from '@/_lib/rbac'
 
-export const updateDealPriority = authActionClient
+export const updateDealPriority = orgActionClient
   .schema(updateDealPrioritySchema)
   .action(async ({ parsedInput: data, ctx }) => {
-    // Verifica ownership via pipeline
-    const deal = await db.deal.findFirst({
-      where: {
-        id: data.dealId,
-        stage: {
-          pipeline: {
-            createdBy: ctx.userId,
-          },
-        },
-      },
-    })
+    // 1. Verificar permissão base
+    requirePermission(canPerformAction(ctx, 'deal', 'update'))
 
-    if (!deal) {
-      throw new Error('Deal não encontrado ou não pertence a você.')
-    }
+    // 2. Buscar deal com verificação RBAC
+    await findDealWithRBAC(data.dealId, ctx)
 
+    // 3. Atualiza prioridade
     await db.deal.update({
       where: { id: data.dealId },
       data: {
@@ -32,6 +24,7 @@ export const updateDealPriority = authActionClient
     })
 
     revalidatePath('/pipeline')
+    revalidateTag(`deals:${ctx.orgId}`)
 
     return { success: true }
   })

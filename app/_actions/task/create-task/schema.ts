@@ -6,6 +6,7 @@ export const createTaskSchema = z.object({
   type: z.enum(['TASK', 'MEETING', 'CALL', 'WHATSAPP', 'VISIT', 'EMAIL']),
   isCompleted: z.boolean().default(false).optional(),
   dealId: z.string().uuid().nullable().optional(),
+  assignedTo: z.string().uuid().optional().nullable(), // RBAC: quem é responsável
 })
 
 export type CreateTaskInput = z.infer<typeof createTaskSchema>

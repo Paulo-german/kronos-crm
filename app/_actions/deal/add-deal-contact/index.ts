@@ -1,30 +1,29 @@
 'use server'
 
-import { authActionClient } from '@/_lib/safe-action'
+import { orgActionClient } from '@/_lib/safe-action'
 import { addDealContactSchema } from './schema'
 import { db } from '@/_lib/prisma'
 import { revalidateTag } from 'next/cache'
+import {
+  findDealWithRBAC,
+  findContactWithRBAC,
+  canPerformAction,
+  requirePermission,
+} from '@/_lib/rbac'
 
-export const addDealContact = authActionClient
+export const addDealContact = orgActionClient
   .schema(addDealContactSchema)
   .action(async ({ parsedInput: data, ctx }) => {
-    // Verifica permissão (deal pertence a pipeline do user?)
-    const deal = await db.deal.findFirst({
-      where: {
-        id: data.dealId,
-        stage: {
-          pipeline: {
-            createdBy: ctx.userId,
-          },
-        },
-      },
-    })
+    // 1. Verificar permissão base
+    requirePermission(canPerformAction(ctx, 'deal', 'update'))
 
-    if (!deal) {
-      throw new Error('Deal não encontrado ou acesso negado.')
-    }
+    // 2. Buscar deal com verificação RBAC
+    await findDealWithRBAC(data.dealId, ctx)
 
-    // Se for definir como primary, remove status dos outros
+    // 3. Verificar se o contato é acessível pelo usuário (MEMBER só pode vincular próprios contatos)
+    await findContactWithRBAC(data.contactId, ctx)
+
+    // 4. Se for definir como primary, remove status dos outros
     if (data.isPrimary) {
       await db.dealContact.updateMany({
         where: { dealId: data.dealId, isPrimary: true },
@@ -41,7 +40,8 @@ export const addDealContact = authActionClient
       },
     })
 
-    revalidateTag(`pipeline:${ctx.userId}`)
+    revalidateTag(`pipeline:${ctx.orgId}`)
+    revalidateTag(`deals:${ctx.orgId}`)
 
     return { success: true }
   })

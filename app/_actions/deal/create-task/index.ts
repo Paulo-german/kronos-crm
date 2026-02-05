@@ -1,41 +1,35 @@
 'use server'
 
-import { authActionClient } from '@/_lib/safe-action'
+import { orgActionClient } from '@/_lib/safe-action'
 import { createTaskSchema } from './schema'
 import { db } from '@/_lib/prisma'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
+import { findDealWithRBAC, canPerformAction, requirePermission, resolveAssignedTo } from '@/_lib/rbac'
 
-export const createTask = authActionClient
+export const createTask = orgActionClient
   .schema(createTaskSchema)
   .action(async ({ parsedInput: data, ctx }) => {
-    // Verifica ownership do deal
-    const deal = await db.deal.findFirst({
-      where: {
-        id: data.dealId,
-        stage: {
-          pipeline: {
-            createdBy: ctx.userId,
-          },
-        },
-      },
-    })
+    // 1. Verificar permissão base para criar tasks
+    requirePermission(canPerformAction(ctx, 'task', 'create'))
 
-    if (!deal) {
-      throw new Error('Deal não encontrado ou não pertence a você.')
-    }
+    // 2. Buscar deal com verificação RBAC (acessa o deal pai)
+    await findDealWithRBAC(data.dealId, ctx)
 
-    // Cria a tarefa
+    // 3. Resolver assignedTo (MEMBER = forçado para si mesmo)
+    const assignedTo = resolveAssignedTo(ctx, data.assignedTo)
+
+    // 4. Cria a tarefa
     await db.task.create({
       data: {
+        organizationId: ctx.orgId,
         title: data.title,
         dueDate: data.dueDate || null,
         dealId: data.dealId,
-        assignedTo: ctx.userId,
+        assignedTo,
         createdBy: ctx.userId,
       },
     })
 
-    // Registra atividade
     await db.activity.create({
       data: {
         type: 'task_created',
@@ -46,6 +40,7 @@ export const createTask = authActionClient
 
     revalidatePath('/pipeline')
     revalidatePath(`/pipeline/deal/${data.dealId}`)
+    revalidateTag(`tasks:${ctx.orgId}`)
 
     return { success: true }
   })

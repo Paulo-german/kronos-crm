@@ -6,6 +6,7 @@ export const createDealSchema = z.object({
   contactId: z.string().uuid('ID do contato inválido').optional().nullable(),
   companyId: z.string().uuid('ID da empresa inválido').optional().nullable(),
   expectedCloseDate: z.date().optional(),
+  assignedTo: z.string().uuid().optional().nullable(), // RBAC: quem é responsável
 })
 
 export type CreateDealInput = z.infer<typeof createDealSchema>
@@ -17,6 +18,7 @@ export const dealFormSchema = z.object({
   contactId: z.string().optional(),
   companyId: z.string().optional(),
   expectedCloseDate: z.date().optional(),
+  assignedTo: z.string().optional(),
 })
 
 export type DealFormInput = z.infer<typeof dealFormSchema>

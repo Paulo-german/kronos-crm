@@ -1,59 +1,72 @@
 'use server'
 
-import { authActionClient } from '@/_lib/safe-action'
+import { orgActionClient } from '@/_lib/safe-action'
 import { createDealSchema } from './schema'
 import { db } from '@/_lib/prisma'
 import { revalidatePath, revalidateTag } from 'next/cache'
+import {
+  canPerformAction,
+  requirePermission,
+  requireQuota,
+  resolveAssignedTo,
+} from '@/_lib/rbac'
 
-export const createDeal = authActionClient
+export const createDeal = orgActionClient
   .schema(createDealSchema)
   .action(async ({ parsedInput: data, ctx }) => {
-    // Verifica ownership da stage (via pipeline)
+    // 1. Verificar permissão base
+    requirePermission(canPerformAction(ctx, 'deal', 'create'))
+
+    // 2. Verificar quota do plano
+    await requireQuota(ctx.orgId, 'deal')
+
+    // 3. Resolver assignedTo (MEMBER = forçado para si mesmo)
+    const assignedTo = resolveAssignedTo(ctx, data.assignedTo)
+
+    // 4. Verifica ownership da stage via organização
     const stage = await db.pipelineStage.findFirst({
       where: {
         id: data.stageId,
         pipeline: {
-          createdBy: ctx.userId,
+          organizationId: ctx.orgId,
         },
       },
     })
 
     if (!stage) {
-      throw new Error('Etapa não encontrada ou não pertence a você.')
+      throw new Error('Etapa não encontrada.')
     }
 
     const contact = data.contactId
       ? await db.contact.findFirst({
           where: {
             id: data.contactId,
-            ownerId: ctx.userId,
+            organizationId: ctx.orgId,
           },
         })
       : null
 
-    // Valida contato se informado
     if (data.contactId && !contact) {
-      throw new Error('Contato não encontrado ou não pertence a você.')
+      throw new Error('Contato não encontrado.')
     }
 
-    // Valida empresa se informada
     if (data.companyId) {
       const company = await db.company.findFirst({
         where: {
           id: data.companyId,
-          ownerId: ctx.userId,
+          organizationId: ctx.orgId,
         },
       })
       if (!company) {
-        throw new Error('Empresa não encontrada ou não pertence a você.')
+        throw new Error('Empresa não encontrada.')
       }
     }
 
     const deal = await db.deal.create({
       data: {
+        organizationId: ctx.orgId,
         title: data.title,
         pipelineStageId: data.stageId,
-        // Se houver contato, cria como primary
         contacts: data.contactId
           ? {
               create: {
@@ -65,12 +78,13 @@ export const createDeal = authActionClient
           : undefined,
         companyId: data.companyId || null,
         expectedCloseDate: data.expectedCloseDate || null,
-        assignedTo: ctx.userId,
+        assignedTo,
       },
     })
 
     revalidatePath('/pipeline')
-    revalidateTag(`pipeline:${ctx.userId}`)
+    revalidateTag(`pipeline:${ctx.orgId}`)
+    revalidateTag(`deals:${ctx.orgId}`)
 
     return { success: true, dealId: deal.id }
   })

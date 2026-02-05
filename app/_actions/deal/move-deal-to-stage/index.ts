@@ -1,23 +1,23 @@
 'use server'
 
-import { authActionClient } from '@/_lib/safe-action'
+import { orgActionClient } from '@/_lib/safe-action'
 import { moveDealToStageSchema } from './schema'
 import { db } from '@/_lib/prisma'
 import { revalidatePath, revalidateTag } from 'next/cache'
+import { findDealWithRBAC, canPerformAction, requirePermission } from '@/_lib/rbac'
 
-export const moveDealToStage = authActionClient
+export const moveDealToStage = orgActionClient
   .schema(moveDealToStageSchema)
   .action(async ({ parsedInput: data, ctx }) => {
-    // Verifica ownership do deal
+    // 1. Verificar permissão base
+    requirePermission(canPerformAction(ctx, 'deal', 'update'))
+
+    // 2. Buscar deal com verificação RBAC
+    const dealBase = await findDealWithRBAC(data.dealId, ctx)
+
+    // 3. Buscar dados completos do deal para o resto da operação
     const deal = await db.deal.findFirst({
-      where: {
-        id: data.dealId,
-        stage: {
-          pipeline: {
-            createdBy: ctx.userId,
-          },
-        },
-      },
+      where: { id: dealBase.id },
       include: {
         stage: {
           include: {
@@ -28,7 +28,7 @@ export const moveDealToStage = authActionClient
     })
 
     if (!deal) {
-      throw new Error('Deal não encontrado ou não pertence a você.')
+      throw new Error('Negócio não encontrado.')
     }
 
     // Verifica se a nova etapa pertence ao mesmo pipeline
@@ -52,12 +52,10 @@ export const moveDealToStage = authActionClient
       where: { id: data.dealId },
       data: {
         pipelineStageId: data.stageId,
-        // Se o deal estiver OPEN (novo), muda para IN_PROGRESS ao mover
         ...(deal.status === 'OPEN' && { status: 'IN_PROGRESS' }),
       },
     })
 
-    // Registra atividade de mudança de etapa
     await db.activity.create({
       data: {
         type: 'stage_change',
@@ -68,7 +66,8 @@ export const moveDealToStage = authActionClient
 
     revalidatePath('/pipeline')
     revalidatePath(`/pipeline/deal/${data.dealId}`)
-    revalidateTag(`pipeline:${ctx.userId}`)
+    revalidateTag(`pipeline:${ctx.orgId}`)
+    revalidateTag(`deals:${ctx.orgId}`)
 
     return { success: true, moved: true }
   })

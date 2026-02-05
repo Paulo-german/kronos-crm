@@ -8,6 +8,7 @@ export const contactSchema = z.object({
   cpf: z.string().optional(),
   companyId: z.string().uuid().optional().nullable(),
   isDecisionMaker: z.boolean(),
+  assignedTo: z.string().uuid().optional().nullable(), // RBAC: quem é responsável
 })
 
 export type ContactInput = z.infer<typeof contactSchema>

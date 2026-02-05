@@ -8,6 +8,7 @@ export const updateDealSchema = z.object({
   contactId: z.string().uuid('ID do contato inválido').optional().nullable(),
   companyId: z.string().uuid('ID da empresa inválido').optional().nullable(),
   expectedCloseDate: z.coerce.date().optional().nullable(),
+  assignedTo: z.string().uuid().optional().nullable(), // RBAC: transferência de ownership
 })
 
 export type UpdateDealInput = z.infer<typeof updateDealSchema>

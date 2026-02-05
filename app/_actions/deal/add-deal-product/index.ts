@@ -1,42 +1,33 @@
 'use server'
 
-import { authActionClient } from '@/_lib/safe-action'
+import { orgActionClient } from '@/_lib/safe-action'
 import { addDealProductSchema } from './schema'
 import { db } from '@/_lib/prisma'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
+import { findDealWithRBAC, canPerformAction, requirePermission } from '@/_lib/rbac'
 
-export const addDealProduct = authActionClient
+export const addDealProduct = orgActionClient
   .schema(addDealProductSchema)
   .action(async ({ parsedInput: data, ctx }) => {
-    // Verifica ownership do deal
-    const deal = await db.deal.findFirst({
-      where: {
-        id: data.dealId,
-        stage: {
-          pipeline: {
-            createdBy: ctx.userId,
-          },
-        },
-      },
-    })
+    // 1. Verificar permissão base
+    requirePermission(canPerformAction(ctx, 'deal', 'update'))
 
-    if (!deal) {
-      throw new Error('Deal não encontrado ou não pertence a você.')
-    }
+    // 2. Buscar deal com verificação RBAC
+    await findDealWithRBAC(data.dealId, ctx)
 
-    // Verifica ownership do produto
+    // 3. Verifica ownership do produto via organização
     const product = await db.product.findFirst({
       where: {
         id: data.productId,
-        ownerId: ctx.userId,
+        organizationId: ctx.orgId,
       },
     })
 
     if (!product) {
-      throw new Error('Produto não encontrado ou não pertence a você.')
+      throw new Error('Produto não encontrado.')
     }
 
-    // Cria o DealProduct
+    // 4. Cria o DealProduct
     const dealProduct = await db.dealProduct.create({
       data: {
         dealId: data.dealId,
@@ -48,7 +39,6 @@ export const addDealProduct = authActionClient
       },
     })
 
-    // Registra atividade
     await db.activity.create({
       data: {
         type: 'product_added',
@@ -59,6 +49,7 @@ export const addDealProduct = authActionClient
 
     revalidatePath('/pipeline')
     revalidatePath(`/pipeline/deal/${data.dealId}`)
+    revalidateTag(`deals:${ctx.orgId}`)
 
     return { success: true, dealProductId: dealProduct.id }
   })

@@ -1,24 +1,30 @@
 'use server'
 
-import { authActionClient } from '@/_lib/safe-action'
+import { orgActionClient } from '@/_lib/safe-action'
 import { toggleTaskStatusSchema } from './schema'
 import { db } from '@/_lib/prisma'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
+import { findTaskWithRBAC, canPerformAction, requirePermission } from '@/_lib/rbac'
 
-export const toggleTaskStatus = authActionClient
+export const toggleTaskStatus = orgActionClient
   .schema(toggleTaskStatusSchema)
   .action(async ({ parsedInput: data, ctx }) => {
+    // 1. Verificar permissão base
+    requirePermission(canPerformAction(ctx, 'task', 'update'))
+
+    // 2. Buscar tarefa com verificação RBAC (já valida acesso)
+    await findTaskWithRBAC(data.id, ctx)
+
+    // 3. Buscar dados completos para activity
     const task = await db.task.findFirst({
-      where: {
-        id: data.id,
-        OR: [{ assignedTo: ctx.userId }, { createdBy: ctx.userId }],
-      },
+      where: { id: data.id },
     })
 
     if (!task) {
-      throw new Error('Tarefa não encontrada ou não pertence a você.')
+      throw new Error('Tarefa não encontrada.')
     }
 
+    // 4. Toggle o status
     await db.task.update({
       where: { id: data.id },
       data: {
@@ -37,6 +43,7 @@ export const toggleTaskStatus = authActionClient
       })
     }
 
+    revalidateTag(`tasks:${ctx.orgId}`)
     revalidatePath('/tasks')
     revalidatePath('/pipeline')
     if (task.dealId) revalidatePath(`/pipeline/deal/${task.dealId}`)

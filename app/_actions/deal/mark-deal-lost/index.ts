@@ -1,37 +1,27 @@
 'use server'
 
-import { authActionClient } from '@/_lib/safe-action'
+import { orgActionClient } from '@/_lib/safe-action'
 import { markDealLostSchema } from './schema'
 import { db } from '@/_lib/prisma'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { ActivityType } from '@prisma/client'
+import { findDealWithRBAC, canPerformAction, requirePermission } from '@/_lib/rbac'
 
-export const markDealLost = authActionClient
+export const markDealLost = orgActionClient
   .schema(markDealLostSchema)
   .action(async ({ parsedInput: data, ctx }) => {
-    // Busca deal e valida ownership
-    const deal = await db.deal.findFirst({
-      where: {
-        id: data.dealId,
-        stage: {
-          pipeline: {
-            createdBy: ctx.userId,
-          },
-        },
-      },
-    })
+    // 1. Verificar permissão base
+    requirePermission(canPerformAction(ctx, 'deal', 'update'))
 
-    if (!deal) {
-      throw new Error('Deal não encontrado ou não pertence a você.')
-    }
+    // 2. Buscar deal com verificação RBAC
+    await findDealWithRBAC(data.dealId, ctx)
 
-    // Atualiza status do deal para LOST
+    // 3. Atualiza status do deal para LOST
     await db.deal.update({
       where: { id: data.dealId },
       data: { status: 'LOST' },
     })
 
-    // Registra atividade
     await db.activity.create({
       data: {
         type: ActivityType.deal_lost,
@@ -42,7 +32,8 @@ export const markDealLost = authActionClient
 
     revalidatePath('/pipeline')
     revalidatePath(`/pipeline/deal/${data.dealId}`)
-    revalidateTag(`pipeline:${ctx.userId}`)
+    revalidateTag(`pipeline:${ctx.orgId}`)
+    revalidateTag(`deals:${ctx.orgId}`)
 
     return { success: true }
   })

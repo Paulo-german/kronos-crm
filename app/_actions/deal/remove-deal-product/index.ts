@@ -1,23 +1,20 @@
 'use server'
 
-import { authActionClient } from '@/_lib/safe-action'
+import { orgActionClient } from '@/_lib/safe-action'
 import { removeDealProductSchema } from './schema'
 import { db } from '@/_lib/prisma'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
+import { findDealWithRBAC, canPerformAction, requirePermission } from '@/_lib/rbac'
 
-export const removeDealProduct = authActionClient
+export const removeDealProduct = orgActionClient
   .schema(removeDealProductSchema)
   .action(async ({ parsedInput: data, ctx }) => {
-    // Busca o DealProduct com validação de ownership
+    // 1. Busca o DealProduct
     const dealProduct = await db.dealProduct.findFirst({
       where: {
         id: data.dealProductId,
         deal: {
-          stage: {
-            pipeline: {
-              createdBy: ctx.userId,
-            },
-          },
+          organizationId: ctx.orgId,
         },
       },
       include: {
@@ -27,15 +24,20 @@ export const removeDealProduct = authActionClient
     })
 
     if (!dealProduct) {
-      throw new Error('Produto não encontrado ou não pertence a você.')
+      throw new Error('Produto não encontrado.')
     }
 
-    // Remove
+    // 2. Verificar permissão base
+    requirePermission(canPerformAction(ctx, 'deal', 'update'))
+
+    // 3. Verificar acesso ao deal via RBAC
+    await findDealWithRBAC(dealProduct.dealId, ctx)
+
+    // 4. Remove
     await db.dealProduct.delete({
       where: { id: data.dealProductId },
     })
 
-    // Registra atividade
     await db.activity.create({
       data: {
         type: 'product_removed',
@@ -46,6 +48,7 @@ export const removeDealProduct = authActionClient
 
     revalidatePath('/pipeline')
     revalidatePath(`/pipeline/deal/${dealProduct.dealId}`)
+    revalidateTag(`deals:${ctx.orgId}`)
 
     return { success: true }
   })

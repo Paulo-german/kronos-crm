@@ -1,30 +1,46 @@
 'use server'
 
-import { authActionClient } from '@/_lib/safe-action'
+import { orgActionClient } from '@/_lib/safe-action'
 import { contactSchema } from './schema'
 import { db } from '@/_lib/prisma'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
+import {
+  canPerformAction,
+  requirePermission,
+  resolveAssignedTo,
+  requireQuota,
+} from '@/_lib/rbac'
 
-export const createContact = authActionClient
+export const createContact = orgActionClient
   .schema(contactSchema)
   .action(async ({ parsedInput: data, ctx }) => {
-    // Se tem empresa, verifica se pertence ao usuário
+    // 1. Verificar permissão base para criar contatos
+    requirePermission(canPerformAction(ctx, 'contact', 'create'))
+
+    // 2. Verificar quota do plano
+    await requireQuota(ctx.orgId, 'contact')
+
+    // 3. Resolver assignedTo (MEMBER = forçado para si mesmo)
+    const assignedTo = resolveAssignedTo(ctx, data.assignedTo)
+
+    // 4. Se tem empresa, verifica se pertence à organização
     if (data.companyId) {
       const company = await db.company.findFirst({
         where: {
           id: data.companyId,
-          ownerId: ctx.userId,
+          organizationId: ctx.orgId,
         },
       })
 
       if (!company) {
-        throw new Error('Empresa não encontrada ou não pertence a você.')
+        throw new Error('Empresa não encontrada ou não pertence à organização.')
       }
     }
 
     const contact = await db.contact.create({
       data: {
-        ownerId: ctx.userId, // Owner direto
+        organizationId: ctx.orgId,
+        assignedTo,
         name: data.name,
         email: data.email || null,
         phone: data.phone || null,
@@ -35,6 +51,7 @@ export const createContact = authActionClient
       },
     })
 
+    revalidateTag(`contacts:${ctx.orgId}`)
     revalidatePath('/contacts')
 
     return { success: true, contactId: contact.id }

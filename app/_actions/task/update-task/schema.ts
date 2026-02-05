@@ -9,6 +9,7 @@ export const updateTaskSchema = z.object({
     .optional(),
   isCompleted: z.boolean().optional(),
   dealId: z.string().uuid().nullable().optional(),
+  assignedTo: z.string().uuid().optional().nullable(), // RBAC: transferência de ownership
 })
 
 export type UpdateTaskInput = z.infer<typeof updateTaskSchema>

@@ -1,15 +1,19 @@
 'use server'
 
-import { authActionClient } from '@/_lib/safe-action'
+import { orgActionClient } from '@/_lib/safe-action'
 import { getDealsOptions } from '@/_data-access/deal/get-deals-options'
 import { z } from 'zod'
 
-// Schema simples, sem input
 const schema = z.object({})
 
-export const getDealsOptionsAction = authActionClient
+export const getDealsOptionsAction = orgActionClient
   .schema(schema)
   .action(async ({ ctx }) => {
-    const deals = await getDealsOptions(ctx.userId)
+    // Passa o contexto RBAC completo para a função de data access
+    const deals = await getDealsOptions({
+      orgId: ctx.orgId,
+      userId: ctx.userId,
+      userRole: ctx.userRole,
+    })
     return deals
   })
