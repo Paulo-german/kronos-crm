@@ -17,10 +17,10 @@ export interface PipelineWithStagesDto {
   stages: StageDto[]
 }
 
-const fetchUserPipelineFromDb = async (userId: string) => {
+const fetchOrgPipelineFromDb = async (orgId: string) => {
   const pipeline = await db.pipeline.findFirst({
     where: {
-      createdBy: userId,
+      organizationId: orgId,
     },
     include: {
       stages: {
@@ -52,17 +52,20 @@ const fetchUserPipelineFromDb = async (userId: string) => {
 }
 
 /**
- * Busca o pipeline do usuário com todas as etapas (Cacheado)
+ * Busca o pipeline da organização com todas as etapas (Cacheado)
  * Usa Request Memoization (React) + Data Cache (Next.js)
  */
-export const getUserPipeline = cache(async (userId: string) => {
+export const getOrgPipeline = cache(async (orgId: string) => {
   const getCachedPipeline = unstable_cache(
-    async () => fetchUserPipelineFromDb(userId),
-    [`user-pipeline-${userId}`],
+    async () => fetchOrgPipelineFromDb(orgId),
+    [`org-pipeline-${orgId}`],
     {
-      tags: [`pipeline:${userId}`],
+      tags: [`pipeline:${orgId}`],
     },
   )
 
   return getCachedPipeline()
 })
+
+// Alias para backward compatibility durante migração
+export const getUserPipeline = getOrgPipeline

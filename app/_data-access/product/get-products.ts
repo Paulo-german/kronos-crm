@@ -11,13 +11,13 @@ export interface ProductDto {
 }
 
 /**
- * Busca todos os produtos do usuário
- * Multi-tenancy via ownerId
+ * Busca todos os produtos da organização
+ * Multi-tenancy via organizationId
  */
-export const getProducts = async (userId: string): Promise<ProductDto[]> => {
+export const getProducts = async (orgId: string): Promise<ProductDto[]> => {
   const products = await db.product.findMany({
     where: {
-      ownerId: userId,
+      organizationId: orgId,
     },
     orderBy: {
       createdAt: 'desc',

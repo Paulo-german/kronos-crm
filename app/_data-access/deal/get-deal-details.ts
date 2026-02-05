@@ -1,5 +1,7 @@
 import 'server-only'
 import { db } from '@/_lib/prisma'
+import type { RBACContext } from '@/_lib/rbac'
+import { isElevated } from '@/_lib/rbac'
 
 export interface DealProductDto {
   id: string
@@ -14,7 +16,7 @@ export interface DealProductDto {
 
 export interface DealActivityDto {
   id: string
-  type: string // note | call | email | meeting | stage_change | product_added | product_removed | task_created | task_completed
+  type: string
   content: string
   createdAt: Date
 }
@@ -22,8 +24,10 @@ export interface DealActivityDto {
 export interface DealTaskDto {
   id: string
   title: string
+  type: string
   dueDate: Date | null
   isCompleted: boolean
+  dealId: string
 }
 
 export interface PipelineStageDto {
@@ -38,9 +42,9 @@ export interface DealContactDto {
   name: string
   email: string | null
   phone: string | null
-  role: string | null // Role specific to this deal (e.g. Decisor)
+  role: string | null
   isPrimary: boolean
-  contactOriginalRole: string | null // Role from the contact card
+  contactOriginalRole: string | null
 }
 
 export interface DealDetailsDto {
@@ -52,43 +56,38 @@ export interface DealDetailsDto {
   expectedCloseDate: Date | null
   createdAt: Date
   updatedAt: Date
-  // Stage info
   stageId: string
   stageName: string
   stageColor: string | null
-  // Pipeline info
   pipelineId: string
   availableStages: PipelineStageDto[]
-  // Contacts (N:N)
   contacts: DealContactDto[]
-  // Company (detailed)
   companyId: string | null
   companyName: string | null
   companyDomain: string | null
   companyIndustry: string | null
-  // Assignee
   assigneeId: string
   assigneeName: string | null
-  // Calculated
   totalValue: number
-  // Related data
   products: DealProductDto[]
   activities: DealActivityDto[]
   tasks: DealTaskDto[]
 }
 
+/**
+ * Busca detalhes completos de um deal
+ * RBAC: MEMBER só vê deals atribuídos a ele
+ */
 export const getDealDetails = async (
   dealId: string,
-  userId: string,
+  ctx: RBACContext,
 ): Promise<DealDetailsDto | null> => {
   const deal = await db.deal.findFirst({
     where: {
       id: dealId,
-      stage: {
-        pipeline: {
-          createdBy: userId,
-        },
-      },
+      organizationId: ctx.orgId,
+      // RBAC: MEMBER só vê próprios, ADMIN/OWNER vê todos
+      ...(isElevated(ctx.userRole) ? {} : { assignedTo: ctx.userId }),
     },
     include: {
       stage: {
@@ -138,7 +137,6 @@ export const getDealDetails = async (
 
   if (!deal) return null
 
-  // Calculate products with subtotals
   const products: DealProductDto[] = deal.dealProducts.map((dp) => {
     const subtotal = Number(dp.unitPrice) * dp.quantity
     const discount =
@@ -184,9 +182,9 @@ export const getDealDetails = async (
       name: dc.contact.name,
       email: dc.contact.email,
       phone: dc.contact.phone,
-      role: dc.contact.role, // Agora mostrando o cargo do contato
+      role: dc.contact.role,
       isPrimary: dc.isPrimary,
-      contactOriginalRole: dc.role, // Invertendo para manter o dado se necessário futuramente
+      contactOriginalRole: dc.role,
     })),
     companyId: deal.companyId,
     companyName: deal.company?.name ?? null,
@@ -205,8 +203,10 @@ export const getDealDetails = async (
     tasks: deal.tasks.map((t) => ({
       id: t.id,
       title: t.title,
+      type: t.type,
       dueDate: t.dueDate,
       isCompleted: t.isCompleted,
+      dealId: deal.id,
     })),
   }
 }

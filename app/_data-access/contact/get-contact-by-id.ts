@@ -1,5 +1,7 @@
 import 'server-only'
 import { db } from '@/_lib/prisma'
+import type { RBACContext } from '@/_lib/rbac'
+import { isElevated } from '@/_lib/rbac'
 
 export interface ContactDetailDto {
   id: string
@@ -10,6 +12,7 @@ export interface ContactDetailDto {
   cpf: string | null
   isDecisionMaker: boolean
   companyId: string | null
+  assignedTo: string | null
   company: {
     id: string
     name: string
@@ -24,16 +27,18 @@ export interface ContactDetailDto {
 
 /**
  * Busca um contato específico por ID
- * Multi-tenancy via ownerId direto
+ * RBAC: MEMBER só vê contatos atribuídos a ele
  */
 export const getContactById = async (
   contactId: string,
-  userId: string,
+  ctx: RBACContext,
 ): Promise<ContactDetailDto | null> => {
   const contact = await db.contact.findFirst({
     where: {
       id: contactId,
-      ownerId: userId,
+      organizationId: ctx.orgId,
+      // RBAC: MEMBER só vê próprios, ADMIN/OWNER vê todos
+      ...(isElevated(ctx.userRole) ? {} : { assignedTo: ctx.userId }),
     },
     include: {
       company: {
@@ -66,6 +71,7 @@ export const getContactById = async (
     cpf: contact.cpf,
     isDecisionMaker: contact.isDecisionMaker,
     companyId: contact.companyId,
+    assignedTo: contact.assignedTo,
     company: contact.company,
     deals: contact.deals.map((deal) => deal.deal),
     createdAt: contact.createdAt,

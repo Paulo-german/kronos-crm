@@ -6,10 +6,10 @@ export interface CompanyDto {
   name: string
 }
 
-export const getCompanies = async (userId: string): Promise<CompanyDto[]> => {
+export const getCompanies = async (orgId: string): Promise<CompanyDto[]> => {
   return await db.company.findMany({
     where: {
-      ownerId: userId,
+      organizationId: orgId,
     },
     select: {
       id: true,

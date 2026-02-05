@@ -1,28 +1,36 @@
 import 'server-only'
-
 import { db } from '@/_lib/prisma'
+import type { RBACContext } from '@/_lib/rbac'
+import { isElevated } from '@/_lib/rbac'
 
 export type TaskDto = {
   id: string
   title: string
-  type: string // Vamos tipar como string no DTO para simplificar no front, ou importar TaskType
+  type: string
   dueDate: Date | null
   isCompleted: boolean
   dealId: string | null
   deal: {
     title: string
   } | null
+  assignedTo: string
   createdAt: Date
 }
 
-export const getTasks = async (userId: string): Promise<TaskDto[]> => {
+/**
+ * Busca todas as tarefas da organização
+ * RBAC: MEMBER só vê tarefas atribuídas a ele
+ */
+export const getTasks = async (ctx: RBACContext): Promise<TaskDto[]> => {
   const tasks = await db.task.findMany({
     where: {
-      OR: [{ assignedTo: userId }, { createdBy: userId }],
+      organizationId: ctx.orgId,
+      // RBAC: MEMBER só vê próprias, ADMIN/OWNER vê todas
+      ...(isElevated(ctx.userRole) ? {} : { assignedTo: ctx.userId }),
     },
     orderBy: [
-      { isCompleted: 'asc' }, // Pendentes primeiro
-      { dueDate: 'asc' }, // Depois por data
+      { isCompleted: 'asc' },
+      { dueDate: 'asc' },
       { createdAt: 'desc' },
     ],
     select: {
@@ -32,6 +40,7 @@ export const getTasks = async (userId: string): Promise<TaskDto[]> => {
       dueDate: true,
       isCompleted: true,
       dealId: true,
+      assignedTo: true,
       deal: {
         select: {
           title: true,

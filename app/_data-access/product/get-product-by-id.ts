@@ -12,16 +12,16 @@ export interface ProductDetailDto {
 
 /**
  * Busca um produto específico por ID
- * Multi-tenancy via ownerId
+ * Multi-tenancy via organizationId
  */
 export const getProductById = async (
   productId: string,
-  userId: string,
+  orgId: string,
 ): Promise<ProductDetailDto | null> => {
   const product = await db.product.findFirst({
     where: {
       id: productId,
-      ownerId: userId,
+      organizationId: orgId,
     },
   })
 

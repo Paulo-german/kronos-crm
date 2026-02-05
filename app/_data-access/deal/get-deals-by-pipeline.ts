@@ -1,7 +1,8 @@
 import 'server-only'
 import { db } from '@/_lib/prisma'
-// Importe os tipos gerados pelo Prisma para evitar erros de tipagem
 import { DealStatus, DealPriority } from '@prisma/client'
+import type { RBACContext } from '@/_lib/rbac'
+import { isElevated } from '@/_lib/rbac'
 
 export interface DealDto {
   id: string
@@ -16,6 +17,7 @@ export interface DealDto {
   expectedCloseDate: Date | null
   totalValue: number
   notes: string | null
+  assignedTo: string
   createdAt: Date
 }
 
@@ -23,35 +25,39 @@ export interface DealsByStageDto {
   [stageId: string]: DealDto[]
 }
 
+/**
+ * Busca todos os deals de um pipeline agrupados por stage
+ * RBAC: MEMBER só vê deals atribuídos a ele
+ *
+ * CORRIGIDO: Adicionado organizationId para multi-tenancy
+ */
 export const getDealsByPipeline = async (
   stageIds: string[],
+  ctx: RBACContext,
 ): Promise<DealsByStageDto> => {
   if (stageIds.length === 0) return {}
 
-  // 1. Inicializa estrutura de retorno
+  // Inicializa estrutura de retorno
   const result: DealsByStageDto = stageIds.reduce((acc, stageId) => {
     acc[stageId] = []
     return acc
   }, {} as DealsByStageDto)
 
-  // 2. CORREÇÃO PRINCIPAL: Buscamos na tabela 'deal', não 'dealContact'
   const deals = await db.deal.findMany({
     where: {
-      pipelineStageId: {
-        in: stageIds,
-      },
+      pipelineStageId: { in: stageIds },
+      // FIX CRÍTICO: Filtro por organização
+      organizationId: ctx.orgId,
+      // RBAC: MEMBER só vê próprios, ADMIN/OWNER vê todos
+      ...(isElevated(ctx.userRole) ? {} : { assignedTo: ctx.userId }),
     },
     include: {
-      // Busca a relação N:N (DealContact)
       contacts: {
-        // Tenta pegar o contato marcado como primário, ou o primeiro que encontrar
-        orderBy: {
-          isPrimary: 'desc',
-        },
+        orderBy: { isPrimary: 'desc' },
         take: 1,
         include: {
           contact: {
-            select: { name: true }, // Traz apenas o nome do contato final
+            select: { name: true },
           },
         },
       },
@@ -72,9 +78,8 @@ export const getDealsByPipeline = async (
     },
   })
 
-  // 3. Mapeamento dos dados
   for (const deal of deals) {
-    // Cálculo do valor total (mantido da sua lógica)
+    // Cálculo do valor total
     const totalValue = deal.dealProducts.reduce((sum, dp) => {
       const subtotal = Number(dp.unitPrice) * dp.quantity
       let discount = 0
@@ -89,20 +94,17 @@ export const getDealsByPipeline = async (
       return sum + (subtotal - discount)
     }, 0)
 
-    // Acessa o primeiro contato da lista (agora seguro)
-    // deal.contacts é um array de DealContact. O contato real está dentro de .contact
     const primaryLink = deal.contacts[0]
     const contactName = primaryLink?.contact?.name ?? null
     const contactId = primaryLink?.contactId ?? null
 
-    // Garante que o stage existe no result antes de dar push
     if (result[deal.pipelineStageId]) {
       result[deal.pipelineStageId].push({
         id: deal.id,
         title: deal.title,
         stageId: deal.pipelineStageId,
         status: deal.status,
-        priority: deal.priority, // O Prisma já tipa isso corretamente agora
+        priority: deal.priority,
         contactId,
         contactName,
         companyId: deal.companyId,
@@ -110,6 +112,7 @@ export const getDealsByPipeline = async (
         expectedCloseDate: deal.expectedCloseDate,
         totalValue,
         notes: deal.notes,
+        assignedTo: deal.assignedTo,
         createdAt: deal.createdAt,
       })
     }
