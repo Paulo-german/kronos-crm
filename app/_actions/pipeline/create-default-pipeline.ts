@@ -1,3 +1,5 @@
+'use server'
+
 import { db } from '@/_lib/prisma'
 import { revalidateTag } from 'next/cache'
 import type { PipelineWithStagesDto } from '@/_data-access/pipeline/get-user-pipeline'
@@ -12,57 +14,41 @@ const DEFAULT_STAGES = [
 ]
 
 interface CreateDefaultPipelineParams {
-  userId: string
+  orgId: string
   pipelineName?: string
 }
 
 /**
- * Cria um pipeline padrão para o usuário.
- * Se o usuário já tiver um pipeline, retorna o existente para evitar duplicatas.
+ * Cria um pipeline padrão para a organização.
+ * Se a organização já tiver um pipeline, retorna o existente para evitar duplicatas.
  * Usado tanto no seed quanto na inicialização da página de pipeline.
  *
  * @returns Sempre retorna um pipeline válido (nunca null)
  */
 export async function createDefaultPipeline({
-  userId,
+  orgId,
   pipelineName = 'Pipeline Principal',
 }: CreateDefaultPipelineParams): Promise<PipelineWithStagesDto> {
-  // Verifica se já existe pipeline para este usuário
+  // Verifica se já existe pipeline para esta organização
   const existingPipeline = await db.pipeline.findFirst({
-    where: { createdBy: userId },
+    where: { organizationId: orgId },
     include: {
-      stages: true,
+      stages: {
+        orderBy: { position: 'asc' },
+        include: {
+          _count: {
+            select: { deals: true },
+          },
+        },
+      },
     },
   })
 
   if (existingPipeline) {
-    // console.log(`ℹ️ Usuário ${userId} já possui pipeline.`)
-    // Precisa transformar para o formato esperado com dealCount
-    // Vamos buscar novamente com a contagem de deals
-    const pipelineWithCounts = await db.pipeline.findFirst({
-      where: { createdBy: userId },
-      include: {
-        stages: {
-          orderBy: { position: 'asc' },
-          include: {
-            _count: {
-              select: { deals: true },
-            },
-          },
-        },
-      },
-    })
-
-    if (!pipelineWithCounts) {
-      throw new Error(
-        `Pipeline não encontrado para o usuário ${userId} após verificação de existência`,
-      )
-    }
-
     return {
-      id: pipelineWithCounts.id,
-      name: pipelineWithCounts.name,
-      stages: pipelineWithCounts.stages.map((stage) => ({
+      id: existingPipeline.id,
+      name: existingPipeline.name,
+      stages: existingPipeline.stages.map((stage) => ({
         id: stage.id,
         name: stage.name,
         color: stage.color,
@@ -72,24 +58,24 @@ export async function createDefaultPipeline({
     }
   }
 
-  // console.log(`🌱 Criando pipeline padrão para usuário ${userId}...`)
-
   // Cria pipeline com etapas
   const pipeline = await db.pipeline.create({
     data: {
       name: pipelineName,
-      createdBy: userId,
+      organizationId: orgId,
       stages: {
         create: DEFAULT_STAGES,
       },
     },
     include: {
-      stages: true,
+      stages: {
+        orderBy: { position: 'asc' },
+      },
     },
   })
 
   // Invalida o cache para que o pipeline recém-criado seja buscado na próxima chamada
-  revalidateTag(`pipeline:${userId}`)
+  revalidateTag(`pipeline:${orgId}`)
 
   // Transforma para o formato esperado (com dealCount = 0 para novos stages)
   return {

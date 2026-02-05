@@ -1,19 +1,23 @@
 'use server'
 
-import { authActionClient } from '@/_lib/safe-action'
+import { orgActionClient } from '@/_lib/safe-action'
 import { deleteStageSchema } from './schema'
 import { db } from '@/_lib/prisma'
 import { revalidatePath, revalidateTag } from 'next/cache'
+import { canPerformAction, requirePermission } from '@/_lib/rbac'
 
-export const deleteStage = authActionClient
+export const deleteStage = orgActionClient
   .schema(deleteStageSchema)
   .action(async ({ parsedInput: data, ctx }) => {
-    // Verifica ownership via pipeline
+    // 1. Verificar permissão base (apenas ADMIN/OWNER podem gerenciar pipeline)
+    requirePermission(canPerformAction(ctx, 'pipeline', 'delete'))
+
+    // 2. Verifica ownership via organização
     const stage = await db.pipelineStage.findFirst({
       where: {
         id: data.id,
         pipeline: {
-          createdBy: ctx.userId,
+          organizationId: ctx.orgId,
         },
       },
       include: {
@@ -25,7 +29,7 @@ export const deleteStage = authActionClient
     })
 
     if (!stage) {
-      throw new Error('Etapa não encontrada ou não pertence a você.')
+      throw new Error('Etapa não encontrada.')
     }
 
     // Bloqueia exclusão se tiver deals
@@ -41,7 +45,7 @@ export const deleteStage = authActionClient
 
     revalidatePath('/pipeline')
     revalidatePath('/pipeline/settings')
-    revalidateTag(`pipeline:${ctx.userId}`)
+    revalidateTag(`pipeline:${ctx.orgId}`)
 
     return { success: true }
   })

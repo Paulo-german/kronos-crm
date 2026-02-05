@@ -1,19 +1,23 @@
 'use server'
 
-import { authActionClient } from '@/_lib/safe-action'
+import { orgActionClient } from '@/_lib/safe-action'
 import { deleteStageWithMigrationSchema } from './schema'
 import { db } from '@/_lib/prisma'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
+import { canPerformAction, requirePermission } from '@/_lib/rbac'
 
-export const deleteStageWithMigration = authActionClient
+export const deleteStageWithMigration = orgActionClient
   .schema(deleteStageWithMigrationSchema)
   .action(async ({ parsedInput: data, ctx }) => {
-    // Verifica ownership da etapa que será deletada
+    // 1. Verificar permissão base (apenas ADMIN/OWNER podem gerenciar pipeline)
+    requirePermission(canPerformAction(ctx, 'pipeline', 'delete'))
+
+    // 2. Verifica ownership via organização
     const stage = await db.pipelineStage.findFirst({
       where: {
         id: data.stageId,
         pipeline: {
-          createdBy: ctx.userId,
+          organizationId: ctx.orgId,
         },
       },
       include: {
@@ -24,7 +28,7 @@ export const deleteStageWithMigration = authActionClient
     })
 
     if (!stage) {
-      throw new Error('Etapa não encontrada ou não pertence a você.')
+      throw new Error('Etapa não encontrada.')
     }
 
     // Verifica se a etapa de destino existe e pertence ao mesmo pipeline
@@ -59,6 +63,7 @@ export const deleteStageWithMigration = authActionClient
 
     revalidatePath('/pipeline')
     revalidatePath('/pipeline/settings')
+    revalidateTag(`pipeline:${ctx.orgId}`)
 
     return {
       success: true,

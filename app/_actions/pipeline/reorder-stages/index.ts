@@ -1,23 +1,27 @@
 'use server'
 
-import { authActionClient } from '@/_lib/safe-action'
+import { orgActionClient } from '@/_lib/safe-action'
 import { reorderStagesSchema } from './schema'
 import { db } from '@/_lib/prisma'
 import { revalidatePath, revalidateTag } from 'next/cache'
+import { canPerformAction, requirePermission } from '@/_lib/rbac'
 
-export const reorderStages = authActionClient
+export const reorderStages = orgActionClient
   .schema(reorderStagesSchema)
   .action(async ({ parsedInput: data, ctx }) => {
-    // Verifica ownership do pipeline
+    // 1. Verificar permissão base (apenas ADMIN/OWNER podem gerenciar pipeline)
+    requirePermission(canPerformAction(ctx, 'pipeline', 'update'))
+
+    // 2. Verifica ownership via organização
     const pipeline = await db.pipeline.findFirst({
       where: {
         id: data.pipelineId,
-        createdBy: ctx.userId,
+        organizationId: ctx.orgId,
       },
     })
 
     if (!pipeline) {
-      throw new Error('Pipeline não encontrado ou não pertence a você.')
+      throw new Error('Pipeline não encontrado.')
     }
 
     // Atualiza posições em batch
@@ -32,7 +36,7 @@ export const reorderStages = authActionClient
 
     revalidatePath('/pipeline')
     revalidatePath('/pipeline/settings')
-    revalidateTag(`pipeline:${ctx.userId}`)
+    revalidateTag(`pipeline:${ctx.orgId}`)
 
     return { success: true }
   })
