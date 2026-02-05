@@ -19,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/_components/ui/table'
-import { Button } from './ui/button'
+import { Button } from '@/_components/ui/button'
 import {
   Select,
   SelectContent,
@@ -33,7 +33,6 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   ChevronsUpDownIcon,
-  TrashIcon,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Checkbox } from './ui/checkbox'
@@ -43,14 +42,17 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
   enableSelection?: boolean
-  onDelete?: (selectedRows: TData[]) => void
+  bulkActions?: (props: {
+    selectedRows: TData[]
+    resetSelection: () => void
+  }) => React.ReactNode
 }
 
 export const DataTable = <TData, TValue>({
   columns,
   data,
   enableSelection = false,
-  onDelete,
+  bulkActions,
 }: DataTableProps<TData, TValue>) => {
   const [sorting, setSorting] = useState<SortingState>([])
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
@@ -105,17 +107,6 @@ export const DataTable = <TData, TValue>({
     },
   })
 
-  // Permite deletar passando as linhas inteiras
-  const handleDelete = () => {
-    if (onDelete) {
-      const selectedRows = table
-        .getFilteredSelectedRowModel()
-        .rows.map((row) => row.original)
-      onDelete(selectedRows)
-      table.resetRowSelection()
-    }
-  }
-
   return (
     <div className="space-y-4">
       <div className="rounded-md border">
@@ -155,6 +146,7 @@ export const DataTable = <TData, TValue>({
                 </TableRow>
               ))}
             </TableHeader>
+            {/* Body da tabela */}
             <TableBody className="bg-card/80">
               {table.getRowModel().rows?.length ? (
                 table.getRowModel().rows.map((row) => (
@@ -175,8 +167,8 @@ export const DataTable = <TData, TValue>({
               ) : (
                 <TableRow>
                   <TableCell
-                    colSpan={columns.length}
-                    className="h-24 text-center"
+                    colSpan={table.getVisibleFlatColumns().length}
+                    className="h-72 text-center"
                   >
                     Nenhum resultado encontrado.
                   </TableCell>
@@ -186,26 +178,22 @@ export const DataTable = <TData, TValue>({
           </Table>
         </div>
       </div>
-
+      {/* Bulk actions */}
       {enableSelection &&
         table.getFilteredSelectedRowModel().rows.length > 0 && (
           <div className="flex items-center justify-between rounded-md border bg-muted/50 px-4 py-2">
-            <span className="text-sm text-muted-foreground">
+            <span className="text-sm text-muted-foreground transition-all">
               {table.getFilteredSelectedRowModel().rows.length} item(s)
               selecionado(s).
             </span>
             <div className="flex items-center space-x-2">
-              {onDelete && (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="h-8"
-                  onClick={handleDelete}
-                >
-                  <TrashIcon className="mr-2 h-4 w-4" />
-                  Deletar
-                </Button>
-              )}
+              {bulkActions &&
+                bulkActions({
+                  selectedRows: table
+                    .getFilteredSelectedRowModel()
+                    .rows.map((row) => row.original),
+                  resetSelection: () => table.resetRowSelection(),
+                })}
             </div>
           </div>
         )}
