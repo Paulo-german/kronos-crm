@@ -1,0 +1,37 @@
+import { getOrgContext } from '@/_data-access/organization/get-organization-context'
+import { getUserById } from '@/_data-access/user/get-user-by-id'
+import { redirect } from 'next/navigation'
+import { ProfileForm } from './_components/profile-form'
+import { SecurityCard } from './_components/security-card'
+
+interface ProfileSettingsPageProps {
+  params: Promise<{ orgSlug: string }>
+}
+
+export default async function ProfileSettingsPage({
+  params,
+}: ProfileSettingsPageProps) {
+  const { orgSlug } = await params
+  const { userId } = await getOrgContext(orgSlug)
+
+  const user = await getUserById(userId)
+
+  if (!user) {
+    redirect(`/org/${orgSlug}/settings`)
+  }
+
+  return (
+    <div className="container mx-auto space-y-6 py-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Perfil</h1>
+        <p className="text-muted-foreground">
+          Atualize suas informações pessoais.
+        </p>
+      </div>
+
+      <ProfileForm user={user} />
+
+      <SecurityCard />
+    </div>
+  )
+}
