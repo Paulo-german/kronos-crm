@@ -33,6 +33,11 @@ enum OrganizationPlan {
   ENTERPRISE
 }
 
+enum PersonType {
+  PJ // Pessoa Jurídica
+  PF // Pessoa Física
+}
+
 enum SubscriptionStatus {
   active
   past_due
@@ -122,6 +127,28 @@ model Organization {
   stripeCustomerId   String?            @map("stripe_customer_id")
   plan               OrganizationPlan   @default(FREE)
   subscriptionStatus SubscriptionStatus @default(active) @map("subscription_status")
+
+  // Dados Cadastrais
+  personType PersonType? @map("person_type")
+  taxId      String?     @map("tax_id") // CNPJ ou CPF (apenas dígitos)
+  legalName  String?     @map("legal_name") // Razão Social ou Nome Completo
+  tradeName  String?     @map("trade_name") // Nome Fantasia (apenas PJ)
+  isSimples  Boolean     @default(false) @map("is_simples")
+
+  // Contato Financeiro
+  billingContactName  String? @map("billing_contact_name")
+  billingContactEmail String? @map("billing_contact_email")
+  billingContactPhone String? @map("billing_contact_phone")
+
+  // Endereço de Faturamento
+  billingZipCode      String? @map("billing_zip_code")
+  billingStreet       String? @map("billing_street")
+  billingNumber       String? @map("billing_number")
+  billingComplement   String? @map("billing_complement")
+  billingNeighborhood String? @map("billing_neighborhood")
+  billingCity         String? @map("billing_city")
+  billingState        String? @map("billing_state")
+  billingCountry      String? @default("BR") @map("billing_country")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
