@@ -23,14 +23,14 @@ export const SignOutButton = ({ isCollapsed = false }: SignOutButtonProps) => {
       variant="ghost"
       size={isCollapsed ? 'icon' : 'sm'}
       className={cn(
-        'text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive',
-        isCollapsed ? 'h-9 w-9' : 'w-full justify-start',
+        'text-sm text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive',
+        isCollapsed ? 'h-8 w-full' : 'w-full justify-start',
       )}
       onClick={() => execute()}
       disabled={status === 'executing'}
     >
       <LogOut className={cn('h-4 w-4', !isCollapsed && 'mr-2')} />
-      {!isCollapsed && (status === 'executing' ? 'Saindo...' : 'Sair')}
+      {!isCollapsed && 'Sair'}
     </Button>
   )
 
