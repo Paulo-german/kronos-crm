@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
-import { getOrganizationBySlug } from '@/_data-access/organization/get-organization-by-slug'
+import { getPlanLimits } from '@/_lib/rbac/plan-limits'
 import { PlansGrid } from './_components/plans-grid'
 import { ComparisonTable } from './_components/comparison-table'
 import { PlansFaq } from './_components/plans-faq'
@@ -13,17 +13,13 @@ export default async function BillingSettingsPage({
   params,
 }: BillingSettingsPageProps) {
   const { orgSlug } = await params
-  const { userRole } = await getOrgContext(orgSlug)
+  const { userRole, orgId } = await getOrgContext(orgSlug)
 
   if (userRole !== 'ADMIN' && userRole !== 'OWNER') {
     redirect(`/org/${orgSlug}/settings`)
   }
 
-  const organization = await getOrganizationBySlug(orgSlug)
-
-  if (!organization) {
-    redirect(`/org/${orgSlug}/settings`)
-  }
+  const { plan } = await getPlanLimits(orgId)
 
   return (
     <div className="container mx-auto space-y-12 py-6">
@@ -34,7 +30,7 @@ export default async function BillingSettingsPage({
         </p>
       </div>
 
-      <PlansGrid currentPlan={organization.plan} />
+      <PlansGrid currentPlan={plan} />
 
       <ComparisonTable />
 

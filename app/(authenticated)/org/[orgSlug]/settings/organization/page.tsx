@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getOrganizationBySlug } from '@/_data-access/organization/get-organization-by-slug'
+import { getPlanLimits } from '@/_lib/rbac/plan-limits'
 import { OrganizationSettingsForm } from './_components/organization-settings-form'
 
 interface OrganizationSettingsPageProps {
@@ -11,7 +12,7 @@ export default async function OrganizationSettingsPage({
   params,
 }: OrganizationSettingsPageProps) {
   const { orgSlug } = await params
-  const { userRole } = await getOrgContext(orgSlug)
+  const { userRole, orgId } = await getOrgContext(orgSlug)
 
   if (userRole !== 'ADMIN' && userRole !== 'OWNER') {
     redirect(`/org/${orgSlug}/settings`)
@@ -23,6 +24,8 @@ export default async function OrganizationSettingsPage({
     redirect(`/org/${orgSlug}/settings`)
   }
 
+  const { plan } = await getPlanLimits(orgId)
+
   return (
     <div className="flex flex-col justify-center gap-2">
       <div className="mb-4">
@@ -32,7 +35,7 @@ export default async function OrganizationSettingsPage({
         </p>
       </div>
 
-      <OrganizationSettingsForm organization={organization} />
+      <OrganizationSettingsForm organization={organization} currentPlan={plan} />
     </div>
   )
 }

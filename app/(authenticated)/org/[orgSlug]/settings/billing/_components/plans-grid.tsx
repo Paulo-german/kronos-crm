@@ -1,9 +1,9 @@
-import type { OrganizationPlan } from '@prisma/client'
+import type { PlanType } from '@/_lib/rbac/plan-limits'
 import { PlanCard } from './plan-card'
 import { PLANS } from './plans-data'
 
 interface PlansGridProps {
-  currentPlan: OrganizationPlan
+  currentPlan: PlanType
 }
 
 export function PlansGrid({ currentPlan }: PlansGridProps) {

@@ -1,4 +1,4 @@
-import type { OrganizationPlan } from '@prisma/client'
+import type { PlanType } from '@/_lib/rbac/plan-limits'
 
 export interface PlanFeature {
   name: string
@@ -6,7 +6,7 @@ export interface PlanFeature {
 }
 
 export interface PlanInfo {
-  id: OrganizationPlan
+  id: PlanType
   name: string
   description: string
   price: number
@@ -18,7 +18,7 @@ export interface PlanInfo {
 
 export const PLANS: PlanInfo[] = [
   {
-    id: 'FREE',
+    id: 'free',
     name: 'Gratuito',
     description: 'Ideal para começar a organizar seus contatos e negócios.',
     price: 0,
@@ -34,7 +34,7 @@ export const PLANS: PlanInfo[] = [
     ],
   },
   {
-    id: 'PRO',
+    id: 'pro',
     name: 'Profissional',
     description: 'Para equipes em crescimento que precisam de mais recursos.',
     price: 79,
@@ -51,7 +51,7 @@ export const PLANS: PlanInfo[] = [
     ],
   },
   {
-    id: 'ENTERPRISE',
+    id: 'enterprise',
     name: 'Empresarial',
     description: 'Para grandes equipes com necessidades avançadas.',
     price: 199,

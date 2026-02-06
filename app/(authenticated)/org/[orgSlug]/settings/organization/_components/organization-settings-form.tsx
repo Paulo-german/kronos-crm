@@ -45,13 +45,13 @@ import { PhoneInput } from '@/_components/form-controls/phone-input'
 import { useCepLookup } from '@/_hooks/use-cep-lookup'
 import { BRAZILIAN_STATES } from '@/_constants/brazilian-states'
 import { formatDate, onlyNumbers } from '@/_lib/utils'
-import type { PersonType, OrganizationPlan } from '@prisma/client'
+import type { PlanType } from '@/_lib/rbac/plan-limits'
+import type { PersonType } from '@prisma/client'
 
 interface Organization {
   id: string
   name: string
   slug: string
-  plan: OrganizationPlan
   createdAt: Date | string
   personType: PersonType | null
   taxId: string | null
@@ -73,10 +73,12 @@ interface Organization {
 
 interface OrganizationSettingsFormProps {
   organization: Organization
+  currentPlan: PlanType
 }
 
 export function OrganizationSettingsForm({
   organization,
+  currentPlan,
 }: OrganizationSettingsFormProps) {
   const [copied, setCopied] = useState(false)
 
@@ -165,12 +167,12 @@ export function OrganizationSettingsForm({
 
   const formattedDate = formatDate(organization.createdAt)
 
-  const isFree = organization.plan === 'FREE'
+  const isFree = currentPlan === 'free'
 
-  const planLabels: Record<OrganizationPlan, string> = {
-    FREE: 'Gratuito',
-    PRO: 'Profissional',
-    ENTERPRISE: 'Enterprise',
+  const planLabels: Record<PlanType, string> = {
+    free: 'Gratuito',
+    pro: 'Profissional',
+    enterprise: 'Enterprise',
   }
 
   return (
@@ -229,7 +231,7 @@ export function OrganizationSettingsForm({
                   </Label>
                   <div className="flex items-center gap-3">
                     <p className="text-sm font-medium">
-                      {planLabels[organization.plan]}
+                      {planLabels[currentPlan]}
                     </p>
                     <Button type="button" variant="outline" size="sm">
                       <Sparkles className="mr-2 h-4 w-4" />

@@ -10,11 +10,11 @@ import {
 } from '@/_components/ui/card'
 import { Button } from '@/_components/ui/button'
 import type { PlanInfo } from './plans-data'
-import type { OrganizationPlan } from '@prisma/client'
+import type { PlanType } from '@/_lib/rbac/plan-limits'
 
 interface PlanCardProps {
   plan: PlanInfo
-  currentPlan: OrganizationPlan
+  currentPlan: PlanType
 }
 
 export function PlanCard({ plan, currentPlan }: PlanCardProps) {
