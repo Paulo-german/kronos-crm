@@ -10,6 +10,26 @@ async function fetchOrganizationBySlug(slug: string) {
       name: true,
       slug: true,
       plan: true,
+      createdAt: true,
+      // Dados Cadastrais
+      personType: true,
+      taxId: true,
+      legalName: true,
+      tradeName: true,
+      isSimples: true,
+      // Contato Financeiro
+      billingContactName: true,
+      billingContactEmail: true,
+      billingContactPhone: true,
+      // Endereço de Faturamento
+      billingZipCode: true,
+      billingStreet: true,
+      billingNumber: true,
+      billingComplement: true,
+      billingNeighborhood: true,
+      billingCity: true,
+      billingState: true,
+      billingCountry: true,
     },
   })
 }
