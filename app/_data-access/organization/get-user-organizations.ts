@@ -15,7 +15,6 @@ async function fetchUserOrganizations(userId: string) {
           id: true,
           name: true,
           slug: true,
-          plan: true,
         },
       },
     },

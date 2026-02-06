@@ -1,24 +1,28 @@
-import type { OrganizationPlan } from '@prisma/client'
 import type { PlanLimits } from './types'
 import { db } from '@/_lib/prisma'
 
 /**
+ * Tipo local para identificar o plano, derivado do metadata.product_key da subscription ativa
+ */
+export type PlanType = 'free' | 'pro' | 'enterprise'
+
+/**
  * Limites por plano
  */
-const PLAN_LIMITS: Record<OrganizationPlan, PlanLimits> = {
-  FREE: {
+const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
+  free: {
     contacts: 50,
     deals: 25,
     products: 10,
     members: 2,
   },
-  PRO: {
+  pro: {
     contacts: 1000,
     deals: 500,
     products: 100,
     members: 10,
   },
-  ENTERPRISE: {
+  enterprise: {
     contacts: Infinity,
     deals: Infinity,
     products: Infinity,
@@ -37,14 +41,28 @@ const ENTITY_TO_LIMIT_KEY: Record<QuotaEntity, keyof PlanLimits> = {
 }
 
 /**
- * Obtém o plano atual de uma organização
+ * Obtém o plano atual de uma organização a partir da subscription ativa.
+ * Se não houver subscription ativa, retorna 'free'.
  */
-async function getOrganizationPlan(orgId: string): Promise<OrganizationPlan> {
-  const org = await db.organization.findUnique({
-    where: { id: orgId },
-    select: { plan: true },
+async function getOrganizationPlan(orgId: string): Promise<PlanType> {
+  const subscription = await db.subscription.findFirst({
+    where: {
+      organizationId: orgId,
+      status: { in: ['active', 'trialing'] },
+    },
+    select: { metadata: true },
+    orderBy: { createdAt: 'desc' },
   })
-  return org?.plan ?? 'FREE'
+
+  if (!subscription?.metadata) return 'free'
+
+  const metadata = subscription.metadata as Record<string, unknown>
+  const productKey = metadata.product_key as string | undefined
+
+  if (productKey === 'pro') return 'pro'
+  if (productKey === 'enterprise') return 'enterprise'
+
+  return 'free'
 }
 
 /**
@@ -117,7 +135,7 @@ export async function requireQuota(
 /**
  * Obtém os limites do plano de uma organização
  */
-export async function getPlanLimits(orgId: string): Promise<PlanLimits & { plan: OrganizationPlan }> {
+export async function getPlanLimits(orgId: string): Promise<PlanLimits & { plan: PlanType }> {
   const plan = await getOrganizationPlan(orgId)
   return {
     ...PLAN_LIMITS[plan],

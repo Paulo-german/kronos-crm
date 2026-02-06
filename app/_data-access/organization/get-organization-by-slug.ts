@@ -9,7 +9,6 @@ async function fetchOrganizationBySlug(slug: string) {
       id: true,
       name: true,
       slug: true,
-      plan: true,
       createdAt: true,
       // Dados Cadastrais
       personType: true,

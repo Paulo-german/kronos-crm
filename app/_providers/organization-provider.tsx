@@ -1,13 +1,12 @@
 'use client'
 
 import { createContext, useContext, type ReactNode } from 'react'
-import type { MemberRole, OrganizationPlan } from '@prisma/client'
+import type { MemberRole } from '@prisma/client'
 
 interface Organization {
   id: string
   name: string
   slug: string
-  plan: OrganizationPlan
 }
 
 interface OrganizationContextType {
