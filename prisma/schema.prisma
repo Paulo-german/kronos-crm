@@ -27,12 +27,6 @@ enum MemberStatus {
   ACCEPTED
 }
 
-enum OrganizationPlan {
-  FREE
-  PRO
-  ENTERPRISE
-}
-
 enum PersonType {
   PJ // Pessoa Jurídica
   PF // Pessoa Física
@@ -43,6 +37,7 @@ enum SubscriptionStatus {
   past_due
   canceled
   trialing
+  incomplete
 }
 
 enum CompanySize {
@@ -114,7 +109,6 @@ model User {
   contactsAssigned Contact[]      @relation("ContactAssignee")
   tasksAssigned    Task[]         @relation("TaskAssignee")
   tasksCreated     Task[]         @relation("TaskCreator")
-  subscriptions    Subscription[] 
 
   @@map("users")
 }
@@ -124,9 +118,7 @@ model Organization {
   name String
   slug String @unique
 
-  stripeCustomerId   String?            @map("stripe_customer_id")
-  plan               OrganizationPlan   @default(FREE)
-  subscriptionStatus SubscriptionStatus @default(active) @map("subscription_status")
+  stripeCustomerId String? @map("stripe_customer_id")
 
   // Dados Cadastrais
   personType PersonType? @map("person_type")
@@ -153,13 +145,14 @@ model Organization {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  members   Member[]
-  contacts  Contact[]
-  companies Company[]
-  pipelines Pipeline[]
-  products  Product[]
-  tasks     Task[]
-  Deal      Deal[]
+  members       Member[]
+  contacts      Contact[]
+  companies     Company[]
+  pipelines     Pipeline[]
+  products      Product[]
+  tasks         Task[]
+  Deal          Deal[]
+  subscriptions Subscription[]
 
   @@map("organizations")
 }
@@ -186,14 +179,20 @@ model Member {
 }
 
 model Subscription {
-  id                   String   @id @default(uuid())
-  userId               String   @map("user_id")
-  stripeSubscriptionId String   @unique @map("stripe_subscription_id")
-  planId               String   @map("plan_id")
-  status               String
-  currentPeriodEnd     DateTime @map("current_period_end")
+  id String @id @default(uuid())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId String       @map("organization_id")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  stripeSubscriptionId String             @unique @map("stripe_subscription_id")
+  stripePriceId        String             @map("stripe_price_id")
+  status               SubscriptionStatus @default(active)
+  currentPeriodEnd     DateTime           @map("current_period_end")
+  cancelAtPeriodEnd    Boolean            @default(false) @map("cancel_at_period_end")
+  metadata             Json?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("subscriptions")
 }
