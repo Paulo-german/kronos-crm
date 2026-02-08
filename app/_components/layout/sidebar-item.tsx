@@ -29,15 +29,22 @@ export const SidebarItem = ({ href, children }: SidebarItemProps) => {
     <Link
       href={href}
       className={cn(
-        'group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all hover:bg-primary/10 hover:text-primary',
+        'ease-[cubic-bezier(0.25,0.76,0.35,1)] group flex items-center rounded-md py-2 pl-0 pr-0 text-sm font-medium transition-all duration-1000 hover:bg-primary/10 hover:text-primary',
         isActive
           ? 'bg-primary/15 text-primary shadow-[0_0_20px_-10px_var(--color-kronos-purple)]'
           : 'text-muted-foreground',
-        isCollapsed && 'justify-center px-2',
+        isCollapsed ? 'ml-2 mr-2 pl-3 pr-0' : 'px-3',
       )}
     >
-      {icon}
-      {!isCollapsed && <span className="truncate">{label}</span>}
+      <div className="flex items-center">{icon}</div>
+      <span
+        className={cn(
+          'ease-[cubic-bezier(0.25,0.76,0.35,1)] overflow-hidden whitespace-nowrap transition-all duration-1000',
+          isCollapsed ? 'w-0 opacity-0' : 'ml-3 w-auto opacity-100 delay-100',
+        )}
+      >
+        {label}
+      </span>
     </Link>
   )
 

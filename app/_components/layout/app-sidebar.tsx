@@ -9,8 +9,8 @@ import {
   CheckSquare,
   Package,
   Settings,
-  PanelLeftClose,
-  PanelLeft,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react'
 import { SidebarItem } from '@/_components/layout/sidebar-item'
 import { KronosLogo } from '@/_components/icons/kronos-logo'
@@ -40,15 +40,15 @@ export const AppSidebar = () => {
   return (
     <aside
       className={cn(
-        'hidden h-screen flex-col border-r border-border/50 bg-secondary/20 text-card-foreground transition-all duration-300 ease-in-out md:flex',
-        isCollapsed ? 'w-[68px]' : 'w-64',
+        'relative hidden h-screen flex-col border-r border-border/50 bg-secondary/20 text-card-foreground transition-all duration-500 ease-in-out md:flex',
+        isCollapsed ? 'w-[72px]' : 'w-64',
       )}
     >
       {/* Header */}
       <div
         className={cn(
-          'flex h-16 items-center justify-between border-b border-border/50',
-          isCollapsed ? 'justify-center px-2' : 'px-6',
+          'ease-[cubic-bezier(0.25,0.76,0.35,1)] flex h-16 items-center border-b border-border/50 transition-[padding] duration-700',
+          isCollapsed ? 'pl-6 pr-0' : 'px-6',
         )}
       >
         <Link
@@ -56,40 +56,31 @@ export const AppSidebar = () => {
           className="flex items-center gap-2 font-bold text-foreground"
         >
           <KronosLogo />
-          {!isCollapsed && (
-            <span className="text-xl font-bold tracking-tight">KRONOS</span>
-          )}
+          <span
+            className={cn(
+              'ease-[cubic-bezier(0.25,0.76,0.35,1)] overflow-hidden whitespace-nowrap text-xl font-bold tracking-tight transition-all duration-700',
+              isCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100 delay-100',
+            )}
+          >
+            KRONOS
+          </span>
         </Link>
+      </div>
 
-        {/* Toggle Button */}
-        <div
-          className={cn(
-            'mt-4',
-            isCollapsed
-              ? 'absolute left-[5.5rem] top-0 flex justify-center'
-              : 'top-0 mt-0',
-          )}
+      {/* Floating Toggle Button */}
+      <div className="absolute -right-3 top-1/2 z-20 hidden -translate-y-1/2 md:flex">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={toggle}
+          className="h-6 w-6 rounded-full border bg-background shadow-md hover:bg-accent hover:text-accent-foreground"
         >
-          <Tooltip delayDuration={0}>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggle}
-                className="h-8 w-8 text-muted-foreground hover:bg-primary/10 hover:text-primary"
-              >
-                {isCollapsed ? (
-                  <PanelLeft className="h-4 w-4" />
-                ) : (
-                  <PanelLeftClose className="h-4 w-4" />
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side={isCollapsed ? 'right' : 'top'}>
-              {isCollapsed ? 'Expandir menu' : 'Recolher menu'}
-            </TooltipContent>
-          </Tooltip>
-        </div>
+          {isCollapsed ? (
+            <ChevronRight className="h-3 w-3" />
+          ) : (
+            <ChevronLeft className="h-3 w-3" />
+          )}
+        </Button>
       </div>
 
       {/* Navigation */}
@@ -125,11 +116,11 @@ export const AppSidebar = () => {
       {/* Footer */}
       <div
         className={cn(
-          'border-t border-border/50 p-4',
-          isCollapsed && 'flex flex-col items-center px-2',
+          'overflow-y-auto border-t border-border/50 p-4',
+          isCollapsed ? 'px-2' : 'px-4',
         )}
       >
-        <nav className={cn('grid gap-2', isCollapsed && 'w-full')}>
+        <nav className="grid gap-2">
           <SidebarItem href={buildHref('/settings')}>
             <Settings className="h-4 w-4" />
             Configurações
