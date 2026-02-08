@@ -23,7 +23,7 @@ export const SignOutButton = ({ isCollapsed = false }: SignOutButtonProps) => {
       onClick={() => execute()}
       className={cn(
         'ease-[cubic-bezier(0.25,0.76,0.35,1)] group flex cursor-pointer items-center rounded-md py-2 text-sm font-medium text-muted-foreground transition-all duration-500 hover:bg-destructive/10 hover:text-destructive',
-        isCollapsed ? 'pl-[1.125rem] pr-0' : 'w-full justify-start px-3',
+        isCollapsed ? 'ml-2 mr-2 pl-3 pr-0' : 'w-full justify-start px-3',
         status === 'executing' && 'pointer-events-none opacity-50',
       )}
     >

@@ -1,3 +1,6 @@
+import Link from 'next/link'
+import { ArrowLeft } from 'lucide-react'
+import { Button } from '@/_components/ui/button'
 import { redirect } from 'next/navigation'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getOrganizationBySlug } from '@/_data-access/organization/get-organization-by-slug'
@@ -28,6 +31,15 @@ export default async function OrganizationSettingsPage({
 
   return (
     <div className="flex flex-col justify-center gap-2">
+      <div className="mb-6">
+        <Button variant="ghost" size="sm" asChild>
+          <Link href={`/org/${orgSlug}/settings`}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Voltar
+          </Link>
+        </Button>
+      </div>
+
       <div className="mb-4">
         <h1 className="text-2xl font-bold">Organização</h1>
         <p className="text-muted-foreground">
@@ -35,7 +47,10 @@ export default async function OrganizationSettingsPage({
         </p>
       </div>
 
-      <OrganizationSettingsForm organization={organization} currentPlan={plan} />
+      <OrganizationSettingsForm
+        organization={organization}
+        currentPlan={plan}
+      />
     </div>
   )
 }

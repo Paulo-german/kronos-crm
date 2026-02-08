@@ -1,3 +1,6 @@
+import Link from 'next/link'
+import { ArrowLeft } from 'lucide-react'
+import { Button } from '@/_components/ui/button'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
 import { getMembershipOrThrow } from '@/_data-access/organization/validate-membership'
 import { createClient } from '@/_lib/supabase/server'
@@ -34,6 +37,15 @@ export default async function MembersPage({ params }: MembersPageProps) {
 
   return (
     <div className="container mx-auto space-y-6 py-6">
+      <div className="mb-6">
+        <Button variant="ghost" size="sm" asChild>
+          <Link href={`/org/${orgSlug}/settings`}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Voltar
+          </Link>
+        </Button>
+      </div>
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Membros</h1>
