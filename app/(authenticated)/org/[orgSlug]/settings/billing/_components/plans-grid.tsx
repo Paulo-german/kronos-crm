@@ -4,13 +4,19 @@ import { PLANS } from './plans-data'
 
 interface PlansGridProps {
   currentPlan: PlanType
+  orgSlug: string
 }
 
-export function PlansGrid({ currentPlan }: PlansGridProps) {
+export function PlansGrid({ currentPlan, orgSlug }: PlansGridProps) {
   return (
     <div className="grid gap-6 md:grid-cols-3">
       {PLANS.map((plan) => (
-        <PlanCard key={plan.id} plan={plan} currentPlan={currentPlan} />
+        <PlanCard
+          key={plan.id}
+          plan={plan}
+          currentPlan={currentPlan}
+          orgSlug={orgSlug}
+        />
       ))}
     </div>
   )

@@ -1,3 +1,7 @@
+'use client'
+
+import { useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { Check } from 'lucide-react'
 import { cn } from '@/_lib/utils'
 import {
@@ -9,17 +13,55 @@ import {
   CardTitle,
 } from '@/_components/ui/card'
 import { Button } from '@/_components/ui/button'
+import { createPortalSession } from '@/_actions/billing/create-portal-session'
 import type { PlanInfo } from './plans-data'
 import type { PlanType } from '@/_lib/rbac/plan-limits'
 
 interface PlanCardProps {
   plan: PlanInfo
   currentPlan: PlanType
+  orgSlug: string
 }
 
-export function PlanCard({ plan, currentPlan }: PlanCardProps) {
+export function PlanCard({ plan, currentPlan, orgSlug }: PlanCardProps) {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
   const isCurrentPlan = plan.id === currentPlan
   const isHighlighted = plan.highlighted
+  const isPaidPlan = currentPlan !== 'free'
+  const isUpgrade = plan.stripePriceId && !isCurrentPlan
+
+  function handleClick() {
+    // Plano atual — nada a fazer
+    if (isCurrentPlan) return
+
+    // Plano enterprise sem priceId — contato comercial
+    if (plan.id === 'enterprise' && !plan.stripePriceId) {
+      return
+    }
+
+    // Se o usuário já é pagante, abrir portal para gerenciar/mudar plano
+    if (isPaidPlan) {
+      startTransition(async () => {
+        const result = await createPortalSession({})
+        if (result?.data?.url) {
+          window.location.href = result.data.url
+        }
+      })
+      return
+    }
+
+    // Se é free e quer fazer upgrade, redirecionar para checkout
+    if (isUpgrade) {
+      router.push(`/org/${orgSlug}/checkout/configure?plan=${plan.id}`)
+    }
+  }
+
+  function getButtonLabel(): string {
+    if (isCurrentPlan) return 'Plano atual'
+    if (isPaidPlan) return 'Gerenciar assinatura'
+    return plan.cta
+  }
 
   return (
     <Card
@@ -65,9 +107,10 @@ export function PlanCard({ plan, currentPlan }: PlanCardProps) {
         <Button
           className="w-full"
           variant={isCurrentPlan ? 'outline' : isHighlighted ? 'default' : 'secondary'}
-          disabled={isCurrentPlan}
+          disabled={isCurrentPlan || isPending}
+          onClick={handleClick}
         >
-          {isCurrentPlan ? 'Plano atual' : plan.cta}
+          {isPending ? 'Carregando...' : getButtonLabel()}
         </Button>
       </CardFooter>
     </Card>

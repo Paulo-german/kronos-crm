@@ -11,9 +11,14 @@ export interface PlanInfo {
   description: string
   price: number
   priceLabel: string
+  annualPrice?: number
+  annualTotalPrice?: number
+  discountPercent?: number
   features: PlanFeature[]
   highlighted?: boolean
   cta: string
+  stripePriceId?: string
+  stripePriceIdAnnual?: string
 }
 
 export const PLANS: PlanInfo[] = [
@@ -35,14 +40,19 @@ export const PLANS: PlanInfo[] = [
   },
   {
     id: 'pro',
-    name: 'Profissional',
+    name: 'Pro',
     description: 'Para equipes em crescimento que precisam de mais recursos.',
-    price: 79,
-    priceLabel: 'R$ 79/mês',
+    price: 119.9,
+    priceLabel: 'R$ 119,90/mês',
+    annualPrice: 95.92,
+    annualTotalPrice: 1150.8,
+    discountPercent: 20,
     cta: 'Fazer upgrade',
     highlighted: true,
+    stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID,
+    stripePriceIdAnnual: process.env.NEXT_PUBLIC_STRIPE_PRO_ANNUAL_PRICE_ID,
     features: [
-      { name: 'Até 1.000 contatos', included: true },
+      { name: 'Até 2.000 contatos', included: true },
       { name: 'Até 500 negócios', included: true },
       { name: 'Até 100 produtos', included: true },
       { name: 'Até 10 membros', included: true },
@@ -56,7 +66,12 @@ export const PLANS: PlanInfo[] = [
     description: 'Para grandes equipes com necessidades avançadas.',
     price: 199,
     priceLabel: 'R$ 199/mês',
+    annualPrice: 159.2,
+    annualTotalPrice: 1910.4,
+    discountPercent: 20,
     cta: 'Falar com vendas',
+    stripePriceId: process.env.NEXT_PUBLIC_STRIPE_ENTERPRISE_PRICE_ID,
+    stripePriceIdAnnual: process.env.NEXT_PUBLIC_STRIPE_ENTERPRISE_ANNUAL_PRICE_ID,
     features: [
       { name: 'Contatos ilimitados', included: true },
       { name: 'Negócios ilimitados', included: true },
@@ -79,15 +94,30 @@ export const COMPARISON_DATA: ComparisonRow[] = [
   { feature: 'Contatos', free: '50', pro: '1.000', enterprise: 'Ilimitado' },
   { feature: 'Negócios', free: '25', pro: '500', enterprise: 'Ilimitado' },
   { feature: 'Produtos', free: '10', pro: '100', enterprise: 'Ilimitado' },
-  { feature: 'Membros da equipe', free: '2', pro: '10', enterprise: 'Ilimitado' },
+  {
+    feature: 'Membros da equipe',
+    free: '2',
+    pro: '10',
+    enterprise: 'Ilimitado',
+  },
   { feature: 'Pipeline de vendas', free: true, pro: true, enterprise: true },
   { feature: 'Kanban de negócios', free: true, pro: true, enterprise: true },
-  { feature: 'Importação de contatos', free: false, pro: true, enterprise: true },
+  {
+    feature: 'Importação de contatos',
+    free: false,
+    pro: true,
+    enterprise: true,
+  },
   { feature: 'Exportação de dados', free: false, pro: true, enterprise: true },
   { feature: 'Relatórios avançados', free: false, pro: true, enterprise: true },
   { feature: 'API de integração', free: false, pro: false, enterprise: true },
   { feature: 'SSO / SAML', free: false, pro: false, enterprise: true },
-  { feature: 'Suporte', free: 'Email', pro: 'Prioritário', enterprise: 'Dedicado 24/7' },
+  {
+    feature: 'Suporte',
+    free: 'Email',
+    pro: 'Prioritário',
+    enterprise: 'Dedicado 24/7',
+  },
 ]
 
 export interface FaqItem {
