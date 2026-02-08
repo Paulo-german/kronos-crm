@@ -23,6 +23,30 @@ Você é um desenvolvedor Sênior especialista em arquitetura de CRMs. Seu foco 
 
 ---
 
+## 💳 Stripe Payment Flow (Setup Intent First)
+
+**Arquitetura Atual:** Usamos o padrão **Setup Intent First** para checkout de assinaturas.
+
+### Fluxo de Checkout (3 Passos)
+
+1. **Configure Plan** (`/checkout/configure`) → User escolhe plano/seats
+2. **Register Details** (`/checkout/register`) → User preenche dados cadastrais/fiscais
+3. **Payment** (`/checkout/payment`) → **Novo fluxo em 2 etapas:**
+   - **Etapa 1:** `createSetupIntent()` prepara tokenização do cartão
+   - **Etapa 2:** User digita cartão → `confirmSetup()` valida
+   - **Etapa 3:** `createSubscription({ paymentMethodId })` cria assinatura ATIVA
+
+### Por que Setup Intent First?
+
+✅ Elimina race conditions (não depende de PaymentIntent automático da Invoice)  
+✅ Validação antecipada do cartão (falhas aparecem na hora)  
+✅ Assinatura nasce `active` ou retorna erro explícito (sem lixo `incomplete`)  
+✅ Padrão recomendado pela Stripe para SaaS
+
+**Documentação:** Ver `docs/STRIPE_SETUP_INTENT_REFACTOR.md` para detalhes técnicos.
+
+---
+
 ## Variáveis de Ambiente
 
 Criei um arquivo `.env` na raiz baseado no `.env.example`:
