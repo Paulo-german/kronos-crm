@@ -62,6 +62,13 @@ const PERMISSION_MATRIX: Record<RBACEntity, Record<RBACAction, MemberRole[]>> = 
     delete: ['OWNER'], // Apenas OWNER pode deletar a organização
     transfer: ['OWNER'], // Transferir ownership da org
   },
+  billing: {
+    create: ['OWNER', 'ADMIN'], // Criar checkout session / assinar plano
+    read: ['OWNER', 'ADMIN', 'MEMBER'], // Ver plano atual
+    update: ['OWNER', 'ADMIN'], // Gerenciar assinatura (portal)
+    delete: [], // Não se aplica
+    transfer: [], // Não se aplica
+  },
 }
 
 /**

@@ -21,6 +21,7 @@ export type RBACEntity =
   | 'pipeline'
   | 'company'
   | 'organization'
+  | 'billing'
 
 /**
  * Ações possíveis em cada entidade
