@@ -40,7 +40,7 @@ import {
 } from '@/_actions/user/change-password/schema'
 import InputPassword from '@/(auth)/login/_components/input-password'
 
-export function ChangePasswordSheet() {
+const ChangePasswordSheet = () => {
   const [isOpen, setIsOpen] = useState(false)
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [pendingData, setPendingData] = useState<ChangePasswordInput | null>(
@@ -56,33 +56,36 @@ export function ChangePasswordSheet() {
     },
   })
 
-  const { execute, isPending } = useAction(changePassword, {
-    onSuccess: () => {
-      toast.success('Senha alterada com sucesso!')
-      form.reset()
-      setIsOpen(false)
-      setShowConfirmDialog(false)
-      setPendingData(null)
+  const { execute: executeUpdatePassword, isPending } = useAction(
+    changePassword,
+    {
+      onSuccess: () => {
+        toast.success('Senha alterada com sucesso!')
+        form.reset()
+        setIsOpen(false)
+        setShowConfirmDialog(false)
+        setPendingData(null)
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError || 'Erro ao alterar senha.')
+        setShowConfirmDialog(false)
+        setPendingData(null)
+      },
     },
-    onError: ({ error }) => {
-      toast.error(error.serverError || 'Erro ao alterar senha.')
-      setShowConfirmDialog(false)
-      setPendingData(null)
-    },
-  })
+  )
 
   const onSubmit = (data: ChangePasswordInput) => {
     setPendingData(data)
     setShowConfirmDialog(true)
   }
 
-  const handleConfirm = () => {
+  const handleAlertConfirm = () => {
     if (pendingData) {
-      execute(pendingData)
+      executeUpdatePassword(pendingData)
     }
   }
 
-  const handleCancel = () => {
+  const handleAlertCancel = () => {
     setShowConfirmDialog(false)
     setPendingData(null)
   }
@@ -179,10 +182,13 @@ export function ChangePasswordSheet() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleCancel} disabled={isPending}>
+            <AlertDialogCancel onClick={handleAlertCancel} disabled={isPending}>
               Cancelar
             </AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirm} disabled={isPending}>
+            <AlertDialogAction
+              onClick={handleAlertConfirm}
+              disabled={isPending}
+            >
               {isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
               Confirmar
             </AlertDialogAction>
@@ -192,3 +198,5 @@ export function ChangePasswordSheet() {
     </>
   )
 }
+
+export default ChangePasswordSheet

@@ -5,16 +5,14 @@ import {
   CardHeader,
   CardTitle,
 } from '@/_components/ui/card'
-import { ChangePasswordSheet } from './change-password-sheet'
+import ChangePasswordSheet from './change-password-sheet'
 
-export function SecurityCard() {
+const SecurityCard = () => {
   return (
     <Card>
       <CardHeader>
         <CardTitle>Segurança</CardTitle>
-        <CardDescription>
-          Gerencie a segurança da sua conta.
-        </CardDescription>
+        <CardDescription>Gerencie a segurança da sua conta.</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between">
@@ -30,3 +28,5 @@ export function SecurityCard() {
     </Card>
   )
 }
+
+export default SecurityCard

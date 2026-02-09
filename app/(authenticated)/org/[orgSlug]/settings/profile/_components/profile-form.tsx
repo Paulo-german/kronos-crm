@@ -51,21 +51,24 @@ export function ProfileForm({ user }: ProfileFormProps) {
     },
   })
 
-  const { execute, isPending } = useAction(updateProfile, {
-    onSuccess: () => {
-      toast.success('Perfil atualizado com sucesso!')
-      form.reset({
-        fullName: form.getValues('fullName'),
-        avatarUrl: form.getValues('avatarUrl'),
-      })
+  const { execute: executeUpdateProfile, isPending } = useAction(
+    updateProfile,
+    {
+      onSuccess: () => {
+        toast.success('Perfil atualizado com sucesso!')
+        form.reset({
+          fullName: form.getValues('fullName'),
+          avatarUrl: form.getValues('avatarUrl'),
+        })
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError || 'Erro ao atualizar perfil.')
+      },
     },
-    onError: ({ error }) => {
-      toast.error(error.serverError || 'Erro ao atualizar perfil.')
-    },
-  })
+  )
 
   const onSubmit = (data: UpdateProfileInput) => {
-    execute(data)
+    executeUpdateProfile(data)
   }
 
   const watchedName = form.watch('fullName')

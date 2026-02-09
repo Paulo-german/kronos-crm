@@ -5,15 +5,13 @@ import { getOrgContext } from '@/_data-access/organization/get-organization-cont
 import { getUserById } from '@/_data-access/user/get-user-by-id'
 import { redirect } from 'next/navigation'
 import { ProfileForm } from './_components/profile-form'
-import { SecurityCard } from './_components/security-card'
+import SecurityCard from './_components/security-card'
 
 interface ProfileSettingsPageProps {
   params: Promise<{ orgSlug: string }>
 }
 
-export default async function ProfileSettingsPage({
-  params,
-}: ProfileSettingsPageProps) {
+const ProfileSettingsPage = async ({ params }: ProfileSettingsPageProps) => {
   const { orgSlug } = await params
   const { userId } = await getOrgContext(orgSlug)
 
@@ -47,3 +45,5 @@ export default async function ProfileSettingsPage({
     </div>
   )
 }
+
+export default ProfileSettingsPage
