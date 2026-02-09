@@ -2,7 +2,6 @@
 
 import { ColumnDef } from '@tanstack/react-table'
 import { DollarSignIcon, PackageIcon, TextIcon, TrashIcon } from 'lucide-react'
-import Link from 'next/link'
 import { DataTable } from '@/_components/data-table'
 import type { ProductDto } from '@/_data-access/product/get-products'
 import { formatCurrency } from '@/_utils/format-currency'
@@ -12,6 +11,9 @@ import { Button } from '@/_components/ui/button'
 
 import { useAction } from 'next-safe-action/hooks'
 import { bulkDeleteProducts } from '@/_actions/product/bulk-delete-products'
+import { deleteProduct } from '@/_actions/product/delete-product'
+import { updateProduct } from '@/_actions/product/update-product'
+import type { UpdateProductInput } from '@/_actions/product/update-product/schema'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -37,6 +39,26 @@ export function ProductsDataTable({ products }: ProductsDataTableProps) {
       },
     },
   )
+
+  // Hook para deletar individualmente (precisa estar aqui para não desmontar com a linha da tabela)
+  const { execute: executeDelete } = useAction(deleteProduct, {
+    onSuccess: () => {
+      toast.success('Produto excluído com sucesso.')
+    },
+    onError: ({ error }) => {
+      toast.error(error.serverError || 'Erro ao excluir produto.')
+    },
+  })
+
+  // Hook para atualizar individualmente (precisa estar aqui para não desmontar com a linha da tabela)
+  const { execute: executeUpdate } = useAction(updateProduct, {
+    onSuccess: () => {
+      toast.success('Produto atualizado com sucesso!')
+    },
+    onError: ({ error }) => {
+      toast.error(error.serverError || 'Erro ao atualizar produto.')
+    },
+  })
   const columns: ColumnDef<ProductDto>[] = [
     {
       accessorKey: 'name',
@@ -47,15 +69,7 @@ export function ProductsDataTable({ products }: ProductsDataTableProps) {
         </div>
       ),
       cell: ({ row }) => {
-        const product = row.original
-        return (
-          <Link
-            href={`/products/${product.id}`}
-            className="ml-2 flex items-center gap-2 font-medium hover:underline"
-          >
-            {product.name}
-          </Link>
-        )
+        return <span className="ml-2 font-medium">{row.getValue('name')}</span>
       },
     },
     {
@@ -88,7 +102,13 @@ export function ProductsDataTable({ products }: ProductsDataTableProps) {
       id: 'actions',
       cell: ({ row }) => {
         const product = row.original
-        return <ProductTableDropdownMenu product={product} />
+        return (
+          <ProductTableDropdownMenu
+            product={product}
+            onDelete={() => executeDelete({ id: product.id })}
+            onUpdate={(data) => executeUpdate(data)}
+          />
+        )
       },
     },
   ]

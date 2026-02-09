@@ -34,8 +34,7 @@ export const updateProduct = orgActionClient
     })
 
     revalidateTag(`products:${ctx.orgId}`)
-    revalidatePath('/products')
-    revalidatePath(`/products/${data.id}`)
+    revalidatePath('/org/[orgSlug]/settings/products', 'page')
 
     return { success: true }
   })

@@ -8,7 +8,6 @@ const LEGACY_ROUTES = [
   '/companies',
   '/contacts',
   '/pipeline',
-  '/products',
   '/tasks',
   '/settings',
 ]

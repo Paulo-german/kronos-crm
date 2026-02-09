@@ -29,6 +29,7 @@ import {
   contactSchema,
   type ContactInput,
 } from '@/_actions/contact/create-contact/schema'
+import type { UpdateContactInput } from '@/_actions/contact/update-contact/schema'
 import { CompanyCombobox } from './company-combobox'
 import { PhoneInput } from '@/_components/form-controls/phone-input'
 import { Loader2 } from 'lucide-react'
@@ -37,12 +38,14 @@ interface UpsertContactDialogContentProps {
   defaultValues?: ContactInput & { id?: string }
   setIsOpen: Dispatch<SetStateAction<boolean>>
   companyOptions?: { id: string; name: string }[]
+  onUpdate?: (data: UpdateContactInput) => void
 }
 
 const UpsertContactDialogContent = ({
   defaultValues,
   setIsOpen,
   companyOptions = [],
+  onUpdate,
 }: UpsertContactDialogContentProps) => {
   const isEditing = !!defaultValues?.id
 
@@ -89,7 +92,13 @@ const UpsertContactDialogContent = ({
 
   const onSubmit = (data: ContactInput) => {
     if (isEditing && defaultValues?.id) {
-      executeUpdate({ id: defaultValues.id, ...data })
+      if (onUpdate) {
+        onUpdate({ id: defaultValues.id, ...data })
+        form.reset()
+        setIsOpen(false)
+      } else {
+        executeUpdate({ id: defaultValues.id, ...data })
+      }
     } else {
       executeCreate(data)
     }

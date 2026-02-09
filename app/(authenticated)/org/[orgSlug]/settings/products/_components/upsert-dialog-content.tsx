@@ -28,18 +28,21 @@ import {
   productSchema,
   type ProductInput,
 } from '@/_actions/product/create-product/schema'
+import type { UpdateProductInput } from '@/_actions/product/update-product/schema'
 import { Loader2 } from 'lucide-react'
 
 interface UpsertProductDialogContentProps {
   defaultValues?: ProductInput & { id?: string }
   setIsOpen: Dispatch<SetStateAction<boolean>>
   isOpen: boolean
+  onUpdate?: (data: UpdateProductInput) => void
 }
 
 const UpsertProductDialogContent = ({
   defaultValues,
   setIsOpen,
   isOpen,
+  onUpdate,
 }: UpsertProductDialogContentProps) => {
   const isEditing = !!defaultValues?.id
 
@@ -92,7 +95,12 @@ const UpsertProductDialogContent = ({
 
   const onSubmit = (data: ProductInput) => {
     if (isEditing && defaultValues?.id) {
-      executeUpdate({ id: defaultValues.id, ...data })
+      if (onUpdate) {
+        onUpdate({ id: defaultValues.id, ...data })
+        setIsOpen(false)
+      } else {
+        executeUpdate({ id: defaultValues.id, ...data })
+      }
     } else {
       executeCreate(data)
     }

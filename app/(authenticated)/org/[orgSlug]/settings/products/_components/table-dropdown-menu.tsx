@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { AlertDialog, AlertDialogTrigger } from '@/_components/ui/alert-dialog'
 import { Button } from '@/_components/ui/button'
 import { Dialog, DialogTrigger } from '@/_components/ui/dialog'
@@ -21,14 +22,18 @@ import {
 import DeleteProductDialogContent from './delete-dialog-content'
 import UpsertProductDialogContent from './upsert-dialog-content'
 import { ProductDto } from '@/_data-access/product/get-products'
-import { toast } from 'sonner'
+import type { UpdateProductInput } from '@/_actions/product/update-product/schema'
 
 interface ProductTableDropdownMenuProps {
   product: ProductDto
+  onDelete: () => void
+  onUpdate: (data: UpdateProductInput) => void
 }
 
 const ProductTableDropdownMenu = ({
   product,
+  onDelete,
+  onUpdate,
 }: ProductTableDropdownMenuProps) => {
   const [editDialogOpen, setEditDialogIsOpen] = useState(false)
 
@@ -78,13 +83,14 @@ const ProductTableDropdownMenu = ({
           }}
           setIsOpen={setEditDialogIsOpen}
           isOpen={editDialogOpen}
-        />
-
-        <DeleteProductDialogContent
-          productId={product.id}
-          productName={product.name}
+          onUpdate={onUpdate}
         />
       </Dialog>
+
+      <DeleteProductDialogContent
+        productName={product.name}
+        onDelete={onDelete}
+      />
     </AlertDialog>
   )
 }

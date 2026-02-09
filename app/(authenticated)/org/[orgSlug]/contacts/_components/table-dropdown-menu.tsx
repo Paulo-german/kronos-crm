@@ -23,15 +23,20 @@ import UpsertContactDialogContent from './upsert-dialog-content'
 import { ContactDto } from '@/_data-access/contact/get-contacts'
 import { toast } from 'sonner'
 import { CompanyDto } from '@/_data-access/company/get-companies'
+import type { UpdateContactInput } from '@/_actions/contact/update-contact/schema'
 
 interface ContactTableDropdownMenuProps {
   contact: ContactDto
   companyOptions: CompanyDto[]
+  onDelete: () => void
+  onUpdate: (data: UpdateContactInput) => void
 }
 
 const ContactTableDropdownMenu = ({
   contact,
   companyOptions,
+  onDelete,
+  onUpdate,
 }: ContactTableDropdownMenuProps) => {
   const [editDialogOpen, setEditDialogIsOpen] = useState(false)
 
@@ -86,11 +91,12 @@ const ContactTableDropdownMenu = ({
           }}
           setIsOpen={setEditDialogIsOpen}
           companyOptions={companyOptions}
+          onUpdate={onUpdate}
         />
 
         <DeleteContactDialogContent
-          contactId={contact.id}
           contactName={contact.name}
+          onDelete={onDelete}
         />
       </Dialog>
     </AlertDialog>

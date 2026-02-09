@@ -20,6 +20,9 @@ import ContactTableDropdownMenu from './table-dropdown-menu'
 import { Button } from '@/_components/ui/button'
 import { useAction } from 'next-safe-action/hooks'
 import { bulkDeleteContacts } from '@/_actions/contact/bulk-delete-contacts'
+import { deleteContact } from '@/_actions/contact/delete-contact'
+import { updateContact } from '@/_actions/contact/update-contact'
+import type { UpdateContactInput } from '@/_actions/contact/update-contact/schema'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -49,6 +52,26 @@ export function ContactsDataTable({
       },
     },
   )
+
+  // Hook para deletar individualmente (precisa estar aqui para não desmontar com a linha da tabela)
+  const { execute: executeDelete } = useAction(deleteContact, {
+    onSuccess: () => {
+      toast.success('Contato excluído com sucesso.')
+    },
+    onError: ({ error }) => {
+      toast.error(error.serverError || 'Erro ao excluir contato.')
+    },
+  })
+
+  // Hook para atualizar individualmente (precisa estar aqui para não desmontar com a linha da tabela)
+  const { execute: executeUpdate } = useAction(updateContact, {
+    onSuccess: () => {
+      toast.success('Contato atualizado com sucesso!')
+    },
+    onError: ({ error }) => {
+      toast.error(error.serverError || 'Erro ao atualizar contato.')
+    },
+  })
 
   const columns: ColumnDef<ContactDto>[] = [
     {
@@ -155,6 +178,8 @@ export function ContactsDataTable({
           <ContactTableDropdownMenu
             contact={contact}
             companyOptions={companyOptions}
+            onDelete={() => executeDelete({ id: contact.id })}
+            onUpdate={(data) => executeUpdate(data)}
           />
         )
       },

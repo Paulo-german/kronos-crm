@@ -1,31 +1,18 @@
 'use client'
 
-import { useAction } from 'next-safe-action/hooks'
-import { toast } from 'sonner'
 import { AlertDialogAction } from '@/_components/ui/alert-dialog'
-import { deleteProduct } from '@/_actions/product/delete-product'
 import ConfirmationDialogContent from '@/_components/confirmation-dialog-content'
 import { TrashIcon } from 'lucide-react'
 
 interface DeleteProductDialogContentProps {
-  productId: string
   productName: string
+  onDelete: () => void
 }
 
 const DeleteProductDialogContent = ({
-  productId,
   productName,
+  onDelete,
 }: DeleteProductDialogContentProps) => {
-  const { execute: executeDelete } = useAction(deleteProduct, {
-    onSuccess: () => {
-      toast.success('Produto excluído com sucesso.')
-    },
-    onError: ({ error }) => {
-      toast.error(error.serverError || 'Erro ao excluir produto.')
-    },
-  })
-
-  const handleContinueClick = () => executeDelete({ id: productId })
 
   return (
     <ConfirmationDialogContent
@@ -43,7 +30,7 @@ const DeleteProductDialogContent = ({
     >
       <AlertDialogAction
         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-        onClick={handleContinueClick}
+        onClick={onDelete}
       >
         Continuar
       </AlertDialogAction>

@@ -7,7 +7,6 @@ import {
   Users,
   Kanban,
   CheckSquare,
-  Package,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -18,11 +17,6 @@ import { SignOutButton } from '@/_components/auth/sign-out-button'
 import { useSidebar } from '@/_providers/sidebar-provider'
 import { cn } from '@/_lib/utils'
 import { Button } from '@/_components/ui/button'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/_components/ui/tooltip'
 
 export const AppSidebar = () => {
   const { isCollapsed, toggle } = useSidebar()
@@ -94,11 +88,6 @@ export const AppSidebar = () => {
           <SidebarItem href={buildHref('/contacts')}>
             <Users className="h-4 w-4" />
             Contatos
-          </SidebarItem>
-
-          <SidebarItem href={buildHref('/products')}>
-            <Package className="h-4 w-4" />
-            Produtos
           </SidebarItem>
 
           <SidebarItem href={buildHref('/tasks')}>

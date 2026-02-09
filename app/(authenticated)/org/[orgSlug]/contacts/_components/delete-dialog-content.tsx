@@ -1,32 +1,18 @@
 'use client'
 
-import { useAction } from 'next-safe-action/hooks'
-import { toast } from 'sonner'
 import { AlertDialogAction } from '@/_components/ui/alert-dialog'
-import { deleteContact } from '@/_actions/contact/delete-contact'
 import ConfirmationDialogContent from '@/_components/confirmation-dialog-content'
 import { TrashIcon } from 'lucide-react'
 
 interface DeleteContactDialogContentProps {
-  contactId: string
   contactName: string
+  onDelete: () => void
 }
 
 const DeleteContactDialogContent = ({
-  contactId,
   contactName,
+  onDelete,
 }: DeleteContactDialogContentProps) => {
-  const { execute: executeDelete } = useAction(deleteContact, {
-    onSuccess: () => {
-      console.log('Contato excluído com sucesso.')
-      toast.success('Contato excluído com sucesso.')
-    },
-    onError: ({ error }) => {
-      toast.error(error.serverError || 'Erro ao excluir contato.')
-    },
-  })
-
-  const handleContinueClick = () => executeDelete({ id: contactId })
 
   return (
     <ConfirmationDialogContent
@@ -43,7 +29,7 @@ const DeleteContactDialogContent = ({
     >
       <AlertDialogAction
         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-        onClick={handleContinueClick}
+        onClick={onDelete}
       >
         Continuar
       </AlertDialogAction>

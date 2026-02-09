@@ -6,7 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/_components/ui/card'
-import { ChevronRight, UserIcon } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 
 interface CardSettingsProps {

@@ -171,12 +171,6 @@ export function DealDialogContent({
                       {stages.map((stage) => (
                         <SelectItem key={stage.id} value={stage.id}>
                           <div className="flex items-center gap-2">
-                            <div
-                              className="h-2 w-2 rounded-full"
-                              style={{
-                                backgroundColor: stage.color || '#6b7280',
-                              }}
-                            />
                             {stage.name}
                           </div>
                         </SelectItem>
