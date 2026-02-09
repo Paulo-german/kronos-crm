@@ -25,7 +25,7 @@ export interface DealTaskDto {
   id: string
   title: string
   type: string
-  dueDate: Date | null
+  dueDate: Date
   isCompleted: boolean
   dealId: string
 }

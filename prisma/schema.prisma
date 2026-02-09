@@ -311,13 +311,13 @@ model Task {
   organizationId String       @map("organization_id")
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  dealId String? @map("deal_id")
-  deal   Deal?   @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  dealId String @map("deal_id")
+  deal   Deal   @relation(fields: [dealId], references: [id], onDelete: Cascade)
 
   title       String
-  type        TaskType  @default(TASK)
-  dueDate     DateTime? @map("due_date")
-  isCompleted Boolean   @default(false) @map("is_completed")
+  type        TaskType @default(TASK)
+  dueDate     DateTime @map("due_date")
+  isCompleted Boolean  @default(false) @map("is_completed")
 
   assignedTo String @map("assigned_to")
   assignee   User   @relation("TaskAssignee", fields: [assignedTo], references: [id])

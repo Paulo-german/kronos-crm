@@ -22,15 +22,25 @@ export const createTask = orgActionClient
     // 3. Resolver assignedTo (MEMBER = forçado para si mesmo)
     const assignedTo = resolveAssignedTo(ctx, data.assignedTo)
 
-    const dealIdValue = data.dealId ?? null
+    // 4. Validar que deal existe
+    const deal = await db.deal.findFirst({
+      where: {
+        id: data.dealId,
+        organizationId: ctx.orgId,
+      },
+    })
 
-    // 4. Criação
+    if (!deal) {
+      throw new Error('Negócio não encontrado ou sem acesso')
+    }
+
+    // 5. Criação
     await db.task.create({
       data: {
         organizationId: ctx.orgId,
         title: data.title,
-        dueDate: data.dueDate ?? null,
-        dealId: dealIdValue,
+        dueDate: data.dueDate,
+        dealId: data.dealId,
         assignedTo,
         createdBy: ctx.userId,
         type: data.type,
@@ -38,21 +48,19 @@ export const createTask = orgActionClient
       },
     })
 
-    // Se tiver dealId, criar activity
-    if (dealIdValue) {
-      await db.activity.create({
-        data: {
-          type: 'task_created',
-          content: data.title,
-          dealId: dealIdValue,
-        },
-      })
-    }
+    // Sempre criar activity (dealId sempre presente)
+    await db.activity.create({
+      data: {
+        type: 'task_created',
+        content: data.title,
+        dealId: data.dealId,
+      },
+    })
 
     revalidateTag(`tasks:${ctx.orgId}`)
     revalidatePath('/tasks')
     revalidatePath('/pipeline')
-    if (dealIdValue) revalidatePath(`/pipeline/deal/${dealIdValue}`)
+    revalidatePath(`/pipeline/deal/${data.dealId}`)
 
     return { success: true }
   })

@@ -18,8 +18,6 @@ export const updateTask = orgActionClient
     // 1. Verificar permissão base
     requirePermission(canPerformAction(ctx, 'task', 'update'))
 
-    const dealIdValue = data.dealId ?? null
-
     // 2. Buscar tarefa existente
     const existingTask = await db.task.findFirst({
       where: {
@@ -42,20 +40,25 @@ export const updateTask = orgActionClient
       requirePermission(canTransferOwnership(ctx))
     }
 
+    // 5. Validar novo deal se mudou
+    if (data.dealId !== existingTask.dealId) {
+      const newDeal = await db.deal.findFirst({
+        where: { id: data.dealId, organizationId: ctx.orgId },
+      })
+
+      if (!newDeal) {
+        throw new Error('Negócio não encontrado ou sem acesso')
+      }
+    }
+
     // Build update data dynamically to avoid Prisma type conflicts
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updateData: Record<string, any> = {
       title: data.title,
-      dueDate: data.dueDate ?? null,
+      dueDate: data.dueDate,
+      dealId: data.dealId,
       type: data.type,
       isCompleted: data.isCompleted,
-    }
-
-    // Handle deal relation properly to avoid Prisma type conflicts
-    if (dealIdValue === null) {
-      updateData.deal = { disconnect: true }
-    } else {
-      updateData.deal = { connect: { id: dealIdValue } }
     }
 
     // Only update assignedTo if provided and not null (field is required in schema)
@@ -71,8 +74,8 @@ export const updateTask = orgActionClient
     revalidateTag(`tasks:${ctx.orgId}`)
     revalidatePath('/tasks')
     revalidatePath('/pipeline')
-    if (dealIdValue) revalidatePath(`/pipeline/deal/${dealIdValue}`)
-    if (existingTask.dealId && existingTask.dealId !== dealIdValue) {
+    revalidatePath(`/pipeline/deal/${data.dealId}`)
+    if (existingTask.dealId !== data.dealId) {
       revalidatePath(`/pipeline/deal/${existingTask.dealId}`)
     }
 

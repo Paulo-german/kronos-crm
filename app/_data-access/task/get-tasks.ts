@@ -7,12 +7,12 @@ export type TaskDto = {
   id: string
   title: string
   type: string
-  dueDate: Date | null
+  dueDate: Date
   isCompleted: boolean
-  dealId: string | null
+  dealId: string
   deal: {
     title: string
-  } | null
+  }
   assignedTo: string
   createdAt: Date
 }
