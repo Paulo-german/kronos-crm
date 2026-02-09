@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
-import { Check, ChevronsUpDown } from 'lucide-react'
+import { Check, ChevronsUpDown, Loader2 } from 'lucide-react'
 import { cn } from '@/_lib/utils'
 import {
   DialogContent,
@@ -292,7 +292,14 @@ export function DealDialogContent({
               Cancelar
             </Button>
             <Button type="submit" disabled={isPending}>
-              {isPending ? 'Salvando...' : 'Salvar'}
+              {isPending ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="animate-spin" />
+                  Salvar
+                </div>
+              ) : (
+                'Salvar'
+              )}
             </Button>
           </div>
         </form>

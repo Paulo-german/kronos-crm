@@ -31,6 +31,7 @@ import {
 } from '@/_actions/contact/create-contact/schema'
 import { CompanyCombobox } from './company-combobox'
 import { PhoneInput } from '@/_components/form-controls/phone-input'
+import { Loader2 } from 'lucide-react'
 
 interface UpsertContactDialogContentProps {
   defaultValues?: ContactInput & { id?: string }
@@ -252,7 +253,14 @@ const UpsertContactDialogContent = ({
               Cancelar
             </Button>
             <Button type="submit" disabled={isPending}>
-              {isPending ? 'Salvando...' : 'Salvar'}
+              {isPending ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="animate-spin" />
+                  Salvar
+                </div>
+              ) : (
+                'Salvar'
+              )}
             </Button>
           </div>
         </form>

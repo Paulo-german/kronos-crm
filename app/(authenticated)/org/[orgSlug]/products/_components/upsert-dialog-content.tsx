@@ -28,6 +28,7 @@ import {
   productSchema,
   type ProductInput,
 } from '@/_actions/product/create-product/schema'
+import { Loader2 } from 'lucide-react'
 
 interface UpsertProductDialogContentProps {
   defaultValues?: ProductInput & { id?: string }
@@ -178,7 +179,14 @@ const UpsertProductDialogContent = ({
               Cancelar
             </Button>
             <Button type="submit" disabled={isPending}>
-              {isPending ? 'Salvando...' : 'Salvar'}
+              {isPending ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="animate-spin" />
+                  Salvar
+                </div>
+              ) : (
+                'Salvar'
+              )}
             </Button>
           </div>
         </form>
