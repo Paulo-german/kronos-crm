@@ -2,13 +2,8 @@
 
 import { useSearchParams } from 'next/navigation'
 import { Receipt } from 'lucide-react'
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/_components/ui/card'
-import { PLANS } from '@/(authenticated)/org/[orgSlug]/settings/billing/_components/plans-data'
+import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
+import { PLANS } from '@/(authenticated)/org/[orgSlug]/(main)/settings/billing/_components/plans-data'
 import type { PlanInterval } from './checkout-types'
 
 export function OrderSummary() {
@@ -60,9 +55,7 @@ export function OrderSummary() {
 
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <span>Preço por licença</span>
-            <span>
-              R$ {unitPrice.toFixed(2).replace('.', ',')}/mês
-            </span>
+            <span>R$ {unitPrice.toFixed(2).replace('.', ',')}/mês</span>
           </div>
         </div>
 
@@ -78,7 +71,8 @@ export function OrderSummary() {
               </div>
               {isAnnual && (
                 <p className="text-xs font-normal text-muted-foreground">
-                  equivalente a R$ {totalMonthly.toFixed(2).replace('.', ',')}/mês
+                  equivalente a R$ {totalMonthly.toFixed(2).replace('.', ',')}
+                  /mês
                 </p>
               )}
             </div>

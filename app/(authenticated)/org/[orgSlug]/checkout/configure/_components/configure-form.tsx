@@ -7,7 +7,7 @@ import { Button } from '@/_components/ui/button'
 import { Card, CardContent } from '@/_components/ui/card'
 import { Label } from '@/_components/ui/label'
 import { cn } from '@/_lib/utils'
-import type { PlanInfo } from '@/(authenticated)/org/[orgSlug]/settings/billing/_components/plans-data'
+import type { PlanInfo } from '@/(authenticated)/org/[orgSlug]/(main)/settings/billing/_components/plans-data'
 import type { PlanInterval } from '../../_components/checkout-types'
 
 interface ConfigureFormProps {

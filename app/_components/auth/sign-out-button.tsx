@@ -2,7 +2,6 @@
 
 import { useAction } from 'next-safe-action/hooks'
 import { signOut } from '@/_actions/auth/sign-out'
-import { Button } from '@/_components/ui/button'
 import { LogOut } from 'lucide-react'
 import {
   Tooltip,

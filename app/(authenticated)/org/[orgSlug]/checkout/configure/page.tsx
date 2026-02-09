@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { isElevated } from '@/_lib/rbac'
-import { PLANS } from '@/(authenticated)/org/[orgSlug]/settings/billing/_components/plans-data'
+import { PLANS } from '@/(authenticated)/org/[orgSlug]/(main)/settings/billing/_components/plans-data'
 import { ConfigureForm } from './_components/configure-form'
 
 interface ConfigurePageProps {

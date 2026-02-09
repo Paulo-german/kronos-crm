@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { isElevated } from '@/_lib/rbac'
-import { PLANS } from '@/(authenticated)/org/[orgSlug]/settings/billing/_components/plans-data'
+import { PLANS } from '@/(authenticated)/org/[orgSlug]/(main)/settings/billing/_components/plans-data'
 import { PaymentForm } from './_components/payment-form'
 import type { CheckoutSearchParams } from '../_components/checkout-types'
 

@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { stripe } from '@/_lib/stripe'
-import { PLANS } from '@/(authenticated)/org/[orgSlug]/settings/billing/_components/plans-data'
+import { PLANS } from '@/(authenticated)/org/[orgSlug]/(main)/settings/billing/_components/plans-data'
 import { createSubscription } from '@/_actions/billing/create-subscription'
 
 interface SetupCompletePageProps {
