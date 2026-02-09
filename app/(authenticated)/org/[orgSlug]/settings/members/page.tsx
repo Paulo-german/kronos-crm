@@ -2,11 +2,10 @@ import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
-import { getMembershipOrThrow } from '@/_data-access/organization/validate-membership'
-import { createClient } from '@/_lib/supabase/server'
 import { MemberList } from './_components/member-list'
-import { InviteMemberDialog } from './_components/invite-member-dialog'
+import InviteMemberDialog from './_components/invite-member-dialog'
 import { redirect } from 'next/navigation'
+import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 
 interface MembersPageProps {
   params: Promise<{ orgSlug: string }>
@@ -15,20 +14,10 @@ interface MembersPageProps {
 export default async function MembersPage({ params }: MembersPageProps) {
   const { orgSlug } = await params
 
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) return null
-
-  // Validar acesso e pegar orgId
-  const { orgId, userRole } = await getMembershipOrThrow(user.id, orgSlug)
-
-  const isAdminOrOwner = userRole === 'ADMIN' || userRole === 'OWNER'
+  const { orgId, userRole } = await getOrgContext(orgSlug)
 
   // RBAC: Apenas ADMIN/OWNER podem acessar esta página
-  if (!isAdminOrOwner) {
+  if (userRole !== 'ADMIN' && userRole !== 'OWNER') {
     redirect(`/org/${orgSlug}/dashboard`)
   }
 
@@ -53,7 +42,9 @@ export default async function MembersPage({ params }: MembersPageProps) {
             Gerencie quem tem acesso à organização.
           </p>
         </div>
-        {isAdminOrOwner && <InviteMemberDialog />}
+        {(userRole === 'ADMIN' || userRole === 'OWNER') && (
+          <InviteMemberDialog />
+        )}
       </div>
 
       <div className="space-y-8">
