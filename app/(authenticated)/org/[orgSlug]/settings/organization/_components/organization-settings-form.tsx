@@ -47,6 +47,7 @@ import { BRAZILIAN_STATES } from '@/_constants/brazilian-states'
 import { formatDate, onlyNumbers } from '@/_lib/utils'
 import type { PlanType } from '@/_lib/rbac/plan-limits'
 import type { PersonType } from '@prisma/client'
+import Link from 'next/link'
 
 interface Organization {
   id: string
@@ -72,11 +73,13 @@ interface Organization {
 }
 
 interface OrganizationSettingsFormProps {
+  orgSlug: string
   organization: Organization
   currentPlan: PlanType
 }
 
 export function OrganizationSettingsForm({
+  orgSlug,
   organization,
   currentPlan,
 }: OrganizationSettingsFormProps) {
@@ -171,7 +174,7 @@ export function OrganizationSettingsForm({
 
   const planLabels: Record<PlanType, string> = {
     free: 'Gratuito',
-    pro: 'Profissional',
+    pro: 'Pro',
     enterprise: 'Enterprise',
   }
 
@@ -233,10 +236,11 @@ export function OrganizationSettingsForm({
                     <p className="text-sm font-medium">
                       {planLabels[currentPlan]}
                     </p>
-                    <Button type="button" variant="outline" size="sm">
-                      <Sparkles className="mr-2 h-4 w-4" />
-                      {isFree ? 'Assinar' : 'Upgrade'}
-                    </Button>
+                    <Link href={`/org/${orgSlug}/settings/billing`}>
+                      <Button type="button">
+                        {isFree ? 'Assinar' : 'Upgrade'}
+                      </Button>
+                    </Link>
                   </div>
                 </div>
 

@@ -48,6 +48,7 @@ export default async function OrganizationSettingsPage({
       </div>
 
       <OrganizationSettingsForm
+        orgSlug={orgSlug}
         organization={organization}
         currentPlan={plan}
       />
