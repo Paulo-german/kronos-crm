@@ -1,10 +1,18 @@
+import Header, {
+  HeaderLeft,
+  HeaderSubTitle,
+  HeaderTitle,
+} from '@/_components/header'
+
 const DashboardPage = () => {
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-      </div>
-      <p>Bem-vindo ao Kronos CRM.</p>
+      <Header>
+        <HeaderLeft>
+          <HeaderTitle>Dashboard</HeaderTitle>
+          <HeaderSubTitle>Bem-vindo ao Kronos CRM</HeaderSubTitle>
+        </HeaderLeft>
+      </Header>
     </div>
   )
 }

@@ -3,6 +3,12 @@ import { getContacts } from '@/_data-access/contact/get-contacts'
 import { getCompanies } from '@/_data-access/company/get-companies'
 import { ContactsDataTable } from './_components/contacts-data-table'
 import CreateContactButton from './_components/create-contact-button'
+import Header, {
+  HeaderLeft,
+  HeaderTitle,
+  HeaderSubTitle,
+  HeaderRight,
+} from '@/_components/header'
 
 interface ContactsPageProps {
   params: Promise<{ orgSlug: string }>
@@ -19,15 +25,15 @@ const ContactsPage = async ({ params }: ContactsPageProps) => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Contatos</h1>
-          <p className="text-muted-foreground">
-            Gerencie seus contatos e leads.
-          </p>
-        </div>
-        <CreateContactButton companyOptions={companies} />
-      </div>
+      <Header>
+        <HeaderLeft>
+          <HeaderTitle>Contatos</HeaderTitle>
+          <HeaderSubTitle>Gerencie seus contatos e leads</HeaderSubTitle>
+        </HeaderLeft>
+        <HeaderRight>
+          <CreateContactButton companyOptions={companies} />
+        </HeaderRight>
+      </Header>
       <ContactsDataTable contacts={contacts} companyOptions={companies} />
     </div>
   )

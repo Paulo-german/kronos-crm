@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Dialog } from '@/_components/ui/dialog'
 import { Button } from '@/_components/ui/button'
-import { Settings } from 'lucide-react'
+import { Settings2Icon } from 'lucide-react'
 import { KanbanBoard } from './kanban-board'
 import { DealDialogContent } from './deal-dialog-content'
 import { EmptyPipeline } from './empty-pipeline'
@@ -19,6 +19,12 @@ import type {
 } from '@/_data-access/deal/get-deals-by-pipeline'
 import type { ContactDto } from '@/_data-access/contact/get-contacts'
 import type { MemberRole } from '@prisma/client'
+import Header, {
+  HeaderLeft,
+  HeaderTitle,
+  HeaderSubTitle,
+  HeaderRight,
+} from '@/_components/header'
 
 interface PipelineClientProps {
   pipeline: PipelineWithStagesDto | null
@@ -77,22 +83,24 @@ export const PipelineClient = ({
 
   return (
     <>
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Pipeline de Vendas</h1>
-          <p className="text-muted-foreground">
-            Visualize e gerencie suas oportunidades.
-          </p>
-        </div>
-        {canManagePipeline && (
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/pipeline/settings">
-              <Settings className="mr-2 h-4 w-4" />
-              Configurar Pipeline
-            </Link>
-          </Button>
-        )}
-      </div>
+      <Header>
+        <HeaderLeft>
+          <HeaderTitle>Pipeline de Vendas</HeaderTitle>
+          <HeaderSubTitle>
+            Visualize e gerencie suas oportunidades
+          </HeaderSubTitle>
+        </HeaderLeft>
+        <HeaderRight>
+          {canManagePipeline && (
+            <Button variant="outline" asChild>
+              <Link href="/pipeline/settings">
+                <Settings2Icon className="mr-2 h-4 w-4" />
+                Configurar Pipeline
+              </Link>
+            </Button>
+          )}
+        </HeaderRight>
+      </Header>
 
       <KanbanBoard
         pipeline={pipeline}
