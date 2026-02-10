@@ -170,6 +170,7 @@ const TabProducts = ({ deal, products }: TabProductsProps) => {
           </Button>
 
           <UpsertProductDialog
+            key={editingProduct?.id ?? 'new'} // Força reset ao mudar contexto
             isOpen={isDialogOpen}
             defaultValues={dialogDefaultValues}
             products={isEditing ? products : availableProducts}

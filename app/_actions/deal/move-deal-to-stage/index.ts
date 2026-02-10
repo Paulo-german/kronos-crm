@@ -4,7 +4,11 @@ import { orgActionClient } from '@/_lib/safe-action'
 import { moveDealToStageSchema } from './schema'
 import { db } from '@/_lib/prisma'
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { findDealWithRBAC, canPerformAction, requirePermission } from '@/_lib/rbac'
+import {
+  findDealWithRBAC,
+  canPerformAction,
+  requirePermission,
+} from '@/_lib/rbac'
 
 export const moveDealToStage = orgActionClient
   .schema(moveDealToStageSchema)
@@ -61,6 +65,7 @@ export const moveDealToStage = orgActionClient
         type: 'stage_change',
         content: `${deal.stage.name} → ${newStage.name}`,
         dealId: data.dealId,
+        performedBy: ctx.userId,
       },
     })
 

@@ -54,6 +54,7 @@ export const createTask = orgActionClient
         type: 'task_created',
         content: data.title,
         dealId: data.dealId,
+        performedBy: ctx.userId,
       },
     })
 

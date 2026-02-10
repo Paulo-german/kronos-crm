@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
-import { Pencil, Check, X, FileText } from 'lucide-react'
+import { Pencil, Check, X, FileText, Loader2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import { Button } from '@/_components/ui/button'
 import { Textarea } from '@/_components/ui/textarea'
@@ -50,11 +50,10 @@ const NotesSection = ({ deal }: NotesSectionProps) => {
         {!isEditing && (
           <Button
             size="sm"
-            variant="ghost"
+            variant="default"
             onClick={() => setIsEditing(true)}
-            className="h-8 gap-1.5 text-xs"
           >
-            <Pencil className="h-3.5 w-3.5" />
+            <Pencil size={5} className="mr-1" />
             Editar
           </Button>
         )}
@@ -71,16 +70,19 @@ const NotesSection = ({ deal }: NotesSectionProps) => {
             />
             <div className="flex justify-end gap-2">
               <Button
-                size="sm"
+                size="default"
                 variant="outline"
                 onClick={handleCancel}
                 disabled={isPending}
               >
-                <X className="mr-1.5 h-3.5 w-3.5" />
                 Cancelar
               </Button>
-              <Button size="sm" onClick={handleSave} disabled={isPending}>
-                <Check className="mr-1.5 h-3.5 w-3.5" />
+              <Button size="default" onClick={handleSave} disabled={isPending}>
+                {isPending ? (
+                  <Loader2 className="mr-1 animate-spin" />
+                ) : (
+                  <Check size={5} className="mr-1" />
+                )}
                 Salvar
               </Button>
             </div>

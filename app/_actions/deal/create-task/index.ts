@@ -4,7 +4,12 @@ import { orgActionClient } from '@/_lib/safe-action'
 import { createTaskSchema } from './schema'
 import { db } from '@/_lib/prisma'
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { findDealWithRBAC, canPerformAction, requirePermission, resolveAssignedTo } from '@/_lib/rbac'
+import {
+  findDealWithRBAC,
+  canPerformAction,
+  requirePermission,
+  resolveAssignedTo,
+} from '@/_lib/rbac'
 
 export const createTask = orgActionClient
   .schema(createTaskSchema)
@@ -35,6 +40,7 @@ export const createTask = orgActionClient
         type: 'task_created',
         content: data.title,
         dealId: data.dealId,
+        performedBy: ctx.userId,
       },
     })
 

@@ -11,6 +11,7 @@ import {
   Check,
   ChevronsUpDown,
   Trash2,
+  Loader2,
 } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
@@ -43,17 +44,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/_components/ui/popover'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/_components/ui/alert-dialog'
+import { AlertDialog } from '@/_components/ui/alert-dialog'
+import ConfirmationDialogContent from '@/_components/confirmation-dialog-content'
 import type { DealDetailsDto } from '@/_data-access/deal/get-deal-details'
 import { formatPhone } from '@/_utils/format-phone'
 import type { ContactDto } from '@/_data-access/contact/get-contacts'
@@ -72,6 +64,9 @@ const ContactWidget = ({ deal, contacts }: ContactWidgetProps) => {
   const [selectedContactId, setSelectedContactId] = useState<string | null>(
     null,
   )
+  const [removingContact, setRemovingContact] = useState<
+    DealDetailsDto['contacts'][0] | null
+  >(null)
 
   const { execute: executeAddContact, isPending: isAdding } = useAction(
     addDealContact,
@@ -87,14 +82,18 @@ const ContactWidget = ({ deal, contacts }: ContactWidgetProps) => {
     },
   )
 
-  const { execute: executeRemoveContact } = useAction(removeDealContact, {
-    onSuccess: () => {
-      toast.success('Contato removido com sucesso!')
+  const { execute: executeRemoveContact, isPending: isRemoving } = useAction(
+    removeDealContact,
+    {
+      onSuccess: () => {
+        toast.success('Contato removido com sucesso!')
+        setRemovingContact(null)
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError || 'Erro ao remover contato.')
+      },
     },
-    onError: ({ error }) => {
-      toast.error(error.serverError || 'Erro ao remover contato.')
-    },
-  })
+  )
 
   // Filtrar contatos que JÁ estão no deal para não mostrar na lista
   const availableContacts = contacts.filter(
@@ -315,35 +314,15 @@ const ContactWidget = ({ deal, contacts }: ContactWidgetProps) => {
                     </TooltipContent>
                   </Tooltip>
                   {/* Botão de Remover (Canto direito) */}
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-14 w-12 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Remover contato?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Esta ação removerá <b>{contact.name}</b> deste
-                          negócio. O contato continuará salvo no CRM.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => handleRemoveContact(contact.contactId)}
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                          Remover
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-14 w-12 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                    onClick={() => setRemovingContact(contact)}
+                    title="Remover contato"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
 
                 {/* Lista de Dados (Email/Phone em linha compacta) */}
@@ -415,6 +394,39 @@ const ContactWidget = ({ deal, contacts }: ContactWidgetProps) => {
           ))}
         </CardContent>
       </Card>
+
+      <AlertDialog
+        open={!!removingContact}
+        onOpenChange={(open) => {
+          if (!open) setRemovingContact(null)
+        }}
+      >
+        <ConfirmationDialogContent
+          variant="destructive"
+          title="Remover contato?"
+          description={
+            <p>
+              Esta ação removerá{' '}
+              <strong className="font-semibold text-foreground">
+                {removingContact?.name}
+              </strong>{' '}
+              deste negócio. O contato continuará salvo no CRM.
+            </p>
+          }
+          icon={<Trash2 />}
+        >
+          <Button
+            variant="destructive"
+            onClick={() =>
+              removingContact && handleRemoveContact(removingContact.contactId)
+            }
+            disabled={isRemoving}
+          >
+            {isRemoving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Remover
+          </Button>
+        </ConfirmationDialogContent>
+      </AlertDialog>
     </>
   )
 }
