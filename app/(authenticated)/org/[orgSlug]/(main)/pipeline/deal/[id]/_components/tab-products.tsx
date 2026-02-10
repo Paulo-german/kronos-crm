@@ -3,7 +3,14 @@
 import { useState } from 'react'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
-import { Plus, Trash2, Loader2 } from 'lucide-react'
+import {
+  Plus,
+  Trash2,
+  Loader2,
+  Pencil,
+  TriangleAlert,
+  TrashIcon,
+} from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import { Button } from '@/_components/ui/button'
 import {
@@ -14,36 +21,17 @@ import {
   TableHeader,
   TableRow,
 } from '@/_components/ui/table'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/_components/ui/dialog'
+import { Dialog } from '@/_components/ui/dialog'
 import {
   AlertDialog,
   AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/_components/ui/alert-dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/_components/ui/select'
-import { Input } from '@/_components/ui/input'
-import { Label } from '@/_components/ui/label'
+import ConfirmationDialogContent from '@/_components/confirmation-dialog-content'
+import UpsertProductDialog from './upsert-product-dialog'
 import { addDealProduct } from '@/_actions/deal/add-deal-product'
 import { removeDealProduct } from '@/_actions/deal/remove-deal-product'
+import { updateDealProduct } from '@/_actions/deal/update-deal-product'
 import type { DealDetailsDto } from '@/_data-access/deal/get-deal-details'
 import type { ProductDto } from '@/_data-access/product/get-products'
 import { formatCurrency } from '@/_utils/format-currency'
@@ -55,9 +43,14 @@ interface TabProductsProps {
 
 const TabProducts = ({ deal, products }: TabProductsProps) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [selectedProductId, setSelectedProductId] = useState<string>('')
-  const [quantity, setQuantity] = useState(1)
-  const [unitPrice, setUnitPrice] = useState(0)
+  const [editingProduct, setEditingProduct] = useState<
+    DealDetailsDto['products'][0] | null
+  >(null)
+  const [deletingProduct, setDeletingProduct] = useState<
+    DealDetailsDto['products'][0] | null
+  >(null)
+
+  const isEditing = !!editingProduct
 
   const { execute: executeAdd, isPending: isAdding } = useAction(
     addDealProduct,
@@ -65,10 +58,24 @@ const TabProducts = ({ deal, products }: TabProductsProps) => {
       onSuccess: () => {
         toast.success('Produto adicionado!')
         setIsDialogOpen(false)
-        resetForm()
+        setEditingProduct(null)
       },
       onError: ({ error }) => {
         toast.error(error.serverError || 'Erro ao adicionar produto.')
+      },
+    },
+  )
+
+  const { execute: executeUpdate, isPending: isUpdating } = useAction(
+    updateDealProduct,
+    {
+      onSuccess: () => {
+        toast.success('Produto atualizado com sucesso!')
+        setIsDialogOpen(false)
+        setEditingProduct(null)
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError || 'Erro ao atualizar produto.')
       },
     },
   )
@@ -77,7 +84,8 @@ const TabProducts = ({ deal, products }: TabProductsProps) => {
     removeDealProduct,
     {
       onSuccess: () => {
-        toast.success('Produto removido!')
+        toast.success('Produto removido com sucesso!')
+        setDeletingProduct(null)
       },
       onError: ({ error }) => {
         toast.error(error.serverError || 'Erro ao remover produto.')
@@ -85,122 +93,93 @@ const TabProducts = ({ deal, products }: TabProductsProps) => {
     },
   )
 
-  const resetForm = () => {
-    setSelectedProductId('')
-    setQuantity(1)
-    setUnitPrice(0)
+  const handleProductEdit = (product: DealDetailsDto['products'][0]) => {
+    setEditingProduct(product)
+    setIsDialogOpen(true)
   }
 
-  const handleProductSelect = (productId: string) => {
-    setSelectedProductId(productId)
-    const product = products.find((p) => p.id === productId)
-    if (product) {
-      setUnitPrice(product.price)
+  const handleFormSubmit = (
+    data: {
+      productId: string
+      quantity: number
+      unitPrice: number
+      discountType: 'percentage' | 'fixed'
+      discountValue: number
+    } & { id?: string },
+  ) => {
+    if (data.id) {
+      // Modo edição
+      executeUpdate({
+        dealProductId: data.id,
+        quantity: data.quantity,
+        unitPrice: data.unitPrice,
+        discountType: data.discountType,
+        discountValue: data.discountValue,
+      })
+    } else {
+      // Modo criação
+      executeAdd({
+        dealId: deal.id,
+        productId: data.productId,
+        quantity: data.quantity,
+        unitPrice: data.unitPrice,
+        discountType: data.discountType,
+        discountValue: data.discountValue,
+      })
     }
   }
 
-  const handleAddProduct = () => {
-    if (!selectedProductId) {
-      toast.error('Selecione um produto.')
-      return
-    }
-    executeAdd({
-      dealId: deal.id,
-      productId: selectedProductId,
-      quantity,
-      unitPrice,
-      discountType: 'percentage',
-      discountValue: 0,
-    })
-  }
-
-  // Produtos não adicionados ao deal
+  // Produtos não adicionados ao deal (para o select no modo criação)
   const availableProducts = products.filter(
-    (p) => !deal.products.some((dp) => dp.productId === p.id),
+    (produto) => !deal.products.some((dp) => dp.productId === produto.id),
   )
+
+  // Default values para o dialog
+  const dialogDefaultValues = editingProduct
+    ? {
+        id: editingProduct.id,
+        productId: editingProduct.productId,
+        quantity: editingProduct.quantity,
+        unitPrice: editingProduct.unitPrice,
+        discountType: editingProduct.discountType,
+        discountValue: editingProduct.discountValue,
+      }
+    : undefined
 
   return (
     <Card className="border-border/50 bg-secondary/20">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-lg">Produtos</CardTitle>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" disabled={availableProducts.length === 0}>
-              <Plus className="mr-2 h-4 w-4" />
-              Adicionar Produto
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Adicionar Produto</DialogTitle>
-              <DialogDescription>
-                Selecione um produto e defina quantidade e preço.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Produto *</Label>
-                <Select
-                  value={selectedProductId}
-                  onValueChange={handleProductSelect}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um produto" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableProducts.map((product) => (
-                      <SelectItem key={product.id} value={product.id}>
-                        {product.name} - {formatCurrency(product.price)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Quantidade</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={quantity}
-                    onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Preço Unitário</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    step={0.01}
-                    value={unitPrice}
-                    onChange={(e) =>
-                      setUnitPrice(parseFloat(e.target.value) || 0)
-                    }
-                  />
-                </div>
-              </div>
+        <Dialog
+          open={isDialogOpen}
+          onOpenChange={(open) => {
+            setIsDialogOpen(open)
+            if (!open) {
+              setEditingProduct(null)
+            }
+          }}
+        >
+          <Button
+            size="sm"
+            disabled={availableProducts.length === 0 && !isEditing}
+            onClick={() => setIsDialogOpen(true)}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Adicionar Produto
+          </Button>
 
-              <div className="rounded-md bg-muted p-3">
-                <p className="text-sm text-muted-foreground">Subtotal</p>
-                <p className="text-xl font-bold">
-                  {formatCurrency(quantity * unitPrice)}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                Cancelar
-              </Button>
-              <Button onClick={handleAddProduct} disabled={isAdding}>
-                {isAdding && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Adicionar
-              </Button>
-            </div>
-          </DialogContent>
+          <UpsertProductDialog
+            isOpen={isDialogOpen}
+            defaultValues={dialogDefaultValues}
+            products={isEditing ? products : availableProducts}
+            onSubmit={handleFormSubmit}
+            onCancel={() => setIsDialogOpen(false)}
+            isPending={isAdding || isUpdating}
+          />
         </Dialog>
       </CardHeader>
+
       <CardContent>
         {deal.products.length === 0 ? (
           <div className="py-8 text-center text-muted-foreground">
@@ -241,39 +220,28 @@ const TabProducts = ({ deal, products }: TabProductsProps) => {
                         {formatCurrency(product.subtotal)}
                       </TableCell>
                       <TableCell>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              disabled={isRemoving}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>
-                                Remover produto?
-                              </AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Tem certeza que deseja remover &quot;
-                                {product.productName}&quot; deste deal?
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() =>
-                                  executeRemove({ dealProductId: product.id })
-                                }
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              >
-                                Remover
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        <div className="flex justify-end gap-1">
+                          {/* Botão Editar */}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleProductEdit(product)}
+                            title="Editar produto"
+                          >
+                            <Pencil className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                          </Button>
+
+                          {/* Botão Deletar */}
+                          {/* Botão Deletar */}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setDeletingProduct(product)}
+                            title="Remover produto"
+                          >
+                            <TrashIcon className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -291,6 +259,41 @@ const TabProducts = ({ deal, products }: TabProductsProps) => {
           </>
         )}
       </CardContent>
+
+      <AlertDialog
+        open={!!deletingProduct}
+        onOpenChange={(open) => {
+          if (!open) setDeletingProduct(null)
+        }}
+      >
+        <ConfirmationDialogContent
+          variant="destructive"
+          title="Remover produto?"
+          description={
+            <p>
+              Esta ação não pode ser desfeita. Você está prestes a remover
+              permanentemente o produto{' '}
+              <strong className="font-semibold text-foreground">
+                {deletingProduct?.productName}
+              </strong>{' '}
+              deste negócio?
+            </p>
+          }
+          icon={<TrashIcon />}
+        >
+          <Button
+            variant="destructive"
+            onClick={() =>
+              deletingProduct &&
+              executeRemove({ dealProductId: deletingProduct.id })
+            }
+            disabled={isRemoving}
+          >
+            {isRemoving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Remover
+          </Button>
+        </ConfirmationDialogContent>
+      </AlertDialog>
     </Card>
   )
 }

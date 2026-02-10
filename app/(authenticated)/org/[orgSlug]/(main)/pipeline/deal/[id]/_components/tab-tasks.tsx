@@ -3,15 +3,13 @@
 import { useState, useOptimistic, useTransition } from 'react'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
-import { Plus, Pencil, Trash } from 'lucide-react'
+import { Plus, Pencil, Trash, Loader2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import { Button } from '@/_components/ui/button'
 import { Checkbox } from '@/_components/ui/checkbox'
 import { Dialog, DialogTrigger } from '@/_components/ui/dialog'
-import {
-  AlertDialog,
-  AlertDialogTrigger,
-} from '@/_components/ui/alert-dialog'
+import { AlertDialog } from '@/_components/ui/alert-dialog'
+import ConfirmationDialogContent from '@/_components/confirmation-dialog-content'
 import { toggleTask } from '@/_actions/deal/toggle-task'
 import { updateTask } from '@/_actions/task/update-task'
 import { deleteTask } from '@/_actions/task/delete-task'
@@ -22,7 +20,6 @@ import type {
 import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
 import type { TaskDto } from '@/_data-access/task/get-tasks'
 import { UpsertTaskDialogContent } from '../../../../tasks/_components/upsert-dialog-content'
-import { DeleteTaskDialogContent } from '../../../../tasks/_components/delete-dialog-content'
 
 interface TabTasksProps {
   deal: DealDetailsDto
@@ -32,6 +29,7 @@ interface TabTasksProps {
 const TabTasks = ({ deal, dealOptions }: TabTasksProps) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<DealTaskDto | null>(null)
+  const [deletingTask, setDeletingTask] = useState<DealTaskDto | null>(null)
   const [, startTransition] = useTransition()
 
   // Estado otimista para tarefas
@@ -74,6 +72,7 @@ const TabTasks = ({ deal, dealOptions }: TabTasksProps) => {
     {
       onSuccess: () => {
         toast.success('Tarefa excluída com sucesso!')
+        setDeletingTask(null)
       },
       onError: ({ error }) => {
         toast.error(error.serverError || 'Erro ao excluir tarefa.')
@@ -193,21 +192,14 @@ const TabTasks = ({ deal, dealOptions }: TabTasksProps) => {
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            disabled={isDeleting}
-                          >
-                            <Trash className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <DeleteTaskDialogContent
-                          taskTitle={task.title}
-                          onDelete={() => executeDelete({ id: task.id })}
-                        />
-                      </AlertDialog>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setDeletingTask(task)}
+                        title="Excluir tarefa"
+                      >
+                        <Trash className="h-4 w-4 text-destructive" />
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -244,21 +236,14 @@ const TabTasks = ({ deal, dealOptions }: TabTasksProps) => {
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            disabled={isDeleting}
-                          >
-                            <Trash className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <DeleteTaskDialogContent
-                          taskTitle={task.title}
-                          onDelete={() => executeDelete({ id: task.id })}
-                        />
-                      </AlertDialog>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setDeletingTask(task)}
+                        title="Excluir tarefa"
+                      >
+                        <Trash className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -266,6 +251,39 @@ const TabTasks = ({ deal, dealOptions }: TabTasksProps) => {
             </>
           )}
         </CardContent>
+        {/* Dialog de Exclusão Controlado */}
+        <AlertDialog
+          open={!!deletingTask}
+          onOpenChange={(open) => {
+            if (!open) setDeletingTask(null)
+          }}
+        >
+          <ConfirmationDialogContent
+            variant="destructive"
+            title="Excluir tarefa?"
+            description={
+              <p>
+                Esta ação não pode ser desfeita. Você está prestes a remover
+                permanentemente a tarefa{' '}
+                <strong className="font-semibold text-foreground">
+                  {deletingTask?.title}
+                </strong>
+              </p>
+            }
+            icon={<Trash />}
+          >
+            <Button
+              variant="destructive"
+              onClick={() =>
+                deletingTask && executeDelete({ id: deletingTask.id })
+              }
+              disabled={isDeleting}
+            >
+              {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Excluir
+            </Button>
+          </ConfirmationDialogContent>
+        </AlertDialog>
       </Card>
     </Dialog>
   )
