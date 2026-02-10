@@ -24,7 +24,6 @@ import { Input } from '@/_components/ui/input'
 import { Button } from '@/_components/ui/button'
 import { Switch } from '@/_components/ui/switch'
 import { createContact } from '@/_actions/contact/create-contact'
-import { updateContact } from '@/_actions/contact/update-contact'
 import {
   contactSchema,
   type ContactInput,

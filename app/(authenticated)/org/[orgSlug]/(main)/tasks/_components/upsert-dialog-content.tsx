@@ -78,6 +78,7 @@ interface UpsertTaskDialogContentProps {
   setIsOpen: Dispatch<SetStateAction<boolean>>
   onUpdate?: (data: UpdateTaskInput) => void
   isUpdating?: boolean
+  fixedDealId?: string
 }
 
 const TASK_TYPE_ICONS: Record<string, React.ReactNode> = {
@@ -104,6 +105,7 @@ export function UpsertTaskDialogContent({
   dealOptions,
   onUpdate,
   isUpdating: isUpdatingProp = false,
+  fixedDealId,
 }: UpsertTaskDialogContentProps) {
   const isEditing = !!defaultValues
 
@@ -137,7 +139,7 @@ export function UpsertTaskDialogContent({
         title: '',
         isCompleted: false,
         type: 'TASK',
-        dealId: '',
+        dealId: fixedDealId || '',
         dueDate: new Date(),
       }
 
@@ -217,74 +219,77 @@ export function UpsertTaskDialogContent({
               )}
             />
           </div>
-          <FormField<CreateTaskInput, 'dealId'>
-            control={form.control}
-            name="dealId"
-            render={({ field }) => (
-              <FormItem className="flex flex-[1.5] flex-col">
-                <FormLabel className="flex items-center gap-1">
-                  Negócio <span className="text-destructive">*</span>
-                </FormLabel>
-                <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        className={cn(
-                          'w-full justify-between',
-                          !field.value && 'text-muted-foreground',
-                          form.formState.errors.dealId && 'border-destructive',
-                        )}
-                      >
-                        {field.value
-                          ? dealOptions.find((deal) => deal.id === field.value)
-                              ?.title
-                          : 'Selecione um negócio...'}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[300px] p-0">
-                    <Command>
-                      <CommandInput placeholder="Buscar negócio..." />
-                      <CommandList>
-                        <CommandEmpty>Nenhum negócio encontrado.</CommandEmpty>
-                        <CommandGroup>
-                          {dealOptions.map((deal) => (
-                            <CommandItem
-                              value={deal.title}
-                              key={deal.id}
-                              onSelect={() => {
-                                form.setValue('dealId', deal.id)
-                                setOpenCombobox(false)
-                              }}
-                            >
-                              <Check
-                                className={cn(
-                                  'mr-2 h-4 w-4',
-                                  deal.id === field.value
-                                    ? 'opacity-100'
-                                    : 'opacity-0',
+          {/* Só renderiza seletor se Deal não for fixo */}
+          {!fixedDealId && (
+            <FormField<CreateTaskInput, 'dealId'>
+              control={form.control}
+              name="dealId"
+              render={({ field }) => (
+                <FormItem className="flex flex-[1.5] flex-col">
+                  <FormLabel className="flex items-center gap-1">
+                    Negócio <span className="text-destructive">*</span>
+                  </FormLabel>
+                  <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          className={cn(
+                            'w-full justify-between',
+                            !field.value && 'text-muted-foreground',
+                            form.formState.errors.dealId && 'border-destructive',
+                          )}
+                        >
+                          {field.value
+                            ? dealOptions.find((deal) => deal.id === field.value)
+                                ?.title
+                            : 'Selecione um negócio...'}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[300px] p-0">
+                      <Command>
+                        <CommandInput placeholder="Buscar negócio..." />
+                        <CommandList>
+                          <CommandEmpty>Nenhum negócio encontrado.</CommandEmpty>
+                          <CommandGroup>
+                            {dealOptions.map((deal) => (
+                              <CommandItem
+                                value={deal.title}
+                                key={deal.id}
+                                onSelect={() => {
+                                  form.setValue('dealId', deal.id)
+                                  setOpenCombobox(false)
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    'mr-2 h-4 w-4',
+                                    deal.id === field.value
+                                      ? 'opacity-100'
+                                      : 'opacity-0',
+                                  )}
+                                />
+                                {deal.title}
+                                {deal.contactName && (
+                                  <span className="ml-2 text-xs text-muted-foreground">
+                                    ({deal.contactName})
+                                  </span>
                                 )}
-                              />
-                              {deal.title}
-                              {deal.contactName && (
-                                <span className="ml-2 text-xs text-muted-foreground">
-                                  ({deal.contactName})
-                                </span>
-                              )}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
 
           {/* DATA E HORA */}
           <FormField<CreateTaskInput, 'dueDate'>

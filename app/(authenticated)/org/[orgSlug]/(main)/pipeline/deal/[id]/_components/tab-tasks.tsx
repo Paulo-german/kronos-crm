@@ -3,12 +3,18 @@
 import { useState, useOptimistic, useTransition } from 'react'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
-import { Plus, Pencil } from 'lucide-react'
+import { Plus, Pencil, Trash } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import { Button } from '@/_components/ui/button'
 import { Checkbox } from '@/_components/ui/checkbox'
 import { Dialog, DialogTrigger } from '@/_components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+} from '@/_components/ui/alert-dialog'
 import { toggleTask } from '@/_actions/deal/toggle-task'
+import { updateTask } from '@/_actions/task/update-task'
+import { deleteTask } from '@/_actions/task/delete-task'
 import type {
   DealDetailsDto,
   DealTaskDto,
@@ -16,6 +22,7 @@ import type {
 import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
 import type { TaskDto } from '@/_data-access/task/get-tasks'
 import { UpsertTaskDialogContent } from '../../../../tasks/_components/upsert-dialog-content'
+import { DeleteTaskDialogContent } from '../../../../tasks/_components/delete-dialog-content'
 
 interface TabTasksProps {
   deal: DealDetailsDto
@@ -47,6 +54,32 @@ const TabTasks = ({ deal, dealOptions }: TabTasksProps) => {
       toast.error(error.serverError || 'Erro ao atualizar tarefa.')
     },
   })
+
+  const { execute: executeUpdate, isPending: isUpdating } = useAction(
+    updateTask,
+    {
+      onSuccess: () => {
+        setIsDialogOpen(false)
+        setEditingTask(null)
+        toast.success('Tarefa atualizada com sucesso!')
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError || 'Erro ao atualizar tarefa.')
+      },
+    },
+  )
+
+  const { execute: executeDelete, isPending: isDeleting } = useAction(
+    deleteTask,
+    {
+      onSuccess: () => {
+        toast.success('Tarefa excluída com sucesso!')
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError || 'Erro ao excluir tarefa.')
+      },
+    },
+  )
 
   const handleToggle = (taskId: string) => {
     startTransition(() => {
@@ -115,6 +148,9 @@ const TabTasks = ({ deal, dealOptions }: TabTasksProps) => {
             setIsDialogOpen(open)
             if (!open) setEditingTask(null)
           }}
+          fixedDealId={deal.id}
+          onUpdate={(data) => executeUpdate(data)}
+          isUpdating={isUpdating}
         />
 
         <CardContent className="space-y-4">
@@ -157,6 +193,21 @@ const TabTasks = ({ deal, dealOptions }: TabTasksProps) => {
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={isDeleting}
+                          >
+                            <Trash className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <DeleteTaskDialogContent
+                          taskTitle={task.title}
+                          onDelete={() => executeDelete({ id: task.id })}
+                        />
+                      </AlertDialog>
                     </div>
                   ))}
                 </div>
@@ -193,6 +244,21 @@ const TabTasks = ({ deal, dealOptions }: TabTasksProps) => {
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={isDeleting}
+                          >
+                            <Trash className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <DeleteTaskDialogContent
+                          taskTitle={task.title}
+                          onDelete={() => executeDelete({ id: task.id })}
+                        />
+                      </AlertDialog>
                     </div>
                   ))}
                 </div>

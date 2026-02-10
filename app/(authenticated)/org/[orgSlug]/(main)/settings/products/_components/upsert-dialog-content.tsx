@@ -23,7 +23,6 @@ import { Input } from '@/_components/ui/input'
 import { Button } from '@/_components/ui/button'
 import { Textarea } from '@/_components/ui/textarea'
 import { createProduct } from '@/_actions/product/create-product'
-import { updateProduct } from '@/_actions/product/update-product'
 import {
   productSchema,
   type ProductInput,
