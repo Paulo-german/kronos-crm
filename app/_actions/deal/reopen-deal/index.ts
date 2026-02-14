@@ -5,7 +5,11 @@ import { reopenDealSchema } from './schema'
 import { db } from '@/_lib/prisma'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { ActivityType } from '@prisma/client'
-import { findDealWithRBAC, canPerformAction, requirePermission } from '@/_lib/rbac'
+import {
+  findDealWithRBAC,
+  canPerformAction,
+  requirePermission,
+} from '@/_lib/rbac'
 
 export const reopenDeal = orgActionClient
   .schema(reopenDealSchema)
@@ -27,6 +31,7 @@ export const reopenDeal = orgActionClient
         type: ActivityType.deal_reopened,
         content: 'Negociação retomada (Status: ABERTO)',
         dealId: data.dealId,
+        performedBy: ctx.userId,
       },
     })
 

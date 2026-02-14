@@ -21,16 +21,28 @@ export const removeDealContact = orgActionClient
     await findDealWithRBAC(data.dealId, ctx)
 
     // 3. Verificar se o contato é acessível pelo usuário
-    await findContactWithRBAC(data.contactId, ctx)
+    const contact = await findContactWithRBAC(data.contactId, ctx)
 
-    // 4. Remove o contato do deal
-    await db.dealContact.delete({
-      where: {
-        dealId_contactId: {
-          dealId: data.dealId,
-          contactId: data.contactId,
+    await db.$transaction(async (tx) => {
+      // 4. Remove o contato do deal
+      await tx.dealContact.delete({
+        where: {
+          dealId_contactId: {
+            dealId: data.dealId,
+            contactId: data.contactId,
+          },
         },
-      },
+      })
+
+      // 5. Log da atividade
+      await tx.activity.create({
+        data: {
+          dealId: data.dealId,
+          type: 'contact_removed',
+          content: `Removeu ${contact.name}`,
+          performedBy: ctx.userId,
+        },
+      })
     })
 
     revalidateTag(`pipeline:${ctx.orgId}`)

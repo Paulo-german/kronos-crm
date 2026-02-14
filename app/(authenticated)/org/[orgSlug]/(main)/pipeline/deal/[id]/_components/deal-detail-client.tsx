@@ -37,7 +37,7 @@ import { markDealLost } from '@/_actions/deal/mark-deal-lost'
 import { reopenDeal } from '@/_actions/deal/reopen-deal'
 import { updateDeal } from '@/_actions/deal/update-deal'
 import type { DealDetailsDto } from '@/_data-access/deal/get-deal-details'
-import { formatCurrency } from '@/_utils/format-currency'
+
 import type { ProductDto } from '@/_data-access/product/get-products'
 import type { ContactDto } from '@/_data-access/contact/get-contacts'
 import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
@@ -65,6 +65,7 @@ interface DealDetailClientProps {
   members: MemberDto[]
   currentUserId: string
   userRole: MemberRole
+  lostReasons: { id: string; name: string }[]
 }
 
 const priorityConfig = {
@@ -129,9 +130,16 @@ const DealDetailClient = ({
   members,
   currentUserId,
   userRole,
+  lostReasons,
 }: DealDetailClientProps) => {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState('summary')
+
+  // Lost Logic
+  const [isLostOpen, setIsLostOpen] = useState(false)
+  const [selectedLostReason, setSelectedLostReason] = useState<
+    string | undefined
+  >(undefined)
 
   // Transfer Logic
   const [isTransferOpen, setIsTransferOpen] = useState(false)
@@ -185,6 +193,7 @@ const DealDetailClient = ({
         toast.success('Deal marcado como perdido.', {
           position: 'bottom-right',
         })
+        setIsLostOpen(false)
       },
       onError: ({ error }) => {
         toast.error(error.serverError || 'Erro ao marcar como perdido.', {
@@ -212,14 +221,14 @@ const DealDetailClient = ({
 
   const isPending = isMarkingWon || isMarkingLost || isReopening || isUpdating
 
-  const formattedValue = formatCurrency(deal.totalValue)
-
   const handleMarkWon = () => {
     executeMarkWon({ dealId: deal.id })
   }
 
   const handleMarkLost = () => {
-    executeMarkLost({ dealId: deal.id })
+    if (selectedLostReason) {
+      executeMarkLost({ dealId: deal.id, lossReasonId: selectedLostReason })
+    }
   }
 
   const handleReopen = () => {
@@ -247,8 +256,31 @@ const DealDetailClient = ({
             <ArrowLeft className="mr-2 h-4 w-4" />
             Voltar
           </Button>
+        </div>
 
-          <div className="mt-4 flex gap-2.5">
+        <div className="flex items-start justify-between">
+          <div className="flex justify-between">
+            <div>
+              <h1 className="text-2xl font-bold">{deal.title}</h1>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="mt-4 flex items-center gap-2">
+                  <Badge
+                    variant="outline"
+                    className={`h-6 gap-1.5 px-2 text-xs font-semibold transition-colors ${statusConfig[deal.status].color}`}
+                  >
+                    <CircleIcon className="h-1.5 w-1.5 fill-current" />
+                    {statusConfig[deal.status].label}
+                  </Badge>
+                  <Badge
+                    className={`h-6 gap-1.5 px-2 text-xs font-semibold transition-colors ${priorityConfig[deal.priority].color}`}
+                  >
+                    {priorityConfig[deal.priority].label}
+                  </Badge>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-2.5">
             {canTransfer && userRole !== 'MEMBER' && (
               <Button
                 variant="outline"
@@ -282,7 +314,7 @@ const DealDetailClient = ({
                 <Button
                   variant="destructive"
                   className="bg-kronos-red text-white hover:bg-kronos-red/80 hover:text-white/80"
-                  onClick={handleMarkLost}
+                  onClick={() => setIsLostOpen(true)}
                   disabled={isPending}
                 >
                   <XCircle className="h-4 w-4" />
@@ -292,58 +324,26 @@ const DealDetailClient = ({
             )}
           </div>
         </div>
-
-        <div className="space-y-2">
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">{deal.title}</h1>
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="mt-4 flex items-center gap-2">
-                  <Badge
-                    variant="outline"
-                    className={`h-6 gap-1.5 px-2 text-xs font-semibold transition-colors ${statusConfig[deal.status].color}`}
-                  >
-                    <CircleIcon className="h-1.5 w-1.5 fill-current" />
-                    {statusConfig[deal.status].label}
-                  </Badge>
-                  <Badge
-                    className={`h-6 gap-1.5 px-2 text-xs font-semibold transition-colors ${priorityConfig[deal.priority].color}`}
-                  >
-                    {priorityConfig[deal.priority].label}
-                  </Badge>
-                </div>
-              </div>
-            </div>
-            <div className="flex flex-col items-end gap-1">
-              <span className="text-sm text-muted-foreground">
-                Valor Estimado
-              </span>
-              <span className="text-2xl font-bold text-primary">
-                {formattedValue}
-              </span>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="h-fit">
-        <TabsList className="grid h-12 w-full grid-cols-3 border border-border/50 bg-tab/30">
+        <TabsList className="grid h-12 w-full grid-cols-3 rounded-md border border-border/50 bg-tab/30">
           <TabsTrigger
             value="summary"
-            className="py-2 data-[state=active]:bg-card/80"
+            className="rounded-md py-2 data-[state=active]:bg-card/80"
           >
             Resumo
           </TabsTrigger>
           <TabsTrigger
             value="products"
-            className="py-2 data-[state=active]:bg-card/80"
+            className="rounded-md py-2 data-[state=active]:bg-card/80"
           >
             Produtos
           </TabsTrigger>
           <TabsTrigger
             value="tasks"
-            className="py-2 data-[state=active]:bg-card/80"
+            className="rounded-md py-2 data-[state=active]:bg-card/80"
           >
             Tarefas
           </TabsTrigger>
@@ -409,6 +409,57 @@ const DealDetailClient = ({
               disabled={!selectedMemberId || isPending}
             >
               Transferir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Perda */}
+      <Dialog open={isLostOpen} onOpenChange={setIsLostOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Marcar como Perdido</DialogTitle>
+            <DialogDescription>
+              Por que esta negociação foi perdida?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="loss-reason">Motivo da Perda</Label>
+            <Select onValueChange={setSelectedLostReason}>
+              <SelectTrigger id="loss-reason" className="mt-2 w-full">
+                <SelectValue placeholder="Selecione um motivo..." />
+              </SelectTrigger>
+              <SelectContent>
+                {lostReasons.length === 0 ? (
+                  <div className="p-2 text-sm text-muted-foreground">
+                    Nenhum motivo cadastrado.
+                    <br />
+                    Vá em Configurações para adicionar.
+                  </div>
+                ) : (
+                  lostReasons.map((reason) => (
+                    <SelectItem key={reason.id} value={reason.id}>
+                      {reason.name}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsLostOpen(false)}
+              disabled={isPending}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleMarkLost}
+              disabled={!selectedLostReason || isPending}
+            >
+              Confirmar Perda
             </Button>
           </DialogFooter>
         </DialogContent>

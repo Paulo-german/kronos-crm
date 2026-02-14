@@ -33,88 +33,22 @@ export const updateDeal = orgActionClient
     // 3. Verificar acesso ao registro (MEMBER só edita próprios)
     requirePermission(canAccessRecord(ctx, { assignedTo: deal.assignedTo }))
 
-    // 4. Se está mudando assignedTo, verificar permissão de transferência
-    if (isOwnershipChange(data.assignedTo, deal.assignedTo)) {
+    // 4. Se for definir como primary, remove status dos outros
+    let newAssigneeName = ''
+    if (
+      data.assignedTo &&
+      deal.assignedTo !== data.assignedTo &&
+      isOwnershipChange(data.assignedTo, deal.assignedTo)
+    ) {
       requirePermission(canTransferOwnership(ctx))
-
-      // Transferir também os contatos vinculados ao Deal
-      if (data.assignedTo) {
-        // Buscar todos os contatos vinculados a este Deal
-        const dealContacts = await db.dealContact.findMany({
-          where: { dealId: data.id },
-          select: { contactId: true },
-        })
-
-        // Atualizar o assignedTo de todos os contatos vinculados
-        if (dealContacts.length > 0) {
-          await db.contact.updateMany({
-            where: {
-              id: { in: dealContacts.map((dc) => dc.contactId) },
-              organizationId: ctx.orgId, // Garantir que são da mesma org
-            },
-            data: {
-              assignedTo: data.assignedTo,
-            },
-          })
-        }
-      }
-    }
-
-    // 5. Validações de contato e empresa
-    const contact = data.contactId
-      ? await db.contact.findFirst({
-          where: {
-            id: data.contactId,
-            organizationId: ctx.orgId,
-          },
-        })
-      : null
-
-    if (data.contactId && !contact) {
-      throw new Error('Contato não encontrado.')
-    }
-
-    if (data.companyId) {
-      const company = await db.company.findFirst({
-        where: {
-          id: data.companyId,
-          organizationId: ctx.orgId,
-        },
+      const newAssignee = await db.user.findUnique({
+        where: { id: data.assignedTo },
+        select: { fullName: true, email: true },
       })
-      if (!company) {
-        throw new Error('Empresa não encontrada.')
-      }
+      newAssigneeName = newAssignee?.fullName || newAssignee?.email || 'Usuário'
     }
 
-    // Handle Contact Update (N:N)
-    if (typeof data.contactId !== 'undefined') {
-      await db.dealContact.updateMany({
-        where: { dealId: data.id, isPrimary: true },
-        data: { isPrimary: false },
-      })
-
-      if (data.contactId) {
-        await db.dealContact.upsert({
-          where: {
-            dealId_contactId: {
-              dealId: data.id,
-              contactId: data.contactId,
-            },
-          },
-          create: {
-            dealId: data.id,
-            contactId: data.contactId,
-            isPrimary: true,
-            role: contact?.role,
-          },
-          update: {
-            isPrimary: true,
-          },
-        })
-      }
-    }
-
-    // Build update data using relation-based approach for companyId
+    // 5. Build update data
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updateData: Record<string, any> = {}
 
@@ -130,20 +64,123 @@ export const updateDeal = orgActionClient
       if (data.companyId === null) {
         updateData.company = { disconnect: true }
       } else {
+        const company = await db.company.findFirst({
+          where: { id: data.companyId, organizationId: ctx.orgId },
+        })
+        if (!company) throw new Error('Empresa não encontrada.')
+
         updateData.company = { connect: { id: data.companyId } }
       }
     }
 
-    await db.deal.update({
-      where: { id: data.id },
-      data: updateData,
+    // Validação de contato
+    let contactRole: string | undefined
+    if (data.contactId) {
+      const contact = await db.contact.findFirst({
+        where: { id: data.contactId, organizationId: ctx.orgId },
+      })
+      if (!contact) throw new Error('Contato não encontrado.')
+      contactRole = contact.role || undefined
+    }
+
+    // TRANSACTION WRAPPER
+    await db.$transaction(async (tx) => {
+      // 1. Transferir contatos se necessário
+      if (data.assignedTo && deal.assignedTo !== data.assignedTo) {
+        const dealContacts = await tx.dealContact.findMany({
+          where: { dealId: data.id },
+          select: { contactId: true },
+        })
+
+        if (dealContacts.length > 0) {
+          await tx.contact.updateMany({
+            where: {
+              id: { in: dealContacts.map((dc) => dc.contactId) },
+              organizationId: ctx.orgId,
+            },
+            data: { assignedTo: data.assignedTo },
+          })
+        }
+      }
+
+      // 2. Atualizar vínculo de contato principal
+      if (typeof data.contactId !== 'undefined') {
+        await tx.dealContact.updateMany({
+          where: { dealId: data.id, isPrimary: true },
+          data: { isPrimary: false },
+        })
+
+        if (data.contactId) {
+          await tx.dealContact.upsert({
+            where: {
+              dealId_contactId: { dealId: data.id, contactId: data.contactId },
+            },
+            create: {
+              dealId: data.id,
+              contactId: data.contactId,
+              isPrimary: true,
+              role: contactRole,
+            },
+            update: { isPrimary: true },
+          })
+        }
+      }
+
+      // 3. Update Deal
+      await tx.deal.update({
+        where: { id: data.id },
+        data: updateData,
+      })
+
+      // 4. Logs de Atividade
+      if (data.assignedTo && data.assignedTo !== deal.assignedTo) {
+        await tx.activity.create({
+          data: {
+            dealId: data.id,
+            type: 'assignee_changed',
+            content: `Responsável alterado para ${newAssigneeName}`,
+            performedBy: ctx.userId,
+          },
+        })
+      }
+
+      if (data.priority && data.priority !== deal.priority) {
+        await tx.activity.create({
+          data: {
+            dealId: data.id,
+            type: 'priority_changed',
+            content: `Prioridade alterada para ${data.priority}`,
+            performedBy: ctx.userId,
+          },
+        })
+      }
+
+      if (
+        data.expectedCloseDate &&
+        data.expectedCloseDate.getTime() !== deal.expectedCloseDate?.getTime()
+      ) {
+        const newDate = new Intl.DateTimeFormat('pt-BR').format(
+          data.expectedCloseDate,
+        )
+        const oldDate = deal.expectedCloseDate
+          ? new Intl.DateTimeFormat('pt-BR').format(deal.expectedCloseDate)
+          : 'Sem data'
+        await tx.activity.create({
+          data: {
+            dealId: data.id,
+            type: 'date_changed',
+            content: `Alterou previsão de ${oldDate} para ${newDate}`,
+            performedBy: ctx.userId,
+          },
+        })
+      }
     })
 
     revalidatePath('/pipeline')
-    revalidatePath('/contacts') // Contatos também foram atualizados
+    revalidatePath('/contacts')
     revalidateTag(`pipeline:${ctx.orgId}`)
     revalidateTag(`deals:${ctx.orgId}`)
-    revalidateTag(`contacts:${ctx.orgId}`) // Invalidar cache de contatos
+    revalidateTag(`contacts:${ctx.orgId}`)
 
     return { success: true }
   })

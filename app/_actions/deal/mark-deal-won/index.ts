@@ -5,7 +5,11 @@ import { markDealWonSchema } from './schema'
 import { db } from '@/_lib/prisma'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { ActivityType } from '@prisma/client'
-import { findDealWithRBAC, canPerformAction, requirePermission } from '@/_lib/rbac'
+import {
+  findDealWithRBAC,
+  canPerformAction,
+  requirePermission,
+} from '@/_lib/rbac'
 
 export const markDealWon = orgActionClient
   .schema(markDealWonSchema)
@@ -27,6 +31,7 @@ export const markDealWon = orgActionClient
         type: ActivityType.deal_won,
         content: 'Deal marcado como GANHO',
         dealId: data.dealId,
+        performedBy: ctx.userId,
       },
     })
 

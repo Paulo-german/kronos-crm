@@ -13,67 +13,165 @@ import {
   Trophy,
   XCircle,
   RotateCcw,
+  PackageCheck,
+  UserCog,
+  Flag,
+  PauseCircle,
+  PlayCircle,
+  CalendarClock,
+  UserPlus,
+  UserMinus,
+  CircleCheck,
+  Circle,
+  User,
+  UserIcon,
+  User2Icon,
 } from 'lucide-react'
+import type { DealActivityDto } from '@/_data-access/deal/get-deal-details'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
-import type { DealDetailsDto } from '@/_data-access/deal/get-deal-details'
+
+import { Badge } from '@/_components/ui/badge'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/_components/ui/tooltip'
+
+// ... (inside component)
 
 interface ActivityTimelineProps {
-  deal: DealDetailsDto
+  activities: DealActivityDto[]
 }
 
 const activityConfig: Record<
   string,
-  { icon: typeof FileText; label: string; color: string }
+  { icon: typeof FileText; label: string; color: string; bgColor: string }
 > = {
   // Manuais
-  note: { icon: FileText, label: 'Nota', color: 'text-blue-500' },
-  call: { icon: Phone, label: 'Ligação', color: 'text-green-500' },
-  email: { icon: Mail, label: 'Email', color: 'text-purple-500' },
-  meeting: { icon: Users, label: 'Reunião', color: 'text-orange-500' },
+  note: {
+    icon: FileText,
+    label: 'Nota',
+    color: 'text-blue-500',
+    bgColor: 'bg-blue-500/10',
+  },
+  call: {
+    icon: Phone,
+    label: 'Ligação',
+    color: 'text-green-500',
+    bgColor: 'bg-green-500/10',
+  },
+  email: {
+    icon: Mail,
+    label: 'Email',
+    color: 'text-purple-500',
+    bgColor: 'bg-purple-500/10',
+  },
+  meeting: {
+    icon: Users,
+    label: 'Reunião',
+    color: 'text-orange-500',
+    bgColor: 'bg-orange-500/10',
+  },
   // Sistema
   stage_change: {
     icon: ArrowRightLeft,
     label: 'Mudança de Etapa',
-    color: 'text-primary',
+    color: 'text-blue-500',
+    bgColor: 'bg-blue-500/10',
   },
   product_added: {
     icon: Package,
     label: 'Produto Adicionado',
-    color: 'text-[#00b37e]',
+    color: 'text-emerald-500',
+    bgColor: 'bg-emerald-500/10',
   },
   product_removed: {
     icon: PackageMinus,
     label: 'Produto Removido',
-    color: 'text-destructive',
+    color: 'text-red-500',
+    bgColor: 'bg-red-500/10',
   },
   task_created: {
     icon: ListTodo,
     label: 'Tarefa Criada',
     color: 'text-amber-500',
+    bgColor: 'bg-amber-500/10',
   },
   task_completed: {
     icon: CheckCircle2,
     label: 'Tarefa Concluída',
-    color: 'text-[#00b37e]',
+    color: 'text-emerald-500',
+    bgColor: 'bg-emerald-500/10',
   },
   deal_won: {
     icon: Trophy,
     label: 'Negócio Ganho',
-    color: 'text-yellow-500',
+    color: 'text-emerald-500',
+    bgColor: 'bg-emerald-500/10',
   },
   deal_lost: {
     icon: XCircle,
     label: 'Negócio Perdido',
     color: 'text-red-500',
+    bgColor: 'bg-red-500/10',
   },
   deal_reopened: {
     icon: RotateCcw,
     label: 'Negócio Reaberto',
-    color: 'text-blue-400',
+    color: 'text-blue-500',
+    bgColor: 'bg-blue-500/10',
+  },
+  product_updated: {
+    icon: PackageCheck,
+    label: 'Produto Atualizado',
+    color: 'text-blue-500',
+    bgColor: 'bg-blue-500/10',
+  },
+  assignee_changed: {
+    icon: UserCog,
+    label: 'Responsável Alterado',
+    color: 'text-purple-500',
+    bgColor: 'bg-purple-500/10',
+  },
+  priority_changed: {
+    icon: Flag,
+    label: 'Prioridade Alterada',
+    color: 'text-orange-500',
+    bgColor: 'bg-orange-500/10',
+  },
+  deal_paused: {
+    icon: PauseCircle,
+    label: 'Negócio Pausado',
+    color: 'text-gray-500',
+    bgColor: 'bg-gray-500/10',
+  },
+  deal_unpaused: {
+    icon: PlayCircle,
+    label: 'Negócio Retomado',
+    color: 'text-emerald-500',
+    bgColor: 'bg-emerald-500/10',
+  },
+  date_changed: {
+    icon: CalendarClock,
+    label: 'Previsão Alterada',
+    color: 'text-blue-500',
+    bgColor: 'bg-blue-500/10',
+  },
+  contact_added: {
+    icon: UserPlus,
+    label: 'Contato Adicionado',
+    color: 'text-emerald-500',
+    bgColor: 'bg-emerald-500/10',
+  },
+  contact_removed: {
+    icon: UserMinus,
+    label: 'Contato Removido',
+    color: 'text-red-500',
+    bgColor: 'bg-red-500/10',
   },
 }
 
-const ActivityTimeline = ({ deal }: ActivityTimelineProps) => {
+const ActivityTimeline = ({ activities }: ActivityTimelineProps) => {
   const formatDateTime = (date: Date) => {
     return new Intl.DateTimeFormat('pt-BR', {
       day: '2-digit',
@@ -85,15 +183,15 @@ const ActivityTimeline = ({ deal }: ActivityTimelineProps) => {
   }
 
   return (
-    <Card className="border-none bg-transparent">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base font-semibold">
+    <Card className="border-none bg-transparent shadow-none">
+      <CardHeader className="px-0 pb-3">
+        <CardTitle className="mb-4 text-base font-semibold">
           Histórico de Atividades
         </CardTitle>
       </CardHeader>
 
-      <CardContent>
-        {deal.activities.length === 0 ? (
+      <CardContent className="px-0">
+        {activities.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <div className="rounded-full bg-muted p-4">
               <FileText className="h-8 w-8 text-muted-foreground" />
@@ -104,28 +202,54 @@ const ActivityTimeline = ({ deal }: ActivityTimelineProps) => {
           </div>
         ) : (
           <div className="space-y-6">
-            {deal.activities.map((activity) => {
+            {activities.map((activity) => {
               const config =
                 activityConfig[activity.type] || activityConfig.note
               const Icon = config.icon
+
               return (
                 <div
                   key={activity.id}
                   className="relative flex gap-4 border-l-2 border-border pl-4 transition-all hover:border-primary/50"
                 >
                   <div
-                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted ring-4 ring-background`}
+                    className={`relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full ring-2 ring-background ${config.bgColor}`}
                   >
-                    <Icon className={`h-4 w-4 ${config.color}`} />
+                    <Icon className={`h-5 w-5 ${config.color}`} />
                   </div>
+
                   <div className="flex-1 pb-4">
                     <div className="flex items-start justify-between gap-2">
-                      <span className="font-semibold">{config.label}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {formatDateTime(activity.createdAt)}
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        <span className="font-semibold text-foreground">
+                          {config.label}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {formatDateTime(activity.createdAt)}
+                        </span>
+                      </div>
+
+                      {activity.performer && (
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Badge
+                              variant="secondary"
+                              className="flex items-center gap-2 rounded-full bg-secondary/40 px-2.5 py-1.5 text-xs font-normal hover:bg-secondary/30"
+                            >
+                              <User2Icon size={14} className="text-primary" />
+                              {activity.performer.fullName}
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>
+                              {activity.performer.fullName} realizou essa
+                              atividade
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
                     </div>
-                    <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                       {activity.content}
                     </p>
                   </div>

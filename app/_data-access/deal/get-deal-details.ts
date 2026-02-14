@@ -19,6 +19,10 @@ export interface DealActivityDto {
   type: string
   content: string
   createdAt: Date
+  performer: {
+    fullName: string | null
+    avatarUrl: string | null
+  } | null
 }
 
 export interface DealTaskDto {
@@ -53,6 +57,8 @@ export interface DealDetailsDto {
   status: 'OPEN' | 'IN_PROGRESS' | 'WON' | 'LOST' | 'PAUSED'
   priority: 'low' | 'medium' | 'high' | 'urgent'
   notes: string | null
+  lossReasonId: string | null
+  lossReasonName: string | null
   expectedCloseDate: Date | null
   createdAt: Date
   updatedAt: Date
@@ -128,9 +134,23 @@ export const getDealDetails = async (
       },
       activities: {
         orderBy: { createdAt: 'desc' },
+        include: {
+          performer: {
+            select: {
+              fullName: true,
+              avatarUrl: true,
+            },
+          },
+        },
       },
       tasks: {
         orderBy: { dueDate: 'asc' },
+      },
+      lossReason: {
+        select: {
+          id: true,
+          name: true,
+        },
       },
     },
   })
@@ -164,6 +184,8 @@ export const getDealDetails = async (
     status: deal.status,
     priority: deal.priority,
     notes: deal.notes,
+    lossReasonId: deal.lossReasonId,
+    lossReasonName: deal.lossReason?.name ?? null,
     expectedCloseDate: deal.expectedCloseDate,
     createdAt: deal.createdAt,
     updatedAt: deal.updatedAt,
@@ -199,6 +221,7 @@ export const getDealDetails = async (
       type: a.type,
       content: a.content,
       createdAt: a.createdAt,
+      performer: a.performer,
     })),
     tasks: deal.tasks.map((t) => ({
       id: t.id,

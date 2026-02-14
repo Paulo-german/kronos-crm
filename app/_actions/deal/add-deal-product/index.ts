@@ -4,7 +4,11 @@ import { orgActionClient } from '@/_lib/safe-action'
 import { addDealProductSchema } from './schema'
 import { db } from '@/_lib/prisma'
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { findDealWithRBAC, canPerformAction, requirePermission } from '@/_lib/rbac'
+import {
+  findDealWithRBAC,
+  canPerformAction,
+  requirePermission,
+} from '@/_lib/rbac'
 
 export const addDealProduct = orgActionClient
   .schema(addDealProductSchema)
@@ -44,6 +48,7 @@ export const addDealProduct = orgActionClient
         type: 'product_added',
         content: `${product.name} (${data.quantity}x)`,
         dealId: data.dealId,
+        performedBy: ctx.userId,
       },
     })
 

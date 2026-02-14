@@ -4,7 +4,11 @@ import { orgActionClient } from '@/_lib/safe-action'
 import { removeDealProductSchema } from './schema'
 import { db } from '@/_lib/prisma'
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { findDealWithRBAC, canPerformAction, requirePermission } from '@/_lib/rbac'
+import {
+  findDealWithRBAC,
+  canPerformAction,
+  requirePermission,
+} from '@/_lib/rbac'
 
 export const removeDealProduct = orgActionClient
   .schema(removeDealProductSchema)
@@ -43,6 +47,7 @@ export const removeDealProduct = orgActionClient
         type: 'product_removed',
         content: dealProduct.product.name,
         dealId: dealProduct.dealId,
+        performedBy: ctx.userId,
       },
     })
 

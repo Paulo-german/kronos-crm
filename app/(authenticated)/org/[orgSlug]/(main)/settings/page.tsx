@@ -1,4 +1,11 @@
-import { Building2, CreditCard, Package, UserIcon, Users } from 'lucide-react'
+import {
+  Building2,
+  CreditCard,
+  Package,
+  UserIcon,
+  Users,
+  Ban,
+} from 'lucide-react'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 
 import CardSettings from './_components/card-settings'
@@ -61,6 +68,14 @@ const SettingsPage = async ({ params }: SettingsPageProps) => {
               orgSlug={orgSlug}
             >
               <Package size={20} />
+            </CardSettings>
+            <CardSettings
+              title="Motivos de Perda"
+              description="Gerencie os motivos de perda de negociações."
+              href="settings/loss-reasons"
+              orgSlug={orgSlug}
+            >
+              <Ban size={20} />
             </CardSettings>
           </>
         )}

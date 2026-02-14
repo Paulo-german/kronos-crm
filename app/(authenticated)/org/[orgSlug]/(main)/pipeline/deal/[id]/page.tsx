@@ -7,6 +7,7 @@ import { getDealsOptions } from '@/_data-access/deal/get-deals-options'
 import DealDetailClient from './_components/deal-detail-client'
 
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
+import { getDealLostReasons } from '@/_data-access/settings/get-lost-reasons'
 
 interface DealPageProps {
   params: Promise<{ id: string; orgSlug: string }>
@@ -26,10 +27,11 @@ const DealPage = async ({ params }: DealPageProps) => {
   const products = await getProducts(ctx.orgId)
 
   // Contatos, deals e MEMBROS com RBAC
-  const [contacts, dealOptions, members] = await Promise.all([
+  const [contacts, dealOptions, members, lostReasons] = await Promise.all([
     getContacts(ctx),
     getDealsOptions(ctx),
     getOrganizationMembers(ctx.orgId),
+    getDealLostReasons(ctx.orgId),
   ])
 
   return (
@@ -42,6 +44,7 @@ const DealPage = async ({ params }: DealPageProps) => {
         members={members.accepted}
         currentUserId={ctx.userId}
         userRole={ctx.userRole}
+        lostReasons={lostReasons}
       />
     </div>
   )

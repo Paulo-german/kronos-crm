@@ -22,11 +22,7 @@ import {
   TableRow,
 } from '@/_components/ui/table'
 import { Dialog } from '@/_components/ui/dialog'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogTrigger,
-} from '@/_components/ui/alert-dialog'
+import { AlertDialog } from '@/_components/ui/alert-dialog'
 import ConfirmationDialogContent from '@/_components/confirmation-dialog-content'
 import UpsertProductDialog from './upsert-product-dialog'
 import { addDealProduct } from '@/_actions/deal/add-deal-product'

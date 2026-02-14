@@ -15,3 +15,5 @@ export const db = prisma
 export default prisma
 
 if (process.env.NODE_ENV !== 'production') globalThis.prismaGlobal = prisma
+
+// Force refresh for audit trail enums (updated 2)

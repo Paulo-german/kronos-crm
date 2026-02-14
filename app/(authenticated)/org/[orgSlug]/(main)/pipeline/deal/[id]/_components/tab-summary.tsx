@@ -28,7 +28,7 @@ const TabSummary = ({ deal, contacts }: TabSummaryProps) => {
         {/* Coluna Direita: Histórico & Observações */}
         <div className="space-y-4">
           <NotesSection deal={deal} />
-          <ActivityTimeline deal={deal} />
+          <ActivityTimeline activities={deal.activities} />
         </div>
       </div>
     </div>

@@ -146,15 +146,7 @@ const DealInfoCard = ({ deal }: DealInfoCardProps) => {
             <SelectContent>
               {deal.availableStages.map((stage) => (
                 <SelectItem key={stage.id} value={stage.id}>
-                  <div className="flex items-center gap-2">
-                    {stage.color && (
-                      <div
-                        className="h-3 w-3 rounded-full"
-                        style={{ backgroundColor: stage.color }}
-                      />
-                    )}
-                    {stage.name}
-                  </div>
+                  <div className="flex items-center gap-2">{stage.name}</div>
                 </SelectItem>
               ))}
             </SelectContent>
