@@ -33,6 +33,7 @@ export const deleteContact = orgActionClient
     })
 
     revalidateTag(`contacts:${ctx.orgId}`)
+    revalidateTag(`deals:${ctx.orgId}`)
     revalidatePath('/contacts')
 
     return { success: true }

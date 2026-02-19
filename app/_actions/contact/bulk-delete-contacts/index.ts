@@ -23,6 +23,7 @@ export const bulkDeleteContacts = orgActionClient
 
     // 3. Revalidação
     revalidateTag(`contacts:${ctx.orgId}`)
+    revalidateTag(`deals:${ctx.orgId}`)
     revalidatePath('/contacts')
 
     return { count: result.count }

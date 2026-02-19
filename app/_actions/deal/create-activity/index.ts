@@ -3,7 +3,7 @@
 import { orgActionClient } from '@/_lib/safe-action'
 import { createActivitySchema } from './schema'
 import { db } from '@/_lib/prisma'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { findDealWithRBAC, canPerformAction, requirePermission } from '@/_lib/rbac'
 
 export const createActivity = orgActionClient
@@ -26,6 +26,9 @@ export const createActivity = orgActionClient
 
     revalidatePath('/pipeline')
     revalidatePath(`/pipeline/deal/${data.dealId}`)
+    revalidateTag(`deals:${ctx.orgId}`)
+    revalidateTag(`pipeline:${ctx.orgId}`)
+    revalidateTag(`deal:${data.dealId}`)
 
     return { success: true }
   })

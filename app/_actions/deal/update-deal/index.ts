@@ -181,6 +181,7 @@ export const updateDeal = orgActionClient
     revalidateTag(`pipeline:${ctx.orgId}`)
     revalidateTag(`deals:${ctx.orgId}`)
     revalidateTag(`contacts:${ctx.orgId}`)
+    revalidateTag(`deal:${data.id}`)
 
     return { success: true }
   })

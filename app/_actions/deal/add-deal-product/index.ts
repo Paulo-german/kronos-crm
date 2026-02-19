@@ -55,6 +55,7 @@ export const addDealProduct = orgActionClient
     revalidatePath('/pipeline')
     revalidatePath(`/pipeline/deal/${data.dealId}`)
     revalidateTag(`deals:${ctx.orgId}`)
+    revalidateTag(`deal:${data.dealId}`)
 
     return { success: true, dealProductId: dealProduct.id }
   })

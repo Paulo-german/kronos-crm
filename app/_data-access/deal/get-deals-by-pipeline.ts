@@ -1,4 +1,5 @@
 import 'server-only'
+import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 import { DealStatus, DealPriority } from '@prisma/client'
 import type { RBACContext } from '@/_lib/rbac'
@@ -25,19 +26,12 @@ export interface DealsByStageDto {
   [stageId: string]: DealDto[]
 }
 
-/**
- * Busca todos os deals de um pipeline agrupados por stage
- * RBAC: MEMBER só vê deals atribuídos a ele
- *
- * CORRIGIDO: Adicionado organizationId para multi-tenancy
- */
-export const getDealsByPipeline = async (
+const fetchDealsByPipelineFromDb = async (
   stageIds: string[],
-  ctx: RBACContext,
+  orgId: string,
+  userId: string,
+  elevated: boolean,
 ): Promise<DealsByStageDto> => {
-  if (stageIds.length === 0) return {}
-
-  // Inicializa estrutura de retorno
   const result: DealsByStageDto = stageIds.reduce((acc, stageId) => {
     acc[stageId] = []
     return acc
@@ -46,10 +40,8 @@ export const getDealsByPipeline = async (
   const deals = await db.deal.findMany({
     where: {
       pipelineStageId: { in: stageIds },
-      // FIX CRÍTICO: Filtro por organização
-      organizationId: ctx.orgId,
-      // RBAC: MEMBER só vê próprios, ADMIN/OWNER vê todos
-      ...(isElevated(ctx.userRole) ? {} : { assignedTo: ctx.userId }),
+      organizationId: orgId,
+      ...(elevated ? {} : { assignedTo: userId }),
     },
     include: {
       contacts: {
@@ -79,7 +71,6 @@ export const getDealsByPipeline = async (
   })
 
   for (const deal of deals) {
-    // Cálculo do valor total
     const totalValue = deal.dealProducts.reduce((sum, dp) => {
       const subtotal = Number(dp.unitPrice) * dp.quantity
       let discount = 0
@@ -119,4 +110,27 @@ export const getDealsByPipeline = async (
   }
 
   return result
+}
+
+/**
+ * Busca todos os deals de um pipeline agrupados por stage (Cacheado)
+ * RBAC: MEMBER só vê deals atribuídos a ele
+ */
+export const getDealsByPipeline = async (
+  stageIds: string[],
+  ctx: RBACContext,
+): Promise<DealsByStageDto> => {
+  if (stageIds.length === 0) return {}
+
+  const elevated = isElevated(ctx.userRole)
+
+  const getCached = unstable_cache(
+    async () => fetchDealsByPipelineFromDb(stageIds, ctx.orgId, ctx.userId, elevated),
+    [`deals-by-pipeline-${ctx.orgId}-${ctx.userId}`],
+    {
+      tags: [`deals:${ctx.orgId}`],
+    },
+  )
+
+  return getCached()
 }

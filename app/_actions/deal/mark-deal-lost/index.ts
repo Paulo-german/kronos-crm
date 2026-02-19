@@ -64,6 +64,8 @@ export const markDealLost = orgActionClient
     revalidatePath(`/pipeline/deal/${data.dealId}`)
     revalidateTag(`pipeline:${ctx.orgId}`)
     revalidateTag(`deals:${ctx.orgId}`)
+    revalidateTag(`deals-options:${ctx.orgId}`)
+    revalidateTag(`deal:${data.dealId}`)
     revalidateTag(`deal-lost-reasons:${ctx.orgId}`)
 
     return { success: true }

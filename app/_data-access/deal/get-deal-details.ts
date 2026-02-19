@@ -1,4 +1,5 @@
 import 'server-only'
+import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 import type { RBACContext } from '@/_lib/rbac'
 import { isElevated } from '@/_lib/rbac'
@@ -80,20 +81,17 @@ export interface DealDetailsDto {
   tasks: DealTaskDto[]
 }
 
-/**
- * Busca detalhes completos de um deal
- * RBAC: MEMBER só vê deals atribuídos a ele
- */
-export const getDealDetails = async (
+const fetchDealDetailsFromDb = async (
   dealId: string,
-  ctx: RBACContext,
+  orgId: string,
+  userId: string,
+  elevated: boolean,
 ): Promise<DealDetailsDto | null> => {
   const deal = await db.deal.findFirst({
     where: {
       id: dealId,
-      organizationId: ctx.orgId,
-      // RBAC: MEMBER só vê próprios, ADMIN/OWNER vê todos
-      ...(isElevated(ctx.userRole) ? {} : { assignedTo: ctx.userId }),
+      organizationId: orgId,
+      ...(elevated ? {} : { assignedTo: userId }),
     },
     include: {
       stage: {
@@ -232,4 +230,25 @@ export const getDealDetails = async (
       dealId: deal.id,
     })),
   }
+}
+
+/**
+ * Busca detalhes completos de um deal (Cacheado)
+ * RBAC: MEMBER só vê deals atribuídos a ele
+ */
+export const getDealDetails = async (
+  dealId: string,
+  ctx: RBACContext,
+): Promise<DealDetailsDto | null> => {
+  const elevated = isElevated(ctx.userRole)
+
+  const getCached = unstable_cache(
+    async () => fetchDealDetailsFromDb(dealId, ctx.orgId, ctx.userId, elevated),
+    [`deal-details-${dealId}-${ctx.userId}`],
+    {
+      tags: [`deal:${dealId}`, `deals:${ctx.orgId}`],
+    },
+  )
+
+  return getCached()
 }

@@ -31,6 +31,8 @@ export const deleteDeal = orgActionClient
     revalidatePath('/pipeline')
     revalidateTag(`pipeline:${ctx.orgId}`)
     revalidateTag(`deals:${ctx.orgId}`)
+    revalidateTag(`deals-options:${ctx.orgId}`)
+    revalidateTag(`deal:${data.id}`)
 
     return { success: true }
   })

@@ -73,6 +73,7 @@ export const moveDealToStage = orgActionClient
     revalidatePath(`/pipeline/deal/${data.dealId}`)
     revalidateTag(`pipeline:${ctx.orgId}`)
     revalidateTag(`deals:${ctx.orgId}`)
+    revalidateTag(`deal:${data.dealId}`)
 
     return { success: true, moved: true }
   })

@@ -33,6 +33,7 @@ export const deleteProduct = orgActionClient
     })
 
     revalidateTag(`products:${ctx.orgId}`)
+    revalidateTag(`deals:${ctx.orgId}`)
     revalidatePath('/org/[orgSlug]/settings/products', 'page')
 
     return { success: true }

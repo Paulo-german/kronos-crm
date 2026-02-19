@@ -66,7 +66,8 @@ export const updateDealProduct = orgActionClient
 
     // 6. Cache Invalidation
     revalidateTag(`deals:${ctx.orgId}`)
-    revalidateTag(`pipeline:${ctx.userId}`)
+    revalidateTag(`pipeline:${ctx.orgId}`)
+    revalidateTag(`deal:${dealProduct.dealId}`)
     revalidatePath('/pipeline')
 
     return { success: true, dealProductId: updated.id }

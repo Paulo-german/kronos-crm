@@ -1,4 +1,5 @@
 import 'server-only'
+import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 
 export interface ProductDto {
@@ -10,11 +11,7 @@ export interface ProductDto {
   updatedAt: Date
 }
 
-/**
- * Busca todos os produtos da organização
- * Multi-tenancy via organizationId
- */
-export const getProducts = async (orgId: string): Promise<ProductDto[]> => {
+const fetchProductsFromDb = async (orgId: string): Promise<ProductDto[]> => {
   const products = await db.product.findMany({
     where: {
       organizationId: orgId,
@@ -32,4 +29,20 @@ export const getProducts = async (orgId: string): Promise<ProductDto[]> => {
     createdAt: product.createdAt,
     updatedAt: product.updatedAt,
   }))
+}
+
+/**
+ * Busca todos os produtos da organização (Cacheado)
+ * Multi-tenancy via organizationId
+ */
+export const getProducts = async (orgId: string): Promise<ProductDto[]> => {
+  const getCached = unstable_cache(
+    async () => fetchProductsFromDb(orgId),
+    [`products-${orgId}`],
+    {
+      tags: [`products:${orgId}`],
+    },
+  )
+
+  return getCached()
 }

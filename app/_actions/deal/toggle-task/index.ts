@@ -24,7 +24,10 @@ export const toggleTask = orgActionClient
     })
 
     revalidatePath('/pipeline')
-    if (task.dealId) revalidatePath(`/pipeline/deal/${task.dealId}`)
+    if (task.dealId) {
+      revalidatePath(`/pipeline/deal/${task.dealId}`)
+      revalidateTag(`deal:${task.dealId}`)
+    }
     revalidateTag(`tasks:${ctx.orgId}`)
 
     return { success: true, isCompleted: !task.isCompleted }
