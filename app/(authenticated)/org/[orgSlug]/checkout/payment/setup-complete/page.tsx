@@ -9,7 +9,6 @@ interface SetupCompletePageProps {
     setup_intent?: string
     plan?: string
     interval?: string
-    seats?: string
   }>
 }
 
@@ -24,7 +23,7 @@ export default async function SetupCompletePage({
   searchParams,
 }: SetupCompletePageProps) {
   const { orgSlug } = await params
-  const { setup_intent, plan, interval, seats } = await searchParams
+  const { setup_intent, plan, interval } = await searchParams
 
   const billingUrl = `/org/${orgSlug}/settings/billing`
 
@@ -63,12 +62,9 @@ export default async function SetupCompletePage({
     redirect(`${billingUrl}?error=invalid_price`)
   }
 
-  const seatsCount = Number(seats) || 1
-
   // Criar a subscription com o PM validado pelo 3DS
   const result = await createSubscription({
     priceId,
-    seats: seatsCount,
     paymentMethodId,
   })
 

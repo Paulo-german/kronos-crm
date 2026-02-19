@@ -27,13 +27,19 @@ export default async function ConfigurePage({
     redirect(`/org/${orgSlug}/settings/billing`)
   }
 
+  // Sem plano anual disponível — pular direto para registro com intervalo mensal
+  const hasAnnual = Boolean(selectedPlan.stripePriceIdAnnual)
+  if (!hasAnnual) {
+    redirect(`/org/${orgSlug}/checkout/register?plan=${selectedPlan.id}&interval=monthly`)
+  }
+
   return (
     <div>
       <h1 className="mb-2 text-2xl font-bold tracking-tight">
         Configurar plano {selectedPlan.name}
       </h1>
       <p className="mb-8 text-muted-foreground">
-        Escolha o intervalo de cobrança e a quantidade de licenças.
+        Escolha o intervalo de cobrança do plano.
       </p>
 
       <ConfigureForm plan={selectedPlan} orgSlug={orgSlug} />

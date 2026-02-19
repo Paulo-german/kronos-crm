@@ -44,7 +44,7 @@ export const createSubscription = orgActionClient
     try {
       subscription = await stripe.subscriptions.create({
         customer: org.stripeCustomerId,
-        items: [{ price: data.priceId, quantity: data.seats }],
+        items: [{ price: data.priceId, quantity: 1 }],
         default_payment_method: data.paymentMethodId,
         expand: ['latest_invoice.payment_intent'],
         metadata: {

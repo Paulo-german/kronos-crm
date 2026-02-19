@@ -16,7 +16,7 @@ export default async function RegisterPage({
   searchParams,
 }: RegisterPageProps) {
   const { orgSlug } = await params
-  const { plan, interval, seats } = await searchParams
+  const { plan, interval } = await searchParams
   const { userRole, orgId } = await getOrgContext(orgSlug)
 
   if (!isElevated(userRole)) {
@@ -57,7 +57,6 @@ export default async function RegisterPage({
   const paymentParams = new URLSearchParams({
     plan: plan || '',
     interval: interval || 'monthly',
-    seats: seats || '1',
   })
   const nextUrl = `/org/${orgSlug}/checkout/payment?${paymentParams.toString()}`
 

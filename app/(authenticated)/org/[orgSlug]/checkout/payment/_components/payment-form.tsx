@@ -21,13 +21,12 @@ const stripePromise = loadStripe(
 
 interface PaymentFormProps {
   priceId: string
-  seats: number
   orgSlug: string
   plan: string
   interval: string
 }
 
-export function PaymentForm({ priceId, seats, orgSlug, plan, interval }: PaymentFormProps) {
+export function PaymentForm({ priceId, orgSlug, plan, interval }: PaymentFormProps) {
   const [setupSecret, setSetupSecret] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -94,7 +93,7 @@ export function PaymentForm({ priceId, seats, orgSlug, plan, interval }: Payment
         locale: 'pt-BR',
       }}
     >
-      <CheckoutPaymentForm orgSlug={orgSlug} priceId={priceId} seats={seats} plan={plan} interval={interval} />
+      <CheckoutPaymentForm orgSlug={orgSlug} priceId={priceId} plan={plan} interval={interval} />
     </Elements>
   )
 }
@@ -102,7 +101,6 @@ export function PaymentForm({ priceId, seats, orgSlug, plan, interval }: Payment
 interface CheckoutPaymentFormProps {
   orgSlug: string
   priceId: string
-  seats: number
   plan: string
   interval: string
 }
@@ -110,7 +108,6 @@ interface CheckoutPaymentFormProps {
 function CheckoutPaymentForm({
   orgSlug,
   priceId,
-  seats,
   plan,
   interval,
 }: CheckoutPaymentFormProps) {
@@ -130,9 +127,9 @@ function CheckoutPaymentForm({
     // Passo 1: Confirmar o SetupIntent (valida e tokeniza o cartão)
     const { error: setupError, setupIntent } = await stripe.confirmSetup({
       elements,
-      redirect: 'if_required', // Não redirecionar, continuaremos aqui
+      redirect: 'if_required',
       confirmParams: {
-        return_url: `${window.location.origin}/org/${orgSlug}/checkout/payment/setup-complete?plan=${plan}&interval=${interval}&seats=${seats}`,
+        return_url: `${window.location.origin}/org/${orgSlug}/checkout/payment/setup-complete?plan=${plan}&interval=${interval}`,
       },
     })
 
@@ -156,7 +153,6 @@ function CheckoutPaymentForm({
 
     const subscriptionResult = await createSubscription({
       priceId,
-      seats,
       paymentMethodId,
     })
 

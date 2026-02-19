@@ -3,7 +3,6 @@ export type PlanInterval = 'monthly' | 'annual'
 export interface CheckoutSearchParams {
   plan?: string
   interval?: PlanInterval
-  seats?: string
 }
 
 export const CHECKOUT_STEPS = [

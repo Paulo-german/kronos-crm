@@ -15,7 +15,7 @@ export default async function PaymentPage({
   searchParams,
 }: PaymentPageProps) {
   const { orgSlug } = await params
-  const { plan, interval, seats } = await searchParams
+  const { plan, interval } = await searchParams
   const { userRole } = await getOrgContext(orgSlug)
 
   if (!isElevated(userRole)) {
@@ -27,7 +27,6 @@ export default async function PaymentPage({
     redirect(`/org/${orgSlug}/settings/billing`)
   }
 
-  // Determinar priceId baseado no intervalo
   const isAnnual = interval === 'annual'
   const priceId = isAnnual
     ? selectedPlan.stripePriceIdAnnual
@@ -36,8 +35,6 @@ export default async function PaymentPage({
   if (!priceId) {
     redirect(`/org/${orgSlug}/settings/billing`)
   }
-
-  const seatsCount = Number(seats) || 1
 
   return (
     <div>
@@ -48,7 +45,6 @@ export default async function PaymentPage({
 
       <PaymentForm
         priceId={priceId}
-        seats={seatsCount}
         orgSlug={orgSlug}
         plan={selectedPlan.id}
         interval={interval || 'monthly'}
