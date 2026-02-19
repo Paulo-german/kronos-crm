@@ -1,8 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Loader2, ExternalLink, Download } from 'lucide-react'
-import { listInvoices } from '@/_actions/billing/list-invoices'
+import { ExternalLink, Download } from 'lucide-react'
 import { Badge } from '@/_components/ui/badge'
 import { Button } from '@/_components/ui/button'
 import {
@@ -13,18 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/_components/ui/table'
-
-interface Invoice {
-  id: string
-  number: string | null
-  status: string | null
-  amountDue: number
-  amountPaid: number
-  currency: string
-  created: number
-  hostedInvoiceUrl: string | null
-  invoicePdf: string | null
-}
+import type { InvoiceDto } from '@/_data-access/billing/get-invoices'
 
 const STATUS_MAP: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
   paid: { label: 'Pago', variant: 'default' },
@@ -49,43 +36,11 @@ function formatDate(timestamp: number) {
   }).format(new Date(timestamp * 1000))
 }
 
-export function InvoiceHistory() {
-  const [invoices, setInvoices] = useState<Invoice[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+interface InvoiceHistoryProps {
+  invoices: InvoiceDto[]
+}
 
-  useEffect(() => {
-    async function fetchInvoices() {
-      const result = await listInvoices({})
-
-      if (result?.data) {
-        setInvoices(result.data.invoices)
-      } else {
-        setError('Não foi possível carregar as faturas.')
-      }
-
-      setIsLoading(false)
-    }
-
-    fetchInvoices()
-  }, [])
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="size-6 animate-spin text-muted-foreground" />
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="py-16 text-center text-sm text-muted-foreground">
-        {error}
-      </div>
-    )
-  }
-
+export function InvoiceHistory({ invoices }: InvoiceHistoryProps) {
   if (invoices.length === 0) {
     return (
       <div className="py-16 text-center text-sm text-muted-foreground">

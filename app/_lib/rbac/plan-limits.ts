@@ -87,25 +87,45 @@ const getPlanLimit = cache(async (planId: string, featureKey: string): Promise<n
   return getCachedLimit()
 })
 
+// Tags de cache que cada entidade já usa nas suas actions de create/delete
+const ENTITY_COUNT_TAGS: Record<QuotaEntity, (orgId: string) => string[]> = {
+  contact: (orgId) => [`contacts:${orgId}`],
+  deal: (orgId) => [`deals:${orgId}`],
+  product: (orgId) => [`products:${orgId}`],
+  member: (orgId) => [`org-members:${orgId}`],
+}
+
 /**
- * Conta registros existentes para uma entidade
+ * Conta registros existentes para uma entidade (Cacheado)
+ * Revalida automaticamente quando a entidade é criada/deletada via tag compartilhada
  */
 async function countRecords(orgId: string, entity: QuotaEntity): Promise<number> {
-  switch (entity) {
-    case 'contact':
-      return db.contact.count({ where: { organizationId: orgId } })
-    case 'deal':
-      return db.deal.count({ where: { organizationId: orgId } })
-    case 'product':
-      return db.product.count({ where: { organizationId: orgId } })
-    case 'member':
-      // Conta ACCEPTED + PENDING para que convites pendentes consumam a quota
-      return db.member.count({
-        where: { organizationId: orgId, status: { in: ['ACCEPTED', 'PENDING'] } },
-      })
-    default:
-      return 0
-  }
+  const getCachedCount = unstable_cache(
+    async () => {
+      switch (entity) {
+        case 'contact':
+          return db.contact.count({ where: { organizationId: orgId } })
+        case 'deal':
+          return db.deal.count({ where: { organizationId: orgId } })
+        case 'product':
+          return db.product.count({ where: { organizationId: orgId } })
+        case 'member':
+          // Conta ACCEPTED + PENDING para que convites pendentes consumam a quota
+          return db.member.count({
+            where: { organizationId: orgId, status: { in: ['ACCEPTED', 'PENDING'] } },
+          })
+        default:
+          return 0
+      }
+    },
+    [`entity-count-${orgId}-${entity}`],
+    {
+      tags: ENTITY_COUNT_TAGS[entity](orgId),
+      revalidate: 300,
+    },
+  )
+
+  return getCachedCount()
 }
 
 /**

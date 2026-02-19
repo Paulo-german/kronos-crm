@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/_components/ui/tabs'
 import type { PlanType } from '@/_lib/rbac/plan-limits'
 import type { QuotaSummary } from '@/_data-access/billing/get-all-quotas'
+import type { InvoiceDto } from '@/_data-access/billing/get-invoices'
 import { QuotaUsageCard } from './quota-usage-card'
 import { PlansGrid } from './plans-grid'
 import { ComparisonTable } from './comparison-table'
@@ -15,6 +16,7 @@ interface BillingTabsProps {
   quotas: QuotaSummary
   isOnTrial: boolean
   orgSlug: string
+  invoices: InvoiceDto[]
 }
 
 const TAB_CONFIG = {
@@ -30,7 +32,7 @@ const TAB_CONFIG = {
 
 type TabValue = keyof typeof TAB_CONFIG
 
-export function BillingTabs({ plan, quotas, isOnTrial, orgSlug }: BillingTabsProps) {
+export function BillingTabs({ plan, quotas, isOnTrial, orgSlug, invoices }: BillingTabsProps) {
   const [activeTab, setActiveTab] = useState<TabValue>('plans')
 
   const { title, description } = TAB_CONFIG[activeTab]
@@ -65,7 +67,7 @@ export function BillingTabs({ plan, quotas, isOnTrial, orgSlug }: BillingTabsPro
       </TabsContent>
 
       <TabsContent value="invoices" className="mt-6">
-        <InvoiceHistory />
+        <InvoiceHistory invoices={invoices} />
       </TabsContent>
     </Tabs>
   )

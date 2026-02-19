@@ -6,6 +6,7 @@ import { getOrgContext } from '@/_data-access/organization/get-organization-cont
 import { getPlanLimits } from '@/_lib/rbac/plan-limits'
 import { getAllQuotas } from '@/_data-access/billing/get-all-quotas'
 import { getTrialStatus } from '@/_data-access/billing/get-trial-status'
+import { getInvoices } from '@/_data-access/billing/get-invoices'
 import { BillingTabs } from './_components/billing-tabs'
 
 interface BillingSettingsPageProps {
@@ -22,10 +23,11 @@ export default async function BillingSettingsPage({
     redirect(`/org/${orgSlug}/settings`)
   }
 
-  const [{ plan }, quotas, trialStatus] = await Promise.all([
+  const [{ plan }, quotas, trialStatus, invoices] = await Promise.all([
     getPlanLimits(orgId),
     getAllQuotas(orgId),
     getTrialStatus(orgId),
+    getInvoices(orgId),
   ])
 
   return (
@@ -42,6 +44,7 @@ export default async function BillingSettingsPage({
         quotas={quotas}
         isOnTrial={trialStatus.isOnTrial}
         orgSlug={orgSlug}
+        invoices={invoices}
       />
     </div>
   )
