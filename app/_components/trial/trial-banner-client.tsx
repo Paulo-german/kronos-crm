@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { X } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import type { MemberRole } from '@prisma/client'
 import type { TrialStatus } from '@/_data-access/billing/get-trial-status'
@@ -20,14 +19,6 @@ interface Countdown {
   days: number
   hours: number
   minutes: number
-}
-
-const PHASE_DISMISSABLE: Record<TrialStatus['phase'], boolean> = {
-  info: true,
-  warning: true,
-  danger: false,
-  expired: false,
-  none: false,
 }
 
 function calcCountdown(endsAt: string): Countdown {
@@ -53,20 +44,13 @@ export const TrialBannerClient = ({
   orgSlug,
   userRole,
 }: TrialBannerClientProps) => {
-  const [dismissed, setDismissed] = useState(false)
   const [countdown, setCountdown] = useState<Countdown | null>(null)
-  const storageKey = `kronos-banner-dismissed-${orgSlug}`
 
   const updateCountdown = useCallback(() => {
     if (trialEndsAt && !isExpired) {
       setCountdown(calcCountdown(trialEndsAt))
     }
   }, [trialEndsAt, isExpired])
-
-  useEffect(() => {
-    const stored = localStorage.getItem(storageKey)
-    if (stored === phase) setDismissed(true)
-  }, [storageKey, phase])
 
   useEffect(() => {
     updateCountdown()
@@ -77,14 +61,6 @@ export const TrialBannerClient = ({
   }, [trialEndsAt, isExpired, updateCountdown])
 
   if (phase === 'none') return null
-
-  const dismissable = PHASE_DISMISSABLE[phase]
-  if (dismissable && dismissed) return null
-
-  const handleDismiss = () => {
-    localStorage.setItem(storageKey, phase)
-    setDismissed(true)
-  }
 
   const isAdmin = userRole === 'OWNER' || userRole === 'ADMIN'
 
@@ -123,7 +99,7 @@ export const TrialBannerClient = ({
         Assine um plano e acelere suas vendas! 🎉
       </span>
 
-      {/* Lado direito: botao + dismiss */}
+      {/* Lado direito: botao */}
       <div className="flex items-center gap-2">
         {isAdmin ? (
           <Button
@@ -140,15 +116,6 @@ export const TrialBannerClient = ({
           <span className="text-xs text-primary-foreground/70">
             Fale com o administrador
           </span>
-        )}
-        {dismissable && (
-          <button
-            onClick={handleDismiss}
-            className="rounded-sm p-0.5 text-primary-foreground/70 transition-opacity hover:text-primary-foreground"
-            aria-label="Fechar"
-          >
-            <X className="h-3.5 w-3.5 text-black" />
-          </button>
         )}
       </div>
     </div>
