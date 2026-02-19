@@ -71,6 +71,7 @@ export const updateContact = orgActionClient
     })
 
     revalidateTag(`contacts:${ctx.orgId}`)
+    revalidateTag(`contact:${data.id}`)
     revalidatePath('/contacts')
     revalidatePath(`/contacts/${data.id}`)
 

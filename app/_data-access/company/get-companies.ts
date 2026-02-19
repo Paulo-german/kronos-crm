@@ -1,4 +1,5 @@
 import 'server-only'
+import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 
 export interface CompanyDto {
@@ -6,8 +7,8 @@ export interface CompanyDto {
   name: string
 }
 
-export const getCompanies = async (orgId: string): Promise<CompanyDto[]> => {
-  return await db.company.findMany({
+const fetchCompaniesFromDb = async (orgId: string): Promise<CompanyDto[]> => {
+  return db.company.findMany({
     where: {
       organizationId: orgId,
     },
@@ -19,4 +20,19 @@ export const getCompanies = async (orgId: string): Promise<CompanyDto[]> => {
       name: 'asc',
     },
   })
+}
+
+/**
+ * Busca todas as empresas da organização (Cacheado)
+ */
+export const getCompanies = async (orgId: string): Promise<CompanyDto[]> => {
+  const getCached = unstable_cache(
+    async () => fetchCompaniesFromDb(orgId),
+    [`companies-${orgId}`],
+    {
+      tags: [`companies:${orgId}`],
+    },
+  )
+
+  return getCached()
 }

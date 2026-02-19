@@ -1,4 +1,5 @@
 import 'server-only'
+import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 import type { RBACContext } from '@/_lib/rbac'
 import { isElevated } from '@/_lib/rbac'
@@ -25,20 +26,18 @@ export interface ContactDetailDto {
   updatedAt: Date
 }
 
-/**
- * Busca um contato específico por ID
- * RBAC: MEMBER só vê contatos atribuídos a ele
- */
-export const getContactById = async (
+const fetchContactByIdFromDb = async (
   contactId: string,
-  ctx: RBACContext,
+  orgId: string,
+  userId: string,
+  elevated: boolean,
 ): Promise<ContactDetailDto | null> => {
   const contact = await db.contact.findFirst({
     where: {
       id: contactId,
-      organizationId: ctx.orgId,
+      organizationId: orgId,
       // RBAC: MEMBER só vê próprios, ADMIN/OWNER vê todos
-      ...(isElevated(ctx.userRole) ? {} : { assignedTo: ctx.userId }),
+      ...(elevated ? {} : { assignedTo: userId }),
     },
     include: {
       company: {
@@ -77,4 +76,25 @@ export const getContactById = async (
     createdAt: contact.createdAt,
     updatedAt: contact.updatedAt,
   }
+}
+
+/**
+ * Busca um contato específico por ID (Cacheado)
+ * RBAC: MEMBER só vê contatos atribuídos a ele
+ */
+export const getContactById = async (
+  contactId: string,
+  ctx: RBACContext,
+): Promise<ContactDetailDto | null> => {
+  const elevated = isElevated(ctx.userRole)
+
+  const getCached = unstable_cache(
+    async () => fetchContactByIdFromDb(contactId, ctx.orgId, ctx.userId, elevated),
+    [`contact-${contactId}-${ctx.userId}`],
+    {
+      tags: [`contacts:${ctx.orgId}`, `contact:${contactId}`],
+    },
+  )
+
+  return getCached()
 }

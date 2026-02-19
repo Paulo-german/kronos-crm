@@ -1,4 +1,5 @@
 import 'server-only'
+import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 import type { RBACContext } from '@/_lib/rbac'
 import { isElevated } from '@/_lib/rbac'
@@ -17,16 +18,16 @@ export type TaskDto = {
   createdAt: Date
 }
 
-/**
- * Busca todas as tarefas da organização
- * RBAC: MEMBER só vê tarefas atribuídas a ele
- */
-export const getTasks = async (ctx: RBACContext): Promise<TaskDto[]> => {
-  const tasks = await db.task.findMany({
+const fetchTasksFromDb = async (
+  orgId: string,
+  userId: string,
+  elevated: boolean,
+): Promise<TaskDto[]> => {
+  return db.task.findMany({
     where: {
-      organizationId: ctx.orgId,
+      organizationId: orgId,
       // RBAC: MEMBER só vê próprias, ADMIN/OWNER vê todas
-      ...(isElevated(ctx.userRole) ? {} : { assignedTo: ctx.userId }),
+      ...(elevated ? {} : { assignedTo: userId }),
     },
     orderBy: [
       { isCompleted: 'asc' },
@@ -49,6 +50,22 @@ export const getTasks = async (ctx: RBACContext): Promise<TaskDto[]> => {
       createdAt: true,
     },
   })
+}
 
-  return tasks
+/**
+ * Busca todas as tarefas da organização (Cacheado)
+ * RBAC: MEMBER só vê tarefas atribuídas a ele
+ */
+export const getTasks = async (ctx: RBACContext): Promise<TaskDto[]> => {
+  const elevated = isElevated(ctx.userRole)
+
+  const getCached = unstable_cache(
+    async () => fetchTasksFromDb(ctx.orgId, ctx.userId, elevated),
+    [`tasks-${ctx.orgId}-${ctx.userId}`],
+    {
+      tags: [`tasks:${ctx.orgId}`],
+    },
+  )
+
+  return getCached()
 }

@@ -18,9 +18,10 @@ const TasksPage = async ({ params }: TasksPageProps) => {
   const { orgSlug } = await params
   const ctx = await getOrgContext(orgSlug)
 
-  // Passa o contexto RBAC completo
-  const tasks = await getTasks(ctx)
-  const dealOptions = await getDealsOptions(ctx)
+  const [tasks, dealOptions] = await Promise.all([
+    getTasks(ctx),
+    getDealsOptions(ctx),
+  ])
 
   return (
     <div className="space-y-6">
