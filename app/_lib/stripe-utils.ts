@@ -16,10 +16,17 @@ export function getSubscriptionPeriodEnd(
 
 /**
  * Resolve product_key (slug do plano no DB) a partir do Price ID do Stripe.
- * Fallback: 'essential' se o priceId não for reconhecido.
+ * Fallback: 'light' se o priceId não for reconhecido.
  */
 export function resolveProductKeyFromPriceId(priceId: string): string {
   const PRICE_TO_PRODUCT_KEY: Record<string, string> = {
+    // Light
+    ...(process.env.STRIPE_LIGHT_PRICE_ID && {
+      [process.env.STRIPE_LIGHT_PRICE_ID]: 'light',
+    }),
+    ...(process.env.STRIPE_LIGHT_ANNUAL_PRICE_ID && {
+      [process.env.STRIPE_LIGHT_ANNUAL_PRICE_ID]: 'light',
+    }),
     // Essential
     ...(process.env.STRIPE_ESSENTIAL_PRICE_ID && {
       [process.env.STRIPE_ESSENTIAL_PRICE_ID]: 'essential',
@@ -50,5 +57,5 @@ export function resolveProductKeyFromPriceId(priceId: string): string {
     }),
   }
 
-  return PRICE_TO_PRODUCT_KEY[priceId] || 'essential'
+  return PRICE_TO_PRODUCT_KEY[priceId] || 'light'
 }

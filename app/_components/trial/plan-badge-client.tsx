@@ -17,6 +17,7 @@ interface PlanBadgeClientProps {
 }
 
 const PLAN_LABELS: Record<string, string> = {
+  light: 'Light',
   essential: 'Essential',
   scale: 'Scale',
   enterprise: 'Enterprise',

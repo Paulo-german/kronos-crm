@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Rocket, Sparkles, CheckCircle2 } from 'lucide-react'
+import { CheckCircle2 } from 'lucide-react'
 import { Card } from '@/_components/ui/card'
 import { Button } from '@/_components/ui/button'
 import { KronosLogo } from '@/_components/icons/kronos-logo'

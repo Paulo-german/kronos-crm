@@ -170,9 +170,10 @@ export function OrganizationSettingsForm({
 
   const formattedDate = formatDate(organization.createdAt)
 
-  const isFree = !currentPlan || currentPlan === 'essential'
+  const isFree = !currentPlan || currentPlan === 'light'
 
   const planLabels: Record<PlanType, string> = {
+    light: 'Light',
     essential: 'Essential',
     scale: 'Scale',
     enterprise: 'Enterprise',

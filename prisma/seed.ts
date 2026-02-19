@@ -40,6 +40,13 @@ async function seedFeaturesAndPlans() {
   // Planos
   const plans = [
     {
+      slug: 'light',
+      name: 'Light',
+      description: 'Para profissionais solo que querem organizar seu pipeline de vendas.',
+      isActive: true,
+      stripeProductId: process.env.STRIPE_LIGHT_PRODUCT_ID ?? null,
+    },
+    {
       slug: 'essential',
       name: 'Essential',
       description: 'Para equipes pequenas começando a organizar seu pipeline de vendas.',
@@ -79,23 +86,29 @@ async function seedFeaturesAndPlans() {
   // Limites por plano (valueNumber)
   // 999999 representa "ilimitado" para o plano Enterprise
   const planLimits: Array<{ planSlug: string; featureKey: string; valueNumber: number }> = [
-    { planSlug: 'essential', featureKey: 'crm.max_contacts', valueNumber: 500 },
-    { planSlug: 'essential', featureKey: 'crm.max_deals', valueNumber: 250 },
+    { planSlug: 'light', featureKey: 'crm.max_contacts', valueNumber: 5000 },
+    { planSlug: 'light', featureKey: 'crm.max_deals', valueNumber: 5000 },
+    { planSlug: 'light', featureKey: 'crm.max_products', valueNumber: 10 },
+    { planSlug: 'light', featureKey: 'crm.max_members', valueNumber: 1 },
+    { planSlug: 'light', featureKey: 'ai.messages_quota', valueNumber: 100 },
+
+    { planSlug: 'essential', featureKey: 'crm.max_contacts', valueNumber: 25000 },
+    { planSlug: 'essential', featureKey: 'crm.max_deals', valueNumber: 25000 },
     { planSlug: 'essential', featureKey: 'crm.max_products', valueNumber: 25 },
-    { planSlug: 'essential', featureKey: 'crm.max_members', valueNumber: 5 },
-    { planSlug: 'essential', featureKey: 'ai.messages_quota', valueNumber: 200 },
+    { planSlug: 'essential', featureKey: 'crm.max_members', valueNumber: 3 },
+    { planSlug: 'essential', featureKey: 'ai.messages_quota', valueNumber: 400 },
 
-    { planSlug: 'scale', featureKey: 'crm.max_contacts', valueNumber: 5000 },
-    { planSlug: 'scale', featureKey: 'crm.max_deals', valueNumber: 2500 },
+    { planSlug: 'scale', featureKey: 'crm.max_contacts', valueNumber: 50000 },
+    { planSlug: 'scale', featureKey: 'crm.max_deals', valueNumber: 50000 },
     { planSlug: 'scale', featureKey: 'crm.max_products', valueNumber: 100 },
-    { planSlug: 'scale', featureKey: 'crm.max_members', valueNumber: 15 },
-    { planSlug: 'scale', featureKey: 'ai.messages_quota', valueNumber: 1000 },
+    { planSlug: 'scale', featureKey: 'crm.max_members', valueNumber: 8 },
+    { planSlug: 'scale', featureKey: 'ai.messages_quota', valueNumber: 1200 },
 
-    { planSlug: 'enterprise', featureKey: 'crm.max_contacts', valueNumber: 999999 },
-    { planSlug: 'enterprise', featureKey: 'crm.max_deals', valueNumber: 999999 },
+    { planSlug: 'enterprise', featureKey: 'crm.max_contacts', valueNumber: 50000 },
+    { planSlug: 'enterprise', featureKey: 'crm.max_deals', valueNumber: 50000 },
     { planSlug: 'enterprise', featureKey: 'crm.max_products', valueNumber: 999999 },
-    { planSlug: 'enterprise', featureKey: 'crm.max_members', valueNumber: 999999 },
-    { planSlug: 'enterprise', featureKey: 'ai.messages_quota', valueNumber: 5000 },
+    { planSlug: 'enterprise', featureKey: 'crm.max_members', valueNumber: 12 },
+    { planSlug: 'enterprise', featureKey: 'ai.messages_quota', valueNumber: 2500 },
   ]
 
   for (const limit of planLimits) {

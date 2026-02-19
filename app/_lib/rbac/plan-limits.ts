@@ -7,7 +7,7 @@ import { db } from '@/_lib/prisma'
 export type QuotaEntity = 'contact' | 'deal' | 'product' | 'member'
 
 // Slug do plano efetivo (usado pela UI)
-export type PlanType = 'essential' | 'scale' | 'enterprise'
+export type PlanType = 'light' | 'essential' | 'scale' | 'enterprise'
 
 const ENTITY_FEATURE_MAP: Record<QuotaEntity, string> = {
   contact: 'crm.max_contacts',

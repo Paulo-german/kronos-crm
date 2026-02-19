@@ -74,13 +74,13 @@ export const createOrganization = authActionClient
         },
       })
 
-      // Criar CreditWallet com franquia do plano Essential
+      // Criar CreditWallet com franquia do plano Essential (trial)
       const essentialPlan = await tx.plan.findUnique({
         where: { slug: 'essential' },
         select: { id: true },
       })
 
-      let planBalance = 200 // Fallback se feature/plan não existir no DB
+      let planBalance = 400 // Fallback se feature/plan não existir no DB
 
       if (essentialPlan) {
         const aiQuota = await tx.planLimit.findFirst({

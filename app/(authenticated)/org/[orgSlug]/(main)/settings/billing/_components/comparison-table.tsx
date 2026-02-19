@@ -35,7 +35,8 @@ export function ComparisonTable() {
         <Table>
           <TableHeader className="bg-secondary/20">
             <TableRow className="p-4">
-              <TableHead className="w-[40%] p-4">Recurso</TableHead>
+              <TableHead className="w-[30%] p-4">Recurso</TableHead>
+              <TableHead className="text-center">Light</TableHead>
               <TableHead className="text-center">Essential</TableHead>
               <TableHead className="text-center">Scale</TableHead>
               <TableHead className="text-center">Enterprise</TableHead>
@@ -45,6 +46,9 @@ export function ComparisonTable() {
             {COMPARISON_DATA.map((row) => (
               <TableRow key={row.feature} className="bg-card/80">
                 <TableCell className="p-3 font-medium">{row.feature}</TableCell>
+                <TableCell className="text-center">
+                  <CellValue value={row.light} />
+                </TableCell>
                 <TableCell className="text-center">
                   <CellValue value={row.essential} />
                 </TableCell>

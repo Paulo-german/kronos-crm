@@ -21,26 +21,23 @@ interface PlanCardProps {
   plan: PlanInfo
   currentPlan: PlanType | null
   orgSlug: string
+  isOnTrial?: boolean
 }
 
-export function PlanCard({ plan, currentPlan, orgSlug }: PlanCardProps) {
+export function PlanCard({ plan, currentPlan, orgSlug, isOnTrial }: PlanCardProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const isCurrentPlan = currentPlan !== null && plan.id === currentPlan
+  const isCurrentPlan = !isOnTrial && currentPlan !== null && plan.id === currentPlan
   const isHighlighted = plan.highlighted
-  const isPaidPlan = currentPlan !== null && currentPlan !== 'essential'
-  const isUpgrade = plan.stripePriceId && !isCurrentPlan
+  const isPaidPlan = !isOnTrial && currentPlan !== null && currentPlan !== 'light'
+  const isUpgrade = Boolean(plan.stripePriceId)
 
   function handleClick() {
-    // Plano atual — nada a fazer
     if (isCurrentPlan) return
 
-    // Plano enterprise sem priceId — contato comercial
-    if (plan.id === 'enterprise' && !plan.stripePriceId) {
-      return
-    }
+    if (plan.id === 'enterprise' && !plan.stripePriceId) return
 
-    // Se o usuário já é pagante, abrir portal para gerenciar/mudar plano
+    // Usuário pagante (não trial) — abrir portal Stripe
     if (isPaidPlan) {
       startTransition(async () => {
         const result = await createPortalSession({})
@@ -51,7 +48,7 @@ export function PlanCard({ plan, currentPlan, orgSlug }: PlanCardProps) {
       return
     }
 
-    // Se é free e quer fazer upgrade, redirecionar para checkout
+    // Trial ou sem plano — redirecionar para checkout
     if (isUpgrade) {
       router.push(`/org/${orgSlug}/checkout/configure?plan=${plan.id}`)
     }
