@@ -39,7 +39,7 @@ const MainLayout = async ({ children, params }: MainLayoutProps) => {
             />
           }
         />
-        <div className="relative flex flex-1 flex-col overflow-hidden">
+        <div className="relative flex min-h-full flex-1 flex-col overflow-hidden">
           <HeaderStick userEmail={user?.email} />
           <TrialGateClient isExpired={trialStatus.isExpired} orgSlug={orgSlug}>
             <ContentWrapper>{children}</ContentWrapper>

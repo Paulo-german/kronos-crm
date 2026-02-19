@@ -26,14 +26,17 @@ export function RevenueAreaChart({ data }: RevenueAreaChartProps) {
 
   if (!hasData) {
     return (
-      <div className="flex h-[300px] items-center justify-center text-sm text-muted-foreground">
+      <div className="flex h-screen items-center justify-center text-sm text-muted-foreground">
         Nenhuma receita no período
       </div>
     )
   }
 
   return (
-    <ChartContainer config={chartConfig} className="!aspect-auto h-[300px] w-full">
+    <ChartContainer
+      config={chartConfig}
+      className="!aspect-auto h-[38vh] w-full"
+    >
       <AreaChart
         data={data}
         accessibilityLayer

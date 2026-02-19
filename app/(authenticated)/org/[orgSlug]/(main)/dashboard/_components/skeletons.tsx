@@ -3,15 +3,18 @@ import { Skeleton } from '@/_components/ui/skeleton'
 
 export function KpiGridSkeleton() {
   return (
-    <div className="grid h-full grid-cols-2 gap-4">
+    <div className="grid h-full w-full grid-cols-2 gap-4">
       {Array.from({ length: 4 }).map((_, i) => (
-        <Card key={i} className="flex h-full flex-col">
+        <Card key={i} className="flex h-full w-full flex-col">
           <CardContent className="flex flex-1 flex-col justify-center p-4">
-            <div className="flex items-center justify-between">
-              <Skeleton className="h-4 w-24" />
+            <div className="flex items-center gap-2">
               <Skeleton className="size-4" />
+              <Skeleton className="h-4 w-28" />
             </div>
-            <Skeleton className="mt-3 h-7 w-32" />
+            <div className="mt-2 flex items-end gap-2">
+              <Skeleton className="h-8 w-36" />
+              <Skeleton className="mb-0.5 h-4 w-12" />
+            </div>
           </CardContent>
         </Card>
       ))}

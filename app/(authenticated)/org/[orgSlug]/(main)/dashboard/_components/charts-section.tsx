@@ -16,34 +16,43 @@ export async function ChartsSection({ ctx }: ChartsSectionProps) {
   ])
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base">Visão Geral</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Tabs defaultValue="revenue">
-          <TabsList className="grid h-12 w-full grid-cols-2 rounded-md border border-border/50 bg-tab/30">
-            <TabsTrigger
-              value="revenue"
-              className="rounded-md py-2 data-[state=active]:bg-card/80"
-            >
-              Receita
-            </TabsTrigger>
-            <TabsTrigger
-              value="funnel"
-              className="rounded-md py-2 data-[state=active]:bg-card/80"
-            >
-              Funil
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value="revenue" className="mt-4">
+    <Tabs defaultValue="revenue" className="space-y-4 pb-5">
+      <TabsList className="grid h-12 w-full grid-cols-2 rounded-md border border-border/50 bg-tab/30">
+        <TabsTrigger
+          value="revenue"
+          className="rounded-md py-2 data-[state=active]:bg-card/80"
+        >
+          Receita
+        </TabsTrigger>
+        <TabsTrigger
+          value="funnel"
+          className="rounded-md py-2 data-[state=active]:bg-card/80"
+        >
+          Funil
+        </TabsTrigger>
+      </TabsList>
+      <TabsContent value="revenue" className="mt-0">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">
+              Receita dos Últimos 6 Meses
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
             <RevenueAreaChart data={revenueData} />
-          </TabsContent>
-          <TabsContent value="funnel" className="mt-4">
+          </CardContent>
+        </Card>
+      </TabsContent>
+      <TabsContent value="funnel" className="mt-0">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Funil de Vendas</CardTitle>
+          </CardHeader>
+          <CardContent>
             <FunnelBarChart data={funnelData} />
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+          </CardContent>
+        </Card>
+      </TabsContent>
+    </Tabs>
   )
 }

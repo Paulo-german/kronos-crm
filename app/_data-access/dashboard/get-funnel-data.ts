@@ -20,7 +20,6 @@ async function fetchFunnelData(
       where: {
         organizationId: orgId,
         ...(elevated ? {} : { assignedTo: userId }),
-        status: { in: ['OPEN', 'IN_PROGRESS'] },
       },
     }),
     db.pipelineStage.findMany({

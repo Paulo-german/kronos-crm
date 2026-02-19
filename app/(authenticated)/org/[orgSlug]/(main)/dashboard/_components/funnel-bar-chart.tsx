@@ -11,21 +11,7 @@ import {
   ChartTooltipContent,
 } from '@/_components/ui/chart'
 
-const DEFAULT_COLORS = [
-  'var(--kronos-purple)',
-  'var(--kronos-purple-light)',
-  'hsl(var(--kronos-blue))',
-  'var(--kronos-green)',
-  'var(--kronos-green-light)',
-]
-
-function sanitizeKey(name: string): string {
-  return name
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-zA-Z0-9]/g, '_')
-    .toLowerCase()
-}
+const BAR_COLORS = ['hsl(var(--primary))', 'hsl(var(--primary) / 0.8)']
 
 interface FunnelBarChartProps {
   data: FunnelStage[]
@@ -33,19 +19,15 @@ interface FunnelBarChartProps {
 
 export function FunnelBarChart({ data }: FunnelBarChartProps) {
   const chartConfig = useMemo(() => {
-    const config: ChartConfig = { count: { label: 'Deals' } }
-    for (const [i, stage] of data.entries()) {
-      config[sanitizeKey(stage.stageName)] = {
-        label: stage.stageName,
-        color: stage.stageColor ?? DEFAULT_COLORS[i % DEFAULT_COLORS.length],
-      }
+    const config: ChartConfig = {
+      count: { label: 'Deals', color: BAR_COLORS[0] },
     }
     return config
-  }, [data])
+  }, [])
 
   if (data.length === 0 || data.every((d) => d.count === 0)) {
     return (
-      <div className="flex h-[300px] items-center justify-center text-sm text-muted-foreground">
+      <div className="flex min-h-full items-center justify-center text-sm text-muted-foreground">
         Nenhum deal no pipeline
       </div>
     )
@@ -53,19 +35,21 @@ export function FunnelBarChart({ data }: FunnelBarChartProps) {
 
   const chartData = data.map((d, i) => ({
     ...d,
-    key: sanitizeKey(d.stageName),
-    fill: d.stageColor ?? DEFAULT_COLORS[i % DEFAULT_COLORS.length],
+    fill: BAR_COLORS[i % 2],
   }))
 
   return (
-    <ChartContainer config={chartConfig} className="!aspect-auto h-[300px] w-full">
+    <ChartContainer
+      config={chartConfig}
+      className="!aspect-auto h-[300px] w-full"
+    >
       <BarChart
         data={chartData}
         layout="vertical"
         accessibilityLayer
         margin={{ top: 5, right: 10, left: 10, bottom: 0 }}
       >
-        <XAxis type="number" axisLine={false} tickLine={false} />
+        <XAxis type="number" axisLine={false} tickLine={false} allowDecimals={false} />
         <YAxis
           dataKey="stageName"
           type="category"
