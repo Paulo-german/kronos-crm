@@ -149,7 +149,7 @@ model Organization {
   name String
   slug String @unique
 
-  stripeCustomerId String? @map("stripe_customer_id")
+  stripeCustomerId String? @unique @map("stripe_customer_id")
 
   // Dados Cadastrais
   personType PersonType? @map("person_type")
@@ -212,6 +212,9 @@ model Member {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@unique([organizationId, email])
+  @@index([organizationId, status, createdAt])
+  @@index([userId, status, createdAt])
+  @@index([userId, organizationId])
   @@map("members")
 }
 
@@ -234,6 +237,7 @@ model Subscription {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  @@index([organizationId, status, createdAt(sort: Desc)])
   @@map("subscriptions")
 }
 
@@ -254,6 +258,7 @@ model Company {
   contacts Contact[]
   deals    Deal[]
 
+  @@index([organizationId, name])
   @@map("companies")
 }
 
@@ -281,6 +286,11 @@ model Contact {
 
   deals DealContact[]
 
+  @@index([organizationId, assignedTo, createdAt(sort: Desc)])
+  @@index([organizationId, name])
+  @@index([organizationId, email])
+  @@index([organizationId, phone])
+  @@index([companyId, organizationId])
   @@map("contacts")
 }
 
@@ -293,6 +303,7 @@ model Pipeline {
 
   stages PipelineStage[]
 
+  @@index([organizationId])
   @@map("pipelines")
 }
 
@@ -307,6 +318,7 @@ model PipelineStage {
 
   deals Deal[]
 
+  @@index([pipelineId, position])
   @@map("pipeline_stages")
 }
 
@@ -345,6 +357,10 @@ model Deal {
   tasks        Task[]
   activities   Activity[]
 
+  @@index([organizationId, pipelineStageId, assignedTo])
+  @@index([organizationId, pipelineStageId, createdAt(sort: Desc)])
+  @@index([organizationId, status, assignedTo])
+  @@index([organizationId, status, updatedAt(sort: Desc)])
   @@map("deals")
 }
 
@@ -370,6 +386,9 @@ model Task {
 
   createdAt DateTime @default(now()) @map("created_at")
 
+  @@index([organizationId, assignedTo, isCompleted, dueDate])
+  @@index([organizationId, isCompleted, dueDate(sort: Asc)])
+  @@index([dealId, organizationId])
   @@map("tasks")
 }
 
@@ -386,6 +405,7 @@ model Activity {
   performedBy String? @map("performed_by")
   performer   User?   @relation("ActivityPerformer", fields: [performedBy], references: [id])
 
+  @@index([dealId, createdAt(sort: Desc)])
   @@map("activities")
 }
 
@@ -405,6 +425,7 @@ model Product {
 
   dealProducts DealProduct[]
 
+  @@index([organizationId])
   @@map("products")
 }
 
@@ -421,6 +442,8 @@ model DealProduct {
   discountType  DiscountType @default(percentage) @map("discount_type")
   discountValue Decimal      @default(0) @map("discount_value") @db.Decimal(15, 2)
 
+  @@index([dealId])
+  @@index([productId])
   @@map("deal_products")
 }
 
@@ -437,6 +460,7 @@ model DealContact {
   isPrimary Boolean @default(false) @map("is_primary")
 
   @@unique([dealId, contactId])
+  @@index([contactId])
   @@map("deal_contacts")
 }
 
@@ -454,7 +478,7 @@ model DealLostReason {
 
   deals Deal[]
 
-  @@index([organizationId])
+  @@index([organizationId, isActive, name])
   @@map("deal_lost_reasons")
 }
 
@@ -494,6 +518,7 @@ model Plan {
   planLimits    PlanLimit[]
   subscriptions Subscription[]
 
+  @@index([slug, isActive])
   @@map("plans")
 }
 
@@ -514,6 +539,7 @@ model PlanLimit {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@unique([planId, featureId])
+  @@index([featureId])
   @@map("plan_limits")
 }
 
@@ -575,7 +601,7 @@ model WalletTransaction {
   // Somente INSERT — nunca atualizar ou deletar (imutabilidade auditável)
   createdAt DateTime @default(now()) @map("created_at")
 
-  @@index([walletId])
+  @@index([walletId, createdAt(sort: Desc)])
   @@map("wallet_transactions")
 }
 
