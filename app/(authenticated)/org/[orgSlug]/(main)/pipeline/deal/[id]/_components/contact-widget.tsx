@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   User,
   Mail,
@@ -67,6 +67,10 @@ const ContactWidget = ({ deal, contacts }: ContactWidgetProps) => {
   const [removingContact, setRemovingContact] = useState<
     DealDetailsDto['contacts'][0] | null
   >(null)
+  const [contactSearch, setContactSearch] = useState('')
+
+  const MIN_SEARCH_CHARS = 3
+  const MAX_RESULTS = 10
 
   const { execute: executeAddContact, isPending: isAdding } = useAction(
     addDealContact,
@@ -99,6 +103,18 @@ const ContactWidget = ({ deal, contacts }: ContactWidgetProps) => {
   const availableContacts = contacts.filter(
     (c) => !deal.contacts.some((dc) => dc.contactId === c.id),
   )
+
+  const filteredAvailableContacts = useMemo(() => {
+    if (contactSearch.length < MIN_SEARCH_CHARS) return []
+    const query = contactSearch.toLowerCase()
+    return availableContacts
+      .filter(
+        (c) =>
+          c.name.toLowerCase().includes(query) ||
+          c.companyName?.toLowerCase().includes(query),
+      )
+      .slice(0, MAX_RESULTS)
+  }, [availableContacts, contactSearch])
 
   const handleAddContact = () => {
     if (!selectedContactId) return
@@ -196,39 +212,51 @@ const ContactWidget = ({ deal, contacts }: ContactWidgetProps) => {
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                      <Command>
-                        <CommandInput placeholder="Buscar contato..." />
+                      <Command shouldFilter={false}>
+                        <CommandInput
+                          placeholder="Digite pelo menos 3 caracteres..."
+                          value={contactSearch}
+                          onValueChange={setContactSearch}
+                        />
                         <CommandList>
-                          <CommandEmpty>
-                            Nenhum contato encontrado.
-                          </CommandEmpty>
-                          <CommandGroup>
-                            {availableContacts.map((contact) => (
-                              <CommandItem
-                                key={contact.id}
-                                value={contact.name}
-                                onSelect={() => {
-                                  setSelectedContactId(contact.id)
-                                  setIsComboboxOpen(false)
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    'mr-2 h-4 w-4',
-                                    selectedContactId === contact.id
-                                      ? 'opacity-100'
-                                      : 'opacity-0',
+                          {contactSearch.length < MIN_SEARCH_CHARS ? (
+                            <div className="py-6 text-center text-sm text-muted-foreground">
+                              Digite pelo menos 3 caracteres
+                            </div>
+                          ) : filteredAvailableContacts.length === 0 ? (
+                            <CommandEmpty>
+                              Nenhum contato encontrado.
+                            </CommandEmpty>
+                          ) : (
+                            <CommandGroup>
+                              {filteredAvailableContacts.map((contact) => (
+                                <CommandItem
+                                  key={contact.id}
+                                  value={contact.id}
+                                  onSelect={() => {
+                                    setSelectedContactId(contact.id)
+                                    setIsComboboxOpen(false)
+                                    setContactSearch('')
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      'mr-2 h-4 w-4',
+                                      selectedContactId === contact.id
+                                        ? 'opacity-100'
+                                        : 'opacity-0',
+                                    )}
+                                  />
+                                  {contact.name}
+                                  {contact.companyName && (
+                                    <span className="ml-1 text-xs text-muted-foreground">
+                                      ({contact.companyName})
+                                    </span>
                                   )}
-                                />
-                                {contact.name}
-                                {contact.companyName && (
-                                  <span className="ml-1 text-xs text-muted-foreground">
-                                    ({contact.companyName})
-                                  </span>
-                                )}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          )}
                         </CommandList>
                       </Command>
                     </PopoverContent>

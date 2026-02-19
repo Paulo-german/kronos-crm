@@ -1,6 +1,6 @@
 'use client'
 
-import { Dispatch, SetStateAction, useState } from 'react'
+import { Dispatch, SetStateAction, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAction } from 'next-safe-action/hooks'
@@ -67,6 +67,22 @@ export function DealDialogContent({
 }: DealDialogContentProps) {
   const isEditing = !!defaultValues?.id
   const [open, setOpen] = useState(false)
+  const [contactSearch, setContactSearch] = useState('')
+
+  const MIN_SEARCH_CHARS = 3
+  const MAX_RESULTS = 10
+
+  const filteredContacts = useMemo(() => {
+    if (contactSearch.length < MIN_SEARCH_CHARS) return []
+    const query = contactSearch.toLowerCase()
+    return contacts
+      .filter(
+        (c) =>
+          c.name.toLowerCase().includes(query) ||
+          c.companyName?.toLowerCase().includes(query),
+      )
+      .slice(0, MAX_RESULTS)
+  }, [contacts, contactSearch])
 
   const form = useForm<DealFormInput>({
     resolver: zodResolver(dealFormSchema),
@@ -211,37 +227,49 @@ export function DealDialogContent({
                     </FormControl>
                   </PopoverTrigger>
                   <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                    <Command>
-                      <CommandInput placeholder="Buscar contato..." />
+                    <Command shouldFilter={false}>
+                      <CommandInput
+                        placeholder="Digite pelo menos 3 caracteres..."
+                        value={contactSearch}
+                        onValueChange={setContactSearch}
+                      />
                       <CommandList>
-                        <CommandEmpty>Nenhum contato encontrado.</CommandEmpty>
-                        <CommandGroup>
-                          {contacts.map((contact) => (
-                            <CommandItem
-                              key={contact.id}
-                              value={contact.name}
-                              onSelect={() => {
-                                form.setValue('contactId', contact.id)
-                                setOpen(false)
-                              }}
-                            >
-                              <Check
-                                className={cn(
-                                  'mr-2 h-4 w-4',
-                                  contact.id === field.value
-                                    ? 'opacity-100'
-                                    : 'opacity-0',
+                        {contactSearch.length < MIN_SEARCH_CHARS ? (
+                          <div className="py-6 text-center text-sm text-muted-foreground">
+                            Digite pelo menos 3 caracteres
+                          </div>
+                        ) : filteredContacts.length === 0 ? (
+                          <CommandEmpty>Nenhum contato encontrado.</CommandEmpty>
+                        ) : (
+                          <CommandGroup>
+                            {filteredContacts.map((contact) => (
+                              <CommandItem
+                                key={contact.id}
+                                value={contact.id}
+                                onSelect={() => {
+                                  form.setValue('contactId', contact.id)
+                                  setOpen(false)
+                                  setContactSearch('')
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    'mr-2 h-4 w-4',
+                                    contact.id === field.value
+                                      ? 'opacity-100'
+                                      : 'opacity-0',
+                                  )}
+                                />
+                                {contact.name}
+                                {contact.companyName && (
+                                  <span className="ml-1 text-xs text-muted-foreground">
+                                    ({contact.companyName})
+                                  </span>
                                 )}
-                              />
-                              {contact.name}
-                              {contact.companyName && (
-                                <span className="ml-1 text-xs text-muted-foreground">
-                                  ({contact.companyName})
-                                </span>
-                              )}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        )}
                       </CommandList>
                     </Command>
                   </PopoverContent>

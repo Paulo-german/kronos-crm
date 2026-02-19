@@ -78,6 +78,7 @@ export interface DealDetailsDto {
   totalValue: number
   products: DealProductDto[]
   activities: DealActivityDto[]
+  totalActivities: number
   tasks: DealTaskDto[]
 }
 
@@ -132,6 +133,7 @@ const fetchDealDetailsFromDb = async (
       },
       activities: {
         orderBy: { createdAt: 'desc' },
+        take: 5,
         include: {
           performer: {
             select: {
@@ -140,6 +142,9 @@ const fetchDealDetailsFromDb = async (
             },
           },
         },
+      },
+      _count: {
+        select: { activities: true },
       },
       tasks: {
         orderBy: { dueDate: 'asc' },
@@ -221,6 +226,7 @@ const fetchDealDetailsFromDb = async (
       createdAt: a.createdAt,
       performer: a.performer,
     })),
+    totalActivities: deal._count.activities,
     tasks: deal.tasks.map((t) => ({
       id: t.id,
       title: t.title,

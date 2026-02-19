@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import {
   Phone,
   Mail,
@@ -22,21 +23,24 @@ import {
   UserPlus,
   UserMinus,
   User2Icon,
+  Loader2,
 } from 'lucide-react'
+import { useAction } from 'next-safe-action/hooks'
 import type { DealActivityDto } from '@/_data-access/deal/get-deal-details'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
-
+import { Button } from '@/_components/ui/button'
 import { Badge } from '@/_components/ui/badge'
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/_components/ui/tooltip'
-
-// ... (inside component)
+import { getActivities } from '@/_actions/deal/get-activities'
 
 interface ActivityTimelineProps {
+  dealId: string
   activities: DealActivityDto[]
+  totalActivities: number
 }
 
 const activityConfig: Record<
@@ -167,7 +171,33 @@ const activityConfig: Record<
   },
 }
 
-const ActivityTimeline = ({ activities }: ActivityTimelineProps) => {
+const LOAD_MORE_COUNT = 10
+
+const ActivityTimeline = ({
+  dealId,
+  activities: initialActivities,
+  totalActivities,
+}: ActivityTimelineProps) => {
+  const [activities, setActivities] =
+    useState<DealActivityDto[]>(initialActivities)
+  const hasMore = activities.length < totalActivities
+
+  const { execute, isPending } = useAction(getActivities, {
+    onSuccess: ({ data }) => {
+      if (data && data.length > 0) {
+        setActivities((prev) => [...prev, ...data])
+      }
+    },
+  })
+
+  const handleLoadMore = () => {
+    execute({
+      dealId,
+      offset: activities.length,
+      limit: LOAD_MORE_COUNT,
+    })
+  }
+
   const formatDateTime = (date: Date) => {
     return new Intl.DateTimeFormat('pt-BR', {
       day: '2-digit',
@@ -181,9 +211,16 @@ const ActivityTimeline = ({ activities }: ActivityTimelineProps) => {
   return (
     <Card className="border-none bg-transparent shadow-none">
       <CardHeader className="px-0 pb-3">
-        <CardTitle className="mb-4 text-base font-semibold">
-          Histórico de Atividades
-        </CardTitle>
+        <div className="mb-4 flex items-center gap-2">
+          <CardTitle className="text-base font-semibold">
+            Histórico de Atividades
+          </CardTitle>
+          {totalActivities > 0 && (
+            <span className="text-xs text-muted-foreground">
+              {totalActivities}
+            </span>
+          )}
+        </div>
       </CardHeader>
 
       <CardContent className="px-0">
@@ -252,6 +289,27 @@ const ActivityTimeline = ({ activities }: ActivityTimelineProps) => {
                 </div>
               )
             })}
+
+            {hasMore && (
+              <div className="flex justify-center pt-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleLoadMore}
+                  disabled={isPending}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  {isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Carregando...
+                    </>
+                  ) : (
+                    `Carregar mais (${totalActivities - activities.length} restantes)`
+                  )}
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </CardContent>
