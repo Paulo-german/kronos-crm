@@ -5,10 +5,8 @@ import { redirect } from 'next/navigation'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getPlanLimits } from '@/_lib/rbac/plan-limits'
 import { getAllQuotas } from '@/_data-access/billing/get-all-quotas'
-import { QuotaUsageCard } from './_components/quota-usage-card'
-import { PlansGrid } from './_components/plans-grid'
-import { ComparisonTable } from './_components/comparison-table'
-import { PlansFaq } from './_components/plans-faq'
+import { getTrialStatus } from '@/_data-access/billing/get-trial-status'
+import { BillingTabs } from './_components/billing-tabs'
 
 interface BillingSettingsPageProps {
   params: Promise<{ orgSlug: string }>
@@ -24,36 +22,27 @@ export default async function BillingSettingsPage({
     redirect(`/org/${orgSlug}/settings`)
   }
 
-  const [{ plan }, quotas] = await Promise.all([
+  const [{ plan }, quotas, trialStatus] = await Promise.all([
     getPlanLimits(orgId),
     getAllQuotas(orgId),
+    getTrialStatus(orgId),
   ])
 
   return (
-    <div className="container mx-auto space-y-12 py-6">
-      <div className="mb-6">
-        <Button variant="ghost" size="sm" asChild>
-          <Link href={`/org/${orgSlug}/settings`}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar
-          </Link>
-        </Button>
-      </div>
+    <div className="container mx-auto space-y-8 py-6">
+      <Button variant="ghost" size="sm" asChild>
+        <Link href={`/org/${orgSlug}/settings`}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Voltar
+        </Link>
+      </Button>
 
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Planos e Preços</h1>
-        <p className="text-muted-foreground">
-          Escolha o plano ideal para sua equipe.
-        </p>
-      </div>
-
-      <QuotaUsageCard quotas={quotas} />
-
-      <PlansGrid currentPlan={plan} orgSlug={orgSlug} />
-
-      <ComparisonTable />
-
-      <PlansFaq />
+      <BillingTabs
+        plan={plan}
+        quotas={quotas}
+        isOnTrial={trialStatus.isOnTrial}
+        orgSlug={orgSlug}
+      />
     </div>
   )
 }
