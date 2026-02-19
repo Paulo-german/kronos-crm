@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
-import { Pencil, Check, X, FileText, Loader2 } from 'lucide-react'
+import { Pencil, Check, FileText, Loader2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import { Button } from '@/_components/ui/button'
 import { Textarea } from '@/_components/ui/textarea'

@@ -6,7 +6,6 @@ export type {
   PermissionContext,
   PermissionResult,
   OwnershipData,
-  PlanLimits,
 } from './types'
 
 // Permissões base

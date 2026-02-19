@@ -55,7 +55,6 @@ interface UpsertProductDialogProps {
 }
 
 const UpsertProductDialog = ({
-  isOpen,
   defaultValues,
   products,
   onSubmit,

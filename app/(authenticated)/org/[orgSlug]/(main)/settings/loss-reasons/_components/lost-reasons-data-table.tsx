@@ -45,21 +45,6 @@ export function LostReasonsDataTable({ reasons }: LostReasonsDataTableProps) {
     },
   )
 
-  const { execute: executeUpdate, isPending: isUpdating } = useAction(
-    updateLostReason,
-    {
-      onSuccess: () => {
-        toast.success('Motivo atualizado com sucesso!')
-        setIsEditDialogOpen(false)
-        setEditingReason(null)
-        window.location.reload()
-      },
-      onError: ({ error }) => {
-        toast.error(error.serverError || 'Erro ao atualizar motivo.')
-      },
-    },
-  )
-
   const { execute: executeToggle } = useAction(updateLostReason, {
     onSuccess: () => {
       toast.success('Status atualizado com sucesso!')

@@ -47,7 +47,6 @@ export const signUp = actionClient
           email: email,
           fullName: fullName,
           // Role default já é 'owner' pelo schema do Prisma
-          // Plan default já é 'free' pelo schema do Prisma
         },
       })
 

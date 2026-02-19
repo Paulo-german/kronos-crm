@@ -1,5 +1,5 @@
 // -----------------------------------------------------------------------------
-// KRONOS CRM - SCHEMA OTIMIZADO (V2.0)
+// KRONOS CRM - SCHEMA V3.2 — Planos DB-driven + Infraestrutura de Créditos
 // -----------------------------------------------------------------------------
 
 generator client {
@@ -83,6 +83,28 @@ enum DiscountType {
   fixed
 }
 
+enum FeatureType {
+  STATIC
+  METERED
+}
+
+enum FeatureValueType {
+  NUMBER
+  BOOLEAN
+  STRING
+}
+
+enum WalletTransactionType {
+  CREDIT_PURCHASE
+  USAGE_DEBIT
+  MONTHLY_RESET
+  AUTO_RECHARGE
+  MANUAL_ADJUSTMENT
+  REFUND
+  SYSTEM_REFUND
+  EXPIRATION
+}
+
 enum DealPriority {
   low
   medium
@@ -151,6 +173,9 @@ model Organization {
   billingState        String? @map("billing_state")
   billingCountry      String? @default("BR") @map("billing_country")
 
+  trialEndsAt DateTime? @map("trial_ends_at")
+  isReadOnly  Boolean   @default(false) @map("is_read_only")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -163,6 +188,8 @@ model Organization {
   Deal          Deal[]
   subscriptions Subscription[]
   lostReasons   DealLostReason[]
+  creditWallet  CreditWallet?
+  aiUsage       AiUsage[]
 
   @@map("organizations")
 }
@@ -200,6 +227,9 @@ model Subscription {
   currentPeriodEnd     DateTime           @map("current_period_end")
   cancelAtPeriodEnd    Boolean            @default(false) @map("cancel_at_period_end")
   metadata             Json?
+
+  planId String? @map("plan_id")
+  plan   Plan?   @relation(fields: [planId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -426,4 +456,146 @@ model DealLostReason {
 
   @@index([organizationId])
   @@map("deal_lost_reasons")
+}
+
+// -----------------------------------------------------------------------------
+// PLANOS DB-DRIVEN
+// -----------------------------------------------------------------------------
+
+model Feature {
+  id   String @id @default(uuid())
+  key         String @unique // ex: "crm.max_contacts"
+  name        String
+  description String?
+
+  type      FeatureType      @default(STATIC)
+  valueType FeatureValueType @default(NUMBER) @map("value_type")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  planLimits PlanLimit[]
+
+  @@map("features")
+}
+
+model Plan {
+  id   String @id @default(uuid())
+  slug String @unique // ex: "essential", "scale", "enterprise"
+  name String
+
+  stripeProductId String? @map("stripe_product_id")
+  description     String?
+  isActive        Boolean  @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  planLimits    PlanLimit[]
+  subscriptions Subscription[]
+
+  @@map("plans")
+}
+
+model PlanLimit {
+  id String @id @default(uuid())
+
+  planId String @map("plan_id")
+  plan   Plan   @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  featureId String  @map("feature_id")
+  feature   Feature @relation(fields: [featureId], references: [id], onDelete: Cascade)
+
+  valueNumber  Int?     @map("value_number")
+  valueBoolean Boolean? @map("value_boolean")
+  valueString  String?  @map("value_string")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([planId, featureId])
+  @@map("plan_limits")
+}
+
+// -----------------------------------------------------------------------------
+// INFRAESTRUTURA DE CRÉDITOS IA
+// -----------------------------------------------------------------------------
+
+model CreditWallet {
+  id String @id @default(uuid())
+
+  organizationId String       @unique @map("organization_id")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // BUCKET 1: Franquia do Plano (Use-it-or-lose-it)
+  // Reinicia todo mês para o valor definido em PlanLimit['ai.messages_quota']
+  planBalance  Int @default(0) @map("plan_balance")
+
+  // BUCKET 2: Lojinha (Perpétuo)
+  // Só aumenta com compras avulsas e diminui com uso após fim do planBalance
+  topUpBalance Int @default(0) @map("top_up_balance")
+
+  // Config de Auto-Recarga Inteligente
+  autoRechargeEnabled      Boolean @default(false) @map("auto_recharge_enabled")
+  // "Gatilho": Quando a SOMA (planBalance + topUpBalance) cair abaixo disso...
+  autoRechargeTrigger      Int     @default(10)    @map("auto_recharge_trigger")
+  // "Ação": ...cobra o cartão e adiciona essa quantidade ao topUpBalance.
+  autoRechargeAmount       Int     @default(100)   @map("auto_recharge_amount")
+  // Trava de segurança: evita loops de cobrança em caso de bug ou consumo desenfreado
+  maxAutoRechargesPerMonth Int     @default(5)     @map("max_auto_recharges_per_month")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  transactions WalletTransaction[]
+
+  @@map("credit_wallets")
+}
+
+model WalletTransaction {
+  id String @id @default(uuid())
+
+  walletId String       @map("wallet_id")
+  wallet   CreditWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  type   WalletTransactionType
+  // Positivo para créditos, negativo para débitos
+  amount Int
+
+  // Snapshot do estado DEPOIS da transação — essencial para auditoria e debug
+  // Permite saber de qual bucket o crédito saiu sem precisar recalcular o histórico
+  balanceAfterPlan  Int @map("balance_after_plan")
+  balanceAfterTopUp Int @map("balance_after_top_up")
+
+  // Descrição legível para o extrato do cliente (obrigatório)
+  description String
+  // Detalhes técnicos: ticket_id, tokens consumidos, modelo de IA, etc.
+  metadata    Json?
+
+  // Somente INSERT — nunca atualizar ou deletar (imutabilidade auditável)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([walletId])
+  @@map("wallet_transactions")
+}
+
+model AiUsage {
+  id String @id @default(uuid())
+
+  organizationId String       @map("organization_id")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Acumulado histórico para BI
+  totalMessagesUsed Int @default(0) @map("total_messages_used")
+  totalCreditsSpent Int @default(0) @map("total_credits_spent")
+
+  // Período de referência (ex: 2026-02 para fevereiro/2026)
+  periodYear  Int @map("period_year")
+  periodMonth Int @map("period_month")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([organizationId, periodYear, periodMonth])
+  @@map("ai_usages")
 }

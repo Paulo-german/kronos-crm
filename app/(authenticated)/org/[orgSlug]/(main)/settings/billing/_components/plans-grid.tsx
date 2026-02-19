@@ -3,7 +3,7 @@ import { PlanCard } from './plan-card'
 import { PLANS } from './plans-data'
 
 interface PlansGridProps {
-  currentPlan: PlanType
+  currentPlan: PlanType | null
   orgSlug: string
 }
 

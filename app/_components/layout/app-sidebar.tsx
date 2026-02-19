@@ -18,7 +18,11 @@ import { useSidebar } from '@/_providers/sidebar-provider'
 import { cn } from '@/_lib/utils'
 import { Button } from '@/_components/ui/button'
 
-export const AppSidebar = () => {
+interface AppSidebarProps {
+  footerSlot?: React.ReactNode
+}
+
+export const AppSidebar = ({ footerSlot }: AppSidebarProps) => {
   const { isCollapsed, toggle } = useSidebar()
   const params = useParams()
   const orgSlug = params?.orgSlug as string | undefined
@@ -34,7 +38,7 @@ export const AppSidebar = () => {
   return (
     <aside
       className={cn(
-        'relative hidden h-screen flex-col border-r border-border/50 bg-secondary/20 text-card-foreground transition-all duration-500 ease-in-out md:flex',
+        'relative hidden h-full flex-col border-r border-border/50 bg-secondary/20 text-card-foreground transition-all duration-500 ease-in-out md:flex',
         isCollapsed ? 'w-[72px]' : 'w-64',
       )}
     >
@@ -109,6 +113,7 @@ export const AppSidebar = () => {
           isCollapsed ? 'px-2' : 'px-4',
         )}
       >
+        {footerSlot}
         <nav className="grid gap-2">
           <SidebarItem href={buildHref('/settings')}>
             <Settings className="h-4 w-4" />

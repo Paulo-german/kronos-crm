@@ -23,7 +23,7 @@ export default async function PaymentPage({
   }
 
   const selectedPlan = PLANS.find((p) => p.id === plan)
-  if (!selectedPlan || selectedPlan.id === 'free') {
+  if (!selectedPlan) {
     redirect(`/org/${orgSlug}/settings/billing`)
   }
 

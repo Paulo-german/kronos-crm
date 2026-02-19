@@ -4,7 +4,9 @@ import { ArrowLeft } from 'lucide-react'
 
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getProducts } from '@/_data-access/product/get-products'
+import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 import { Button } from '@/_components/ui/button'
+import { QuotaHint } from '@/_components/trial/quota-hint'
 
 import { ProductsDataTable } from './_components/products-data-table'
 import CreateProductButton from './_components/create-product-button'
@@ -22,7 +24,10 @@ const ProductsPage = async ({ params }: ProductsPageProps) => {
     redirect(`/org/${orgSlug}/settings`)
   }
 
-  const products = await getProducts(orgId)
+  const [products, quota] = await Promise.all([
+    getProducts(orgId),
+    checkPlanQuota(orgId, 'product'),
+  ])
 
   return (
     <div className="container mx-auto space-y-6 py-6">
@@ -36,13 +41,14 @@ const ProductsPage = async ({ params }: ProductsPageProps) => {
       </div>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <div>
+          <div className="space-y-1">
             <h1 className="text-2xl font-bold">Produtos</h1>
             <p className="text-muted-foreground">
               Gerencie seu catálogo de produtos.
             </p>
+            <QuotaHint orgId={orgId} entity="product" />
           </div>
-          <CreateProductButton />
+          <CreateProductButton withinQuota={quota.withinQuota} />
         </div>
         <ProductsDataTable products={products} />
       </div>

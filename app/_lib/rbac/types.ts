@@ -52,13 +52,3 @@ export interface OwnershipData {
   assignedTo: string | null
   organizationId?: string
 }
-
-/**
- * Limites do plano por entidade
- */
-export interface PlanLimits {
-  contacts: number
-  deals: number
-  products: number
-  members: number
-}

@@ -135,6 +135,15 @@
     animation: gradient-animation 4s ease infinite;
   }
 
+  .bg-banner-premium {
+    background: linear-gradient(
+      135deg,
+      var(--kronos-purple) 0%,
+      var(--kronos-purple-light) 50%,
+      var(--kronos-cyan) 100%
+    );
+  }
+
   @keyframes gradient-animation {
     0% {
       background-position: 0% 50%;

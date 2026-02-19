@@ -66,8 +66,17 @@ const UpsertContactDialogContent = ({
   const { execute: executeCreate, isPending: isCreating } = useAction(
     createContact,
     {
-      onSuccess: () => {
+      onSuccess: ({ data }) => {
         toast.success('Contato criado com sucesso!')
+        if (data?.current && data?.limit && data.limit > 0) {
+          const pct = data.current / data.limit
+          if (pct >= 0.9) {
+            toast.warning(
+              `Voce esta usando ${data.current} de ${data.limit} contatos. Considere fazer upgrade.`,
+              { duration: 6000 },
+            )
+          }
+        }
         form.reset()
         setIsOpen(false)
       },

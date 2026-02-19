@@ -5,10 +5,8 @@ import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 import {
   Plus,
-  Trash2,
   Loader2,
   Pencil,
-  TriangleAlert,
   TrashIcon,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'

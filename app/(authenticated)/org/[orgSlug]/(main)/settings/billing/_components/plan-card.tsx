@@ -19,16 +19,16 @@ import type { PlanType } from '@/_lib/rbac/plan-limits'
 
 interface PlanCardProps {
   plan: PlanInfo
-  currentPlan: PlanType
+  currentPlan: PlanType | null
   orgSlug: string
 }
 
 export function PlanCard({ plan, currentPlan, orgSlug }: PlanCardProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const isCurrentPlan = plan.id === currentPlan
+  const isCurrentPlan = currentPlan !== null && plan.id === currentPlan
   const isHighlighted = plan.highlighted
-  const isPaidPlan = currentPlan !== 'free'
+  const isPaidPlan = currentPlan !== null && currentPlan !== 'essential'
   const isUpgrade = plan.stripePriceId && !isCurrentPlan
 
   function handleClick() {

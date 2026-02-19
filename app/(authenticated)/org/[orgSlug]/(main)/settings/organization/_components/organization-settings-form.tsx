@@ -75,7 +75,7 @@ interface Organization {
 interface OrganizationSettingsFormProps {
   orgSlug: string
   organization: Organization
-  currentPlan: PlanType
+  currentPlan: PlanType | null
 }
 
 export function OrganizationSettingsForm({
@@ -170,11 +170,11 @@ export function OrganizationSettingsForm({
 
   const formattedDate = formatDate(organization.createdAt)
 
-  const isFree = currentPlan === 'free'
+  const isFree = !currentPlan || currentPlan === 'essential'
 
   const planLabels: Record<PlanType, string> = {
-    free: 'Gratuito',
-    pro: 'Pro',
+    essential: 'Essential',
+    scale: 'Scale',
     enterprise: 'Enterprise',
   }
 
@@ -234,7 +234,7 @@ export function OrganizationSettingsForm({
                   </Label>
                   <div className="flex items-center gap-3">
                     <p className="text-sm font-medium">
-                      {planLabels[currentPlan]}
+                      {currentPlan ? planLabels[currentPlan] : 'Sem plano'}
                     </p>
                     <Link href={`/org/${orgSlug}/settings/billing`}>
                       <Button type="button">

@@ -6,6 +6,7 @@ import { createCheckoutSessionSchema } from './schema'
 import { stripe } from '@/_lib/stripe'
 import { db } from '@/_lib/prisma'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
+import { resolveProductKeyFromPriceId } from '@/_lib/stripe-utils'
 
 export const createCheckoutSession = orgActionClient
   .schema(createCheckoutSessionSchema)
@@ -47,17 +48,8 @@ export const createCheckoutSession = orgActionClient
       stripeCustomerId = customer.id
     }
 
-    // 5. Derivar product_key pelo priceId
-    const PRICE_TO_PRODUCT_KEY: Record<string, string> = {
-      ...(process.env.STRIPE_PRO_PRICE_ID && {
-        [process.env.STRIPE_PRO_PRICE_ID]: 'pro',
-      }),
-      ...(process.env.STRIPE_ENTERPRISE_PRICE_ID && {
-        [process.env.STRIPE_ENTERPRISE_PRICE_ID]: 'enterprise',
-      }),
-    }
-
-    const productKey = PRICE_TO_PRODUCT_KEY[data.priceId] || 'pro'
+    // 5. Derivar product_key (slug do plano) pelo priceId
+    const productKey = resolveProductKeyFromPriceId(data.priceId)
 
     // 6. Criar Checkout Session (embedded mode)
     const session = await stripe.checkout.sessions.create({

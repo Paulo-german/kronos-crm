@@ -4,6 +4,8 @@ import { Button } from '@/_components/ui/button'
 import { redirect } from 'next/navigation'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getPlanLimits } from '@/_lib/rbac/plan-limits'
+import { getAllQuotas } from '@/_data-access/billing/get-all-quotas'
+import { QuotaUsageCard } from './_components/quota-usage-card'
 import { PlansGrid } from './_components/plans-grid'
 import { ComparisonTable } from './_components/comparison-table'
 import { PlansFaq } from './_components/plans-faq'
@@ -22,7 +24,10 @@ export default async function BillingSettingsPage({
     redirect(`/org/${orgSlug}/settings`)
   }
 
-  const { plan } = await getPlanLimits(orgId)
+  const [{ plan }, quotas] = await Promise.all([
+    getPlanLimits(orgId),
+    getAllQuotas(orgId),
+  ])
 
   return (
     <div className="container mx-auto space-y-12 py-6">
@@ -41,6 +46,8 @@ export default async function BillingSettingsPage({
           Escolha o plano ideal para sua equipe.
         </p>
       </div>
+
+      <QuotaUsageCard quotas={quotas} />
 
       <PlansGrid currentPlan={plan} orgSlug={orgSlug} />
 

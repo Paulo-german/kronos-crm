@@ -36,9 +36,9 @@ export function ComparisonTable() {
           <TableHeader className="bg-secondary/20">
             <TableRow className="p-4">
               <TableHead className="w-[40%] p-4">Recurso</TableHead>
-              <TableHead className="text-center">Gratuito</TableHead>
-              <TableHead className="text-center">Profissional</TableHead>
-              <TableHead className="text-center">Empresarial</TableHead>
+              <TableHead className="text-center">Essential</TableHead>
+              <TableHead className="text-center">Scale</TableHead>
+              <TableHead className="text-center">Enterprise</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -46,10 +46,10 @@ export function ComparisonTable() {
               <TableRow key={row.feature} className="bg-card/80">
                 <TableCell className="p-3 font-medium">{row.feature}</TableCell>
                 <TableCell className="text-center">
-                  <CellValue value={row.free} />
+                  <CellValue value={row.essential} />
                 </TableCell>
                 <TableCell className="text-center">
-                  <CellValue value={row.pro} />
+                  <CellValue value={row.scale} />
                 </TableCell>
                 <TableCell className="text-center">
                   <CellValue value={row.enterprise} />

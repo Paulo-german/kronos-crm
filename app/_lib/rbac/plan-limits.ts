@@ -1,69 +1,91 @@
-import type { PlanLimits } from './types'
+import { cache } from 'react'
+import { unstable_cache } from 'next/cache'
+import type { Plan } from '@prisma/client'
 import { db } from '@/_lib/prisma'
 
-/**
- * Tipo local para identificar o plano, derivado do metadata.product_key da subscription ativa
- */
-export type PlanType = 'free' | 'pro' | 'enterprise'
+// Mapeamento de entidade RBAC para feature key no catálogo
+export type QuotaEntity = 'contact' | 'deal' | 'product' | 'member'
 
-/**
- * Limites por plano
- */
-const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
-  free: {
-    contacts: 50,
-    deals: 25,
-    products: 10,
-    members: 2,
-  },
-  pro: {
-    contacts: 1000,
-    deals: 500,
-    products: 100,
-    members: 10,
-  },
-  enterprise: {
-    contacts: Infinity,
-    deals: Infinity,
-    products: Infinity,
-    members: Infinity,
-  },
-}
+// Slug do plano efetivo (usado pela UI)
+export type PlanType = 'essential' | 'scale' | 'enterprise'
 
-// Mapeamento de entidade RBAC para nome da tabela (apenas para entidades com quota)
-type QuotaEntity = 'contact' | 'deal' | 'product' | 'member'
-
-const ENTITY_TO_LIMIT_KEY: Record<QuotaEntity, keyof PlanLimits> = {
-  contact: 'contacts',
-  deal: 'deals',
-  product: 'products',
-  member: 'members',
+const ENTITY_FEATURE_MAP: Record<QuotaEntity, string> = {
+  contact: 'crm.max_contacts',
+  deal: 'crm.max_deals',
+  product: 'crm.max_products',
+  member: 'crm.max_members',
 }
 
 /**
- * Obtém o plano atual de uma organização a partir da subscription ativa.
- * Se não houver subscription ativa, retorna 'free'.
+ * Resolve o plano efetivo da organização:
+ * 1. Subscription ativa/trialing com planId → retorna o plan vinculado
+ * 2. trialEndsAt no futuro → retorna o plano 'essential' do DB
+ * 3. Nenhum → null (bloqueia quota)
  */
-async function getOrganizationPlan(orgId: string): Promise<PlanType> {
-  const subscription = await db.subscription.findFirst({
-    where: {
-      organizationId: orgId,
-      status: { in: ['active', 'trialing'] },
+const getEffectivePlan = cache(async (orgId: string): Promise<Plan | null> => {
+  const getCachedPlan = unstable_cache(
+    async () => {
+      const subscription = await db.subscription.findFirst({
+        where: {
+          organizationId: orgId,
+          status: { in: ['active', 'trialing'] },
+        },
+        include: { plan: true },
+        orderBy: { createdAt: 'desc' },
+      })
+
+      if (subscription?.plan) {
+        return subscription.plan
+      }
+
+      // Fallback para trial da org
+      const org = await db.organization.findUnique({
+        where: { id: orgId },
+        select: { trialEndsAt: true },
+      })
+
+      if (org?.trialEndsAt && org.trialEndsAt > new Date()) {
+        return db.plan.findUnique({ where: { slug: 'essential' } })
+      }
+
+      return null
     },
-    select: { metadata: true },
-    orderBy: { createdAt: 'desc' },
-  })
+    [`effective-plan-${orgId}`],
+    {
+      tags: [`subscriptions:${orgId}`],
+      revalidate: 3600,
+    },
+  )
 
-  if (!subscription?.metadata) return 'free'
+  return getCachedPlan()
+})
 
-  const metadata = subscription.metadata as Record<string, unknown>
-  const productKey = metadata.product_key as string | undefined
+/**
+ * Lê o limite numérico de uma feature para um plano do banco de dados.
+ * Retorna 0 se não encontrado.
+ */
+const getPlanLimit = cache(async (planId: string, featureKey: string): Promise<number> => {
+  const getCachedLimit = unstable_cache(
+    async () => {
+      const planLimit = await db.planLimit.findFirst({
+        where: {
+          planId,
+          feature: { key: featureKey },
+        },
+        select: { valueNumber: true },
+      })
 
-  if (productKey === 'pro') return 'pro'
-  if (productKey === 'enterprise') return 'enterprise'
+      return planLimit?.valueNumber ?? 0
+    },
+    [`plan-limit-${planId}-${featureKey}`],
+    {
+      tags: ['plan-limits'],
+      revalidate: 3600,
+    },
+  )
 
-  return 'free'
-}
+  return getCachedLimit()
+})
 
 /**
  * Conta registros existentes para uma entidade
@@ -91,13 +113,16 @@ async function countRecords(orgId: string, entity: QuotaEntity): Promise<number>
  */
 export async function checkPlanQuota(
   orgId: string,
-  entity: QuotaEntity
+  entity: QuotaEntity,
 ): Promise<{ withinQuota: boolean; current: number; limit: number }> {
-  const plan = await getOrganizationPlan(orgId)
-  const limits = PLAN_LIMITS[plan]
-  const limitKey = ENTITY_TO_LIMIT_KEY[entity]
-  const limit = limits[limitKey]
+  const plan = await getEffectivePlan(orgId)
 
+  if (!plan) {
+    return { withinQuota: false, current: 0, limit: 0 }
+  }
+
+  const featureKey = ENTITY_FEATURE_MAP[entity]
+  const limit = await getPlanLimit(plan.id, featureKey)
   const current = await countRecords(orgId, entity)
 
   return {
@@ -108,16 +133,35 @@ export async function checkPlanQuota(
 }
 
 /**
- * Lança erro se a quota foi excedida
- * Use antes de criar novos registros
+ * Retorna o slug do plano efetivo da organização, para uso na UI.
+ * Retorna null quando a org não tem plano ativo nem trial.
  */
-export async function requireQuota(
-  orgId: string,
-  entity: QuotaEntity
-): Promise<void> {
-  const { withinQuota, current, limit } = await checkPlanQuota(orgId, entity)
+export async function getPlanLimits(orgId: string): Promise<{ plan: PlanType | null }> {
+  const plan = await getEffectivePlan(orgId)
 
-  if (!withinQuota) {
+  if (!plan) {
+    return { plan: null }
+  }
+
+  return { plan: plan.slug as PlanType }
+}
+
+/**
+ * Lança erro se a quota foi excedida.
+ * Use antes de criar novos registros.
+ */
+export async function requireQuota(orgId: string, entity: QuotaEntity): Promise<void> {
+  const plan = await getEffectivePlan(orgId)
+
+  if (!plan) {
+    throw new Error('Assine um plano para continuar.')
+  }
+
+  const featureKey = ENTITY_FEATURE_MAP[entity]
+  const limit = await getPlanLimit(plan.id, featureKey)
+  const current = await countRecords(orgId, entity)
+
+  if (current >= limit) {
     const entityLabels: Record<QuotaEntity, string> = {
       contact: 'contatos',
       deal: 'negócios',
@@ -127,18 +171,7 @@ export async function requireQuota(
 
     throw new Error(
       `Limite do plano atingido: você tem ${current}/${limit} ${entityLabels[entity]}. ` +
-        'Faça upgrade do plano para adicionar mais.'
+        'Faça upgrade do plano para adicionar mais.',
     )
-  }
-}
-
-/**
- * Obtém os limites do plano de uma organização
- */
-export async function getPlanLimits(orgId: string): Promise<PlanLimits & { plan: PlanType }> {
-  const plan = await getOrganizationPlan(orgId)
-  return {
-    ...PLAN_LIMITS[plan],
-    plan,
   }
 }

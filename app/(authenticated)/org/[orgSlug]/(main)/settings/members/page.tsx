@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
+import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
+import { QuotaHint } from '@/_components/trial/quota-hint'
 import { MemberList } from './_components/member-list'
 import InviteMemberDialog from './_components/invite-member-dialog'
 import { redirect } from 'next/navigation'
@@ -21,8 +23,10 @@ export default async function MembersPage({ params }: MembersPageProps) {
     redirect(`/org/${orgSlug}/dashboard`)
   }
 
-  // Buscar membros
-  const { accepted, pending } = await getOrganizationMembers(orgId)
+  const [{ accepted, pending }, quota] = await Promise.all([
+    getOrganizationMembers(orgId),
+    checkPlanQuota(orgId, 'member'),
+  ])
 
   return (
     <div className="container mx-auto space-y-6 py-6">
@@ -36,14 +40,15 @@ export default async function MembersPage({ params }: MembersPageProps) {
       </div>
 
       <div className="flex items-center justify-between">
-        <div>
+        <div className="space-y-1">
           <h1 className="text-2xl font-bold tracking-tight">Membros</h1>
           <p className="text-muted-foreground">
             Gerencie quem tem acesso à organização.
           </p>
+          <QuotaHint orgId={orgId} entity="member" />
         </div>
         {(userRole === 'ADMIN' || userRole === 'OWNER') && (
-          <InviteMemberDialog />
+          <InviteMemberDialog withinQuota={quota.withinQuota} />
         )}
       </div>
 

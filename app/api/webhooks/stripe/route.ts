@@ -112,6 +112,7 @@ async function handleCheckoutSessionCompleted(
   if (!priceId) return
 
   const productKey = await resolveProductKey(subscription)
+  const plan = await db.plan.findUnique({ where: { slug: productKey } })
 
   await db.subscription.upsert({
     where: { stripeSubscriptionId: subscriptionId },
@@ -123,6 +124,7 @@ async function handleCheckoutSessionCompleted(
       currentPeriodEnd: getSubscriptionPeriodEnd(subscription),
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
       metadata: { product_key: productKey },
+      planId: plan?.id ?? null,
     },
     update: {
       stripePriceId: priceId,
@@ -130,6 +132,7 @@ async function handleCheckoutSessionCompleted(
       currentPeriodEnd: getSubscriptionPeriodEnd(subscription),
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
       metadata: { product_key: productKey },
+      planId: plan?.id ?? null,
     },
   })
 
@@ -154,11 +157,18 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
 
   if (!existing) return
 
+  const priceId = subscription.items.data[0]?.price.id
+  const productKey = await resolveProductKey(subscription)
+  const plan = await db.plan.findUnique({ where: { slug: productKey } })
+
   await db.subscription.update({
     where: { stripeSubscriptionId: subscriptionId },
     data: {
       status: 'active',
       currentPeriodEnd: getSubscriptionPeriodEnd(subscription),
+      stripePriceId: priceId || undefined,
+      metadata: { product_key: productKey },
+      planId: plan?.id ?? null,
     },
   })
 
@@ -175,6 +185,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
 
   const priceId = subscription.items.data[0]?.price.id
   const productKey = await resolveProductKey(subscription)
+  const plan = await db.plan.findUnique({ where: { slug: productKey } })
 
   await db.subscription.update({
     where: { stripeSubscriptionId: subscription.id },
@@ -184,6 +195,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
       currentPeriodEnd: getSubscriptionPeriodEnd(subscription),
       metadata: { product_key: productKey },
+      planId: plan?.id ?? null,
     },
   })
 

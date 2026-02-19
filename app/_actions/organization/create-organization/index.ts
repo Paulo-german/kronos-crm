@@ -54,11 +54,12 @@ export const createOrganization = authActionClient
 
     // Criar organização e membro em uma transação
     const organization = await db.$transaction(async (tx) => {
-      // Criar organização
+      // Criar organização com trial de 7 dias no plano Essential
       const org = await tx.organization.create({
         data: {
           name: data.name,
           slug,
+          trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         },
       })
 
@@ -70,6 +71,35 @@ export const createOrganization = authActionClient
           email: user.email,
           role: 'OWNER',
           status: 'ACCEPTED',
+        },
+      })
+
+      // Criar CreditWallet com franquia do plano Essential
+      const essentialPlan = await tx.plan.findUnique({
+        where: { slug: 'essential' },
+        select: { id: true },
+      })
+
+      let planBalance = 200 // Fallback se feature/plan não existir no DB
+
+      if (essentialPlan) {
+        const aiQuota = await tx.planLimit.findFirst({
+          where: {
+            planId: essentialPlan.id,
+            feature: { key: 'ai.messages_quota' },
+          },
+          select: { valueNumber: true },
+        })
+
+        if (aiQuota?.valueNumber) {
+          planBalance = aiQuota.valueNumber
+        }
+      }
+
+      await tx.creditWallet.create({
+        data: {
+          organizationId: org.id,
+          planBalance,
         },
       })
 

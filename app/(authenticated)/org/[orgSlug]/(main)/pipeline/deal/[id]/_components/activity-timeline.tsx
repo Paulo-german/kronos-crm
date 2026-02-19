@@ -21,10 +21,6 @@ import {
   CalendarClock,
   UserPlus,
   UserMinus,
-  CircleCheck,
-  Circle,
-  User,
-  UserIcon,
   User2Icon,
 } from 'lucide-react'
 import type { DealActivityDto } from '@/_data-access/deal/get-deal-details'

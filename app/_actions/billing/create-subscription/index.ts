@@ -34,6 +34,9 @@ export const createSubscription = orgActionClient
 
     const productKey = resolveProductKeyFromPriceId(data.priceId)
 
+    // Busca o Plan no DB pelo slug derivado do priceId (ex: "scale", "enterprise")
+    const plan = await db.plan.findUnique({ where: { slug: productKey } })
+
     // Criar a assinatura com cobrança imediata
     // O Stripe anexa o PM ao Customer automaticamente via default_payment_method
     // Se falhar (cartão recusado), não sobra PM órfão anexado
@@ -78,6 +81,7 @@ export const createSubscription = orgActionClient
         currentPeriodEnd,
         cancelAtPeriodEnd: subscription.cancel_at_period_end,
         metadata: { product_key: productKey },
+        planId: plan?.id ?? null,
       },
       update: {
         stripePriceId: priceId,
@@ -89,6 +93,7 @@ export const createSubscription = orgActionClient
           | 'incomplete',
         currentPeriodEnd,
         metadata: { product_key: productKey },
+        planId: plan?.id ?? null,
       },
     })
 

@@ -10,6 +10,7 @@ import {
   resolveAssignedTo,
   requireQuota,
 } from '@/_lib/rbac'
+import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 
 export const createContact = orgActionClient
   .schema(contactSchema)
@@ -54,5 +55,7 @@ export const createContact = orgActionClient
     revalidateTag(`contacts:${ctx.orgId}`)
     revalidatePath('/contacts')
 
-    return { success: true, contactId: contact.id }
+    const quota = await checkPlanQuota(ctx.orgId, 'contact')
+
+    return { success: true, contactId: contact.id, current: quota.current, limit: quota.limit }
   })
