@@ -9,6 +9,7 @@ import {
   canPerformAction,
   requirePermission,
 } from '@/_lib/rbac'
+import { recalculateDealValue } from '@/_lib/deal-value'
 
 export const addDealProduct = orgActionClient
   .schema(addDealProductSchema)
@@ -52,10 +53,13 @@ export const addDealProduct = orgActionClient
       },
     })
 
+    await recalculateDealValue(data.dealId)
+
     revalidatePath('/pipeline')
     revalidatePath(`/pipeline/deal/${data.dealId}`)
     revalidateTag(`deals:${ctx.orgId}`)
     revalidateTag(`deal:${data.dealId}`)
+    revalidateTag(`dashboard:${ctx.orgId}`)
 
     return { success: true, dealProductId: dealProduct.id }
   })

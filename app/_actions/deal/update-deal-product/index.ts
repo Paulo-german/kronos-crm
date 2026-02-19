@@ -10,6 +10,7 @@ import {
   canPerformAction,
   requirePermission,
 } from '@/_lib/rbac'
+import { recalculateDealValue } from '@/_lib/deal-value'
 
 export const updateDealProduct = orgActionClient
   .schema(updateDealProductSchema)
@@ -64,10 +65,13 @@ export const updateDealProduct = orgActionClient
       return productUpdated
     })
 
+    await recalculateDealValue(dealProduct.dealId)
+
     // 6. Cache Invalidation
     revalidateTag(`deals:${ctx.orgId}`)
     revalidateTag(`pipeline:${ctx.orgId}`)
     revalidateTag(`deal:${dealProduct.dealId}`)
+    revalidateTag(`dashboard:${ctx.orgId}`)
     revalidatePath('/pipeline')
 
     return { success: true, dealProductId: updated.id }

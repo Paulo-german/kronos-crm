@@ -340,6 +340,7 @@ model Deal {
   priority          DealPriority @default(medium)
   status            DealStatus   @default(OPEN)
   notes             String?      @db.Text
+  value             Decimal      @default(0) @db.Decimal(15, 2)
   lostReason        String?
   pausedAt          DateTime?    @map("paused_at")
   expectedCloseDate DateTime?    @map("expected_close_date")
@@ -361,6 +362,7 @@ model Deal {
   @@index([organizationId, pipelineStageId, createdAt(sort: Desc)])
   @@index([organizationId, status, assignedTo])
   @@index([organizationId, status, updatedAt(sort: Desc)])
+  @@index([organizationId, status, createdAt(sort: Desc)])
   @@map("deals")
 }
 

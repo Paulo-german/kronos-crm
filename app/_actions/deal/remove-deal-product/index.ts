@@ -9,6 +9,7 @@ import {
   canPerformAction,
   requirePermission,
 } from '@/_lib/rbac'
+import { recalculateDealValue } from '@/_lib/deal-value'
 
 export const removeDealProduct = orgActionClient
   .schema(removeDealProductSchema)
@@ -51,10 +52,13 @@ export const removeDealProduct = orgActionClient
       },
     })
 
+    await recalculateDealValue(dealProduct.dealId)
+
     revalidatePath('/pipeline')
     revalidatePath(`/pipeline/deal/${dealProduct.dealId}`)
     revalidateTag(`deals:${ctx.orgId}`)
     revalidateTag(`deal:${dealProduct.dealId}`)
+    revalidateTag(`dashboard:${ctx.orgId}`)
 
     return { success: true }
   })

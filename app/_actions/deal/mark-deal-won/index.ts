@@ -41,6 +41,8 @@ export const markDealWon = orgActionClient
     revalidateTag(`deals:${ctx.orgId}`)
     revalidateTag(`deals-options:${ctx.orgId}`)
     revalidateTag(`deal:${data.dealId}`)
+    revalidateTag(`dashboard:${ctx.orgId}`)
+    revalidateTag(`dashboard-charts:${ctx.orgId}`)
 
     return { success: true }
   })

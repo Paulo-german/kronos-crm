@@ -67,6 +67,8 @@ export const markDealLost = orgActionClient
     revalidateTag(`deals-options:${ctx.orgId}`)
     revalidateTag(`deal:${data.dealId}`)
     revalidateTag(`deal-lost-reasons:${ctx.orgId}`)
+    revalidateTag(`dashboard:${ctx.orgId}`)
+    revalidateTag(`dashboard-charts:${ctx.orgId}`)
 
     return { success: true }
   })
