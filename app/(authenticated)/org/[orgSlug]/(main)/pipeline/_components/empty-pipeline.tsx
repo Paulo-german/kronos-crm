@@ -1,8 +1,11 @@
 import { Folder } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
-import Link from 'next/link'
 
-export const EmptyPipeline = () => {
+interface EmptyPipelineProps {
+  onOpenSettings?: () => void
+}
+
+export const EmptyPipeline = ({ onOpenSettings }: EmptyPipelineProps) => {
   return (
     <div className="flex h-[60vh] flex-col items-center justify-center gap-4">
       <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
@@ -14,9 +17,9 @@ export const EmptyPipeline = () => {
           Seu pipeline será criado automaticamente. Tente recarregar a página.
         </p>
       </div>
-      <Button asChild>
-        <Link href="/pipeline/settings">Configurar Pipeline</Link>
-      </Button>
+      {onOpenSettings && (
+        <Button onClick={onOpenSettings}>Configurar Pipeline</Button>
+      )}
     </div>
   )
 }

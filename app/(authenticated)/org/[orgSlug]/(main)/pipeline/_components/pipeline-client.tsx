@@ -2,13 +2,20 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { Dialog } from '@/_components/ui/dialog'
 import { Button } from '@/_components/ui/button'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/_components/ui/sheet'
 import { Settings2Icon } from 'lucide-react'
 import { KanbanBoard } from './kanban-board'
 import { DealDialogContent } from './deal-dialog-content'
 import { EmptyPipeline } from './empty-pipeline'
+import { SettingsClient } from './settings-client'
 import { PipelineFiltersSheet } from './pipeline-filters-sheet'
 import { PipelineFilterBadges } from './pipeline-filter-badges'
 import { usePipelineFilters } from '../_lib/use-pipeline-filters'
@@ -49,6 +56,7 @@ export const PipelineClient = ({
     isOpen: false,
     stageId: '',
   })
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const {
     filters,
     setFilters,
@@ -60,7 +68,13 @@ export const PipelineClient = ({
   const canManagePipeline = userRole === 'ADMIN' || userRole === 'OWNER'
 
   if (!pipeline) {
-    return <EmptyPipeline />
+    return (
+      <EmptyPipeline
+        onOpenSettings={
+          canManagePipeline ? () => setSettingsOpen(true) : undefined
+        }
+      />
+    )
   }
 
   const handleAddDeal = (stageId: string) => {
@@ -92,11 +106,12 @@ export const PipelineClient = ({
         </HeaderLeft>
         <HeaderRight>
           {canManagePipeline && (
-            <Button variant="outline" asChild>
-              <Link href="/pipeline/settings">
-                <Settings2Icon className="mr-2 h-4 w-4" />
-                Configurar Pipeline
-              </Link>
+            <Button
+              variant="outline"
+              onClick={() => setSettingsOpen(true)}
+            >
+              <Settings2Icon className="mr-2 h-4 w-4" />
+              Configurar Pipeline
             </Button>
           )}
         </HeaderRight>
@@ -141,6 +156,20 @@ export const PipelineClient = ({
           }}
         />
       </Dialog>
+
+      <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <SheetContent className="flex w-full flex-col sm:max-w-lg">
+          <SheetHeader>
+            <SheetTitle>Configurações do Pipeline</SheetTitle>
+            <SheetDescription>
+              Gerencie as etapas do seu funil de vendas.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto">
+            <SettingsClient pipeline={pipeline} />
+          </div>
+        </SheetContent>
+      </Sheet>
     </>
   )
 }

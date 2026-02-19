@@ -44,7 +44,6 @@ export const deleteStage = orgActionClient
     })
 
     revalidatePath('/pipeline')
-    revalidatePath('/pipeline/settings')
     revalidateTag(`pipeline:${ctx.orgId}`)
 
     return { success: true }
