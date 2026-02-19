@@ -35,9 +35,9 @@ export function LostReasonsDataTable({ reasons }: LostReasonsDataTableProps) {
   const { execute: executeDelete, isPending: isDeleting } = useAction(
     deleteLostReason,
     {
-      onSuccess: () => {
+      onSuccess: ({ input }) => {
         toast.success('Motivo excluído com sucesso.')
-        window.location.reload()
+        setLocalReasons((prev) => prev.filter((r) => r.id !== input.id))
       },
       onError: ({ error }) => {
         toast.error(error.serverError || 'Erro ao excluir motivo.')
