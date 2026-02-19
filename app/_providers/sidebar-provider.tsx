@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react'
 
+const SIDEBAR_COOKIE_KEY = 'kronos-sidebar-collapsed'
 const SIDEBAR_STORAGE_KEY = 'kronos-sidebar-collapsed'
 
 interface SidebarContextType {
@@ -20,25 +21,27 @@ interface SidebarContextType {
 
 const SidebarContext = createContext<SidebarContextType | null>(null)
 
-export function SidebarProvider({ children }: { children: ReactNode }) {
-  const [isCollapsed, setIsCollapsed] = useState(false)
-  const [isHydrated, setIsHydrated] = useState(false)
+interface SidebarProviderProps {
+  children: ReactNode
+  defaultCollapsed?: boolean
+}
 
-  // Hydrate from localStorage
-  useEffect(() => {
-    const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY)
-    if (stored !== null) {
-      setIsCollapsed(stored === 'true')
-    }
-    setIsHydrated(true)
-  }, [])
+function persistSidebarState(collapsed: boolean) {
+  localStorage.setItem(SIDEBAR_STORAGE_KEY, String(collapsed))
+  document.cookie = `${SIDEBAR_COOKIE_KEY}=${collapsed}; path=/; max-age=31536000; SameSite=Lax`
+}
 
-  // Persist to localStorage
+export function SidebarProvider({
+  children,
+  defaultCollapsed = false,
+}: SidebarProviderProps) {
+  // Estado inicial vem do cookie (lido no servidor), eliminando flicker
+  const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed)
+
+  // Sincroniza localStorage + cookie ao mudar
   useEffect(() => {
-    if (isHydrated) {
-      localStorage.setItem(SIDEBAR_STORAGE_KEY, String(isCollapsed))
-    }
-  }, [isCollapsed, isHydrated])
+    persistSidebarState(isCollapsed)
+  }, [isCollapsed])
 
   const toggle = useCallback(() => setIsCollapsed((prev) => !prev), [])
   const collapse = useCallback(() => setIsCollapsed(true), [])

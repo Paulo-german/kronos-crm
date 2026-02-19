@@ -1,3 +1,4 @@
+import { cookies } from 'next/headers'
 import { Toaster } from '@/_components/ui/sonner'
 import { TooltipProvider } from '@/_components/ui/tooltip'
 import { SidebarProvider } from '@/_providers/sidebar-provider'
@@ -6,9 +7,13 @@ interface AuthenticatedLayoutProps {
   children: React.ReactNode
 }
 
-const AuthenticatedLayout = ({ children }: AuthenticatedLayoutProps) => {
+const AuthenticatedLayout = async ({ children }: AuthenticatedLayoutProps) => {
+  const cookieStore = await cookies()
+  const sidebarCookie = cookieStore.get('kronos-sidebar-collapsed')
+  const defaultCollapsed = sidebarCookie?.value === 'true'
+
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultCollapsed={defaultCollapsed}>
       <TooltipProvider>
         {children}
         <Toaster position="bottom-right" />
