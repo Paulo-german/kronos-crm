@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   Phone,
   Mail,
@@ -178,14 +178,37 @@ const ActivityTimeline = ({
   activities: initialActivities,
   totalActivities,
 }: ActivityTimelineProps) => {
-  const [activities, setActivities] =
-    useState<DealActivityDto[]>(initialActivities)
+  const [extraActivities, setExtraActivities] = useState<DealActivityDto[]>([])
+  const [prevInitialIds, setPrevInitialIds] = useState(() =>
+    initialActivities.map((a) => a.id).join(','),
+  )
+
+  // Reseta atividades extras quando o servidor revalida (nova atividade criada)
+  const currentInitialIds = initialActivities.map((a) => a.id).join(',')
+  if (currentInitialIds !== prevInitialIds) {
+    setPrevInitialIds(currentInitialIds)
+    setExtraActivities([])
+  }
+
+  // Combina server + client-loaded, deduplicando por ID
+  const activities = useMemo(() => {
+    const seen = new Set(initialActivities.map((a) => a.id))
+    const result = [...initialActivities]
+    for (const a of extraActivities) {
+      if (!seen.has(a.id)) {
+        seen.add(a.id)
+        result.push(a)
+      }
+    }
+    return result
+  }, [initialActivities, extraActivities])
+
   const hasMore = activities.length < totalActivities
 
   const { execute, isPending } = useAction(getActivities, {
     onSuccess: ({ data }) => {
       if (data && data.length > 0) {
-        setActivities((prev) => [...prev, ...data])
+        setExtraActivities((prev) => [...prev, ...data])
       }
     },
   })
