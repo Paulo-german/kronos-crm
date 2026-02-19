@@ -1,25 +1,12 @@
 'use client'
 
-import { useState } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { useAction } from 'next-safe-action/hooks'
-import { toast } from 'sonner'
 import { Card, CardContent } from '@/_components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from '@/_components/ui/select'
-import { updateDealPriority } from '@/_actions/deal/update-deal-priority'
 import { formatCurrency } from '@/_utils/format-currency'
 import type { DealDto } from '@/_data-access/deal/get-deals-by-pipeline'
 import { Badge } from '@/_components/ui/badge'
-import { CircleIcon } from 'lucide-react'
+import { ChevronDown, CircleIcon } from 'lucide-react'
 import { Label } from '@/_components/ui/label'
 import {
   Tooltip,
@@ -30,9 +17,11 @@ import {
 interface KanbanCardProps {
   deal: DealDto
   onClick?: () => void
+  onPriorityClick?: (dealId: string, anchorEl: HTMLElement) => void
+  priorityOverride?: string
 }
 
-const priorityConfig = {
+export const priorityConfig = {
   low: {
     label: 'BAIXA',
     color: 'border-muted-foreground/30 text-muted-foreground',
@@ -75,8 +64,19 @@ const statusConfig = {
   },
 }
 
-const KanbanCard = ({ deal, onClick }: KanbanCardProps) => {
-  const [priority, setPriority] = useState(deal.priority)
+const getInitials = (name: string) => {
+  const parts = name.trim().split(' ')
+  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+}
+
+const KanbanCard = ({
+  deal,
+  onClick,
+  onPriorityClick,
+  priorityOverride,
+}: KanbanCardProps) => {
+  const priority = (priorityOverride ?? deal.priority) as keyof typeof priorityConfig
 
   const {
     attributes,
@@ -95,39 +95,15 @@ const KanbanCard = ({ deal, onClick }: KanbanCardProps) => {
     transition,
   }
 
-  const { execute: executeUpdatePriority } = useAction(updateDealPriority, {
-    onError: ({ error }) => {
-      // Rollback
-      setPriority(deal.priority)
-      toast.error(error.serverError || 'Erro ao atualizar prioridade.')
-    },
-  })
-
-  // Formata valor para BRL
   const formattedValue = formatCurrency(deal.totalValue)
 
-  const handlePriorityChange = (newPriority: string) => {
-    const validPriority = newPriority as 'low' | 'medium' | 'high' | 'urgent'
-    // Optimistic update
-    setPriority(validPriority)
-    // Sync with server
-    executeUpdatePriority({ dealId: deal.id, priority: validPriority })
-  }
-
   const handleCardClick = (e: React.MouseEvent) => {
-    // Não abre o modal se clicou no select
     if ((e.target as HTMLElement).closest('[data-priority-select]')) {
       return
     }
     onClick?.()
   }
-  const getInitials = (name: string) => {
-    const parts = name.trim().split(' ')
-    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase()
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-  }
 
-  // Se for arrastado, aumentar opacidade para dar destaque
   const draggingClass = isDragging
     ? 'opacity-30 ring-2 ring-primary rotate-2'
     : ''
@@ -163,9 +139,6 @@ const KanbanCard = ({ deal, onClick }: KanbanCardProps) => {
         <div className="flex gap-4">
           {/* Coluna Contato */}
           <div className="flex flex-col gap-1">
-            {/* <Label className="text-[10px] uppercase text-muted-foreground">
-              Contato
-            </Label> */}
             <div className="flex h-6 cursor-default items-center truncate text-xs font-medium text-foreground">
               {deal.contactName ? (
                 <Tooltip>
@@ -210,33 +183,22 @@ const KanbanCard = ({ deal, onClick }: KanbanCardProps) => {
               </TooltipContent>
             </Tooltip>
           </div>
-          {/* Prioridade (Compacta) */}
+          {/* Prioridade (Botão leve — abre Popover singleton no Board) */}
           <div
             className="flex flex-col gap-0.5"
             data-priority-select
             onClick={(e) => e.stopPropagation()}
           >
-            <Select value={priority} onValueChange={handlePriorityChange}>
-              <SelectTrigger
-                className={`h-6 w-auto border bg-transparent px-2 text-[9px] font-medium focus:ring-0 focus:ring-offset-0 ${priorityConfig[priority].color}`}
-              >
-                <div className="flex items-center gap-1 overflow-hidden">
-                  <SelectValue />
-                </div>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectLabel className="px-2 py-1.5 text-xs font-bold uppercase text-muted-foreground">
-                    Prioridade
-                  </SelectLabel>
-                  {Object.entries(priorityConfig).map(([key, config]) => (
-                    <SelectItem key={key} value={key} className="text-[10px]">
-                      <span className={config.color}>{config.label}</span>
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+            <button
+              type="button"
+              className={`flex h-6 items-center gap-1 rounded-md border bg-transparent px-2 text-[9px] font-medium transition-colors hover:bg-accent ${priorityConfig[priority].color}`}
+              onClick={(e) =>
+                onPriorityClick?.(deal.id, e.currentTarget)
+              }
+            >
+              {priorityConfig[priority].label}
+              <ChevronDown className="h-3 w-3 opacity-50" />
+            </button>
           </div>
         </div>
 

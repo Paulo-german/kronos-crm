@@ -13,6 +13,8 @@ interface KanbanColumnProps {
   deals: DealDto[]
   onAddDeal: (stageId: string) => void
   onDealClick: (deal: DealDto) => void
+  onPriorityClick: (dealId: string, anchorEl: HTMLElement) => void
+  priorityOverrides: Record<string, string>
 }
 
 export function KanbanColumn({
@@ -20,6 +22,8 @@ export function KanbanColumn({
   deals,
   onAddDeal,
   onDealClick,
+  onPriorityClick,
+  priorityOverrides,
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: stage.id,
@@ -66,6 +70,8 @@ export function KanbanColumn({
               key={deal.id}
               deal={deal}
               onClick={() => onDealClick(deal)}
+              onPriorityClick={onPriorityClick}
+              priorityOverride={priorityOverrides[deal.id]}
             />
           ))}
         </SortableContext>

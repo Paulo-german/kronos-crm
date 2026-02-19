@@ -1,6 +1,13 @@
 'use client'
 
-import { useState, useMemo, useOptimistic, startTransition } from 'react'
+import {
+  useState,
+  useMemo,
+  useOptimistic,
+  startTransition,
+  useRef,
+  useCallback,
+} from 'react'
 import {
   DndContext,
   DragEndEvent,
@@ -14,8 +21,9 @@ import {
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 import { KanbanColumn } from './kanban-column'
-import KanbanCard from './kanban-card'
+import KanbanCard, { priorityConfig } from './kanban-card'
 import { moveDealToStage } from '@/_actions/deal/move-deal-to-stage'
+import { updateDealPriority } from '@/_actions/deal/update-deal-priority'
 import type { PipelineWithStagesDto } from '@/_data-access/pipeline/get-user-pipeline'
 import type {
   DealDto,
@@ -28,6 +36,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/_components/ui/select'
+import {
+  Popover,
+  PopoverAnchor,
+  PopoverContent,
+} from '@/_components/ui/popover'
 import { Button } from '@/_components/ui/button'
 import { ArrowUpDown, Plus } from 'lucide-react'
 import type { PipelineFilters } from '../_lib/pipeline-filters'
@@ -76,6 +89,19 @@ export function KanbanBoard({
   const [activeId, setActiveId] = useState<string | null>(null)
   const [sortBy, setSortBy] = useState<SortOption>('created-desc')
 
+  // Singleton priority popover
+  const [priorityPopover, setPriorityPopover] = useState<{
+    dealId: string
+  } | null>(null)
+  const [priorityOverrides, setPriorityOverrides] = useState<
+    Record<string, string>
+  >({})
+
+  // Virtual anchor para posicionar o Popover no botão clicado
+  const anchorRef = useRef<{ getBoundingClientRect: () => DOMRect }>({
+    getBoundingClientRect: () => new DOMRect(),
+  })
+
   // Optimistic state: atualiza instantaneamente a UI antes do servidor responder
   const [optimisticDeals, setOptimisticDeals] = useOptimistic(
     dealsByStage,
@@ -119,7 +145,25 @@ export function KanbanBoard({
     },
     onError: ({ error }) => {
       toast.error(error.serverError || 'Erro ao mover deal.')
-      // O useOptimistic reverte automaticamente em caso de erro
+    },
+  })
+
+  // Priority update (singleton — antes era duplicado em cada card)
+  const { execute: executeUpdatePriority } = useAction(updateDealPriority, {
+    onSuccess: ({ input }) => {
+      setPriorityOverrides((prev) => {
+        const next = { ...prev }
+        delete next[input.dealId]
+        return next
+      })
+    },
+    onError: ({ error, input }) => {
+      setPriorityOverrides((prev) => {
+        const next = { ...prev }
+        delete next[input.dealId]
+        return next
+      })
+      toast.error(error.serverError || 'Erro ao atualizar prioridade.')
     },
   })
 
@@ -205,6 +249,17 @@ export function KanbanBoard({
     return filtered
   }, [optimisticDeals, sortBy, filters])
 
+  // Mapa de lookup dealId → stageId para O(1) no drag-end
+  const dealToStageMap = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const [stageId, deals] of Object.entries(optimisticDeals)) {
+      for (const deal of deals) {
+        map.set(deal.id, stageId)
+      }
+    }
+    return map
+  }, [optimisticDeals])
+
   // Encontra o deal ativo para o overlay (usa optimisticDeals)
   const activeDeal = useMemo(() => {
     if (!activeId) return null
@@ -216,7 +271,6 @@ export function KanbanBoard({
   }, [activeId, optimisticDeals])
 
   const handleHeaderAddDeal = () => {
-    // Abre no primeiro estágio por padrão
     const firstStageId = pipeline.stages[0]?.id
     if (firstStageId) {
       onAddDeal(firstStageId)
@@ -237,36 +291,19 @@ export function KanbanBoard({
     const overId = over.id as string
 
     // Determina o stageId de destino
-    let targetStageId: string | null = null
-
-    // Se soltou sobre uma coluna
-    if (over.data.current?.type === 'column') {
-      targetStageId = overId
-    } else {
-      // Se soltou sobre outro deal, pega a stage desse deal
-      for (const [stageId, deals] of Object.entries(optimisticDeals)) {
-        if (deals.some((d) => d.id === overId)) {
-          targetStageId = stageId
-          break
-        }
-      }
-    }
+    const targetStageId =
+      over.data.current?.type === 'column'
+        ? overId
+        : dealToStageMap.get(overId) ?? null
 
     if (!targetStageId) return
 
-    // Encontra a stage atual do deal
-    let currentStageId: string | null = null
-    for (const [stageId, deals] of Object.entries(optimisticDeals)) {
-      if (deals.some((d) => d.id === dealId)) {
-        currentStageId = stageId
-        break
-      }
-    }
+    // Encontra a stage atual do deal via lookup O(1)
+    const currentStageId = dealToStageMap.get(dealId) ?? null
 
     // Só move se mudou de stage
     if (currentStageId && currentStageId !== targetStageId) {
       startTransition(() => {
-        // 1. Atualiza a UI imediatamente (Optimistic Update)
         setOptimisticDeals({
           type: 'move',
           dealId,
@@ -274,11 +311,36 @@ export function KanbanBoard({
           toStageId: targetStageId!,
         })
 
-        // 2. Chama o servidor em background
         executeMove({ dealId, stageId: targetStageId! })
       })
     }
   }
+
+  // Singleton: abre o Popover de prioridade posicionado no botão clicado
+  const handlePriorityClick = useCallback(
+    (dealId: string, anchorEl: HTMLElement) => {
+      anchorRef.current = {
+        getBoundingClientRect: () => anchorEl.getBoundingClientRect(),
+      }
+      setPriorityPopover({ dealId })
+    },
+    [],
+  )
+
+  const handlePrioritySelect = useCallback(
+    (newPriority: string) => {
+      if (!priorityPopover) return
+      const { dealId } = priorityPopover
+      const validPriority = newPriority as 'low' | 'medium' | 'high' | 'urgent'
+
+      // Optimistic update via override
+      setPriorityOverrides((prev) => ({ ...prev, [dealId]: validPriority }))
+      setPriorityPopover(null)
+
+      executeUpdatePriority({ dealId, priority: validPriority })
+    },
+    [priorityPopover, executeUpdatePriority],
+  )
 
   return (
     <div className="flex h-full flex-col gap-4">
@@ -313,6 +375,7 @@ export function KanbanBoard({
       </div>
       {/* Kanban board */}
       <DndContext
+        id="kanban-board"
         sensors={sensors}
         collisionDetection={closestCorners}
         onDragStart={handleDragStart}
@@ -326,14 +389,50 @@ export function KanbanBoard({
               deals={filteredDealsByStage[stage.id] || []}
               onAddDeal={onAddDeal}
               onDealClick={onDealClick}
+              onPriorityClick={handlePriorityClick}
+              priorityOverrides={priorityOverrides}
             />
           ))}
         </div>
 
         <DragOverlay>
-          {activeDeal && <KanbanCard deal={activeDeal} />}
+          {activeDeal && (
+            <KanbanCard
+              deal={activeDeal}
+              priorityOverride={priorityOverrides[activeDeal.id]}
+            />
+          )}
         </DragOverlay>
       </DndContext>
+
+      {/* Singleton Priority Popover — 1 instância para todo o board */}
+      <Popover
+        open={!!priorityPopover}
+        onOpenChange={(open) => {
+          if (!open) setPriorityPopover(null)
+        }}
+      >
+        <PopoverAnchor virtualRef={anchorRef} />
+        <PopoverContent
+          align="start"
+          side="bottom"
+          className="w-auto min-w-[120px] p-1"
+        >
+          <p className="px-2 py-1.5 text-xs font-bold uppercase text-muted-foreground">
+            Prioridade
+          </p>
+          {Object.entries(priorityConfig).map(([key, config]) => (
+            <button
+              key={key}
+              type="button"
+              className={`flex w-full items-center rounded-sm px-2 py-1.5 text-left text-[10px] font-medium transition-colors hover:bg-accent ${config.color}`}
+              onClick={() => handlePrioritySelect(key)}
+            >
+              {config.label}
+            </button>
+          ))}
+        </PopoverContent>
+      </Popover>
     </div>
   )
 }
