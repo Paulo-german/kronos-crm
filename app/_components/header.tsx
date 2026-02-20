@@ -17,7 +17,9 @@ export const HeaderRight = ({ children }: { children: ReactNode }) => {
 }
 
 const Header = ({ children }: { children: ReactNode }) => {
-  return <div className="flex items-center justify-between">{children}</div>
+  return (
+    <div className="flex items-center justify-between pt-3">{children}</div>
+  )
 }
 
 export default Header

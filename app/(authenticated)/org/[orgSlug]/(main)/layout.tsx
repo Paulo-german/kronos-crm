@@ -27,7 +27,9 @@ const MainLayout = async ({ children, params }: MainLayoutProps) => {
     getOrgModules(orgId),
   ])
 
-  const activeModuleSlugs = activeModules.map((mod) => mod.slug) as Array<'crm' | 'inbox' | 'ai-agent'>
+  const activeModuleSlugs = activeModules.map((mod) => mod.slug) as Array<
+    'crm' | 'inbox' | 'ai-agent'
+  >
 
   return (
     <div className="flex h-screen w-full flex-col bg-background">
