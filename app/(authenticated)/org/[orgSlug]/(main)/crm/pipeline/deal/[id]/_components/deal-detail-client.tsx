@@ -350,7 +350,11 @@ const DealDetailClient = ({
         </TabsList>
 
         <TabsContent value="summary" className="mt-4">
-          <TabSummary deal={deal} contacts={contacts} />
+          <TabSummary
+            deal={deal}
+            contacts={contacts}
+            onTabChange={setActiveTab}
+          />
           <div className="mt-6 rounded-lg border bg-card p-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <UserCog className="h-4 w-4" />

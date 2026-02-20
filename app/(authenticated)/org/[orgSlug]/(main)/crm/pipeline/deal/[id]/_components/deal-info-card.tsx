@@ -21,9 +21,10 @@ import type { DealDetailsDto } from '@/_data-access/deal/get-deal-details'
 
 interface DealInfoCardProps {
   deal: DealDetailsDto
+  onTabChange?: (tab: string) => void
 }
 
-const DealInfoCard = ({ deal }: DealInfoCardProps) => {
+const DealInfoCard = ({ deal, onTabChange }: DealInfoCardProps) => {
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleValue, setTitleValue] = useState(deal.title)
 
@@ -115,7 +116,18 @@ const DealInfoCard = ({ deal }: DealInfoCardProps) => {
         </div>
 
         {/* Valor Total */}
-        <div className="flex items-center gap-3 rounded-md bg-primary/5 p-3">
+        <div
+          role="button"
+          tabIndex={0}
+          className="flex cursor-pointer items-center gap-3 rounded-md bg-primary/5 p-3 transition-colors hover:bg-primary/10"
+          onClick={() => onTabChange?.('products')}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              onTabChange?.('products')
+            }
+          }}
+        >
           <div className="rounded-full bg-primary/10 p-2">
             <DollarSign className="h-5 w-5 text-primary" />
           </div>

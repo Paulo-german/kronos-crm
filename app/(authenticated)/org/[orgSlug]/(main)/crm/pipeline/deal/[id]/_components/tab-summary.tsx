@@ -11,16 +11,17 @@ import ActivityTimeline from './activity-timeline'
 interface TabSummaryProps {
   deal: DealDetailsDto
   contacts: ContactDto[]
+  onTabChange?: (tab: string) => void
 }
 
-const TabSummary = ({ deal, contacts }: TabSummaryProps) => {
+const TabSummary = ({ deal, contacts, onTabChange }: TabSummaryProps) => {
   return (
     <div className="space-y-6">
       {/* Grid Principal: 35% | 65% */}
       <div className="grid gap-6 lg:grid-cols-[35%_1fr]">
         {/* Coluna Esquerda: Contexto */}
         <div className="space-y-4">
-          <DealInfoCard deal={deal} />
+          <DealInfoCard deal={deal} onTabChange={onTabChange} />
           <ContactWidget deal={deal} contacts={contacts} />
           <CompanyOwnerWidget deal={deal} />
         </div>
