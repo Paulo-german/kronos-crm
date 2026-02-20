@@ -82,7 +82,7 @@ export const createDeal = orgActionClient
       },
     })
 
-    revalidatePath('/pipeline')
+    revalidatePath('/crm/pipeline')
     revalidateTag(`pipeline:${ctx.orgId}`)
     revalidateTag(`deals:${ctx.orgId}`)
     revalidateTag(`deals-options:${ctx.orgId}`)

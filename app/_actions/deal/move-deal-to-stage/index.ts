@@ -69,8 +69,8 @@ export const moveDealToStage = orgActionClient
       },
     })
 
-    revalidatePath('/pipeline')
-    revalidatePath(`/pipeline/deal/${data.dealId}`)
+    revalidatePath('/crm/pipeline')
+    revalidatePath(`/crm/pipeline/deal/${data.dealId}`)
     revalidateTag(`pipeline:${ctx.orgId}`)
     revalidateTag(`deals:${ctx.orgId}`)
     revalidateTag(`deal:${data.dealId}`)

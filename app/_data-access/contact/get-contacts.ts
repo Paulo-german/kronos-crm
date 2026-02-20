@@ -15,6 +15,7 @@ export interface ContactDto {
   companyId: string | null
   companyName: string | null
   assignedTo: string | null
+  deals: { id: string; title: string }[]
   createdAt: Date
   updatedAt: Date
 }
@@ -35,6 +36,16 @@ const fetchContactsFromDb = async (
           name: true,
         },
       },
+      deals: {
+        include: {
+          deal: {
+            select: {
+              id: true,
+              title: true,
+            },
+          },
+        },
+      },
     },
     orderBy: {
       createdAt: 'desc',
@@ -52,6 +63,7 @@ const fetchContactsFromDb = async (
     companyId: contact.companyId,
     companyName: contact.company?.name ?? null,
     assignedTo: contact.assignedTo,
+    deals: contact.deals.map((dc) => dc.deal),
     createdAt: contact.createdAt,
     updatedAt: contact.updatedAt,
   }))

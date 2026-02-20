@@ -12,7 +12,6 @@ import {
   TrashIcon,
 } from 'lucide-react'
 import { Badge } from '@/_components/ui/badge'
-import Link from 'next/link'
 import { DataTable } from '@/_components/data-table'
 import { formatPhone } from '@/_utils/format-phone'
 import type { ContactDto } from '@/_data-access/contact/get-contacts'
@@ -32,19 +31,40 @@ import {
 } from '@/_components/ui/alert-dialog'
 import ConfirmationDialogContent from '@/_components/confirmation-dialog-content'
 import UpsertContactDialogContent from './upsert-dialog-content'
+import ContactDetailDialogContent from './contact-detail-dialog-content'
+import type { MemberRole } from '@prisma/client'
+
+interface MemberDto {
+  id: string
+  userId: string | null
+  email: string
+  user: {
+    fullName: string | null
+    avatarUrl: string | null
+  } | null
+}
 
 interface ContactsDataTableProps {
   contacts: ContactDto[]
   companyOptions: CompanyDto[]
+  members: MemberDto[]
+  currentUserId: string
+  userRole: MemberRole
 }
 
 export function ContactsDataTable({
   contacts,
   companyOptions,
+  members,
+  currentUserId,
+  userRole,
 }: ContactsDataTableProps) {
   // Estado do dialog de edição (levantado para cá para sobreviver ao re-render da tabela)
   const [editingContact, setEditingContact] = useState<ContactDto | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  // Estado do dialog de detalhes
+  const [selectedContact, setSelectedContact] = useState<ContactDto | null>(null)
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
   // Hook para deletar em massa
   const { execute: executeBulkDelete, isExecuting: isDeleting } = useAction(
     bulkDeleteContacts,
@@ -100,12 +120,16 @@ export function ContactsDataTable({
       cell: ({ row }) => {
         const contact = row.original
         return (
-          <Link
-            href={`/contacts/${contact.id}`}
-            className="ml-2 font-medium hover:underline"
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedContact(contact)
+              setIsDetailDialogOpen(true)
+            }}
+            className="ml-2 font-medium hover:underline text-left"
           >
             {contact.name}
-          </Link>
+          </button>
         )
       },
     },
@@ -227,6 +251,26 @@ export function ContactsDataTable({
             companyOptions={companyOptions}
             onUpdate={(data) => executeUpdate(data)}
             isUpdating={isUpdating}
+          />
+        )}
+      </Dialog>
+
+      {/* Dialog de detalhes do contato */}
+      <Dialog
+        open={isDetailDialogOpen}
+        onOpenChange={(open) => {
+          setIsDetailDialogOpen(open)
+          if (!open) setSelectedContact(null)
+        }}
+      >
+        {selectedContact && (
+          <ContactDetailDialogContent
+            key={selectedContact.id}
+            contact={selectedContact}
+            companies={companyOptions}
+            members={members}
+            currentUserId={currentUserId}
+            userRole={userRole}
           />
         )}
       </Dialog>

@@ -9,6 +9,8 @@ import { TrialGateClient } from '@/_components/trial/trial-gate-client'
 import { PlanBadgeClient } from '@/_components/trial/plan-badge-client'
 import { TrialReminderDialog } from '@/_components/trial/trial-reminder-dialog'
 import { getUserById } from '@/_data-access/user/get-user-by-id'
+import { getOrgModules } from '@/_data-access/module/get-org-modules'
+import { getActiveNavGroups } from '@/_lib/modules/navigation'
 
 interface MainLayoutProps {
   children: React.ReactNode
@@ -19,17 +21,21 @@ const MainLayout = async ({ children, params }: MainLayoutProps) => {
   const { orgSlug } = await params
   const { orgId, userId, userRole } = await getOrgContext(orgSlug)
 
-  const [trialStatus, { plan }, user] = await Promise.all([
+  const [trialStatus, { plan }, user, activeModules] = await Promise.all([
     getTrialStatus(orgId),
     getPlanLimits(orgId),
     getUserById(userId),
+    getOrgModules(orgId),
   ])
+
+  const navGroups = getActiveNavGroups(activeModules.map((mod) => mod.slug))
 
   return (
     <div className="flex h-screen w-full flex-col bg-background">
       <TrialBanner orgId={orgId} orgSlug={orgSlug} userRole={userRole} />
       <div className="flex min-h-0 flex-1">
         <AppSidebar
+          navGroups={navGroups}
           footerSlot={
             <PlanBadgeClient
               phase={trialStatus.phase}

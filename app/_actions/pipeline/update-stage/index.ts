@@ -35,7 +35,7 @@ export const updateStage = orgActionClient
       },
     })
 
-    revalidatePath('/pipeline')
+    revalidatePath('/crm/pipeline')
     revalidateTag(`pipeline:${ctx.orgId}`)
 
     return { success: true }

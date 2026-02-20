@@ -176,7 +176,7 @@ export const updateDeal = orgActionClient
       }
     })
 
-    revalidatePath('/pipeline')
+    revalidatePath('/crm/pipeline')
     revalidatePath('/contacts')
     revalidateTag(`pipeline:${ctx.orgId}`)
     revalidateTag(`deals:${ctx.orgId}`)

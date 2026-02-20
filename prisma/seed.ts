@@ -6,6 +6,7 @@ async function main() {
   console.log('🌱 Iniciando seed...')
 
   await seedFeaturesAndPlans()
+  await seedModules()
   await seedPipelines()
 
   console.log('✅ Seed concluído!')
@@ -69,16 +70,12 @@ async function seedFeaturesAndPlans() {
     },
   ]
 
-  const planRecords: Record<string, { id: string }> = {}
-
   for (const plan of plans) {
-    const record = await db.plan.upsert({
+    await db.plan.upsert({
       where: { slug: plan.slug },
       create: plan,
       update: { name: plan.name, description: plan.description, isActive: plan.isActive, stripeProductId: plan.stripeProductId },
-      select: { id: true, slug: true },
     })
-    planRecords[plan.slug] = record
   }
 
   console.log(`  ✅ ${plans.length} planos sincronizados`)
@@ -111,8 +108,12 @@ async function seedFeaturesAndPlans() {
     { planSlug: 'enterprise', featureKey: 'ai.messages_quota', valueNumber: 2500 },
   ]
 
+  // Resolver IDs do DB para os limites
+  const allPlans = await db.plan.findMany({ select: { id: true, slug: true } })
+  const planById = Object.fromEntries(allPlans.map((plan) => [plan.slug, plan.id]))
+
   for (const limit of planLimits) {
-    const planId = planRecords[limit.planSlug]?.id
+    const planId = planById[limit.planSlug]
     const featureId = featureRecords[limit.featureKey]?.id
 
     if (!planId || !featureId) {
@@ -128,6 +129,87 @@ async function seedFeaturesAndPlans() {
   }
 
   console.log(`  ✅ ${planLimits.length} limites de plano sincronizados`)
+}
+
+async function seedModules() {
+  console.log('📦 Seed: Modules e PlanModules...')
+
+  const modules = [
+    { slug: 'crm', name: 'CRM' },
+    { slug: 'inbox', name: 'Inbox' },
+    { slug: 'ai-agent', name: 'AI Agent' },
+  ]
+
+  const moduleRecords: Record<string, string> = {}
+
+  for (const mod of modules) {
+    const record = await db.module.upsert({
+      where: { slug: mod.slug },
+      create: { slug: mod.slug, name: mod.name, isActive: true },
+      update: { name: mod.name, isActive: true },
+      select: { id: true },
+    })
+    moduleRecords[mod.slug] = record.id
+  }
+
+  console.log(`  ✅ ${modules.length} módulos sincronizados`)
+
+  // Buscar planos do DB (sem depender de variável externa)
+  const allPlans = await db.plan.findMany({ where: { isActive: true }, select: { id: true, slug: true } })
+
+  if (allPlans.length === 0) {
+    console.warn('  ⚠️ Nenhum plano encontrado no DB. Execute seedFeaturesAndPlans() primeiro.')
+    return
+  }
+
+  // Todos os planos desbloqueiam todos os módulos (por enquanto)
+  let planModuleCount = 0
+
+  for (const plan of allPlans) {
+    for (const moduleId of Object.values(moduleRecords)) {
+      await db.planModule.upsert({
+        where: { planId_moduleId: { planId: plan.id, moduleId } },
+        create: { planId: plan.id, moduleId },
+        update: {},
+      })
+      planModuleCount++
+    }
+  }
+
+  console.log(`  ✅ ${planModuleCount} plan-module links sincronizados`)
+
+  // Linkar features existentes aos módulos
+  const featureModuleMap: Record<string, string> = {
+    'crm.': 'crm',
+    'ai.': 'ai-agent',
+    'inbox.': 'inbox',
+  }
+
+  const allFeatures = await db.feature.findMany({ select: { id: true, key: true } })
+
+  for (const feature of allFeatures) {
+    let matched = false
+
+    for (const [prefix, moduleSlug] of Object.entries(featureModuleMap)) {
+      if (feature.key.startsWith(prefix)) {
+        const moduleId = moduleRecords[moduleSlug]
+        if (moduleId) {
+          await db.feature.update({
+            where: { id: feature.id },
+            data: { moduleId },
+          })
+        }
+        matched = true
+        break
+      }
+    }
+
+    if (!matched) {
+      console.warn(`  ⚠️ Feature "${feature.key}" não tem mapeamento de módulo`)
+    }
+  }
+
+  console.log('  ✅ Features linkadas aos módulos')
 }
 
 async function seedPipelines() {

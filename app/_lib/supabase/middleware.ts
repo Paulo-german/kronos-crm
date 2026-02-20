@@ -10,6 +10,9 @@ const LEGACY_ROUTES = [
   '/pipeline',
   '/tasks',
   '/settings',
+  '/crm',
+  '/inbox',
+  '/ai-agent',
 ]
 
 // Rotas de auth (login, sign-up) - redireciona se JÁ estiver logado
@@ -93,6 +96,17 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(new URL(newPath, request.url))
     }
     return NextResponse.redirect(new URL('/org', request.url))
+  }
+
+  // Redirect rotas antigas dentro de /org/[slug]/ para /crm/
+  const orgOldRouteMatch = pathname.match(
+    /^\/org\/([^/]+)\/(pipeline|tasks)(\/.*)?$/,
+  )
+  if (orgOldRouteMatch) {
+    const [, slug, route, rest] = orgOldRouteMatch
+    return NextResponse.redirect(
+      new URL(`/org/${slug}/crm/${route}${rest ?? ''}`, request.url),
+    )
   }
 
   // Rotas /org/[slug]/... - extrair slug e setar cookie

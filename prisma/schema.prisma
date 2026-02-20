@@ -497,11 +497,15 @@ model Feature {
   type      FeatureType      @default(STATIC)
   valueType FeatureValueType @default(NUMBER) @map("value_type")
 
+  moduleId String? @map("module_id")
+  module   Module? @relation(fields: [moduleId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   planLimits PlanLimit[]
 
+  @@index([moduleId])
   @@map("features")
 }
 
@@ -519,6 +523,7 @@ model Plan {
 
   planLimits    PlanLimit[]
   subscriptions Subscription[]
+  planModules   PlanModule[]
 
   @@index([slug, isActive])
   @@map("plans")
@@ -626,4 +631,40 @@ model AiUsage {
 
   @@unique([organizationId, periodYear, periodMonth])
   @@map("ai_usages")
+}
+
+// -----------------------------------------------------------------------------
+// MÓDULOS
+// -----------------------------------------------------------------------------
+
+model Module {
+  id       String  @id @default(uuid())
+  slug     String  @unique // "crm", "inbox", "ai-agent"
+  name     String          // "CRM", "Inbox", "AI Agent"
+  isActive Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  features    Feature[]
+  planModules PlanModule[]
+
+  @@index([slug, isActive])
+  @@map("modules")
+}
+
+model PlanModule {
+  id String @id @default(uuid())
+
+  planId String @map("plan_id")
+  plan   Plan   @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  moduleId String @map("module_id")
+  module   Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([planId, moduleId])
+  @@index([moduleId])
+  @@map("plan_modules")
 }

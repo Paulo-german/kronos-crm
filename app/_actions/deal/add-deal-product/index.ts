@@ -55,8 +55,8 @@ export const addDealProduct = orgActionClient
 
     await recalculateDealValue(data.dealId)
 
-    revalidatePath('/pipeline')
-    revalidatePath(`/pipeline/deal/${data.dealId}`)
+    revalidatePath('/crm/pipeline')
+    revalidatePath(`/crm/pipeline/deal/${data.dealId}`)
     revalidateTag(`deals:${ctx.orgId}`)
     revalidateTag(`deal:${data.dealId}`)
     revalidateTag(`dashboard:${ctx.orgId}`)

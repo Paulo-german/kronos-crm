@@ -76,11 +76,11 @@ export const updateTask = orgActionClient
     if (existingTask.dealId !== data.dealId) {
       revalidateTag(`deal:${existingTask.dealId}`)
     }
-    revalidatePath('/tasks')
-    revalidatePath('/pipeline')
-    revalidatePath(`/pipeline/deal/${data.dealId}`)
+    revalidatePath('/crm/tasks')
+    revalidatePath('/crm/pipeline')
+    revalidatePath(`/crm/pipeline/deal/${data.dealId}`)
     if (existingTask.dealId !== data.dealId) {
-      revalidatePath(`/pipeline/deal/${existingTask.dealId}`)
+      revalidatePath(`/crm/pipeline/deal/${existingTask.dealId}`)
     }
 
     return { success: true }

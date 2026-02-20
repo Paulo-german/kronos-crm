@@ -61,7 +61,7 @@ export const deleteStageWithMigration = orgActionClient
       where: { id: data.stageId },
     })
 
-    revalidatePath('/pipeline')
+    revalidatePath('/crm/pipeline')
     revalidateTag(`pipeline:${ctx.orgId}`)
 
     return {

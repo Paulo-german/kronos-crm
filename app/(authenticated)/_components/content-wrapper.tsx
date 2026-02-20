@@ -10,8 +10,8 @@ interface ContentWrapperProps {
 export const ContentWrapper = ({ children }: ContentWrapperProps) => {
   const pathname = usePathname()
 
-  // Check if we are on the deal detail page: /pipeline/deal/[id]
-  const isDealDetailPage = /^\/pipeline\/deal\/[^/]+$/.test(pathname)
+  // Check if we are on the deal detail page: /org/[slug]/crm/pipeline/deal/[id]
+  const isDealDetailPage = /\/crm\/pipeline\/deal\/[^/]+$/.test(pathname)
 
   return (
     <main

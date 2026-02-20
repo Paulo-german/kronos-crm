@@ -60,8 +60,8 @@ export const markDealLost = orgActionClient
       revalidatePath(`/org/${org.slug}/settings/loss-reasons`)
     }
 
-    revalidatePath('/pipeline')
-    revalidatePath(`/pipeline/deal/${data.dealId}`)
+    revalidatePath('/crm/pipeline')
+    revalidatePath(`/crm/pipeline/deal/${data.dealId}`)
     revalidateTag(`pipeline:${ctx.orgId}`)
     revalidateTag(`deals:${ctx.orgId}`)
     revalidateTag(`deals-options:${ctx.orgId}`)

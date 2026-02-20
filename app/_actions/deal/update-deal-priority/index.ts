@@ -38,7 +38,7 @@ export const updateDealPriority = orgActionClient
       })
     })
 
-    revalidatePath('/pipeline')
+    revalidatePath('/crm/pipeline')
     revalidateTag(`deals:${ctx.orgId}`)
     revalidateTag(`pipeline:${ctx.orgId}`)
     revalidateTag(`deal:${data.dealId}`)

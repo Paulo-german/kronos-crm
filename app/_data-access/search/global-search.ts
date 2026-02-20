@@ -105,7 +105,7 @@ export const globalSearch = async (
     type: 'contact',
     title: contact.name,
     subtitle: contact.company?.name || contact.email || null,
-    href: `/contacts/${contact.id}`,
+    href: `/contacts`,
   }))
 
   const companyResults: SearchResultItem[] = companies.map((company) => ({
@@ -122,7 +122,7 @@ export const globalSearch = async (
     title: deal.title,
     subtitle:
       deal.contacts[0]?.contact?.name || deal.stage?.name || null,
-    href: `/pipeline/deal/${deal.id}`,
+    href: `/crm/pipeline/deal/${deal.id}`,
   }))
 
   return {

@@ -34,7 +34,7 @@ export const reorderStages = orgActionClient
 
     await db.$transaction(updates)
 
-    revalidatePath('/pipeline')
+    revalidatePath('/crm/pipeline')
     revalidateTag(`pipeline:${ctx.orgId}`)
 
     return { success: true }
