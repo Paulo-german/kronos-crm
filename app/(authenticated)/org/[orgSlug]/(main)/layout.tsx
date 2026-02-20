@@ -10,7 +10,6 @@ import { PlanBadgeClient } from '@/_components/trial/plan-badge-client'
 import { TrialReminderDialog } from '@/_components/trial/trial-reminder-dialog'
 import { getUserById } from '@/_data-access/user/get-user-by-id'
 import { getOrgModules } from '@/_data-access/module/get-org-modules'
-import { getActiveNavGroups } from '@/_lib/modules/navigation'
 
 interface MainLayoutProps {
   children: React.ReactNode
@@ -28,14 +27,14 @@ const MainLayout = async ({ children, params }: MainLayoutProps) => {
     getOrgModules(orgId),
   ])
 
-  const navGroups = getActiveNavGroups(activeModules.map((mod) => mod.slug))
+  const activeModuleSlugs = activeModules.map((mod) => mod.slug) as Array<'crm' | 'inbox' | 'ai-agent'>
 
   return (
     <div className="flex h-screen w-full flex-col bg-background">
       <TrialBanner orgId={orgId} orgSlug={orgSlug} userRole={userRole} />
       <div className="flex min-h-0 flex-1">
         <AppSidebar
-          navGroups={navGroups}
+          activeModules={activeModuleSlugs}
           footerSlot={
             <PlanBadgeClient
               phase={trialStatus.phase}

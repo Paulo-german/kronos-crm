@@ -24,7 +24,8 @@ export const createCheckoutSession = orgActionClient
 
     // 3. Obter origin da requisição
     const headersList = await headers()
-    const origin = headersList.get('origin') || 'http://localhost:3000'
+    const origin = headersList.get('origin') || process.env.NEXT_PUBLIC_APP_URL
+    if (!origin) throw new Error('NEXT_PUBLIC_APP_URL não está configurado.')
 
     // 4. Buscar ou criar Stripe Customer
     const org = await db.organization.findUniqueOrThrow({

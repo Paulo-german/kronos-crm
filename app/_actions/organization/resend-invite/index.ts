@@ -39,7 +39,10 @@ export const resendInvite = orgActionClient
     })
 
     // "Enviar" E-mail (Simulação)
-    const magicLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/invite/${newToken}`
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL
+    if (!appUrl) throw new Error('NEXT_PUBLIC_APP_URL não está configurado.')
+
+    const magicLink = `${appUrl}/invite/${newToken}`
 
     console.log('-------------------------------------------------------')
     console.log('📧 SIMULAÇÃO DE REENVIO DE E-MAIL (CONVITE)')

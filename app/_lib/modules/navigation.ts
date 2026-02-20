@@ -4,7 +4,7 @@ export interface NavItem {
   label: string
   iconName: string
   href: string
-  moduleSlug: ModuleSlug
+  badge?: string
 }
 
 export interface ModuleNavGroup {
@@ -18,22 +18,22 @@ const MODULE_NAV_CONFIG: Record<ModuleSlug, ModuleNavGroup> = {
     moduleSlug: 'crm',
     moduleTitle: 'CRM',
     items: [
-      { label: 'Tarefas', iconName: 'CheckSquare', href: '/crm/tasks', moduleSlug: 'crm' },
-      { label: 'Pipeline', iconName: 'Kanban', href: '/crm/pipeline', moduleSlug: 'crm' },
+      { label: 'Tarefas', iconName: 'CheckSquare', href: '/crm/tasks' },
+      { label: 'Negociações', iconName: 'Kanban', href: '/crm/pipeline' },
     ],
   },
   inbox: {
     moduleSlug: 'inbox',
     moduleTitle: 'Inbox',
     items: [
-      { label: 'Inbox', iconName: 'Inbox', href: '/inbox', moduleSlug: 'inbox' },
+      { label: 'Inbox', iconName: 'Inbox', href: '/inbox', badge: 'Em breve' },
     ],
   },
   'ai-agent': {
     moduleSlug: 'ai-agent',
-    moduleTitle: 'AI Agent',
+    moduleTitle: 'Agentes',
     items: [
-      { label: 'AI Agent', iconName: 'Bot', href: '/ai-agent', moduleSlug: 'ai-agent' },
+      { label: 'Agentes', iconName: 'Bot', href: '/ai-agent', badge: 'Em breve' },
     ],
   },
 }

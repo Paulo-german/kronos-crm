@@ -59,7 +59,10 @@ export const inviteMember = orgActionClient
 
     // 5. "Enviar" E-mail (Simulação)
     // Em produção, aqui entraria o Resend/SendGrid
-    const magicLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/invite/${invitationToken}`
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL
+    if (!appUrl) throw new Error('NEXT_PUBLIC_APP_URL não está configurado.')
+
+    const magicLink = `${appUrl}/invite/${invitationToken}`
 
     if (process.env.NODE_ENV === 'development') {
       console.log('-------------------------------------------------------')
