@@ -4,8 +4,8 @@ import { createClient } from '@/_lib/supabase/server'
 import { validateMembership } from '@/_data-access/organization/validate-membership'
 import type { MemberRole } from '@prisma/client'
 
-// Cookie onde o middleware armazena o orgSlug da URL atual
-export const ORG_SLUG_COOKIE = 'kronos-current-org-slug'
+import { ORG_SLUG_COOKIE } from '@/_lib/constants'
+export { ORG_SLUG_COOKIE }
 
 /**
  * Base action client - SEM autenticação

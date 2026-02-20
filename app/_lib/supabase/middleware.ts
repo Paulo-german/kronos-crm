@@ -1,6 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { type NextRequest, NextResponse } from 'next/server'
-import { ORG_SLUG_COOKIE } from '@/_lib/safe-action'
+import { ORG_SLUG_COOKIE } from '@/_lib/constants'
 
 // Rotas legadas que serão redirecionadas para /org/[slug]/...
 const LEGACY_ROUTES = [
