@@ -19,6 +19,7 @@ import { Checkbox } from '@/_components/ui/checkbox'
 import { Label } from '@/_components/ui/label'
 import { Input } from '@/_components/ui/input'
 import { Calendar } from '@/_components/ui/calendar'
+import { CurrencyInput } from '@/_components/form-controls/currency-input'
 import {
   Popover,
   PopoverContent,
@@ -264,28 +265,26 @@ export function PipelineFiltersSheet({
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Mínimo</Label>
-                <Input
-                  type="number"
-                  placeholder="R$ 0"
+                <CurrencyInput
+                  placeholder="R$ 0,00"
                   value={localFilters.valueMin ?? ''}
-                  onChange={(e) =>
+                  onValueChange={(values) =>
                     setLocalFilters({
                       ...localFilters,
-                      valueMin: e.target.value ? Number(e.target.value) : null,
+                      valueMin: values.floatValue ?? null,
                     })
                   }
                 />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Máximo</Label>
-                <Input
-                  type="number"
-                  placeholder="R$ 999.999"
+                <CurrencyInput
+                  placeholder="R$ 0,00"
                   value={localFilters.valueMax ?? ''}
-                  onChange={(e) =>
+                  onValueChange={(values) =>
                     setLocalFilters({
                       ...localFilters,
-                      valueMax: e.target.value ? Number(e.target.value) : null,
+                      valueMax: values.floatValue ?? null,
                     })
                   }
                 />

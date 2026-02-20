@@ -29,6 +29,7 @@ import {
 } from '@/_actions/product/create-product/schema'
 import type { UpdateProductInput } from '@/_actions/product/update-product/schema'
 import { Loader2 } from 'lucide-react'
+import { CurrencyInput } from '@/_components/form-controls/currency-input'
 
 interface UpsertProductDialogContentProps {
   defaultValues?: ProductInput & { id?: string }
@@ -52,7 +53,7 @@ const UpsertProductDialogContent = ({
     defaultValues: defaultValues || {
       name: '',
       description: '',
-      price: 0,
+      price: undefined,
     },
   })
 
@@ -62,7 +63,7 @@ const UpsertProductDialogContent = ({
         defaultValues || {
           name: '',
           description: '',
-          price: 0,
+          price: undefined,
         },
       )
     }
@@ -145,15 +146,12 @@ const UpsertProductDialogContent = ({
               <FormItem>
                 <FormLabel>Preço (R$) *</FormLabel>
                 <FormControl>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0,00"
-                    {...field}
-                    onChange={(e) =>
-                      field.onChange(parseFloat(e.target.value) || 0)
-                    }
+                  <CurrencyInput
+                    placeholder="R$ 0,00"
+                    value={field.value ?? ''}
+                    onValueChange={(values) => {
+                      field.onChange(values.floatValue ?? undefined)
+                    }}
                   />
                 </FormControl>
                 <FormMessage />
