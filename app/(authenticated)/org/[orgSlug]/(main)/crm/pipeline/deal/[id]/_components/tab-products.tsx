@@ -3,12 +3,7 @@
 import { useState } from 'react'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
-import {
-  Plus,
-  Loader2,
-  Pencil,
-  TrashIcon,
-} from 'lucide-react'
+import { Plus, Loader2, Pencil, TrashIcon } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import { Button } from '@/_components/ui/button'
 import {
@@ -177,8 +172,18 @@ const TabProducts = ({ deal, products }: TabProductsProps) => {
 
       <CardContent>
         {deal.products.length === 0 ? (
-          <div className="py-8 text-center text-muted-foreground">
-            Nenhum produto adicionado ainda.
+          <div className="flex flex-col items-center justify-center gap-4 py-8 text-center text-muted-foreground">
+            <p>
+              Você ainda não possui nenhum produto vinculado a este negócio.
+            </p>
+            <Button
+              size="sm"
+              disabled={availableProducts.length === 0 && !isEditing}
+              onClick={() => setIsDialogOpen(true)}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Adicionar Primeiro Produto
+            </Button>
           </div>
         ) : (
           <>
