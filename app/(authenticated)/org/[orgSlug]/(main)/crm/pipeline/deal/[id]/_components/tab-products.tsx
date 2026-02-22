@@ -5,7 +5,7 @@ import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import { Plus, Loader2, Pencil, TrashIcon } from 'lucide-react'
+import { Plus, Pencil, TrashIcon } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import { Button } from '@/_components/ui/button'
 import {
@@ -17,8 +17,7 @@ import {
   TableRow,
 } from '@/_components/ui/table'
 import { Dialog } from '@/_components/ui/dialog'
-import { AlertDialog } from '@/_components/ui/alert-dialog'
-import ConfirmationDialogContent from '@/_components/confirmation-dialog-content'
+import ConfirmationDialog from '@/_components/confirmation-dialog'
 import UpsertProductDialog from './upsert-product-dialog'
 import { addDealProduct } from '@/_actions/deal/add-deal-product'
 import { removeDealProduct } from '@/_actions/deal/remove-deal-product'
@@ -42,6 +41,7 @@ const TabProducts = ({ deal, products }: TabProductsProps) => {
   const [deletingProduct, setDeletingProduct] = useState<
     DealDetailsDto['products'][0] | null
   >(null)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
   const isEditing = !!editingProduct
 
@@ -78,6 +78,7 @@ const TabProducts = ({ deal, products }: TabProductsProps) => {
     {
       onSuccess: () => {
         toast.success('Produto removido com sucesso!')
+        setIsDeleteDialogOpen(false)
         setDeletingProduct(null)
       },
       onError: ({ error }) => {
@@ -248,11 +249,13 @@ const TabProducts = ({ deal, products }: TabProductsProps) => {
                           </Button>
 
                           {/* Botão Deletar */}
-                          {/* Botão Deletar */}
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => setDeletingProduct(product)}
+                            onClick={() => {
+                              setDeletingProduct(product)
+                              setIsDeleteDialogOpen(true)
+                            }}
                             title="Remover produto"
                           >
                             <TrashIcon className="h-4 w-4 text-destructive" />
@@ -276,40 +279,32 @@ const TabProducts = ({ deal, products }: TabProductsProps) => {
         )}
       </CardContent>
 
-      <AlertDialog
-        open={!!deletingProduct}
+      <ConfirmationDialog
+        open={isDeleteDialogOpen}
         onOpenChange={(open) => {
+          setIsDeleteDialogOpen(open)
           if (!open) setDeletingProduct(null)
         }}
-      >
-        <ConfirmationDialogContent
-          variant="destructive"
-          title="Remover produto?"
-          description={
-            <p>
-              Esta ação não pode ser desfeita. Você está prestes a remover
-              permanentemente o produto{' '}
-              <strong className="font-semibold text-foreground">
-                {deletingProduct?.productName}
-              </strong>{' '}
-              deste negócio?
-            </p>
-          }
-          icon={<TrashIcon />}
-        >
-          <Button
-            variant="destructive"
-            onClick={() =>
-              deletingProduct &&
-              executeRemove({ dealProductId: deletingProduct.id })
-            }
-            disabled={isRemoving}
-          >
-            {isRemoving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Remover
-          </Button>
-        </ConfirmationDialogContent>
-      </AlertDialog>
+        title="Remover produto?"
+        description={
+          <p>
+            Esta ação não pode ser desfeita. Você está prestes a remover
+            permanentemente o produto{' '}
+            <strong className="font-semibold text-foreground">
+              {deletingProduct?.productName}
+            </strong>{' '}
+            deste negócio?
+          </p>
+        }
+        icon={<TrashIcon />}
+        variant="destructive"
+        onConfirm={() => {
+          if (deletingProduct)
+            executeRemove({ dealProductId: deletingProduct.id })
+        }}
+        isLoading={isRemoving}
+        confirmLabel="Confirmar Exclusão"
+      />
     </Card>
   )
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useOptimistic, useTransition } from 'react'
+import { useState, useRef, useOptimistic, useTransition } from 'react'
 import { ColumnDef } from '@tanstack/react-table'
 import {
   CalendarIcon,
@@ -31,12 +31,7 @@ import { deleteTask } from '@/_actions/task/delete-task'
 import { updateTask } from '@/_actions/task/update-task'
 import { toast } from 'sonner'
 import { cn } from '@/_lib/utils'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogTrigger,
-} from '@/_components/ui/alert-dialog'
-import ConfirmationDialogContent from '@/_components/confirmation-dialog-content'
+import ConfirmationDialog from '@/_components/confirmation-dialog'
 
 interface TasksDataTableProps {
   tasks: TaskDto[]
@@ -88,6 +83,13 @@ const TasksDataTable = ({ tasks, dealOptions }: TasksDataTableProps) => {
   // Estado do dialog de edição (levantado para cá para sobreviver ao re-render da tabela)
   const [editingTask, setEditingTask] = useState<TaskDto | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  // Estado do dialog de deleção individual
+  const [deletingTask, setDeletingTask] = useState<TaskDto | null>(null)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  // Estado do dialog de deleção em massa
+  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false)
+  const [bulkDeleteIds, setBulkDeleteIds] = useState<string[]>([])
+  const resetSelectionRef = useRef<(() => void) | null>(null)
 
   // Estado otimista para tarefas
   const [optimisticTasks, setOptimisticTasks] = useOptimistic(
@@ -118,6 +120,8 @@ const TasksDataTable = ({ tasks, dealOptions }: TasksDataTableProps) => {
         toast.success(
           `${data?.count ? `${data?.count} tarefa(s)` : 'Tarefa(s)'} excluída(s) com sucesso.`,
         )
+        setIsBulkDeleteOpen(false)
+        resetSelectionRef.current?.()
       },
       onError: () => {
         toast.error('Erro ao excluir tarefas.')
@@ -126,14 +130,17 @@ const TasksDataTable = ({ tasks, dealOptions }: TasksDataTableProps) => {
   )
 
   // Hook para deletar individualmente
-  const { execute: executeDelete } = useAction(deleteTask, {
-    onSuccess: () => {
-      toast.success('Tarefa excluída com sucesso.')
-    },
-    onError: ({ error }) => {
-      toast.error(error.serverError || 'Erro ao excluir tarefa.')
-    },
-  })
+  const { execute: executeDelete, isExecuting: isDeletingIndividual } =
+    useAction(deleteTask, {
+      onSuccess: () => {
+        toast.success('Tarefa excluída com sucesso.')
+        setIsDeleteDialogOpen(false)
+        setDeletingTask(null)
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError || 'Erro ao excluir tarefa.')
+      },
+    })
 
   // Hook para atualizar individualmente
   const { execute: executeUpdate, isPending: isUpdating } = useAction(
@@ -260,7 +267,10 @@ const TasksDataTable = ({ tasks, dealOptions }: TasksDataTableProps) => {
         return (
           <TaskTableDropdownMenu
             task={task}
-            onDelete={() => executeDelete({ id: task.id })}
+            onDelete={() => {
+              setDeletingTask(task)
+              setIsDeleteDialogOpen(true)
+            }}
             onEdit={() => handleEdit(task)}
           />
         )
@@ -290,48 +300,74 @@ const TasksDataTable = ({ tasks, dealOptions }: TasksDataTableProps) => {
         )}
       </Dialog>
 
+      {/* Dialog de deleção individual fora da tabela */}
+      <ConfirmationDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={(open) => {
+          setIsDeleteDialogOpen(open)
+          if (!open) setDeletingTask(null)
+        }}
+        title="Você tem certeza absoluta?"
+        description={
+          <p>
+            Esta ação não pode ser desfeita. Você está prestes a remover
+            permanentemente a tarefa{' '}
+            <span className="font-bold text-foreground">
+              {deletingTask?.title}
+            </span>
+          </p>
+        }
+        icon={<TrashIcon />}
+        variant="destructive"
+        onConfirm={() => {
+          if (deletingTask) executeDelete({ id: deletingTask.id })
+        }}
+        isLoading={isDeletingIndividual}
+        confirmLabel="Confirmar Exclusão"
+      />
+
+      {/* Dialog de deleção em massa fora da tabela */}
+      <ConfirmationDialog
+        open={isBulkDeleteOpen}
+        onOpenChange={setIsBulkDeleteOpen}
+        title="Excluir tarefas selecionadas?"
+        description={
+          <p>
+            Esta ação não pode ser desfeita. Você está prestes a remover
+            <br />
+            <span className="font-semibold text-foreground">
+              {bulkDeleteIds.length} tarefas permanentemente do sistema.
+            </span>
+          </p>
+        }
+        icon={<TrashIcon />}
+        variant="destructive"
+        onConfirm={() => executeBulkDelete({ ids: bulkDeleteIds })}
+        isLoading={isDeleting}
+        confirmLabel="Confirmar Exclusão"
+      />
+
       <DataTable
         columns={columns}
         data={optimisticTasks}
         enableSelection={true}
-        bulkActions={({ selectedRows, resetSelection }) => (
-          <>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm" className="h-8">
-                  <TrashIcon className="mr-2 h-4 w-4" />
-                  Deletar
-                </Button>
-              </AlertDialogTrigger>
-              <ConfirmationDialogContent
-                title="Excluir tarefas selecionadas?"
-                description={
-                  <p>
-                    Esta ação não pode ser desfeita. Você está prestes a remover
-                    <br />
-                    <span className="font-semibold text-foreground">
-                      {selectedRows.length} tarefas permanentemente do sistema.
-                    </span>
-                  </p>
-                }
-                icon={<TrashIcon />}
-                variant="destructive"
-              >
-                <AlertDialogAction
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  disabled={isDeleting}
-                  onClick={() => {
-                    const ids = selectedRows.map((r) => r.id)
-                    executeBulkDelete({ ids })
-                    resetSelection()
-                  }}
-                >
-                  Sim, excluir
-                </AlertDialogAction>
-              </ConfirmationDialogContent>
-            </AlertDialog>
-          </>
-        )}
+        bulkActions={({ selectedRows, resetSelection }) => {
+          resetSelectionRef.current = resetSelection
+          return (
+            <Button
+              variant="destructive"
+              size="sm"
+              className="h-8"
+              onClick={() => {
+                setBulkDeleteIds(selectedRows.map((row) => row.id))
+                setIsBulkDeleteOpen(true)
+              }}
+            >
+              <TrashIcon className="mr-2 h-4 w-4" />
+              Deletar
+            </Button>
+          )
+        }}
       />
     </>
   )

@@ -11,7 +11,6 @@ import {
   Check,
   ChevronsUpDown,
   Trash2,
-  Loader2,
 } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
@@ -44,8 +43,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/_components/ui/popover'
-import { AlertDialog } from '@/_components/ui/alert-dialog'
-import ConfirmationDialogContent from '@/_components/confirmation-dialog-content'
+import ConfirmationDialog from '@/_components/confirmation-dialog'
 import type { DealDetailsDto } from '@/_data-access/deal/get-deal-details'
 import { formatPhone } from '@/_utils/format-phone'
 import type { ContactDto } from '@/_data-access/contact/get-contacts'
@@ -67,6 +65,7 @@ const ContactWidget = ({ deal, contacts }: ContactWidgetProps) => {
   const [removingContact, setRemovingContact] = useState<
     DealDetailsDto['contacts'][0] | null
   >(null)
+  const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false)
   const [contactSearch, setContactSearch] = useState('')
 
   const MIN_SEARCH_CHARS = 3
@@ -91,6 +90,7 @@ const ContactWidget = ({ deal, contacts }: ContactWidgetProps) => {
     {
       onSuccess: () => {
         toast.success('Contato removido com sucesso!')
+        setIsRemoveDialogOpen(false)
         setRemovingContact(null)
       },
       onError: ({ error }) => {
@@ -346,7 +346,10 @@ const ContactWidget = ({ deal, contacts }: ContactWidgetProps) => {
                     variant="ghost"
                     size="icon"
                     className="h-14 w-12 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                    onClick={() => setRemovingContact(contact)}
+                    onClick={() => {
+                      setRemovingContact(contact)
+                      setIsRemoveDialogOpen(true)
+                    }}
                     title="Remover contato"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -423,38 +426,31 @@ const ContactWidget = ({ deal, contacts }: ContactWidgetProps) => {
         </CardContent>
       </Card>
 
-      <AlertDialog
-        open={!!removingContact}
+      <ConfirmationDialog
+        open={isRemoveDialogOpen}
         onOpenChange={(open) => {
+          setIsRemoveDialogOpen(open)
           if (!open) setRemovingContact(null)
         }}
-      >
-        <ConfirmationDialogContent
-          variant="destructive"
-          title="Remover contato?"
-          description={
-            <p>
-              Esta ação removerá{' '}
-              <strong className="font-semibold text-foreground">
-                {removingContact?.name}
-              </strong>{' '}
-              deste negócio. O contato continuará salvo no CRM.
-            </p>
-          }
-          icon={<Trash2 />}
-        >
-          <Button
-            variant="destructive"
-            onClick={() =>
-              removingContact && handleRemoveContact(removingContact.contactId)
-            }
-            disabled={isRemoving}
-          >
-            {isRemoving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Remover
-          </Button>
-        </ConfirmationDialogContent>
-      </AlertDialog>
+        title="Remover contato?"
+        description={
+          <p>
+            Esta ação removerá{' '}
+            <strong className="font-semibold text-foreground">
+              {removingContact?.name}
+            </strong>{' '}
+            deste negócio. O contato continuará salvo no CRM.
+          </p>
+        }
+        icon={<Trash2 />}
+        variant="destructive"
+        onConfirm={() => {
+          if (removingContact)
+            handleRemoveContact(removingContact.contactId)
+        }}
+        isLoading={isRemoving}
+        confirmLabel="Confirmar Exclusão"
+      />
     </>
   )
 }

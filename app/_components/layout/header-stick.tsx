@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { usePathname } from 'next/navigation'
 import { cn } from '@/_lib/utils'
 import { ThemeToggle } from '@/_components/theme-toggle'
 import { GlobalSearch } from '@/_components/global-search'
@@ -14,7 +13,6 @@ interface HeaderStickProps {
 }
 
 const HeaderStick = ({ userEmail }: HeaderStickProps) => {
-  const pathname = usePathname()
   const [hidden, setHidden] = useState(false)
 
   useEffect(() => {

@@ -28,12 +28,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/_components/ui/dropdown-menu'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogTrigger,
-} from '@/_components/ui/alert-dialog'
-import ConfirmationDialogContent from '@/_components/confirmation-dialog-content'
+import ConfirmationDialog from '@/_components/confirmation-dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 
 import { updateLostReason } from '@/_actions/settings/lost-reasons/update'
@@ -59,6 +54,8 @@ const LostReasonsList = ({ initialReasons }: LostReasonsListProps) => {
   const [reasons, setReasons] = useState(initialReasons)
   const [editingReason, setEditingReason] = useState<LostReason | null>(null)
   const [isUpsertOpen, setIsUpsertOpen] = useState(false)
+  const [deletingReason, setDeletingReason] = useState<LostReason | null>(null)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
   // Apenas para o toggle de status. O resto (Update Nome) vai via Dialog.
   const { execute: executeUpdateToggle, isPending: isUpdatingToggle } =
@@ -78,6 +75,8 @@ const LostReasonsList = ({ initialReasons }: LostReasonsListProps) => {
     {
       onSuccess: () => {
         toast.success('Motivo removido com sucesso!')
+        setIsDeleteDialogOpen(false)
+        setDeletingReason(null)
         window.location.reload()
       },
       onError: () => toast.error('Erro ao remover motivo.'),
@@ -157,68 +156,41 @@ const LostReasonsList = ({ initialReasons }: LostReasonsListProps) => {
                         />
                       </TableCell>
                       <TableCell className="text-right">
-                        <AlertDialog>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                disabled={isLoading}
-                              >
-                                {isLoading &&
-                                editingReason?.id === reason.id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <MoreHorizontal className="h-4 w-4" />
-                                )}
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() => handleEditClick(reason)}
-                              >
-                                <Pencil className="mr-2 h-4 w-4" />
-                                Editar nome
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <AlertDialogTrigger asChild>
-                                <DropdownMenuItem className="text-destructive focus:text-destructive">
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  Excluir motivo
-                                </DropdownMenuItem>
-                              </AlertDialogTrigger>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-
-                          <ConfirmationDialogContent
-                            title="Deseja excluir o motivo de perda?"
-                            description={
-                              <div className="space-y-2">
-                                {reason._count.deals > 0 ? (
-                                  <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-                                    Esta ação não pode ser desfeita. Você está
-                                    prestes a remover permanentemente este
-                                    motivo de perda que está sendo usado em{' '}
-                                    <b>{reason._count.deals} negociações.</b> Se
-                                    optar por excluir, lembre-se que não será
-                                    possível recuperar a informação.
-                                  </div>
-                                ) : (
-                                  <p>Esta ação não pode ser desfeita.</p>
-                                )}
-                              </div>
-                            }
-                            icon={<TrashIcon />}
-                            variant="destructive"
-                          >
-                            <AlertDialogAction
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              onClick={() => executeDelete({ id: reason.id })}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              disabled={isLoading}
                             >
-                              Sim, excluir
-                            </AlertDialogAction>
-                          </ConfirmationDialogContent>
-                        </AlertDialog>
+                              {isLoading &&
+                              editingReason?.id === reason.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <MoreHorizontal className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => handleEditClick(reason)}
+                            >
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Editar nome
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onSelect={() => {
+                                setDeletingReason(reason)
+                                setIsDeleteDialogOpen(true)
+                              }}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Excluir motivo
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))
@@ -240,6 +212,36 @@ const LostReasonsList = ({ initialReasons }: LostReasonsListProps) => {
           }
         />
       </Dialog>
+
+      <ConfirmationDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={(open) => {
+          setIsDeleteDialogOpen(open)
+          if (!open) setDeletingReason(null)
+        }}
+        title="Deseja excluir o motivo de perda?"
+        description={
+          <div className="space-y-2">
+            {deletingReason && deletingReason._count.deals > 0 ? (
+              <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                Esta ação não pode ser desfeita. Você está prestes a remover
+                permanentemente este motivo de perda que está sendo usado em{' '}
+                <b>{deletingReason._count.deals} negociações.</b> Se optar por
+                excluir, lembre-se que não será possível recuperar a informação.
+              </div>
+            ) : (
+              <p>Esta ação não pode ser desfeita.</p>
+            )}
+          </div>
+        }
+        icon={<TrashIcon />}
+        variant="destructive"
+        onConfirm={() => {
+          if (deletingReason) executeDelete({ id: deletingReason.id })
+        }}
+        isLoading={isDeleting}
+        confirmLabel="Confirmar Exclusão"
+      />
     </div>
   )
 }

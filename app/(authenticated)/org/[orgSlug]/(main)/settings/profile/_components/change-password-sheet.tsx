@@ -14,16 +14,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/_components/ui/sheet'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/_components/ui/alert-dialog'
+import ConfirmationDialog from '@/_components/confirmation-dialog'
 import {
   Form,
   FormControl,
@@ -79,15 +70,10 @@ const ChangePasswordSheet = () => {
     setShowConfirmDialog(true)
   }
 
-  const handleAlertConfirm = () => {
+  const handleConfirm = () => {
     if (pendingData) {
       executeUpdatePassword(pendingData)
     }
-  }
-
-  const handleAlertCancel = () => {
-    setShowConfirmDialog(false)
-    setPendingData(null)
   }
 
   return (
@@ -172,29 +158,24 @@ const ChangePasswordSheet = () => {
         </SheetContent>
       </Sheet>
 
-      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar alteração de senha</AlertDialogTitle>
-            <AlertDialogDescription>
-              Você está prestes a alterar sua senha. Esta é uma ação sensível.
-              Tem certeza que deseja continuar?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleAlertCancel} disabled={isPending}>
-              Cancelar
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleAlertConfirm}
-              disabled={isPending}
-            >
-              {isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-              Confirmar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmationDialog
+        open={showConfirmDialog}
+        onOpenChange={(open) => {
+          setShowConfirmDialog(open)
+          if (!open) setPendingData(null)
+        }}
+        title="Confirmar alteração de senha"
+        description={
+          <p>
+            Você está prestes a alterar sua senha. Esta é uma ação sensível. Tem
+            certeza que deseja continuar?
+          </p>
+        }
+        icon={<KeyRound />}
+        onConfirm={handleConfirm}
+        isLoading={isPending}
+        confirmLabel="Confirmar"
+      />
     </>
   )
 }

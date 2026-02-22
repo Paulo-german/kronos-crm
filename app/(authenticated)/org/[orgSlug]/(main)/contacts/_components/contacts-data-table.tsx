@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { ColumnDef } from '@tanstack/react-table'
 import {
   UserIcon,
@@ -24,12 +24,7 @@ import { bulkDeleteContacts } from '@/_actions/contact/bulk-delete-contacts'
 import { deleteContact } from '@/_actions/contact/delete-contact'
 import { updateContact } from '@/_actions/contact/update-contact'
 import { toast } from 'sonner'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogTrigger,
-} from '@/_components/ui/alert-dialog'
-import ConfirmationDialogContent from '@/_components/confirmation-dialog-content'
+import ConfirmationDialog from '@/_components/confirmation-dialog'
 import UpsertContactDialogContent from './upsert-dialog-content'
 import ContactDetailDialogContent from './contact-detail-dialog-content'
 import type { MemberRole } from '@prisma/client'
@@ -65,12 +60,22 @@ export function ContactsDataTable({
   // Estado do dialog de detalhes
   const [selectedContact, setSelectedContact] = useState<ContactDto | null>(null)
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
+  // Estado do dialog de deleção individual
+  const [deletingContact, setDeletingContact] = useState<ContactDto | null>(null)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  // Estado do dialog de deleção em massa
+  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false)
+  const [bulkDeleteIds, setBulkDeleteIds] = useState<string[]>([])
+  const resetSelectionRef = useRef<(() => void) | null>(null)
+
   // Hook para deletar em massa
   const { execute: executeBulkDelete, isExecuting: isDeleting } = useAction(
     bulkDeleteContacts,
     {
       onSuccess: ({ data }) => {
         toast.success(`${data?.count || 1} contato(s) excluído(s) com sucesso.`)
+        setIsBulkDeleteOpen(false)
+        resetSelectionRef.current?.()
       },
       onError: () => {
         toast.error('Erro ao excluir contatos.')
@@ -79,14 +84,17 @@ export function ContactsDataTable({
   )
 
   // Hook para deletar individualmente (precisa estar aqui para não desmontar com a linha da tabela)
-  const { execute: executeDelete } = useAction(deleteContact, {
-    onSuccess: () => {
-      toast.success('Contato excluído com sucesso.')
-    },
-    onError: ({ error }) => {
-      toast.error(error.serverError || 'Erro ao excluir contato.')
-    },
-  })
+  const { execute: executeDelete, isExecuting: isDeletingIndividual } =
+    useAction(deleteContact, {
+      onSuccess: () => {
+        toast.success('Contato excluído com sucesso.')
+        setIsDeleteDialogOpen(false)
+        setDeletingContact(null)
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError || 'Erro ao excluir contato.')
+      },
+    })
 
   // Hook para atualizar individualmente (precisa estar aqui para não desmontar com a linha da tabela)
   const { execute: executeUpdate, isPending: isUpdating } = useAction(
@@ -216,7 +224,10 @@ export function ContactsDataTable({
         return (
           <ContactTableDropdownMenu
             contact={contact}
-            onDelete={() => executeDelete({ id: contact.id })}
+            onDelete={() => {
+              setDeletingContact(contact)
+              setIsDeleteDialogOpen(true)
+            }}
             onEdit={() => handleEdit(contact)}
           />
         )
@@ -275,48 +286,74 @@ export function ContactsDataTable({
         )}
       </Dialog>
 
+      {/* Dialog de deleção individual fora da tabela */}
+      <ConfirmationDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={(open) => {
+          setIsDeleteDialogOpen(open)
+          if (!open) setDeletingContact(null)
+        }}
+        title="Você tem certeza absoluta?"
+        description={
+          <p>
+            Esta ação não pode ser desfeita. Você está prestes a remover
+            permanentemente o contato{' '}
+            <span className="font-bold text-foreground">
+              {deletingContact?.name}
+            </span>
+          </p>
+        }
+        icon={<TrashIcon />}
+        variant="destructive"
+        onConfirm={() => {
+          if (deletingContact) executeDelete({ id: deletingContact.id })
+        }}
+        isLoading={isDeletingIndividual}
+        confirmLabel="Confirmar Exclusão"
+      />
+
+      {/* Dialog de deleção em massa fora da tabela */}
+      <ConfirmationDialog
+        open={isBulkDeleteOpen}
+        onOpenChange={setIsBulkDeleteOpen}
+        title="Excluir contatos selecionados?"
+        description={
+          <p>
+            Esta ação não pode ser desfeita. Você está prestes a remover
+            <br />
+            <span className="font-semibold text-foreground">
+              {bulkDeleteIds.length} contatos permanentemente do sistema.
+            </span>
+          </p>
+        }
+        icon={<TrashIcon />}
+        variant="destructive"
+        onConfirm={() => executeBulkDelete({ ids: bulkDeleteIds })}
+        isLoading={isDeleting}
+        confirmLabel="Confirmar Exclusão"
+      />
+
       <DataTable
         columns={columns}
         data={contacts}
         enableSelection={true}
-        bulkActions={({ selectedRows, resetSelection }) => (
-        <>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" size="sm" className="h-8">
-                <TrashIcon className="mr-2 h-4 w-4" />
-                Deletar
-              </Button>
-            </AlertDialogTrigger>
-            <ConfirmationDialogContent
-              title="Excluir contatos selecionados?"
-              description={
-                <p>
-                  Esta ação não pode ser desfeita. Você está prestes a remover
-                  <br />
-                  <span className="font-semibold text-foreground">
-                    {selectedRows.length} contatos permanentemente do sistema.
-                  </span>
-                </p>
-              }
-              icon={<TrashIcon />}
+        bulkActions={({ selectedRows, resetSelection }) => {
+          resetSelectionRef.current = resetSelection
+          return (
+            <Button
               variant="destructive"
+              size="sm"
+              className="h-8"
+              onClick={() => {
+                setBulkDeleteIds(selectedRows.map((row) => row.id))
+                setIsBulkDeleteOpen(true)
+              }}
             >
-              <AlertDialogAction
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                disabled={isDeleting}
-                onClick={() => {
-                  const ids = selectedRows.map((r) => r.id)
-                  executeBulkDelete({ ids })
-                  resetSelection()
-                }}
-              >
-                Sim, excluir
-              </AlertDialogAction>
-            </ConfirmationDialogContent>
-          </AlertDialog>
-        </>
-      )}
+              <TrashIcon className="mr-2 h-4 w-4" />
+              Deletar
+            </Button>
+          )
+        }}
       />
     </>
   )

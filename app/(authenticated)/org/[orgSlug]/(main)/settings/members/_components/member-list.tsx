@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 import {
@@ -38,12 +39,7 @@ import { resendInvite } from '@/_actions/organization/resend-invite'
 import { removeMember } from '@/_actions/organization/remove-member'
 import { updateMemberRole } from '@/_actions/organization/update-member-role'
 import type { MemberRole, MemberStatus } from '@prisma/client'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogTrigger,
-} from '@/_components/ui/alert-dialog'
-import ConfirmationDialogContent from '@/_components/confirmation-dialog-content'
+import ConfirmationDialog from '@/_components/confirmation-dialog'
 
 interface Member {
   id: string
@@ -77,6 +73,9 @@ export function MemberList({
   type,
   currentUserRole,
 }: MemberListProps) {
+  const [removingMember, setRemovingMember] = useState<Member | null>(null)
+  const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false)
+
   const isAdminOrOwner =
     currentUserRole === 'ADMIN' || currentUserRole === 'OWNER'
 
@@ -109,6 +108,8 @@ export function MemberList({
     {
       onSuccess: () => {
         toast.success('Membro removido com sucesso.')
+        setIsRemoveDialogOpen(false)
+        setRemovingMember(null)
       },
       onError: ({ error }) => {
         toast.error(error.serverError || 'Erro ao remover membro.')
@@ -186,115 +187,92 @@ export function MemberList({
                 </TableCell>
                 {isAdminOrOwner && (
                   <TableCell>
-                    <AlertDialog>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            disabled={isLoading}
-                          >
-                            {isLoading ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <MoreHorizontal className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {type === 'PENDING' ? (
-                            <>
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  executeResend({ memberId: member.id })
-                                }
-                              >
-                                <RefreshCw className="mr-2 h-4 w-4" />
-                                Reenviar convite
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onClick={() =>
-                                  executeCancel({ memberId: member.id })
-                                }
-                              >
-                                <X className="mr-2 h-4 w-4" />
-                                Cancelar convite
-                              </DropdownMenuItem>
-                            </>
-                          ) : (
-                            <>
-                              <DropdownMenuSub>
-                                <DropdownMenuSubTrigger
-                                  disabled={member.role === 'OWNER'}
-                                >
-                                  <UserCog className="mr-2 h-4 w-4" />
-                                  Alterar função
-                                </DropdownMenuSubTrigger>
-                                <DropdownMenuSubContent>
-                                  <DropdownMenuItem
-                                    disabled={member.role === 'MEMBER'}
-                                    onClick={() =>
-                                      executeUpdateRole({
-                                        memberId: member.id,
-                                        role: 'MEMBER',
-                                      })
-                                    }
-                                  >
-                                    Membro
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    disabled={member.role === 'ADMIN'}
-                                    onClick={() =>
-                                      executeUpdateRole({
-                                        memberId: member.id,
-                                        role: 'ADMIN',
-                                      })
-                                    }
-                                  >
-                                    Admin
-                                  </DropdownMenuItem>
-                                </DropdownMenuSubContent>
-                              </DropdownMenuSub>
-                              <DropdownMenuSeparator />
-
-                              <AlertDialogTrigger asChild>
-                                <DropdownMenuItem
-                                  className="text-destructive focus:text-destructive"
-                                  disabled={member.role === 'OWNER'}
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  Remover membro
-                                </DropdownMenuItem>
-                              </AlertDialogTrigger>
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                      <ConfirmationDialogContent
-                        title="Excluir membro selecionado?"
-                        description={
-                          <p>
-                            Esta ação não pode ser desfeita. Você está prestes a
-                            remover
-                            <br />
-                            <span className="font-semibold text-foreground">
-                              o membro {member.user?.fullName} permanentemente
-                              do sistema.
-                            </span>
-                          </p>
-                        }
-                        icon={<TrashIcon />}
-                        variant="destructive"
-                      >
-                        <AlertDialogAction
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          onClick={() => executeRemove({ memberId: member.id })}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          disabled={isLoading}
                         >
-                          Sim, excluir
-                        </AlertDialogAction>
-                      </ConfirmationDialogContent>
-                    </AlertDialog>
+                          {isLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <MoreHorizontal className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {type === 'PENDING' ? (
+                          <>
+                            <DropdownMenuItem
+                              onClick={() =>
+                                executeResend({ memberId: member.id })
+                              }
+                            >
+                              <RefreshCw className="mr-2 h-4 w-4" />
+                              Reenviar convite
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={() =>
+                                executeCancel({ memberId: member.id })
+                              }
+                            >
+                              <X className="mr-2 h-4 w-4" />
+                              Cancelar convite
+                            </DropdownMenuItem>
+                          </>
+                        ) : (
+                          <>
+                            <DropdownMenuSub>
+                              <DropdownMenuSubTrigger
+                                disabled={member.role === 'OWNER'}
+                              >
+                                <UserCog className="mr-2 h-4 w-4" />
+                                Alterar função
+                              </DropdownMenuSubTrigger>
+                              <DropdownMenuSubContent>
+                                <DropdownMenuItem
+                                  disabled={member.role === 'MEMBER'}
+                                  onClick={() =>
+                                    executeUpdateRole({
+                                      memberId: member.id,
+                                      role: 'MEMBER',
+                                    })
+                                  }
+                                >
+                                  Membro
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  disabled={member.role === 'ADMIN'}
+                                  onClick={() =>
+                                    executeUpdateRole({
+                                      memberId: member.id,
+                                      role: 'ADMIN',
+                                    })
+                                  }
+                                >
+                                  Admin
+                                </DropdownMenuItem>
+                              </DropdownMenuSubContent>
+                            </DropdownMenuSub>
+                            <DropdownMenuSeparator />
+
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              disabled={member.role === 'OWNER'}
+                              onSelect={() => {
+                                setRemovingMember(member)
+                                setIsRemoveDialogOpen(true)
+                              }}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Remover membro
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 )}
               </TableRow>
@@ -302,6 +280,32 @@ export function MemberList({
           </TableBody>
         </Table>
       </CardContent>
+
+      <ConfirmationDialog
+        open={isRemoveDialogOpen}
+        onOpenChange={(open) => {
+          setIsRemoveDialogOpen(open)
+          if (!open) setRemovingMember(null)
+        }}
+        title="Excluir membro selecionado?"
+        description={
+          <p>
+            Esta ação não pode ser desfeita. Você está prestes a remover
+            <br />
+            <span className="font-semibold text-foreground">
+              o membro {removingMember?.user?.fullName} permanentemente do
+              sistema.
+            </span>
+          </p>
+        }
+        icon={<TrashIcon />}
+        variant="destructive"
+        onConfirm={() => {
+          if (removingMember) executeRemove({ memberId: removingMember.id })
+        }}
+        isLoading={isRemoving}
+        confirmLabel="Confirmar Exclusão"
+      />
     </Card>
   )
 }

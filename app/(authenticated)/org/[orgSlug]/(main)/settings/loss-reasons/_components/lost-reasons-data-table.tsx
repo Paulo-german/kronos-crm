@@ -32,7 +32,7 @@ export function LostReasonsDataTable({ reasons }: LostReasonsDataTableProps) {
   const [editingReason, setEditingReason] = useState<LostReason | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
 
-  const { execute: executeDelete, isPending: isDeleting } = useAction(
+  const { execute: executeDelete } = useAction(
     deleteLostReason,
     {
       onSuccess: ({ input }) => {
@@ -122,7 +122,6 @@ export function LostReasonsDataTable({ reasons }: LostReasonsDataTableProps) {
             reason={reason}
             onDelete={() => executeDelete({ id: reason.id })}
             onEdit={() => handleEdit(reason)}
-            isDeleting={isDeleting}
           />
         )
       },
