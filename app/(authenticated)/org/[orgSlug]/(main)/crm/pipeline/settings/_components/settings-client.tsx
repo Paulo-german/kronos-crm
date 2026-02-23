@@ -20,7 +20,7 @@ import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 
 import { SortableStageRow } from './sortable-stage-row'
-import { AddStageButton } from './add-stage-button'
+import { AddStageButton } from '../../_components/add-stage-button'
 import { reorderStages } from '@/_actions/pipeline/reorder-stages'
 import type {
   PipelineWithStagesDto,
