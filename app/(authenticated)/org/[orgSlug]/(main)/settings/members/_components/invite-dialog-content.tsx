@@ -1,11 +1,11 @@
 import { Button } from '@/_components/ui/button'
 import {
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/_components/ui/dialog'
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from '@/_components/ui/sheet'
 import {
   FormControl,
   FormField,
@@ -73,13 +73,13 @@ const InviteMemberDialogContent = ({
   }
 
   return (
-    <DialogContent>
-      <DialogHeader>
-        <DialogTitle>Convidar Membro</DialogTitle>
-        <DialogDescription>
+    <SheetContent className="overflow-y-auto sm:max-w-md">
+      <SheetHeader>
+        <SheetTitle>Convidar Membro</SheetTitle>
+        <SheetDescription>
           Envie um convite por e-mail para um novo membro da equipe.
-        </DialogDescription>
-      </DialogHeader>
+        </SheetDescription>
+      </SheetHeader>
       <Form {...form}>
         <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
           <FormField
@@ -125,7 +125,7 @@ const InviteMemberDialogContent = ({
               </FormItem>
             )}
           />
-          <DialogFooter>
+          <SheetFooter>
             <Button
               type="button"
               variant="outline"
@@ -144,10 +144,10 @@ const InviteMemberDialogContent = ({
                 'Enviar Convite'
               )}
             </Button>
-          </DialogFooter>
+          </SheetFooter>
         </form>
       </Form>
-    </DialogContent>
+    </SheetContent>
   )
 }
 

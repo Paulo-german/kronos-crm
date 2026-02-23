@@ -23,12 +23,12 @@ import { Dispatch, SetStateAction, useState } from 'react'
 import { TaskDto } from '@/_data-access/task/get-tasks'
 
 import {
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/_components/ui/dialog'
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from '@/_components/ui/sheet'
 import {
   Form,
   FormControl,
@@ -157,17 +157,17 @@ export function UpsertTaskDialogContent({
   }
 
   return (
-    <DialogContent className="sm:max-w-[500px]">
-      <DialogHeader>
-        <DialogTitle>
+    <SheetContent className="overflow-y-auto sm:max-w-lg">
+      <SheetHeader>
+        <SheetTitle>
           {defaultValues?.id ? 'Editar Tarefa' : 'Nova Tarefa'}
-        </DialogTitle>
-        <DialogDescription>
+        </SheetTitle>
+        <SheetDescription>
           {defaultValues?.id
             ? 'Faça alterações na sua tarefa.'
             : 'Crie uma nova tarefa para acompanhar seus progressos.'}
-        </DialogDescription>
-      </DialogHeader>
+        </SheetDescription>
+      </SheetHeader>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -443,14 +443,14 @@ export function UpsertTaskDialogContent({
             )}
           />
 
-          <DialogFooter>
+          <SheetFooter>
             <Button type="submit" disabled={isExecuting}>
               {isExecuting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Salvar
             </Button>
-          </DialogFooter>
+          </SheetFooter>
         </form>
       </Form>
-    </DialogContent>
+    </SheetContent>
   )
 }

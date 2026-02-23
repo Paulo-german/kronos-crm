@@ -6,11 +6,11 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 import {
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/_components/ui/dialog'
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/_components/ui/sheet'
 import {
   Form,
   FormControl,
@@ -93,17 +93,17 @@ const UpsertProductDialogContent = ({
   const isPending = isCreating || isUpdatingProp
 
   return (
-    <DialogContent className="max-w-md">
-      <DialogHeader>
-        <DialogTitle>
+    <SheetContent className="overflow-y-auto sm:max-w-md">
+      <SheetHeader>
+        <SheetTitle>
           {isEditing ? 'Editar Produto' : 'Novo Produto'}
-        </DialogTitle>
-        <DialogDescription>
+        </SheetTitle>
+        <SheetDescription>
           {isEditing
             ? 'Atualize as informações do produto.'
             : 'Adicione um novo produto ao catálogo.'}
-        </DialogDescription>
-      </DialogHeader>
+        </SheetDescription>
+      </SheetHeader>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -180,7 +180,7 @@ const UpsertProductDialogContent = ({
           </div>
         </form>
       </Form>
-    </DialogContent>
+    </SheetContent>
   )
 }
 

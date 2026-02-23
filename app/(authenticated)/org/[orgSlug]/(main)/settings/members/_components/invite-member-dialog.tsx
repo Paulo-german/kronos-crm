@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
-import { Dialog, DialogTrigger } from '@/_components/ui/dialog'
+import { Sheet, SheetTrigger } from '@/_components/ui/sheet'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/_components/ui/tooltip'
 
 import InviteMemberDialogContent from './invite-dialog-content'
@@ -32,15 +32,15 @@ const InviteMemberDialog = ({ withinQuota = true }: InviteMemberDialogProps) => 
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
+    <Sheet open={isOpen} onOpenChange={setIsOpen}>
+      <SheetTrigger asChild>
         <Button>
           <Plus className="mr-2 h-4 w-4" />
           Convidar Membro
         </Button>
-      </DialogTrigger>
+      </SheetTrigger>
       <InviteMemberDialogContent setIsOpen={setIsOpen} />
-    </Dialog>
+    </Sheet>
   )
 }
 

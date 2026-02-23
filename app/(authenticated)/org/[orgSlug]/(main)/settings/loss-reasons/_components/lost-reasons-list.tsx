@@ -35,7 +35,7 @@ import { updateLostReason } from '@/_actions/settings/lost-reasons/update'
 import { deleteLostReason } from '@/_actions/settings/lost-reasons/delete'
 import { useAction } from 'next-safe-action/hooks'
 import UpsertLostReasonDialog from './upsert-lost-reason-dialog'
-import { Dialog } from '@/_components/ui/dialog'
+import { Sheet } from '@/_components/ui/sheet'
 
 interface LostReason {
   id: string
@@ -201,7 +201,7 @@ const LostReasonsList = ({ initialReasons }: LostReasonsListProps) => {
         </CardContent>
       </Card>
 
-      <Dialog open={isUpsertOpen} onOpenChange={setIsUpsertOpen}>
+      <Sheet open={isUpsertOpen} onOpenChange={setIsUpsertOpen}>
         <UpsertLostReasonDialog
           isOpen={isUpsertOpen}
           setIsOpen={setIsUpsertOpen}
@@ -211,7 +211,7 @@ const LostReasonsList = ({ initialReasons }: LostReasonsListProps) => {
               : undefined
           }
         />
-      </Dialog>
+      </Sheet>
 
       <ConfirmationDialog
         open={isDeleteDialogOpen}

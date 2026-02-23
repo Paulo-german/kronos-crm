@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/_components/ui/button'
 import { Plus } from 'lucide-react'
-import { Dialog, DialogTrigger } from '@/_components/ui/dialog'
+import { Sheet, SheetTrigger } from '@/_components/ui/sheet'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/_components/ui/tooltip'
 import UpsertProductDialogContent from './upsert-dialog-content'
 
@@ -31,15 +31,15 @@ const CreateProductButton = ({ withinQuota = true }: CreateProductButtonProps) =
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
+    <Sheet open={isOpen} onOpenChange={setIsOpen}>
+      <SheetTrigger asChild>
         <Button>
           <Plus className="mr-2 h-4 w-4" />
           Novo Produto
         </Button>
-      </DialogTrigger>
+      </SheetTrigger>
       <UpsertProductDialogContent setIsOpen={setIsOpen} isOpen={isOpen} />
-    </Dialog>
+    </Sheet>
   )
 }
 

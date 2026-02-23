@@ -7,7 +7,7 @@ import { Plus, Pencil, Trash } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import { Button } from '@/_components/ui/button'
 import { Checkbox } from '@/_components/ui/checkbox'
-import { Dialog, DialogTrigger } from '@/_components/ui/dialog'
+import { Sheet, SheetTrigger } from '@/_components/ui/sheet'
 import ConfirmationDialog from '@/_components/confirmation-dialog'
 import { toggleTask } from '@/_actions/deal/toggle-task'
 import { updateTask } from '@/_actions/task/update-task'
@@ -108,7 +108,7 @@ const TabTasks = ({ deal, dealOptions }: TabTasksProps) => {
   const completedTasks = optimisticTasks.filter((t) => t.isCompleted)
 
   return (
-    <Dialog
+    <Sheet
       open={isDialogOpen}
       onOpenChange={(open) => {
         setIsDialogOpen(open)
@@ -118,12 +118,12 @@ const TabTasks = ({ deal, dealOptions }: TabTasksProps) => {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-lg">Tarefas</CardTitle>
-          <DialogTrigger asChild>
+          <SheetTrigger asChild>
             <Button size="sm">
               <Plus className="mr-2 h-4 w-4" />
               Nova Tarefa
             </Button>
-          </DialogTrigger>
+          </SheetTrigger>
         </CardHeader>
 
         <UpsertTaskDialogContent
@@ -284,7 +284,7 @@ const TabTasks = ({ deal, dealOptions }: TabTasksProps) => {
           confirmLabel="Confirmar Exclusão"
         />
       </Card>
-    </Dialog>
+    </Sheet>
   )
 }
 

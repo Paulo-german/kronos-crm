@@ -8,7 +8,7 @@ import type { ProductDto } from '@/_data-access/product/get-products'
 import { formatCurrency } from '@/_utils/format-currency'
 import ProductTableDropdownMenu from './table-dropdown-menu'
 import { Button } from '@/_components/ui/button'
-import { Dialog } from '@/_components/ui/dialog'
+import { Sheet } from '@/_components/ui/sheet'
 import { useAction } from 'next-safe-action/hooks'
 import { bulkDeleteProducts } from '@/_actions/product/bulk-delete-products'
 import { deleteProduct } from '@/_actions/product/delete-product'
@@ -141,8 +141,8 @@ export function ProductsDataTable({ products }: ProductsDataTableProps) {
 
   return (
     <>
-      {/* Dialog de edição fora da tabela para sobreviver ao re-render */}
-      <Dialog
+      {/* Sheet de edição fora da tabela para sobreviver ao re-render */}
+      <Sheet
         open={isEditDialogOpen}
         onOpenChange={(open) => {
           setIsEditDialogOpen(open)
@@ -164,7 +164,7 @@ export function ProductsDataTable({ products }: ProductsDataTableProps) {
             isUpdating={isUpdating}
           />
         )}
-      </Dialog>
+      </Sheet>
 
       {/* Dialog de deleção individual fora da tabela */}
       <ConfirmationDialog

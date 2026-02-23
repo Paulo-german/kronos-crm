@@ -8,12 +8,12 @@ import { Building2, Plus, ArrowRight } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/_components/ui/dialog'
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/_components/ui/sheet'
 import { Input } from '@/_components/ui/input'
 import { Label } from '@/_components/ui/label'
 import { createOrganization } from '@/_actions/organization/create-organization'
@@ -90,17 +90,17 @@ export function OrgSelectorClient({ organizations }: OrgSelectorClientProps) {
           </div>
         )}
 
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
+        <Sheet open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <SheetTrigger asChild>
             <Button className="w-full" variant="default">
               <Plus className="mr-2 h-4 w-4" />
               Criar Nova Organização
             </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Criar Organização</DialogTitle>
-            </DialogHeader>
+          </SheetTrigger>
+          <SheetContent className="overflow-y-auto sm:max-w-md">
+            <SheetHeader>
+              <SheetTitle>Criar Organização</SheetTitle>
+            </SheetHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="org-name">Nome da Organização</Label>
@@ -122,8 +122,8 @@ export function OrgSelectorClient({ organizations }: OrgSelectorClientProps) {
                 {isPending ? 'Criando...' : 'Criar Organização'}
               </Button>
             </div>
-          </DialogContent>
-        </Dialog>
+          </SheetContent>
+        </Sheet>
       </CardContent>
     </Card>
   )

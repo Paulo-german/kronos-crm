@@ -23,7 +23,7 @@ import { UpsertTaskDialogContent } from './upsert-dialog-content'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Button } from '@/_components/ui/button'
-import { Dialog } from '@/_components/ui/dialog'
+import { Sheet } from '@/_components/ui/sheet'
 import { useAction } from 'next-safe-action/hooks'
 import { toggleTaskStatus } from '@/_actions/task/toggle-task-status'
 import { bulkDeleteTasks } from '@/_actions/task/bulk-delete-tasks'
@@ -280,8 +280,8 @@ const TasksDataTable = ({ tasks, dealOptions }: TasksDataTableProps) => {
 
   return (
     <>
-      {/* Dialog de edição fora da tabela para sobreviver ao re-render */}
-      <Dialog
+      {/* Sheet de edição fora da tabela para sobreviver ao re-render */}
+      <Sheet
         open={isEditDialogOpen}
         onOpenChange={(open) => {
           setIsEditDialogOpen(open)
@@ -298,7 +298,7 @@ const TasksDataTable = ({ tasks, dealOptions }: TasksDataTableProps) => {
             isUpdating={isUpdating}
           />
         )}
-      </Dialog>
+      </Sheet>
 
       {/* Dialog de deleção individual fora da tabela */}
       <ConfirmationDialog

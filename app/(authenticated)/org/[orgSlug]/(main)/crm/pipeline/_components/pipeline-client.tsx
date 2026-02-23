@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Dialog } from '@/_components/ui/dialog'
 import { Button } from '@/_components/ui/button'
 import {
   Sheet,
@@ -140,7 +139,7 @@ export const PipelineClient = ({
         }
       />
 
-      <Dialog
+      <Sheet
         open={dialogState.isOpen}
         onOpenChange={(open) => !open && closeDialog()}
       >
@@ -155,7 +154,7 @@ export const PipelineClient = ({
             }
           }}
         />
-      </Dialog>
+      </Sheet>
 
       <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
         <SheetContent className="flex w-full flex-col sm:max-w-lg">

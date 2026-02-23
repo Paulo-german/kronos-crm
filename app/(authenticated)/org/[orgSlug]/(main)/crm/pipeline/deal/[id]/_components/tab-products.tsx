@@ -16,7 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/_components/ui/table'
-import { Dialog } from '@/_components/ui/dialog'
+import { Sheet } from '@/_components/ui/sheet'
 import ConfirmationDialog from '@/_components/confirmation-dialog'
 import UpsertProductDialog from './upsert-product-dialog'
 import { addDealProduct } from '@/_actions/deal/add-deal-product'
@@ -145,7 +145,7 @@ const TabProducts = ({ deal, products }: TabProductsProps) => {
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-lg">Produtos</CardTitle>
 
-        <Dialog
+        <Sheet
           open={isDialogOpen}
           onOpenChange={(open) => {
             setIsDialogOpen(open)
@@ -172,7 +172,7 @@ const TabProducts = ({ deal, products }: TabProductsProps) => {
             onCancel={() => setIsDialogOpen(false)}
             isPending={isAdding || isUpdating}
           />
-        </Dialog>
+        </Sheet>
       </CardHeader>
 
       <CardContent>

@@ -19,6 +19,7 @@ import type { CompanyDto } from '@/_data-access/company/get-companies'
 import ContactTableDropdownMenu from './table-dropdown-menu'
 import { Button } from '@/_components/ui/button'
 import { Dialog } from '@/_components/ui/dialog'
+import { Sheet } from '@/_components/ui/sheet'
 import { useAction } from 'next-safe-action/hooks'
 import { bulkDeleteContacts } from '@/_actions/contact/bulk-delete-contacts'
 import { deleteContact } from '@/_actions/contact/delete-contact'
@@ -237,8 +238,8 @@ export function ContactsDataTable({
 
   return (
     <>
-      {/* Dialog de edição fora da tabela para sobreviver ao re-render */}
-      <Dialog
+      {/* Sheet de edição fora da tabela para sobreviver ao re-render */}
+      <Sheet
         open={isEditDialogOpen}
         onOpenChange={(open) => {
           setIsEditDialogOpen(open)
@@ -264,7 +265,7 @@ export function ContactsDataTable({
             isUpdating={isUpdating}
           />
         )}
-      </Dialog>
+      </Sheet>
 
       {/* Dialog de detalhes do contato */}
       <Dialog

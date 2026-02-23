@@ -8,11 +8,11 @@ import { toast } from 'sonner'
 import { Check, ChevronsUpDown, Loader2 } from 'lucide-react'
 import { cn } from '@/_lib/utils'
 import {
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/_components/ui/dialog'
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/_components/ui/sheet'
 import {
   Form,
   FormControl,
@@ -144,15 +144,15 @@ export function DealDialogContent({
   const isPending = isCreating || isUpdating
 
   return (
-    <DialogContent className="max-w-md">
-      <DialogHeader>
-        <DialogTitle>{isEditing ? 'Editar Deal' : 'Novo Deal'}</DialogTitle>
-        <DialogDescription>
+    <SheetContent className="overflow-y-auto sm:max-w-md">
+      <SheetHeader>
+        <SheetTitle>{isEditing ? 'Editar Deal' : 'Novo Deal'}</SheetTitle>
+        <SheetDescription>
           {isEditing
             ? 'Atualize as informações do deal.'
             : 'Preencha os dados para criar um novo deal.'}
-        </DialogDescription>
-      </DialogHeader>
+        </SheetDescription>
+      </SheetHeader>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -326,6 +326,6 @@ export function DealDialogContent({
           </div>
         </form>
       </Form>
-    </DialogContent>
+    </SheetContent>
   )
 }

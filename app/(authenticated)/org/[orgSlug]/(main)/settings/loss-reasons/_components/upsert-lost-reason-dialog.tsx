@@ -6,11 +6,11 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 import {
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/_components/ui/dialog'
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/_components/ui/sheet'
 import {
   Form,
   FormControl,
@@ -100,15 +100,15 @@ const UpsertLostReasonDialog = ({
   const isPending = isCreating || isUpdating
 
   return (
-    <DialogContent className="max-w-md">
-      <DialogHeader>
-        <DialogTitle>{isEditing ? 'Editar Motivo' : 'Novo Motivo'}</DialogTitle>
-        <DialogDescription>
+    <SheetContent className="overflow-y-auto sm:max-w-md">
+      <SheetHeader>
+        <SheetTitle>{isEditing ? 'Editar Motivo' : 'Novo Motivo'}</SheetTitle>
+        <SheetDescription>
           {isEditing
             ? 'Atualize o nome do motivo de perda.'
             : 'Adicione um novo motivo de perda à lista.'}
-        </DialogDescription>
-      </DialogHeader>
+        </SheetDescription>
+      </SheetHeader>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -148,7 +148,7 @@ const UpsertLostReasonDialog = ({
           </div>
         </form>
       </Form>
-    </DialogContent>
+    </SheetContent>
   )
 }
 

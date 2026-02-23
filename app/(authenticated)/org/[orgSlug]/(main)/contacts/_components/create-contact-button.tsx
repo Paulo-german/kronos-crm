@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/_components/ui/button'
 import { Plus } from 'lucide-react'
-import { Dialog, DialogTrigger } from '@/_components/ui/dialog'
+import { Sheet, SheetTrigger } from '@/_components/ui/sheet'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/_components/ui/tooltip'
 import UpsertContactDialogContent from './upsert-dialog-content'
 import { CompanyDto } from '@/_data-access/company/get-companies'
@@ -36,18 +36,18 @@ const CreateContactButton = ({
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
+    <Sheet open={isOpen} onOpenChange={setIsOpen}>
+      <SheetTrigger asChild>
         <Button>
           <Plus className="mr-2 h-4 w-4" />
           Novo Contato
         </Button>
-      </DialogTrigger>
+      </SheetTrigger>
       <UpsertContactDialogContent
         setIsOpen={setIsOpen}
         companyOptions={companyOptions}
       />
-    </Dialog>
+    </Sheet>
   )
 }
 

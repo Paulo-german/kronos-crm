@@ -7,11 +7,11 @@ import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 import type { NumberFormatValues } from 'react-number-format'
 import {
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/_components/ui/dialog'
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/_components/ui/sheet'
 import {
   Form,
   FormControl,
@@ -102,17 +102,17 @@ const UpsertContactDialogContent = ({
   const isPending = isCreating || isUpdatingProp
 
   return (
-    <DialogContent className="max-w-xl">
-      <DialogHeader>
-        <DialogTitle>
+    <SheetContent className="overflow-y-auto sm:max-w-xl">
+      <SheetHeader>
+        <SheetTitle>
           {isEditing ? 'Editar Contato' : 'Novo Contato'}
-        </DialogTitle>
-        <DialogDescription>
+        </SheetTitle>
+        <SheetDescription>
           {isEditing
             ? 'Atualize as informações do contato abaixo.'
             : 'Preencha os dados para adicionar um novo contato.'}
-        </DialogDescription>
-      </DialogHeader>
+        </SheetDescription>
+      </SheetHeader>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -264,7 +264,7 @@ const UpsertContactDialogContent = ({
           </div>
         </form>
       </Form>
-    </DialogContent>
+    </SheetContent>
   )
 }
 

@@ -5,11 +5,11 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Loader2 } from 'lucide-react'
 import {
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/_components/ui/dialog'
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/_components/ui/sheet'
 import {
   Form,
   FormControl,
@@ -108,17 +108,17 @@ const UpsertProductDialog = ({
   const netSubtotal = grossSubtotal - discountAmount
 
   return (
-    <DialogContent>
-      <DialogHeader>
-        <DialogTitle>
+    <SheetContent className="overflow-y-auto sm:max-w-lg">
+      <SheetHeader>
+        <SheetTitle>
           {isEditing ? 'Editar Produto' : 'Adicionar Produto'}
-        </DialogTitle>
-        <DialogDescription>
+        </SheetTitle>
+        <SheetDescription>
           {isEditing
             ? 'Atualize a quantidade, preço ou desconto do produto.'
             : 'Selecione um produto e defina quantidade, preço e desconto.'}
-        </DialogDescription>
-      </DialogHeader>
+        </SheetDescription>
+      </SheetHeader>
 
       <Form {...form}>
         <form
@@ -323,7 +323,7 @@ const UpsertProductDialog = ({
           </div>
         </form>
       </Form>
-    </DialogContent>
+    </SheetContent>
   )
 }
 

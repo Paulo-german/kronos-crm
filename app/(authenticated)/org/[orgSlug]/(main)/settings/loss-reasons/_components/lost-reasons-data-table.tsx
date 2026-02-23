@@ -22,6 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/_components/ui/dialog'
+import { Sheet } from '@/_components/ui/sheet'
 import {
   Select,
   SelectContent,
@@ -189,8 +190,8 @@ export function LostReasonsDataTable({ reasons }: LostReasonsDataTableProps) {
 
   return (
     <>
-      {/* Dialog de edição */}
-      <Dialog
+      {/* Sheet de edição */}
+      <Sheet
         open={isEditDialogOpen}
         onOpenChange={(open) => {
           setIsEditDialogOpen(open)
@@ -208,7 +209,7 @@ export function LostReasonsDataTable({ reasons }: LostReasonsDataTableProps) {
             isOpen={isEditDialogOpen}
           />
         )}
-      </Dialog>
+      </Sheet>
 
       {/* Dialog de exclusão simples (sem deals) */}
       {deletingReason && !hasDeals && (
