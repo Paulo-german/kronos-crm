@@ -46,6 +46,8 @@ import type { MemberRole } from '@prisma/client'
 import TabSummary from './tab-summary'
 import TabProducts from './tab-products'
 import TabTasks from './tab-tasks'
+import TabAppointments from './tab-appointments'
+import type { DealAppointmentDto } from '@/_data-access/appointment/get-deal-appointments'
 
 interface MemberDto {
   id: string
@@ -66,6 +68,7 @@ interface DealDetailClientProps {
   currentUserId: string
   userRole: MemberRole
   lostReasons: { id: string; name: string }[]
+  appointments: DealAppointmentDto[]
 }
 
 const priorityConfig = {
@@ -131,6 +134,7 @@ const DealDetailClient = ({
   currentUserId,
   userRole,
   lostReasons,
+  appointments,
 }: DealDetailClientProps) => {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState('summary')
@@ -328,7 +332,7 @@ const DealDetailClient = ({
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="h-fit">
-        <TabsList className="grid h-12 w-full grid-cols-3 rounded-md border border-border/50 bg-tab/30">
+        <TabsList className="grid h-12 w-full grid-cols-4 rounded-md border border-border/50 bg-tab/30">
           <TabsTrigger
             value="summary"
             className="rounded-md py-2 data-[state=active]:bg-card/80"
@@ -346,6 +350,12 @@ const DealDetailClient = ({
             className="rounded-md py-2 data-[state=active]:bg-card/80"
           >
             Tarefas
+          </TabsTrigger>
+          <TabsTrigger
+            value="appointments"
+            className="rounded-md py-2 data-[state=active]:bg-card/80"
+          >
+            Agendamentos
           </TabsTrigger>
         </TabsList>
 
@@ -373,6 +383,15 @@ const DealDetailClient = ({
 
         <TabsContent value="tasks" className="mt-4">
           <TabTasks deal={deal} dealOptions={dealOptions} />
+        </TabsContent>
+
+        <TabsContent value="appointments" className="mt-4">
+          <TabAppointments
+            deal={deal}
+            appointments={appointments}
+            members={members}
+            dealOptions={dealOptions}
+          />
         </TabsContent>
       </Tabs>
 
