@@ -4,7 +4,7 @@ import { revalidateTag } from 'next/cache'
 import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 
-const DEV_EMAIL = 'paulo.roriz01@gmail.com'
+const DEV_EMAILS = ['paulo.roriz01@gmail.com', 'paulo.german777@gmail.com']
 
 const CACHE_TAG_PREFIXES = [
   'pipeline',
@@ -25,7 +25,7 @@ export const revalidateAllCache = orgActionClient.action(async ({ ctx }) => {
     select: { email: true },
   })
 
-  if (user?.email !== DEV_EMAIL) {
+  if (!user?.email || !DEV_EMAILS.includes(user.email)) {
     throw new Error('Ação restrita.')
   }
 
