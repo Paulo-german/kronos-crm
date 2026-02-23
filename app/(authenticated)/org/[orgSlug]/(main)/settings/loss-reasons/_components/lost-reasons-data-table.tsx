@@ -1,13 +1,37 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { ColumnDef } from '@tanstack/react-table'
-import { PackageIcon, BarChart3Icon, ToggleLeftIcon } from 'lucide-react'
+import {
+  PackageIcon,
+  BarChart3Icon,
+  ToggleLeftIcon,
+  TrashIcon,
+  Loader2,
+} from 'lucide-react'
 import { DataTable } from '@/_components/data-table'
 import { Badge } from '@/_components/ui/badge'
 import { Switch } from '@/_components/ui/switch'
+import { Button } from '@/_components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/_components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/_components/ui/select'
+import { Label } from '@/_components/ui/label'
 import LostReasonTableDropdown from './table-dropdown-menu'
-import { Dialog } from '@/_components/ui/dialog'
+import ConfirmationDialog from '@/_components/confirmation-dialog'
 import { useAction } from 'next-safe-action/hooks'
 import { deleteLostReason } from '@/_actions/settings/lost-reasons/delete'
 import { updateLostReason } from '@/_actions/settings/lost-reasons/update'
@@ -28,16 +52,28 @@ interface LostReasonsDataTableProps {
 }
 
 export function LostReasonsDataTable({ reasons }: LostReasonsDataTableProps) {
+  const router = useRouter()
   const [localReasons, setLocalReasons] = useState(reasons)
   const [editingReason, setEditingReason] = useState<LostReason | null>(null)
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
 
-  const { execute: executeDelete } = useAction(
+  // Sincroniza estado local quando o servidor retorna dados atualizados (router.refresh)
+  useEffect(() => {
+    setLocalReasons(reasons)
+  }, [reasons])
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [deletingReason, setDeletingReason] = useState<LostReason | null>(null)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [replacementId, setReplacementId] = useState<string | null>(null)
+
+  const { execute: executeDelete, isPending: isDeleting } = useAction(
     deleteLostReason,
     {
-      onSuccess: ({ input }) => {
+      onSuccess: () => {
         toast.success('Motivo excluído com sucesso.')
-        setLocalReasons((prev) => prev.filter((r) => r.id !== input.id))
+        setIsDeleteDialogOpen(false)
+        setDeletingReason(null)
+        setReplacementId(null)
+        router.refresh()
       },
       onError: ({ error }) => {
         toast.error(error.serverError || 'Erro ao excluir motivo.')
@@ -59,13 +95,36 @@ export function LostReasonsDataTable({ reasons }: LostReasonsDataTableProps) {
     setIsEditDialogOpen(true)
   }
 
+  const handleDeleteClick = (reason: LostReason) => {
+    setDeletingReason(reason)
+    setReplacementId(null)
+    setIsDeleteDialogOpen(true)
+  }
+
   const handleToggleActive = (id: string, currentStatus: boolean) => {
     // Optimistic update
     setLocalReasons((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, isActive: !currentStatus } : r)),
+      prev.map((reason) =>
+        reason.id === id ? { ...reason, isActive: !currentStatus } : reason,
+      ),
     )
     executeToggle({ id, isActive: !currentStatus })
   }
+
+  const handleConfirmDelete = () => {
+    if (!deletingReason) return
+    executeDelete({
+      id: deletingReason.id,
+      replacementId,
+    })
+  }
+
+  // Motivos disponíveis para substituição (ativos, excluindo o que será deletado)
+  const replacementOptions = localReasons.filter(
+    (reason) => reason.id !== deletingReason?.id && reason.isActive,
+  )
+
+  const hasDeals = (deletingReason?._count.deals ?? 0) > 0
 
   const columns: ColumnDef<LostReason>[] = [
     {
@@ -120,7 +179,7 @@ export function LostReasonsDataTable({ reasons }: LostReasonsDataTableProps) {
         return (
           <LostReasonTableDropdown
             reason={reason}
-            onDelete={() => executeDelete({ id: reason.id })}
+            onDelete={() => handleDeleteClick(reason)}
             onEdit={() => handleEdit(reason)}
           />
         )
@@ -130,6 +189,7 @@ export function LostReasonsDataTable({ reasons }: LostReasonsDataTableProps) {
 
   return (
     <>
+      {/* Dialog de edição */}
       <Dialog
         open={isEditDialogOpen}
         onOpenChange={(open) => {
@@ -149,6 +209,122 @@ export function LostReasonsDataTable({ reasons }: LostReasonsDataTableProps) {
           />
         )}
       </Dialog>
+
+      {/* Dialog de exclusão simples (sem deals) */}
+      {deletingReason && !hasDeals && (
+        <ConfirmationDialog
+          open={isDeleteDialogOpen}
+          onOpenChange={(open) => {
+            setIsDeleteDialogOpen(open)
+            if (!open) {
+              setDeletingReason(null)
+              setReplacementId(null)
+            }
+          }}
+          title="Excluir motivo de perda?"
+          description={
+            <p>
+              Tem certeza que deseja excluir o motivo{' '}
+              <strong className="font-semibold text-foreground">
+                {deletingReason.name}
+              </strong>
+              ? Esta ação não pode ser desfeita.
+            </p>
+          }
+          icon={<TrashIcon />}
+          variant="destructive"
+          onConfirm={handleConfirmDelete}
+          isLoading={isDeleting}
+          confirmLabel="Confirmar Exclusão"
+        />
+      )}
+
+      {/* Dialog de exclusão com substituição (com deals) */}
+      {deletingReason && hasDeals && (
+        <Dialog
+          open={isDeleteDialogOpen}
+          onOpenChange={(open) => {
+            setIsDeleteDialogOpen(open)
+            if (!open) {
+              setDeletingReason(null)
+              setReplacementId(null)
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex flex-col items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-md bg-destructive/20 text-destructive">
+                  <TrashIcon className="h-6 w-6" />
+                </div>
+                Excluir motivo de perda?
+              </DialogTitle>
+              <DialogDescription className="text-center">
+                O motivo{' '}
+                <strong className="font-semibold text-foreground">
+                  {deletingReason.name}
+                </strong>{' '}
+                está associado a{' '}
+                <strong className="font-semibold text-foreground">
+                  {deletingReason._count.deals}{' '}
+                  {deletingReason._count.deals === 1
+                    ? 'negociação perdida'
+                    : 'negociações perdidas'}
+                </strong>
+                . Escolha um motivo substituto ou remova a associação.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-2 py-2">
+              <Label htmlFor="replacement-reason">Motivo substituto</Label>
+              <Select
+                value={replacementId ?? 'none'}
+                onValueChange={(value) =>
+                  setReplacementId(value === 'none' ? null : value)
+                }
+              >
+                <SelectTrigger id="replacement-reason">
+                  <SelectValue placeholder="Selecione um motivo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">
+                    Nenhum (remover associação)
+                  </SelectItem>
+                  {replacementOptions.map((reason) => (
+                    <SelectItem key={reason.id} value={reason.id}>
+                      {reason.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsDeleteDialogOpen(false)
+                  setDeletingReason(null)
+                  setReplacementId(null)
+                }}
+                disabled={isDeleting}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                Confirmar Exclusão
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       <DataTable
         columns={columns}

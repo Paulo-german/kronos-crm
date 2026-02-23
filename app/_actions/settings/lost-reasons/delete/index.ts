@@ -12,16 +12,16 @@ export const deleteLostReason = orgActionClient
     // Verificar permissão
     requirePermission(canPerformAction(ctx, 'organization', 'update'))
 
-    // 1. Remover a associação dos Deals que usam este motivo
-    // Isso garante que os deals não fiquem com referência quebrada
-    // Eles continuarão como LOST, mas sem motivo específico (null)
+    // 1. Reatribuir deals que usam este motivo
+    // Se um replacementId foi fornecido, migra os deals para o novo motivo
+    // Caso contrário, remove a associação (null)
     await db.deal.updateMany({
       where: {
         organizationId: ctx.orgId,
         lossReasonId: data.id,
       },
       data: {
-        lossReasonId: null,
+        lossReasonId: data.replacementId ?? null,
       },
     })
 
@@ -34,6 +34,8 @@ export const deleteLostReason = orgActionClient
     })
 
     revalidateTag(`deal-lost-reasons:${ctx.orgId}`)
+    revalidateTag(`pipeline:${ctx.orgId}`)
+    revalidateTag(`deals:${ctx.orgId}`)
 
     return { success: true }
   })
