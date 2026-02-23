@@ -44,8 +44,8 @@ export const createTask = orgActionClient
       },
     })
 
-    revalidatePath('/crm/pipeline')
-    revalidatePath(`/crm/pipeline/deal/${data.dealId}`)
+    revalidatePath('/crm/deals/pipeline')
+    revalidatePath(`/crm/deals/${data.dealId}`)
     revalidateTag(`tasks:${ctx.orgId}`)
     revalidateTag(`deal:${data.dealId}`)
 

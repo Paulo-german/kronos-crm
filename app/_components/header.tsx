@@ -13,7 +13,7 @@ export const HeaderLeft = ({ children }: { children: ReactNode }) => {
 }
 
 export const HeaderRight = ({ children }: { children: ReactNode }) => {
-  return <div>{children}</div>
+  return <div className="flex gap-6">{children}</div>
 }
 
 const Header = ({ children }: { children: ReactNode }) => {

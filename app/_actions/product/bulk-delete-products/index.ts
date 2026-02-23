@@ -24,7 +24,7 @@ export const bulkDeleteProducts = orgActionClient
     revalidateTag(`products:${ctx.orgId}`)
     revalidateTag(`deals:${ctx.orgId}`)
     revalidatePath('/org/[orgSlug]/settings/products', 'page')
-    revalidatePath('/crm/pipeline')
+    revalidatePath('/crm/deals/pipeline')
 
     return { count: result.count }
   })

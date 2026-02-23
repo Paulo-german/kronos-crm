@@ -18,7 +18,7 @@ import type {
 } from '@/_data-access/deal/get-deal-details'
 import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
 import type { TaskDto } from '@/_data-access/task/get-tasks'
-import { UpsertTaskDialogContent } from '../../../../tasks/_components/upsert-dialog-content'
+import { UpsertTaskDialogContent } from '../../../tasks/_components/upsert-dialog-content'
 
 interface TabTasksProps {
   deal: DealDetailsDto

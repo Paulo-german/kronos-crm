@@ -23,9 +23,9 @@ export const toggleTask = orgActionClient
       },
     })
 
-    revalidatePath('/crm/pipeline')
+    revalidatePath('/crm/deals/pipeline')
     if (task.dealId) {
-      revalidatePath(`/crm/pipeline/deal/${task.dealId}`)
+      revalidatePath(`/crm/deals/${task.dealId}`)
       revalidateTag(`deal:${task.dealId}`)
     }
     revalidateTag(`tasks:${ctx.orgId}`)

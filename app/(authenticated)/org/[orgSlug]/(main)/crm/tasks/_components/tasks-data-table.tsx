@@ -225,7 +225,7 @@ const TasksDataTable = ({ tasks, dealOptions }: TasksDataTableProps) => {
 
         return (
           <Link
-            href={`/pipeline/deal/${dealId}`}
+            href={`/crm/deals/${dealId}`}
             className="flex w-fit items-center gap-1.5 rounded-md bg-secondary/50 px-2 py-1 text-xs font-medium text-secondary-foreground hover:bg-secondary hover:underline"
           >
             <LinkIcon className="h-3 w-3" />

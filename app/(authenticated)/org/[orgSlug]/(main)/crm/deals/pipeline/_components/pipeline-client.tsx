@@ -12,7 +12,8 @@ import {
 } from '@/_components/ui/sheet'
 import { Settings2Icon } from 'lucide-react'
 import { KanbanBoard } from './kanban-board'
-import { DealDialogContent } from './deal-dialog-content'
+import { DealDialogContent } from '../../_components/deal-dialog-content'
+import { ViewToggle } from '../../_components/view-toggle'
 import { EmptyPipeline } from './empty-pipeline'
 import { SettingsClient } from './settings-client'
 import { PipelineFiltersSheet } from './pipeline-filters-sheet'
@@ -84,7 +85,7 @@ export const PipelineClient = ({
   }
 
   const handleDealClick = (deal: DealDto) => {
-    router.push(`/crm/pipeline/deal/${deal.id}`)
+    router.push(`/crm/deals/${deal.id}`)
   }
 
   const closeDialog = () => {
@@ -98,17 +99,17 @@ export const PipelineClient = ({
     <>
       <Header>
         <HeaderLeft>
-          <HeaderTitle>Pipeline de Vendas</HeaderTitle>
+          <div className="flex items-center gap-4">
+            <HeaderTitle>Negociações</HeaderTitle>
+          </div>
           <HeaderSubTitle>
             Visualize e gerencie suas oportunidades
           </HeaderSubTitle>
         </HeaderLeft>
         <HeaderRight>
+          <ViewToggle activeView="pipeline" />
           {canManagePipeline && (
-            <Button
-              variant="outline"
-              onClick={() => setSettingsOpen(true)}
-            >
+            <Button variant="outline" onClick={() => setSettingsOpen(true)}>
               <Settings2Icon className="mr-2 h-4 w-4" />
               Configurar Pipeline
             </Button>

@@ -257,7 +257,7 @@ const ContactDetailClient = ({
               {contact.deals.map((deal) => (
                 <li key={deal.id} className="text-sm">
                   <Link
-                    href={`/pipeline/deal/${deal.id}`}
+                    href={`/crm/deals/${deal.id}`}
                     className="hover:text-primary hover:underline"
                   >
                     {deal.title}

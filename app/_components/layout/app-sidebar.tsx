@@ -119,7 +119,7 @@ export const AppSidebar = ({ activeModules = [], footerSlot }: AppSidebarProps) 
                   icon={<CheckSquare className="h-4 w-4" />}
                 />
                 <SidebarItem
-                  href={buildHref('/crm/pipeline')}
+                  href={buildHref('/crm/deals')}
                   label="Negociações"
                   icon={<Kanban className="h-4 w-4" />}
                 />

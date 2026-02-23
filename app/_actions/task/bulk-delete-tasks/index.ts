@@ -28,7 +28,7 @@ export const bulkDeleteTasks = orgActionClient
     // 3. Revalidação
     revalidateTag(`tasks:${ctx.orgId}`)
     revalidatePath('/crm/tasks')
-    revalidatePath('/crm/pipeline')
+    revalidatePath('/crm/deals/pipeline')
 
     return { count: result.count }
   })

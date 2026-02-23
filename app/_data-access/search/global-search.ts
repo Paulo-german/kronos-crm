@@ -122,7 +122,7 @@ export const globalSearch = async (
     title: deal.title,
     subtitle:
       deal.contacts[0]?.contact?.name || deal.stage?.name || null,
-    href: `/crm/pipeline/deal/${deal.id}`,
+    href: `/crm/deals/${deal.id}`,
   }))
 
   return {

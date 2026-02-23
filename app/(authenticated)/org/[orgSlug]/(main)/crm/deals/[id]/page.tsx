@@ -20,7 +20,7 @@ const DealPage = async ({ params }: DealPageProps) => {
   // Passa o contexto RBAC completo
   const deal = await getDealDetails(id, ctx)
   if (!deal) {
-    redirect(`/org/${orgSlug}/pipeline`)
+    redirect(`/org/${orgSlug}/crm/deals/pipeline`)
   }
 
   // Produtos são globais na org, não precisam de RBAC ownership

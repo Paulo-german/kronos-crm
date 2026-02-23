@@ -6,7 +6,7 @@ interface CrmPageProps {
 
 const CrmPage = async ({ params }: CrmPageProps) => {
   const { orgSlug } = await params
-  redirect(`/org/${orgSlug}/crm/pipeline`)
+  redirect(`/org/${orgSlug}/crm/deals`)
 }
 
 export default CrmPage

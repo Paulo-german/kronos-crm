@@ -19,7 +19,7 @@ const MODULE_NAV_CONFIG: Record<ModuleSlug, ModuleNavGroup> = {
     moduleTitle: 'CRM',
     items: [
       { label: 'Tarefas', iconName: 'CheckSquare', href: '/crm/tasks' },
-      { label: 'Negociações', iconName: 'Kanban', href: '/crm/pipeline' },
+      { label: 'Negociações', iconName: 'Kanban', href: '/crm/deals' },
     ],
   },
   inbox: {
