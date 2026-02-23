@@ -7,6 +7,7 @@ import {
   Users,
   Kanban,
   CheckSquare,
+  CalendarClock,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -122,6 +123,11 @@ export const AppSidebar = ({ activeModules = [], footerSlot }: AppSidebarProps) 
                   href={buildHref('/crm/deals')}
                   label="Negociações"
                   icon={<Kanban className="h-4 w-4" />}
+                />
+                <SidebarItem
+                  href={buildHref('/crm/appointments')}
+                  label="Agendamentos"
+                  icon={<CalendarClock className="h-4 w-4" />}
                 />
               </div>
             )}
