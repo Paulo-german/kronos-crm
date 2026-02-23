@@ -17,8 +17,11 @@ const martian = Martian_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Kronos CRM',
-  description: 'Sales AI Hub',
+  title: 'Kronos Hub',
+  description: 'Hub de Vendas',
+  icons: {
+    icon: '/favicon.png',
+  },
 }
 
 export default function RootLayout({
@@ -28,7 +31,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="pt-BR"
       suppressHydrationWarning
       className="w-auto overflow-y-hidden"
     >
