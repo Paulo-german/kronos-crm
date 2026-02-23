@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
@@ -37,17 +37,9 @@ import { markDealLost } from '@/_actions/deal/mark-deal-lost'
 import { reopenDeal } from '@/_actions/deal/reopen-deal'
 import { updateDeal } from '@/_actions/deal/update-deal'
 import type { DealDetailsDto } from '@/_data-access/deal/get-deal-details'
-
-import type { ProductDto } from '@/_data-access/product/get-products'
-import type { ContactDto } from '@/_data-access/contact/get-contacts'
-import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
 import type { MemberRole } from '@prisma/client'
 
 import TabSummary from './tab-summary'
-import TabProducts from './tab-products'
-import TabTasks from './tab-tasks'
-import TabAppointments from './tab-appointments'
-import type { DealAppointmentDto } from '@/_data-access/appointment/get-deal-appointments'
 
 interface MemberDto {
   id: string
@@ -61,14 +53,14 @@ interface MemberDto {
 
 interface DealDetailClientProps {
   deal: DealDetailsDto
-  products: ProductDto[]
-  contacts: ContactDto[]
-  dealOptions: DealOptionDto[]
   members: MemberDto[]
   currentUserId: string
   userRole: MemberRole
   lostReasons: { id: string; name: string }[]
-  appointments: DealAppointmentDto[]
+  contactsSlot: ReactNode
+  productsTabSlot: ReactNode
+  tasksTabSlot: ReactNode
+  appointmentsTabSlot: ReactNode
 }
 
 const priorityConfig = {
@@ -127,14 +119,14 @@ const statusConfig = {
 
 const DealDetailClient = ({
   deal,
-  products,
-  contacts,
-  dealOptions,
   members,
   currentUserId,
   userRole,
   lostReasons,
-  appointments,
+  contactsSlot,
+  productsTabSlot,
+  tasksTabSlot,
+  appointmentsTabSlot,
 }: DealDetailClientProps) => {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState('summary')
@@ -362,7 +354,7 @@ const DealDetailClient = ({
         <TabsContent value="summary" className="mt-4">
           <TabSummary
             deal={deal}
-            contacts={contacts}
+            contactsSlot={contactsSlot}
             onTabChange={setActiveTab}
           />
           <div className="mt-6 rounded-lg border bg-card p-4">
@@ -378,20 +370,15 @@ const DealDetailClient = ({
         </TabsContent>
 
         <TabsContent value="products" className="mt-4">
-          <TabProducts deal={deal} products={products} />
+          {productsTabSlot}
         </TabsContent>
 
         <TabsContent value="tasks" className="mt-4">
-          <TabTasks deal={deal} dealOptions={dealOptions} />
+          {tasksTabSlot}
         </TabsContent>
 
         <TabsContent value="appointments" className="mt-4">
-          <TabAppointments
-            deal={deal}
-            appointments={appointments}
-            members={members}
-            dealOptions={dealOptions}
-          />
+          {appointmentsTabSlot}
         </TabsContent>
       </Tabs>
 
