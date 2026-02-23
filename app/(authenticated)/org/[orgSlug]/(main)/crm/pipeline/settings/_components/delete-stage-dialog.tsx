@@ -78,13 +78,7 @@ export function DeleteStageDialog({
               <SelectContent>
                 {availableStages.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="h-3 w-3 rounded-full"
-                        style={{ backgroundColor: s.color || '#6b7280' }}
-                      />
-                      {s.name}
-                    </div>
+                    {s.name}
                   </SelectItem>
                 ))}
               </SelectContent>
