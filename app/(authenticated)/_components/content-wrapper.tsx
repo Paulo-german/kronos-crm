@@ -10,8 +10,11 @@ interface ContentWrapperProps {
 export const ContentWrapper = ({ children }: ContentWrapperProps) => {
   const pathname = usePathname()
 
-  // Check if we are on the deal detail page: /org/[slug]/crm/pipeline/deal/[id]
-  const isDealDetailPage = /\/crm\/pipeline\/deal\/[^/]+$/.test(pathname)
+  // Check if we are on the deal detail page: /org/[slug]/crm/deals/[id]
+  const isDealDetailPage =
+    /\/crm\/deals\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(
+      pathname,
+    )
 
   return (
     <main
