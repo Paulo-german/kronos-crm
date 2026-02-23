@@ -5,11 +5,14 @@ export const updateAppointmentSchema = z
   .object({
     id: z.string().uuid(),
     title: z.string().min(1).optional(),
-    description: z.string().optional(),
+    description: z
+      .string()
+      .optional()
+      .transform((val) => (val === '' ? undefined : val)),
     startDate: z.coerce.date().optional(),
     endDate: z.coerce.date().optional(),
     status: z.nativeEnum(AppointmentStatus).optional(),
-    assignedTo: z.string().uuid().optional().nullable(),
+    assignedTo: z.string().uuid().optional(),
   })
   .refine(
     (data) => {
@@ -39,4 +42,4 @@ export const updateAppointmentSchema = z
     },
   )
 
-export type UpdateAppointmentInput = z.infer<typeof updateAppointmentSchema>
+export type UpdateAppointmentInput = z.input<typeof updateAppointmentSchema>

@@ -4,12 +4,7 @@ import { useAction } from 'next-safe-action/hooks'
 import { useForm } from 'react-hook-form'
 import { Label } from '@/_components/ui/label'
 import { zodResolver } from '@hookform/resolvers/zod'
-import {
-  Loader2,
-  CalendarIcon,
-  Check,
-  ChevronsUpDown,
-} from 'lucide-react'
+import { Loader2, CalendarIcon, Check, ChevronsUpDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { formatInTimeZone } from 'date-fns-tz'
@@ -117,9 +112,7 @@ export function UpsertAppointmentDialogContent({
 
   const isExecuting = isCreating || isUpdatingProp
 
-  const assignableMembers = members.filter(
-    (member) => member.user?.fullName,
-  )
+  const assignableMembers = members.filter((member) => member.user?.fullName)
 
   const defaultValuesParsed: CreateAppointmentInput = defaultValues
     ? {
@@ -128,7 +121,7 @@ export function UpsertAppointmentDialogContent({
         startDate: new Date(defaultValues.startDate),
         endDate: new Date(defaultValues.endDate),
         dealId: defaultValues.dealId,
-        assignedTo: defaultValues.assignedTo ?? undefined,
+        assignedTo: defaultValues.assignedTo,
       }
     : {
         title: '',
@@ -136,7 +129,7 @@ export function UpsertAppointmentDialogContent({
         startDate: new Date(),
         endDate: new Date(Date.now() + 60 * 60 * 1000), // +1h
         dealId: fixedDealId || '',
-        assignedTo: undefined,
+        assignedTo: '',
       }
 
   const form = useForm<CreateAppointmentInput>({
@@ -174,13 +167,10 @@ export function UpsertAppointmentDialogContent({
             render={({ field }) => (
               <FormItem>
                 <FormLabel className="flex items-center gap-1">
-                    Título <span className="text-destructive">*</span>
-                  </FormLabel>
+                  Título <span className="text-destructive">*</span>
+                </FormLabel>
                 <FormControl>
-                  <Input
-                    placeholder="Ex: Reunião com cliente..."
-                    {...field}
-                  />
+                  <Input placeholder="Ex: Reunião com cliente..." {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -330,9 +320,7 @@ export function UpsertAppointmentDialogContent({
 
           <SheetFooter>
             <Button type="submit" disabled={isExecuting}>
-              {isExecuting && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
+              {isExecuting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Salvar
             </Button>
           </SheetFooter>
@@ -385,9 +373,14 @@ function DateTimeField({
                             </span>
                           )
                         }
-                        return formatInTimeZone(field.value, SAO_PAULO_TZ, "dd/MM/yyyy 'às' HH:mm", {
-                          locale: ptBR,
-                        })
+                        return formatInTimeZone(
+                          field.value,
+                          SAO_PAULO_TZ,
+                          "dd/MM/yyyy 'às' HH:mm",
+                          {
+                            locale: ptBR,
+                          },
+                        )
                       } catch {
                         return (
                           <span className="text-destructive">
@@ -419,7 +412,10 @@ function DateTimeField({
                 initialFocus
               />
               <div className="border-t p-3">
-                <Label htmlFor={`${name}-time-input`} className="mb-2 block text-sm">
+                <Label
+                  htmlFor={`${name}-time-input`}
+                  className="mb-2 block text-sm"
+                >
                   Hora
                 </Label>
                 <Input
