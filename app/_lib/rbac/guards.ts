@@ -136,6 +136,7 @@ function getEntityLabel(entity: RBACEntity): string {
     company: 'empresas',
     organization: 'organização',
     billing: 'faturamento',
+    appointment: 'agendamentos',
   }
   return labels[entity]
 }

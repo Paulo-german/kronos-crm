@@ -22,6 +22,7 @@ export type RBACEntity =
   | 'company'
   | 'organization'
   | 'billing'
+  | 'appointment'
 
 /**
  * Ações possíveis em cada entidade

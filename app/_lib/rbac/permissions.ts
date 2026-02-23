@@ -69,6 +69,13 @@ const PERMISSION_MATRIX: Record<RBACEntity, Record<RBACAction, MemberRole[]>> = 
     delete: [], // Não se aplica
     transfer: [], // Não se aplica
   },
+  appointment: {
+    create: ['OWNER', 'ADMIN', 'MEMBER'],
+    read: ['OWNER', 'ADMIN', 'MEMBER'], // MEMBER: só próprios
+    update: ['OWNER', 'ADMIN', 'MEMBER'], // MEMBER: só próprios
+    delete: ['OWNER', 'ADMIN'],
+    transfer: ['OWNER', 'ADMIN'],
+  },
 }
 
 /**

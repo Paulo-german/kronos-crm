@@ -19,6 +19,10 @@ import {
   Calendar,
   UserPlus,
   UserMinus,
+  CalendarPlus,
+  CalendarClock,
+  CalendarX,
+  CalendarX2,
   type LucideIcon,
 } from 'lucide-react'
 import type { ActivityType } from '@prisma/client'
@@ -46,6 +50,10 @@ const ACTIVITY_ICONS: Record<ActivityType, LucideIcon> = {
   date_changed: Calendar,
   contact_added: UserPlus,
   contact_removed: UserMinus,
+  appointment_created: CalendarPlus,
+  appointment_updated: CalendarClock,
+  appointment_canceled: CalendarX,
+  appointment_deleted: CalendarX2,
 }
 
 const ACTIVITY_LABELS: Record<ActivityType, string> = {
@@ -69,6 +77,10 @@ const ACTIVITY_LABELS: Record<ActivityType, string> = {
   date_changed: 'Data alterada',
   contact_added: 'Contato adicionado',
   contact_removed: 'Contato removido',
+  appointment_created: 'Agendamento criado',
+  appointment_updated: 'Agendamento atualizado',
+  appointment_canceled: 'Agendamento cancelado',
+  appointment_deleted: 'Agendamento excluído',
 }
 
 export function getActivityIcon(type: ActivityType): LucideIcon {

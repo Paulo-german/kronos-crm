@@ -25,4 +25,4 @@ export {
 export { checkPlanQuota, requireQuota, getPlanLimits } from './plan-limits'
 
 // Helpers para busca com RBAC
-export { findDealWithRBAC, findTaskWithRBAC, findContactWithRBAC } from './helpers'
+export { findDealWithRBAC, findTaskWithRBAC, findContactWithRBAC, findAppointmentWithRBAC } from './helpers'

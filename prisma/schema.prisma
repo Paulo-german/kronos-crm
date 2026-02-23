@@ -67,6 +67,18 @@ enum ActivityType {
   date_changed
   contact_added
   contact_removed
+  appointment_created
+  appointment_updated
+  appointment_canceled
+  appointment_deleted
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELED
+  NO_SHOW
 }
 
 enum TaskType {
@@ -140,6 +152,7 @@ model User {
   tasksAssigned    Task[]         @relation("TaskAssignee")
   tasksCreated     Task[]         @relation("TaskCreator")
   activitiesPerformed Activity[] @relation("ActivityPerformer")
+  appointments     Appointment[]  @relation("AppointmentAssignee")
 
   @@map("users")
 }
@@ -186,6 +199,7 @@ model Organization {
   products      Product[]
   tasks         Task[]
   Deal          Deal[]
+  appointments  Appointment[]
   subscriptions Subscription[]
   lostReasons   DealLostReason[]
   creditWallet  CreditWallet?
@@ -357,6 +371,7 @@ model Deal {
   dealProducts DealProduct[]
   tasks        Task[]
   activities   Activity[]
+  appointments Appointment[]
 
   @@index([organizationId, pipelineStageId, assignedTo])
   @@index([organizationId, pipelineStageId, createdAt(sort: Desc)])
@@ -409,6 +424,30 @@ model Activity {
 
   @@index([dealId, createdAt(sort: Desc)])
   @@map("activities")
+}
+
+model Appointment {
+  id             String            @id @default(uuid())
+  organizationId String            @map("organization_id")
+  title          String
+  description    String?           @db.Text
+  startDate      DateTime          @map("start_date")
+  endDate        DateTime          @map("end_date")
+  status         AppointmentStatus @default(SCHEDULED)
+  assignedTo     String            @map("assigned_to")
+  dealId         String            @map("deal_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation("AppointmentAssignee", fields: [assignedTo], references: [id])
+  deal         Deal         @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([assignedTo])
+  @@index([dealId])
+  @@map("appointments")
 }
 
 model Product {

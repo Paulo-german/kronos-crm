@@ -1,4 +1,5 @@
 import { db } from '@/_lib/prisma'
+import type { AppointmentStatus } from '@prisma/client'
 import type { PermissionContext } from './types'
 import { canAccessRecord, requirePermission } from './guards'
 
@@ -91,4 +92,36 @@ export async function findContactWithRBAC(
   requirePermission(canAccessRecord(ctx, { assignedTo: contact.assignedTo }))
 
   return contact
+}
+
+/**
+ * Busca um agendamento e verifica se o usuário tem permissão de acesso
+ * Retorna o agendamento se encontrado e permitido, lança erro caso contrário
+ */
+export async function findAppointmentWithRBAC(
+  appointmentId: string,
+  ctx: PermissionContext
+): Promise<{ id: string; assignedTo: string; dealId: string; status: AppointmentStatus; title: string }> {
+  const appointment = await db.appointment.findFirst({
+    where: {
+      id: appointmentId,
+      organizationId: ctx.orgId,
+    },
+    select: {
+      id: true,
+      assignedTo: true,
+      dealId: true,
+      status: true,
+      title: true,
+    },
+  })
+
+  if (!appointment) {
+    throw new Error('Agendamento não encontrado.')
+  }
+
+  // Verifica acesso RBAC (MEMBER só acessa próprios)
+  requirePermission(canAccessRecord(ctx, { assignedTo: appointment.assignedTo }))
+
+  return appointment
 }
