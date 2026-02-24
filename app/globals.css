@@ -20,6 +20,7 @@
     /* Primary: Kronos Purple */
     --primary: 261 74% 62%; /* hsl(261 74% 62%) */
     --primary-foreground: 0 0% 98%; /* hsl(0 0% 98%) */
+    --primary-dark: 261 74% 25%; /* hsl(261 74% 25%) */
 
     /* Secondary: Kronos Cyan-ish/Light Zinc */
     --secondary: 240 4.8% 80%; /* hsl(240 4.8% 80%) */
@@ -81,6 +82,7 @@
     /* Primary: Kronos Purple */
     --primary: 261 74% 62%; /* hsl(261 74% 62%) */
     --primary-foreground: 0 0% 98%; /* hsl(0 0% 98%) */
+    --primary-dark: 261 74% 25%; /* hsl(261 74% 25%) */
 
     /* Secondary: Darker Zinc */
     --secondary: 240 3.7% 15.9%; /* hsl(240 3.7% 15.9%) */

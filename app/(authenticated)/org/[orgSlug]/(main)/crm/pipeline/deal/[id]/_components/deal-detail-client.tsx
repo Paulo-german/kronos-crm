@@ -7,8 +7,8 @@ import { toast } from 'sonner'
 import {
   ArrowLeft,
   CircleIcon,
-  Trophy,
-  XCircle,
+  ThumbsUp,
+  ThumbsDown,
   RotateCcw,
   UserCog,
 } from 'lucide-react'
@@ -300,21 +300,22 @@ const DealDetailClient = ({
             ) : (
               <>
                 <Button
-                  className="bg-kronos-green text-white hover:bg-kronos-green/80 hover:text-white/80"
-                  onClick={handleMarkWon}
-                  disabled={isPending}
-                >
-                  <Trophy className="h-4 w-4" />
-                  Ganhou
-                </Button>
-                <Button
-                  variant="destructive"
-                  className="bg-kronos-red text-white hover:bg-kronos-red/80 hover:text-white/80"
+                  variant="ghost"
+                  className="bg-primary/30 text-primary hover:bg-primary/40 hover:text-primary"
                   onClick={() => setIsLostOpen(true)}
                   disabled={isPending}
                 >
-                  <XCircle className="h-4 w-4" />
-                  Perdeu
+                  <ThumbsDown className="h-4 w-4" />
+                  Marcar perda
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="bg-primary text-primary-dark hover:bg-primary/90 hover:text-primary-dark"
+                  onClick={handleMarkWon}
+                  disabled={isPending}
+                >
+                  <ThumbsUp className="h-4 w-4" />
+                  Marcar venda
                 </Button>
               </>
             )}
