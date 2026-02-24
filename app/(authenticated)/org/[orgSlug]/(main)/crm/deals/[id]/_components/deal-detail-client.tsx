@@ -247,7 +247,7 @@ const DealDetailClient = ({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.push('/crm/pipeline')}
+            onClick={() => router.back()}
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Voltar
