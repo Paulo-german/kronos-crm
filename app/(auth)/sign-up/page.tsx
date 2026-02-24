@@ -1,49 +1,44 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/_components/ui/card'
-import SignUpForm from './_components/sign-up-form'
+import { KronosLogo } from '@/_components/icons/kronos-logo'
+import { Separator } from '@/_components/ui/separator'
+import { ChevronRight } from 'lucide-react'
 import Link from 'next/link'
+import SignUpForm from './_components/sign-up-form'
 
 const SignUpPage = () => {
   return (
-    <div className="h-screen w-screen">
-      <div className="flex h-screen flex-col items-center justify-center gap-6">
-        {/* <Image
-          src="/logo-kronos.svg"
-          alt="Kronos CRM Logo"
-          width={150}
-          height={40}
-          priority
-        /> */}
-        <Card className="h-fit w-full max-w-[400px] text-center">
-          <CardHeader>
-            <CardTitle>
-              <h1 className="text-2xl font-semibold">Crie sua conta</h1>
-            </CardTitle>
-            <CardDescription>
-              <p className="text-sm">Comece a vender mais com a Kronos</p>
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <SignUpForm />
-          </CardContent>
-          <CardFooter className="flex items-center justify-center gap-1 text-sm text-muted-foreground">
-            <p>Já tem uma conta?</p>
-            <Link
-              className="font-semibold text-primary hover:text-primary-foreground"
-              href="/login"
-            >
-              Fazer login
-            </Link>
-          </CardFooter>
-        </Card>
+    <>
+      {/* Logo + Nome */}
+      <div className="flex items-center gap-2">
+        <KronosLogo className="h-7 w-7 text-primary" />
+        <span className="text-lg font-bold tracking-wide">KRONOS</span>
       </div>
-    </div>
+
+      {/* Título */}
+      <h1 className="mt-8 text-2xl font-bold">Crie sua conta</h1>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Comece a vender mais com a Kronos
+      </p>
+
+      {/* Formulário */}
+      <div className="mt-6">
+        <SignUpForm />
+      </div>
+
+      <Separator className="my-6" />
+
+      {/* CTA para login */}
+      <Link
+        href="/login"
+        className="flex items-center gap-3 rounded-lg border border-border p-4 transition-colors hover:bg-accent"
+      >
+        <KronosLogo className="h-5 w-5 shrink-0 text-primary" />
+        <div className="flex-1">
+          <p className="text-sm font-medium">Já tem uma conta?</p>
+          <p className="text-sm text-primary">Fazer login</p>
+        </div>
+        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+      </Link>
+    </>
   )
 }
 

@@ -29,7 +29,7 @@ import {
   changePasswordSchema,
   type ChangePasswordInput,
 } from '@/_actions/user/change-password/schema'
-import InputPassword from '@/(auth)/login/_components/input-password'
+import InputPassword from '@/(auth)/_components/input-password'
 
 const ChangePasswordSheet = () => {
   const [isOpen, setIsOpen] = useState(false)
