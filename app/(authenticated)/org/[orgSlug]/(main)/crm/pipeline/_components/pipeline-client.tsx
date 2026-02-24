@@ -85,7 +85,7 @@ export const PipelineClient = ({
   }
 
   const handleDealClick = (deal: DealDto) => {
-    router.push(`/crm/pipeline/deal/${deal.id}`)
+    router.push(`/crm/deals/${deal.id}`)
   }
 
   const closeDialog = () => {
