@@ -4,7 +4,13 @@ import { ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 import SignUpForm from './_components/sign-up-form'
 
-const SignUpPage = () => {
+interface SignUpPageProps {
+  searchParams: Promise<{ next?: string }>
+}
+
+const SignUpPage = async ({ searchParams }: SignUpPageProps) => {
+  const { next } = await searchParams
+
   return (
     <>
       {/* Logo + Nome */}
@@ -28,7 +34,7 @@ const SignUpPage = () => {
 
       {/* CTA para login */}
       <Link
-        href="/login"
+        href={next ? `/login?next=${encodeURIComponent(next)}` : '/login'}
         className="flex items-center gap-3 rounded-lg border border-border p-4 transition-colors hover:bg-accent"
       >
         <KronosLogo className="h-5 w-5 shrink-0 text-primary" />

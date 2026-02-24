@@ -34,7 +34,7 @@ const LoginPage = async ({ searchParams }: LoginPageProps) => {
 
       {/* CTA para cadastro */}
       <Link
-        href="/sign-up"
+        href={next ? `/sign-up?next=${encodeURIComponent(next)}` : '/sign-up'}
         className="flex items-center gap-3 rounded-lg border border-border p-4 transition-colors hover:bg-accent"
       >
         <KronosLogo className="h-5 w-5 shrink-0 text-primary" />
