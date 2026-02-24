@@ -16,7 +16,7 @@ const LEGACY_ROUTES = [
 ]
 
 // Rotas de auth (login, sign-up) - redireciona se JÁ estiver logado
-const AUTH_ROUTES = ['/login', '/sign-up']
+const AUTH_ROUTES = ['/login', '/sign-up', '/forgot-password']
 
 // Cookie para armazenar o último org slug acessado (para redirect)
 const LAST_ORG_COOKIE = 'kronos-last-org-slug'

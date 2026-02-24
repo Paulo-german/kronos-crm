@@ -9,7 +9,7 @@ import { createClient } from '@/_lib/supabase/server'
  * Fluxo:
  * 1. Usuário clica no link do email (ex: ?token_hash=xxx&type=signup)
  * 2. Esta rota valida o token com o Supabase
- * 3. Se válido, redireciona para o dashboard (logado)
+ * 3. Se válido, redireciona para o seletor de org (logado)
  * 4. Se inválido, redireciona para uma página de erro
  */
 export async function GET(request: NextRequest) {
@@ -26,17 +26,15 @@ export async function GET(request: NextRequest) {
     })
 
     if (!error) {
-      console.log(
-        '✅ Email confirmado com sucesso! Redirecionando para dashboard...',
-      )
-      // Força redirecionamento para dashboard limpo
-      return NextResponse.redirect(new URL('/dashboard', request.url))
+      // Recovery flow: redireciona para redefinir senha ao invés do dashboard
+      if (type === 'recovery') {
+        return NextResponse.redirect(new URL('/reset-password', request.url))
+      }
+      return NextResponse.redirect(new URL('/org', request.url))
     } else {
-      console.error('❌ Erro na confirmação de email:', error.message)
+      console.error('Erro na confirmação de email:', error.message)
     }
   }
 
-  // Se algo deu errado, redireciona para página de erro
-  // TODO: Criar uma página de erro amigável
   return NextResponse.redirect(new URL('/auth/auth-code-error', request.url))
 }
