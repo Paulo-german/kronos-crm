@@ -32,7 +32,7 @@ const PipelinePage = async ({ params }: PipelinePageProps) => {
   ])
 
   return (
-    <div className="flex h-[calc(100vh-3rem)] flex-col space-y-6">
+    <div className="flex h-full flex-col space-y-6 overflow-hidden">
       <PipelineClient
         pipeline={finalPipeline}
         dealsByStage={dealsByStage}

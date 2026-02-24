@@ -294,7 +294,7 @@ export function KanbanBoard({
     const targetStageId =
       over.data.current?.type === 'column'
         ? overId
-        : dealToStageMap.get(overId) ?? null
+        : (dealToStageMap.get(overId) ?? null)
 
     if (!targetStageId) return
 
@@ -343,7 +343,7 @@ export function KanbanBoard({
   )
 
   return (
-    <div className="flex h-full flex-col gap-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
       {/* Sort and Filter bar */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
@@ -381,7 +381,7 @@ export function KanbanBoard({
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex flex-1 gap-4 overflow-x-auto pb-4">
+        <div className="flex min-h-0 flex-1 gap-4 overflow-x-auto overflow-y-hidden">
           {pipeline.stages.map((stage) => (
             <KanbanColumn
               key={stage.id}
