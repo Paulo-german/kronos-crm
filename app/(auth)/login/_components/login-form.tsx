@@ -11,41 +11,37 @@ import {
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 
-import z from 'zod'
 import { Input } from '@/_components/ui/input'
 import { Button } from '@/_components/ui/button'
-import InputPassword from './input-password'
+import InputPassword from '../../_components/input-password'
 import { signInWithPassword } from '@/_actions/auth/sign-in'
-import { SignInSchema } from '@/_actions/auth/sign-in/schema'
+import { signInSchema, SignInSchema } from '@/_actions/auth/sign-in/schema'
 import { useAction } from 'next-safe-action/hooks'
+import { toast } from 'sonner'
+import { Loader2 } from 'lucide-react'
+import Link from 'next/link'
 
-const loginSchema = z.object({
-  email: z.string().email({
-    message: 'É necessário um email valido.',
-  }),
-  password: z.string().min(6, {
-    message: 'A senha deve conter pelo menos 6 caracteres.',
-  }),
-})
+interface LoginFormProps {
+  redirectTo?: string
+}
 
-const LoginForm = () => {
-  const form = useForm<z.infer<typeof loginSchema>>({
-    resolver: zodResolver(loginSchema),
+const LoginForm = ({ redirectTo }: LoginFormProps) => {
+  const form = useForm<SignInSchema>({
+    resolver: zodResolver(signInSchema),
     defaultValues: {
       email: '',
       password: '',
+      redirectTo,
     },
   })
 
-  const { execute } = useAction(signInWithPassword, {
-    onError: (error) => {
-      // TODO: Adicionar toast de erro
-      console.error('Erro no cadastro:', error.error.serverError)
+  const { execute, isPending } = useAction(signInWithPassword, {
+    onError: ({ error }) => {
+      toast.error(error.serverError || 'Erro ao fazer login.')
     },
   })
 
   const onSubmit = (data: SignInSchema) => {
-    console.log(data)
     execute(data)
   }
 
@@ -78,11 +74,24 @@ const LoginForm = () => {
                 <InputPassword {...field} />
               </FormControl>
               <FormMessage />
+              <Link
+                href="/forgot-password"
+                className="inline-block text-sm text-primary hover:underline"
+              >
+                Esqueci minha senha
+              </Link>
             </FormItem>
           )}
         />
-        <Button className="mt-4 w-full" type="submit">
-          Login
+        <Button className="mt-4 w-full" type="submit" disabled={isPending}>
+          {isPending ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Entrando...
+            </>
+          ) : (
+            'Login'
+          )}
         </Button>
       </form>
     </Form>

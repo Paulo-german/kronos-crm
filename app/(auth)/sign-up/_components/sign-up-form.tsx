@@ -13,13 +13,18 @@ import { zodResolver } from '@hookform/resolvers/zod'
 
 import { Input } from '@/_components/ui/input'
 import { Button } from '@/_components/ui/button'
-import InputPassword from '../../login/_components/input-password'
+import InputPassword from '../../_components/input-password'
 import { signUpSchema, SignUpSchema } from '@/_actions/auth/sign-up/schema'
 import { useAction } from 'next-safe-action/hooks'
 import { signUp } from '@/_actions/auth/sign-up'
 import { PasswordChecklist } from './password-checklist'
+import { toast } from 'sonner'
+import { Loader2 } from 'lucide-react'
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3'
 
 const SignUpForm = () => {
+  const { executeRecaptcha } = useGoogleReCaptcha()
+
   const form = useForm<SignUpSchema>({
     resolver: zodResolver(signUpSchema),
     defaultValues: {
@@ -31,15 +36,20 @@ const SignUpForm = () => {
 
   const password = form.watch('password')
 
-  const { execute, status } = useAction(signUp, {
-    onError: (error) => {
-      // TODO: Adicionar toast de erro
-      console.error('Erro no cadastro:', error.error.serverError)
+  const { execute, isPending } = useAction(signUp, {
+    onError: ({ error }) => {
+      toast.error(error.serverError || 'Erro ao criar conta.')
     },
   })
 
-  const onSubmit = (data: SignUpSchema) => {
-    execute(data)
+  const onSubmit = async (data: SignUpSchema) => {
+    if (!executeRecaptcha) {
+      toast.error('reCAPTCHA não carregado. Tente novamente.')
+      return
+    }
+
+    const captchaToken = await executeRecaptcha('signup')
+    execute({ ...data, captchaToken })
   }
 
   return (
@@ -88,12 +98,15 @@ const SignUpForm = () => {
             </FormItem>
           )}
         />
-        <Button
-          className="mt-4 w-full"
-          type="submit"
-          disabled={status === 'executing'}
-        >
-          {status === 'executing' ? 'Criando conta...' : 'Criar conta'}
+        <Button className="mt-4 w-full" type="submit" disabled={isPending}>
+          {isPending ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Criando conta...
+            </>
+          ) : (
+            'Criar conta'
+          )}
         </Button>
       </form>
     </Form>
