@@ -62,10 +62,22 @@ export default async function InvitePage({ params }: InvitePageProps) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Se não estiver logado, redirecionar para login com retorno para cá
+  // Se não estiver logado, verificar se o email já tem conta
   if (!user) {
+    const existingUser = await db.user.findUnique({
+      where: { email: member.email },
+      select: { id: true },
+    })
+
     const returnUrl = `/invite/${token}`
-    redirect(`/login?next=${encodeURIComponent(returnUrl)}`)
+
+    if (existingUser) {
+      // Já tem conta → login normal
+      redirect(`/login?next=${encodeURIComponent(returnUrl)}`)
+    }
+
+    // Não tem conta → registro simplificado via invite
+    redirect(`/invite/${token}/register`)
   }
 
   // 3. Renderizar Client Component para processar o aceite
