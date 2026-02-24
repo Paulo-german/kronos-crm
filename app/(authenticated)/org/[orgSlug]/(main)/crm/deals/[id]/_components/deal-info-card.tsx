@@ -97,7 +97,12 @@ const DealInfoCard = ({ deal, onTabChange }: DealInfoCardProps) => {
               >
                 <Check className="h-4 w-4 text-kronos-green" />
               </Button>
-              <Button size="icon" variant="ghost" onClick={handleCancelTitle}>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={handleCancelTitle}
+                disabled={isPending}
+              >
                 <X className="h-4 w-4 text-kronos-red" />
               </Button>
             </div>
