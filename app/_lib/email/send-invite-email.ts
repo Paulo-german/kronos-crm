@@ -18,7 +18,7 @@ export async function sendInviteEmail({
     : `Você foi convidado para ${orgName}`
 
   const { error } = await resend.emails.send({
-    from: 'Kronos CRM <no-reply@kronoshub.com.br>',
+    from: 'Kronos Hub <no-reply@kronoshub.com.br>',
     to,
     subject,
     html: `
@@ -28,12 +28,12 @@ export async function sendInviteEmail({
         </h2>
         <p style="color: #333; font-size: 16px; line-height: 1.5;">
           ${isReminder ? 'Este é um lembrete: você' : 'Você'} foi convidado para participar da organização
-          <strong>${orgName}</strong> no Kronos CRM.
+          <strong>${orgName}</strong> no Kronos Hub.
         </p>
         <p style="margin: 24px 0;">
           <a
             href="${inviteLink}"
-            style="display: inline-block; background-color: #111; color: #fff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 500;"
+            style="display: inline-block; background-color: #8257e5; color: #fff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 500;"
           >
             Aceitar convite
           </a>
@@ -42,7 +42,7 @@ export async function sendInviteEmail({
           Se você não esperava este convite, pode ignorar este e-mail com segurança.
         </p>
         <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
-        <p style="color: #999; font-size: 12px;">Kronos CRM</p>
+        <p style="color: #999; font-size: 12px;">Kronos Hub</p>
       </div>
     `,
   })
