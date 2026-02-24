@@ -7,8 +7,8 @@ import { toast } from 'sonner'
 import {
   ArrowLeft,
   CircleIcon,
-  ThumbsUp,
-  ThumbsDown,
+  CircleCheck,
+  CircleX,
   RotateCcw,
   UserCog,
 } from 'lucide-react'
@@ -305,16 +305,16 @@ const DealDetailClient = ({
                   onClick={() => setIsLostOpen(true)}
                   disabled={isPending}
                 >
-                  <ThumbsDown className="h-4 w-4" />
+                  <CircleX className="h-4 w-4" />
                   Marcar perda
                 </Button>
                 <Button
                   variant="ghost"
-                  className="bg-primary text-primary-dark hover:bg-primary/90 hover:text-primary-dark"
+                  className="text-primary-dark hover:text-primary-dark bg-primary hover:bg-primary/90"
                   onClick={handleMarkWon}
                   disabled={isPending}
                 >
-                  <ThumbsUp className="h-4 w-4" />
+                  <CircleCheck className="h-4 w-4" />
                   Marcar venda
                 </Button>
               </>
