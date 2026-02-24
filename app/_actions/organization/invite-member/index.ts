@@ -6,6 +6,7 @@ import { db } from '@/_lib/prisma'
 import { randomUUID } from 'crypto'
 import { revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission, requireQuota } from '@/_lib/rbac'
+import { sendInviteEmail } from '@/_lib/email/send-invite-email'
 
 export const inviteMember = orgActionClient
   .schema(inviteMemberSchema)
@@ -57,26 +58,20 @@ export const inviteMember = orgActionClient
       },
     })
 
-    // 5. "Enviar" E-mail (Simulação)
-    // Em produção, aqui entraria o Resend/SendGrid
+    // 5. Enviar e-mail de convite
     const appUrl = process.env.NEXT_PUBLIC_APP_URL
     if (!appUrl) throw new Error('NEXT_PUBLIC_APP_URL não está configurado.')
 
-    const magicLink = `${appUrl}/invite/${invitationToken}`
+    const organization = await db.organization.findUniqueOrThrow({
+      where: { id: ctx.orgId },
+      select: { name: true },
+    })
 
-    if (process.env.NODE_ENV === 'development') {
-      console.log('-------------------------------------------------------')
-      console.log('📧 SIMULAÇÃO DE ENVIO DE E-MAIL (CONVITE)')
-      console.log(`PARA: ${data.email}`)
-      console.log(`DE: Kronos CRM <nao-responda@kronos.com.br>`)
-      console.log(`ASSUNTO: Você foi convidado para colaborar no Kronos CRM`)
-      console.log('---')
-      console.log('Olá,')
-      console.log('Você foi convidado para participar de uma organização.')
-      console.log('Clique no link abaixo para aceitar:')
-      console.log(magicLink)
-      console.log('-------------------------------------------------------')
-    }
+    await sendInviteEmail({
+      to: data.email,
+      orgName: organization.name,
+      inviteLink: `${appUrl}/invite/${invitationToken}`,
+    })
 
     revalidateTag(`org-members:${ctx.orgId}`)
 

@@ -4,7 +4,9 @@ import { orgActionClient } from '@/_lib/safe-action'
 import { resendInviteSchema } from './schema'
 import { db } from '@/_lib/prisma'
 import { randomUUID } from 'crypto'
+import { revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
+import { sendInviteEmail } from '@/_lib/email/send-invite-email'
 
 export const resendInvite = orgActionClient
   .schema(resendInviteSchema)
@@ -38,23 +40,18 @@ export const resendInvite = orgActionClient
       data: { invitationToken: newToken },
     })
 
-    // "Enviar" E-mail (Simulação)
+    // Enviar e-mail de lembrete
     const appUrl = process.env.NEXT_PUBLIC_APP_URL
     if (!appUrl) throw new Error('NEXT_PUBLIC_APP_URL não está configurado.')
 
-    const magicLink = `${appUrl}/invite/${newToken}`
+    await sendInviteEmail({
+      to: member.email,
+      orgName: member.organization.name,
+      inviteLink: `${appUrl}/invite/${newToken}`,
+      isReminder: true,
+    })
 
-    console.log('-------------------------------------------------------')
-    console.log('📧 SIMULAÇÃO DE REENVIO DE E-MAIL (CONVITE)')
-    console.log(`PARA: ${member.email}`)
-    console.log(`DE: Kronos CRM <nao-responda@kronos.com.br>`)
-    console.log(`ASSUNTO: Lembrete: Você foi convidado para ${member.organization.name}`)
-    console.log('---')
-    console.log('Olá,')
-    console.log('Este é um lembrete do seu convite para participar da organização.')
-    console.log('Clique no link abaixo para aceitar:')
-    console.log(magicLink)
-    console.log('-------------------------------------------------------')
+    revalidateTag(`org-members:${ctx.orgId}`)
 
     return { success: true }
   })
