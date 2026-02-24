@@ -1,5 +1,4 @@
 import { cookies } from 'next/headers'
-import { Toaster } from '@/_components/ui/sonner'
 import { TooltipProvider } from '@/_components/ui/tooltip'
 import { SidebarProvider } from '@/_providers/sidebar-provider'
 
@@ -16,7 +15,6 @@ const AuthenticatedLayout = async ({ children }: AuthenticatedLayoutProps) => {
     <SidebarProvider defaultCollapsed={defaultCollapsed}>
       <TooltipProvider>
         {children}
-        <Toaster position="bottom-right" />
       </TooltipProvider>
     </SidebarProvider>
   )

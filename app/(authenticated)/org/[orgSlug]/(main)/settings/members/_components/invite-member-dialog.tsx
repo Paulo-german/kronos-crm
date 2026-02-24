@@ -26,7 +26,7 @@ const InviteMemberDialog = ({ withinQuota = true }: InviteMemberDialogProps) => 
             </Button>
           </span>
         </TooltipTrigger>
-        <TooltipContent>Limite atingido. Faca upgrade do plano.</TooltipContent>
+        <TooltipContent>Limite atingido. Faça upgrade do plano.</TooltipContent>
       </Tooltip>
     )
   }

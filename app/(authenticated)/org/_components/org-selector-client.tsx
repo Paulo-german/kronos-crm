@@ -3,8 +3,11 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAction } from 'next-safe-action/hooks'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
 import { toast } from 'sonner'
-import { Building2, Plus, ArrowRight } from 'lucide-react'
+import { Building2, Plus, ArrowRight, Loader2 } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import {
@@ -15,9 +18,19 @@ import {
   SheetTrigger,
 } from '@/_components/ui/sheet'
 import { Input } from '@/_components/ui/input'
-import { Label } from '@/_components/ui/label'
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/_components/ui/form'
 import { createOrganization } from '@/_actions/organization/create-organization'
+import { createOrganizationSchema } from '@/_actions/organization/create-organization/schema'
 import type { MemberRole } from '@prisma/client'
+
+type CreateOrganizationSchema = z.infer<typeof createOrganizationSchema>
 
 interface Organization {
   id: string
@@ -32,13 +45,21 @@ interface OrgSelectorClientProps {
 
 export function OrgSelectorClient({ organizations }: OrgSelectorClientProps) {
   const router = useRouter()
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [newOrgName, setNewOrgName] = useState('')
+  const [isSheetOpen, setIsSheetOpen] = useState(false)
+
+  const form = useForm<CreateOrganizationSchema>({
+    resolver: zodResolver(createOrganizationSchema),
+    defaultValues: {
+      name: '',
+    },
+  })
 
   const { execute, isPending } = useAction(createOrganization, {
     onSuccess: ({ data }) => {
       if (data?.slug) {
         toast.success('Organização criada com sucesso!')
+        setIsSheetOpen(false)
+        form.reset()
         router.push(`/org/${data.slug}/dashboard`)
       }
     },
@@ -47,12 +68,8 @@ export function OrgSelectorClient({ organizations }: OrgSelectorClientProps) {
     },
   })
 
-  const handleCreateOrg = () => {
-    if (!newOrgName.trim()) {
-      toast.error('Digite um nome para a organização.')
-      return
-    }
-    execute({ name: newOrgName.trim() })
+  const onSubmit = (data: CreateOrganizationSchema) => {
+    execute(data)
   }
 
   const handleSelectOrg = (slug: string) => {
@@ -90,7 +107,7 @@ export function OrgSelectorClient({ organizations }: OrgSelectorClientProps) {
           </div>
         )}
 
-        <Sheet open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
           <SheetTrigger asChild>
             <Button className="w-full" variant="default">
               <Plus className="mr-2 h-4 w-4" />
@@ -101,27 +118,40 @@ export function OrgSelectorClient({ organizations }: OrgSelectorClientProps) {
             <SheetHeader>
               <SheetTitle>Criar Organização</SheetTitle>
             </SheetHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="org-name">Nome da Organização</Label>
-                <Input
-                  id="org-name"
-                  placeholder="Ex: Minha Empresa"
-                  value={newOrgName}
-                  onChange={(e) => setNewOrgName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleCreateOrg()
-                  }}
-                />
-              </div>
-              <Button
-                className="w-full"
-                onClick={handleCreateOrg}
-                disabled={isPending}
+            <Form {...form}>
+              <form
+                className="space-y-4 py-4"
+                onSubmit={form.handleSubmit(onSubmit)}
               >
-                {isPending ? 'Criando...' : 'Criar Organização'}
-              </Button>
-            </div>
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nome da Organização</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ex: Minha Empresa" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button
+                  className="w-full"
+                  type="submit"
+                  disabled={isPending}
+                >
+                  {isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Criando...
+                    </>
+                  ) : (
+                    'Criar Organização'
+                  )}
+                </Button>
+              </form>
+            </Form>
           </SheetContent>
         </Sheet>
       </CardContent>

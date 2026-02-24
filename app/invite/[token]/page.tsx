@@ -39,6 +39,23 @@ export default async function InvitePage({ params }: InvitePageProps) {
     )
   }
 
+  // Verificar expiração (7 dias a partir do último envio)
+  const INVITE_EXPIRATION_DAYS = 7
+  const expirationDate = new Date()
+  expirationDate.setDate(expirationDate.getDate() - INVITE_EXPIRATION_DAYS)
+
+  if (member.updatedAt < expirationDate) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center p-4">
+        <h1 className="text-2xl font-bold text-red-500">Convite Expirado</h1>
+        <p className="mt-2 text-muted-foreground">
+          Este convite expirou. Peça um novo convite ao administrador da
+          organização.
+        </p>
+      </div>
+    )
+  }
+
   // 2. Verificar autenticação
   const supabase = await createClient()
   const {

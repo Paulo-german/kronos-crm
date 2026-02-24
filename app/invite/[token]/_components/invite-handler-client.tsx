@@ -6,6 +6,7 @@ import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react'
 import { acceptInvite } from '@/_actions/organization/accept-invite'
+import { createClient } from '@/_lib/supabase/client'
 import { Button } from '@/_components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 
@@ -61,7 +62,11 @@ export function InviteHandlerClient({
             <Button
               variant="outline"
               className="w-full"
-              onClick={() => router.push('/api/auth/signout')} // Depende de como é feito o logout no projeto, assumindo rota padrão ou redirect manual
+              onClick={async () => {
+                const supabase = createClient()
+                await supabase.auth.signOut()
+                router.push(`/login?next=${encodeURIComponent(`/invite/${token}`)}`)
+              }}
             >
               Sair e entrar com outra conta
             </Button>

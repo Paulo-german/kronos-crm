@@ -32,7 +32,7 @@ export const acceptInvite = authActionClient
     const expirationDate = new Date()
     expirationDate.setDate(expirationDate.getDate() - INVITE_EXPIRATION_DAYS)
 
-    if (member.createdAt < expirationDate) {
+    if (member.updatedAt < expirationDate) {
       throw new Error(
         'Este convite expirou. Peça um novo convite ao administrador.',
       )

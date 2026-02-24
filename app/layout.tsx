@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Plus_Jakarta_Sans, Martian_Mono } from 'next/font/google'
 import './globals.css'
 import { ThemeProvider } from '@/_components/theme-provider'
+import { Toaster } from '@/_components/ui/sonner'
 import { TooltipProvider } from './_components/ui/tooltip'
 
 const jakarta = Plus_Jakarta_Sans({
@@ -45,6 +46,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <TooltipProvider delayDuration={500}>{children}</TooltipProvider>
+          <Toaster position="bottom-right" />
         </ThemeProvider>
       </body>
     </html>

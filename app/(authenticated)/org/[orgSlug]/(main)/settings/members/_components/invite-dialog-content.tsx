@@ -63,7 +63,6 @@ const InviteMemberDialogContent = ({
   })
 
   const onSubmit = (data: InviteMemberSchema) => {
-    console.log(data)
     executeCreateMember(data)
   }
 
