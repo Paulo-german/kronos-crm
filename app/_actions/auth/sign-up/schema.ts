@@ -16,6 +16,7 @@ export const signUpSchema = z.object({
       schema.refine((val) => rule.regex.test(val), { message: rule.label }),
     z.string(),
   ),
+  captchaToken: z.string().min(1, 'Token de verificação é obrigatório'),
 })
 
 export type SignUpSchema = z.infer<typeof signUpSchema>

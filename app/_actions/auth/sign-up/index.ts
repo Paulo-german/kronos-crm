@@ -5,16 +5,20 @@ import { actionClient } from '@/_lib/safe-action'
 import { SignUpSchema, signUpSchema } from './schema'
 import prisma from '@/_lib/prisma'
 import { redirect } from 'next/navigation'
+import { verifyRecaptchaToken } from '@/_lib/recaptcha'
 
 export const signUp = actionClient
   .schema(signUpSchema)
   .action(
     async ({
-      parsedInput: { fullName, email, password },
+      parsedInput: { fullName, email, password, captchaToken },
     }: {
       parsedInput: SignUpSchema
     }) => {
-      // 0. Verifica se já existe usuário com esse email
+      // 0. Verifica reCAPTCHA antes de qualquer operação
+      await verifyRecaptchaToken(captchaToken)
+
+      // 1. Verifica se já existe usuário com esse email
       const existingUser = await prisma.user.findUnique({
         where: { email },
       })
