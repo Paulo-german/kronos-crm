@@ -1,20 +1,19 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import type { DealDetailsDto } from '@/_data-access/deal/get-deal-details'
-import type { ContactDto } from '@/_data-access/contact/get-contacts'
 import DealInfoCard from './deal-info-card'
-import ContactWidget from './contact-widget'
 import CompanyOwnerWidget from './company-owner-widget'
 import NotesSection from './notes-section'
 import ActivityTimeline from './activity-timeline'
 
 interface TabSummaryProps {
   deal: DealDetailsDto
-  contacts: ContactDto[]
+  contactsSlot: ReactNode
   onTabChange?: (tab: string) => void
 }
 
-const TabSummary = ({ deal, contacts, onTabChange }: TabSummaryProps) => {
+const TabSummary = ({ deal, contactsSlot, onTabChange }: TabSummaryProps) => {
   return (
     <div className="space-y-6">
       {/* Grid Principal: 35% | 65% */}
@@ -22,7 +21,7 @@ const TabSummary = ({ deal, contacts, onTabChange }: TabSummaryProps) => {
         {/* Coluna Esquerda: Contexto */}
         <div className="space-y-4">
           <DealInfoCard deal={deal} onTabChange={onTabChange} />
-          <ContactWidget deal={deal} contacts={contacts} />
+          {contactsSlot}
           <CompanyOwnerWidget deal={deal} />
         </div>
 
