@@ -22,6 +22,8 @@ async function seedFeaturesAndPlans() {
     { key: 'crm.max_products', name: 'Produtos', type: 'STATIC' as const, valueType: 'NUMBER' as const },
     { key: 'crm.max_members', name: 'Membros', type: 'STATIC' as const, valueType: 'NUMBER' as const },
     { key: 'ai.messages_quota', name: 'Quota de IA', type: 'METERED' as const, valueType: 'NUMBER' as const },
+    { key: 'ai.max_agents', name: 'Agentes IA', type: 'STATIC' as const, valueType: 'NUMBER' as const },
+    { key: 'ai.max_knowledge_files', name: 'Arquivos de Conhecimento', type: 'STATIC' as const, valueType: 'NUMBER' as const },
   ]
 
   const featureRecords: Record<string, { id: string }> = {}
@@ -106,6 +108,18 @@ async function seedFeaturesAndPlans() {
     { planSlug: 'enterprise', featureKey: 'crm.max_products', valueNumber: 999999 },
     { planSlug: 'enterprise', featureKey: 'crm.max_members', valueNumber: 12 },
     { planSlug: 'enterprise', featureKey: 'ai.messages_quota', valueNumber: 2500 },
+
+    // Agentes IA
+    { planSlug: 'light', featureKey: 'ai.max_agents', valueNumber: 1 },
+    { planSlug: 'essential', featureKey: 'ai.max_agents', valueNumber: 2 },
+    { planSlug: 'scale', featureKey: 'ai.max_agents', valueNumber: 5 },
+    { planSlug: 'enterprise', featureKey: 'ai.max_agents', valueNumber: 10 },
+
+    // Arquivos de Conhecimento (RAG)
+    { planSlug: 'light', featureKey: 'ai.max_knowledge_files', valueNumber: 5 },
+    { planSlug: 'essential', featureKey: 'ai.max_knowledge_files', valueNumber: 20 },
+    { planSlug: 'scale', featureKey: 'ai.max_knowledge_files', valueNumber: 50 },
+    { planSlug: 'enterprise', featureKey: 'ai.max_knowledge_files', valueNumber: 200 },
   ]
 
   // Resolver IDs do DB para os limites

@@ -4,7 +4,7 @@ import type { Plan } from '@prisma/client'
 import { db } from '@/_lib/prisma'
 
 // Mapeamento de entidade RBAC para feature key no catálogo
-export type QuotaEntity = 'contact' | 'deal' | 'product' | 'member'
+export type QuotaEntity = 'contact' | 'deal' | 'product' | 'member' | 'agent'
 
 // Slug do plano efetivo (usado pela UI)
 export type PlanType = 'light' | 'essential' | 'scale' | 'enterprise'
@@ -14,6 +14,7 @@ const ENTITY_FEATURE_MAP: Record<QuotaEntity, string> = {
   deal: 'crm.max_deals',
   product: 'crm.max_products',
   member: 'crm.max_members',
+  agent: 'ai.max_agents',
 }
 
 /**
@@ -93,6 +94,7 @@ const ENTITY_COUNT_TAGS: Record<QuotaEntity, (orgId: string) => string[]> = {
   deal: (orgId) => [`deals:${orgId}`],
   product: (orgId) => [`products:${orgId}`],
   member: (orgId) => [`org-members:${orgId}`],
+  agent: (orgId) => [`agents:${orgId}`],
 }
 
 /**
@@ -114,6 +116,8 @@ async function countRecords(orgId: string, entity: QuotaEntity): Promise<number>
           return db.member.count({
             where: { organizationId: orgId, status: { in: ['ACCEPTED', 'PENDING'] } },
           })
+        case 'agent':
+          return db.agent.count({ where: { organizationId: orgId } })
         default:
           return 0
       }
@@ -187,6 +191,7 @@ export async function requireQuota(orgId: string, entity: QuotaEntity): Promise<
       deal: 'negócios',
       product: 'produtos',
       member: 'membros',
+      agent: 'agentes IA',
     }
 
     throw new Error(

@@ -132,6 +132,25 @@ enum DealStatus {
   PAUSED
 }
 
+enum KnowledgeFileStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum AgentMessageRole {
+  user
+  assistant
+  system
+  tool
+}
+
+enum AgentConversationChannel {
+  WHATSAPP
+  WEB_CHAT
+}
+
 // -----------------------------------------------------------------------------
 // MODELS
 // -----------------------------------------------------------------------------
@@ -204,6 +223,8 @@ model Organization {
   lostReasons   DealLostReason[]
   creditWallet  CreditWallet?
   aiUsage       AiUsage[]
+  agents             Agent[]
+  agentConversations AgentConversation[]
 
   @@map("organizations")
 }
@@ -298,7 +319,8 @@ model Contact {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  deals DealContact[]
+  deals              DealContact[]
+  agentConversations AgentConversation[]
 
   @@index([organizationId, assignedTo, createdAt(sort: Desc)])
   @@index([organizationId, name])
@@ -368,10 +390,11 @@ model Deal {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  dealProducts DealProduct[]
-  tasks        Task[]
-  activities   Activity[]
-  appointments Appointment[]
+  dealProducts       DealProduct[]
+  tasks              Task[]
+  activities         Activity[]
+  appointments       Appointment[]
+  agentConversations AgentConversation[]
 
   @@index([organizationId, pipelineStageId, assignedTo])
   @@index([organizationId, pipelineStageId, createdAt(sort: Desc)])
@@ -706,4 +729,154 @@ model PlanModule {
   @@unique([planId, moduleId])
   @@index([moduleId])
   @@map("plan_modules")
+}
+
+// -----------------------------------------------------------------------------
+// AI AGENT MODELS
+// -----------------------------------------------------------------------------
+
+model Agent {
+  id String @id @default(uuid())
+
+  organizationId String       @map("organization_id")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  name         String
+  systemPrompt String  @map("system_prompt") @db.Text
+  isActive     Boolean @default(true) @map("is_active")
+  pipelineIds  String[] @map("pipeline_ids") @db.Uuid
+
+  // Tools habilitadas para este agente (ex: ["search_knowledge", "move_deal", "update_contact"])
+  toolsEnabled String[] @default(["search_knowledge", "move_deal", "update_contact", "create_task", "hand_off_to_human"]) @map("tools_enabled")
+
+  // Conexao Evolution API
+  evolutionInstanceName String? @map("evolution_instance_name")
+  evolutionInstanceId   String? @map("evolution_instance_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  steps           AgentStep[]
+  knowledgeFiles  AgentKnowledgeFile[]
+  knowledgeChunks AgentKnowledgeChunk[]
+  conversations   AgentConversation[]
+
+  @@index([organizationId, isActive])
+  @@map("agents")
+}
+
+model AgentStep {
+  id String @id @default(uuid())
+
+  agentId String @map("agent_id")
+  agent   Agent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  name                  String
+  objective             String   @db.Text
+  allowedActions        String[] @map("allowed_actions")
+  activationRequirement String?  @map("activation_requirement") @db.Text
+  order                 Int
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([agentId, order])
+  @@map("agent_steps")
+}
+
+model AgentKnowledgeFile {
+  id String @id @default(uuid())
+
+  agentId String @map("agent_id")
+  agent   Agent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  fileName    String              @map("file_name")
+  fileSize    Int                 @map("file_size")
+  mimeType    String              @map("mime_type")
+  b2Url       String              @map("b2_url")
+  status      KnowledgeFileStatus @default(PENDING)
+  chunkCount  Int                 @default(0) @map("chunk_count")
+  errorReason String?             @map("error_reason")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  chunks AgentKnowledgeChunk[]
+
+  @@index([agentId, status])
+  @@map("agent_knowledge_files")
+}
+
+model AgentKnowledgeChunk {
+  id String @id @default(uuid())
+
+  fileId String             @map("file_id")
+  file   AgentKnowledgeFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  agentId String @map("agent_id")
+  agent   Agent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  content   String                      @db.Text
+  embedding Unsupported("vector(1536)")
+  metadata  Json?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([fileId])
+  @@index([agentId])
+  @@map("agent_knowledge_chunks")
+}
+
+model AgentConversation {
+  id String @id @default(uuid())
+
+  agentId String @map("agent_id")
+  agent   Agent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  organizationId String       @map("organization_id")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  contactId String  @map("contact_id")
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  dealId String? @map("deal_id")
+  deal   Deal?   @relation(fields: [dealId], references: [id], onDelete: SetNull)
+
+  channel          AgentConversationChannel @default(WHATSAPP)
+  aiPaused         Boolean @default(false) @map("ai_paused")
+  remoteJid        String? @map("remote_jid")
+  summary          String? @db.Text
+  currentStepOrder Int     @default(0) @map("current_step_order")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  messages AgentMessage[]
+
+  @@unique([agentId, contactId, channel])
+  @@index([organizationId, agentId])
+  @@index([contactId])
+  @@index([remoteJid, agentId])
+  @@map("agent_conversations")
+}
+
+model AgentMessage {
+  id String @id @default(uuid())
+
+  conversationId String            @map("conversation_id")
+  conversation   AgentConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  role    AgentMessageRole
+  content String           @db.Text
+
+  providerMessageId String? @unique @map("provider_message_id")
+  isArchived        Boolean @default(false) @map("is_archived")
+  inputTokens       Int?    @map("input_tokens")
+  outputTokens      Int?    @map("output_tokens")
+  metadata          Json?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([conversationId, isArchived, createdAt(sort: Desc)])
+  @@map("agent_messages")
 }
