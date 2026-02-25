@@ -741,10 +741,12 @@ model Agent {
   organizationId String       @map("organization_id")
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  name         String
-  systemPrompt String  @map("system_prompt") @db.Text
-  isActive     Boolean @default(true) @map("is_active")
-  pipelineIds  String[] @map("pipeline_ids") @db.Uuid
+  name            String
+  systemPrompt    String  @map("system_prompt") @db.Text
+  isActive        Boolean @default(true) @map("is_active")
+  modelId         String  @default("anthropic/claude-sonnet-4") @map("model_id")
+  debounceSeconds Int     @default(3) @map("debounce_seconds")
+  pipelineIds     String[] @map("pipeline_ids") @db.Uuid
 
   // Tools habilitadas para este agente (ex: ["search_knowledge", "move_deal", "update_contact"])
   toolsEnabled String[] @default(["search_knowledge", "move_deal", "update_contact", "create_task", "hand_off_to_human"]) @map("tools_enabled")
