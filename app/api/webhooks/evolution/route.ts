@@ -8,20 +8,12 @@ import type { processAgentMessage } from '@/../../trigger/process-agent-message'
 import type { EvolutionWebhookPayload } from '@/_lib/evolution/types'
 
 export async function POST(req: Request) {
-  // DEBUG: log de todos os headers recebidos (remover após debug)
-  const allHeaders: Record<string, string> = {}
-  req.headers.forEach((value, key) => {
-    allHeaders[key] = key.toLowerCase().includes('auth') || key.toLowerCase().includes('api') || key.toLowerCase().includes('secret')
-      ? value
-      : value.slice(0, 50)
-  })
-  console.log('[evolution-webhook] Headers recebidos:', JSON.stringify(allHeaders, null, 2))
-  console.log('[evolution-webhook] EVOLUTION_WEBHOOK_SECRET configurado:', !!process.env.EVOLUTION_WEBHOOK_SECRET)
-
-  // 1. Validação de assinatura (Evolution v2 envia no header "apikey")
-  const webhookAuth = req.headers.get('apikey')
-  if (webhookAuth !== process.env.EVOLUTION_WEBHOOK_SECRET) {
-    console.log('[evolution-webhook] AUTH FAILED — header apikey:', webhookAuth)
+  // 1. Validação de assinatura via query param
+  // Evolution v2 global webhook não envia headers de autenticação,
+  // então validamos pelo secret na URL: ?secret=xxx
+  const { searchParams } = new URL(req.url)
+  const secret = searchParams.get('secret')
+  if (secret !== process.env.EVOLUTION_WEBHOOK_SECRET) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
