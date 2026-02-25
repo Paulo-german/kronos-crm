@@ -20,3 +20,6 @@ export const signUpSchema = z.object({
 })
 
 export type SignUpSchema = z.infer<typeof signUpSchema>
+
+export const signUpFormSchema = signUpSchema.omit({ captchaToken: true })
+export type SignUpFormSchema = z.infer<typeof signUpFormSchema>

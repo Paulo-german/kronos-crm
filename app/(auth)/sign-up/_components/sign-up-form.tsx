@@ -14,7 +14,10 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Input } from '@/_components/ui/input'
 import { Button } from '@/_components/ui/button'
 import InputPassword from '../../_components/input-password'
-import { signUpSchema, SignUpSchema } from '@/_actions/auth/sign-up/schema'
+import {
+  signUpFormSchema,
+  SignUpFormSchema,
+} from '@/_actions/auth/sign-up/schema'
 import { useAction } from 'next-safe-action/hooks'
 import { signUp } from '@/_actions/auth/sign-up'
 import { PasswordChecklist } from './password-checklist'
@@ -25,8 +28,8 @@ import { useGoogleReCaptcha } from 'react-google-recaptcha-v3'
 const SignUpForm = () => {
   const { executeRecaptcha } = useGoogleReCaptcha()
 
-  const form = useForm<SignUpSchema>({
-    resolver: zodResolver(signUpSchema),
+  const form = useForm<SignUpFormSchema>({
+    resolver: zodResolver(signUpFormSchema),
     defaultValues: {
       fullName: '',
       email: '',
@@ -42,7 +45,7 @@ const SignUpForm = () => {
     },
   })
 
-  const onSubmit = async (data: SignUpSchema) => {
+  const onSubmit = async (data: SignUpFormSchema) => {
     if (!executeRecaptcha) {
       toast.error('reCAPTCHA não carregado. Tente novamente.')
       return
