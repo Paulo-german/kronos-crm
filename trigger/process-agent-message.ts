@@ -4,13 +4,17 @@ import { getModel } from '@/_lib/ai'
 import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
 import { checkBalance, debitCredits } from '@/_lib/billing/credit-utils'
-import { sendWhatsAppMessage } from '@/_lib/evolution/send-message'
+import { sendWhatsAppMessage, sendPresence } from '@/_lib/evolution/send-message'
+import { buildSystemPrompt } from './build-system-prompt'
 import type { NormalizedWhatsAppMessage } from '@/_lib/evolution/types'
 
 const NO_CREDITS_MESSAGE =
   'Desculpe, no momento não consigo responder pois os créditos de IA da empresa foram esgotados. Por favor, entre em contato com o administrador.'
 
 const MESSAGE_HISTORY_LIMIT = 50
+const SUMMARIZATION_THRESHOLD = 12
+const KEEP_RECENT_MESSAGES = 3
+const SUMMARIZATION_MODEL = 'openai/gpt-4o-mini'
 
 export interface ProcessAgentMessagePayload {
   message: NormalizedWhatsAppMessage
@@ -34,9 +38,10 @@ export const processAgentMessage = task({
       debounceTimestamp,
     } = payload
 
+    const taskStartMs = Date.now()
+
     // -----------------------------------------------------------------------
-    // 1. Debounce check — se uma mensagem mais recente já resetou o timer,
-    //    este task deve sair silenciosamente (o task mais recente vai processar)
+    // 1. Debounce check
     // -----------------------------------------------------------------------
     try {
       const currentTimestamp = await redis.get(`debounce:${conversationId}`)
@@ -49,7 +54,6 @@ export const processAgentMessage = task({
         return { skipped: true, reason: 'debounce' }
       }
     } catch (error) {
-      // Redis failure = prosseguir (melhor duplicar resposta do que não responder)
       logger.warn('Redis debounce check failed, continuing', { error })
     }
 
@@ -71,54 +75,38 @@ export const processAgentMessage = task({
     }
 
     // -----------------------------------------------------------------------
-    // 3. Carregar contexto — Agent + histórico de mensagens + conversa
+    // 3. Context loading — prompt dinâmico + histórico
     // -----------------------------------------------------------------------
-    const agent = await db.agent.findUniqueOrThrow({
-      where: { id: agentId },
-      select: {
-        systemPrompt: true,
-        modelId: true,
-      },
-    })
-
-    const conversation = await db.agentConversation.findUniqueOrThrow({
-      where: { id: conversationId },
-      select: {
-        summary: true,
-        currentStepOrder: true,
-      },
-    })
-
-    const messageHistory = await db.agentMessage.findMany({
-      where: {
-        conversationId,
-        isArchived: false,
-      },
-      orderBy: { createdAt: 'asc' },
-      take: MESSAGE_HISTORY_LIMIT,
-      select: {
-        role: true,
-        content: true,
-      },
-    })
+    const [promptContext, messageHistory] = await Promise.all([
+      buildSystemPrompt(agentId, conversationId),
+      db.agentMessage.findMany({
+        where: {
+          conversationId,
+          isArchived: false,
+        },
+        orderBy: { createdAt: 'asc' },
+        take: MESSAGE_HISTORY_LIMIT,
+        select: {
+          role: true,
+          content: true,
+        },
+      }),
+    ])
 
     // -----------------------------------------------------------------------
-    // 4. Montar mensagens para a LLM
+    // 4. Build LLM messages (prompt dinâmico + summary + history)
     // -----------------------------------------------------------------------
     const llmMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = []
 
-    // System prompt do agente
-    llmMessages.push({ role: 'system', content: agent.systemPrompt })
+    llmMessages.push({ role: 'system', content: promptContext.systemPrompt })
 
-    // Resumo da conversa anterior (se houver)
-    if (conversation.summary) {
+    if (promptContext.summary) {
       llmMessages.push({
         role: 'system',
-        content: `Resumo da conversa anterior:\n${conversation.summary}`,
+        content: `Resumo da conversa anterior:\n${promptContext.summary}`,
       })
     }
 
-    // Histórico de mensagens (user + assistant)
     for (const msg of messageHistory) {
       if (msg.role === 'user' || msg.role === 'assistant') {
         llmMessages.push({
@@ -129,29 +117,74 @@ export const processAgentMessage = task({
     }
 
     // -----------------------------------------------------------------------
-    // 5. Chamar LLM via Vercel AI SDK
+    // 5. Typing presence — "digitando..." antes do LLM
+    // -----------------------------------------------------------------------
+    await sendPresence(message.instanceName, message.remoteJid, 'composing')
+
+    // -----------------------------------------------------------------------
+    // 6. Call LLM (com logging de duração)
     // -----------------------------------------------------------------------
     logger.info('Calling LLM', {
-      model: agent.modelId,
+      model: promptContext.modelId,
       messageCount: llmMessages.length,
+      systemPromptEstimatedTokens: promptContext.estimatedTokens,
+      historyMessageCount: messageHistory.length,
+      contactName: promptContext.contactName,
       conversationId,
     })
 
+    const llmStartMs = Date.now()
+
     const result = await generateText({
-      model: getModel(agent.modelId),
+      model: getModel(promptContext.modelId),
       messages: llmMessages,
       maxOutputTokens: 1024,
     })
 
+    const llmDurationMs = Date.now() - llmStartMs
+
     const responseText = result.text
 
     if (!responseText) {
-      logger.warn('LLM returned empty response', { conversationId })
+      logger.warn('LLM returned empty response', { conversationId, llmDurationMs })
       return { skipped: true, reason: 'empty_response' }
     }
 
     // -----------------------------------------------------------------------
-    // 6. Salvar resposta no banco
+    // 7. Double-check anti-atropelamento — re-query aiPaused
+    // -----------------------------------------------------------------------
+    const freshConversation = await db.agentConversation.findUnique({
+      where: { id: conversationId },
+      select: { aiPaused: true },
+    })
+
+    if (freshConversation?.aiPaused) {
+      // Salva resposta no banco mas NÃO envia no WhatsApp
+      await db.agentMessage.create({
+        data: {
+          conversationId,
+          role: 'assistant',
+          content: responseText,
+          inputTokens: result.usage?.inputTokens ?? null,
+          outputTokens: result.usage?.outputTokens ?? null,
+          metadata: {
+            model: promptContext.modelId,
+            skippedReason: 'ai_paused_during_generation',
+            llmDurationMs,
+          },
+        },
+      })
+
+      logger.info('AI paused during generation — response saved but NOT sent', {
+        conversationId,
+        llmDurationMs,
+      })
+
+      return { skipped: true, reason: 'ai_paused_during_generation' }
+    }
+
+    // -----------------------------------------------------------------------
+    // 8. Salvar resposta no banco
     // -----------------------------------------------------------------------
     await db.agentMessage.create({
       data: {
@@ -161,20 +194,21 @@ export const processAgentMessage = task({
         inputTokens: result.usage?.inputTokens ?? null,
         outputTokens: result.usage?.outputTokens ?? null,
         metadata: {
-          model: agent.modelId,
+          model: promptContext.modelId,
+          llmDurationMs,
         },
       },
     })
 
     // -----------------------------------------------------------------------
-    // 7. Debitar créditos
+    // 9. Debit credits
     // -----------------------------------------------------------------------
     const debited = await debitCredits(organizationId, 1, 'Mensagem processada pelo agente', {
       agentId,
       conversationId,
       inputTokens: result.usage?.inputTokens,
       outputTokens: result.usage?.outputTokens,
-      model: agent.modelId,
+      model: promptContext.modelId,
     })
 
     if (!debited) {
@@ -184,7 +218,7 @@ export const processAgentMessage = task({
     }
 
     // -----------------------------------------------------------------------
-    // 8. Enviar resposta no WhatsApp
+    // 10. Send WhatsApp message
     // -----------------------------------------------------------------------
     await sendWhatsAppMessage(
       message.instanceName,
@@ -192,13 +226,113 @@ export const processAgentMessage = task({
       responseText,
     )
 
+    // -----------------------------------------------------------------------
+    // 11. Memory compression — se >= threshold msgs, summarizar e arquivar
+    // -----------------------------------------------------------------------
+    await compressMemory(conversationId)
+
+    // -----------------------------------------------------------------------
+    // 12. Logging final
+    // -----------------------------------------------------------------------
+    const totalDurationMs = Date.now() - taskStartMs
+
     logger.info('Message processed successfully', {
       conversationId,
       agentId,
       inputTokens: result.usage?.inputTokens,
       outputTokens: result.usage?.outputTokens,
+      llmDurationMs,
+      totalDurationMs,
+      systemPromptEstimatedTokens: promptContext.estimatedTokens,
+      historyMessageCount: messageHistory.length,
     })
 
     return { success: true }
   },
 })
+
+// ---------------------------------------------------------------------------
+// Memory Compression
+// ---------------------------------------------------------------------------
+
+async function compressMemory(conversationId: string): Promise<void> {
+  try {
+    const totalMessages = await db.agentMessage.count({
+      where: { conversationId, isArchived: false },
+    })
+
+    if (totalMessages < SUMMARIZATION_THRESHOLD) return
+
+    // Buscar todas as mensagens ativas ordenadas por data
+    const allMessages = await db.agentMessage.findMany({
+      where: { conversationId, isArchived: false },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        id: true,
+        role: true,
+        content: true,
+      },
+    })
+
+    // Separar: arquivar tudo exceto as últimas N
+    const toArchiveCount = allMessages.length - KEEP_RECENT_MESSAGES
+    if (toArchiveCount <= 0) return
+
+    const messagesToArchive = allMessages.slice(0, toArchiveCount)
+
+    // Montar transcript para sumarização
+    const transcript = messagesToArchive
+      .map((msg) => `[${msg.role}]: ${msg.content}`)
+      .join('\n')
+
+    // Gerar resumo via LLM
+    const summaryResult = await generateText({
+      model: getModel(SUMMARIZATION_MODEL),
+      messages: [
+        {
+          role: 'system',
+          content:
+            'Você é um assistente especializado em gerar resumos densos de conversas. ' +
+            'Resuma a conversa abaixo mantendo: pontos-chave discutidos, decisões tomadas, ' +
+            'informações do cliente mencionadas e próximos passos combinados. ' +
+            'Seja conciso mas não perca informações importantes. Responda em português.',
+        },
+        {
+          role: 'user',
+          content: `Resuma esta conversa:\n\n${transcript}`,
+        },
+      ],
+      maxOutputTokens: 512,
+    })
+
+    const summary = summaryResult.text
+
+    if (!summary) {
+      logger.warn('Summarization returned empty result', { conversationId })
+      return
+    }
+
+    // Transaction: salvar summary + arquivar mensagens antigas
+    const archiveIds = messagesToArchive.map((msg) => msg.id)
+
+    await db.$transaction([
+      db.agentConversation.update({
+        where: { id: conversationId },
+        data: { summary },
+      }),
+      db.agentMessage.updateMany({
+        where: { id: { in: archiveIds } },
+        data: { isArchived: true },
+      }),
+    ])
+
+    logger.info('Memory compressed', {
+      conversationId,
+      archivedCount: archiveIds.length,
+      summaryLength: summary.length,
+    })
+  } catch (error) {
+    // Non-fatal: falha na compressão não bloqueia o fluxo
+    logger.warn('Memory compression failed', { conversationId, error })
+  }
+}

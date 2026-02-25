@@ -79,3 +79,37 @@ function splitMessage(text: string, maxLength: number): string[] {
 
   return chunks
 }
+
+/**
+ * Envia indicador de presença (typing) via Evolution API.
+ * Best-effort: falha é silenciosa para não bloquear o fluxo principal.
+ */
+export async function sendPresence(
+  instanceName: string,
+  remoteJid: string,
+  presence: 'composing' | 'paused' = 'composing',
+): Promise<void> {
+  try {
+    const apiUrl = process.env.EVOLUTION_API_URL
+    const apiKey = process.env.EVOLUTION_API_KEY
+
+    if (!apiUrl || !apiKey) return
+
+    await fetch(
+      `${apiUrl}/chat/updatePresence/${instanceName}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: apiKey,
+        },
+        body: JSON.stringify({
+          number: remoteJid,
+          presence,
+        }),
+      },
+    )
+  } catch {
+    // Best-effort: nunca lança erro
+  }
+}

@@ -50,11 +50,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ ignored: true, reason: 'no_active_agent' })
   }
 
-  // 5. Tratamento fromMe — pausar IA quando humano responde
+  // 5. Tratamento fromMe — pausar IA quando humano responde (com timestamp)
   if (fromMe) {
     await db.agentConversation.updateMany({
       where: { agentId: agent.id, remoteJid },
-      data: { aiPaused: true },
+      data: { aiPaused: true, pausedAt: new Date() },
     })
     return NextResponse.json({ ignored: true, reason: 'from_me_paused' })
   }
@@ -86,14 +86,27 @@ export async function POST(req: Request) {
     normalizedMessage.pushName,
   )
 
-  // 9. Verificar se IA está pausada na conversa
+  // 9. Verificar se IA está pausada na conversa (com auto-unpause após 30 min)
   const conversation = await db.agentConversation.findUnique({
     where: { id: conversationId },
-    select: { aiPaused: true },
+    select: { aiPaused: true, pausedAt: true },
   })
 
   if (conversation?.aiPaused) {
-    return NextResponse.json({ ignored: true, reason: 'ai_paused' })
+    const AUTO_UNPAUSE_MS = 30 * 60 * 1000 // 30 minutos
+    const shouldAutoUnpause =
+      conversation.pausedAt &&
+      Date.now() - conversation.pausedAt.getTime() > AUTO_UNPAUSE_MS
+
+    if (shouldAutoUnpause) {
+      await db.agentConversation.update({
+        where: { id: conversationId },
+        data: { aiPaused: false, pausedAt: null },
+      })
+    } else {
+      // pausedAt null (dados legacy) ou ainda dentro do período — mantém pausado
+      return NextResponse.json({ ignored: true, reason: 'ai_paused' })
+    }
   }
 
   // 10. Salvar mensagem do usuário no banco ANTES do dispatch
