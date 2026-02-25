@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
 import { parseEvolutionMessage, isGroupMessage } from '@/_lib/evolution/parse-message'
+import { resolveConversation } from '@/_lib/evolution/resolve-conversation'
 import { tasks } from '@trigger.dev/sdk/v3'
 import type { processAgentMessage } from '@/../../trigger/process-agent-message'
 import type { EvolutionWebhookPayload } from '@/_lib/evolution/types'
@@ -29,7 +30,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ignored: true, reason: 'group_message' })
   }
 
-  // 4. Lookup do Agent
+  // 4. Lookup do Agent (inclui debounceSeconds para delay)
   const agent = await db.agent.findFirst({
     where: {
       evolutionInstanceName: instanceName,
@@ -38,6 +39,7 @@ export async function POST(req: Request) {
     select: {
       id: true,
       organizationId: true,
+      debounceSeconds: true,
     },
   })
 
@@ -64,24 +66,67 @@ export async function POST(req: Request) {
     console.warn('[evolution-webhook] Redis dedup failed, continuing:', error)
   }
 
-  // 7. Lookup da conversa
-  const conversation = await db.agentConversation.findFirst({
-    where: { agentId: agent.id, remoteJid },
-    select: { id: true, aiPaused: true },
+  // 7. Normalizar mensagem
+  const normalizedMessage = parseEvolutionMessage(data, instanceName)
+
+  // Fase 3.1: só processar mensagens de texto
+  if (normalizedMessage.type !== 'text' || !normalizedMessage.text) {
+    return NextResponse.json({ ignored: true, reason: 'unsupported_type' })
+  }
+
+  // 8. Resolver conversa (buscar existente ou criar nova com contato)
+  const { conversationId } = await resolveConversation(
+    agent.id,
+    agent.organizationId,
+    remoteJid,
+    normalizedMessage.phoneNumber,
+    normalizedMessage.pushName,
+  )
+
+  // 9. Verificar se IA está pausada na conversa
+  const conversation = await db.agentConversation.findUnique({
+    where: { id: conversationId },
+    select: { aiPaused: true },
   })
 
   if (conversation?.aiPaused) {
     return NextResponse.json({ ignored: true, reason: 'ai_paused' })
   }
 
-  // 8. Dispatch para Trigger.dev
-  const normalizedMessage = parseEvolutionMessage(data, instanceName)
+  // 10. Salvar mensagem do usuário no banco ANTES do dispatch
+  await db.agentMessage.create({
+    data: {
+      conversationId,
+      role: 'user',
+      content: normalizedMessage.text,
+      providerMessageId: messageId,
+    },
+  })
 
+  // 11. Debounce via Redis + delayed dispatch
+  const debounceTimestamp = Date.now()
+  const debounceKey = `debounce:${conversationId}`
+
+  try {
+    await redis.set(
+      debounceKey,
+      String(debounceTimestamp),
+      'EX',
+      agent.debounceSeconds + 1,
+    )
+  } catch (error) {
+    console.warn('[evolution-webhook] Redis debounce set failed, continuing:', error)
+  }
+
+  // 12. Dispatch para Trigger.dev com delay (debounce natural)
   await tasks.trigger<typeof processAgentMessage>('process-agent-message', {
     message: normalizedMessage,
     agentId: agent.id,
-    conversationId: conversation?.id ?? null,
+    conversationId,
     organizationId: agent.organizationId,
+    debounceTimestamp,
+  }, {
+    delay: `${agent.debounceSeconds}s`,
   })
 
   return NextResponse.json({ success: true })
