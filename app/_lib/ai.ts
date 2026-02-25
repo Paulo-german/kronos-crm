@@ -10,5 +10,5 @@ const openrouter = createOpenAI({
  * O modelId vem do campo Agent.modelId (ex: "anthropic/claude-sonnet-4").
  */
 export function getModel(modelId: string) {
-  return openrouter(modelId)
+  return openrouter.chat(modelId)
 }
