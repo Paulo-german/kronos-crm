@@ -8,8 +8,8 @@ import type { processAgentMessage } from '@/../../trigger/process-agent-message'
 import type { EvolutionWebhookPayload } from '@/_lib/evolution/types'
 
 export async function POST(req: Request) {
-  // 1. Validação de assinatura (Evolution v2 envia no header "webhook-authorization")
-  const webhookAuth = req.headers.get('webhook-authorization')
+  // 1. Validação de assinatura (Evolution v2 envia no header "apikey")
+  const webhookAuth = req.headers.get('apikey')
   if (webhookAuth !== process.env.EVOLUTION_WEBHOOK_SECRET) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
