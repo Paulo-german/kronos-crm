@@ -140,6 +140,7 @@ export const processAgentMessage = task({
     const result = await generateText({
       model: getModel(agent.modelId),
       messages: llmMessages,
+      maxTokens: 1024,
     })
 
     const responseText = result.text
