@@ -26,6 +26,17 @@ const ENTITY_FEATURE_MAP: Record<QuotaEntity, string> = {
 const getEffectivePlan = cache(async (orgId: string): Promise<Plan | null> => {
   const getCachedPlan = unstable_cache(
     async () => {
+      // 1. Checar plan override (equipe interna / parceiros)
+      const org = await db.organization.findUnique({
+        where: { id: orgId },
+        select: { trialEndsAt: true, planOverride: true },
+      })
+
+      if (org?.planOverride) {
+        return org.planOverride
+      }
+
+      // 2. Subscription ativa/trialing com planId
       const subscription = await db.subscription.findFirst({
         where: {
           organizationId: orgId,
@@ -39,12 +50,7 @@ const getEffectivePlan = cache(async (orgId: string): Promise<Plan | null> => {
         return subscription.plan
       }
 
-      // Fallback para trial da org
-      const org = await db.organization.findUnique({
-        where: { id: orgId },
-        select: { trialEndsAt: true },
-      })
-
+      // 3. Fallback para trial da org
       if (org?.trialEndsAt && org.trialEndsAt > new Date()) {
         return db.plan.findUnique({ where: { slug: 'essential' } })
       }

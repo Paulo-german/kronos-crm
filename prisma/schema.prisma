@@ -90,6 +90,11 @@ enum TaskType {
   EMAIL
 }
 
+enum GrantType {
+  INTERNAL
+  PARTNER
+}
+
 enum DiscountType {
   percentage
   fixed
@@ -207,6 +212,11 @@ model Organization {
 
   trialEndsAt DateTime? @map("trial_ends_at")
   isReadOnly  Boolean   @default(false) @map("is_read_only")
+
+  // Free access grant (bypasses Stripe subscription)
+  grantType      GrantType? @map("grant_type")
+  planOverrideId String?    @map("plan_override_id")
+  planOverride   Plan?      @relation("PlanOverride", fields: [planOverrideId], references: [id])
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -583,9 +593,10 @@ model Plan {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  planLimits    PlanLimit[]
-  subscriptions Subscription[]
-  planModules   PlanModule[]
+  planLimits           PlanLimit[]
+  subscriptions        Subscription[]
+  planModules          PlanModule[]
+  grantedOrganizations Organization[] @relation("PlanOverride")
 
   @@index([slug, isActive])
   @@map("plans")
@@ -845,8 +856,9 @@ model AgentConversation {
   deal   Deal?   @relation(fields: [dealId], references: [id], onDelete: SetNull)
 
   channel          AgentConversationChannel @default(WHATSAPP)
-  aiPaused         Boolean @default(false) @map("ai_paused")
-  remoteJid        String? @map("remote_jid")
+  aiPaused         Boolean   @default(false) @map("ai_paused")
+  pausedAt         DateTime? @map("paused_at")
+  remoteJid        String?   @map("remote_jid")
   summary          String? @db.Text
   currentStepOrder Int     @default(0) @map("current_step_order")
 

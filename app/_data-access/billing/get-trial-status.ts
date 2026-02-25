@@ -18,7 +18,7 @@ export const getTrialStatus = cache(async (orgId: string): Promise<TrialStatus> 
       const [org, subscription] = await Promise.all([
         db.organization.findUnique({
           where: { id: orgId },
-          select: { trialEndsAt: true },
+          select: { trialEndsAt: true, planOverrideId: true },
         }),
         db.subscription.findFirst({
           where: { organizationId: orgId, status: { in: ['active', 'trialing'] } },
@@ -27,12 +27,13 @@ export const getTrialStatus = cache(async (orgId: string): Promise<TrialStatus> 
       ])
 
       const hasActiveSubscription = !!subscription
+      const hasGrantOverride = !!org?.planOverrideId
       const trialEndsAt = org?.trialEndsAt ?? null
 
-      if (hasActiveSubscription) {
+      if (hasActiveSubscription || hasGrantOverride) {
         return {
           isOnTrial: false,
-          hasActiveSubscription: true,
+          hasActiveSubscription: hasActiveSubscription || hasGrantOverride,
           trialEndsAt,
           daysRemaining: 0,
           isExpired: false,
