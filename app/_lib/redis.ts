@@ -9,7 +9,6 @@ export function getRedis(): Redis {
     }
 
     redisInstance = new Redis(process.env.REDIS_URL, {
-      lazyConnect: true,
       maxRetriesPerRequest: 1,
       retryStrategy(times) {
         if (times > 3) return null
@@ -28,6 +27,11 @@ export function getRedis(): Redis {
 
 export const redis = new Proxy({} as Redis, {
   get(_, prop) {
-    return Reflect.get(getRedis(), prop)
+    const target = getRedis()
+    const value = Reflect.get(target, prop)
+    if (typeof value === 'function') {
+      return value.bind(target)
+    }
+    return value
   },
 })
