@@ -12,3 +12,11 @@ const openrouter = createOpenAI({
 export function getModel(modelId: string) {
   return openrouter.chat(modelId)
 }
+
+/**
+ * Retorna embedding model para gerar/buscar vetores na knowledge base.
+ * Usa text-embedding-3-small (1536 dims) via OpenRouter.
+ */
+export function getEmbeddingModel() {
+  return openrouter.embedding('openai/text-embedding-3-small')
+}

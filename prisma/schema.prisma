@@ -806,7 +806,7 @@ model AgentKnowledgeFile {
   fileName    String              @map("file_name")
   fileSize    Int                 @map("file_size")
   mimeType    String              @map("mime_type")
-  b2Url       String              @map("b2_url")
+  b2Url       String?             @map("b2_url")
   status      KnowledgeFileStatus @default(PENDING)
   chunkCount  Int                 @default(0) @map("chunk_count")
   errorReason String?             @map("error_reason")

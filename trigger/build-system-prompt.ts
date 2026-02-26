@@ -1,4 +1,6 @@
 import { db } from '@/_lib/prisma'
+import { searchKnowledge } from './utils/search-knowledge'
+import { logger } from '@trigger.dev/sdk/v3'
 
 interface BuildSystemPromptResult {
   systemPrompt: string
@@ -9,6 +11,7 @@ interface BuildSystemPromptResult {
   estimatedTokens: number
   toolsEnabled: string[]
   pipelineIds: string[]
+  knowledgeContext: string | null
 }
 
 /**
@@ -21,8 +24,9 @@ interface BuildSystemPromptResult {
 export async function buildSystemPrompt(
   agentId: string,
   conversationId: string,
+  latestUserMessage?: string,
 ): Promise<BuildSystemPromptResult> {
-  const [agent, conversation] = await Promise.all([
+  const [agent, conversation, completedFileCount] = await Promise.all([
     db.agent.findUniqueOrThrow({
       where: { id: agentId },
       select: {
@@ -54,6 +58,9 @@ export async function buildSystemPrompt(
           },
         },
       },
+    }),
+    db.agentKnowledgeFile.count({
+      where: { agentId, status: 'COMPLETED' },
     }),
   ])
 
@@ -95,6 +102,28 @@ export async function buildSystemPrompt(
     )
   }
 
+  // 5. Busca RAG na base de conhecimento (se houver arquivos e mensagem do usuário)
+  let knowledgeContext: string | null = null
+
+  if (latestUserMessage && completedFileCount > 0) {
+    try {
+      const results = await searchKnowledge(agentId, latestUserMessage, 3, 0.72)
+
+      if (results.length > 0) {
+        const contextLines = results.map(
+          (result) => `[${result.fileName}] (similaridade: ${result.similarity.toFixed(2)})\n${result.content}`,
+        )
+        knowledgeContext = contextLines.join('\n\n---\n\n')
+
+        parts.push(
+          `\n[Base de conhecimento]\nOs trechos abaixo foram recuperados da sua base de conhecimento e são relevantes para a mensagem do cliente. Use essas informações para fundamentar sua resposta:\n\n${knowledgeContext}`,
+        )
+      }
+    } catch (error) {
+      logger.warn('Knowledge search failed, continuing without RAG', { agentId, error })
+    }
+  }
+
   const systemPrompt = parts.join('\n')
 
   // Estimativa aproximada: ~4 caracteres por token
@@ -109,5 +138,6 @@ export async function buildSystemPrompt(
     estimatedTokens,
     toolsEnabled: agent.toolsEnabled,
     pipelineIds: agent.pipelineIds,
+    knowledgeContext,
   }
 }

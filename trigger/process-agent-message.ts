@@ -80,7 +80,7 @@ export const processAgentMessage = task({
     // 3. Context loading — prompt dinâmico + histórico + dados da conversa
     // -----------------------------------------------------------------------
     const [promptContext, messageHistory, conversation] = await Promise.all([
-      buildSystemPrompt(agentId, conversationId),
+      buildSystemPrompt(agentId, conversationId, message.text ?? undefined),
       db.agentMessage.findMany({
         where: {
           conversationId,
