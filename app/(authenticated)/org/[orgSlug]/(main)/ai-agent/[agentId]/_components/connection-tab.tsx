@@ -161,9 +161,9 @@ const ConnectionTab = ({ agent, canManage }: ConnectionTabProps) => {
   // Estado 1 — Desconectado
   if (connectionState === 'disconnected') {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <Card className="border-border/50 bg-secondary/20">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold">
             <WifiOff className="h-5 w-5" />
             WhatsApp Desconectado
           </CardTitle>
@@ -174,8 +174,8 @@ const ConnectionTab = ({ agent, canManage }: ConnectionTabProps) => {
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center gap-4 py-6">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
-              <MessageSquare className="h-8 w-8 text-muted-foreground" />
+            <div className="rounded-full bg-muted p-4">
+              <MessageSquare className="h-6 w-6 text-muted-foreground" />
             </div>
             <p className="max-w-md text-center text-sm text-muted-foreground">
               Ao conectar, uma instância será criada na Evolution API. Você
@@ -208,9 +208,9 @@ const ConnectionTab = ({ agent, canManage }: ConnectionTabProps) => {
   // Estado intermediário — Verificando conexão existente
   if (connectionState === 'checking') {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <Card className="border-border/50 bg-secondary/20">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold">
             <Loader2 className="h-5 w-5 animate-spin" />
             Verificando Conexão
           </CardTitle>
@@ -230,9 +230,9 @@ const ConnectionTab = ({ agent, canManage }: ConnectionTabProps) => {
   // Estado 2 — Conectando (QR Code)
   if (connectionState === 'connecting') {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <Card className="border-border/50 bg-secondary/20">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold">
             <Loader2 className="h-5 w-5 animate-spin" />
             Escaneie o QR Code
           </CardTitle>
@@ -308,10 +308,10 @@ const ConnectionTab = ({ agent, canManage }: ConnectionTabProps) => {
   // Estado 3 — Conectado
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Wifi className="h-5 w-5 text-green-600" />
+      <Card className="border-border/50 bg-secondary/20">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold">
+            <Wifi className="h-5 w-5 text-kronos-green" />
             WhatsApp Conectado
           </CardTitle>
           <CardDescription>
@@ -321,8 +321,8 @@ const ConnectionTab = ({ agent, canManage }: ConnectionTabProps) => {
         <CardContent>
           <div className="flex flex-col items-center gap-4 py-6">
             <Badge
-              variant="default"
-              className="bg-green-600 px-4 py-2 text-sm hover:bg-green-700"
+              variant="outline"
+              className="bg-kronos-green/10 text-kronos-green border-kronos-green/20 hover:bg-kronos-green/20 px-4 py-2 text-sm font-semibold"
             >
               Conectado
             </Badge>

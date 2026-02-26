@@ -18,7 +18,7 @@ import {
 } from '@dnd-kit/sortable'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
-import { Plus } from 'lucide-react'
+import { Plus, ListChecks } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import { reorderSteps } from '@/_actions/agent/reorder-steps'
 import SortableStepCard from './sortable-step-card'
@@ -96,7 +96,7 @@ const ProcessTab = ({ agent, canManage }: ProcessTabProps) => {
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-lg font-medium">Etapas do Processo</h3>
+        <h2 className="text-xl font-semibold">Etapas do Processo</h2>
         <p className="text-sm text-muted-foreground">
           Defina a sequência de etapas que o agente segue durante a conversa.
           Arraste para reordenar.
@@ -105,7 +105,10 @@ const ProcessTab = ({ agent, canManage }: ProcessTabProps) => {
 
       {steps.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-md border border-dashed p-8 text-center">
-          <p className="text-sm text-muted-foreground">
+          <div className="rounded-full bg-muted p-4">
+            <ListChecks className="h-6 w-6 text-muted-foreground" />
+          </div>
+          <p className="mt-3 text-sm text-muted-foreground">
             Nenhuma etapa configurada. Adicione etapas para guiar o comportamento
             do agente.
           </p>

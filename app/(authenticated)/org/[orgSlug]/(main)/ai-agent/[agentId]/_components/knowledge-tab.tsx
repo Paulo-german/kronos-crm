@@ -146,9 +146,9 @@ const KnowledgeTab = ({ agent, canManage }: KnowledgeTabProps) => {
     <div className="space-y-6">
       {/* Upload Area */}
       {canManage && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Upload de Arquivos</CardTitle>
+        <Card className="border-border/50 bg-secondary/20">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold">Upload de Arquivos</CardTitle>
             <CardDescription>
               Adicione documentos para a base de conhecimento do agente.
               Formatos aceitos: PDF, TXT, MD, DOCX (máx. 10MB).
@@ -194,9 +194,9 @@ const KnowledgeTab = ({ agent, canManage }: KnowledgeTabProps) => {
       )}
 
       {/* File List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Arquivos</CardTitle>
+      <Card className="border-border/50 bg-secondary/20">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold">Arquivos</CardTitle>
           <CardDescription>
             {agent.knowledgeFiles.length === 0
               ? 'Nenhum arquivo adicionado.'
@@ -205,9 +205,11 @@ const KnowledgeTab = ({ agent, canManage }: KnowledgeTabProps) => {
         </CardHeader>
         <CardContent>
           {agent.knowledgeFiles.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <FileIcon className="mb-2 h-8 w-8 text-muted-foreground/50" />
-              <p className="text-sm text-muted-foreground">
+            <div className="flex flex-col items-center justify-center py-6 text-center">
+              <div className="rounded-full bg-muted p-4">
+                <FileIcon className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <p className="mt-3 text-sm text-muted-foreground">
                 Nenhum arquivo na base de conhecimento.
               </p>
             </div>
@@ -222,7 +224,7 @@ const KnowledgeTab = ({ agent, canManage }: KnowledgeTabProps) => {
                 return (
                   <div
                     key={file.id}
-                    className="flex items-center gap-3 rounded-md border p-3"
+                    className="flex items-center gap-3 rounded-md border border-border/50 bg-background/70 p-3"
                   >
                     <FileIcon className="h-5 w-5 shrink-0 text-muted-foreground" />
                     <div className="min-w-0 flex-1">

@@ -95,9 +95,9 @@ const GeneralTab = ({ agent, pipelines, canManage }: GeneralTabProps) => {
   return (
     <div className="space-y-6">
       {/* Card 1 — Configurações Básicas */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Configurações Básicas</CardTitle>
+      <Card className="border-border/50 bg-secondary/20">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold">Configurações Básicas</CardTitle>
           <CardDescription>
             Nome, prompt e status do agente.
           </CardDescription>
@@ -142,9 +142,9 @@ const GeneralTab = ({ agent, pipelines, canManage }: GeneralTabProps) => {
       </Card>
 
       {/* Card 2 — Modelo e Comportamento */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Modelo e Comportamento</CardTitle>
+      <Card className="border-border/50 bg-secondary/20">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold">Modelo e Comportamento</CardTitle>
           <CardDescription>
             Modelo de IA e configurações de processamento.
           </CardDescription>
@@ -191,9 +191,9 @@ const GeneralTab = ({ agent, pipelines, canManage }: GeneralTabProps) => {
       </Card>
 
       {/* Card 3 — Pipelines Vinculados */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Pipelines Vinculados</CardTitle>
+      <Card className="border-border/50 bg-secondary/20">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold">Pipelines Vinculados</CardTitle>
           <CardDescription>
             Pipelines em que o agente pode atuar.
           </CardDescription>
@@ -263,9 +263,9 @@ const GeneralTab = ({ agent, pipelines, canManage }: GeneralTabProps) => {
       </Card>
 
       {/* Card 4 — Ferramentas Habilitadas */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Ferramentas Habilitadas</CardTitle>
+      <Card className="border-border/50 bg-secondary/20">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold">Ferramentas Habilitadas</CardTitle>
           <CardDescription>
             Ações que o agente pode executar durante conversas.
           </CardDescription>
@@ -275,7 +275,7 @@ const GeneralTab = ({ agent, pipelines, canManage }: GeneralTabProps) => {
             {TOOL_OPTIONS.map((tool) => (
               <div
                 key={tool.value}
-                className="flex items-start space-x-3 rounded-md border p-3"
+                className="flex items-start space-x-3 rounded-md border border-border/50 bg-background/70 p-3"
               >
                 <Checkbox
                   id={`tool-${tool.value}`}
