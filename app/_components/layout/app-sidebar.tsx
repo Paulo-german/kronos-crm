@@ -152,7 +152,6 @@ export const AppSidebar = ({ activeModules = [], footerSlot }: AppSidebarProps) 
                 <SidebarItem
                   href={buildHref('/ai-agent')}
                   label="Agentes"
-                  badge="Em breve"
                   icon={<Bot className="h-4 w-4" />}
                 />
               </div>
