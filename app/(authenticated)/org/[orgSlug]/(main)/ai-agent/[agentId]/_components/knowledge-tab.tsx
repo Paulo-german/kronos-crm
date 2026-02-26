@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAction } from 'next-safe-action/hooks'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -45,6 +45,8 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
+const POLLING_INTERVAL_MS = 5000
+
 const KnowledgeTab = ({ agent, canManage }: KnowledgeTabProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
@@ -53,6 +55,21 @@ const KnowledgeTab = ({ agent, canManage }: KnowledgeTabProps) => {
     null,
   )
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+
+  // Polling: atualiza dados enquanto houver arquivos processando
+  const hasProcessingFiles = agent.knowledgeFiles.some(
+    (file) => file.status === 'PROCESSING',
+  )
+
+  useEffect(() => {
+    if (!hasProcessingFiles) return
+
+    const interval = setInterval(() => {
+      router.refresh()
+    }, POLLING_INTERVAL_MS)
+
+    return () => clearInterval(interval)
+  }, [hasProcessingFiles, router])
 
   const { execute: executeDelete, isPending: isDeletingFile } = useAction(
     deleteKnowledgeFile,

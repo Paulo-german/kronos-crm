@@ -42,7 +42,6 @@ export const updateStep = orgActionClient
     })
 
     revalidateTag(`agent:${data.agentId}`)
-    revalidateTag(`agents:${ctx.orgId}`)
 
     return { success: true }
   })

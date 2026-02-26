@@ -7,6 +7,31 @@ import { chunkText } from './utils/chunk-text'
 
 const EMBEDDING_BATCH_SIZE = 50
 
+async function revalidateAgentCache(agentId: string, orgId?: string) {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL
+  const secret = process.env.INTERNAL_API_SECRET
+
+  if (!appUrl || !secret) {
+    logger.warn('Skipping cache revalidation: missing NEXT_PUBLIC_APP_URL or INTERNAL_API_SECRET')
+    return
+  }
+
+  const baseUrl = appUrl.startsWith('http') ? appUrl : `https://${appUrl}`
+
+  try {
+    await fetch(`${baseUrl}/api/knowledge/revalidate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${secret}`,
+      },
+      body: JSON.stringify({ agentId, orgId }),
+    })
+  } catch (error) {
+    logger.warn('Cache revalidation failed', { error })
+  }
+}
+
 export interface ProcessKnowledgeFilePayload {
   fileId: string
   agentId: string
@@ -20,6 +45,13 @@ export const processKnowledgeFile = task({
   },
   run: async (payload: ProcessKnowledgeFilePayload) => {
     const { fileId, agentId, extractedText } = payload
+
+    // Buscar orgId para invalidar cache da lista
+    const agent = await db.agent.findUnique({
+      where: { id: agentId },
+      select: { organizationId: true },
+    })
+    const orgId = agent?.organizationId
 
     try {
       logger.info('Processing knowledge file', {
@@ -91,6 +123,8 @@ export const processKnowledgeFile = task({
         chunkCount: chunks.length,
       })
 
+      await revalidateAgentCache(agentId, orgId)
+
       return { success: true, chunkCount: chunks.length }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
@@ -108,6 +142,8 @@ export const processKnowledgeFile = task({
           errorReason: errorMessage.slice(0, 500),
         },
       })
+
+      await revalidateAgentCache(agentId, orgId)
 
       throw error
     }
