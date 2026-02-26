@@ -7,6 +7,8 @@ interface BuildSystemPromptResult {
   contactName: string
   currentStepOrder: number
   estimatedTokens: number
+  toolsEnabled: string[]
+  pipelineIds: string[]
 }
 
 /**
@@ -26,6 +28,8 @@ export async function buildSystemPrompt(
       select: {
         systemPrompt: true,
         modelId: true,
+        toolsEnabled: true,
+        pipelineIds: true,
         steps: {
           orderBy: { order: 'asc' },
           select: {
@@ -103,5 +107,7 @@ export async function buildSystemPrompt(
     contactName: contact.name,
     currentStepOrder: conversation.currentStepOrder,
     estimatedTokens,
+    toolsEnabled: agent.toolsEnabled,
+    pipelineIds: agent.pipelineIds,
   }
 }

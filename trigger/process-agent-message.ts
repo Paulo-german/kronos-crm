@@ -1,11 +1,13 @@
 import { task, logger } from '@trigger.dev/sdk/v3'
-import { generateText } from 'ai'
+import { generateText, stepCountIs } from 'ai'
 import { getModel } from '@/_lib/ai'
 import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
 import { checkBalance, debitCredits } from '@/_lib/billing/credit-utils'
 import { sendWhatsAppMessage, sendPresence } from '@/_lib/evolution/send-message'
 import { buildSystemPrompt } from './build-system-prompt'
+import { buildToolSet } from './tools'
+import type { ToolContext } from './tools/types'
 import type { NormalizedWhatsAppMessage } from '@/_lib/evolution/types'
 
 const NO_CREDITS_MESSAGE =
@@ -75,9 +77,9 @@ export const processAgentMessage = task({
     }
 
     // -----------------------------------------------------------------------
-    // 3. Context loading — prompt dinâmico + histórico
+    // 3. Context loading — prompt dinâmico + histórico + dados da conversa
     // -----------------------------------------------------------------------
-    const [promptContext, messageHistory] = await Promise.all([
+    const [promptContext, messageHistory, conversation] = await Promise.all([
       buildSystemPrompt(agentId, conversationId),
       db.agentMessage.findMany({
         where: {
@@ -90,6 +92,10 @@ export const processAgentMessage = task({
           role: true,
           content: true,
         },
+      }),
+      db.agentConversation.findUniqueOrThrow({
+        where: { id: conversationId },
+        select: { contactId: true, dealId: true },
       }),
     ])
 
@@ -117,6 +123,20 @@ export const processAgentMessage = task({
     }
 
     // -----------------------------------------------------------------------
+    // 4b. Build tool set (filtrado pelo toolsEnabled do agent)
+    // -----------------------------------------------------------------------
+    const toolContext: ToolContext = {
+      organizationId,
+      agentId,
+      conversationId,
+      contactId: conversation.contactId,
+      dealId: conversation.dealId,
+      pipelineIds: promptContext.pipelineIds,
+    }
+
+    const tools = buildToolSet(promptContext.toolsEnabled, toolContext)
+
+    // -----------------------------------------------------------------------
     // 5. Typing presence — "digitando..." antes do LLM
     // -----------------------------------------------------------------------
     await sendPresence(message.instanceName, message.remoteJid, 'composing')
@@ -138,6 +158,8 @@ export const processAgentMessage = task({
     const result = await generateText({
       model: getModel(promptContext.modelId),
       messages: llmMessages,
+      tools,
+      stopWhen: stepCountIs(3),
       maxOutputTokens: 1024,
     })
 
@@ -245,6 +267,10 @@ export const processAgentMessage = task({
       totalDurationMs,
       systemPromptEstimatedTokens: promptContext.estimatedTokens,
       historyMessageCount: messageHistory.length,
+      toolCalls: result.steps?.flatMap(
+        (step) => step.toolCalls?.map((toolCall) => toolCall.toolName) ?? [],
+      ) ?? [],
+      totalSteps: result.steps?.length ?? 1,
     })
 
     return { success: true }
