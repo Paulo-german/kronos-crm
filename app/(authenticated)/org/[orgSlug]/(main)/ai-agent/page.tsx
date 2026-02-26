@@ -1,36 +1,50 @@
-import { Bot } from 'lucide-react'
 import Header, {
   HeaderLeft,
+  HeaderRight,
   HeaderTitle,
   HeaderSubTitle,
 } from '@/_components/header'
+import { QuotaHint } from '@/_components/trial/quota-hint'
+import { getOrgContext } from '@/_data-access/organization/get-organization-context'
+import { getAgents } from '@/_data-access/agent/get-agents'
+import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
+import { AgentsDataTable } from './_components/agents-data-table'
+import CreateAgentButton from './_components/create-agent-button'
 
-const AiAgentPage = () => {
+interface AiAgentPageProps {
+  params: Promise<{ orgSlug: string }>
+}
+
+const AiAgentPage = async ({ params }: AiAgentPageProps) => {
+  const { orgSlug } = await params
+  const ctx = await getOrgContext(orgSlug)
+
+  const [agents, quota] = await Promise.all([
+    getAgents(ctx.orgId),
+    checkPlanQuota(ctx.orgId, 'agent'),
+  ])
+
   return (
-    <>
+    <div className="space-y-6">
       <Header>
         <HeaderLeft>
-          <HeaderTitle>AI Agent</HeaderTitle>
+          <HeaderTitle>Agentes IA</HeaderTitle>
           <HeaderSubTitle>
-            Automatize tarefas e obtenha insights com inteligência artificial.
+            Gerencie seus agentes de inteligência artificial.
           </HeaderSubTitle>
+          <QuotaHint orgId={ctx.orgId} entity="agent" />
         </HeaderLeft>
+        <HeaderRight>
+          <CreateAgentButton withinQuota={quota.withinQuota} />
+        </HeaderRight>
       </Header>
 
-      <div className="flex flex-1 flex-col items-center justify-center gap-4 py-20 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
-          <Bot className="h-8 w-8 text-primary" />
-        </div>
-        <div className="space-y-2">
-          <h2 className="text-xl font-semibold">Em breve</h2>
-          <p className="max-w-md text-sm text-muted-foreground">
-            O módulo de AI Agent está sendo desenvolvido. Em breve você poderá
-            usar inteligência artificial para automatizar processos e obter
-            insights sobre seus dados.
-          </p>
-        </div>
-      </div>
-    </>
+      <AgentsDataTable
+        agents={agents}
+        orgSlug={orgSlug}
+        userRole={ctx.userRole}
+      />
+    </div>
   )
 }
 
