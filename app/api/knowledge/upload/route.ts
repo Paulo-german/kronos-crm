@@ -116,10 +116,9 @@ export async function POST(request: NextRequest) {
     let extractedText: string
 
     if (mimeType === 'application/pdf') {
-      const { PDFParse } = await import('pdf-parse')
-      const parser = new PDFParse({ data: new Uint8Array(buffer) })
-      const result = await parser.getText()
-      extractedText = result.text
+      const pdfParse = (await import('pdf-parse')).default
+      const pdfData = await pdfParse(buffer)
+      extractedText = pdfData.text
     } else if (
       mimeType ===
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
