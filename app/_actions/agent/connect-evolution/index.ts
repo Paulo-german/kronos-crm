@@ -32,7 +32,11 @@ export const connectEvolution = orgActionClient
     const instanceName = `kronos-${ctx.orgId.slice(0, 8)}-${agentId.slice(0, 8)}`
 
     const vercelUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || vercelUrl || 'http://localhost:3000'
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || vercelUrl
+
+    if (!appUrl) {
+      throw new Error('NEXT_PUBLIC_APP_URL ou VERCEL_URL deve estar configurada para conectar WhatsApp.')
+    }
 
     // Inclui secret na URL do webhook (validado em /api/webhooks/evolution)
     const webhookSecret = process.env.EVOLUTION_WEBHOOK_SECRET
