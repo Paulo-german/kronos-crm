@@ -20,14 +20,18 @@ import { SignOutButton } from '@/_components/auth/sign-out-button'
 import { useSidebar } from '@/_providers/sidebar-provider'
 import { cn } from '@/_lib/utils'
 import { Button } from '@/_components/ui/button'
+import { CreditsBadgeClient } from '@/_components/credits/credits-badge-client'
 import type { ModuleSlug } from '@/_data-access/module/types'
 
 interface AppSidebarProps {
   activeModules?: ModuleSlug[]
-  footerSlot?: React.ReactNode
+  credits?: { available: number; monthlyLimit: number; orgSlug: string }
 }
 
-export const AppSidebar = ({ activeModules = [], footerSlot }: AppSidebarProps) => {
+export const AppSidebar = ({
+  activeModules = [],
+  credits,
+}: AppSidebarProps) => {
   const { isCollapsed, toggle } = useSidebar()
   const params = useParams()
   const orgSlug = params?.orgSlug as string | undefined
@@ -92,89 +96,100 @@ export const AppSidebar = ({ activeModules = [], footerSlot }: AppSidebarProps) 
         </Button>
       </div>
 
-      {/* Navigation */}
-      <div className="flex-1 overflow-y-auto py-4">
-        <nav className={cn('grid gap-1', isCollapsed ? 'px-2' : 'px-4')}>
-          <div className="space-y-4">
-            {/* Globais - sempre visíveis */}
-            <div>
-              <SidebarItem
-                href={buildHref('/dashboard')}
-                label="Dashboard"
-                icon={<LayoutDashboard className="h-4 w-4" />}
-              />
-              <SidebarItem
-                href={buildHref('/contacts')}
-                label="Contatos"
-                icon={<Users className="h-4 w-4" />}
-              />
-            </div>
-
-            {/* Módulo: CRM */}
-            {hasModule('crm') && (
-              <div>
-                <span className={sectionTitleClass}>CRM</span>
-                <SidebarItem
-                  href={buildHref('/crm/tasks')}
-                  label="Tarefas"
-                  icon={<CheckSquare className="h-4 w-4" />}
-                />
-                <SidebarItem
-                  href={buildHref('/crm/deals')}
-                  label="Negociações"
-                  icon={<Kanban className="h-4 w-4" />}
-                />
-                <SidebarItem
-                  href={buildHref('/crm/appointments')}
-                  label="Agendamentos"
-                  icon={<CalendarClock className="h-4 w-4" />}
-                />
-              </div>
-            )}
-
-            {/* Módulo: Inbox */}
-            {hasModule('inbox') && (
-              <div>
-                <span className={sectionTitleClass}>Inbox</span>
-                <SidebarItem
-                  href={buildHref('/inbox')}
-                  label="Inbox"
-                  badge="Em breve"
-                  icon={<Inbox className="h-4 w-4" />}
-                />
-              </div>
-            )}
-
-            {/* Módulo: AI Agent */}
-            {hasModule('ai-agent') && (
-              <div>
-                <span className={sectionTitleClass}>Agentes</span>
-                <SidebarItem
-                  href={buildHref('/ai-agent')}
-                  label="Agentes"
-                  icon={<Bot className="h-4 w-4" />}
-                />
-              </div>
-            )}
-          </div>
-        </nav>
-      </div>
-
-      {/* Footer */}
-      <div
+      {/* Menu */}
+      <nav
         className={cn(
-          'overflow-y-auto border-t border-border/50 p-4',
+          'flex-1 overflow-y-auto py-4',
           isCollapsed ? 'px-2' : 'px-4',
         )}
       >
-        {footerSlot}
-        <nav className="grid gap-2">
-          <SidebarItem
-            href={buildHref('/settings')}
-            label="Configurações"
-            icon={<Settings className="h-4 w-4" />}
+        <div className="grid gap-1 space-y-4">
+          {/* Globais - sempre visíveis */}
+          <div>
+            <SidebarItem
+              href={buildHref('/dashboard')}
+              label="Dashboard"
+              icon={<LayoutDashboard className="h-4 w-4" />}
+            />
+            <SidebarItem
+              href={buildHref('/contacts')}
+              label="Contatos"
+              icon={<Users className="h-4 w-4" />}
+            />
+          </div>
+
+          {/* Módulo: CRM */}
+          {hasModule('crm') && (
+            <div>
+              <span className={sectionTitleClass}>CRM</span>
+              <SidebarItem
+                href={buildHref('/crm/tasks')}
+                label="Tarefas"
+                icon={<CheckSquare className="h-4 w-4" />}
+              />
+              <SidebarItem
+                href={buildHref('/crm/deals')}
+                label="Negociações"
+                icon={<Kanban className="h-4 w-4" />}
+              />
+              <SidebarItem
+                href={buildHref('/crm/appointments')}
+                label="Agendamentos"
+                icon={<CalendarClock className="h-4 w-4" />}
+              />
+            </div>
+          )}
+
+          {/* Módulo: Inbox */}
+          {hasModule('inbox') && (
+            <div>
+              <span className={sectionTitleClass}>Inbox</span>
+              <SidebarItem
+                href={buildHref('/inbox')}
+                label="Inbox"
+                badge="Em breve"
+                icon={<Inbox className="h-4 w-4" />}
+              />
+            </div>
+          )}
+
+          {/* Módulo: AI Agent */}
+          {hasModule('ai-agent') && (
+            <div>
+              <span className={sectionTitleClass}>Agentes</span>
+              <SidebarItem
+                href={buildHref('/ai-agent')}
+                label="Agentes"
+                icon={<Bot className="h-4 w-4" />}
+              />
+            </div>
+          )}
+        </div>
+      </nav>
+
+      {/* Créditos */}
+      <div className={cn('py-2', isCollapsed ? 'px-2' : 'px-4')}>
+        {credits && (
+          <CreditsBadgeClient
+            available={credits.available}
+            monthlyLimit={credits.monthlyLimit}
+            orgSlug={credits.orgSlug}
           />
-        </nav>
+        )}
+      </div>
+
+      {/* Ajustes */}
+      <div
+        className={cn(
+          'border-t border-border/50 py-3',
+          isCollapsed ? 'px-2' : 'px-4',
+        )}
+      >
+        <SidebarItem
+          href={buildHref('/settings')}
+          label="Configurações"
+          icon={<Settings className="h-4 w-4" />}
+        />
         <SignOutButton isCollapsed={isCollapsed} />
       </div>
     </aside>
