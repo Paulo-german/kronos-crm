@@ -17,6 +17,7 @@ const CACHE_TAG_PREFIXES = [
   'org-members',
   'deal-lost-reasons',
   'organization',
+  'agents',
 ] as const
 
 export const revalidateAllCache = orgActionClient.action(async ({ ctx }) => {

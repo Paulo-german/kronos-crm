@@ -24,6 +24,7 @@ async function seedFeaturesAndPlans() {
     { key: 'ai.messages_quota', name: 'Quota de IA', type: 'METERED' as const, valueType: 'NUMBER' as const },
     { key: 'ai.max_agents', name: 'Agentes IA', type: 'STATIC' as const, valueType: 'NUMBER' as const },
     { key: 'ai.max_knowledge_files', name: 'Arquivos de Conhecimento', type: 'STATIC' as const, valueType: 'NUMBER' as const },
+    { key: 'ai.monthly_credits', name: 'Créditos IA mensais', type: 'STATIC' as const, valueType: 'NUMBER' as const },
   ]
 
   const featureRecords: Record<string, { id: string }> = {}
@@ -120,6 +121,12 @@ async function seedFeaturesAndPlans() {
     { planSlug: 'essential', featureKey: 'ai.max_knowledge_files', valueNumber: 20 },
     { planSlug: 'scale', featureKey: 'ai.max_knowledge_files', valueNumber: 50 },
     { planSlug: 'enterprise', featureKey: 'ai.max_knowledge_files', valueNumber: 200 },
+
+    // Créditos IA mensais
+    { planSlug: 'light', featureKey: 'ai.monthly_credits', valueNumber: 300 },
+    { planSlug: 'essential', featureKey: 'ai.monthly_credits', valueNumber: 800 },
+    { planSlug: 'scale', featureKey: 'ai.monthly_credits', valueNumber: 1800 },
+    { planSlug: 'enterprise', featureKey: 'ai.monthly_credits', valueNumber: 2500 },
   ]
 
   // Resolver IDs do DB para os limites
