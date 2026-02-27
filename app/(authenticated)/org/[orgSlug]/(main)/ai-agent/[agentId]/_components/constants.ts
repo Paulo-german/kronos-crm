@@ -1,9 +1,9 @@
 export const MODEL_OPTIONS = [
+  { value: 'openai/gpt-5.2', label: 'GPT 5.2' },
+  { value: 'openai/gpt-4.1-mini', label: 'GPT 4.1 Mini' },
+  { value: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+  { value: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
   { value: 'anthropic/claude-sonnet-4', label: 'Claude Sonnet 4' },
-  { value: 'openai/gpt-4o', label: 'GPT-4o' },
-  { value: 'openai/gpt-4o-mini', label: 'GPT-4o Mini' },
-  { value: 'google/gemini-2.0-flash-001', label: 'Gemini 2.0 Flash' },
-  { value: 'meta-llama/llama-3.3-70b-instruct', label: 'Llama 3.3 70B' },
 ] as const
 
 export const TOOL_OPTIONS = [
