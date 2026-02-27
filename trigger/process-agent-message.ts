@@ -7,6 +7,7 @@ import { checkBalance, debitCredits } from '@/_lib/billing/credit-utils'
 import { sendWhatsAppMessage, sendPresence } from '@/_lib/evolution/send-message'
 import { buildSystemPrompt } from './build-system-prompt'
 import { buildToolSet } from './tools'
+import { transcribeAudio } from './utils/transcribe-audio'
 import type { ToolContext } from './tools/types'
 import type { NormalizedWhatsAppMessage } from '@/_lib/evolution/types'
 
@@ -77,10 +78,32 @@ export const processAgentMessage = task({
     }
 
     // -----------------------------------------------------------------------
+    // 2b. Se áudio, transcrever com Whisper
+    // -----------------------------------------------------------------------
+    let messageText = message.text
+    if (message.type === 'audio' && message.media?.url) {
+      logger.info('Transcribing audio', {
+        url: message.media.url,
+        seconds: message.media.seconds,
+      })
+
+      const transcription = await transcribeAudio(message.media.url)
+      messageText = transcription
+
+      logger.info('Audio transcribed', { length: transcription.length })
+
+      // Atualizar mensagem no DB com a transcrição real
+      await db.agentMessage.updateMany({
+        where: { providerMessageId: message.messageId },
+        data: { content: transcription },
+      })
+    }
+
+    // -----------------------------------------------------------------------
     // 3. Context loading — prompt dinâmico + histórico + dados da conversa
     // -----------------------------------------------------------------------
     const [promptContext, messageHistory, conversation] = await Promise.all([
-      buildSystemPrompt(agentId, conversationId, message.text ?? undefined),
+      buildSystemPrompt(agentId, conversationId, messageText ?? undefined),
       db.agentMessage.findMany({
         where: {
           conversationId,

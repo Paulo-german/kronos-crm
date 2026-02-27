@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import type { Prisma } from '@prisma/client'
 import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
 import { parseEvolutionMessage, isGroupMessage } from '@/_lib/evolution/parse-message'
@@ -66,8 +67,11 @@ export async function POST(req: Request) {
   // 6. Normalizar mensagem (sync — antes do paralelo pois precisamos do resultado)
   const normalizedMessage = parseEvolutionMessage(data, instanceName)
 
-  // Fase 3.1: só processar mensagens de texto
-  if (normalizedMessage.type !== 'text' || !normalizedMessage.text) {
+  // Fase 3.1: só processar mensagens de texto e áudio
+  if (normalizedMessage.type === 'text' && !normalizedMessage.text) {
+    return NextResponse.json({ ignored: true, reason: 'empty_text' })
+  }
+  if (normalizedMessage.type !== 'text' && normalizedMessage.type !== 'audio') {
     return NextResponse.json({ ignored: true, reason: 'unsupported_type' })
   }
 
@@ -131,8 +135,14 @@ export async function POST(req: Request) {
       data: {
         conversationId,
         role: 'user',
-        content: normalizedMessage.text,
+        content:
+          normalizedMessage.type === 'audio'
+            ? `[Áudio ${normalizedMessage.media?.seconds ?? 0}s]`
+            : normalizedMessage.text!,
         providerMessageId: messageId,
+        metadata: normalizedMessage.media
+          ? ({ media: normalizedMessage.media } as unknown as Prisma.InputJsonValue)
+          : undefined,
       },
     }),
     redis
