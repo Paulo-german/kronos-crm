@@ -67,7 +67,7 @@ async function doCreateInstance(
       qrcode: true,
       webhook: {
         url: webhookUrl,
-        byEvents: false,
+        byEvents: true,
         base64: false,
         events: [
           'MESSAGES_UPSERT',
