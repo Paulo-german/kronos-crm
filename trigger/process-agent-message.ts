@@ -81,13 +81,17 @@ export const processAgentMessage = task({
     // 2b. Se áudio, transcrever com Whisper
     // -----------------------------------------------------------------------
     let messageText = message.text
-    if (message.type === 'audio' && message.media?.url) {
+    if (message.type === 'audio' && message.media) {
       logger.info('Transcribing audio', {
-        url: message.media.url,
+        instanceName: message.instanceName,
+        messageId: message.messageId,
         seconds: message.media.seconds,
       })
 
-      const transcription = await transcribeAudio(message.media.url)
+      const transcription = await transcribeAudio(
+        message.instanceName,
+        message.messageId,
+      )
       messageText = transcription
 
       logger.info('Audio transcribed', { length: transcription.length })
