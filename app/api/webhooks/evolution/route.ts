@@ -23,6 +23,8 @@ export async function POST(req: Request) {
 
   const payload: EvolutionWebhookPayload = await req.json()
 
+  console.log('[evolution-webhook] incoming payload', JSON.stringify(payload, null, 2))
+
   // 2. Filtro de evento — só processar messages.upsert
   if (payload.event !== 'messages.upsert') {
     return NextResponse.json({ ignored: true, reason: 'event_not_handled' })
