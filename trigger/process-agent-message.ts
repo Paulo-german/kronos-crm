@@ -35,7 +35,7 @@ export const processAgentMessage = task({
     maxAttempts: 1,
   },
   run: async (payload: ProcessAgentMessagePayload) => {
-    return observe({ name: 'process-agent-message' }, async () => {
+    return observe(async () => {
     const {
       message,
       agentId,
@@ -335,7 +335,7 @@ export const processAgentMessage = task({
     } finally {
       await flushLangfuse()
     }
-    }) // observe
+    }, { name: 'process-agent-message' })() // observe
   },
 })
 

@@ -30,7 +30,7 @@ export async function transcribeAudio(
   instanceName: string,
   messageId: string,
 ): Promise<string> {
-  return observe({ name: 'audio-transcription' }, async () => {
+  return observe(async () => {
   const apiUrl = process.env.EVOLUTION_API_URL
   const apiKey = process.env.EVOLUTION_API_KEY
 
@@ -84,5 +84,5 @@ export async function transcribeAudio(
   })
 
   return transcription.text
-  }) // observe
+  }, { name: 'audio-transcription' })() // observe
 }
