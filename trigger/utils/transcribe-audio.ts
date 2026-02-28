@@ -1,4 +1,5 @@
 import OpenAI, { toFile } from 'openai'
+import { observe } from '@langfuse/tracing'
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
@@ -29,6 +30,7 @@ export async function transcribeAudio(
   instanceName: string,
   messageId: string,
 ): Promise<string> {
+  return observe({ name: 'audio-transcription' }, async () => {
   const apiUrl = process.env.EVOLUTION_API_URL
   const apiKey = process.env.EVOLUTION_API_KEY
 
@@ -82,4 +84,5 @@ export async function transcribeAudio(
   })
 
   return transcription.text
+  }) // observe
 }

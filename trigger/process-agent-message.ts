@@ -1,5 +1,6 @@
 import { task, logger } from '@trigger.dev/sdk/v3'
 import { generateText, stepCountIs } from 'ai'
+import { observe, updateActiveTrace } from '@langfuse/tracing'
 import { getModel } from '@/_lib/ai'
 import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
@@ -7,6 +8,7 @@ import { checkBalance, debitCredits } from '@/_lib/billing/credit-utils'
 import { sendWhatsAppMessage, sendPresence } from '@/_lib/evolution/send-message'
 import { buildSystemPrompt } from './build-system-prompt'
 import { buildToolSet } from './tools'
+import { langfuseTracer, flushLangfuse } from './lib/langfuse'
 import { transcribeAudio } from './utils/transcribe-audio'
 import type { ToolContext } from './tools/types'
 import type { NormalizedWhatsAppMessage } from '@/_lib/evolution/types'
@@ -33,6 +35,7 @@ export const processAgentMessage = task({
     maxAttempts: 1,
   },
   run: async (payload: ProcessAgentMessagePayload) => {
+    return observe({ name: 'process-agent-message' }, async () => {
     const {
       message,
       agentId,
@@ -41,8 +44,16 @@ export const processAgentMessage = task({
       debounceTimestamp,
     } = payload
 
+    updateActiveTrace({
+      sessionId: conversationId,
+      userId: organizationId,
+      tags: ['whatsapp', 'agent'],
+      metadata: { agentId, messageType: message.type },
+    })
+
     const taskStartMs = Date.now()
 
+    try {
     // -----------------------------------------------------------------------
     // 1. Debounce check
     // -----------------------------------------------------------------------
@@ -126,6 +137,15 @@ export const processAgentMessage = task({
       }),
     ])
 
+    updateActiveTrace({
+      metadata: {
+        agentId,
+        contactName: promptContext.contactName,
+        model: promptContext.modelId,
+        messageType: message.type,
+      },
+    })
+
     // -----------------------------------------------------------------------
     // 4. Build LLM messages (prompt dinâmico + summary + history)
     // -----------------------------------------------------------------------
@@ -188,6 +208,17 @@ export const processAgentMessage = task({
       tools,
       stopWhen: stepCountIs(3),
       maxOutputTokens: 1024,
+      experimental_telemetry: {
+        isEnabled: true,
+        tracer: langfuseTracer,
+        functionId: 'chat-completion',
+        metadata: {
+          agentId,
+          conversationId,
+          model: promptContext.modelId,
+          contactName: promptContext.contactName,
+        },
+      },
     })
 
     const llmDurationMs = Date.now() - llmStartMs
@@ -301,6 +332,10 @@ export const processAgentMessage = task({
     })
 
     return { success: true }
+    } finally {
+      await flushLangfuse()
+    }
+    }) // observe
   },
 })
 
@@ -356,6 +391,12 @@ async function compressMemory(conversationId: string): Promise<void> {
         },
       ],
       maxOutputTokens: 512,
+      experimental_telemetry: {
+        isEnabled: true,
+        tracer: langfuseTracer,
+        functionId: 'memory-compression',
+        metadata: { conversationId, model: SUMMARIZATION_MODEL },
+      },
     })
 
     const summary = summaryResult.text
