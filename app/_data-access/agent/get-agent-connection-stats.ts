@@ -8,23 +8,23 @@ export interface AgentConnectionStats {
 }
 
 export async function getAgentConnectionStats(
-  agentId: string,
+  inboxId: string,
 ): Promise<AgentConnectionStats> {
   const todayStart = new Date()
   todayStart.setHours(0, 0, 0, 0)
 
   const [conversationsCount, messagesToday, lastMessage] = await Promise.all([
-    db.agentConversation.count({
-      where: { agentId },
+    db.conversation.count({
+      where: { inboxId },
     }),
-    db.agentMessage.count({
+    db.message.count({
       where: {
-        conversation: { agentId },
+        conversation: { inboxId },
         createdAt: { gte: todayStart },
       },
     }),
-    db.agentMessage.findFirst({
-      where: { conversation: { agentId } },
+    db.message.findFirst({
+      where: { conversation: { inboxId } },
       orderBy: { createdAt: 'desc' },
       select: { createdAt: true },
     }),

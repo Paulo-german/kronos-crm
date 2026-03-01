@@ -17,7 +17,7 @@ export function createHandOffToHumanTool(ctx: ToolContext) {
     }),
     execute: async ({ reason }) => {
       // pausedAt: null → pausa indefinida (auto-unpause NÃO dispara)
-      await db.agentConversation.update({
+      await db.conversation.update({
         where: { id: ctx.conversationId },
         data: {
           aiPaused: true,

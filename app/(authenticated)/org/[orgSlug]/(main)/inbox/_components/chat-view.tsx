@@ -171,12 +171,14 @@ export function ChatView({ conversation }: ChatViewProps) {
                 <span className="text-base font-semibold tracking-tight">
                   {conversation.contactName}
                 </span>
-                <Badge
-                  variant="outline"
-                  className="h-5 border-kronos-purple/20 bg-kronos-purple/10 text-[10px] text-kronos-purple"
-                >
-                  {conversation.agentName}
-                </Badge>
+                {conversation.agentName && (
+                  <Badge
+                    variant="outline"
+                    className="h-5 border-kronos-purple/20 bg-kronos-purple/10 text-[10px] text-kronos-purple"
+                  >
+                    {conversation.agentName}
+                  </Badge>
+                )}
                 {aiPaused ? (
                   <Badge
                     variant="outline"

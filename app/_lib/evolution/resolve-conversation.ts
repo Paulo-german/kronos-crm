@@ -6,19 +6,19 @@ interface ResolveResult {
 }
 
 /**
- * Busca ou cria AgentConversation + Contact para um número de WhatsApp.
- * Usado pelo webhook quando é o primeiro contato de um remoteJid com o Agent.
+ * Busca ou cria Conversation + Contact para um número de WhatsApp.
+ * Usado pelo webhook quando é o primeiro contato de um remoteJid com a Inbox.
  */
 export async function resolveConversation(
-  agentId: string,
+  inboxId: string,
   orgId: string,
   remoteJid: string,
   phoneNumber: string,
   pushName: string | null,
 ): Promise<ResolveResult> {
   // 1. Buscar conversa existente
-  const existing = await db.agentConversation.findFirst({
-    where: { agentId, remoteJid },
+  const existing = await db.conversation.findFirst({
+    where: { inboxId, remoteJid },
     select: { id: true },
   })
 
@@ -43,10 +43,10 @@ export async function resolveConversation(
     })
   }
 
-  // 3. Criar AgentConversation
-  const conversation = await db.agentConversation.create({
+  // 3. Criar Conversation
+  const conversation = await db.conversation.create({
     data: {
-      agentId,
+      inboxId,
       organizationId: orgId,
       contactId: contact.id,
       channel: 'WHATSAPP',

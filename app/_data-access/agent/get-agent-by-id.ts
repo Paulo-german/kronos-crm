@@ -24,6 +24,15 @@ export interface AgentKnowledgeFileDto {
   createdAt: Date
 }
 
+export interface AgentInboxDto {
+  id: string
+  name: string
+  channel: string
+  isActive: boolean
+  evolutionInstanceName: string | null
+  evolutionInstanceId: string | null
+}
+
 export interface AgentDetailDto {
   id: string
   name: string
@@ -37,8 +46,7 @@ export interface AgentDetailDto {
   businessHoursTimezone: string
   businessHoursConfig: BusinessHoursConfig | null
   outOfHoursMessage: string | null
-  evolutionInstanceName: string | null
-  evolutionInstanceId: string | null
+  inboxes: AgentInboxDto[]
   steps: AgentStepDto[]
   knowledgeFiles: AgentKnowledgeFileDto[]
   createdAt: Date
@@ -54,6 +62,7 @@ const fetchAgentByIdFromDb = async (
     include: {
       steps: { orderBy: { order: 'asc' } },
       knowledgeFiles: { orderBy: { createdAt: 'desc' } },
+      inboxes: { orderBy: { createdAt: 'desc' } },
     },
   })
 
@@ -72,8 +81,14 @@ const fetchAgentByIdFromDb = async (
     businessHoursTimezone: agent.businessHoursTimezone,
     businessHoursConfig: agent.businessHoursConfig as BusinessHoursConfig | null,
     outOfHoursMessage: agent.outOfHoursMessage,
-    evolutionInstanceName: agent.evolutionInstanceName,
-    evolutionInstanceId: agent.evolutionInstanceId,
+    inboxes: agent.inboxes.map((inbox) => ({
+      id: inbox.id,
+      name: inbox.name,
+      channel: inbox.channel,
+      isActive: inbox.isActive,
+      evolutionInstanceName: inbox.evolutionInstanceName,
+      evolutionInstanceId: inbox.evolutionInstanceId,
+    })),
     steps: agent.steps.map((step) => ({
       id: step.id,
       name: step.name,

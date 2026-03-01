@@ -243,6 +243,48 @@ export async function getEvolutionInstanceInfo(
   }
 }
 
+export interface EvolutionInstanceSummary {
+  instanceName: string
+  instanceId: string
+  state: 'open' | 'close' | 'connecting'
+  ownerJid: string | null
+}
+
+export async function listEvolutionInstances(): Promise<EvolutionInstanceSummary[]> {
+  const { apiUrl, apiKey } = getEvolutionConfig()
+
+  const response = await fetch(`${apiUrl}/instance/fetchInstances`, {
+    method: 'GET',
+    headers: buildHeaders(apiKey),
+  })
+
+  if (!response.ok) {
+    const errorBody = await response.text().catch(() => 'unknown')
+    console.error('[evolution] List instances failed:', {
+      status: response.status,
+      body: errorBody,
+    })
+    throw new Error(
+      `Evolution API fetchInstances failed (${response.status}): ${errorBody}`,
+    )
+  }
+
+  const data = await response.json()
+  const instances = Array.isArray(data) ? data : [data]
+
+  return instances
+    .filter((item: Record<string, unknown>) => item?.instance)
+    .map((item: Record<string, unknown>) => {
+      const inst = item.instance as Record<string, unknown>
+      return {
+        instanceName: (inst.instanceName ?? inst.name ?? '') as string,
+        instanceId: (inst.instanceId ?? '') as string,
+        state: ((inst.state ?? inst.status ?? 'close') as EvolutionInstanceSummary['state']),
+        ownerJid: (inst.owner ?? null) as string | null,
+      }
+    })
+}
+
 export { formatPhoneFromJid } from './format-phone'
 
 export async function disconnectEvolutionInstance(

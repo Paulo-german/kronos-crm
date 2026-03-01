@@ -1,5 +1,5 @@
 /**
- * Seed para testar a Fase 3.1 do AI Agent (end-to-end).
+ * Seed para testar o AI Agent (end-to-end).
  *
  * Pré-requisitos:
  *   - Banco de dados já migrado (`pnpm prisma migrate dev` ou `pnpm prisma db push`)
@@ -12,10 +12,11 @@
  * O que este script faz:
  *   1. Busca a primeira organização do banco (ou cria uma de teste)
  *   2. Cria uma CreditWallet com 500 créditos de planBalance
- *   3. Cria um Agent configurado com Evolution API instance "kronos-dev"
- *   4. Cria 3 AgentSteps (funil de atendimento)
- *   5. Registra a WalletTransaction inicial (MONTHLY_RESET)
- *   6. Cria um AiUsage zerado para o mês corrente
+ *   3. Cria um Agent configurado
+ *   4. Cria uma Inbox com Evolution API instance "kronos-dev" vinculada ao Agent
+ *   5. Cria 3 AgentSteps (funil de atendimento)
+ *   6. Registra a WalletTransaction inicial (MONTHLY_RESET)
+ *   7. Cria um AiUsage zerado para o mês corrente
  */
 
 import { db } from '@/_lib/prisma'
@@ -38,7 +39,7 @@ Regras importantes:
 - Responda sempre em Português do Brasil.`
 
 async function main() {
-  console.log('🤖 Seed: AI Agent (Fase 3.1)...\n')
+  console.log('🤖 Seed: AI Agent...\n')
 
   // -----------------------------------------------------------------------
   // 1. Buscar organização existente
@@ -95,7 +96,6 @@ async function main() {
 
   // -----------------------------------------------------------------------
   // 3. WalletTransaction inicial (snapshot do reset mensal)
-  //    Limpa transactions anteriores do seed para idempotência
   // -----------------------------------------------------------------------
   await db.walletTransaction.deleteMany({
     where: {
@@ -147,62 +147,90 @@ async function main() {
   // -----------------------------------------------------------------------
   // 5. Agent
   // -----------------------------------------------------------------------
-  const existingAgent = await db.agent.findFirst({
-    where: {
-      organizationId: org.id,
-      evolutionInstanceName: EVOLUTION_INSTANCE_NAME,
-    },
+  let agent = await db.agent.findFirst({
+    where: { organizationId: org.id },
+    include: { inboxes: true },
   })
 
-  const agent = existingAgent
-    ? await db.agent.update({
-        where: { id: existingAgent.id },
-        data: {
-          name: 'Assistente Kronos (Dev)',
-          systemPrompt: SYSTEM_PROMPT,
-          isActive: true,
-          modelId: 'anthropic/claude-sonnet-4',
-          debounceSeconds: 3,
-          pipelineIds: [pipelineId],
-          toolsEnabled: [
-            'search_knowledge',
-            'move_deal',
-            'update_contact',
-            'create_task',
-            'hand_off_to_human',
-          ],
-          evolutionInstanceName: EVOLUTION_INSTANCE_NAME,
-        },
-      })
-    : await db.agent.create({
-        data: {
-          organizationId: org.id,
-          name: 'Assistente Kronos (Dev)',
-          systemPrompt: SYSTEM_PROMPT,
-          isActive: true,
-          modelId: 'anthropic/claude-sonnet-4',
-          debounceSeconds: 3,
-          pipelineIds: [pipelineId],
-          toolsEnabled: [
-            'search_knowledge',
-            'move_deal',
-            'update_contact',
-            'create_task',
-            'hand_off_to_human',
-          ],
-          evolutionInstanceName: EVOLUTION_INSTANCE_NAME,
-        },
-      })
+  if (agent) {
+    agent = await db.agent.update({
+      where: { id: agent.id },
+      data: {
+        name: 'Assistente Kronos (Dev)',
+        systemPrompt: SYSTEM_PROMPT,
+        isActive: true,
+        modelId: 'anthropic/claude-sonnet-4',
+        debounceSeconds: 3,
+        pipelineIds: [pipelineId],
+        toolsEnabled: [
+          'search_knowledge',
+          'move_deal',
+          'update_contact',
+          'create_task',
+          'hand_off_to_human',
+        ],
+      },
+      include: { inboxes: true },
+    })
+  } else {
+    agent = await db.agent.create({
+      data: {
+        organizationId: org.id,
+        name: 'Assistente Kronos (Dev)',
+        systemPrompt: SYSTEM_PROMPT,
+        isActive: true,
+        modelId: 'anthropic/claude-sonnet-4',
+        debounceSeconds: 3,
+        pipelineIds: [pipelineId],
+        toolsEnabled: [
+          'search_knowledge',
+          'move_deal',
+          'update_contact',
+          'create_task',
+          'hand_off_to_human',
+        ],
+      },
+      include: { inboxes: true },
+    })
+  }
 
   console.log(`  🤖 Agent: ${agent.name} (${agent.id})`)
   console.log(`     Model: ${agent.modelId}`)
-  console.log(`     Instance: ${agent.evolutionInstanceName}`)
   console.log(`     Debounce: ${agent.debounceSeconds}s`)
 
   // -----------------------------------------------------------------------
-  // 6. AgentSteps (funil de atendimento em 3 etapas)
+  // 6. Inbox (vinculada ao Agent com instância Evolution)
   // -----------------------------------------------------------------------
-  // Limpar steps antigos do agente (para idempotência)
+  const existingInbox = agent.inboxes.find(
+    (inbox) => inbox.evolutionInstanceName === EVOLUTION_INSTANCE_NAME,
+  )
+
+  const inbox = existingInbox
+    ? await db.inbox.update({
+        where: { id: existingInbox.id },
+        data: {
+          name: 'WhatsApp Dev',
+          isActive: true,
+          evolutionInstanceName: EVOLUTION_INSTANCE_NAME,
+        },
+      })
+    : await db.inbox.create({
+        data: {
+          organizationId: org.id,
+          name: 'WhatsApp Dev',
+          channel: 'WHATSAPP',
+          isActive: true,
+          evolutionInstanceName: EVOLUTION_INSTANCE_NAME,
+          agentId: agent.id,
+        },
+      })
+
+  console.log(`  📬 Inbox: ${inbox.name} (${inbox.id})`)
+  console.log(`     Instance: ${inbox.evolutionInstanceName}`)
+
+  // -----------------------------------------------------------------------
+  // 7. AgentSteps (funil de atendimento em 3 etapas)
+  // -----------------------------------------------------------------------
   await db.agentStep.deleteMany({ where: { agentId: agent.id } })
 
   const steps = [

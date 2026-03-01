@@ -109,7 +109,7 @@ export const processAgentMessage = task({
       logger.info('Audio transcribed', { length: transcription.length })
 
       // Atualizar mensagem no DB com a transcrição real
-      await db.agentMessage.updateMany({
+      await db.message.updateMany({
         where: { providerMessageId: message.messageId },
         data: { content: transcription },
       })
@@ -150,7 +150,7 @@ export const processAgentMessage = task({
     // -----------------------------------------------------------------------
     const [promptContext, messageHistory, conversation] = await Promise.all([
       buildSystemPrompt(agentId, conversationId, messageText ?? undefined),
-      db.agentMessage.findMany({
+      db.message.findMany({
         where: {
           conversationId,
           isArchived: false,
@@ -162,7 +162,7 @@ export const processAgentMessage = task({
           content: true,
         },
       }),
-      db.agentConversation.findUniqueOrThrow({
+      db.conversation.findUniqueOrThrow({
         where: { id: conversationId },
         select: { contactId: true, dealId: true },
       }),
@@ -264,14 +264,14 @@ export const processAgentMessage = task({
     // -----------------------------------------------------------------------
     // 7. Double-check anti-atropelamento — re-query aiPaused
     // -----------------------------------------------------------------------
-    const freshConversation = await db.agentConversation.findUnique({
+    const freshConversation = await db.conversation.findUnique({
       where: { id: conversationId },
       select: { aiPaused: true },
     })
 
     if (freshConversation?.aiPaused) {
       // Salva resposta no banco mas NÃO envia no WhatsApp
-      await db.agentMessage.create({
+      await db.message.create({
         data: {
           conversationId,
           role: 'assistant',
@@ -297,7 +297,7 @@ export const processAgentMessage = task({
     // -----------------------------------------------------------------------
     // 8. Salvar resposta no banco
     // -----------------------------------------------------------------------
-    await db.agentMessage.create({
+    await db.message.create({
       data: {
         conversationId,
         role: 'assistant',
@@ -376,14 +376,14 @@ export const processAgentMessage = task({
 
 async function compressMemory(conversationId: string): Promise<void> {
   try {
-    const totalMessages = await db.agentMessage.count({
+    const totalMessages = await db.message.count({
       where: { conversationId, isArchived: false },
     })
 
     if (totalMessages < SUMMARIZATION_THRESHOLD) return
 
     // Buscar todas as mensagens ativas ordenadas por data
-    const allMessages = await db.agentMessage.findMany({
+    const allMessages = await db.message.findMany({
       where: { conversationId, isArchived: false },
       orderBy: { createdAt: 'asc' },
       select: {
@@ -441,11 +441,11 @@ async function compressMemory(conversationId: string): Promise<void> {
     const archiveIds = messagesToArchive.map((msg) => msg.id)
 
     await db.$transaction([
-      db.agentConversation.update({
+      db.conversation.update({
         where: { id: conversationId },
         data: { summary },
       }),
-      db.agentMessage.updateMany({
+      db.message.updateMany({
         where: { id: { in: archiveIds } },
         data: { isArchived: true },
       }),

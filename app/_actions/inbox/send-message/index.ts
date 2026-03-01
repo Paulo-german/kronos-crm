@@ -14,10 +14,10 @@ export const sendMessage = orgActionClient
     requirePermission(canPerformAction(ctx, 'conversation', 'update'))
 
     // 2. Validar conversa pertence à org
-    const conversation = await db.agentConversation.findFirst({
+    const conversation = await db.conversation.findFirst({
       where: { id: data.conversationId, organizationId: ctx.orgId },
       include: {
-        agent: { select: { evolutionInstanceName: true } },
+        inbox: { select: { evolutionInstanceName: true } },
       },
     })
 
@@ -25,37 +25,41 @@ export const sendMessage = orgActionClient
       throw new Error('Conversa não encontrada.')
     }
 
-    if (!conversation.remoteJid || !conversation.agent.evolutionInstanceName) {
+    if (!conversation.remoteJid || !conversation.inbox.evolutionInstanceName) {
       throw new Error('Esta conversa não possui conexão WhatsApp ativa.')
     }
 
     // 3. Enviar via WhatsApp
     await sendWhatsAppMessage(
-      conversation.agent.evolutionInstanceName,
+      conversation.inbox.evolutionInstanceName,
       conversation.remoteJid,
       data.text,
     )
 
-    // 4. Salvar mensagem no banco
-    await db.agentMessage.create({
-      data: {
-        conversationId: data.conversationId,
-        role: 'assistant',
-        content: data.text,
-        metadata: {
-          sentBy: ctx.userId,
-          sentFrom: 'inbox',
+    // 4. Salvar mensagem no banco + pausar IA + resetar unreadCount
+    await Promise.all([
+      db.message.create({
+        data: {
+          conversationId: data.conversationId,
+          role: 'assistant',
+          content: data.text,
+          metadata: {
+            sentBy: ctx.userId,
+            sentFrom: 'inbox',
+          },
         },
-      },
-    })
+      }),
+      db.conversation.update({
+        where: { id: data.conversationId },
+        data: {
+          aiPaused: true,
+          pausedAt: new Date(),
+          unreadCount: 0,
+        },
+      }),
+    ])
 
-    // 5. Pausar IA (humano assumiu o controle)
-    await db.agentConversation.update({
-      where: { id: data.conversationId },
-      data: { aiPaused: true, pausedAt: new Date() },
-    })
-
-    // 6. Invalidar cache
+    // 5. Invalidar cache
     revalidateTag(`conversations:${ctx.orgId}`)
     revalidateTag(`conversation-messages:${data.conversationId}`)
 

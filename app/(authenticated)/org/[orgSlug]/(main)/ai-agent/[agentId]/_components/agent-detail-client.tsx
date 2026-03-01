@@ -6,8 +6,6 @@ import { Badge } from '@/_components/ui/badge'
 import { Button } from '@/_components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/_components/ui/tabs'
 import type { AgentDetailDto } from '@/_data-access/agent/get-agent-by-id'
-import type { AgentConnectionStats } from '@/_data-access/agent/get-agent-connection-stats'
-import type { EvolutionInstanceInfo } from '@/_lib/evolution/types-instance'
 import type { OrgPipelineDto } from '@/_data-access/pipeline/get-org-pipelines'
 import type { MemberRole } from '@prisma/client'
 import GeneralTab from './general-tab'
@@ -15,13 +13,19 @@ import ProcessTab from './process-tab'
 import KnowledgeTab from './knowledge-tab'
 import ConnectionTab from './connection-tab'
 
+interface InboxOptionDto {
+  id: string
+  name: string
+  channel: string
+  agentId: string | null
+}
+
 interface AgentDetailClientProps {
   agent: AgentDetailDto
   pipelines: OrgPipelineDto[]
   userRole: MemberRole
   orgSlug: string
-  connectionStats: AgentConnectionStats | null
-  instanceInfo: EvolutionInstanceInfo | null
+  availableInboxes: InboxOptionDto[]
 }
 
 const AgentDetailClient = ({
@@ -29,8 +33,7 @@ const AgentDetailClient = ({
   pipelines,
   userRole,
   orgSlug,
-  connectionStats,
-  instanceInfo,
+  availableInboxes,
 }: AgentDetailClientProps) => {
   const canManage = userRole === 'OWNER' || userRole === 'ADMIN'
 
@@ -122,8 +125,7 @@ const AgentDetailClient = ({
           <ConnectionTab
             agent={agent}
             canManage={canManage}
-            connectionStats={connectionStats}
-            instanceInfo={instanceInfo}
+            availableInboxes={availableInboxes}
           />
         </TabsContent>
       </Tabs>

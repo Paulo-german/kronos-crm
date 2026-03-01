@@ -146,7 +146,7 @@ export const AppSidebar = ({
               <span className={sectionTitleClass}>Inbox</span>
               <SidebarItem
                 href={buildHref('/inbox')}
-                label="Inbox"
+                label="Conversas"
                 icon={<Inbox className="h-4 w-4" />}
               />
             </div>

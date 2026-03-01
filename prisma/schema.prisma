@@ -144,14 +144,14 @@ enum KnowledgeFileStatus {
   FAILED
 }
 
-enum AgentMessageRole {
+enum MessageRole {
   user
   assistant
   system
   tool
 }
 
-enum AgentConversationChannel {
+enum InboxChannel {
   WHATSAPP
   WEB_CHAT
 }
@@ -233,8 +233,9 @@ model Organization {
   lostReasons   DealLostReason[]
   creditWallet  CreditWallet?
   aiUsage       AiUsage[]
-  agents             Agent[]
-  agentConversations AgentConversation[]
+  agents        Agent[]
+  inboxes       Inbox[]
+  conversations Conversation[]
 
   @@map("organizations")
 }
@@ -329,8 +330,8 @@ model Contact {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  deals              DealContact[]
-  agentConversations AgentConversation[]
+  deals         DealContact[]
+  conversations Conversation[]
 
   @@index([organizationId, assignedTo, createdAt(sort: Desc)])
   @@index([organizationId, name])
@@ -400,11 +401,11 @@ model Deal {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  dealProducts       DealProduct[]
-  tasks              Task[]
-  activities         Activity[]
-  appointments       Appointment[]
-  agentConversations AgentConversation[]
+  dealProducts  DealProduct[]
+  tasks         Task[]
+  activities    Activity[]
+  appointments  Appointment[]
+  conversations Conversation[]
 
   @@index([organizationId, pipelineStageId, assignedTo])
   @@index([organizationId, pipelineStageId, createdAt(sort: Desc)])
@@ -768,17 +769,13 @@ model Agent {
   businessHoursConfig   Json?   @map("business_hours_config")
   outOfHoursMessage     String? @db.Text @map("out_of_hours_message")
 
-  // Conexao Evolution API
-  evolutionInstanceName String? @map("evolution_instance_name")
-  evolutionInstanceId   String? @map("evolution_instance_id")
-
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   steps           AgentStep[]
   knowledgeFiles  AgentKnowledgeFile[]
   knowledgeChunks AgentKnowledgeChunk[]
-  conversations   AgentConversation[]
+  inboxes         Inbox[]
 
   @@index([organizationId, isActive])
   @@map("agents")
@@ -846,11 +843,39 @@ model AgentKnowledgeChunk {
   @@map("agent_knowledge_chunks")
 }
 
-model AgentConversation {
+model Inbox {
   id String @id @default(uuid())
 
-  agentId String @map("agent_id")
-  agent   Agent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  organizationId String       @map("organization_id")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  name     String
+  channel  InboxChannel @default(WHATSAPP)
+  isActive Boolean      @default(true) @map("is_active")
+
+  // Conexão WhatsApp (movido do Agent)
+  evolutionInstanceName String? @map("evolution_instance_name")
+  evolutionInstanceId   String? @map("evolution_instance_id")
+
+  // IA opcional
+  agentId String? @map("agent_id")
+  agent   Agent?  @relation(fields: [agentId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  conversations Conversation[]
+
+  @@index([organizationId])
+  @@index([evolutionInstanceName])
+  @@map("inboxes")
+}
+
+model Conversation {
+  id String @id @default(uuid())
+
+  inboxId String @map("inbox_id")
+  inbox   Inbox  @relation(fields: [inboxId], references: [id], onDelete: Cascade)
 
   organizationId String       @map("organization_id")
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -861,33 +886,34 @@ model AgentConversation {
   dealId String? @map("deal_id")
   deal   Deal?   @relation(fields: [dealId], references: [id], onDelete: SetNull)
 
-  channel          AgentConversationChannel @default(WHATSAPP)
-  aiPaused         Boolean   @default(false) @map("ai_paused")
-  pausedAt         DateTime? @map("paused_at")
-  remoteJid        String?   @map("remote_jid")
-  summary          String? @db.Text
-  currentStepOrder Int     @default(0) @map("current_step_order")
+  channel          InboxChannel @default(WHATSAPP)
+  aiPaused         Boolean      @default(false) @map("ai_paused")
+  pausedAt         DateTime?    @map("paused_at")
+  remoteJid        String?      @map("remote_jid")
+  summary          String?      @db.Text
+  currentStepOrder Int          @default(0) @map("current_step_order")
+  unreadCount      Int          @default(0) @map("unread_count")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  messages AgentMessage[]
+  messages Message[]
 
-  @@unique([agentId, contactId, channel])
-  @@index([organizationId, agentId])
+  @@unique([inboxId, contactId, channel])
+  @@index([organizationId, inboxId])
   @@index([contactId])
-  @@index([remoteJid, agentId])
-  @@map("agent_conversations")
+  @@index([remoteJid, inboxId])
+  @@map("conversations")
 }
 
-model AgentMessage {
+model Message {
   id String @id @default(uuid())
 
-  conversationId String            @map("conversation_id")
-  conversation   AgentConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversationId String       @map("conversation_id")
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
-  role    AgentMessageRole
-  content String           @db.Text
+  role    MessageRole
+  content String      @db.Text
 
   providerMessageId String? @unique @map("provider_message_id")
   isArchived        Boolean @default(false) @map("is_archived")
@@ -898,5 +924,5 @@ model AgentMessage {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@index([conversationId, isArchived, createdAt(sort: Desc)])
-  @@map("agent_messages")
+  @@map("messages")
 }

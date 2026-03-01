@@ -44,7 +44,7 @@ export async function buildSystemPrompt(
         },
       },
     }),
-    db.agentConversation.findUniqueOrThrow({
+    db.conversation.findUniqueOrThrow({
       where: { id: conversationId },
       select: {
         summary: true,

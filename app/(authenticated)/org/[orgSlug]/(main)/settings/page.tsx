@@ -5,6 +5,7 @@ import {
   UserIcon,
   Users,
   Ban,
+  Mail,
 } from 'lucide-react'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 
@@ -68,6 +69,14 @@ const SettingsPage = async ({ params }: SettingsPageProps) => {
               orgSlug={orgSlug}
             >
               <Package size={20} />
+            </CardSettings>
+            <CardSettings
+              title="Caixas de Entrada"
+              description="Gerencie suas conexões WhatsApp e canais de atendimento."
+              href="settings/inboxes"
+              orgSlug={orgSlug}
+            >
+              <Mail size={20} />
             </CardSettings>
             <CardSettings
               title="Motivos de Perda"

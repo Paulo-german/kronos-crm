@@ -13,7 +13,7 @@ export const toggleAiPause = orgActionClient
     requirePermission(canPerformAction(ctx, 'conversation', 'update'))
 
     // 2. Validar conversa pertence à org
-    const conversation = await db.agentConversation.findFirst({
+    const conversation = await db.conversation.findFirst({
       where: { id: data.conversationId, organizationId: ctx.orgId },
     })
 
@@ -22,7 +22,7 @@ export const toggleAiPause = orgActionClient
     }
 
     // 3. Atualizar estado
-    await db.agentConversation.update({
+    await db.conversation.update({
       where: { id: data.conversationId },
       data: {
         aiPaused: data.aiPaused,

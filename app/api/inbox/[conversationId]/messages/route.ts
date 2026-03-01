@@ -36,17 +36,25 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     // 2. Validar conversa pertence à org
     const { conversationId } = await context.params
 
-    const conversation = await db.agentConversation.findFirst({
+    const conversation = await db.conversation.findFirst({
       where: { id: conversationId, organizationId: membership.orgId },
-      select: { id: true, aiPaused: true },
+      select: { id: true, aiPaused: true, unreadCount: true },
     })
 
     if (!conversation) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    // 3. Buscar mensagens
-    const messages = await db.agentMessage.findMany({
+    // 3. Reset unreadCount ao visualizar (se > 0)
+    if (conversation.unreadCount > 0) {
+      await db.conversation.update({
+        where: { id: conversationId },
+        data: { unreadCount: 0 },
+      })
+    }
+
+    // 4. Buscar mensagens
+    const messages = await db.message.findMany({
       where: {
         conversationId,
         role: { in: ['user', 'assistant'] },

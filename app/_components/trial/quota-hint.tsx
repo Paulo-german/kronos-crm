@@ -7,6 +7,7 @@ const ENTITY_LABELS: Record<QuotaEntity, string> = {
   product: 'produtos',
   member: 'membros',
   agent: 'agentes IA',
+  inbox: 'caixas de entrada',
 }
 
 interface QuotaHintProps {

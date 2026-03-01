@@ -143,23 +143,21 @@ export function AgentsDataTable({
       },
     },
     {
-      accessorKey: 'evolutionInstanceName',
+      accessorKey: 'inboxCount',
       header: () => (
         <div className="flex items-center gap-2">
           <MessageSquareIcon className="h-4 w-4 text-muted-foreground" />
-          <span>WhatsApp</span>
+          <span>Inboxes</span>
         </div>
       ),
       cell: ({ row }) => {
-        const instanceName = row.getValue('evolutionInstanceName') as
-          | string
-          | null
-        return instanceName ? (
+        const count = row.getValue('inboxCount') as number
+        return count > 0 ? (
           <Badge variant="default" className="bg-green-600 hover:bg-green-700">
-            Conectado
+            {count} {count === 1 ? 'inbox' : 'inboxes'}
           </Badge>
         ) : (
-          <Badge variant="outline">Desconectado</Badge>
+          <Badge variant="outline">Nenhuma</Badge>
         )
       },
     },

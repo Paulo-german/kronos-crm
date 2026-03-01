@@ -25,6 +25,7 @@ async function seedFeaturesAndPlans() {
     { key: 'ai.max_agents', name: 'Agentes IA', type: 'STATIC' as const, valueType: 'NUMBER' as const },
     { key: 'ai.max_knowledge_files', name: 'Arquivos de Conhecimento', type: 'STATIC' as const, valueType: 'NUMBER' as const },
     { key: 'ai.monthly_credits', name: 'Créditos IA mensais', type: 'STATIC' as const, valueType: 'NUMBER' as const },
+    { key: 'inbox.max_inboxes', name: 'Caixas de Entrada', type: 'STATIC' as const, valueType: 'NUMBER' as const },
   ]
 
   const featureRecords: Record<string, { id: string }> = {}
@@ -127,6 +128,12 @@ async function seedFeaturesAndPlans() {
     { planSlug: 'essential', featureKey: 'ai.monthly_credits', valueNumber: 800 },
     { planSlug: 'scale', featureKey: 'ai.monthly_credits', valueNumber: 1800 },
     { planSlug: 'enterprise', featureKey: 'ai.monthly_credits', valueNumber: 2500 },
+
+    // Caixas de Entrada
+    { planSlug: 'light', featureKey: 'inbox.max_inboxes', valueNumber: 1 },
+    { planSlug: 'essential', featureKey: 'inbox.max_inboxes', valueNumber: 3 },
+    { planSlug: 'scale', featureKey: 'inbox.max_inboxes', valueNumber: 5 },
+    { planSlug: 'enterprise', featureKey: 'inbox.max_inboxes', valueNumber: 10 },
   ]
 
   // Resolver IDs do DB para os limites

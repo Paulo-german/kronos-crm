@@ -9,36 +9,48 @@ async function main() {
       id: true,
       name: true,
       isActive: true,
-      evolutionInstanceName: true,
       modelId: true,
       debounceSeconds: true,
       organizationId: true,
+      inboxes: {
+        select: {
+          id: true,
+          name: true,
+          evolutionInstanceName: true,
+          isActive: true,
+        },
+      },
     },
   })
   console.log('🤖 Agents:', agents.length)
   for (const agent of agents) {
-    console.log(`   ${agent.name} | active=${agent.isActive} | instance=${agent.evolutionInstanceName} | model=${agent.modelId}`)
+    console.log(`   ${agent.name} | active=${agent.isActive} | model=${agent.modelId}`)
+    for (const inbox of agent.inboxes) {
+      console.log(`     📬 ${inbox.name} | instance=${inbox.evolutionInstanceName} | active=${inbox.isActive}`)
+    }
   }
 
   // 2. Conversas criadas?
-  const conversations = await db.agentConversation.findMany({
+  const conversations = await db.conversation.findMany({
     orderBy: { createdAt: 'desc' },
     take: 5,
     select: {
       id: true,
       remoteJid: true,
       aiPaused: true,
+      unreadCount: true,
       createdAt: true,
       contact: { select: { name: true, phone: true } },
+      inbox: { select: { name: true } },
     },
   })
   console.log(`\n💬 Conversas recentes: ${conversations.length}`)
   for (const conv of conversations) {
-    console.log(`   ${conv.remoteJid} | paused=${conv.aiPaused} | contact=${conv.contact.name} (${conv.contact.phone}) | ${conv.createdAt.toISOString()}`)
+    console.log(`   ${conv.remoteJid} | paused=${conv.aiPaused} | unread=${conv.unreadCount} | inbox=${conv.inbox.name} | contact=${conv.contact.name} (${conv.contact.phone}) | ${conv.createdAt.toISOString()}`)
   }
 
   // 3. Mensagens salvas?
-  const messages = await db.agentMessage.findMany({
+  const messages = await db.message.findMany({
     orderBy: { createdAt: 'desc' },
     take: 10,
     select: {

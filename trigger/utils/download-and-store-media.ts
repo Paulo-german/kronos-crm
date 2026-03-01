@@ -21,7 +21,7 @@ interface DownloadAndStoreMediaParams {
 
 /**
  * Baixa mídia da Evolution API (getBase64FromMediaMessage) e persiste no Supabase Storage.
- * Atualiza metadata da AgentMessage com a URL pública.
+ * Atualiza metadata da Message com a URL pública.
  * Best-effort: falha aqui não bloqueia o fluxo principal.
  */
 export async function downloadAndStoreMedia({
@@ -87,7 +87,7 @@ export async function downloadAndStoreMedia({
     })
 
     // 3. Atualizar metadata da mensagem com a URL pública
-    const existingMessage = await db.agentMessage.findFirst({
+    const existingMessage = await db.message.findFirst({
       where: { providerMessageId },
       select: { id: true, metadata: true },
     })
@@ -96,7 +96,7 @@ export async function downloadAndStoreMedia({
       const currentMetadata = (existingMessage.metadata as Record<string, unknown>) ?? {}
       const currentMedia = (currentMetadata.media as Record<string, unknown>) ?? {}
 
-      await db.agentMessage.update({
+      await db.message.update({
         where: { id: existingMessage.id },
         data: {
           metadata: {

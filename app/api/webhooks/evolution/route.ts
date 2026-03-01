@@ -17,8 +17,6 @@ export async function POST(req: Request) {
   const timings: Record<string, number> = {}
 
   // 1. Validação de assinatura via query param
-  // Evolution v2 global webhook não envia headers de autenticação,
-  // então validamos pelo secret na URL: ?secret=xxx
   const { searchParams } = new URL(req.url)
   const secret = searchParams.get('secret')
   if (secret !== process.env.EVOLUTION_WEBHOOK_SECRET) {
@@ -47,28 +45,36 @@ export async function POST(req: Request) {
     return NextResponse.json({ ignored: true, reason: 'group_message' })
   }
 
-  // 4. Lookup do Agent (sem filtro isActive — mensagens sempre são salvas)
-  const agent = await db.agent.findFirst({
+  // 4. Lookup da Inbox pela instância Evolution (com agent opcional para IA)
+  const inbox = await db.inbox.findFirst({
     where: {
       evolutionInstanceName: instanceName,
     },
     select: {
       id: true,
-      isActive: true,
       organizationId: true,
-      debounceSeconds: true,
-      businessHoursEnabled: true,
-      businessHoursTimezone: true,
-      businessHoursConfig: true,
-      outOfHoursMessage: true,
+      agent: {
+        select: {
+          id: true,
+          isActive: true,
+          debounceSeconds: true,
+          businessHoursEnabled: true,
+          businessHoursTimezone: true,
+          businessHoursConfig: true,
+          outOfHoursMessage: true,
+        },
+      },
     },
   })
-  timings.agentLookup = Date.now() - t0
+  timings.inboxLookup = Date.now() - t0
 
-  if (!agent) {
-    console.log('[evolution-webhook] SKIP: no_agent_found', { instanceName })
-    return NextResponse.json({ ignored: true, reason: 'no_agent_found' })
+  if (!inbox) {
+    console.log('[evolution-webhook] SKIP: no_inbox_found', { instanceName })
+    return NextResponse.json({ ignored: true, reason: 'no_inbox_found' })
   }
+
+  const agent = inbox.agent
+  const orgId = inbox.organizationId
 
   // 5. Tratamento fromMe — salvar mensagem + pausar IA quando humano responde
   if (fromMe) {
@@ -80,8 +86,8 @@ export async function POST(req: Request) {
     }
 
     const resolveResult = await resolveConversation(
-      agent.id,
-      agent.organizationId,
+      inbox.id,
+      orgId,
       remoteJid,
       normalizedMsg.phoneNumber,
       normalizedMsg.pushName,
@@ -93,7 +99,7 @@ export async function POST(req: Request) {
       .catch(() => 'redis_error' as const)
 
     if (dedupResult !== null) {
-      await db.agentMessage.create({
+      await db.message.create({
         data: {
           conversationId: resolveResult.conversationId,
           role: 'assistant',
@@ -108,21 +114,21 @@ export async function POST(req: Request) {
         },
       })
 
-      revalidateTag(`conversations:${agent.organizationId}`)
+      revalidateTag(`conversations:${orgId}`)
       revalidateTag(`conversation-messages:${resolveResult.conversationId}`)
     }
 
-    await db.agentConversation.updateMany({
-      where: { agentId: agent.id, remoteJid },
+    await db.conversation.updateMany({
+      where: { inboxId: inbox.id, remoteJid },
       data: { aiPaused: true, pausedAt: new Date() },
     })
 
-    console.log('[evolution-webhook] from_me: saved + paused', { remoteJid, agentId: agent.id })
+    console.log('[evolution-webhook] from_me: saved + paused', { remoteJid, inboxId: inbox.id })
     return NextResponse.json({ success: true, reason: 'from_me_saved' })
   }
 
-  // 6. Agente desativado — salvar mensagem mas não processar com IA
-  if (!agent.isActive) {
+  // 6. Agente ausente ou desativado — salvar mensagem mas não processar com IA
+  if (!agent || !agent.isActive) {
     const normalizedMsg = parseEvolutionMessage(data, instanceName)
 
     if (normalizedMsg.type === 'text' && !normalizedMsg.text) {
@@ -130,8 +136,8 @@ export async function POST(req: Request) {
     }
 
     const resolveResult = await resolveConversation(
-      agent.id,
-      agent.organizationId,
+      inbox.id,
+      orgId,
       remoteJid,
       normalizedMsg.phoneNumber,
       normalizedMsg.pushName,
@@ -142,7 +148,7 @@ export async function POST(req: Request) {
       .catch(() => 'redis_error' as const)
 
     if (dedupResult !== null) {
-      await db.agentMessage.create({
+      await db.message.create({
         data: {
           conversationId: resolveResult.conversationId,
           role: 'user',
@@ -154,13 +160,19 @@ export async function POST(req: Request) {
         },
       })
 
-      revalidateTag(`conversations:${agent.organizationId}`)
+      // Incrementar unreadCount
+      await db.conversation.update({
+        where: { id: resolveResult.conversationId },
+        data: { unreadCount: { increment: 1 } },
+      })
+
+      revalidateTag(`conversations:${orgId}`)
       revalidateTag(`conversation-messages:${resolveResult.conversationId}`)
     }
 
-    console.log('[evolution-webhook] agent_inactive: message saved, AI skipped', {
+    console.log('[evolution-webhook] no_agent_or_inactive: message saved, AI skipped', {
       remoteJid,
-      agentId: agent.id,
+      inboxId: inbox.id,
     })
     return NextResponse.json({ success: true, reason: 'agent_inactive_message_saved' })
   }
@@ -182,14 +194,14 @@ export async function POST(req: Request) {
       // Salvar mensagem do usuário para manter histórico completo
       const normalizedMsg = parseEvolutionMessage(data, instanceName)
       const resolveResult = await resolveConversation(
-        agent.id,
-        agent.organizationId,
+        inbox.id,
+        orgId,
         remoteJid,
         normalizedMsg.phoneNumber,
         normalizedMsg.pushName,
       )
 
-      await db.agentMessage.create({
+      await db.message.create({
         data: {
           conversationId: resolveResult.conversationId,
           role: 'user',
@@ -199,6 +211,12 @@ export async function POST(req: Request) {
             ? ({ media: normalizedMsg.media } as unknown as Prisma.InputJsonValue)
             : undefined,
         },
+      })
+
+      // Incrementar unreadCount
+      await db.conversation.update({
+        where: { id: resolveResult.conversationId },
+        data: { unreadCount: { increment: 1 } },
       })
 
       // Enviar auto-reply apenas se tem mensagem configurada e não enviou recentemente
@@ -236,8 +254,8 @@ export async function POST(req: Request) {
         return 'redis_error' as const
       }),
     resolveConversation(
-      agent.id,
-      agent.organizationId,
+      inbox.id,
+      orgId,
       remoteJid,
       normalizedMessage.phoneNumber,
       normalizedMessage.pushName,
@@ -255,7 +273,7 @@ export async function POST(req: Request) {
 
   // 10. Verificar se IA está pausada na conversa (com auto-unpause após 30 min)
   const tPause = Date.now()
-  const conversation = await db.agentConversation.findUnique({
+  const conversation = await db.conversation.findUnique({
     where: { id: conversationId },
     select: { aiPaused: true, pausedAt: true },
   })
@@ -268,13 +286,13 @@ export async function POST(req: Request) {
       Date.now() - conversation.pausedAt.getTime() > AUTO_UNPAUSE_MS
 
     if (shouldAutoUnpause) {
-      await db.agentConversation.update({
+      await db.conversation.update({
         where: { id: conversationId },
         data: { aiPaused: false, pausedAt: null },
       })
     } else {
       // IA pausada — salvar mensagem do cliente mas não processar com IA
-      await db.agentMessage.create({
+      await db.message.create({
         data: {
           conversationId,
           role: 'user',
@@ -286,7 +304,13 @@ export async function POST(req: Request) {
         },
       })
 
-      revalidateTag(`conversations:${agent.organizationId}`)
+      // Incrementar unreadCount
+      await db.conversation.update({
+        where: { id: conversationId },
+        data: { unreadCount: { increment: 1 } },
+      })
+
+      revalidateTag(`conversations:${orgId}`)
       revalidateTag(`conversation-messages:${conversationId}`)
 
       console.log('[evolution-webhook] ai_paused: message saved, AI skipped', { conversationId })
@@ -299,7 +323,7 @@ export async function POST(req: Request) {
   const tDispatch = Date.now()
 
   await Promise.all([
-    db.agentMessage.create({
+    db.message.create({
       data: {
         conversationId,
         role: 'user',
@@ -309,6 +333,11 @@ export async function POST(req: Request) {
           ? ({ media: normalizedMessage.media } as unknown as Prisma.InputJsonValue)
           : undefined,
       },
+    }),
+    // Incrementar unreadCount
+    db.conversation.update({
+      where: { id: conversationId },
+      data: { unreadCount: { increment: 1 } },
     }),
     redis
       .set(
@@ -326,7 +355,7 @@ export async function POST(req: Request) {
         message: normalizedMessage,
         agentId: agent.id,
         conversationId,
-        organizationId: agent.organizationId,
+        organizationId: orgId,
         debounceTimestamp,
       },
       { delay: `${agent.debounceSeconds}s` },
@@ -335,13 +364,14 @@ export async function POST(req: Request) {
   timings.saveAndDispatch = Date.now() - tDispatch
 
   // Invalidar cache do inbox
-  revalidateTag(`conversations:${agent.organizationId}`)
+  revalidateTag(`conversations:${orgId}`)
   revalidateTag(`conversation-messages:${conversationId}`)
 
   console.log('[evolution-webhook] timings', {
     totalMs: Date.now() - t0,
     ...timings,
     conversationId,
+    inboxId: inbox.id,
     agentId: agent.id,
   })
 

@@ -6,11 +6,13 @@ export interface ConversationListDto {
   id: string
   contactName: string
   contactPhone: string | null
-  agentName: string
-  agentId: string
+  agentName: string | null
+  inboxId: string
+  inboxName: string
   channel: string
   aiPaused: boolean
   remoteJid: string | null
+  unreadCount: number
   lastMessage: {
     content: string
     role: string
@@ -24,11 +26,17 @@ export interface ConversationListDto {
 const fetchConversationsFromDb = async (
   orgId: string,
 ): Promise<ConversationListDto[]> => {
-  const conversations = await db.agentConversation.findMany({
+  const conversations = await db.conversation.findMany({
     where: { organizationId: orgId },
     include: {
       contact: { select: { name: true, phone: true } },
-      agent: { select: { name: true } },
+      inbox: {
+        select: {
+          id: true,
+          name: true,
+          agent: { select: { name: true } },
+        },
+      },
       messages: {
         where: { isArchived: false },
         orderBy: { createdAt: 'desc' },
@@ -44,11 +52,13 @@ const fetchConversationsFromDb = async (
     id: conversation.id,
     contactName: conversation.contact.name,
     contactPhone: conversation.contact.phone,
-    agentName: conversation.agent.name,
-    agentId: conversation.agentId,
+    agentName: conversation.inbox.agent?.name ?? null,
+    inboxId: conversation.inbox.id,
+    inboxName: conversation.inbox.name,
     channel: conversation.channel,
     aiPaused: conversation.aiPaused,
     remoteJid: conversation.remoteJid,
+    unreadCount: conversation.unreadCount,
     lastMessage: conversation.messages[0]
       ? {
           content: conversation.messages[0].content,

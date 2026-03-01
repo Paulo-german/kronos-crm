@@ -2,8 +2,7 @@ import { notFound } from 'next/navigation'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getAgentById } from '@/_data-access/agent/get-agent-by-id'
 import { getOrgPipelines } from '@/_data-access/pipeline/get-org-pipelines'
-import { getAgentConnectionStats } from '@/_data-access/agent/get-agent-connection-stats'
-import { getEvolutionInstanceInfo } from '@/_lib/evolution/instance-management'
+import { getInboxes } from '@/_data-access/inbox/get-inboxes'
 import AgentDetailClient from './_components/agent-detail-client'
 
 interface AgentDetailPageProps {
@@ -14,20 +13,21 @@ const AgentDetailPage = async ({ params }: AgentDetailPageProps) => {
   const { orgSlug, agentId } = await params
   const ctx = await getOrgContext(orgSlug)
 
-  const [agent, pipelines] = await Promise.all([
+  const [agent, pipelines, inboxes] = await Promise.all([
     getAgentById(agentId, ctx.orgId),
     getOrgPipelines(ctx.orgId),
+    getInboxes(ctx.orgId),
   ])
 
   if (!agent) notFound()
 
-  // Buscar info e stats da conexão em paralelo (se tem instância)
-  const [connectionStats, instanceInfo] = agent.evolutionInstanceName
-    ? await Promise.all([
-        getAgentConnectionStats(agentId),
-        getEvolutionInstanceInfo(agent.evolutionInstanceName),
-      ])
-    : [null, null]
+  // Inboxes disponíveis para vincular (sem agent ou do próprio agent)
+  const availableInboxes = inboxes.map((inbox) => ({
+    id: inbox.id,
+    name: inbox.name,
+    channel: inbox.channel,
+    agentId: inbox.agentId,
+  }))
 
   return (
     <AgentDetailClient
@@ -35,8 +35,7 @@ const AgentDetailPage = async ({ params }: AgentDetailPageProps) => {
       pipelines={pipelines}
       userRole={ctx.userRole}
       orgSlug={orgSlug}
-      connectionStats={connectionStats}
-      instanceInfo={instanceInfo}
+      availableInboxes={availableInboxes}
     />
   )
 }

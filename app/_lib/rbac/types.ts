@@ -24,6 +24,7 @@ export type RBACEntity =
   | 'billing'
   | 'appointment'
   | 'agent'
+  | 'inbox'
   | 'conversation'
 
 /**

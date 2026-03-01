@@ -7,28 +7,28 @@ import { canPerformAction, requirePermission } from '@/_lib/rbac'
 import { getEvolutionQRCode } from '@/_lib/evolution/instance-management'
 
 const getEvolutionQRSchema = z.object({
-  agentId: z.string().uuid(),
+  inboxId: z.string().uuid(),
 })
 
 export const getEvolutionQR = orgActionClient
   .schema(getEvolutionQRSchema)
-  .action(async ({ parsedInput: { agentId }, ctx }) => {
-    requirePermission(canPerformAction(ctx, 'agent', 'read'))
+  .action(async ({ parsedInput: { inboxId }, ctx }) => {
+    requirePermission(canPerformAction(ctx, 'inbox', 'read'))
 
-    const agent = await db.agent.findFirst({
-      where: { id: agentId, organizationId: ctx.orgId },
+    const inbox = await db.inbox.findFirst({
+      where: { id: inboxId, organizationId: ctx.orgId },
       select: { evolutionInstanceName: true },
     })
 
-    if (!agent) {
-      throw new Error('Agente não encontrado.')
+    if (!inbox) {
+      throw new Error('Caixa de entrada não encontrada.')
     }
 
-    if (!agent.evolutionInstanceName) {
-      throw new Error('Agente não possui instância WhatsApp.')
+    if (!inbox.evolutionInstanceName) {
+      throw new Error('Esta caixa de entrada não possui instância WhatsApp.')
     }
 
-    const result = await getEvolutionQRCode(agent.evolutionInstanceName)
+    const result = await getEvolutionQRCode(inbox.evolutionInstanceName)
 
     return {
       base64: result.base64,

@@ -8,28 +8,28 @@ import { canPerformAction, requirePermission } from '@/_lib/rbac'
 import { createEvolutionInstance } from '@/_lib/evolution/instance-management'
 
 const connectEvolutionSchema = z.object({
-  agentId: z.string().uuid(),
+  inboxId: z.string().uuid(),
 })
 
 export const connectEvolution = orgActionClient
   .schema(connectEvolutionSchema)
-  .action(async ({ parsedInput: { agentId }, ctx }) => {
-    requirePermission(canPerformAction(ctx, 'agent', 'update'))
+  .action(async ({ parsedInput: { inboxId }, ctx }) => {
+    requirePermission(canPerformAction(ctx, 'inbox', 'update'))
 
-    const agent = await db.agent.findFirst({
-      where: { id: agentId, organizationId: ctx.orgId },
+    const inbox = await db.inbox.findFirst({
+      where: { id: inboxId, organizationId: ctx.orgId },
     })
 
-    if (!agent) {
-      throw new Error('Agente não encontrado.')
+    if (!inbox) {
+      throw new Error('Caixa de entrada não encontrada.')
     }
 
-    if (agent.evolutionInstanceName) {
-      throw new Error('Agente já possui uma instância WhatsApp conectada.')
+    if (inbox.evolutionInstanceName) {
+      throw new Error('Esta caixa de entrada já possui uma instância WhatsApp conectada.')
     }
 
     // Gera nome único para a instância
-    const instanceName = `kronos-${ctx.orgId.slice(0, 8)}-${agentId.slice(0, 8)}`
+    const instanceName = `kronos-${ctx.orgId.slice(0, 8)}-${inbox.id.slice(0, 8)}`
 
     const vercelUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || vercelUrl
@@ -46,19 +46,24 @@ export const connectEvolution = orgActionClient
 
     const result = await createEvolutionInstance(instanceName, webhookUrl)
 
-    await db.agent.update({
-      where: { id: agentId },
+    await db.inbox.update({
+      where: { id: inbox.id },
       data: {
         evolutionInstanceName: result.instanceName,
         evolutionInstanceId: result.instanceId,
       },
     })
 
-    revalidateTag(`agent:${agentId}`)
-    revalidateTag(`agents:${ctx.orgId}`)
+    revalidateTag(`inbox:${inbox.id}`)
+    revalidateTag(`inboxes:${ctx.orgId}`)
+    if (inbox.agentId) {
+      revalidateTag(`agent:${inbox.agentId}`)
+      revalidateTag(`agents:${ctx.orgId}`)
+    }
 
     return {
       success: true,
+      inboxId: inbox.id,
       instanceName: result.instanceName,
       qrBase64: result.qrBase64,
     }

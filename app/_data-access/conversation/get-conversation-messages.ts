@@ -14,8 +14,9 @@ export interface ConversationDetailDto {
   id: string
   contactName: string
   contactPhone: string | null
-  agentName: string
-  agentId: string
+  agentName: string | null
+  inboxId: string
+  inboxName: string
   aiPaused: boolean
   remoteJid: string | null
   dealId: string | null
@@ -26,7 +27,7 @@ export interface ConversationDetailDto {
 const fetchMessagesFromDb = async (
   conversationId: string,
 ): Promise<MessageDto[]> => {
-  const messages = await db.agentMessage.findMany({
+  const messages = await db.message.findMany({
     where: {
       conversationId,
       role: { in: ['user', 'assistant'] },
@@ -62,11 +63,17 @@ const fetchConversationDetailFromDb = async (
   conversationId: string,
   orgId: string,
 ): Promise<ConversationDetailDto | null> => {
-  const conversation = await db.agentConversation.findFirst({
+  const conversation = await db.conversation.findFirst({
     where: { id: conversationId, organizationId: orgId },
     include: {
       contact: { select: { name: true, phone: true } },
-      agent: { select: { name: true } },
+      inbox: {
+        select: {
+          id: true,
+          name: true,
+          agent: { select: { name: true } },
+        },
+      },
     },
   })
 
@@ -76,8 +83,9 @@ const fetchConversationDetailFromDb = async (
     id: conversation.id,
     contactName: conversation.contact.name,
     contactPhone: conversation.contact.phone,
-    agentName: conversation.agent.name,
-    agentId: conversation.agentId,
+    agentName: conversation.inbox.agent?.name ?? null,
+    inboxId: conversation.inboxId,
+    inboxName: conversation.inbox.name,
     aiPaused: conversation.aiPaused,
     remoteJid: conversation.remoteJid,
     dealId: conversation.dealId,

@@ -10,10 +10,9 @@ export interface AgentDto {
   modelId: string
   pipelineIds: string[]
   toolsEnabled: string[]
-  evolutionInstanceName: string | null
+  inboxCount: number
   stepsCount: number
   knowledgeFilesCount: number
-  conversationsCount: number
   createdAt: Date
 }
 
@@ -25,7 +24,7 @@ const fetchAgentsFromDb = async (orgId: string): Promise<AgentDto[]> => {
         select: {
           steps: true,
           knowledgeFiles: true,
-          conversations: true,
+          inboxes: true,
         },
       },
     },
@@ -39,10 +38,9 @@ const fetchAgentsFromDb = async (orgId: string): Promise<AgentDto[]> => {
     modelId: agent.modelId,
     pipelineIds: agent.pipelineIds,
     toolsEnabled: agent.toolsEnabled,
-    evolutionInstanceName: agent.evolutionInstanceName,
+    inboxCount: agent._count.inboxes,
     stepsCount: agent._count.steps,
     knowledgeFilesCount: agent._count.knowledgeFiles,
-    conversationsCount: agent._count.conversations,
     createdAt: agent.createdAt,
   }))
 }
