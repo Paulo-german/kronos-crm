@@ -1,5 +1,5 @@
 import 'server-only'
-import { unstable_cache } from 'next/cache'
+import { cache } from 'react'
 import { db } from '@/_lib/prisma'
 
 export interface MessageDto {
@@ -47,17 +47,11 @@ const fetchMessagesFromDb = async (
   return messages
 }
 
-export const getConversationMessages = async (
-  conversationId: string,
-): Promise<MessageDto[]> => {
-  const getCached = unstable_cache(
-    async () => fetchMessagesFromDb(conversationId),
-    [`conversation-messages-${conversationId}`],
-    { tags: [`conversation-messages:${conversationId}`], revalidate: 10 },
-  )
-
-  return getCached()
-}
+export const getConversationMessages = cache(
+  async (conversationId: string): Promise<MessageDto[]> => {
+    return fetchMessagesFromDb(conversationId)
+  },
+)
 
 const fetchConversationDetailFromDb = async (
   conversationId: string,
@@ -94,15 +88,11 @@ const fetchConversationDetailFromDb = async (
   }
 }
 
-export const getConversationDetail = async (
-  conversationId: string,
-  orgId: string,
-): Promise<ConversationDetailDto | null> => {
-  const getCached = unstable_cache(
-    async () => fetchConversationDetailFromDb(conversationId, orgId),
-    [`conversation-detail-${conversationId}`],
-    { tags: [`conversations:${orgId}`, `conversation-messages:${conversationId}`], revalidate: 10 },
-  )
-
-  return getCached()
-}
+export const getConversationDetail = cache(
+  async (
+    conversationId: string,
+    orgId: string,
+  ): Promise<ConversationDetailDto | null> => {
+    return fetchConversationDetailFromDb(conversationId, orgId)
+  },
+)

@@ -1,5 +1,5 @@
 import 'server-only'
-import { unstable_cache } from 'next/cache'
+import { cache } from 'react'
 import { db } from '@/_lib/prisma'
 
 export interface ConversationListDto {
@@ -72,14 +72,8 @@ const fetchConversationsFromDb = async (
   }))
 }
 
-export const getConversations = async (
-  orgId: string,
-): Promise<ConversationListDto[]> => {
-  const getCached = unstable_cache(
-    async () => fetchConversationsFromDb(orgId),
-    [`conversations-${orgId}`],
-    { tags: [`conversations:${orgId}`], revalidate: 30 },
-  )
-
-  return getCached()
-}
+export const getConversations = cache(
+  async (orgId: string): Promise<ConversationListDto[]> => {
+    return fetchConversationsFromDb(orgId)
+  },
+)
