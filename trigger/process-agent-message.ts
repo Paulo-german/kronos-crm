@@ -10,6 +10,7 @@ import { buildSystemPrompt } from './build-system-prompt'
 import { buildToolSet } from './tools'
 import { langfuseTracer, flushLangfuse } from './lib/langfuse'
 import { transcribeAudio } from './utils/transcribe-audio'
+import { downloadAndStoreMedia } from './utils/download-and-store-media'
 import type { ToolContext } from './tools/types'
 import type { NormalizedWhatsAppMessage } from '@/_lib/evolution/types'
 
@@ -112,6 +113,36 @@ export const processAgentMessage = task({
         where: { providerMessageId: message.messageId },
         data: { content: transcription },
       })
+    }
+
+    // -----------------------------------------------------------------------
+    // 2c. Download de mídia + contexto LLM para image/document
+    // -----------------------------------------------------------------------
+    if (message.media && (message.type === 'image' || message.type === 'document' || message.type === 'audio')) {
+      // Best-effort: falha não bloqueia o fluxo
+      await downloadAndStoreMedia({
+        instanceName: message.instanceName,
+        messageId: message.messageId,
+        providerMessageId: message.messageId,
+        conversationId,
+        organizationId,
+        mimetype: message.media.mimetype,
+        fileName: message.media.fileName,
+      }).catch((error) => {
+        logger.warn('Media download failed (non-fatal)', {
+          messageId: message.messageId,
+          error: error instanceof Error ? error.message : String(error),
+        })
+      })
+    }
+
+    // Para image/document: IA não "vê" a mídia mas sabe que foi enviada
+    if (message.type === 'image') {
+      const caption = message.text ? ` com legenda: "${message.text}"` : ''
+      messageText = `[O cliente enviou uma imagem${caption}]`
+    } else if (message.type === 'document') {
+      const fileName = message.media?.fileName ?? 'arquivo'
+      messageText = `[O cliente enviou um documento: "${fileName}"]`
     }
 
     // -----------------------------------------------------------------------

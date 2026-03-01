@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import type { Prisma } from '@prisma/client'
 import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
-import { parseEvolutionMessage, isGroupMessage } from '@/_lib/evolution/parse-message'
+import { parseEvolutionMessage, isGroupMessage, resolveEffectiveJid } from '@/_lib/evolution/parse-message'
 import { resolveConversation } from '@/_lib/evolution/resolve-conversation'
+import { sendWhatsAppMessage } from '@/_lib/evolution/send-message'
+import { checkBusinessHours } from '@/_lib/agent/check-business-hours'
 import { tasks } from '@trigger.dev/sdk/v3'
 import type { processAgentMessage } from '@/../../trigger/process-agent-message'
-import type { EvolutionWebhookPayload } from '@/_lib/evolution/types'
+import type { EvolutionWebhookPayload, NormalizedWhatsAppMessage } from '@/_lib/evolution/types'
+import type { BusinessHoursConfig } from '@/_actions/agent/update-agent/schema'
 
 export async function POST(req: Request) {
   const t0 = Date.now()
@@ -32,7 +36,10 @@ export async function POST(req: Request) {
 
   const { data, instance: instanceName } = payload
   const { key } = data
-  const { remoteJid, fromMe, id: messageId } = key
+  const { fromMe, id: messageId } = key
+
+  // Resolver @lid → @s.whatsapp.net para consistência
+  const remoteJid = resolveEffectiveJid(key.remoteJid, key.remoteJidAlt)
 
   // 3. Filtro de grupo
   if (isGroupMessage(remoteJid)) {
@@ -50,6 +57,10 @@ export async function POST(req: Request) {
       id: true,
       organizationId: true,
       debounceSeconds: true,
+      businessHoursEnabled: true,
+      businessHoursTimezone: true,
+      businessHoursConfig: true,
+      outOfHoursMessage: true,
     },
   })
   timings.agentLookup = Date.now() - t0
@@ -59,30 +70,119 @@ export async function POST(req: Request) {
     return NextResponse.json({ ignored: true, reason: 'no_active_agent' })
   }
 
-  // 5. Tratamento fromMe — pausar IA quando humano responde (com timestamp)
+  // 5. Tratamento fromMe — salvar mensagem + pausar IA quando humano responde
   if (fromMe) {
+    const normalizedMsg = parseEvolutionMessage(data, instanceName)
+
+    // Só salvar se tem conteúdo (ignorar status, reactions, etc.)
+    if (normalizedMsg.type === 'text' && !normalizedMsg.text) {
+      return NextResponse.json({ ignored: true, reason: 'from_me_empty' })
+    }
+
+    const resolveResult = await resolveConversation(
+      agent.id,
+      agent.organizationId,
+      remoteJid,
+      normalizedMsg.phoneNumber,
+      normalizedMsg.pushName,
+    )
+
+    // Dedup para não duplicar mensagens já salvas pelo inbox/agent
+    const dedupResult = await redis
+      .set(`dedup:${messageId}`, '1', 'EX', 300, 'NX')
+      .catch(() => 'redis_error' as const)
+
+    if (dedupResult !== null) {
+      await db.agentMessage.create({
+        data: {
+          conversationId: resolveResult.conversationId,
+          role: 'assistant',
+          content: resolveMessageContent(normalizedMsg),
+          providerMessageId: messageId,
+          metadata: {
+            sentFrom: 'whatsapp_direct',
+            ...(normalizedMsg.media
+              ? { media: normalizedMsg.media }
+              : {}),
+          } as unknown as Prisma.InputJsonValue,
+        },
+      })
+
+      revalidateTag(`conversations:${agent.organizationId}`)
+      revalidateTag(`conversation-messages:${resolveResult.conversationId}`)
+    }
+
     await db.agentConversation.updateMany({
       where: { agentId: agent.id, remoteJid },
       data: { aiPaused: true, pausedAt: new Date() },
     })
-    console.log('[evolution-webhook] SKIP: from_me_paused', { remoteJid, agentId: agent.id })
-    return NextResponse.json({ ignored: true, reason: 'from_me_paused' })
+
+    console.log('[evolution-webhook] from_me: saved + paused', { remoteJid, agentId: agent.id })
+    return NextResponse.json({ success: true, reason: 'from_me_saved' })
   }
 
-  // 6. Normalizar mensagem (sync — antes do paralelo pois precisamos do resultado)
+  // 6. Business hours check — se fora do horário, salva mensagem mas não processa com IA
+  if (agent.businessHoursEnabled && agent.businessHoursConfig) {
+    const isOpen = checkBusinessHours(
+      agent.businessHoursTimezone,
+      agent.businessHoursConfig as BusinessHoursConfig,
+    )
+
+    if (!isOpen) {
+      // Dedup para auto-reply: máximo 1 resposta por hora por contato
+      const oohKey = `ooh-reply:${agent.id}:${remoteJid}`
+      const alreadyReplied = await redis
+        .set(oohKey, '1', 'EX', 3600, 'NX')
+        .catch(() => null)
+
+      // Salvar mensagem do usuário para manter histórico completo
+      const normalizedMsg = parseEvolutionMessage(data, instanceName)
+      const resolveResult = await resolveConversation(
+        agent.id,
+        agent.organizationId,
+        remoteJid,
+        normalizedMsg.phoneNumber,
+        normalizedMsg.pushName,
+      )
+
+      await db.agentMessage.create({
+        data: {
+          conversationId: resolveResult.conversationId,
+          role: 'user',
+          content: resolveMessageContent(normalizedMsg) || '[mensagem não suportada]',
+          providerMessageId: messageId,
+          metadata: normalizedMsg.media
+            ? ({ media: normalizedMsg.media } as unknown as Prisma.InputJsonValue)
+            : undefined,
+        },
+      })
+
+      // Enviar auto-reply apenas se tem mensagem configurada e não enviou recentemente
+      if (agent.outOfHoursMessage && alreadyReplied !== null) {
+        await sendWhatsAppMessage(instanceName, remoteJid, agent.outOfHoursMessage).catch(
+          (error) => console.error('[evolution-webhook] OOH auto-reply failed:', error),
+        )
+      }
+
+      console.log('[evolution-webhook] SKIP: outside_business_hours', {
+        remoteJid,
+        agentId: agent.id,
+        replied: !!alreadyReplied && !!agent.outOfHoursMessage,
+      })
+      return NextResponse.json({ ignored: true, reason: 'outside_business_hours' })
+    }
+  }
+
+  // 7. Normalizar mensagem (sync — antes do paralelo pois precisamos do resultado)
   const normalizedMessage = parseEvolutionMessage(data, instanceName)
 
-  // Fase 3.1: só processar mensagens de texto e áudio
+  // Filtrar mensagens de texto vazio (mas aceitar audio, image, document)
   if (normalizedMessage.type === 'text' && !normalizedMessage.text) {
     console.log('[evolution-webhook] SKIP: empty_text')
     return NextResponse.json({ ignored: true, reason: 'empty_text' })
   }
-  if (normalizedMessage.type !== 'text' && normalizedMessage.type !== 'audio') {
-    console.log('[evolution-webhook] SKIP: unsupported_type', { type: normalizedMessage.type })
-    return NextResponse.json({ ignored: true, reason: 'unsupported_type' })
-  }
 
-  // 7. Dedup + Resolve Conversation em paralelo
+  // 8. Dedup + Resolve Conversation em paralelo
   const t1 = Date.now()
   const [dedupResult, resolveResult] = await Promise.all([
     redis
@@ -109,7 +209,7 @@ export async function POST(req: Request) {
 
   const { conversationId } = resolveResult
 
-  // 8. Verificar se IA está pausada na conversa (com auto-unpause após 30 min)
+  // 9. Verificar se IA está pausada na conversa (com auto-unpause após 30 min)
   const tPause = Date.now()
   const conversation = await db.agentConversation.findUnique({
     where: { id: conversationId },
@@ -129,13 +229,28 @@ export async function POST(req: Request) {
         data: { aiPaused: false, pausedAt: null },
       })
     } else {
-      // pausedAt null (dados legacy) ou ainda dentro do período — mantém pausado
-      console.log('[evolution-webhook] SKIP: ai_paused', { conversationId, pausedAt: conversation.pausedAt })
-      return NextResponse.json({ ignored: true, reason: 'ai_paused' })
+      // IA pausada — salvar mensagem do cliente mas não processar com IA
+      await db.agentMessage.create({
+        data: {
+          conversationId,
+          role: 'user',
+          content: resolveMessageContent(normalizedMessage),
+          providerMessageId: messageId,
+          metadata: normalizedMessage.media
+            ? ({ media: normalizedMessage.media } as unknown as Prisma.InputJsonValue)
+            : undefined,
+        },
+      })
+
+      revalidateTag(`conversations:${agent.organizationId}`)
+      revalidateTag(`conversation-messages:${conversationId}`)
+
+      console.log('[evolution-webhook] ai_paused: message saved, AI skipped', { conversationId })
+      return NextResponse.json({ success: true, reason: 'ai_paused_message_saved' })
     }
   }
 
-  // 9. Save + Debounce + Dispatch em paralelo
+  // 10. Save + Debounce + Dispatch em paralelo
   const debounceTimestamp = Date.now()
   const tDispatch = Date.now()
 
@@ -144,10 +259,7 @@ export async function POST(req: Request) {
       data: {
         conversationId,
         role: 'user',
-        content:
-          normalizedMessage.type === 'audio'
-            ? `[Áudio ${normalizedMessage.media?.seconds ?? 0}s]`
-            : normalizedMessage.text!,
+        content: resolveMessageContent(normalizedMessage),
         providerMessageId: messageId,
         metadata: normalizedMessage.media
           ? ({ media: normalizedMessage.media } as unknown as Prisma.InputJsonValue)
@@ -178,6 +290,10 @@ export async function POST(req: Request) {
   ])
   timings.saveAndDispatch = Date.now() - tDispatch
 
+  // Invalidar cache do inbox
+  revalidateTag(`conversations:${agent.organizationId}`)
+  revalidateTag(`conversation-messages:${conversationId}`)
+
   console.log('[evolution-webhook] timings', {
     totalMs: Date.now() - t0,
     ...timings,
@@ -186,4 +302,21 @@ export async function POST(req: Request) {
   })
 
   return NextResponse.json({ success: true })
+}
+
+function resolveMessageContent(message: NormalizedWhatsAppMessage): string {
+  switch (message.type) {
+    case 'audio':
+      return `[Áudio ${message.media?.seconds ?? 0}s]`
+    case 'image': {
+      const caption = message.text ? `: ${message.text}` : ''
+      return `[Imagem${caption}]`
+    }
+    case 'document': {
+      const fileName = message.media?.fileName ?? 'arquivo'
+      return `[Documento: ${fileName}]`
+    }
+    default:
+      return message.text ?? ''
+  }
 }

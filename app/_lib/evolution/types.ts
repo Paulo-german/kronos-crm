@@ -4,6 +4,8 @@
 
 export interface EvolutionMessageKey {
   remoteJid: string
+  /** Quando remoteJid é @lid (Linked ID), o número real vem aqui como @s.whatsapp.net */
+  remoteJidAlt?: string
   fromMe: boolean
   id: string
 }

@@ -13,10 +13,13 @@ export function parseEvolutionMessage(
 
   const { type, text, media } = extractContent(message)
 
+  // Quando remoteJid é @lid (Linked ID), o número real vem em remoteJidAlt
+  const effectiveJid = resolveEffectiveJid(key.remoteJid, key.remoteJidAlt)
+
   return {
     messageId: key.id,
-    remoteJid: key.remoteJid,
-    phoneNumber: extractPhoneNumber(key.remoteJid),
+    remoteJid: effectiveJid,
+    phoneNumber: extractPhoneNumber(effectiveJid),
     pushName: pushName ?? null,
     fromMe: key.fromMe,
     timestamp: messageTimestamp,
@@ -25,6 +28,20 @@ export function parseEvolutionMessage(
     media,
     instanceName,
   }
+}
+
+/**
+ * Quando o remoteJid é @lid (Linked ID da Meta), usamos remoteJidAlt que contém
+ * o número real no formato @s.whatsapp.net.
+ */
+export function resolveEffectiveJid(
+  remoteJid: string,
+  remoteJidAlt?: string,
+): string {
+  if (remoteJid.endsWith('@lid') && remoteJidAlt) {
+    return remoteJidAlt
+  }
+  return remoteJid
 }
 
 export function isGroupMessage(remoteJid: string): boolean {
