@@ -8,31 +8,31 @@ import { canPerformAction, requirePermission } from '@/_lib/rbac'
 import { createEvolutionInstance } from '@/_lib/evolution/instance-management'
 
 const connectEvolutionSchema = z.object({
-  inboxId: z.string().uuid(),
+  agentId: z.string().uuid(),
 })
 
 export const connectEvolution = orgActionClient
   .schema(connectEvolutionSchema)
-  .action(async ({ parsedInput: { inboxId }, ctx }) => {
-    requirePermission(canPerformAction(ctx, 'inbox', 'update'))
+  .action(async ({ parsedInput: { agentId }, ctx }) => {
+    requirePermission(canPerformAction(ctx, 'agent', 'update'))
 
-    const inbox = await db.inbox.findFirst({
-      where: { id: inboxId, organizationId: ctx.orgId },
+    const agent = await db.agent.findFirst({
+      where: { id: agentId, organizationId: ctx.orgId },
     })
 
-    if (!inbox) {
-      throw new Error('Caixa de entrada não encontrada.')
+    if (!agent) {
+      throw new Error('Agente não encontrado.')
     }
 
-    if (inbox.evolutionInstanceName) {
-      throw new Error('Esta caixa de entrada já possui uma instância WhatsApp conectada.')
+    if (agent.evolutionInstanceName) {
+      throw new Error('Agente já possui uma instância WhatsApp conectada.')
     }
 
     // Gera nome único para a instância
-    const instanceName = `kronos-${ctx.orgId.slice(0, 8)}-${inbox.id.slice(0, 8)}`
+    const instanceName = `kronos-${ctx.orgId.slice(0, 8)}-${agentId.slice(0, 8)}`
 
-    const vercelUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL
-    const appUrl = vercelUrl ? `https://${vercelUrl}` : process.env.NEXT_PUBLIC_APP_URL
+    const vercelUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || vercelUrl
 
     if (!appUrl) {
       throw new Error('NEXT_PUBLIC_APP_URL ou VERCEL_URL deve estar configurada para conectar WhatsApp.')
@@ -46,24 +46,19 @@ export const connectEvolution = orgActionClient
 
     const result = await createEvolutionInstance(instanceName, webhookUrl)
 
-    await db.inbox.update({
-      where: { id: inbox.id },
+    await db.agent.update({
+      where: { id: agentId },
       data: {
         evolutionInstanceName: result.instanceName,
         evolutionInstanceId: result.instanceId,
       },
     })
 
-    revalidateTag(`inbox:${inbox.id}`)
-    revalidateTag(`inboxes:${ctx.orgId}`)
-    if (inbox.agentId) {
-      revalidateTag(`agent:${inbox.agentId}`)
-      revalidateTag(`agents:${ctx.orgId}`)
-    }
+    revalidateTag(`agent:${agentId}`)
+    revalidateTag(`agents:${ctx.orgId}`)
 
     return {
       success: true,
-      inboxId: inbox.id,
       instanceName: result.instanceName,
       qrBase64: result.qrBase64,
     }
