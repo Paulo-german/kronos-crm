@@ -45,6 +45,13 @@ export const processAgentMessage = task({
       debounceTimestamp,
     } = payload
 
+    // Helper de log — sempre inclui msgId + conversationId para rastreio
+    const ctx = { msgId: message.messageId, conversationId, agentId }
+    const log = (step: string, outcome: 'PASS' | 'EXIT' | 'SKIP', extra?: Record<string, unknown>) =>
+      logger.info(`[agent] ${step} → ${outcome}`, { ...ctx, ...extra })
+
+    log('step:0 task_started', 'PASS', { type: message.type, remoteJid: message.remoteJid, organizationId })
+
     updateActiveTrace({
       sessionId: conversationId,
       userId: organizationId,
@@ -61,15 +68,17 @@ export const processAgentMessage = task({
     try {
       const currentTimestamp = await redis.get(`debounce:${conversationId}`)
       if (currentTimestamp && currentTimestamp !== String(debounceTimestamp)) {
-        logger.info('Debounce: newer message exists, skipping', {
-          conversationId,
+        log('step:1 debounce_check', 'EXIT', {
+          reason: 'newer_message_exists',
           myTimestamp: debounceTimestamp,
           currentTimestamp,
         })
         return { skipped: true, reason: 'debounce' }
       }
+      log('step:1 debounce_check', 'PASS')
     } catch (error) {
-      logger.warn('Redis debounce check failed, continuing', { error })
+      log('step:1 debounce_check', 'PASS', { warning: 'redis_failed_continuing' })
+      logger.warn('Redis debounce check failed, continuing', { ...ctx, error })
     }
 
     // -----------------------------------------------------------------------
@@ -78,7 +87,7 @@ export const processAgentMessage = task({
     const balance = await checkBalance(organizationId)
 
     if (balance.available <= 0) {
-      logger.warn('No credits available', { organizationId, balance })
+      log('step:2 credit_check', 'EXIT', { reason: 'no_credits', balance: balance.available })
 
       await sendWhatsAppMessage(
         message.instanceName,
@@ -88,17 +97,14 @@ export const processAgentMessage = task({
 
       return { skipped: true, reason: 'no_credits' }
     }
+    log('step:2 credit_check', 'PASS', { credits: balance.available })
 
     // -----------------------------------------------------------------------
     // 2b. Se áudio, transcrever com Whisper
     // -----------------------------------------------------------------------
     let messageText = message.text
     if (message.type === 'audio' && message.media) {
-      logger.info('Transcribing audio', {
-        instanceName: message.instanceName,
-        messageId: message.messageId,
-        seconds: message.media.seconds,
-      })
+      log('step:3a audio_transcription', 'PASS', { seconds: message.media.seconds })
 
       const transcription = await transcribeAudio(
         message.instanceName,
@@ -106,7 +112,7 @@ export const processAgentMessage = task({
       )
       messageText = transcription
 
-      logger.info('Audio transcribed', { length: transcription.length })
+      log('step:3a audio_transcribed', 'PASS', { length: transcription.length })
 
       // Atualizar mensagem no DB com a transcrição real
       await db.message.updateMany({
@@ -119,6 +125,8 @@ export const processAgentMessage = task({
     // 2c. Download de mídia + contexto LLM para image/document
     // -----------------------------------------------------------------------
     if (message.media && (message.type === 'image' || message.type === 'document' || message.type === 'audio')) {
+      log('step:3b media_download', 'PASS', { type: message.type, mimetype: message.media.mimetype })
+
       // Best-effort: falha não bloqueia o fluxo
       await downloadAndStoreMedia({
         instanceName: message.instanceName,
@@ -130,7 +138,7 @@ export const processAgentMessage = task({
         fileName: message.media.fileName,
       }).catch((error) => {
         logger.warn('Media download failed (non-fatal)', {
-          messageId: message.messageId,
+          ...ctx,
           error: error instanceof Error ? error.message : String(error),
         })
       })
@@ -148,6 +156,8 @@ export const processAgentMessage = task({
     // -----------------------------------------------------------------------
     // 3. Context loading — prompt dinâmico + histórico + dados da conversa
     // -----------------------------------------------------------------------
+    log('step:4 context_loading', 'PASS')
+
     const [promptContext, messageHistory, conversation] = await Promise.all([
       buildSystemPrompt(agentId, conversationId, messageText ?? undefined),
       db.message.findMany({
@@ -167,6 +177,14 @@ export const processAgentMessage = task({
         select: { contactId: true, dealId: true },
       }),
     ])
+
+    log('step:4 context_loaded', 'PASS', {
+      model: promptContext.modelId,
+      historyCount: messageHistory.length,
+      hasSummary: !!promptContext.summary,
+      estimatedTokens: promptContext.estimatedTokens,
+      contactName: promptContext.contactName,
+    })
 
     updateActiveTrace({
       metadata: {
@@ -222,13 +240,10 @@ export const processAgentMessage = task({
     // -----------------------------------------------------------------------
     // 6. Call LLM (com logging de duração)
     // -----------------------------------------------------------------------
-    logger.info('Calling LLM', {
+    log('step:5 llm_call', 'PASS', {
       model: promptContext.modelId,
       messageCount: llmMessages.length,
-      systemPromptEstimatedTokens: promptContext.estimatedTokens,
-      historyMessageCount: messageHistory.length,
-      contactName: promptContext.contactName,
-      conversationId,
+      toolCount: Object.keys(tools ?? {}).length,
     })
 
     const llmStartMs = Date.now()
@@ -257,9 +272,19 @@ export const processAgentMessage = task({
     const responseText = result.text
 
     if (!responseText) {
-      logger.warn('LLM returned empty response', { conversationId, llmDurationMs })
+      log('step:5 llm_call', 'EXIT', { reason: 'empty_response', llmDurationMs })
       return { skipped: true, reason: 'empty_response' }
     }
+
+    log('step:5 llm_response', 'PASS', {
+      llmDurationMs,
+      inputTokens: result.usage?.inputTokens,
+      outputTokens: result.usage?.outputTokens,
+      steps: result.steps?.length ?? 1,
+      toolCalls: result.steps?.flatMap(
+        (step) => step.toolCalls?.map((toolCall) => toolCall.toolName) ?? [],
+      ) ?? [],
+    })
 
     // -----------------------------------------------------------------------
     // 7. Double-check anti-atropelamento — re-query aiPaused
@@ -286,13 +311,10 @@ export const processAgentMessage = task({
         },
       })
 
-      logger.info('AI paused during generation — response saved but NOT sent', {
-        conversationId,
-        llmDurationMs,
-      })
-
+      log('step:6 pause_recheck', 'EXIT', { reason: 'ai_paused_during_generation', llmDurationMs })
       return { skipped: true, reason: 'ai_paused_during_generation' }
     }
+    log('step:6 pause_recheck', 'PASS')
 
     // -----------------------------------------------------------------------
     // 8. Salvar resposta no banco
@@ -310,6 +332,7 @@ export const processAgentMessage = task({
         },
       },
     })
+    log('step:7 response_saved', 'PASS')
 
     // -----------------------------------------------------------------------
     // 9. Debit credits
@@ -322,11 +345,7 @@ export const processAgentMessage = task({
       model: promptContext.modelId,
     })
 
-    if (!debited) {
-      logger.warn('Failed to debit credits (insufficient balance after race)', {
-        organizationId,
-      })
-    }
+    log('step:8 debit_credits', debited ? 'PASS' : 'SKIP', { debited })
 
     // -----------------------------------------------------------------------
     // 10. Send WhatsApp message
@@ -336,6 +355,7 @@ export const processAgentMessage = task({
       message.remoteJid,
       responseText,
     )
+    log('step:9 whatsapp_sent', 'PASS', { responseLength: responseText.length })
 
     // -----------------------------------------------------------------------
     // 11. Memory compression — se >= threshold msgs, summarizar e arquivar
@@ -347,19 +367,11 @@ export const processAgentMessage = task({
     // -----------------------------------------------------------------------
     const totalDurationMs = Date.now() - taskStartMs
 
-    logger.info('Message processed successfully', {
-      conversationId,
-      agentId,
+    log('step:10 completed', 'PASS', {
       inputTokens: result.usage?.inputTokens,
       outputTokens: result.usage?.outputTokens,
       llmDurationMs,
       totalDurationMs,
-      systemPromptEstimatedTokens: promptContext.estimatedTokens,
-      historyMessageCount: messageHistory.length,
-      toolCalls: result.steps?.flatMap(
-        (step) => step.toolCalls?.map((toolCall) => toolCall.toolName) ?? [],
-      ) ?? [],
-      totalSteps: result.steps?.length ?? 1,
     })
 
     return { success: true }

@@ -14,7 +14,6 @@ import type { BusinessHoursConfig } from '@/_actions/agent/update-agent/schema'
 
 export async function POST(req: Request) {
   const t0 = Date.now()
-  const timings: Record<string, number> = {}
 
   // 1. Validação de assinatura via query param
   const { searchParams } = new URL(req.url)
@@ -24,8 +23,6 @@ export async function POST(req: Request) {
   }
 
   const payload: EvolutionWebhookPayload = await req.json()
-
-  console.log('[evolution-webhook] incoming payload', JSON.stringify(payload, null, 2))
 
   // 2. Filtro de evento — só processar messages.upsert
   if (payload.event !== 'messages.upsert') {
@@ -39,11 +36,18 @@ export async function POST(req: Request) {
   // Resolver @lid → @s.whatsapp.net para consistência
   const remoteJid = resolveEffectiveJid(key.remoteJid, key.remoteJidAlt)
 
+  // Helper de log — sempre inclui messageId para rastreio completo
+  const log = (step: string, outcome: 'PASS' | 'EXIT' | 'SKIP', extra?: Record<string, unknown>) =>
+    console.log(`[webhook] ${step} → ${outcome}`, { msgId: messageId, remoteJid, instance: instanceName, ...extra })
+
+  log('step:1 event_filter', 'PASS', { event: payload.event, fromMe })
+
   // 3. Filtro de grupo
   if (isGroupMessage(remoteJid)) {
-    console.log('[evolution-webhook] SKIP: group_message', { remoteJid })
+    log('step:2 group_filter', 'EXIT', { reason: 'group_message' })
     return NextResponse.json({ ignored: true, reason: 'group_message' })
   }
+  log('step:2 group_filter', 'PASS')
 
   // 4. Lookup da Inbox pela instância Evolution (com agent opcional para IA)
   const inbox = await db.inbox.findFirst({
@@ -66,22 +70,24 @@ export async function POST(req: Request) {
       },
     },
   })
-  timings.inboxLookup = Date.now() - t0
 
   if (!inbox) {
-    console.log('[evolution-webhook] SKIP: no_inbox_found', { instanceName })
+    log('step:3 inbox_lookup', 'EXIT', { reason: 'no_inbox_found' })
     return NextResponse.json({ ignored: true, reason: 'no_inbox_found' })
   }
 
   const agent = inbox.agent
   const orgId = inbox.organizationId
+  log('step:3 inbox_lookup', 'PASS', { inboxId: inbox.id, orgId, hasAgent: !!agent, agentActive: agent?.isActive })
 
   // 5. Tratamento fromMe — salvar mensagem + pausar IA quando humano responde
   if (fromMe) {
+    log('step:4 from_me_check', 'EXIT', { reason: 'from_me' })
     const normalizedMsg = parseEvolutionMessage(data, instanceName)
 
     // Só salvar se tem conteúdo (ignorar status, reactions, etc.)
     if (normalizedMsg.type === 'text' && !normalizedMsg.text) {
+      log('step:4a from_me_content', 'SKIP', { reason: 'from_me_empty' })
       return NextResponse.json({ ignored: true, reason: 'from_me_empty' })
     }
 
@@ -123,15 +129,18 @@ export async function POST(req: Request) {
       data: { aiPaused: true, pausedAt: new Date() },
     })
 
-    console.log('[evolution-webhook] from_me: saved + paused', { remoteJid, inboxId: inbox.id })
+    log('step:4b from_me_done', 'EXIT', { conversationId: resolveResult.conversationId, saved: dedupResult !== null, aiPaused: true, ms: Date.now() - t0 })
     return NextResponse.json({ success: true, reason: 'from_me_saved' })
   }
+  log('step:4 from_me_check', 'PASS')
 
   // 6. Agente ausente ou desativado — salvar mensagem mas não processar com IA
   if (!agent || !agent.isActive) {
+    log('step:5 agent_active_check', 'EXIT', { reason: 'agent_inactive', hasAgent: !!agent, isActive: agent?.isActive })
     const normalizedMsg = parseEvolutionMessage(data, instanceName)
 
     if (normalizedMsg.type === 'text' && !normalizedMsg.text) {
+      log('step:5a inactive_content', 'SKIP', { reason: 'inactive_empty' })
       return NextResponse.json({ ignored: true, reason: 'inactive_empty' })
     }
 
@@ -170,12 +179,10 @@ export async function POST(req: Request) {
       revalidateTag(`conversation-messages:${resolveResult.conversationId}`)
     }
 
-    console.log('[evolution-webhook] no_agent_or_inactive: message saved, AI skipped', {
-      remoteJid,
-      inboxId: inbox.id,
-    })
+    log('step:5b inactive_done', 'EXIT', { conversationId: resolveResult.conversationId, saved: dedupResult !== null, ms: Date.now() - t0 })
     return NextResponse.json({ success: true, reason: 'agent_inactive_message_saved' })
   }
+  log('step:5 agent_active_check', 'PASS', { agentId: agent.id })
 
   // 7. Business hours check — se fora do horário, salva mensagem mas não processa com IA
   if (agent.businessHoursEnabled && agent.businessHoursConfig) {
@@ -185,6 +192,8 @@ export async function POST(req: Request) {
     )
 
     if (!isOpen) {
+      log('step:6 business_hours', 'EXIT', { reason: 'outside_business_hours', timezone: agent.businessHoursTimezone })
+
       // Dedup para auto-reply: máximo 1 resposta por hora por contato
       const oohKey = `ooh-reply:${agent.id}:${remoteJid}`
       const alreadyReplied = await redis
@@ -220,19 +229,20 @@ export async function POST(req: Request) {
       })
 
       // Enviar auto-reply apenas se tem mensagem configurada e não enviou recentemente
-      if (agent.outOfHoursMessage && alreadyReplied !== null) {
-        await sendWhatsAppMessage(instanceName, remoteJid, agent.outOfHoursMessage).catch(
-          (error) => console.error('[evolution-webhook] OOH auto-reply failed:', error),
+      const sentAutoReply = !!(agent.outOfHoursMessage && alreadyReplied !== null)
+      if (sentAutoReply) {
+        await sendWhatsAppMessage(instanceName, remoteJid, agent.outOfHoursMessage!).catch(
+          (error) => console.error('[webhook] OOH auto-reply failed:', { msgId: messageId, error }),
         )
       }
 
-      console.log('[evolution-webhook] SKIP: outside_business_hours', {
-        remoteJid,
-        agentId: agent.id,
-        replied: !!alreadyReplied && !!agent.outOfHoursMessage,
-      })
+      log('step:6b ooh_done', 'EXIT', { conversationId: resolveResult.conversationId, sentAutoReply, ms: Date.now() - t0 })
       return NextResponse.json({ ignored: true, reason: 'outside_business_hours' })
     }
+
+    log('step:6 business_hours', 'PASS', { timezone: agent.businessHoursTimezone })
+  } else {
+    log('step:6 business_hours', 'PASS', { reason: 'not_configured' })
   }
 
   // 8. Normalizar mensagem (sync — antes do paralelo pois precisamos do resultado)
@@ -240,17 +250,17 @@ export async function POST(req: Request) {
 
   // Filtrar mensagens de texto vazio (mas aceitar audio, image, document)
   if (normalizedMessage.type === 'text' && !normalizedMessage.text) {
-    console.log('[evolution-webhook] SKIP: empty_text')
+    log('step:7 normalize', 'EXIT', { reason: 'empty_text' })
     return NextResponse.json({ ignored: true, reason: 'empty_text' })
   }
+  log('step:7 normalize', 'PASS', { type: normalizedMessage.type })
 
   // 9. Dedup + Resolve Conversation em paralelo
-  const t1 = Date.now()
   const [dedupResult, resolveResult] = await Promise.all([
     redis
       .set(`dedup:${messageId}`, '1', 'EX', 300, 'NX')
       .catch((error) => {
-        console.warn('[evolution-webhook] Redis dedup failed, continuing:', error)
+        console.warn('[webhook] Redis dedup failed, continuing:', { msgId: messageId, error })
         return 'redis_error' as const
       }),
     resolveConversation(
@@ -261,35 +271,33 @@ export async function POST(req: Request) {
       normalizedMessage.pushName,
     ),
   ])
-  timings.dedupAndResolve = Date.now() - t1
 
   // Checar dedup — se duplicata, retornar early
   if (dedupResult === null) {
-    console.log('[evolution-webhook] SKIP: duplicate', { messageId })
+    log('step:8 dedup', 'EXIT', { reason: 'duplicate' })
     return NextResponse.json({ ignored: true, reason: 'duplicate' })
   }
 
   const { conversationId } = resolveResult
+  log('step:8 dedup+resolve', 'PASS', { conversationId, isNewConversation: resolveResult.isNew })
 
   // 10. Verificar se IA está pausada na conversa (com auto-unpause após 30 min)
-  const tPause = Date.now()
   const conversation = await db.conversation.findUnique({
     where: { id: conversationId },
     select: { aiPaused: true, pausedAt: true },
   })
-  timings.pauseCheck = Date.now() - tPause
 
   if (conversation?.aiPaused) {
     const AUTO_UNPAUSE_MS = 30 * 60 * 1000 // 30 minutos
-    const shouldAutoUnpause =
-      conversation.pausedAt &&
-      Date.now() - conversation.pausedAt.getTime() > AUTO_UNPAUSE_MS
+    const pausedAgoMs = conversation.pausedAt ? Date.now() - conversation.pausedAt.getTime() : null
+    const shouldAutoUnpause = pausedAgoMs !== null && pausedAgoMs > AUTO_UNPAUSE_MS
 
     if (shouldAutoUnpause) {
       await db.conversation.update({
         where: { id: conversationId },
         data: { aiPaused: false, pausedAt: null },
       })
+      log('step:9 ai_pause_check', 'PASS', { action: 'auto_unpaused', pausedAgoMin: Math.round((pausedAgoMs ?? 0) / 60000) })
     } else {
       // IA pausada — salvar mensagem do cliente mas não processar com IA
       await db.message.create({
@@ -313,14 +321,15 @@ export async function POST(req: Request) {
       revalidateTag(`conversations:${orgId}`)
       revalidateTag(`conversation-messages:${conversationId}`)
 
-      console.log('[evolution-webhook] ai_paused: message saved, AI skipped', { conversationId })
+      log('step:9 ai_pause_check', 'EXIT', { reason: 'ai_paused', conversationId, pausedAgoMin: Math.round((pausedAgoMs ?? 0) / 60000), ms: Date.now() - t0 })
       return NextResponse.json({ success: true, reason: 'ai_paused_message_saved' })
     }
+  } else {
+    log('step:9 ai_pause_check', 'PASS', { aiPaused: false })
   }
 
   // 11. Save + Debounce + Dispatch em paralelo
   const debounceTimestamp = Date.now()
-  const tDispatch = Date.now()
 
   await Promise.all([
     db.message.create({
@@ -347,7 +356,7 @@ export async function POST(req: Request) {
         agent.debounceSeconds + 1,
       )
       .catch((error) => {
-        console.warn('[evolution-webhook] Redis debounce set failed:', error)
+        console.warn('[webhook] Redis debounce set failed:', { msgId: messageId, error })
       }),
     tasks.trigger<typeof processAgentMessage>(
       'process-agent-message',
@@ -361,18 +370,17 @@ export async function POST(req: Request) {
       { delay: `${agent.debounceSeconds}s` },
     ),
   ])
-  timings.saveAndDispatch = Date.now() - tDispatch
 
   // Invalidar cache do inbox
   revalidateTag(`conversations:${orgId}`)
   revalidateTag(`conversation-messages:${conversationId}`)
 
-  console.log('[evolution-webhook] timings', {
-    totalMs: Date.now() - t0,
-    ...timings,
+  log('step:10 dispatched', 'PASS', {
     conversationId,
     inboxId: inbox.id,
     agentId: agent.id,
+    debounceSeconds: agent.debounceSeconds,
+    totalMs: Date.now() - t0,
   })
 
   return NextResponse.json({ success: true })
