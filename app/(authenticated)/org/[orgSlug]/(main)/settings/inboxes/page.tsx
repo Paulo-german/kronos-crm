@@ -4,6 +4,7 @@ import { getAgents } from '@/_data-access/agent/get-agents'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 import { InboxesDataTable } from './_components/inboxes-data-table'
 import CreateInboxButton from './_components/create-inbox-button'
+import DiscoverInstancesButton from './_components/discover-instances-button'
 import { QuotaHint } from '@/_components/trial/quota-hint'
 import Header, {
   HeaderLeft,
@@ -42,6 +43,7 @@ const InboxesPage = async ({ params }: InboxesPageProps) => {
           <QuotaHint orgId={ctx.orgId} entity="inbox" />
         </HeaderLeft>
         <HeaderRight>
+          <DiscoverInstancesButton />
           <CreateInboxButton
             agentOptions={agentOptions}
             withinQuota={quota.withinQuota}
