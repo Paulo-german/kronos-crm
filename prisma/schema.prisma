@@ -762,6 +762,12 @@ model Agent {
   // Tools habilitadas para este agente (ex: ["search_knowledge", "move_deal", "update_contact"])
   toolsEnabled String[] @default(["search_knowledge", "move_deal", "update_contact", "create_task", "hand_off_to_human"]) @map("tools_enabled")
 
+  // Horário de funcionamento
+  businessHoursEnabled  Boolean @default(false) @map("business_hours_enabled")
+  businessHoursTimezone String  @default("America/Sao_Paulo") @map("business_hours_timezone")
+  businessHoursConfig   Json?   @map("business_hours_config")
+  outOfHoursMessage     String? @db.Text @map("out_of_hours_message")
+
   // Conexao Evolution API
   evolutionInstanceName String? @map("evolution_instance_name")
   evolutionInstanceId   String? @map("evolution_instance_id")

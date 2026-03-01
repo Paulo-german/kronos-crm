@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { businessHoursConfigSchema } from '../update-agent/schema'
 
 export const createAgentSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
@@ -8,6 +9,10 @@ export const createAgentSchema = z.object({
   pipelineIds: z.array(z.string().uuid()).optional(),
   toolsEnabled: z.array(z.string()).optional(),
   isActive: z.boolean().optional(),
+  businessHoursEnabled: z.boolean().optional(),
+  businessHoursTimezone: z.string().optional(),
+  businessHoursConfig: businessHoursConfigSchema.optional(),
+  outOfHoursMessage: z.string().nullable().optional(),
 })
 
 export type CreateAgentInput = z.infer<typeof createAgentSchema>

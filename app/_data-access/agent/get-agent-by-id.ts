@@ -3,6 +3,7 @@ import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 import type { KnowledgeFileStatus } from '@prisma/client'
+import type { BusinessHoursConfig } from '@/_actions/agent/update-agent/schema'
 
 export interface AgentStepDto {
   id: string
@@ -32,6 +33,10 @@ export interface AgentDetailDto {
   debounceSeconds: number
   pipelineIds: string[]
   toolsEnabled: string[]
+  businessHoursEnabled: boolean
+  businessHoursTimezone: string
+  businessHoursConfig: BusinessHoursConfig | null
+  outOfHoursMessage: string | null
   evolutionInstanceName: string | null
   evolutionInstanceId: string | null
   steps: AgentStepDto[]
@@ -63,6 +68,10 @@ const fetchAgentByIdFromDb = async (
     debounceSeconds: agent.debounceSeconds,
     pipelineIds: agent.pipelineIds,
     toolsEnabled: agent.toolsEnabled,
+    businessHoursEnabled: agent.businessHoursEnabled,
+    businessHoursTimezone: agent.businessHoursTimezone,
+    businessHoursConfig: agent.businessHoursConfig as BusinessHoursConfig | null,
+    outOfHoursMessage: agent.outOfHoursMessage,
     evolutionInstanceName: agent.evolutionInstanceName,
     evolutionInstanceId: agent.evolutionInstanceId,
     steps: agent.steps.map((step) => ({

@@ -28,6 +28,18 @@ export const createAgent = orgActionClient
           toolsEnabled: data.toolsEnabled,
         }),
         ...(data.isActive !== undefined && { isActive: data.isActive }),
+        ...(data.businessHoursEnabled !== undefined && {
+          businessHoursEnabled: data.businessHoursEnabled,
+        }),
+        ...(data.businessHoursTimezone !== undefined && {
+          businessHoursTimezone: data.businessHoursTimezone,
+        }),
+        ...(data.businessHoursConfig !== undefined && {
+          businessHoursConfig: data.businessHoursConfig,
+        }),
+        ...(data.outOfHoursMessage !== undefined && {
+          outOfHoursMessage: data.outOfHoursMessage,
+        }),
       },
     })
 
