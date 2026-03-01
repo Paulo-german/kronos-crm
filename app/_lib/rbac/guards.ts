@@ -138,6 +138,7 @@ function getEntityLabel(entity: RBACEntity): string {
     billing: 'faturamento',
     appointment: 'agendamentos',
     agent: 'agentes IA',
+    conversation: 'conversas',
   }
   return labels[entity]
 }

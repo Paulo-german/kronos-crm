@@ -83,6 +83,13 @@ const PERMISSION_MATRIX: Record<RBACEntity, Record<RBACAction, MemberRole[]>> = 
     delete: ['OWNER', 'ADMIN'],
     transfer: [],
   },
+  conversation: {
+    create: ['OWNER', 'ADMIN', 'MEMBER'],
+    read: ['OWNER', 'ADMIN', 'MEMBER'],
+    update: ['OWNER', 'ADMIN', 'MEMBER'],
+    delete: ['OWNER', 'ADMIN'],
+    transfer: [],
+  },
 }
 
 /**

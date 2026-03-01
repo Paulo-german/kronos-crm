@@ -147,7 +147,6 @@ export const AppSidebar = ({
               <SidebarItem
                 href={buildHref('/inbox')}
                 label="Inbox"
-                badge="Em breve"
                 icon={<Inbox className="h-4 w-4" />}
               />
             </div>

@@ -24,6 +24,7 @@ export type RBACEntity =
   | 'billing'
   | 'appointment'
   | 'agent'
+  | 'conversation'
 
 /**
  * Ações possíveis em cada entidade

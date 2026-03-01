@@ -16,11 +16,16 @@ export const ContentWrapper = ({ children }: ContentWrapperProps) => {
       pathname,
     )
 
+  // Inbox precisa de layout full-height sem padding
+  const isInboxPage = /\/inbox(\/|$)/.test(pathname)
+
+  const isFullBleed = isDealDetailPage || isInboxPage
+
   return (
     <main
       className={cn(
         'min-h-0 flex-1 overflow-y-auto',
-        !isDealDetailPage && 'p-4 md:p-8',
+        !isFullBleed && 'p-4 md:p-8',
       )}
     >
       {children}

@@ -26,7 +26,7 @@ const MODULE_NAV_CONFIG: Record<ModuleSlug, ModuleNavGroup> = {
     moduleSlug: 'inbox',
     moduleTitle: 'Inbox',
     items: [
-      { label: 'Inbox', iconName: 'Inbox', href: '/inbox', badge: 'Em breve' },
+      { label: 'Inbox', iconName: 'Inbox', href: '/inbox' },
     ],
   },
   'ai-agent': {

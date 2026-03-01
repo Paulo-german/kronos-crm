@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { cn } from '@/_lib/utils'
 import { ThemeToggle } from '@/_components/theme-toggle'
 import { GlobalSearch } from '@/_components/global-search'
@@ -14,6 +15,8 @@ interface HeaderStickProps {
 
 const HeaderStick = ({ userEmail }: HeaderStickProps) => {
   const [hidden, setHidden] = useState(false)
+  const pathname = usePathname()
+  const isInbox = /\/inbox(\/|$)/.test(pathname)
 
   useEffect(() => {
     const main = document.querySelector('main')
@@ -30,6 +33,8 @@ const HeaderStick = ({ userEmail }: HeaderStickProps) => {
     main.addEventListener('scroll', handleScroll, { passive: true })
     return () => main.removeEventListener('scroll', handleScroll)
   }, [])
+
+  if (isInbox) return null
 
   return (
     <header
