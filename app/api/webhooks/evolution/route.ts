@@ -47,14 +47,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ ignored: true, reason: 'group_message' })
   }
 
-  // 4. Lookup do Agent (inclui debounceSeconds para delay)
+  // 4. Lookup do Agent (sem filtro isActive — mensagens sempre são salvas)
   const agent = await db.agent.findFirst({
     where: {
       evolutionInstanceName: instanceName,
-      isActive: true,
     },
     select: {
       id: true,
+      isActive: true,
       organizationId: true,
       debounceSeconds: true,
       businessHoursEnabled: true,
@@ -66,8 +66,8 @@ export async function POST(req: Request) {
   timings.agentLookup = Date.now() - t0
 
   if (!agent) {
-    console.log('[evolution-webhook] SKIP: no_active_agent', { instanceName })
-    return NextResponse.json({ ignored: true, reason: 'no_active_agent' })
+    console.log('[evolution-webhook] SKIP: no_agent_found', { instanceName })
+    return NextResponse.json({ ignored: true, reason: 'no_agent_found' })
   }
 
   // 5. Tratamento fromMe — salvar mensagem + pausar IA quando humano responde
@@ -121,7 +121,51 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, reason: 'from_me_saved' })
   }
 
-  // 6. Business hours check — se fora do horário, salva mensagem mas não processa com IA
+  // 6. Agente desativado — salvar mensagem mas não processar com IA
+  if (!agent.isActive) {
+    const normalizedMsg = parseEvolutionMessage(data, instanceName)
+
+    if (normalizedMsg.type === 'text' && !normalizedMsg.text) {
+      return NextResponse.json({ ignored: true, reason: 'inactive_empty' })
+    }
+
+    const resolveResult = await resolveConversation(
+      agent.id,
+      agent.organizationId,
+      remoteJid,
+      normalizedMsg.phoneNumber,
+      normalizedMsg.pushName,
+    )
+
+    const dedupResult = await redis
+      .set(`dedup:${messageId}`, '1', 'EX', 300, 'NX')
+      .catch(() => 'redis_error' as const)
+
+    if (dedupResult !== null) {
+      await db.agentMessage.create({
+        data: {
+          conversationId: resolveResult.conversationId,
+          role: 'user',
+          content: resolveMessageContent(normalizedMsg) || '[mensagem não suportada]',
+          providerMessageId: messageId,
+          metadata: normalizedMsg.media
+            ? ({ media: normalizedMsg.media } as unknown as Prisma.InputJsonValue)
+            : undefined,
+        },
+      })
+
+      revalidateTag(`conversations:${agent.organizationId}`)
+      revalidateTag(`conversation-messages:${resolveResult.conversationId}`)
+    }
+
+    console.log('[evolution-webhook] agent_inactive: message saved, AI skipped', {
+      remoteJid,
+      agentId: agent.id,
+    })
+    return NextResponse.json({ success: true, reason: 'agent_inactive_message_saved' })
+  }
+
+  // 7. Business hours check — se fora do horário, salva mensagem mas não processa com IA
   if (agent.businessHoursEnabled && agent.businessHoursConfig) {
     const isOpen = checkBusinessHours(
       agent.businessHoursTimezone,
@@ -173,7 +217,7 @@ export async function POST(req: Request) {
     }
   }
 
-  // 7. Normalizar mensagem (sync — antes do paralelo pois precisamos do resultado)
+  // 8. Normalizar mensagem (sync — antes do paralelo pois precisamos do resultado)
   const normalizedMessage = parseEvolutionMessage(data, instanceName)
 
   // Filtrar mensagens de texto vazio (mas aceitar audio, image, document)
@@ -182,7 +226,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ignored: true, reason: 'empty_text' })
   }
 
-  // 8. Dedup + Resolve Conversation em paralelo
+  // 9. Dedup + Resolve Conversation em paralelo
   const t1 = Date.now()
   const [dedupResult, resolveResult] = await Promise.all([
     redis
@@ -209,7 +253,7 @@ export async function POST(req: Request) {
 
   const { conversationId } = resolveResult
 
-  // 9. Verificar se IA está pausada na conversa (com auto-unpause após 30 min)
+  // 10. Verificar se IA está pausada na conversa (com auto-unpause após 30 min)
   const tPause = Date.now()
   const conversation = await db.agentConversation.findUnique({
     where: { id: conversationId },
@@ -250,7 +294,7 @@ export async function POST(req: Request) {
     }
   }
 
-  // 10. Save + Debounce + Dispatch em paralelo
+  // 11. Save + Debounce + Dispatch em paralelo
   const debounceTimestamp = Date.now()
   const tDispatch = Date.now()
 
