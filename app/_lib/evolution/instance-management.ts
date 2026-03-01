@@ -212,6 +212,39 @@ export async function getEvolutionQRCode(
   }
 }
 
+export type { EvolutionInstanceInfo } from './types-instance'
+import type { EvolutionInstanceInfo } from './types-instance'
+
+export async function getEvolutionInstanceInfo(
+  instanceName: string,
+): Promise<EvolutionInstanceInfo | null> {
+  const { apiUrl, apiKey } = getEvolutionConfig()
+
+  const response = await fetch(
+    `${apiUrl}/instance/fetchInstances?instanceName=${encodeURIComponent(instanceName)}`,
+    {
+      method: 'GET',
+      headers: buildHeaders(apiKey),
+    },
+  )
+
+  if (!response.ok) return null
+
+  const data = await response.json()
+  // A resposta pode ser um array ou objeto único
+  const instance = Array.isArray(data) ? data[0] : data
+
+  if (!instance) return null
+
+  return {
+    ownerJid: instance.instance?.owner ?? instance.owner ?? null,
+    profileName: instance.instance?.profileName ?? instance.profileName ?? null,
+    profilePictureUrl: instance.instance?.profilePictureUrl ?? instance.profilePictureUrl ?? null,
+  }
+}
+
+export { formatPhoneFromJid } from './format-phone'
+
 export async function disconnectEvolutionInstance(
   instanceName: string,
 ): Promise<void> {

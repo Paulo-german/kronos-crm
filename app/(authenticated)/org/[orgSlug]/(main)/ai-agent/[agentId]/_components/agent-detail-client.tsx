@@ -6,6 +6,8 @@ import { Badge } from '@/_components/ui/badge'
 import { Button } from '@/_components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/_components/ui/tabs'
 import type { AgentDetailDto } from '@/_data-access/agent/get-agent-by-id'
+import type { AgentConnectionStats } from '@/_data-access/agent/get-agent-connection-stats'
+import type { EvolutionInstanceInfo } from '@/_lib/evolution/types-instance'
 import type { OrgPipelineDto } from '@/_data-access/pipeline/get-org-pipelines'
 import type { MemberRole } from '@prisma/client'
 import GeneralTab from './general-tab'
@@ -18,6 +20,8 @@ interface AgentDetailClientProps {
   pipelines: OrgPipelineDto[]
   userRole: MemberRole
   orgSlug: string
+  connectionStats: AgentConnectionStats | null
+  instanceInfo: EvolutionInstanceInfo | null
 }
 
 const AgentDetailClient = ({
@@ -25,6 +29,8 @@ const AgentDetailClient = ({
   pipelines,
   userRole,
   orgSlug,
+  connectionStats,
+  instanceInfo,
 }: AgentDetailClientProps) => {
   const canManage = userRole === 'OWNER' || userRole === 'ADMIN'
 
@@ -116,6 +122,8 @@ const AgentDetailClient = ({
           <ConnectionTab
             agent={agent}
             canManage={canManage}
+            connectionStats={connectionStats}
+            instanceInfo={instanceInfo}
           />
         </TabsContent>
       </Tabs>

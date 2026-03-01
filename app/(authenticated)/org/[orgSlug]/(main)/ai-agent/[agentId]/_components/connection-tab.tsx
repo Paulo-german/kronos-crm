@@ -4,15 +4,22 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 import { QRCodeSVG } from 'qrcode.react'
+import { formatDistanceToNow } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 import {
   MessageSquare,
   Loader2,
   Wifi,
   WifiOff,
   RefreshCw,
+  Phone,
+  User,
+  Server,
+  MessagesSquare,
+  Activity,
+  Clock,
 } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
-import { Badge } from '@/_components/ui/badge'
 import {
   Card,
   CardContent,
@@ -24,11 +31,16 @@ import ConfirmationDialog from '@/_components/confirmation-dialog'
 import { connectEvolution } from '@/_actions/agent/connect-evolution'
 import { getEvolutionQR } from '@/_actions/agent/get-evolution-qr'
 import { disconnectEvolution } from '@/_actions/agent/disconnect-evolution'
+import { formatPhoneFromJid } from '@/_lib/evolution/format-phone'
 import type { AgentDetailDto } from '@/_data-access/agent/get-agent-by-id'
+import type { AgentConnectionStats } from '@/_data-access/agent/get-agent-connection-stats'
+import type { EvolutionInstanceInfo } from '@/_lib/evolution/types-instance'
 
 interface ConnectionTabProps {
   agent: AgentDetailDto
   canManage: boolean
+  connectionStats: AgentConnectionStats | null
+  instanceInfo: EvolutionInstanceInfo | null
 }
 
 type ConnectionState = 'disconnected' | 'checking' | 'connecting' | 'connected'
@@ -36,7 +48,7 @@ type ConnectionState = 'disconnected' | 'checking' | 'connecting' | 'connected'
 const POLL_INTERVAL = 5000 // 5s
 const QR_TIMEOUT = 120000 // 2min
 
-const ConnectionTab = ({ agent, canManage }: ConnectionTabProps) => {
+const ConnectionTab = ({ agent, canManage, connectionStats, instanceInfo }: ConnectionTabProps) => {
   // Se já tem instância, inicia com 'checking' (verifica status real)
   const [connectionState, setConnectionState] = useState<ConnectionState>(
     agent.evolutionInstanceName ? 'checking' : 'disconnected',
@@ -54,7 +66,6 @@ const ConnectionTab = ({ agent, canManage }: ConnectionTabProps) => {
     {
       onSuccess: ({ data }) => {
         toast.success('Instância criada! Escaneie o QR code.')
-        // Usa o QR code retornado pela criação da instância (se disponível)
         if (data?.qrBase64) {
           setQrBase64(data.qrBase64)
         }
@@ -79,7 +90,6 @@ const ConnectionTab = ({ agent, canManage }: ConnectionTabProps) => {
         return
       }
 
-      // Se estava verificando e não está conectado, vai para connecting
       setConnectionState('connecting')
 
       if (data.base64) {
@@ -93,7 +103,6 @@ const ConnectionTab = ({ agent, canManage }: ConnectionTabProps) => {
       }
     },
     onError: () => {
-      // Se estava verificando e o poll falhou, mostra como connecting
       setConnectionState((prev) => (prev === 'checking' ? 'connecting' : prev))
     },
   })
@@ -130,14 +139,12 @@ const ConnectionTab = ({ agent, canManage }: ConnectionTabProps) => {
   const startPolling = useCallback(() => {
     stopPolling()
 
-    // Poll imediato
     executeGetQR({ agentId: agent.id })
 
     pollRef.current = setInterval(() => {
       executeGetQR({ agentId: agent.id })
     }, POLL_INTERVAL)
 
-    // Timeout de 2 min
     timeoutRef.current = setTimeout(() => {
       stopPolling()
       setQrBase64(null)
@@ -146,7 +153,6 @@ const ConnectionTab = ({ agent, canManage }: ConnectionTabProps) => {
     }, QR_TIMEOUT)
   }, [agent.id, executeGetQR, stopPolling])
 
-  // Inicia polling quando entra no estado checking ou connecting
   useEffect(() => {
     if (
       (connectionState === 'checking' || connectionState === 'connecting') &&
@@ -318,28 +324,89 @@ const ConnectionTab = ({ agent, canManage }: ConnectionTabProps) => {
             O agente está recebendo e respondendo mensagens via WhatsApp.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center gap-4 py-6">
-            <Badge
-              variant="outline"
-              className="bg-kronos-green/10 text-kronos-green border-kronos-green/20 hover:bg-kronos-green/20 px-4 py-2 text-sm font-semibold"
-            >
-              Conectado
-            </Badge>
-            {agent.evolutionInstanceName && (
-              <p className="text-sm text-muted-foreground">
-                Instância: {agent.evolutionInstanceName}
-              </p>
+        <CardContent className="space-y-6">
+          {/* Info da conta */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            {instanceInfo?.ownerJid && (
+              <div className="flex items-center gap-3 rounded-md border border-border/50 bg-background/70 p-3">
+                <Phone className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-xs text-muted-foreground">Telefone</p>
+                  <p className="text-sm font-medium">
+                    {formatPhoneFromJid(instanceInfo.ownerJid)}
+                  </p>
+                </div>
+              </div>
             )}
-            {canManage && (
+
+            {instanceInfo?.profileName && (
+              <div className="flex items-center gap-3 rounded-md border border-border/50 bg-background/70 p-3">
+                <User className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-xs text-muted-foreground">Perfil</p>
+                  <p className="text-sm font-medium">{instanceInfo.profileName}</p>
+                </div>
+              </div>
+            )}
+
+            {agent.evolutionInstanceName && (
+              <div className="flex items-center gap-3 rounded-md border border-border/50 bg-background/70 p-3">
+                <Server className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-xs text-muted-foreground">Instância</p>
+                  <p className="text-sm font-medium">{agent.evolutionInstanceName}</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Stats */}
+          {connectionStats && (
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="flex items-center gap-3 rounded-md border border-border/50 bg-background/70 p-3">
+                <MessagesSquare className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-xs text-muted-foreground">Conversas</p>
+                  <p className="text-sm font-medium">{connectionStats.conversationsCount}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 rounded-md border border-border/50 bg-background/70 p-3">
+                <Activity className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-xs text-muted-foreground">Mensagens hoje</p>
+                  <p className="text-sm font-medium">{connectionStats.messagesToday}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 rounded-md border border-border/50 bg-background/70 p-3">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-xs text-muted-foreground">Última atividade</p>
+                  <p className="text-sm font-medium">
+                    {connectionStats.lastMessageAt
+                      ? formatDistanceToNow(new Date(connectionStats.lastMessageAt), {
+                          addSuffix: true,
+                          locale: ptBR,
+                        })
+                      : 'Nenhuma'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Botão desconectar */}
+          {canManage && (
+            <div className="flex justify-center pt-2">
               <Button
                 variant="destructive"
                 onClick={() => setIsDisconnectOpen(true)}
               >
                 Desconectar WhatsApp
               </Button>
-            )}
-          </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
