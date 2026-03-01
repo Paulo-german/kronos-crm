@@ -36,6 +36,7 @@ export async function POST(req: Request) {
 
   // 3. Filtro de grupo
   if (isGroupMessage(remoteJid)) {
+    console.log('[evolution-webhook] SKIP: group_message', { remoteJid })
     return NextResponse.json({ ignored: true, reason: 'group_message' })
   }
 
@@ -54,6 +55,7 @@ export async function POST(req: Request) {
   timings.agentLookup = Date.now() - t0
 
   if (!agent) {
+    console.log('[evolution-webhook] SKIP: no_active_agent', { instanceName })
     return NextResponse.json({ ignored: true, reason: 'no_active_agent' })
   }
 
@@ -63,6 +65,7 @@ export async function POST(req: Request) {
       where: { agentId: agent.id, remoteJid },
       data: { aiPaused: true, pausedAt: new Date() },
     })
+    console.log('[evolution-webhook] SKIP: from_me_paused', { remoteJid, agentId: agent.id })
     return NextResponse.json({ ignored: true, reason: 'from_me_paused' })
   }
 
@@ -71,9 +74,11 @@ export async function POST(req: Request) {
 
   // Fase 3.1: só processar mensagens de texto e áudio
   if (normalizedMessage.type === 'text' && !normalizedMessage.text) {
+    console.log('[evolution-webhook] SKIP: empty_text')
     return NextResponse.json({ ignored: true, reason: 'empty_text' })
   }
   if (normalizedMessage.type !== 'text' && normalizedMessage.type !== 'audio') {
+    console.log('[evolution-webhook] SKIP: unsupported_type', { type: normalizedMessage.type })
     return NextResponse.json({ ignored: true, reason: 'unsupported_type' })
   }
 
@@ -98,6 +103,7 @@ export async function POST(req: Request) {
 
   // Checar dedup — se duplicata, retornar early
   if (dedupResult === null) {
+    console.log('[evolution-webhook] SKIP: duplicate', { messageId })
     return NextResponse.json({ ignored: true, reason: 'duplicate' })
   }
 
@@ -124,6 +130,7 @@ export async function POST(req: Request) {
       })
     } else {
       // pausedAt null (dados legacy) ou ainda dentro do período — mantém pausado
+      console.log('[evolution-webhook] SKIP: ai_paused', { conversationId, pausedAt: conversation.pausedAt })
       return NextResponse.json({ ignored: true, reason: 'ai_paused' })
     }
   }
