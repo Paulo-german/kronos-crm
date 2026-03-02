@@ -14,13 +14,20 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json()
-  const { conversationId } = body as { conversationId?: string }
+  const { conversationId, organizationId } = body as {
+    conversationId?: string
+    organizationId?: string
+  }
 
   if (!conversationId) {
     return NextResponse.json({ error: 'conversationId is required' }, { status: 400 })
   }
 
   revalidateTag(`conversation-messages:${conversationId}`)
+
+  if (organizationId) {
+    revalidateTag(`credits:${organizationId}`)
+  }
 
   return NextResponse.json({ revalidated: true })
 }

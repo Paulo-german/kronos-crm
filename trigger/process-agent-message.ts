@@ -18,7 +18,7 @@ import type { NormalizedWhatsAppMessage } from '@/_lib/evolution/types'
 const NO_CREDITS_MESSAGE =
   'Desculpe, no momento não consigo responder pois os créditos de IA da empresa foram esgotados. Por favor, entre em contato com o administrador.'
 
-async function revalidateConversationCache(conversationId: string) {
+async function revalidateConversationCache(conversationId: string, organizationId?: string) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL
   const secret = process.env.INTERNAL_API_SECRET
 
@@ -38,7 +38,7 @@ async function revalidateConversationCache(conversationId: string) {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${secret}`,
       },
-      body: JSON.stringify({ conversationId }),
+      body: JSON.stringify({ conversationId, organizationId }),
     })
 
     if (!response.ok) {
@@ -412,7 +412,7 @@ export const processAgentMessage = task({
         })
       }
 
-      await revalidateConversationCache(conversationId)
+      await revalidateConversationCache(conversationId, organizationId)
       log('step:6 pause_recheck', 'EXIT', { reason: 'ai_paused_during_generation', llmDurationMs })
       return { skipped: true, reason: 'ai_paused_during_generation' }
     }
@@ -436,7 +436,7 @@ export const processAgentMessage = task({
     })
     log('step:7 response_saved', 'PASS')
 
-    await revalidateConversationCache(conversationId)
+    await revalidateConversationCache(conversationId, organizationId)
 
     // -----------------------------------------------------------------------
     // 9. Ajuste de créditos (refund se custo real < estimado, debit extra se >)
