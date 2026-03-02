@@ -18,6 +18,31 @@ import type { NormalizedWhatsAppMessage } from '@/_lib/evolution/types'
 const NO_CREDITS_MESSAGE =
   'Desculpe, no momento não consigo responder pois os créditos de IA da empresa foram esgotados. Por favor, entre em contato com o administrador.'
 
+async function revalidateConversationCache(conversationId: string) {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL
+  const secret = process.env.INTERNAL_API_SECRET
+
+  if (!appUrl || !secret) {
+    logger.warn('Skipping conversation cache revalidation: missing NEXT_PUBLIC_APP_URL or INTERNAL_API_SECRET')
+    return
+  }
+
+  const baseUrl = appUrl.startsWith('http') ? appUrl : `https://${appUrl}`
+
+  try {
+    await fetch(`${baseUrl}/api/inbox/revalidate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${secret}`,
+      },
+      body: JSON.stringify({ conversationId }),
+    })
+  } catch (error) {
+    logger.warn('Conversation cache revalidation failed', { conversationId, error })
+  }
+}
+
 const MESSAGE_HISTORY_LIMIT = 50
 const SUMMARIZATION_THRESHOLD = 12
 const KEEP_RECENT_MESSAGES = 3
@@ -373,6 +398,7 @@ export const processAgentMessage = task({
         })
       }
 
+      await revalidateConversationCache(conversationId)
       log('step:6 pause_recheck', 'EXIT', { reason: 'ai_paused_during_generation', llmDurationMs })
       return { skipped: true, reason: 'ai_paused_during_generation' }
     }
@@ -395,6 +421,8 @@ export const processAgentMessage = task({
       },
     })
     log('step:7 response_saved', 'PASS')
+
+    await revalidateConversationCache(conversationId)
 
     // -----------------------------------------------------------------------
     // 9. Ajuste de créditos (refund se custo real < estimado, debit extra se >)
