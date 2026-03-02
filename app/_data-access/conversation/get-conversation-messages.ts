@@ -25,6 +25,8 @@ export interface ConversationDetailDto {
   organizationId: string
 }
 
+const DEFAULT_MESSAGE_LIMIT = 30
+
 const fetchMessagesFromDb = async (
   conversationId: string,
 ): Promise<MessageDto[]> => {
@@ -58,6 +60,45 @@ export const getConversationMessages = cache(
     return getCached()
   },
 )
+
+export interface PaginatedMessagesResult {
+  messages: MessageDto[]
+  hasMore: boolean
+}
+
+export async function getConversationMessagesPaginated(
+  conversationId: string,
+  limit = DEFAULT_MESSAGE_LIMIT,
+  cursor?: string,
+): Promise<PaginatedMessagesResult> {
+  const messages = await db.message.findMany({
+    where: {
+      conversationId,
+      role: { in: ['user', 'assistant'] },
+      isArchived: false,
+    },
+    orderBy: { createdAt: 'desc' },
+    take: limit + 1,
+    ...(cursor
+      ? { cursor: { id: cursor }, skip: 1 }
+      : {}),
+    select: {
+      id: true,
+      role: true,
+      content: true,
+      metadata: true,
+      createdAt: true,
+    },
+  })
+
+  const hasMore = messages.length > limit
+  const sliced = hasMore ? messages.slice(0, limit) : messages
+
+  return {
+    messages: sliced.reverse(),
+    hasMore,
+  }
+}
 
 const fetchConversationDetailFromDb = async (
   conversationId: string,

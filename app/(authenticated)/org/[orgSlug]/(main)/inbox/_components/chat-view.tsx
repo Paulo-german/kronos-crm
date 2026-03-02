@@ -52,11 +52,14 @@ export function ChatView({ conversation }: ChatViewProps) {
   const [pausedAt, setPausedAt] = useState<Date | string | null>(conversation.pausedAt)
   const [text, setText] = useState('')
   const [isLoadingMessages, setIsLoadingMessages] = useState(true)
+  const [hasMore, setHasMore] = useState(false)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   const [recordingDuration, setRecordingDuration] = useState(0)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const scrollAreaRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const lastMessageCountRef = useRef(0)
+  const lastMessageIdRef = useRef<string | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const recordingStartRef = useRef<number>(0)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -101,7 +104,7 @@ export function ChatView({ conversation }: ChatViewProps) {
     },
   })
 
-  // Fetch messages
+  // Fetch messages (load inicial + polling)
   const fetchMessages = useCallback(async () => {
     try {
       const response = await fetch(
@@ -110,7 +113,28 @@ export function ChatView({ conversation }: ChatViewProps) {
       if (!response.ok) return
 
       const data = await response.json()
-      setMessages(data.messages)
+
+      setMessages((prev) => {
+        // Load inicial: setar direto
+        if (prev.length === 0) {
+          setHasMore(data.hasMore)
+          return data.messages
+        }
+
+        // Polling: merge via Map para preservar mensagens antigas carregadas pelo "load more"
+        const merged = new Map<string, MessageDto>()
+        for (const message of prev) {
+          merged.set(message.id, message)
+        }
+        for (const message of data.messages) {
+          merged.set(message.id, message)
+        }
+        return Array.from(merged.values()).sort(
+          (a, b) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+        )
+      })
+
       // Só sincroniza aiPaused do servidor se não há toggle pendente
       if (togglePendingRef.current === null) {
         setAiPaused(data.aiPaused)
@@ -122,19 +146,22 @@ export function ChatView({ conversation }: ChatViewProps) {
     }
   }, [conversation.id])
 
-  // Scroll to bottom quando novas mensagens chegam
+  // Scroll to bottom apenas quando a última mensagem muda (nova mensagem no final)
+  // Não dispara ao carregar mensagens anteriores (prepend), pois o último ID não muda
   useEffect(() => {
-    if (messages.length > lastMessageCountRef.current) {
+    const lastId = messages.at(-1)?.id ?? null
+    if (lastId && lastId !== lastMessageIdRef.current) {
       scrollToBottom()
     }
-    lastMessageCountRef.current = messages.length
-  }, [messages.length])
+    lastMessageIdRef.current = lastId
+  }, [messages])
 
   // Initial fetch + polling
   useEffect(() => {
     setIsLoadingMessages(true)
     setMessages([])
-    lastMessageCountRef.current = 0
+    setHasMore(false)
+    lastMessageIdRef.current = null
     fetchMessages()
 
     const interval = setInterval(fetchMessages, POLLING_INTERVAL_MS)
@@ -152,6 +179,40 @@ export function ChatView({ conversation }: ChatViewProps) {
       scrollRef.current?.scrollIntoView({ behavior: 'smooth' })
     }, 100)
   }
+
+  const loadOlderMessages = useCallback(async () => {
+    if (!messages.length || isLoadingMore) return
+
+    const oldestId = messages[0].id
+    const viewport = scrollAreaRef.current?.querySelector(
+      '[data-radix-scroll-area-viewport]',
+    ) as HTMLElement | null
+    const prevScrollHeight = viewport?.scrollHeight ?? 0
+
+    setIsLoadingMore(true)
+    try {
+      const response = await fetch(
+        `/api/inbox/${conversation.id}/messages?cursor=${oldestId}`,
+      )
+      if (!response.ok) return
+
+      const data = await response.json()
+      setHasMore(data.hasMore)
+      setMessages((prev) => [...data.messages, ...prev])
+
+      // Preservar posição do scroll após prepend
+      requestAnimationFrame(() => {
+        if (viewport) {
+          const newScrollHeight = viewport.scrollHeight
+          viewport.scrollTop = newScrollHeight - prevScrollHeight
+        }
+      })
+    } catch {
+      // Silencioso
+    } finally {
+      setIsLoadingMore(false)
+    }
+  }, [messages, isLoadingMore, conversation.id])
 
   const handleSend = () => {
     const trimmed = text.trim()
@@ -407,7 +468,7 @@ export function ChatView({ conversation }: ChatViewProps) {
         )}
 
         {/* Mensagens */}
-        <ScrollArea className="flex-1 px-4">
+        <ScrollArea className="flex-1 px-4" ref={scrollAreaRef}>
           <div className="space-y-3 py-4">
             {isLoadingMessages && (
               <div className="flex items-center justify-center py-8">
@@ -418,6 +479,22 @@ export function ChatView({ conversation }: ChatViewProps) {
             {!isLoadingMessages && messages.length === 0 && (
               <div className="py-8 text-center text-sm text-muted-foreground">
                 Nenhuma mensagem nesta conversa
+              </div>
+            )}
+
+            {hasMore && !isLoadingMessages && (
+              <div className="flex justify-center pb-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={loadOlderMessages}
+                  disabled={isLoadingMore}
+                >
+                  {isLoadingMore && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  Carregar anteriores
+                </Button>
               </div>
             )}
 

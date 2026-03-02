@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { cookies } from 'next/headers'
 import { createClient } from '@/_lib/supabase/server'
 import { validateMembership } from '@/_data-access/organization/validate-membership'
-import { getConversationMessages } from '@/_data-access/conversation/get-conversation-messages'
+import { getConversationMessagesPaginated } from '@/_data-access/conversation/get-conversation-messages'
 import { ORG_SLUG_COOKIE } from '@/_lib/constants'
 import { db } from '@/_lib/prisma'
 
@@ -10,7 +10,7 @@ interface RouteContext {
   params: Promise<{ conversationId: string }>
 }
 
-export async function GET(_request: NextRequest, context: RouteContext) {
+export async function GET(request: NextRequest, context: RouteContext) {
   try {
     // 1. Auth
     const supabase = await createClient()
@@ -54,11 +54,20 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       })
     }
 
-    // 4. Buscar mensagens (usa função cacheada)
-    const messages = await getConversationMessages(conversationId)
+    // 4. Buscar mensagens com paginação por cursor
+    const { searchParams } = new URL(request.url)
+    const cursor = searchParams.get('cursor') ?? undefined
+    const limit = Math.min(Number(searchParams.get('limit')) || 30, 100)
+
+    const { messages, hasMore } = await getConversationMessagesPaginated(
+      conversationId,
+      limit,
+      cursor,
+    )
 
     return NextResponse.json({
       messages,
+      hasMore,
       aiPaused: conversation.aiPaused,
       pausedAt: conversation.pausedAt,
     })
