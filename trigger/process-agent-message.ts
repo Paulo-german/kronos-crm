@@ -4,7 +4,8 @@ import { observe, updateActiveTrace } from '@langfuse/tracing'
 import { getModel } from '@/_lib/ai'
 import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
-import { checkBalance, debitCredits } from '@/_lib/billing/credit-utils'
+import { debitCredits, refundCredits } from '@/_lib/billing/credit-utils'
+import { estimateMaxCost, calculateCreditCost } from '@/_lib/billing/model-pricing'
 import { sendWhatsAppMessage, sendPresence } from '@/_lib/evolution/send-message'
 import { buildSystemPrompt } from './build-system-prompt'
 import { buildToolSet } from './tools'
@@ -82,28 +83,8 @@ export const processAgentMessage = task({
     }
 
     // -----------------------------------------------------------------------
-    // 2. Credit check
+    // 2. (Credit check movido para após context loading — precisa do modelId)
     // -----------------------------------------------------------------------
-    const balance = await checkBalance(organizationId)
-
-    if (balance.available <= 0) {
-      log('step:2 credit_check', 'EXIT', { reason: 'no_credits', balance: balance.available })
-
-      const noCreditsIds = await sendWhatsAppMessage(
-        message.instanceName,
-        message.remoteJid,
-        NO_CREDITS_MESSAGE,
-      )
-
-      await Promise.all(
-        noCreditsIds.map((sentId) =>
-          redis.set(`dedup:${sentId}`, '1', 'EX', 300).catch(() => {}),
-        ),
-      )
-
-      return { skipped: true, reason: 'no_credits' }
-    }
-    log('step:2 credit_check', 'PASS', { credits: balance.available })
 
     // -----------------------------------------------------------------------
     // 2b. Se áudio, transcrever com Whisper
@@ -202,7 +183,7 @@ export const processAgentMessage = task({
     })
 
     // -----------------------------------------------------------------------
-    // 4. Build LLM messages (prompt dinâmico + summary + history)
+    // 4a. Build LLM messages (prompt dinâmico + summary + history)
     // -----------------------------------------------------------------------
     const llmMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = []
 
@@ -225,7 +206,54 @@ export const processAgentMessage = task({
     }
 
     // -----------------------------------------------------------------------
-    // 4b. Build tool set (filtrado pelo toolsEnabled do agent)
+    // 4b. Optimistic credit debit (antes do LLM para evitar race condition)
+    // Estima input tokens com o conteúdo REAL (system + summary + history)
+    // -----------------------------------------------------------------------
+    const MAX_OUTPUT_TOKENS = 1024
+    const estimatedInputTokens = Math.ceil(
+      llmMessages.reduce((sum, msg) => sum + msg.content.length, 0) / 4,
+    )
+    const estimatedCost = estimateMaxCost(
+      promptContext.modelId,
+      estimatedInputTokens,
+      MAX_OUTPUT_TOKENS,
+    )
+
+    const optimisticDebited = await debitCredits(
+      organizationId,
+      estimatedCost,
+      'Débito otimista — agente IA',
+      {
+        agentId,
+        conversationId,
+        model: promptContext.modelId,
+        estimatedInputTokens,
+        estimatedCost,
+        type: 'optimistic',
+      },
+    )
+
+    if (!optimisticDebited) {
+      log('step:4b optimistic_debit', 'EXIT', { reason: 'no_credits', estimatedCost, estimatedInputTokens })
+
+      const noCreditsIds = await sendWhatsAppMessage(
+        message.instanceName,
+        message.remoteJid,
+        NO_CREDITS_MESSAGE,
+      )
+
+      await Promise.all(
+        noCreditsIds.map((sentId) =>
+          redis.set(`dedup:${sentId}`, '1', 'EX', 300).catch(() => {}),
+        ),
+      )
+
+      return { skipped: true, reason: 'no_credits' }
+    }
+    log('step:4b optimistic_debit', 'PASS', { estimatedCost, estimatedInputTokens })
+
+    // -----------------------------------------------------------------------
+    // 4c. Build tool set (filtrado pelo toolsEnabled do agent)
     // -----------------------------------------------------------------------
     const toolContext: ToolContext = {
       organizationId,
@@ -259,7 +287,7 @@ export const processAgentMessage = task({
       messages: llmMessages,
       tools,
       stopWhen: stepCountIs(3),
-      maxOutputTokens: 1024,
+      maxOutputTokens: MAX_OUTPUT_TOKENS,
       experimental_telemetry: {
         isEnabled: true,
         tracer: langfuseTracer,
@@ -271,6 +299,15 @@ export const processAgentMessage = task({
           contactName: promptContext.contactName,
         },
       },
+    }).catch(async (llmError: unknown) => {
+      // LLM falhou — devolver créditos do débito otimista
+      log('step:5 llm_call', 'EXIT', { reason: 'llm_error', error: llmError instanceof Error ? llmError.message : String(llmError) })
+      await refundCredits(organizationId, estimatedCost, 'Refund — erro na chamada LLM', {
+        agentId, conversationId, model: promptContext.modelId, estimatedCost, reason: 'llm_error',
+      }).catch((refundError) => {
+        logger.error('Failed to refund credits after LLM error', { ...ctx, refundError })
+      })
+      throw llmError
     })
 
     const llmDurationMs = Date.now() - llmStartMs
@@ -278,7 +315,16 @@ export const processAgentMessage = task({
     const responseText = result.text
 
     if (!responseText) {
-      log('step:5 llm_call', 'EXIT', { reason: 'empty_response', llmDurationMs })
+      // Ajustar créditos: cobrar custo real dos tokens consumidos, refundar o resto
+      const emptyTotalTokens = (result.usage?.inputTokens ?? 0) + (result.usage?.outputTokens ?? 0)
+      const emptyActualCost = calculateCreditCost(promptContext.modelId, emptyTotalTokens)
+      const emptyRefund = estimatedCost - emptyActualCost
+      if (emptyRefund > 0) {
+        await refundCredits(organizationId, emptyRefund, 'Refund — LLM empty response', {
+          agentId, conversationId, model: promptContext.modelId, estimatedCost, actualCost: emptyActualCost,
+        })
+      }
+      log('step:5 llm_call', 'EXIT', { reason: 'empty_response', llmDurationMs, actualCost: emptyActualCost })
       return { skipped: true, reason: 'empty_response' }
     }
 
@@ -317,6 +363,16 @@ export const processAgentMessage = task({
         },
       })
 
+      // Ajustar créditos: cobrar custo real, refundar a diferença
+      const pausedTotalTokens = (result.usage?.inputTokens ?? 0) + (result.usage?.outputTokens ?? 0)
+      const pausedActualCost = calculateCreditCost(promptContext.modelId, pausedTotalTokens)
+      const pausedRefund = estimatedCost - pausedActualCost
+      if (pausedRefund > 0) {
+        await refundCredits(organizationId, pausedRefund, 'Refund — IA pausada durante geração', {
+          agentId, conversationId, model: promptContext.modelId, estimatedCost, actualCost: pausedActualCost,
+        })
+      }
+
       log('step:6 pause_recheck', 'EXIT', { reason: 'ai_paused_during_generation', llmDurationMs })
       return { skipped: true, reason: 'ai_paused_during_generation' }
     }
@@ -341,17 +397,49 @@ export const processAgentMessage = task({
     log('step:7 response_saved', 'PASS')
 
     // -----------------------------------------------------------------------
-    // 9. Debit credits
+    // 9. Ajuste de créditos (refund se custo real < estimado, debit extra se >)
     // -----------------------------------------------------------------------
-    const debited = await debitCredits(organizationId, 1, 'Mensagem processada pelo agente', {
-      agentId,
-      conversationId,
-      inputTokens: result.usage?.inputTokens,
-      outputTokens: result.usage?.outputTokens,
-      model: promptContext.modelId,
-    })
+    const totalTokens = (result.usage?.inputTokens ?? 0) + (result.usage?.outputTokens ?? 0)
+    const actualCost = calculateCreditCost(promptContext.modelId, totalTokens)
+    const creditDiff = estimatedCost - actualCost
 
-    log('step:8 debit_credits', debited ? 'PASS' : 'SKIP', { debited })
+    if (creditDiff > 0) {
+      await refundCredits(organizationId, creditDiff, 'Ajuste pós-LLM — custo real menor que estimado', {
+        agentId,
+        conversationId,
+        model: promptContext.modelId,
+        estimatedCost,
+        actualCost,
+        totalTokens,
+      })
+      log('step:8 credit_adjustment', 'PASS', { type: 'refund', creditDiff, estimatedCost, actualCost, totalTokens })
+    } else if (creditDiff < 0) {
+      // Custo real maior que estimado (raro) — debitar diferença
+      const extraDebited = await debitCredits(
+        organizationId,
+        -creditDiff,
+        'Ajuste pós-LLM — custo real maior que estimado',
+        {
+          agentId,
+          conversationId,
+          model: promptContext.modelId,
+          estimatedCost,
+          actualCost,
+          totalTokens,
+          type: 'adjustment',
+        },
+        false, // não incrementar totalMessagesUsed
+      )
+      log('step:8 credit_adjustment', extraDebited ? 'PASS' : 'SKIP', {
+        type: 'extra_debit',
+        creditDiff: -creditDiff,
+        estimatedCost,
+        actualCost,
+        totalTokens,
+      })
+    } else {
+      log('step:8 credit_adjustment', 'PASS', { type: 'exact', estimatedCost, actualCost, totalTokens })
+    }
 
     // -----------------------------------------------------------------------
     // 10. Send WhatsApp message + pre-register dedup keys
