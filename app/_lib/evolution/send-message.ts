@@ -22,8 +22,9 @@ export async function sendWhatsAppMessage(
   const messageIds: string[] = []
 
   for (let index = 0; index < chunks.length; index++) {
-    // Delay entre chunks para simular digitação natural
+    // Entre chunks: "digitando..." + delay para simular conversa natural
     if (index > 0) {
+      await sendPresence(instanceName, remoteJid, 'composing')
       await new Promise((resolve) => setTimeout(resolve, DELAY_BETWEEN_CHUNKS_MS))
     }
 

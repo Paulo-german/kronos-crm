@@ -5,7 +5,7 @@ import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
 import { parseEvolutionMessage, isGroupMessage, resolveEffectiveJid } from '@/_lib/evolution/parse-message'
 import { resolveConversation } from '@/_lib/evolution/resolve-conversation'
-import { sendWhatsAppMessage } from '@/_lib/evolution/send-message'
+import { sendWhatsAppMessage, sendPresence } from '@/_lib/evolution/send-message'
 import { checkBusinessHours } from '@/_lib/agent/check-business-hours'
 import { tasks } from '@trigger.dev/sdk/v3'
 import type { processAgentMessage } from '@/../../trigger/process-agent-message'
@@ -56,6 +56,7 @@ export async function POST(req: Request) {
     },
     select: {
       id: true,
+      isActive: true,
       organizationId: true,
       agent: {
         select: {
@@ -78,14 +79,25 @@ export async function POST(req: Request) {
 
   const agent = inbox.agent
   const orgId = inbox.organizationId
-  log('step:3 inbox_lookup', 'PASS', { inboxId: inbox.id, orgId, hasAgent: !!agent, agentActive: agent?.isActive })
+  log('step:3 inbox_lookup', 'PASS', { inboxId: inbox.id, orgId, inboxActive: inbox.isActive, hasAgent: !!agent, agentActive: agent?.isActive })
 
-  // 5. Tratamento fromMe — salvar mensagem + pausar IA quando humano responde
+  // 5. Tratamento fromMe — checar dedup ANTES de qualquer DB call
   if (fromMe) {
-    log('step:4 from_me_check', 'EXIT', { reason: 'from_me' })
+    // Dedup primeiro — mensagens do bot (pré-registradas no processAgentMessage
+    // ou sendMessage) são ignoradas sem nenhum DB call.
+    const dedupResult = await redis
+      .set(`dedup:${messageId}`, '1', 'EX', 300, 'NX')
+      .catch(() => 'redis_error' as const)
+
+    if (dedupResult === null) {
+      log('step:4 from_me_bot', 'SKIP', { reason: 'bot_message_deduped', ms: Date.now() - t0 })
+      return NextResponse.json({ ignored: true, reason: 'from_me_bot' })
+    }
+
+    // Mensagem enviada por humano (direto no WhatsApp) — salvar + pausar IA
+    log('step:4 from_me_human', 'PASS')
     const normalizedMsg = parseEvolutionMessage(data, instanceName)
 
-    // Só salvar se tem conteúdo (ignorar status, reactions, etc.)
     if (normalizedMsg.type === 'text' && !normalizedMsg.text) {
       log('step:4a from_me_content', 'SKIP', { reason: 'from_me_empty' })
       return NextResponse.json({ ignored: true, reason: 'from_me_empty' })
@@ -99,18 +111,6 @@ export async function POST(req: Request) {
       normalizedMsg.pushName,
     )
 
-    // Dedup — se a key já existe, a mensagem foi enviada pelo bot (pré-registrada
-    // no processAgentMessage ou sendMessage). Ignorar para evitar duplicata + auto-pause.
-    const dedupResult = await redis
-      .set(`dedup:${messageId}`, '1', 'EX', 300, 'NX')
-      .catch(() => 'redis_error' as const)
-
-    if (dedupResult === null) {
-      log('step:4b from_me_bot', 'SKIP', { reason: 'bot_message_deduped', ms: Date.now() - t0 })
-      return NextResponse.json({ ignored: true, reason: 'from_me_bot' })
-    }
-
-    // Mensagem enviada por humano (direto no WhatsApp) — salvar + pausar IA
     await db.message.create({
       data: {
         conversationId: resolveResult.conversationId,
@@ -139,9 +139,9 @@ export async function POST(req: Request) {
   }
   log('step:4 from_me_check', 'PASS')
 
-  // 6. Agente ausente ou desativado — salvar mensagem mas não processar com IA
-  if (!agent || !agent.isActive) {
-    log('step:5 agent_active_check', 'EXIT', { reason: 'agent_inactive', hasAgent: !!agent, isActive: agent?.isActive })
+  // 6. Inbox desativada, agente ausente ou desativado — salvar mensagem mas não processar com IA
+  if (!inbox.isActive || !agent || !agent.isActive) {
+    log('step:5 agent_active_check', 'EXIT', { reason: !inbox.isActive ? 'inbox_inactive' : 'agent_inactive', inboxActive: inbox.isActive, hasAgent: !!agent, agentActive: agent?.isActive })
     const normalizedMsg = parseEvolutionMessage(data, instanceName)
 
     if (normalizedMsg.type === 'text' && !normalizedMsg.text) {
@@ -413,6 +413,8 @@ export async function POST(req: Request) {
       },
       { delay: `${agent.debounceSeconds}s` },
     ),
+    // "Digitando..." imediato — usuário vê feedback antes do debounce expirar
+    sendPresence(instanceName, remoteJid, 'composing'),
   ])
 
   // Invalidar cache do inbox
