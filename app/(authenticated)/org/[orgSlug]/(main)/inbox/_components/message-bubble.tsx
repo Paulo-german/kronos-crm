@@ -3,6 +3,7 @@
 import { format } from 'date-fns'
 import { cn } from '@/_lib/utils'
 import { FileDown } from 'lucide-react'
+import { Button } from '@/_components/ui/button'
 
 interface MediaMetadata {
   url?: string
@@ -72,20 +73,22 @@ export function MessageBubble({ role, content, metadata, createdAt }: MessageBub
         )}
 
         {hasStoredMedia && mediaType === 'document' && (
-          <a
-            href={media!.url!}
-            target="_blank"
-            rel="noopener noreferrer"
+          <Button
+            variant="outline"
+            size="sm"
+            asChild
             className={cn(
-              'mb-2 flex items-center gap-2 rounded-lg border p-2 text-xs',
+              'mb-2 w-full justify-start gap-2 text-xs',
               isUser
                 ? 'border-border hover:bg-accent'
-                : 'border-primary-foreground/20 hover:bg-primary-foreground/10',
+                : 'border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground',
             )}
           >
-            <FileDown className="h-4 w-4 shrink-0" />
-            <span className="truncate">{media!.fileName ?? 'Documento'}</span>
-          </a>
+            <a href={media!.url!} target="_blank" rel="noopener noreferrer">
+              <FileDown className="h-4 w-4 shrink-0" />
+              <span className="truncate">{media!.fileName ?? 'Documento'}</span>
+            </a>
+          </Button>
         )}
 
         {/* Texto */}

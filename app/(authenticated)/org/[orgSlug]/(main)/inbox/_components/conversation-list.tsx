@@ -198,9 +198,9 @@ export function ConversationList({
                         </span>
                       )}
                       {hasUnread && (
-                        <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-kronos-green px-1 text-[10px] font-medium text-white">
+                        <Badge className="h-5 min-w-5 rounded-full bg-kronos-green px-1 text-[10px] font-medium text-white hover:bg-kronos-green">
                           {conversation.unreadCount > 9 ? '9+' : conversation.unreadCount}
-                        </span>
+                        </Badge>
                       )}
                     </div>
                   </div>
