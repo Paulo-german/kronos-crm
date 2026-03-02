@@ -29,8 +29,10 @@ async function revalidateConversationCache(conversationId: string) {
 
   const baseUrl = appUrl.startsWith('http') ? appUrl : `https://${appUrl}`
 
+  const url = `${baseUrl}/api/inbox/revalidate`
+
   try {
-    await fetch(`${baseUrl}/api/inbox/revalidate`, {
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -38,8 +40,20 @@ async function revalidateConversationCache(conversationId: string) {
       },
       body: JSON.stringify({ conversationId }),
     })
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '')
+      logger.warn('Conversation cache revalidation returned error', {
+        conversationId,
+        status: response.status,
+        body: text.slice(0, 200),
+        url,
+      })
+    } else {
+      logger.info('Conversation cache revalidated', { conversationId, status: response.status })
+    }
   } catch (error) {
-    logger.warn('Conversation cache revalidation failed', { conversationId, error })
+    logger.warn('Conversation cache revalidation failed (network)', { conversationId, url, error })
   }
 }
 
