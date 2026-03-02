@@ -44,7 +44,9 @@ export function MessageBubble({ id, conversationId, role, content, metadata, cre
   const hasStoredMedia = media?.storedInSupabase && media?.url
   const mediaType = hasStoredMedia ? getMediaType(media?.mimetype) : null
   const hasAudio = media?.mimetype?.startsWith('audio/') && id && conversationId
-  const isAudioPlaceholder = hasAudio && /^\[Áudio \d+s\]$/.test(content)
+  const hasImage = media?.mimetype?.startsWith('image/') && id && conversationId
+  const isMediaPlaceholder =
+    (hasAudio || hasImage) && /^\[(Áudio \d+s|Imagem[^\]]*)\]$/.test(content)
   const timestamp = format(new Date(createdAt), 'HH:mm')
   const isFromInbox = meta?.sentFrom === 'inbox'
 
@@ -64,11 +66,12 @@ export function MessageBubble({ id, conversationId, role, content, metadata, cre
         )}
       >
         {/* Mídia */}
-        {hasStoredMedia && mediaType === 'image' && (
+        {hasImage && (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img
-            src={media!.url!}
+            src={`/api/inbox/${conversationId}/media/${id}`}
             alt="Imagem"
+            loading="lazy"
             className="mb-2 max-h-64 rounded object-contain"
           />
         )}
@@ -76,7 +79,7 @@ export function MessageBubble({ id, conversationId, role, content, metadata, cre
         {hasAudio && (
           <audio controls className="mb-1 min-w-[250px]" preload="none">
             <source
-              src={`/api/inbox/${conversationId}/audio/${id}`}
+              src={`/api/inbox/${conversationId}/media/${id}`}
               type={media!.mimetype}
             />
           </audio>
@@ -102,7 +105,7 @@ export function MessageBubble({ id, conversationId, role, content, metadata, cre
         )}
 
         {/* Texto — esconde placeholder de áudio quando o player está visível */}
-        {!isAudioPlaceholder && (
+        {!isMediaPlaceholder && (
           <p className={cn(
             'whitespace-pre-wrap text-sm',
             hasAudio && 'italic opacity-80',

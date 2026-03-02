@@ -11,7 +11,7 @@ interface RouteContext {
 
 export async function GET(_request: NextRequest, context: RouteContext) {
   try {
-    // 1. Auth (mesmo padrão do messages/route.ts)
+    // 1. Auth
     const supabase = await createClient()
     const {
       data: { user },
@@ -66,7 +66,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       )
     }
 
-    // 3. Chamar Evolution API para obter áudio em base64
+    // 3. Chamar Evolution API para obter mídia em base64
     const apiUrl = process.env.EVOLUTION_API_URL
     const apiKey = process.env.EVOLUTION_API_KEY
 
@@ -93,12 +93,12 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 
     if (!evolutionResponse.ok) {
       console.error(
-        '[audio-proxy] Evolution API error:',
+        '[media-proxy] Evolution API error:',
         evolutionResponse.status,
         await evolutionResponse.text(),
       )
       return NextResponse.json(
-        { error: 'Failed to fetch audio' },
+        { error: 'Failed to fetch media' },
         { status: 502 },
       )
     }
@@ -107,7 +107,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 
     if (!base64) {
       return NextResponse.json(
-        { error: 'No audio data returned' },
+        { error: 'No media data returned' },
         { status: 404 },
       )
     }
@@ -119,7 +119,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     const mediaMimetype =
       mimetype ||
       (metadata?.media as Record<string, unknown> | undefined)?.mimetype ||
-      'audio/ogg'
+      'application/octet-stream'
 
     return new Response(buffer, {
       headers: {
@@ -129,7 +129,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       },
     })
   } catch (error) {
-    console.error('[audio-proxy] Error:', error)
+    console.error('[media-proxy] Error:', error)
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 }
