@@ -43,11 +43,12 @@ export const PLANS: PlanInfo[] = [
     annualTotalPrice: 1367.9, // TODO: valor total do ano em reais (ex: 1970)
     features: [
       { name: '1 usuário', included: true },
-      { name: '1 agente IA + 3.000 créditos IA', included: true },
+      { name: '1 agente IA + 10.000 créditos IA', included: true },
       { name: '1 canal Inbox', included: true },
       { name: 'Até 5.000 contatos', included: true },
       { name: 'Até 5.000 negócios', included: true },
       { name: 'Até 2.000 empresas', included: true },
+      { name: 'Agendamentos ilimitados', included: true },
     ],
   },
   {
@@ -62,12 +63,13 @@ export const PLANS: PlanInfo[] = [
       process.env.NEXT_PUBLIC_STRIPE_ESSENTIAL_ANNUAL_PRICE_ID,
     annualTotalPrice: 4287.9, // TODO: valor total do ano em reais (ex: 3970)
     features: [
-      { name: '3 usuários (+R$30/adicional)', included: true },
-      { name: '2 agentes IA + 8.000 créditos IA', included: true },
+      { name: '4 usuários (+R$30/adicional)', included: true },
+      { name: '2 agentes IA + 18.000 créditos IA', included: true },
       { name: '1 canal Inbox', included: true },
       { name: 'Até 25.000 contatos', included: true },
       { name: 'Até 25.000 negócios', included: true },
       { name: 'Até 10.000 empresas', included: true },
+      { name: 'Agendamentos ilimitados', included: true },
     ],
   },
   {
@@ -82,12 +84,13 @@ export const PLANS: PlanInfo[] = [
     stripePriceIdAnnual: process.env.NEXT_PUBLIC_STRIPE_SCALE_ANNUAL_PRICE_ID,
     annualTotalPrice: 7527.9, // TODO: valor total do ano em reais (ex: 6970)
     features: [
-      { name: '8 usuários (+R$20/adicional)', included: true },
-      { name: '5 agentes IA + 18.000 créditos IA', included: true },
+      { name: '10 usuários (+R$20/adicional)', included: true },
+      { name: '5 agentes IA + 45.000 créditos IA', included: true },
       { name: '3 canais Inbox', included: true },
       { name: 'Até 50.000 contatos', included: true },
       { name: 'Até 50.000 negócios', included: true },
       { name: 'Até 20.000 empresas', included: true },
+      { name: 'Agendamentos ilimitados', included: true },
       { name: 'Automações', included: true },
     ],
   },
@@ -103,12 +106,13 @@ export const PLANS: PlanInfo[] = [
       process.env.NEXT_PUBLIC_STRIPE_ENTERPRISE_ANNUAL_PRICE_ID,
     annualTotalPrice: 12927.9, // TODO: valor total do ano em reais (ex: 11970)
     features: [
-      { name: '12 usuários (+R$20/adicional)', included: true },
-      { name: '10 agentes IA + 25.000 créditos IA', included: true },
+      { name: '20 usuários (+R$20/adicional)', included: true },
+      { name: '10 agentes IA + 72.000 créditos IA', included: true },
       { name: '10 canais Inbox', included: true },
       { name: 'Até 50.000 contatos', included: true },
       { name: 'Até 50.000 negócios', included: true },
       { name: 'Até 20.000 empresas', included: true },
+      { name: 'Agendamentos ilimitados', included: true },
       { name: 'Automações', included: true },
       { name: 'API de integração', included: true },
       { name: 'SSO / SAML', included: true },
@@ -149,9 +153,9 @@ export const COMPARISON_DATA: ComparisonRow[] = [
   {
     feature: 'Usuários inclusos',
     light: '1',
-    essential: '3',
-    scale: '8',
-    enterprise: '12',
+    essential: '4',
+    scale: '10',
+    enterprise: '20',
   },
   {
     feature: 'Usuário adicional',
@@ -169,10 +173,10 @@ export const COMPARISON_DATA: ComparisonRow[] = [
   },
   {
     feature: 'Créditos IA',
-    light: '3.000',
-    essential: '8.000',
-    scale: '18.000',
-    enterprise: '25.000',
+    light: '10.000',
+    essential: '18.000',
+    scale: '45.000',
+    enterprise: '72.000',
   },
   {
     feature: 'Canais Inbox',
@@ -180,6 +184,13 @@ export const COMPARISON_DATA: ComparisonRow[] = [
     essential: '1',
     scale: '3',
     enterprise: '10',
+  },
+  {
+    feature: 'Agendamentos',
+    light: 'Ilimitados',
+    essential: 'Ilimitados',
+    scale: 'Ilimitados',
+    enterprise: 'Ilimitados',
   },
   {
     feature: 'Pipeline de vendas',
@@ -211,23 +222,23 @@ export const COMPARISON_DATA: ComparisonRow[] = [
   },
   {
     feature: 'Importação de contatos',
-    light: false,
-    essential: false,
+    light: true,
+    essential: true,
     scale: true,
     enterprise: true,
   },
   {
     feature: 'Exportação de dados',
-    light: false,
-    essential: false,
+    light: true,
+    essential: true,
     scale: true,
     enterprise: true,
   },
   {
     feature: 'API de integração',
     light: false,
-    essential: false,
-    scale: false,
+    essential: true,
+    scale: true,
     enterprise: true,
   },
   {

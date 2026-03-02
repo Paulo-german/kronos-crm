@@ -636,7 +636,7 @@ model CreditWallet {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   // BUCKET 1: Franquia do Plano (Use-it-or-lose-it)
-  // Reinicia todo mês para o valor definido em PlanLimit['ai.messages_quota']
+  // Reinicia todo mês para o valor definido em PlanLimit['ai.monthly_credits']
   planBalance  Int @default(0) @map("plan_balance")
 
   // BUCKET 2: Lojinha (Perpétuo)
