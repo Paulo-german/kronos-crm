@@ -1,5 +1,6 @@
 import { defineConfig } from '@trigger.dev/sdk/v3'
 import { additionalPackages } from '@trigger.dev/build/extensions/core'
+import { prismaExtension } from '@trigger.dev/build/extensions/prisma'
 
 export default defineConfig({
   project: process.env.TRIGGER_PROJECT_ID!,
@@ -18,6 +19,10 @@ export default defineConfig({
   dirs: ['./trigger'],
   build: {
     extensions: [
+      prismaExtension({
+        mode: 'legacy',
+        schema: 'prisma/schema.prisma',
+      }),
       additionalPackages({
         packages: [
           '@langfuse/otel',
