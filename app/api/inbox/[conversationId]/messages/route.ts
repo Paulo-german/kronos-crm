@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { cookies } from 'next/headers'
 import { createClient } from '@/_lib/supabase/server'
 import { validateMembership } from '@/_data-access/organization/validate-membership'
+import { getConversationMessages } from '@/_data-access/conversation/get-conversation-messages'
 import { ORG_SLUG_COOKIE } from '@/_lib/constants'
 import { db } from '@/_lib/prisma'
 
@@ -53,23 +54,8 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       })
     }
 
-    // 4. Buscar mensagens
-    const messages = await db.message.findMany({
-      where: {
-        conversationId,
-        role: { in: ['user', 'assistant'] },
-        isArchived: false,
-      },
-      orderBy: { createdAt: 'asc' },
-      take: 100,
-      select: {
-        id: true,
-        role: true,
-        content: true,
-        metadata: true,
-        createdAt: true,
-      },
-    })
+    // 4. Buscar mensagens (usa função cacheada)
+    const messages = await getConversationMessages(conversationId)
 
     return NextResponse.json({
       messages,

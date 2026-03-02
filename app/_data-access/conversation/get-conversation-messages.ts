@@ -1,5 +1,6 @@
 import 'server-only'
 import { cache } from 'react'
+import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 
 export interface MessageDto {
@@ -49,7 +50,12 @@ const fetchMessagesFromDb = async (
 
 export const getConversationMessages = cache(
   async (conversationId: string): Promise<MessageDto[]> => {
-    return fetchMessagesFromDb(conversationId)
+    const getCached = unstable_cache(
+      async () => fetchMessagesFromDb(conversationId),
+      [`conversation-messages-${conversationId}`],
+      { tags: [`conversation-messages:${conversationId}`] },
+    )
+    return getCached()
   },
 )
 
@@ -93,6 +99,11 @@ export const getConversationDetail = cache(
     conversationId: string,
     orgId: string,
   ): Promise<ConversationDetailDto | null> => {
-    return fetchConversationDetailFromDb(conversationId, orgId)
+    const getCached = unstable_cache(
+      async () => fetchConversationDetailFromDb(conversationId, orgId),
+      [`conversation-detail-${conversationId}`],
+      { tags: [`conversation:${conversationId}`, `conversations:${orgId}`] },
+    )
+    return getCached()
   },
 )
