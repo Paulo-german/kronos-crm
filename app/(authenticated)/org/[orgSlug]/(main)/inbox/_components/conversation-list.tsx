@@ -121,11 +121,17 @@ export function ConversationList({
 
         {/* Filtro: Todas / Não lidas */}
         <Tabs value={filter} onValueChange={(value) => setFilter(value as FilterTab)} className="mb-3">
-          <TabsList className="w-full">
-            <TabsTrigger value="all" className="flex-1">
+          <TabsList className="grid h-10 w-full grid-cols-2 rounded-md border border-border/50 bg-tab/30">
+            <TabsTrigger
+              value="all"
+              className="rounded-md py-1.5 data-[state=active]:bg-card/80"
+            >
               Todas
             </TabsTrigger>
-            <TabsTrigger value="unread" className="flex-1 gap-1.5">
+            <TabsTrigger
+              value="unread"
+              className="gap-1.5 rounded-md py-1.5 data-[state=active]:bg-card/80"
+            >
               Não lidas
               {totalUnread > 0 && (
                 <Badge className="h-4 min-w-4 bg-kronos-green px-1 text-[10px] font-medium text-white">
@@ -169,8 +175,8 @@ export function ConversationList({
                 key={conversation.id}
                 onClick={() => onSelect(conversation.id)}
                 className={cn(
-                  'mx-2 my-0.5 flex w-[calc(100%-1rem)] items-start gap-3 rounded-lg p-3 text-left transition-colors duration-200 hover:bg-accent/50',
-                  isSelected && 'border-l-2 border-primary bg-primary/10',
+                  'mx-2 my-0.5 flex w-[calc(100%-1rem)] items-start gap-3 rounded-lg border border-transparent p-3 text-left transition-colors duration-200 hover:bg-accent/50',
+                  isSelected && 'border-border/50 bg-accent',
                 )}
               >
                 <Avatar className="h-10 w-10 shrink-0">
