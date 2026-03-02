@@ -248,7 +248,7 @@ export const processAgentMessage = task({
     // 4b. Optimistic credit debit (antes do LLM para evitar race condition)
     // Estima input tokens com o conteúdo REAL (system + summary + history)
     // -----------------------------------------------------------------------
-    const MAX_OUTPUT_TOKENS = 1024
+    const MAX_OUTPUT_TOKENS = 2048
     const estimatedInputTokens = Math.ceil(
       llmMessages.reduce((sum, msg) => sum + msg.content.length, 0) / 4,
     )
