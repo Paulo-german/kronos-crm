@@ -105,7 +105,7 @@ export const globalSearch = async (
     type: 'contact',
     title: contact.name,
     subtitle: contact.company?.name || contact.email || null,
-    href: `/contacts`,
+    href: `/contacts/${contact.id}`,
   }))
 
   const companyResults: SearchResultItem[] = companies.map((company) => ({
