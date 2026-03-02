@@ -30,7 +30,14 @@ export const sendMessage = orgActionClient
       throw new Error('Esta conversa não possui conexão WhatsApp ativa.')
     }
 
-    // 3. Enviar via WhatsApp
+    // 3. Buscar nome do remetente
+    const sender = await db.user.findUnique({
+      where: { id: ctx.userId },
+      select: { fullName: true, email: true },
+    })
+    const senderName = sender?.fullName || sender?.email || 'Membro'
+
+    // 4. Enviar via WhatsApp
     const sentMessageIds = await sendWhatsAppMessage(
       conversation.inbox.evolutionInstanceName,
       conversation.remoteJid,
@@ -44,7 +51,7 @@ export const sendMessage = orgActionClient
       ),
     )
 
-    // 4. Salvar mensagem no banco + pausar IA + resetar unreadCount
+    // 5. Salvar mensagem no banco + pausar IA + resetar unreadCount
     await Promise.all([
       db.message.create({
         data: {
@@ -53,6 +60,7 @@ export const sendMessage = orgActionClient
           content: data.text,
           metadata: {
             sentBy: ctx.userId,
+            sentByName: senderName,
             sentFrom: 'inbox',
           },
         },
@@ -67,7 +75,7 @@ export const sendMessage = orgActionClient
       }),
     ])
 
-    // 5. Invalidar cache
+    // 6. Invalidar cache
     revalidateTag(`conversations:${ctx.orgId}`)
     revalidateTag(`conversation-messages:${data.conversationId}`)
 
