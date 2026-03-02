@@ -10,7 +10,7 @@ import {
 } from 'react'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
-import { CircleIcon, Pause, Send, Loader2, AlertTriangle } from 'lucide-react'
+import { CircleIcon, Loader2, Mic, Pause, Send, Square, AlertTriangle } from 'lucide-react'
 import { Alert, AlertDescription } from '@/_components/ui/alert'
 import { Avatar, AvatarFallback, AvatarImage } from '@/_components/ui/avatar'
 import { Badge } from '@/_components/ui/badge'
@@ -28,6 +28,7 @@ import {
 } from '@/_components/ui/tooltip'
 import { MessageBubble } from './message-bubble'
 import { sendMessage } from '@/_actions/inbox/send-message'
+import { sendAudio } from '@/_actions/inbox/send-audio'
 import { toggleAiPause } from '@/_actions/inbox/toggle-ai-pause'
 import type { ConversationListDto } from '@/_data-access/conversation/get-conversations'
 
@@ -51,9 +52,16 @@ export function ChatView({ conversation }: ChatViewProps) {
   const [pausedAt, setPausedAt] = useState<Date | string | null>(conversation.pausedAt)
   const [text, setText] = useState('')
   const [isLoadingMessages, setIsLoadingMessages] = useState(true)
+  const [isRecording, setIsRecording] = useState(false)
+  const [recordingDuration, setRecordingDuration] = useState(0)
   const scrollRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const lastMessageCountRef = useRef(0)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const recordingStartRef = useRef<number>(0)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const chunksRef = useRef<Blob[]>([])
+  const cancelledRef = useRef(false)
   // Rastreia toggle in-flight para evitar que polling sobrescreva estado otimista
   const togglePendingRef = useRef<boolean | null>(null)
 
@@ -81,6 +89,15 @@ export function ChatView({ conversation }: ChatViewProps) {
       }
       togglePendingRef.current = null
       toast.error(error.error?.serverError ?? 'Erro ao alterar estado da IA')
+    },
+  })
+
+  const sendAudioAction = useAction(sendAudio, {
+    onSuccess: () => {
+      fetchMessages()
+    },
+    onError: (error) => {
+      toast.error(error.error?.serverError ?? 'Erro ao enviar áudio')
     },
   })
 
@@ -162,6 +179,101 @@ export function ChatView({ conversation }: ChatViewProps) {
       aiPaused: newPaused,
     })
   }
+
+  const clearRecordingTimer = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
+      timerRef.current = null
+    }
+  }
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/mp4')
+          ? 'audio/mp4'
+          : undefined
+
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
+      mediaRecorderRef.current = recorder
+      chunksRef.current = []
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunksRef.current.push(event.data)
+        }
+      }
+
+      recorder.onstop = () => {
+        // Parar todas as tracks do microfone
+        stream.getTracks().forEach((track) => track.stop())
+
+        // Se foi cancelado (ex: troca de conversa), não envia
+        if (cancelledRef.current) {
+          cancelledRef.current = false
+          return
+        }
+
+        const blob = new Blob(chunksRef.current, { type: recorder.mimeType })
+        const duration = (Date.now() - recordingStartRef.current) / 1000
+
+        if (blob.size === 0) return
+
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          const base64 = (reader.result as string).split(',')[1]
+          sendAudioAction.execute({
+            conversationId: conversation.id,
+            audioBase64: base64,
+            duration,
+          })
+        }
+        reader.readAsDataURL(blob)
+      }
+
+      cancelledRef.current = false
+      recordingStartRef.current = Date.now()
+      setRecordingDuration(0)
+      timerRef.current = setInterval(() => {
+        setRecordingDuration(Math.floor((Date.now() - recordingStartRef.current) / 1000))
+      }, 1000)
+
+      recorder.start()
+      setIsRecording(true)
+    } catch {
+      toast.error('Não foi possível acessar o microfone. Verifique as permissões do navegador.')
+    }
+  }
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current?.state === 'recording') {
+      mediaRecorderRef.current.stop()
+    }
+    clearRecordingTimer()
+    setIsRecording(false)
+    setRecordingDuration(0)
+  }
+
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+
+  // Cancelar gravação ao trocar de conversa
+  useEffect(() => {
+    return () => {
+      if (mediaRecorderRef.current?.state === 'recording') {
+        cancelledRef.current = true
+        mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop())
+        mediaRecorderRef.current.stop()
+      }
+      clearRecordingTimer()
+    }
+  }, [conversation.id])
 
   // Expandir mensagens da AI em chunks separados (mesma lógica do WhatsApp: split por \n\n)
   const displayMessages = useMemo(() => {
@@ -324,35 +436,82 @@ export function ChatView({ conversation }: ChatViewProps) {
         <Separator />
         <div className="p-4">
           <div className="flex items-end gap-2">
-            <Textarea
-              ref={textareaRef}
-              value={text}
-              onChange={(event) => setText(event.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Digite uma mensagem..."
-              className="max-h-[120px] min-h-[44px] resize-none"
-              rows={1}
-              disabled={sendAction.isPending}
-            />
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  size="icon"
-                  onClick={handleSend}
-                  disabled={!text.trim() || sendAction.isPending}
-                  className="shrink-0"
-                >
-                  {sendAction.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top">
-                <p>Enviar mensagem</p>
-              </TooltipContent>
-            </Tooltip>
+            {isRecording ? (
+              <div className="flex flex-1 items-center gap-3 rounded-md border px-4 py-2">
+                <span className="h-3 w-3 animate-pulse rounded-full bg-red-500" />
+                <span className="text-sm tabular-nums text-muted-foreground">
+                  {formatDuration(recordingDuration)}
+                </span>
+              </div>
+            ) : (
+              <Textarea
+                ref={textareaRef}
+                value={text}
+                onChange={(event) => setText(event.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Digite uma mensagem..."
+                className="max-h-[120px] min-h-[44px] resize-none"
+                rows={1}
+                disabled={sendAction.isPending || sendAudioAction.isPending}
+              />
+            )}
+            {isRecording ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="destructive"
+                    onClick={stopRecording}
+                    className="shrink-0"
+                  >
+                    <Square className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p>Parar gravação</p>
+                </TooltipContent>
+              </Tooltip>
+            ) : text.trim() ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    onClick={handleSend}
+                    disabled={sendAction.isPending}
+                    className="shrink-0"
+                  >
+                    {sendAction.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p>Enviar mensagem</p>
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    onClick={startRecording}
+                    disabled={sendAudioAction.isPending}
+                    className="shrink-0"
+                  >
+                    {sendAudioAction.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Mic className="h-4 w-4" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p>Gravar áudio</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
           </div>
         </div>
       </div>
