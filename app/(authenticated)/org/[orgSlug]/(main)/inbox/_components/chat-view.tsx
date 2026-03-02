@@ -5,6 +5,7 @@ import {
   useEffect,
   useRef,
   useCallback,
+  useMemo,
   type KeyboardEvent,
 } from 'react'
 import { useAction } from 'next-safe-action/hooks'
@@ -162,6 +163,36 @@ export function ChatView({ conversation }: ChatViewProps) {
     })
   }
 
+  // Expandir mensagens da AI em chunks separados (mesma lógica do WhatsApp: split por \n\n)
+  const displayMessages = useMemo(() => {
+    const result: MessageDto[] = []
+    for (const message of messages) {
+      const meta = message.metadata as Record<string, unknown> | null
+      const isAiGenerated = message.role === 'assistant' && !!meta?.model
+
+      if (isAiGenerated) {
+        const chunks = message.content
+          .split(/\n\n+/)
+          .map((chunk) => chunk.trim())
+          .filter(Boolean)
+
+        if (chunks.length > 1) {
+          for (let index = 0; index < chunks.length; index++) {
+            result.push({
+              ...message,
+              id: `${message.id}-${index}`,
+              content: chunks[index],
+            })
+          }
+          continue
+        }
+      }
+
+      result.push(message)
+    }
+    return result
+  }, [messages])
+
   const initials = conversation.contactName
     .split(' ')
     .slice(0, 2)
@@ -273,7 +304,7 @@ export function ChatView({ conversation }: ChatViewProps) {
               </div>
             )}
 
-            {messages.map((message) => (
+            {displayMessages.map((message) => (
               <MessageBubble
                 key={message.id}
                 id={message.id}

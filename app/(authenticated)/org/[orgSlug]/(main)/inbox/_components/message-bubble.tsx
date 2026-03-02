@@ -2,7 +2,7 @@
 
 import { format } from 'date-fns'
 import { cn } from '@/_lib/utils'
-import { FileDown } from 'lucide-react'
+import { Bot, FileDown, UserRound } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 
 interface MediaMetadata {
@@ -47,6 +47,7 @@ export function MessageBubble({ id, conversationId, role, content, metadata, cre
     /^\[(Áudio \d+s|Imagem[^\]]*|Documento[^\]]*)\]$/.test(content)
   const timestamp = format(new Date(createdAt), 'HH:mm')
   const isFromInbox = meta?.sentFrom === 'inbox'
+  const isAiMessage = role === 'assistant' && !!meta?.model
 
   return (
     <div
@@ -123,11 +124,17 @@ export function MessageBubble({ id, conversationId, role, content, metadata, cre
           )}
         >
           <span>{timestamp}</span>
+          {isAiMessage && (
+            <span className="ml-1 flex items-center gap-0.5 text-primary-foreground/50">
+              <Bot className="h-3 w-3" />
+              IA
+            </span>
+          )}
           {isFromInbox && (
-            <span className={cn(
-              'ml-1 italic',
-              isUser ? 'text-kronos-purple/70' : 'text-primary-foreground/50',
-            )}>{meta?.sentByName ?? 'via inbox'}</span>
+            <span className="ml-1 flex items-center gap-0.5 text-primary-foreground/50">
+              <UserRound className="h-3 w-3" />
+              {meta?.sentByName ?? 'via inbox'}
+            </span>
           )}
         </div>
       </div>
