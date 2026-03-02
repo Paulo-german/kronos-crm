@@ -30,23 +30,21 @@ interface MessageBubbleProps {
   createdAt: Date | string
 }
 
-function getMediaType(mimetype?: string): 'image' | 'audio' | 'document' | null {
-  if (!mimetype) return null
-  if (mimetype.startsWith('image/')) return 'image'
-  if (mimetype.startsWith('audio/')) return 'audio'
-  return 'document'
-}
-
 export function MessageBubble({ id, conversationId, role, content, metadata, createdAt }: MessageBubbleProps) {
   const isUser = role === 'user'
   const meta = metadata as MessageMetadata | null
   const media = meta?.media
-  const hasStoredMedia = media?.storedInSupabase && media?.url
-  const mediaType = hasStoredMedia ? getMediaType(media?.mimetype) : null
   const hasAudio = media?.mimetype?.startsWith('audio/') && id && conversationId
   const hasImage = media?.mimetype?.startsWith('image/') && id && conversationId
+  const hasDocument =
+    media?.mimetype &&
+    !media.mimetype.startsWith('audio/') &&
+    !media.mimetype.startsWith('image/') &&
+    id &&
+    conversationId
   const isMediaPlaceholder =
-    (hasAudio || hasImage) && /^\[(Áudio \d+s|Imagem[^\]]*)\]$/.test(content)
+    (hasAudio || hasImage || hasDocument) &&
+    /^\[(Áudio \d+s|Imagem[^\]]*|Documento[^\]]*)\]$/.test(content)
   const timestamp = format(new Date(createdAt), 'HH:mm')
   const isFromInbox = meta?.sentFrom === 'inbox'
 
@@ -85,7 +83,7 @@ export function MessageBubble({ id, conversationId, role, content, metadata, cre
           </audio>
         )}
 
-        {hasStoredMedia && mediaType === 'document' && (
+        {hasDocument && (
           <Button
             variant="outline"
             size="sm"
@@ -97,9 +95,14 @@ export function MessageBubble({ id, conversationId, role, content, metadata, cre
                 : 'border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground',
             )}
           >
-            <a href={media!.url!} target="_blank" rel="noopener noreferrer">
+            <a
+              href={`/api/inbox/${conversationId}/media/${id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              download={media?.fileName ?? true}
+            >
               <FileDown className="h-4 w-4 shrink-0" />
-              <span className="truncate">{media!.fileName ?? 'Documento'}</span>
+              <span className="truncate">{media?.fileName ?? 'Documento'}</span>
             </a>
           </Button>
         )}
