@@ -51,6 +51,8 @@ export function ChatView({ conversation }: ChatViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const lastMessageCountRef = useRef(0)
+  // Rastreia toggle in-flight para evitar que polling sobrescreva estado otimista
+  const togglePendingRef = useRef<boolean | null>(null)
 
   // Actions
   const sendAction = useAction(sendMessage, {
@@ -66,10 +68,15 @@ export function ChatView({ conversation }: ChatViewProps) {
 
   const toggleAction = useAction(toggleAiPause, {
     onSuccess: () => {
-      toast.success(aiPaused ? 'IA reativada' : 'IA pausada')
+      const wasPaused = togglePendingRef.current
+      togglePendingRef.current = null
+      toast.success(wasPaused ? 'IA pausada' : 'IA reativada')
     },
     onError: (error) => {
-      setAiPaused(!aiPaused)
+      if (togglePendingRef.current !== null) {
+        setAiPaused(!togglePendingRef.current)
+      }
+      togglePendingRef.current = null
       toast.error(error.error?.serverError ?? 'Erro ao alterar estado da IA')
     },
   })
@@ -84,7 +91,10 @@ export function ChatView({ conversation }: ChatViewProps) {
 
       const data = await response.json()
       setMessages(data.messages)
-      setAiPaused(data.aiPaused)
+      // Só sincroniza aiPaused do servidor se não há toggle pendente
+      if (togglePendingRef.current === null) {
+        setAiPaused(data.aiPaused)
+      }
       setIsLoadingMessages(false)
     } catch {
       // Silencioso em polling
@@ -141,6 +151,7 @@ export function ChatView({ conversation }: ChatViewProps) {
   const handleToggleAi = (checked: boolean) => {
     const newPaused = !checked
     setAiPaused(newPaused)
+    togglePendingRef.current = newPaused
     toggleAction.execute({
       conversationId: conversation.id,
       aiPaused: newPaused,
