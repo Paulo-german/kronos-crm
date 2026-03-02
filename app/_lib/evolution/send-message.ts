@@ -1,8 +1,10 @@
 const MAX_WHATSAPP_MESSAGE_LENGTH = 4000
+const DELAY_BETWEEN_CHUNKS_MS = 800
 
 /**
  * Envia mensagem de texto via Evolution API REST.
- * Quebra automaticamente mensagens longas em chunks para não estourar o limite do WhatsApp.
+ * Quebra em parágrafos (\n\n) para simular conversa natural.
+ * Parágrafos que excedem 4000 chars são subdivididos.
  */
 export async function sendWhatsAppMessage(
   instanceName: string,
@@ -16,10 +18,15 @@ export async function sendWhatsAppMessage(
     throw new Error('EVOLUTION_API_URL and EVOLUTION_API_KEY must be configured')
   }
 
-  const chunks = splitMessage(text, MAX_WHATSAPP_MESSAGE_LENGTH)
+  const chunks = splitIntoParagraphs(text, MAX_WHATSAPP_MESSAGE_LENGTH)
   const messageIds: string[] = []
 
-  for (const chunk of chunks) {
+  for (let index = 0; index < chunks.length; index++) {
+    // Delay entre chunks para simular digitação natural
+    if (index > 0) {
+      await new Promise((resolve) => setTimeout(resolve, DELAY_BETWEEN_CHUNKS_MS))
+    }
+
     const response = await fetch(
       `${apiUrl}/message/sendText/${instanceName}`,
       {
@@ -30,7 +37,7 @@ export async function sendWhatsAppMessage(
         },
         body: JSON.stringify({
           number: remoteJid,
-          text: chunk,
+          text: chunks[index],
         }),
       },
     )
@@ -51,13 +58,32 @@ export async function sendWhatsAppMessage(
 }
 
 /**
- * Quebra texto longo em chunks respeitando quebras de linha quando possível.
+ * Quebra texto em parágrafos (\n\n) para envio natural.
+ * Parágrafos que excedem maxLength são subdivididos por \n ou espaço.
  */
-function splitMessage(text: string, maxLength: number): string[] {
-  if (text.length <= maxLength) {
-    return [text]
+function splitIntoParagraphs(text: string, maxLength: number): string[] {
+  const paragraphs = text.split(/\n\n+/)
+  const chunks: string[] = []
+
+  for (const paragraph of paragraphs) {
+    const trimmed = paragraph.trim()
+    if (!trimmed) continue
+
+    if (trimmed.length <= maxLength) {
+      chunks.push(trimmed)
+    } else {
+      chunks.push(...splitLongText(trimmed, maxLength))
+    }
   }
 
+  // Se não gerou nenhum chunk (texto vazio), retorna o texto original
+  return chunks.length > 0 ? chunks : [text]
+}
+
+/**
+ * Subdivide texto longo respeitando quebras de linha e espaços.
+ */
+function splitLongText(text: string, maxLength: number): string[] {
   const chunks: string[] = []
   let remaining = text
 
@@ -67,15 +93,12 @@ function splitMessage(text: string, maxLength: number): string[] {
       break
     }
 
-    // Tenta quebrar na última quebra de linha dentro do limite
     let splitIndex = remaining.lastIndexOf('\n', maxLength)
 
-    // Se não encontrou, tenta no último espaço
     if (splitIndex <= 0) {
       splitIndex = remaining.lastIndexOf(' ', maxLength)
     }
 
-    // Se ainda não encontrou, corta no limite
     if (splitIndex <= 0) {
       splitIndex = maxLength
     }
