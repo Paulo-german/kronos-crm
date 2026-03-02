@@ -1,12 +1,23 @@
 import Link from 'next/link'
 import { ArrowLeft, Zap, CreditCard, TrendingUp } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
+import { Badge } from '@/_components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/_components/ui/card'
 import { Progress } from '@/_components/ui/progress'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/_components/ui/table'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getCreditBalance } from '@/_data-access/billing/get-credit-balance'
+import { getWalletTransactions } from '@/_data-access/billing/get-wallet-transactions'
 import { getPlanLimits } from '@/_lib/rbac/plan-limits'
 import { cn } from '@/_lib/utils'
+import type { WalletTransactionType } from '@prisma/client'
 
 interface CreditsSettingsPageProps {
   params: Promise<{ orgSlug: string }>
@@ -19,13 +30,35 @@ const PLAN_LABELS: Record<string, string> = {
   enterprise: 'Enterprise',
 }
 
+const TYPE_CONFIG: Record<WalletTransactionType, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+  USAGE_DEBIT: { label: 'Uso', variant: 'destructive' },
+  SYSTEM_REFUND: { label: 'Reembolso', variant: 'default' },
+  REFUND: { label: 'Reembolso', variant: 'default' },
+  CREDIT_PURCHASE: { label: 'Compra', variant: 'secondary' },
+  MONTHLY_RESET: { label: 'Reset', variant: 'outline' },
+  MANUAL_ADJUSTMENT: { label: 'Ajuste', variant: 'outline' },
+  AUTO_RECHARGE: { label: 'Recarga', variant: 'secondary' },
+  EXPIRATION: { label: 'Expiração', variant: 'outline' },
+}
+
+function formatDate(date: Date): string {
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(date))
+}
+
 export default async function CreditsSettingsPage({ params }: CreditsSettingsPageProps) {
   const { orgSlug } = await params
   const { orgId } = await getOrgContext(orgSlug)
 
-  const [creditBalance, { plan }] = await Promise.all([
+  const [creditBalance, { plan }, transactions] = await Promise.all([
     getCreditBalance(orgId),
     getPlanLimits(orgId),
+    getWalletTransactions(orgId),
   ])
 
   const { available, planBalance, topUpBalance, monthlyLimit } = creditBalance
@@ -129,6 +162,71 @@ export default async function CreditsSettingsPage({ params }: CreditsSettingsPag
               </Link>
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Histórico de transações */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Histórico de Transações</CardTitle>
+          <CardDescription>
+            Últimas {transactions.length} transações de créditos IA
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {transactions.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">
+              Nenhuma transação registrada
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Descrição</TableHead>
+                  <TableHead className="text-right">Créditos</TableHead>
+                  <TableHead className="text-right">Saldo Plano</TableHead>
+                  <TableHead className="text-right">Saldo TopUp</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {transactions.map((transaction) => {
+                  const config = TYPE_CONFIG[transaction.type]
+                  return (
+                    <TableRow key={transaction.id}>
+                      <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                        {formatDate(transaction.createdAt)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={config.variant}>{config.label}</Badge>
+                      </TableCell>
+                      <TableCell className="max-w-[300px] truncate text-sm">
+                        {transaction.description}
+                      </TableCell>
+                      <TableCell
+                        className={cn(
+                          'text-right font-medium tabular-nums',
+                          transaction.amount < 0
+                            ? 'text-destructive'
+                            : 'text-emerald-600 dark:text-emerald-400',
+                        )}
+                      >
+                        {transaction.amount > 0 ? '+' : ''}
+                        {transaction.amount}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums text-sm text-muted-foreground">
+                        {transaction.balanceAfterPlan}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums text-sm text-muted-foreground">
+                        {transaction.balanceAfterTopUp}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>
