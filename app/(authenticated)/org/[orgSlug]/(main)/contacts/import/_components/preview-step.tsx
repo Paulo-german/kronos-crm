@@ -175,7 +175,7 @@ export function PreviewStep({
                 <TableHead>Telefone</TableHead>
                 <TableHead>Empresa</TableHead>
                 <TableHead>Cargo</TableHead>
-                <TableHead className="w-16">Status</TableHead>
+                <TableHead className="min-w-[120px]">Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -212,9 +212,12 @@ export function PreviewStep({
                       {validation.valid ? (
                         <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                       ) : (
-                        <span title={validation.errors.join(', ')}>
-                          <XCircle className="h-4 w-4 text-destructive" />
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <XCircle className="h-4 w-4 shrink-0 text-destructive" />
+                          <span className="text-xs text-destructive">
+                            {validation.errors.join('; ')}
+                          </span>
+                        </div>
                       )}
                     </TableCell>
                   </TableRow>

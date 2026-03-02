@@ -8,7 +8,7 @@ import Header, {
   HeaderSubTitle,
 } from '@/_components/header'
 import { Alert, AlertDescription, AlertTitle } from '@/_components/ui/alert'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/_components/ui/button'
 
@@ -27,6 +27,13 @@ const ImportPage = async ({ params }: ImportPageProps) => {
 
   return (
     <div className="space-y-6">
+      <Button variant="ghost" size="sm" className="gap-2" asChild>
+        <Link href={`/org/${orgSlug}/contacts`}>
+          <ArrowLeft className="h-4 w-4" />
+          Voltar
+        </Link>
+      </Button>
+
       <Header>
         <HeaderLeft>
           <HeaderTitle>Importar Contatos</HeaderTitle>
