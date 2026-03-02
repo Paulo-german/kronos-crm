@@ -5,7 +5,7 @@ import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
-import { createEvolutionInstance } from '@/_lib/evolution/instance-management'
+import { createEvolutionInstance, buildWebhookUrl } from '@/_lib/evolution/instance-management'
 
 const connectEvolutionSchema = z.object({
   inboxId: z.string().uuid(),
@@ -31,20 +31,7 @@ export const connectEvolution = orgActionClient
     // Gera nome único para a instância
     const instanceName = `kronos-${ctx.orgId.slice(0, 8)}-${inbox.id.slice(0, 8)}`
 
-    const vercelUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL
-    const appUrl = vercelUrl ? `https://${vercelUrl}` : process.env.NEXT_PUBLIC_APP_URL
-
-    if (!appUrl) {
-      throw new Error('NEXT_PUBLIC_APP_URL ou VERCEL_URL deve estar configurada para conectar WhatsApp.')
-    }
-
-    // Inclui secret na URL do webhook (validado em /api/webhooks/evolution)
-    const webhookSecret = process.env.EVOLUTION_WEBHOOK_SECRET
-    const webhookUrl = webhookSecret
-      ? `${appUrl}/api/webhooks/evolution?secret=${webhookSecret}`
-      : `${appUrl}/api/webhooks/evolution`
-
-    const result = await createEvolutionInstance(instanceName, webhookUrl)
+    const result = await createEvolutionInstance(instanceName, buildWebhookUrl())
 
     await db.inbox.update({
       where: { id: inbox.id },

@@ -23,6 +23,30 @@ function buildHeaders(apiKey: string) {
   }
 }
 
+const PRODUCTION_URL = 'https://app.kronoshub.com.br'
+
+/**
+ * Resolve a URL base da aplicação para webhooks.
+ * Usa NEXT_PUBLIC_APP_URL se definida, senão hardcoded production.
+ * NÃO usa VERCEL_URL pois o domínio Vercel (kronos-crm.vercel.app)
+ * diverge do domínio custom (app.kronoshub.com.br) configurado no
+ * webhook global da Evolution.
+ */
+export function resolveAppUrl(): string {
+  return process.env.NEXT_PUBLIC_APP_URL || PRODUCTION_URL
+}
+
+/**
+ * Monta a webhook URL completa com secret.
+ */
+export function buildWebhookUrl(): string {
+  const appUrl = resolveAppUrl()
+  const secret = process.env.EVOLUTION_WEBHOOK_SECRET
+  return secret
+    ? `${appUrl}/api/webhooks/evolution?secret=${secret}`
+    : `${appUrl}/api/webhooks/evolution`
+}
+
 export interface CreateInstanceResult {
   instanceName: string
   instanceId: string
@@ -286,6 +310,53 @@ export async function listEvolutionInstances(): Promise<EvolutionInstanceSummary
 }
 
 export { formatPhoneFromJid } from './format-phone'
+
+export async function getEvolutionWebhook(
+  instanceName: string,
+): Promise<string | null> {
+  const { apiUrl, apiKey } = getEvolutionConfig()
+
+  const response = await fetch(
+    `${apiUrl}/webhook/find/${instanceName}`,
+    {
+      method: 'GET',
+      headers: buildHeaders(apiKey),
+    },
+  )
+
+  if (!response.ok) return null
+
+  const data = await response.json()
+  return data?.url ?? null
+}
+
+export async function updateEvolutionWebhook(
+  instanceName: string,
+  webhookUrl: string,
+): Promise<void> {
+  const { apiUrl, apiKey } = getEvolutionConfig()
+
+  const response = await fetch(
+    `${apiUrl}/webhook/set/${instanceName}`,
+    {
+      method: 'PUT',
+      headers: buildHeaders(apiKey),
+      body: JSON.stringify({
+        url: webhookUrl,
+        events: ['MESSAGES_UPSERT', 'CONNECTION_UPDATE'],
+        byEvents: false,
+        base64: false,
+      }),
+    },
+  )
+
+  if (!response.ok) {
+    const errorBody = await response.text().catch(() => 'unknown')
+    throw new Error(
+      `Evolution API webhook update failed (${response.status}): ${errorBody}`,
+    )
+  }
+}
 
 export async function disconnectEvolutionInstance(
   instanceName: string,
