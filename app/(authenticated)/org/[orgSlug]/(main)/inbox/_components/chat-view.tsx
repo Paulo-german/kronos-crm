@@ -276,6 +276,8 @@ export function ChatView({ conversation }: ChatViewProps) {
             {messages.map((message) => (
               <MessageBubble
                 key={message.id}
+                id={message.id}
+                conversationId={conversation.id}
                 role={message.role}
                 content={message.content}
                 metadata={message.metadata}

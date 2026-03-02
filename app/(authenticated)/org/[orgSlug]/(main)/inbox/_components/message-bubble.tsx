@@ -9,16 +9,21 @@ interface MediaMetadata {
   url?: string
   mimetype?: string
   fileName?: string
+  seconds?: number
   storedInSupabase?: boolean
 }
 
 interface MessageMetadata {
   media?: MediaMetadata
+  sentBy?: string
+  sentByName?: string
   sentFrom?: string
   [key: string]: unknown
 }
 
 interface MessageBubbleProps {
+  id: string
+  conversationId: string
   role: string
   content: string
   metadata: unknown
@@ -32,12 +37,13 @@ function getMediaType(mimetype?: string): 'image' | 'audio' | 'document' | null 
   return 'document'
 }
 
-export function MessageBubble({ role, content, metadata, createdAt }: MessageBubbleProps) {
+export function MessageBubble({ id, conversationId, role, content, metadata, createdAt }: MessageBubbleProps) {
   const isUser = role === 'user'
   const meta = metadata as MessageMetadata | null
   const media = meta?.media
   const hasStoredMedia = media?.storedInSupabase && media?.url
   const mediaType = hasStoredMedia ? getMediaType(media?.mimetype) : null
+  const hasAudio = media?.mimetype?.startsWith('audio/') && id && conversationId
   const timestamp = format(new Date(createdAt), 'HH:mm')
   const isFromInbox = meta?.sentFrom === 'inbox'
 
@@ -66,9 +72,12 @@ export function MessageBubble({ role, content, metadata, createdAt }: MessageBub
           />
         )}
 
-        {hasStoredMedia && mediaType === 'audio' && (
+        {hasAudio && (
           <audio controls className="mb-2 w-full max-w-xs" preload="none">
-            <source src={media!.url!} type={media!.mimetype} />
+            <source
+              src={`/api/inbox/${conversationId}/audio/${id}`}
+              type={media!.mimetype}
+            />
           </audio>
         )}
 
@@ -106,7 +115,7 @@ export function MessageBubble({ role, content, metadata, createdAt }: MessageBub
             <span className={cn(
               'ml-1 italic',
               isUser ? 'text-kronos-purple/70' : 'text-primary-foreground/50',
-            )}>via inbox</span>
+            )}>{meta?.sentByName ?? 'via inbox'}</span>
           )}
         </div>
       </div>
