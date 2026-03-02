@@ -43,7 +43,7 @@ export const PLANS: PlanInfo[] = [
     annualTotalPrice: 1367.9, // TODO: valor total do ano em reais (ex: 1970)
     features: [
       { name: '1 usuário', included: true },
-      { name: '1 agente IA + 300 mensagens', included: true },
+      { name: '1 agente IA + 3.000 créditos IA', included: true },
       { name: '1 canal Inbox', included: true },
       { name: 'Até 5.000 contatos', included: true },
       { name: 'Até 5.000 negócios', included: true },
@@ -63,7 +63,7 @@ export const PLANS: PlanInfo[] = [
     annualTotalPrice: 4287.9, // TODO: valor total do ano em reais (ex: 3970)
     features: [
       { name: '3 usuários (+R$30/adicional)', included: true },
-      { name: '2 agentes IA + 800 mensagens', included: true },
+      { name: '2 agentes IA + 8.000 créditos IA', included: true },
       { name: '1 canal Inbox', included: true },
       { name: 'Até 25.000 contatos', included: true },
       { name: 'Até 25.000 negócios', included: true },
@@ -83,7 +83,7 @@ export const PLANS: PlanInfo[] = [
     annualTotalPrice: 7527.9, // TODO: valor total do ano em reais (ex: 6970)
     features: [
       { name: '8 usuários (+R$20/adicional)', included: true },
-      { name: '5 agentes IA + 1.800 mensagens', included: true },
+      { name: '5 agentes IA + 18.000 créditos IA', included: true },
       { name: '3 canais Inbox', included: true },
       { name: 'Até 50.000 contatos', included: true },
       { name: 'Até 50.000 negócios', included: true },
@@ -104,7 +104,7 @@ export const PLANS: PlanInfo[] = [
     annualTotalPrice: 12927.9, // TODO: valor total do ano em reais (ex: 11970)
     features: [
       { name: '12 usuários (+R$20/adicional)', included: true },
-      { name: '10 agentes IA + 2.500 mensagens', included: true },
+      { name: '10 agentes IA + 25.000 créditos IA', included: true },
       { name: '10 canais Inbox', included: true },
       { name: 'Até 50.000 contatos', included: true },
       { name: 'Até 50.000 negócios', included: true },
@@ -168,11 +168,11 @@ export const COMPARISON_DATA: ComparisonRow[] = [
     enterprise: '10',
   },
   {
-    feature: 'Mensagens IA',
-    light: '100',
-    essential: '400',
-    scale: '1.200',
-    enterprise: '2.500',
+    feature: 'Créditos IA',
+    light: '3.000',
+    essential: '8.000',
+    scale: '18.000',
+    enterprise: '25.000',
   },
   {
     feature: 'Canais Inbox',

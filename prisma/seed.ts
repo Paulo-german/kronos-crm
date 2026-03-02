@@ -123,11 +123,11 @@ async function seedFeaturesAndPlans() {
     { planSlug: 'scale', featureKey: 'ai.max_knowledge_files', valueNumber: 50 },
     { planSlug: 'enterprise', featureKey: 'ai.max_knowledge_files', valueNumber: 200 },
 
-    // Créditos IA mensais
-    { planSlug: 'light', featureKey: 'ai.monthly_credits', valueNumber: 300 },
-    { planSlug: 'essential', featureKey: 'ai.monthly_credits', valueNumber: 800 },
-    { planSlug: 'scale', featureKey: 'ai.monthly_credits', valueNumber: 1800 },
-    { planSlug: 'enterprise', featureKey: 'ai.monthly_credits', valueNumber: 2500 },
+    // Créditos IA mensais (token-based: Sonnet ~10 créditos/msg, Flash ~1 crédito/msg)
+    { planSlug: 'light', featureKey: 'ai.monthly_credits', valueNumber: 3000 },
+    { planSlug: 'essential', featureKey: 'ai.monthly_credits', valueNumber: 8000 },
+    { planSlug: 'scale', featureKey: 'ai.monthly_credits', valueNumber: 18000 },
+    { planSlug: 'enterprise', featureKey: 'ai.monthly_credits', valueNumber: 25000 },
 
     // Caixas de Entrada
     { planSlug: 'light', featureKey: 'inbox.max_inboxes', valueNumber: 1 },

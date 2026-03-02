@@ -30,7 +30,7 @@ export default async function CreditsSettingsPage({ params }: CreditsSettingsPag
 
   const { available, planBalance, topUpBalance, monthlyLimit } = creditBalance
 
-  const used = Math.max(monthlyLimit - available, 0)
+  const used = monthlyLimit - planBalance
   const usedPercent = monthlyLimit > 0 ? Math.min(Math.round((used / monthlyLimit) * 100), 100) : 0
   const availablePercent = 100 - usedPercent
 
