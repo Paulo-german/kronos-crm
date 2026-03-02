@@ -61,7 +61,7 @@ export function MessageBubble({ id, conversationId, role, content, metadata, cre
           'max-w-[75%] rounded-2xl px-4 py-2',
           isUser
             ? 'rounded-bl-md bg-secondary/40'
-            : 'rounded-br-md bg-primary text-primary-foreground',
+            : 'rounded-br-md bg-primary/50 text-primary-foreground',
         )}
       >
         {/* Mídia */}
