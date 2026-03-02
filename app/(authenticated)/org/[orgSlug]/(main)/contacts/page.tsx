@@ -11,6 +11,9 @@ import Header, {
   HeaderSubTitle,
   HeaderRight,
 } from '@/_components/header'
+import Link from 'next/link'
+import { Button } from '@/_components/ui/button'
+import { Upload } from 'lucide-react'
 
 interface ContactsPageProps {
   params: Promise<{ orgSlug: string }>
@@ -35,6 +38,12 @@ const ContactsPage = async ({ params }: ContactsPageProps) => {
           <QuotaHint orgId={ctx.orgId} entity="contact" />
         </HeaderLeft>
         <HeaderRight>
+          <Button variant="outline" asChild>
+            <Link href={`/org/${orgSlug}/contacts/import`}>
+              <Upload className="mr-2 h-4 w-4" />
+              Importar
+            </Link>
+          </Button>
           <CreateContactButton
             companyOptions={companies}
             withinQuota={quota.withinQuota}
