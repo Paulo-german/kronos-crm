@@ -24,7 +24,6 @@ import {
 } from '@/_components/ui/popover'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
-import { differenceInMinutes } from 'date-fns'
 import { formatInTimeZone } from 'date-fns-tz'
 import { ptBR } from 'date-fns/locale'
 
@@ -36,57 +35,14 @@ import AppointmentTableDropdownMenu from './table-dropdown-menu'
 import ConfirmationDialog from '@/_components/confirmation-dialog'
 import type { AppointmentDto } from '@/_data-access/appointment/get-appointments'
 import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
+import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import type { AppointmentStatus } from '@prisma/client'
-
-interface MemberDto {
-  id: string
-  userId: string | null
-  email: string
-  user: {
-    fullName: string | null
-    avatarUrl: string | null
-  } | null
-}
+import { STATUS_CONFIG, formatDuration } from '@/_lib/appointment-utils'
 
 interface AppointmentsDataTableProps {
   appointments: AppointmentDto[]
   dealOptions: DealOptionDto[]
-  members: MemberDto[]
-}
-
-const STATUS_CONFIG: Record<
-  AppointmentStatus,
-  { label: string; color: string }
-> = {
-  SCHEDULED: {
-    label: 'AGENDADO',
-    color: 'text-kronos-blue',
-  },
-  IN_PROGRESS: {
-    label: 'EM ANDAMENTO',
-    color: 'text-kronos-purple',
-  },
-  COMPLETED: {
-    label: 'CONCLUÍDO',
-    color: 'text-kronos-green',
-  },
-  CANCELED: {
-    label: 'CANCELADO',
-    color: 'text-kronos-red',
-  },
-  NO_SHOW: {
-    label: 'NÃO COMPARECEU',
-    color: 'text-kronos-yellow',
-  },
-}
-
-const formatDuration = (startDate: Date, endDate: Date): string => {
-  const minutes = differenceInMinutes(new Date(endDate), new Date(startDate))
-  if (minutes < 60) return `${minutes}min`
-  const hours = Math.floor(minutes / 60)
-  const remainingMinutes = minutes % 60
-  if (remainingMinutes === 0) return `${hours}h`
-  return `${hours}h ${remainingMinutes}min`
+  members: AcceptedMemberDto[]
 }
 
 const AppointmentsDataTable = ({
@@ -130,7 +86,13 @@ const AppointmentsDataTable = ({
     onSuccess: () => {
       toast.success('Status atualizado com sucesso.')
     },
-    onError: ({ error }) => {
+    onError: ({ error, input }) => {
+      // Rollback optimistic update
+      setStatusOverrides((prev) => {
+        const next = { ...prev }
+        delete next[input.id]
+        return next
+      })
       toast.error(error.serverError || 'Erro ao atualizar status.')
     },
   })
@@ -147,7 +109,7 @@ const AppointmentsDataTable = ({
   )
 
   // Hook para deletar agendamento
-  const { execute: executeDelete, isExecuting: isDeleting } = useAction(
+  const { execute: executeDelete, isPending: isDeleting } = useAction(
     deleteAppointment,
     {
       onSuccess: () => {
@@ -189,9 +151,6 @@ const AppointmentsDataTable = ({
       ),
       cell: ({ row }) => {
         const { dealId, dealTitle } = row.original
-        if (!dealId)
-          return <span className="text-xs text-muted-foreground">-</span>
-
         return (
           <Link
             href={`/crm/deals/${dealId}`}

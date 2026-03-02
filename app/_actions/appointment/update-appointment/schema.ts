@@ -8,7 +8,8 @@ export const updateAppointmentSchema = z
     description: z
       .string()
       .optional()
-      .transform((val) => (val === '' ? undefined : val)),
+      .transform((val) => (val === '' ? null : val))
+      .nullable(),
     startDate: z.coerce.date().optional(),
     endDate: z.coerce.date().optional(),
     status: z.nativeEnum(AppointmentStatus).optional(),

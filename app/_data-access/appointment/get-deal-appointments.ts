@@ -1,27 +1,12 @@
 import 'server-only'
 import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
-import type { AppointmentStatus } from '@prisma/client'
-
-export interface DealAppointmentDto {
-  id: string
-  title: string
-  description: string | null
-  startDate: Date
-  endDate: Date
-  status: AppointmentStatus
-  assignedTo: string
-  assigneeName: string | null
-  dealId: string
-  dealTitle: string
-  createdAt: Date
-  updatedAt: Date
-}
+import type { AppointmentDto } from './get-appointments'
 
 const fetchDealAppointmentsFromDb = async (
   dealId: string,
   orgId: string,
-): Promise<DealAppointmentDto[]> => {
+): Promise<AppointmentDto[]> => {
   const appointments = await db.appointment.findMany({
     where: {
       dealId,
@@ -71,7 +56,7 @@ const fetchDealAppointmentsFromDb = async (
 export const getDealAppointments = async (
   dealId: string,
   orgId: string,
-): Promise<DealAppointmentDto[]> => {
+): Promise<AppointmentDto[]> => {
   const getCached = unstable_cache(
     async () => fetchDealAppointmentsFromDb(dealId, orgId),
     [`deal-appointments-${dealId}`],

@@ -15,7 +15,6 @@ import {
   TimerIcon,
   TrashIcon,
 } from 'lucide-react'
-import { differenceInMinutes } from 'date-fns'
 import { formatInTimeZone } from 'date-fns-tz'
 import { ptBR } from 'date-fns/locale'
 
@@ -43,43 +42,18 @@ import { UpsertAppointmentDialogContent } from '../../../appointments/_component
 import AppointmentTableDropdownMenu from '../../../appointments/_components/table-dropdown-menu'
 
 import type { DealDetailsDto } from '@/_data-access/deal/get-deal-details'
-import type { DealAppointmentDto } from '@/_data-access/appointment/get-deal-appointments'
+import type { AppointmentDto } from '@/_data-access/appointment/get-appointments'
 import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
+import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import type { AppointmentStatus } from '@prisma/client'
+import { STATUS_CONFIG, formatDuration } from '@/_lib/appointment-utils'
 
 const SAO_PAULO_TZ = 'America/Sao_Paulo'
 
-const STATUS_CONFIG: Record<AppointmentStatus, { label: string; color: string }> = {
-  SCHEDULED: { label: 'AGENDADO', color: 'text-kronos-blue' },
-  IN_PROGRESS: { label: 'EM ANDAMENTO', color: 'text-kronos-purple' },
-  COMPLETED: { label: 'CONCLUÍDO', color: 'text-kronos-green' },
-  CANCELED: { label: 'CANCELADO', color: 'text-kronos-red' },
-  NO_SHOW: { label: 'NÃO COMPARECEU', color: 'text-kronos-yellow' },
-}
-
-const formatDuration = (startDate: Date, endDate: Date): string => {
-  const minutes = differenceInMinutes(new Date(endDate), new Date(startDate))
-  if (minutes < 60) return `${minutes}min`
-  const hours = Math.floor(minutes / 60)
-  const remainingMinutes = minutes % 60
-  if (remainingMinutes === 0) return `${hours}h`
-  return `${hours}h ${remainingMinutes}min`
-}
-
-interface MemberDto {
-  id: string
-  userId: string | null
-  email: string
-  user: {
-    fullName: string | null
-    avatarUrl: string | null
-  } | null
-}
-
 interface TabAppointmentsProps {
   deal: DealDetailsDto
-  appointments: DealAppointmentDto[]
-  members: MemberDto[]
+  appointments: AppointmentDto[]
+  members: AcceptedMemberDto[]
   dealOptions: DealOptionDto[]
 }
 
@@ -90,11 +64,11 @@ const TabAppointments = ({
   dealOptions,
 }: TabAppointmentsProps) => {
   const [editingAppointment, setEditingAppointment] =
-    useState<DealAppointmentDto | null>(null)
+    useState<AppointmentDto | null>(null)
   const [isSheetOpen, setIsSheetOpen] = useState(false)
 
   const [deletingAppointment, setDeletingAppointment] =
-    useState<DealAppointmentDto | null>(null)
+    useState<AppointmentDto | null>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
   const [openStatusId, setOpenStatusId] = useState<string | null>(null)
@@ -120,7 +94,13 @@ const TabAppointments = ({
     onSuccess: () => {
       toast.success('Status atualizado com sucesso.')
     },
-    onError: ({ error }) => {
+    onError: ({ error, input }) => {
+      // Rollback optimistic update
+      setStatusOverrides((prev) => {
+        const next = { ...prev }
+        delete next[input.id]
+        return next
+      })
       toast.error(error.serverError || 'Erro ao atualizar status.')
     },
   })
@@ -134,7 +114,7 @@ const TabAppointments = ({
     [executeUpdateStatus],
   )
 
-  const { execute: executeDelete, isExecuting: isDeleting } = useAction(
+  const { execute: executeDelete, isPending: isDeleting } = useAction(
     deleteAppointment,
     {
       onSuccess: () => {
@@ -148,26 +128,10 @@ const TabAppointments = ({
     },
   )
 
-  const handleEdit = (appointment: DealAppointmentDto) => {
+  const handleEdit = (appointment: AppointmentDto) => {
     setEditingAppointment(appointment)
     setIsSheetOpen(true)
   }
-
-  // Mapeia DealAppointmentDto para o formato que o UpsertAppointmentDialogContent espera
-  const mapToAppointmentDto = (appointment: DealAppointmentDto) => ({
-    id: appointment.id,
-    title: appointment.title,
-    description: appointment.description,
-    startDate: appointment.startDate,
-    endDate: appointment.endDate,
-    status: appointment.status,
-    assignedTo: appointment.assignedTo,
-    assigneeName: appointment.assigneeName,
-    dealId: appointment.dealId,
-    dealTitle: appointment.dealTitle,
-    createdAt: appointment.createdAt,
-    updatedAt: appointment.updatedAt,
-  })
 
   return (
     <Card className="border-border/50 bg-secondary/20">
@@ -189,7 +153,7 @@ const TabAppointments = ({
           {editingAppointment ? (
             <UpsertAppointmentDialogContent
               key={editingAppointment.id}
-              defaultValues={mapToAppointmentDto(editingAppointment)}
+              defaultValues={editingAppointment}
               dealOptions={dealOptions}
               members={members}
               setIsOpen={setIsSheetOpen}

@@ -14,9 +14,9 @@ import {
 import type { AppointmentStatus } from '@prisma/client'
 
 const LOCKED_STATUSES: AppointmentStatus[] = [
-  'IN_PROGRESS',
   'COMPLETED',
   'CANCELED',
+  'NO_SHOW',
 ]
 
 interface AppointmentTableDropdownMenuProps {

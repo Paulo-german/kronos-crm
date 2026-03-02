@@ -30,7 +30,7 @@ export const createAppointment = orgActionClient
       where: {
         assignedTo,
         organizationId: ctx.orgId,
-        status: { not: 'CANCELED' },
+        status: { notIn: ['CANCELED', 'NO_SHOW'] },
         startDate: { lt: data.endDate },
         endDate: { gt: data.startDate },
       },

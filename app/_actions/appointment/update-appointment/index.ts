@@ -22,7 +22,7 @@ export const updateAppointment = orgActionClient
     const existing = await findAppointmentWithRBAC(data.id, ctx)
 
     // 3. Bloqueio de status: não permite editar agendamentos finalizados
-    const lockedStatuses = ['IN_PROGRESS', 'COMPLETED', 'CANCELED'] as const
+    const lockedStatuses = ['COMPLETED', 'CANCELED', 'NO_SHOW'] as const
     const isLocked = lockedStatuses.some((status) => status === existing.status)
 
     if (isLocked) {
@@ -74,7 +74,7 @@ export const updateAppointment = orgActionClient
             id: { not: data.id },
             assignedTo: effectiveAssignedTo,
             organizationId: ctx.orgId,
-            status: { not: 'CANCELED' },
+            status: { notIn: ['CANCELED', 'NO_SHOW'] },
             startDate: { lt: endForCheck },
             endDate: { gt: startForCheck },
           },

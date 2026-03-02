@@ -17,12 +17,9 @@ export default function AppointmentsLoading() {
         <div className="rounded-md border">
           <div className="max-h-[calc(100vh-180px)] overflow-y-auto">
             <table className="w-full caption-bottom text-sm">
-              {/* Header */}
+              {/* Header — 8 colunas: título, negócio, status, responsável, período, duração, criado em, ações */}
               <thead className="bg-secondary/20">
                 <tr className="border-b">
-                  <th className="p-4">
-                    <Skeleton className="h-4 w-4" />
-                  </th>
                   <th className="p-4">
                     <Skeleton className="h-4 w-14" />
                   </th>
@@ -53,9 +50,6 @@ export default function AppointmentsLoading() {
               <tbody className="bg-card/80">
                 {Array.from({ length: 8 }).map((_, index) => (
                   <tr key={index} className="border-b">
-                    <td className="p-4">
-                      <Skeleton className="h-4 w-4" />
-                    </td>
                     <td className="p-4">
                       <Skeleton className="h-5 w-32" />
                     </td>

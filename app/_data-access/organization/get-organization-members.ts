@@ -2,6 +2,19 @@ import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 
+export interface AcceptedMemberDto {
+  id: string
+  userId: string | null
+  email: string
+  role: string
+  status: string
+  user: {
+    fullName: string | null
+    avatarUrl: string | null
+  } | null
+  joinedAt: Date
+}
+
 export const getOrganizationMembers = cache(async (orgId: string) => {
   const getCachedMembers = unstable_cache(
     async () => {

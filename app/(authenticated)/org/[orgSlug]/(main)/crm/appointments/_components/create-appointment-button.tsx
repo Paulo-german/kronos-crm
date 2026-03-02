@@ -7,20 +7,11 @@ import { Sheet, SheetTrigger } from '@/_components/ui/sheet'
 import { UpsertAppointmentDialogContent } from './upsert-dialog-content'
 
 import { DealOptionDto } from '@/_data-access/deal/get-deals-options'
-
-interface MemberDto {
-  id: string
-  userId: string | null
-  email: string
-  user: {
-    fullName: string | null
-    avatarUrl: string | null
-  } | null
-}
+import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 
 interface CreateAppointmentButtonProps {
   dealOptions: DealOptionDto[]
-  members: MemberDto[]
+  members: AcceptedMemberDto[]
 }
 
 const CreateAppointmentButton = ({

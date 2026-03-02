@@ -2,22 +2,13 @@ import type { DealDetailsDto } from '@/_data-access/deal/get-deal-details'
 import type { RBACContext } from '@/_lib/rbac/types'
 import { getDealAppointments } from '@/_data-access/appointment/get-deal-appointments'
 import { getDealsOptions } from '@/_data-access/deal/get-deals-options'
+import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import TabAppointments from './tab-appointments'
-
-interface MemberDto {
-  id: string
-  userId: string | null
-  email: string
-  user: {
-    fullName: string | null
-    avatarUrl: string | null
-  } | null
-}
 
 interface TabAppointmentsServerProps {
   deal: DealDetailsDto
   ctx: RBACContext
-  members: MemberDto[]
+  members: AcceptedMemberDto[]
 }
 
 const TabAppointmentsServer = async ({

@@ -6,8 +6,7 @@ import { Label } from '@/_components/ui/label'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Loader2, CalendarIcon, Check, ChevronsUpDown } from 'lucide-react'
 import { toast } from 'sonner'
-import { format } from 'date-fns'
-import { formatInTimeZone } from 'date-fns-tz'
+import { formatInTimeZone, fromZonedTime } from 'date-fns-tz'
 import { ptBR } from 'date-fns/locale'
 
 const SAO_PAULO_TZ = 'America/Sao_Paulo'
@@ -55,6 +54,7 @@ import {
 } from '@/_actions/appointment/create-appointment/schema'
 import type { UpdateAppointmentInput } from '@/_actions/appointment/update-appointment/schema'
 import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
+import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import {
   Select,
   SelectContent,
@@ -63,20 +63,10 @@ import {
   SelectValue,
 } from '@/_components/ui/select'
 
-interface MemberDto {
-  id: string
-  userId: string | null
-  email: string
-  user: {
-    fullName: string | null
-    avatarUrl: string | null
-  } | null
-}
-
 interface UpsertAppointmentDialogContentProps {
   defaultValues?: AppointmentDto
   dealOptions: DealOptionDto[]
-  members: MemberDto[]
+  members: AcceptedMemberDto[]
   setIsOpen: Dispatch<SetStateAction<boolean>>
   onUpdate?: (data: UpdateAppointmentInput) => void
   isUpdating?: boolean
@@ -402,10 +392,16 @@ function DateTimeField({
                 selected={field.value}
                 onSelect={(date: Date | undefined) => {
                   if (date) {
-                    const currentDate = field.value || new Date()
-                    date.setHours(currentDate.getHours() || 9)
-                    date.setMinutes(currentDate.getMinutes() || 0)
-                    field.onChange(date)
+                    // Extrair hora atual no timezone de SP (ou default 09:00)
+                    const currentTime = field.value
+                      ? formatInTimeZone(field.value, SAO_PAULO_TZ, 'HH:mm')
+                      : '09:00'
+                    // Extrair a data selecionada no timezone de SP
+                    const selectedDateStr = formatInTimeZone(date, SAO_PAULO_TZ, 'yyyy-MM-dd')
+                    // Construir data+hora no timezone de SP e converter para UTC
+                    const zonedDateStr = `${selectedDateStr}T${currentTime}:00`
+                    const utcDate = fromZonedTime(zonedDateStr, SAO_PAULO_TZ)
+                    field.onChange(utcDate)
                   }
                 }}
                 disabled={(date) => date < new Date('1900-01-01')}
@@ -424,7 +420,7 @@ function DateTimeField({
                   value={(() => {
                     try {
                       if (field.value && !isNaN(field.value.getTime())) {
-                        return format(field.value, 'HH:mm')
+                        return formatInTimeZone(field.value, SAO_PAULO_TZ, 'HH:mm')
                       }
                     } catch {
                       // Se falhar, retorna valor padrão
@@ -452,17 +448,20 @@ function DateTimeField({
                       return
                     }
 
-                    const newDate = field.value
-                      ? new Date(field.value)
-                      : new Date()
+                    // Obter a data atual no timezone de SP para preservar o dia correto
+                    const currentDateStr = field.value
+                      ? formatInTimeZone(field.value, SAO_PAULO_TZ, 'yyyy-MM-dd')
+                      : formatInTimeZone(new Date(), SAO_PAULO_TZ, 'yyyy-MM-dd')
 
-                    if (isNaN(newDate.getTime())) {
+                    // Construir a data+hora no timezone de SP e converter para UTC
+                    const zonedDateStr = `${currentDateStr}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`
+                    const utcDate = fromZonedTime(zonedDateStr, SAO_PAULO_TZ)
+
+                    if (isNaN(utcDate.getTime())) {
                       return
                     }
 
-                    newDate.setHours(hours)
-                    newDate.setMinutes(minutes)
-                    field.onChange(newDate)
+                    field.onChange(utcDate)
                   }}
                 />
               </div>
