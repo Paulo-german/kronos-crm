@@ -1,7 +1,6 @@
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getContacts } from '@/_data-access/contact/get-contacts'
 import { getCompanies } from '@/_data-access/company/get-companies'
-import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 import { ContactsDataTable } from './_components/contacts-data-table'
 import CreateContactButton from './_components/create-contact-button'
@@ -21,10 +20,9 @@ const ContactsPage = async ({ params }: ContactsPageProps) => {
   const { orgSlug } = await params
   const ctx = await getOrgContext(orgSlug)
 
-  const [contacts, companies, members, quota] = await Promise.all([
+  const [contacts, companies, quota] = await Promise.all([
     getContacts(ctx),
     getCompanies(ctx.orgId),
-    getOrganizationMembers(ctx.orgId),
     checkPlanQuota(ctx.orgId, 'contact'),
   ])
 
@@ -46,9 +44,6 @@ const ContactsPage = async ({ params }: ContactsPageProps) => {
       <ContactsDataTable
         contacts={contacts}
         companyOptions={companies}
-        members={members.accepted}
-        currentUserId={ctx.userId}
-        userRole={ctx.userRole}
       />
     </div>
   )

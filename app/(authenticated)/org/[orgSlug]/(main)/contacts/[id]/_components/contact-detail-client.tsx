@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Building2,
   Mail,
@@ -12,6 +13,7 @@ import {
   AxeIcon,
   UserCog,
   CircleIcon,
+  ArrowLeft,
 } from 'lucide-react'
 
 import { Button } from '@/_components/ui/button'
@@ -35,39 +37,31 @@ import {
   SelectValue,
 } from '@/_components/ui/select'
 
-import type { ContactDto } from '@/_data-access/contact/get-contacts'
+import type { ContactDetailDto } from '@/_data-access/contact/get-contact-by-id'
 import type { CompanyDto } from '@/_data-access/company/get-companies'
+import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import { InlineTextField } from '@/_components/form-controls/inline-text-field'
 import { InlineSelectField } from '@/_components/form-controls/inline-select-field'
 import { useContactFieldUpdate } from '../_hooks/use-contact-field-update'
 import { formatPhone } from '@/_utils/format-phone'
 import type { MemberRole } from '@prisma/client'
 
-interface MemberDto {
-  id: string
-  userId: string | null
-  email: string
-  user: {
-    fullName: string | null
-    avatarUrl: string | null
-  } | null
-}
-
-interface ContactDetailDialogContentProps {
-  contact: ContactDto
+interface ContactDetailClientProps {
+  contact: ContactDetailDto
   companies: CompanyDto[]
-  members: MemberDto[]
+  members: AcceptedMemberDto[]
   currentUserId: string
   userRole: MemberRole
 }
 
-const ContactDetailDialogContent = ({
+const ContactDetailClient = ({
   contact,
   companies,
   members,
   currentUserId,
   userRole,
-}: ContactDetailDialogContentProps) => {
+}: ContactDetailClientProps) => {
+  const router = useRouter()
   const { updateField, isPending } = useContactFieldUpdate({
     contactId: contact.id,
   })
@@ -94,14 +88,19 @@ const ContactDetailDialogContent = ({
   )
 
   return (
-    <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
-      <DialogHeader>
-        <DialogTitle className="sr-only">
-          Detalhes do contato: {contact.name}
-        </DialogTitle>
-      </DialogHeader>
+    <div className="mx-auto max-w-4xl space-y-6 p-6">
+      {/* Back button */}
+      <Button
+        variant="ghost"
+        size="sm"
+        className="gap-2"
+        onClick={() => router.back()}
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Voltar
+      </Button>
 
-      {/* Header: Nome + Badges + Ações (padrão deal-detail) */}
+      {/* Header: Nome + Badges + Ações */}
       <div className="flex flex-col gap-4">
         <div className="flex items-start justify-between">
           <div>
@@ -140,7 +139,7 @@ const ContactDetailDialogContent = ({
         </div>
       </div>
 
-      {/* Grid: Info + Empresa (padrão tab-summary 2 colunas) */}
+      {/* Grid: Info + Empresa */}
       <div className="grid gap-4 md:grid-cols-2">
         {/* Card Informações de Contato */}
         <Card className="border-border/50 bg-secondary/20">
@@ -150,7 +149,6 @@ const ContactDetailDialogContent = ({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {/* Email */}
             <div className="flex items-center justify-between text-sm">
               <span className="flex items-center gap-1.5 text-muted-foreground">
                 <Mail className="h-3.5 w-3.5" />
@@ -166,7 +164,6 @@ const ContactDetailDialogContent = ({
               />
             </div>
 
-            {/* Cargo */}
             <div className="flex items-center justify-between text-sm">
               <span className="flex items-center gap-1.5 text-muted-foreground">
                 <User2 className="h-3.5 w-3.5" />
@@ -182,7 +179,6 @@ const ContactDetailDialogContent = ({
               />
             </div>
 
-            {/* Telefone */}
             <div className="flex items-center justify-between text-sm">
               <span className="flex items-center gap-1.5 text-muted-foreground">
                 <Phone className="h-3.5 w-3.5" />
@@ -198,7 +194,6 @@ const ContactDetailDialogContent = ({
               />
             </div>
 
-            {/* CPF */}
             <div className="flex items-center justify-between text-sm">
               <span className="flex items-center gap-1.5 text-muted-foreground">
                 <CreditCard className="h-3.5 w-3.5" />
@@ -214,17 +209,16 @@ const ContactDetailDialogContent = ({
               />
             </div>
 
-            {/* Switch Decisor */}
             <div className="flex items-center justify-between border-t pt-3 text-sm">
               <Label
-                htmlFor="decision-maker-dialog"
+                htmlFor="decision-maker-page"
                 className="flex items-center gap-1.5 text-muted-foreground"
               >
                 <AxeIcon className="h-3.5 w-3.5" />
                 Decisor
               </Label>
               <Switch
-                id="decision-maker-dialog"
+                id="decision-maker-page"
                 checked={contact.isDecisionMaker}
                 onCheckedChange={(checked) =>
                   updateField('isDecisionMaker', checked)
@@ -285,7 +279,7 @@ const ContactDetailDialogContent = ({
         </Card>
       )}
 
-      {/* Responsável (padrão deal-detail: rounded-lg border bg-card) */}
+      {/* Responsável */}
       <div className="rounded-lg border bg-card p-4">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <UserCog className="h-4 w-4" />
@@ -298,7 +292,7 @@ const ContactDetailDialogContent = ({
         </div>
       </div>
 
-      {/* Dialog de Transferência (nested) */}
+      {/* Dialog de Transferência */}
       <Dialog open={isTransferOpen} onOpenChange={setIsTransferOpen}>
         <DialogContent>
           <DialogHeader>
@@ -308,9 +302,9 @@ const ContactDetailDialogContent = ({
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <Label htmlFor="new-owner-dialog">Novo Responsável</Label>
+            <Label htmlFor="new-owner-page">Novo Responsável</Label>
             <Select onValueChange={setSelectedMemberId}>
-              <SelectTrigger id="new-owner-dialog" className="mt-2 w-full">
+              <SelectTrigger id="new-owner-page" className="mt-2 w-full">
                 <SelectValue placeholder="Selecione um membro..." />
               </SelectTrigger>
               <SelectContent>
@@ -342,8 +336,8 @@ const ContactDetailDialogContent = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </DialogContent>
+    </div>
   )
 }
 
-export default ContactDetailDialogContent
+export default ContactDetailClient

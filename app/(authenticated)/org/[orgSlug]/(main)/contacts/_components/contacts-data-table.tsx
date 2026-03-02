@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import Link from 'next/link'
 import { ColumnDef } from '@tanstack/react-table'
 import {
   UserIcon,
@@ -18,7 +19,6 @@ import type { ContactDto } from '@/_data-access/contact/get-contacts'
 import type { CompanyDto } from '@/_data-access/company/get-companies'
 import ContactTableDropdownMenu from './table-dropdown-menu'
 import { Button } from '@/_components/ui/button'
-import { Dialog } from '@/_components/ui/dialog'
 import { Sheet } from '@/_components/ui/sheet'
 import { useAction } from 'next-safe-action/hooks'
 import { bulkDeleteContacts } from '@/_actions/contact/bulk-delete-contacts'
@@ -27,40 +27,19 @@ import { updateContact } from '@/_actions/contact/update-contact'
 import { toast } from 'sonner'
 import ConfirmationDialog from '@/_components/confirmation-dialog'
 import UpsertContactDialogContent from './upsert-dialog-content'
-import ContactDetailDialogContent from './contact-detail-dialog-content'
-import type { MemberRole } from '@prisma/client'
-
-interface MemberDto {
-  id: string
-  userId: string | null
-  email: string
-  user: {
-    fullName: string | null
-    avatarUrl: string | null
-  } | null
-}
 
 interface ContactsDataTableProps {
   contacts: ContactDto[]
   companyOptions: CompanyDto[]
-  members: MemberDto[]
-  currentUserId: string
-  userRole: MemberRole
 }
 
 export function ContactsDataTable({
   contacts,
   companyOptions,
-  members,
-  currentUserId,
-  userRole,
 }: ContactsDataTableProps) {
   // Estado do dialog de edição (levantado para cá para sobreviver ao re-render da tabela)
   const [editingContact, setEditingContact] = useState<ContactDto | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-  // Estado do dialog de detalhes
-  const [selectedContact, setSelectedContact] = useState<ContactDto | null>(null)
-  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
   // Estado do dialog de deleção individual
   const [deletingContact, setDeletingContact] = useState<ContactDto | null>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -129,16 +108,12 @@ export function ContactsDataTable({
       cell: ({ row }) => {
         const contact = row.original
         return (
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedContact(contact)
-              setIsDetailDialogOpen(true)
-            }}
+          <Link
+            href={`/contacts/${contact.id}`}
             className="ml-2 font-medium hover:underline text-left"
           >
             {contact.name}
-          </button>
+          </Link>
         )
       },
     },
@@ -266,26 +241,6 @@ export function ContactsDataTable({
           />
         )}
       </Sheet>
-
-      {/* Dialog de detalhes do contato */}
-      <Dialog
-        open={isDetailDialogOpen}
-        onOpenChange={(open) => {
-          setIsDetailDialogOpen(open)
-          if (!open) setSelectedContact(null)
-        }}
-      >
-        {selectedContact && (
-          <ContactDetailDialogContent
-            key={selectedContact.id}
-            contact={selectedContact}
-            companies={companyOptions}
-            members={members}
-            currentUserId={currentUserId}
-            userRole={userRole}
-          />
-        )}
-      </Dialog>
 
       {/* Dialog de deleção individual fora da tabela */}
       <ConfirmationDialog
