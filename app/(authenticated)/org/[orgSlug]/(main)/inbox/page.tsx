@@ -1,3 +1,12 @@
+import Link from 'next/link'
+import { Settings2 } from 'lucide-react'
+import Header, {
+  HeaderLeft,
+  HeaderRight,
+  HeaderTitle,
+  HeaderSubTitle,
+} from '@/_components/header'
+import { Button } from '@/_components/ui/button'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getConversations } from '@/_data-access/conversation/get-conversations'
 import { getInboxes } from '@/_data-access/inbox/get-inboxes'
@@ -23,11 +32,34 @@ const InboxPage = async ({ params }: InboxPageProps) => {
   }))
 
   return (
-    <InboxClient
-      conversations={conversations}
-      inboxOptions={inboxOptions}
-      orgSlug={orgSlug}
-    />
+    <div className="flex h-full flex-col">
+      <div className="px-4 md:px-8">
+        <Header>
+          <HeaderLeft>
+            <HeaderTitle>Caixa de Entrada</HeaderTitle>
+            <HeaderSubTitle>
+              Gerencie suas conversas com clientes.
+            </HeaderSubTitle>
+          </HeaderLeft>
+          <HeaderRight>
+            <Button variant="outline" asChild>
+              <Link href={`/org/${orgSlug}/settings/inboxes`}>
+                <Settings2 className="mr-2 h-4 w-4" />
+                Gerenciar Caixas
+              </Link>
+            </Button>
+          </HeaderRight>
+        </Header>
+      </div>
+
+      <div className="mt-6 min-h-0 flex-1">
+        <InboxClient
+          conversations={conversations}
+          inboxOptions={inboxOptions}
+          orgSlug={orgSlug}
+        />
+      </div>
+    </div>
   )
 }
 

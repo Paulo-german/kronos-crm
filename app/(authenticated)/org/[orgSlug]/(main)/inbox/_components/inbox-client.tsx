@@ -13,7 +13,6 @@ import {
 import { ConversationList } from './conversation-list'
 import { ChatView } from './chat-view'
 import { EmptyInbox } from './empty-inbox'
-import { InboxSelector } from './inbox-selector'
 import type { ConversationListDto } from '@/_data-access/conversation/get-conversations'
 
 interface InboxOption {
@@ -66,17 +65,7 @@ export function InboxClient({ conversations, inboxOptions, orgSlug }: InboxClien
 
   // Se tem inboxes mas sem conversas
   if (conversations.length === 0) {
-    return (
-      <div className="flex h-[calc(100vh-4rem)] flex-col overflow-hidden bg-background">
-        <InboxSelector
-          inboxOptions={inboxOptions}
-          selectedInboxId={selectedInboxId}
-          onSelect={setSelectedInboxId}
-          orgSlug={orgSlug}
-        />
-        <EmptyInbox orgSlug={orgSlug} />
-      </div>
-    )
+    return <EmptyInbox orgSlug={orgSlug} />
   }
 
   const selectedConversation = filteredConversations.find(
@@ -84,56 +73,48 @@ export function InboxClient({ conversations, inboxOptions, orgSlug }: InboxClien
   )
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] flex-col overflow-hidden bg-background">
-      {/* Inbox selector no topo */}
-      <InboxSelector
-        inboxOptions={inboxOptions}
-        selectedInboxId={selectedInboxId}
-        onSelect={setSelectedInboxId}
-        orgSlug={orgSlug}
-      />
+    <div className="flex h-full border-t border-border/50">
+      {/* Sidebar */}
+      <div className="w-80 shrink-0">
+        <ConversationList
+          conversations={filteredConversations}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+          inboxOptions={inboxOptions}
+          selectedInboxId={selectedInboxId}
+          onInboxSelect={setSelectedInboxId}
+        />
+      </div>
 
-      {/* Main layout: sidebar + chat */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <div className="w-80 shrink-0">
-          <ConversationList
-            conversations={filteredConversations}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
+      {/* Chat panel */}
+      <div className="flex flex-1 flex-col">
+        {selectedConversation ? (
+          <ChatView
+            key={selectedConversation.id}
+            conversation={selectedConversation}
           />
-        </div>
-
-        {/* Chat panel */}
-        <div className="flex flex-1 flex-col">
-          {selectedConversation ? (
-            <ChatView
-              key={selectedConversation.id}
-              conversation={selectedConversation}
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center p-6">
-              <Card className="max-w-sm border-border/50 bg-secondary/20">
-                <CardHeader className="items-center pb-3 text-center">
-                  <div className="rounded-full bg-muted p-4">
-                    <MessageSquare className="h-6 w-6 text-muted-foreground" />
-                  </div>
-                  <CardTitle className="text-base">
-                    {filteredConversations.length === 0
-                      ? 'Nenhuma conversa nesta caixa'
-                      : 'Selecione uma conversa'}
-                  </CardTitle>
-                  <CardDescription>
-                    {filteredConversations.length === 0
-                      ? 'Esta caixa de entrada ainda não possui conversas.'
-                      : 'Escolha uma conversa na lista ao lado para visualizar as mensagens e interagir.'}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent />
-              </Card>
-            </div>
-          )}
-        </div>
+        ) : (
+          <div className="flex h-full items-center justify-center p-6">
+            <Card className="max-w-sm border-border/50 bg-secondary/20">
+              <CardHeader className="items-center pb-3 text-center">
+                <div className="rounded-full bg-muted p-4">
+                  <MessageSquare className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <CardTitle className="text-base">
+                  {filteredConversations.length === 0
+                    ? 'Nenhuma conversa nesta caixa'
+                    : 'Selecione uma conversa'}
+                </CardTitle>
+                <CardDescription>
+                  {filteredConversations.length === 0
+                    ? 'Esta caixa de entrada ainda não possui conversas.'
+                    : 'Escolha uma conversa na lista ao lado para visualizar as mensagens e interagir.'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent />
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   )

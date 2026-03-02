@@ -10,12 +10,28 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/_components/ui/avatar'
 import { Badge } from '@/_components/ui/badge'
 import { ScrollArea } from '@/_components/ui/scroll-area'
 import { Tabs, TabsList, TabsTrigger } from '@/_components/ui/tabs'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/_components/ui/select'
 import type { ConversationListDto } from '@/_data-access/conversation/get-conversations'
+
+interface InboxOption {
+  id: string
+  name: string
+  channel: string
+}
 
 interface ConversationListProps {
   conversations: ConversationListDto[]
   selectedId: string | null
   onSelect: (id: string) => void
+  inboxOptions?: InboxOption[]
+  selectedInboxId?: string | null
+  onInboxSelect?: (inboxId: string | null) => void
 }
 
 type FilterTab = 'all' | 'unread'
@@ -34,10 +50,18 @@ function truncateMessage(content: string, maxLength = 60): string {
   return content.slice(0, maxLength) + '...'
 }
 
+const channelLabels: Record<string, string> = {
+  WHATSAPP: 'WhatsApp',
+  WEB_CHAT: 'Web Chat',
+}
+
 export function ConversationList({
   conversations,
   selectedId,
   onSelect,
+  inboxOptions,
+  selectedInboxId,
+  onInboxSelect,
 }: ConversationListProps) {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<FilterTab>('all')
@@ -67,6 +91,27 @@ export function ConversationList({
     <div className="flex h-full flex-col border-r border-border/50">
       {/* Header */}
       <div className="border-b border-border/50 p-4">
+        {inboxOptions && inboxOptions.length > 1 && onInboxSelect && (
+          <div className="mb-3">
+            <Select
+              value={selectedInboxId ?? 'all'}
+              onValueChange={(value) => onInboxSelect(value === 'all' ? null : value)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Todas as caixas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as caixas de entrada</SelectItem>
+                {inboxOptions.map((inbox) => (
+                  <SelectItem key={inbox.id} value={inbox.id}>
+                    {inbox.name} ({channelLabels[inbox.channel] ?? inbox.channel})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         <div className="mb-3 flex items-center gap-2">
           <h2 className="text-lg font-semibold tracking-tight">Conversas</h2>
           <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-medium">

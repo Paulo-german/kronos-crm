@@ -18,7 +18,7 @@ interface EmptyInboxProps {
 
 export function EmptyInbox({ orgSlug, hasNoInbox = false }: EmptyInboxProps) {
   return (
-    <div className="flex h-full flex-1 items-center justify-center bg-background p-6">
+    <div className="flex h-full flex-1 items-center justify-center p-6">
       <Card className="max-w-md border-border/50 bg-secondary/20">
         <CardHeader className="items-center pb-3 text-center">
           <div className="rounded-full bg-muted p-4">
