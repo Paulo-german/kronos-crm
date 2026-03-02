@@ -210,23 +210,30 @@ export async function POST(req: Request) {
         normalizedMsg.pushName,
       )
 
-      await db.message.create({
-        data: {
-          conversationId: resolveResult.conversationId,
-          role: 'user',
-          content: resolveMessageContent(normalizedMsg) || '[mensagem não suportada]',
-          providerMessageId: messageId,
-          metadata: normalizedMsg.media
-            ? ({ media: normalizedMsg.media } as unknown as Prisma.InputJsonValue)
-            : undefined,
-        },
-      })
+      // Dedup de mensagem — protege contra webhook retry da Evolution
+      const dedupResult = await redis
+        .set(`dedup:${messageId}`, '1', 'EX', 300, 'NX')
+        .catch(() => 'redis_error' as const)
 
-      // Incrementar unreadCount
-      await db.conversation.update({
-        where: { id: resolveResult.conversationId },
-        data: { unreadCount: { increment: 1 } },
-      })
+      if (dedupResult !== null) {
+        await db.message.create({
+          data: {
+            conversationId: resolveResult.conversationId,
+            role: 'user',
+            content: resolveMessageContent(normalizedMsg) || '[mensagem não suportada]',
+            providerMessageId: messageId,
+            metadata: normalizedMsg.media
+              ? ({ media: normalizedMsg.media } as unknown as Prisma.InputJsonValue)
+              : undefined,
+          },
+        })
+
+        // Incrementar unreadCount
+        await db.conversation.update({
+          where: { id: resolveResult.conversationId },
+          data: { unreadCount: { increment: 1 } },
+        })
+      }
 
       // Enviar auto-reply apenas se tem mensagem configurada e não enviou recentemente
       const sentAutoReply = !!(agent.outOfHoursMessage && alreadyReplied !== null)
@@ -300,26 +307,38 @@ export async function POST(req: Request) {
       log('step:9 ai_pause_check', 'PASS', { action: 'auto_unpaused', pausedAgoMin: Math.round((pausedAgoMs ?? 0) / 60000) })
     } else {
       // IA pausada — salvar mensagem do cliente mas não processar com IA
-      await db.message.create({
-        data: {
-          conversationId,
-          role: 'user',
-          content: resolveMessageContent(normalizedMessage),
-          providerMessageId: messageId,
-          metadata: normalizedMessage.media
-            ? ({ media: normalizedMessage.media } as unknown as Prisma.InputJsonValue)
-            : undefined,
-        },
-      })
+      try {
+        await db.message.create({
+          data: {
+            conversationId,
+            role: 'user',
+            content: resolveMessageContent(normalizedMessage),
+            providerMessageId: messageId,
+            metadata: normalizedMessage.media
+              ? ({ media: normalizedMessage.media } as unknown as Prisma.InputJsonValue)
+              : undefined,
+          },
+        })
 
-      // Incrementar unreadCount
-      await db.conversation.update({
-        where: { id: conversationId },
-        data: { unreadCount: { increment: 1 } },
-      })
+        // Incrementar unreadCount
+        await db.conversation.update({
+          where: { id: conversationId },
+          data: { unreadCount: { increment: 1 } },
+        })
 
-      revalidateTag(`conversations:${orgId}`)
-      revalidateTag(`conversation-messages:${conversationId}`)
+        revalidateTag(`conversations:${orgId}`)
+        revalidateTag(`conversation-messages:${conversationId}`)
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          'code' in error &&
+          (error as { code: string }).code === 'P2002'
+        ) {
+          log('step:9 ai_paused_save', 'SKIP', { reason: 'duplicate_provider_message_id' })
+          return NextResponse.json({ success: true, reason: 'duplicate' })
+        }
+        throw error
+      }
 
       log('step:9 ai_pause_check', 'EXIT', { reason: 'ai_paused', conversationId, pausedAgoMin: Math.round((pausedAgoMs ?? 0) / 60000), ms: Date.now() - t0 })
       return NextResponse.json({ success: true, reason: 'ai_paused_message_saved' })
@@ -328,11 +347,9 @@ export async function POST(req: Request) {
     log('step:9 ai_pause_check', 'PASS', { aiPaused: false })
   }
 
-  // 11. Save + Debounce + Dispatch em paralelo
-  const debounceTimestamp = Date.now()
-
-  await Promise.all([
-    db.message.create({
+  // 11. Salvar mensagem (com safety net para P2002 — webhook retry com dedup expirado)
+  try {
+    await db.message.create({
       data: {
         conversationId,
         role: 'user',
@@ -342,8 +359,23 @@ export async function POST(req: Request) {
           ? ({ media: normalizedMessage.media } as unknown as Prisma.InputJsonValue)
           : undefined,
       },
-    }),
-    // Incrementar unreadCount
+    })
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      'code' in error &&
+      (error as { code: string }).code === 'P2002'
+    ) {
+      log('step:10 save_message', 'SKIP', { reason: 'duplicate_provider_message_id' })
+      return NextResponse.json({ success: true, reason: 'duplicate' })
+    }
+    throw error
+  }
+
+  // 12. Debounce + Dispatch + unreadCount em paralelo (só se mensagem foi salva)
+  const debounceTimestamp = Date.now()
+
+  await Promise.all([
     db.conversation.update({
       where: { id: conversationId },
       data: { unreadCount: { increment: 1 } },
