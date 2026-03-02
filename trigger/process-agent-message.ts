@@ -89,10 +89,16 @@ export const processAgentMessage = task({
     if (balance.available <= 0) {
       log('step:2 credit_check', 'EXIT', { reason: 'no_credits', balance: balance.available })
 
-      await sendWhatsAppMessage(
+      const noCreditsIds = await sendWhatsAppMessage(
         message.instanceName,
         message.remoteJid,
         NO_CREDITS_MESSAGE,
+      )
+
+      await Promise.all(
+        noCreditsIds.map((sentId) =>
+          redis.set(`dedup:${sentId}`, '1', 'EX', 300).catch(() => {}),
+        ),
       )
 
       return { skipped: true, reason: 'no_credits' }
@@ -348,14 +354,23 @@ export const processAgentMessage = task({
     log('step:8 debit_credits', debited ? 'PASS' : 'SKIP', { debited })
 
     // -----------------------------------------------------------------------
-    // 10. Send WhatsApp message
+    // 10. Send WhatsApp message + pre-register dedup keys
     // -----------------------------------------------------------------------
-    await sendWhatsAppMessage(
+    const sentMessageIds = await sendWhatsAppMessage(
       message.instanceName,
       message.remoteJid,
       responseText,
     )
-    log('step:9 whatsapp_sent', 'PASS', { responseLength: responseText.length })
+
+    // Pré-registrar dedup keys para que o webhook fromMe ignore estas mensagens
+    // (evita duplicata no banco + auto-pause da IA)
+    await Promise.all(
+      sentMessageIds.map((sentId) =>
+        redis.set(`dedup:${sentId}`, '1', 'EX', 300).catch(() => {}),
+      ),
+    )
+
+    log('step:9 whatsapp_sent', 'PASS', { responseLength: responseText.length, sentMessageIds })
 
     // -----------------------------------------------------------------------
     // 11. Memory compression — se >= threshold msgs, summarizar e arquivar

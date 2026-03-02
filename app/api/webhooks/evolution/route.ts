@@ -99,37 +99,42 @@ export async function POST(req: Request) {
       normalizedMsg.pushName,
     )
 
-    // Dedup para não duplicar mensagens já salvas pelo inbox/agent
+    // Dedup — se a key já existe, a mensagem foi enviada pelo bot (pré-registrada
+    // no processAgentMessage ou sendMessage). Ignorar para evitar duplicata + auto-pause.
     const dedupResult = await redis
       .set(`dedup:${messageId}`, '1', 'EX', 300, 'NX')
       .catch(() => 'redis_error' as const)
 
-    if (dedupResult !== null) {
-      await db.message.create({
-        data: {
-          conversationId: resolveResult.conversationId,
-          role: 'assistant',
-          content: resolveMessageContent(normalizedMsg),
-          providerMessageId: messageId,
-          metadata: {
-            sentFrom: 'whatsapp_direct',
-            ...(normalizedMsg.media
-              ? { media: normalizedMsg.media }
-              : {}),
-          } as unknown as Prisma.InputJsonValue,
-        },
-      })
-
-      revalidateTag(`conversations:${orgId}`)
-      revalidateTag(`conversation-messages:${resolveResult.conversationId}`)
+    if (dedupResult === null) {
+      log('step:4b from_me_bot', 'SKIP', { reason: 'bot_message_deduped', ms: Date.now() - t0 })
+      return NextResponse.json({ ignored: true, reason: 'from_me_bot' })
     }
+
+    // Mensagem enviada por humano (direto no WhatsApp) — salvar + pausar IA
+    await db.message.create({
+      data: {
+        conversationId: resolveResult.conversationId,
+        role: 'assistant',
+        content: resolveMessageContent(normalizedMsg),
+        providerMessageId: messageId,
+        metadata: {
+          sentFrom: 'whatsapp_direct',
+          ...(normalizedMsg.media
+            ? { media: normalizedMsg.media }
+            : {}),
+        } as unknown as Prisma.InputJsonValue,
+      },
+    })
 
     await db.conversation.updateMany({
       where: { inboxId: inbox.id, remoteJid },
       data: { aiPaused: true, pausedAt: new Date() },
     })
 
-    log('step:4b from_me_done', 'EXIT', { conversationId: resolveResult.conversationId, saved: dedupResult !== null, aiPaused: true, ms: Date.now() - t0 })
+    revalidateTag(`conversations:${orgId}`)
+    revalidateTag(`conversation-messages:${resolveResult.conversationId}`)
+
+    log('step:4b from_me_done', 'EXIT', { conversationId: resolveResult.conversationId, aiPaused: true, ms: Date.now() - t0 })
     return NextResponse.json({ success: true, reason: 'from_me_saved' })
   }
   log('step:4 from_me_check', 'PASS')
@@ -238,9 +243,16 @@ export async function POST(req: Request) {
       // Enviar auto-reply apenas se tem mensagem configurada e não enviou recentemente
       const sentAutoReply = !!(agent.outOfHoursMessage && alreadyReplied !== null)
       if (sentAutoReply) {
-        await sendWhatsAppMessage(instanceName, remoteJid, agent.outOfHoursMessage!).catch(
-          (error) => console.error('[webhook] OOH auto-reply failed:', { msgId: messageId, error }),
-        )
+        try {
+          const oohIds = await sendWhatsAppMessage(instanceName, remoteJid, agent.outOfHoursMessage!)
+          await Promise.all(
+            oohIds.map((sentId) =>
+              redis.set(`dedup:${sentId}`, '1', 'EX', 300).catch(() => {}),
+            ),
+          )
+        } catch (error) {
+          console.error('[webhook] OOH auto-reply failed:', { msgId: messageId, error })
+        }
       }
 
       log('step:6b ooh_done', 'EXIT', { conversationId: resolveResult.conversationId, sentAutoReply, ms: Date.now() - t0 })

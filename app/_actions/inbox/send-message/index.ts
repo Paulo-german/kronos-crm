@@ -3,6 +3,7 @@
 import { revalidateTag } from 'next/cache'
 import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
+import { redis } from '@/_lib/redis'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 import { sendWhatsAppMessage } from '@/_lib/evolution/send-message'
 import { sendMessageSchema } from './schema'
@@ -30,10 +31,17 @@ export const sendMessage = orgActionClient
     }
 
     // 3. Enviar via WhatsApp
-    await sendWhatsAppMessage(
+    const sentMessageIds = await sendWhatsAppMessage(
       conversation.inbox.evolutionInstanceName,
       conversation.remoteJid,
       data.text,
+    )
+
+    // Pré-registrar dedup keys para que o webhook fromMe ignore estas mensagens
+    await Promise.all(
+      sentMessageIds.map((sentId) =>
+        redis.set(`dedup:${sentId}`, '1', 'EX', 300).catch(() => {}),
+      ),
     )
 
     // 4. Salvar mensagem no banco + pausar IA + resetar unreadCount

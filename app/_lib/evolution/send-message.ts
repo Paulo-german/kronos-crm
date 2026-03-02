@@ -8,7 +8,7 @@ export async function sendWhatsAppMessage(
   instanceName: string,
   remoteJid: string,
   text: string,
-): Promise<void> {
+): Promise<string[]> {
   const apiUrl = process.env.EVOLUTION_API_URL
   const apiKey = process.env.EVOLUTION_API_KEY
 
@@ -17,6 +17,7 @@ export async function sendWhatsAppMessage(
   }
 
   const chunks = splitMessage(text, MAX_WHATSAPP_MESSAGE_LENGTH)
+  const messageIds: string[] = []
 
   for (const chunk of chunks) {
     const response = await fetch(
@@ -40,7 +41,13 @@ export async function sendWhatsAppMessage(
         `Evolution API sendText failed (${response.status}): ${errorBody}`,
       )
     }
+
+    const data = await response.json().catch(() => null)
+    const messageId = data?.key?.id as string | undefined
+    if (messageId) messageIds.push(messageId)
   }
+
+  return messageIds
 }
 
 /**
