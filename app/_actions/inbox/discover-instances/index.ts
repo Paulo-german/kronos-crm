@@ -107,12 +107,12 @@ export const discoverInstances = orgActionClient
       try {
         const currentUrl = await getEvolutionWebhook(instance.instanceName)
 
-        if (currentUrl && currentUrl !== expectedWebhookUrl) {
+        if (currentUrl !== expectedWebhookUrl) {
           await updateEvolutionWebhook(instance.instanceName, expectedWebhookUrl)
           webhooksUpdated++
           console.log('[discover-instances] webhook updated', {
             instance: instance.instanceName,
-            from: currentUrl,
+            from: currentUrl ?? '(not found)',
             to: expectedWebhookUrl,
           })
         }
