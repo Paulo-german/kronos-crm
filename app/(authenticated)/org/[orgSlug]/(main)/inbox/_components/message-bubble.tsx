@@ -44,6 +44,7 @@ export function MessageBubble({ id, conversationId, role, content, metadata, cre
   const hasStoredMedia = media?.storedInSupabase && media?.url
   const mediaType = hasStoredMedia ? getMediaType(media?.mimetype) : null
   const hasAudio = media?.mimetype?.startsWith('audio/') && id && conversationId
+  const isAudioPlaceholder = hasAudio && /^\[Áudio \d+s\]$/.test(content)
   const timestamp = format(new Date(createdAt), 'HH:mm')
   const isFromInbox = meta?.sentFrom === 'inbox'
 
@@ -73,7 +74,7 @@ export function MessageBubble({ id, conversationId, role, content, metadata, cre
         )}
 
         {hasAudio && (
-          <audio controls className="mb-2 w-full max-w-xs" preload="none">
+          <audio controls className="mb-1 min-w-[250px]" preload="none">
             <source
               src={`/api/inbox/${conversationId}/audio/${id}`}
               type={media!.mimetype}
@@ -100,8 +101,13 @@ export function MessageBubble({ id, conversationId, role, content, metadata, cre
           </Button>
         )}
 
-        {/* Texto */}
-        <p className="whitespace-pre-wrap text-sm">{content}</p>
+        {/* Texto — esconde placeholder de áudio quando o player está visível */}
+        {!isAudioPlaceholder && (
+          <p className={cn(
+            'whitespace-pre-wrap text-sm',
+            hasAudio && 'italic opacity-80',
+          )}>{content}</p>
+        )}
 
         {/* Timestamp */}
         <div
