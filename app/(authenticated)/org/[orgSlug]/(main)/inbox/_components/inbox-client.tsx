@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useMemo, useRef } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { MessageSquare } from 'lucide-react'
 import {
   Card,
@@ -31,8 +31,26 @@ const REFRESH_INTERVAL_MS = 5_000
 
 export function InboxClient({ conversations, inboxOptions, orgSlug }: InboxClientProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [selectedInboxId, setSelectedInboxId] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const didApplyContactParam = useRef(false)
+
+  // Selecionar conversa via query param ?contactId=xxx (deep link do CRM)
+  useEffect(() => {
+    if (didApplyContactParam.current) return
+    const contactId = searchParams.get('contactId')
+    if (!contactId || conversations.length === 0) return
+
+    const match = conversations.find(
+      (conversation) => conversation.contactId === contactId,
+    )
+    if (match) {
+      setSelectedInboxId(match.inboxId)
+      setSelectedId(match.id)
+      didApplyContactParam.current = true
+    }
+  }, [searchParams, conversations])
 
   // Filtrar conversas pela inbox selecionada
   const filteredConversations = useMemo(() => {

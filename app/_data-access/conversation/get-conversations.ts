@@ -5,6 +5,7 @@ import { db } from '@/_lib/prisma'
 
 export interface ConversationListDto {
   id: string
+  contactId: string
   contactName: string
   contactPhone: string | null
   agentName: string | null
@@ -52,6 +53,7 @@ const fetchConversationsFromDb = async (
 
   return conversations.map((conversation) => ({
     id: conversation.id,
+    contactId: conversation.contactId,
     contactName: conversation.contact.name,
     contactPhone: conversation.contact.phone,
     agentName: conversation.inbox.agent?.name ?? null,
