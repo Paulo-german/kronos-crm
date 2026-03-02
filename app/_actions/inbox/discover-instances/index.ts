@@ -6,7 +6,7 @@ import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
 import { revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
-import { listEvolutionInstances, updateEvolutionWebhook, buildWebhookUrl, deleteEvolutionInstance } from '@/_lib/evolution/instance-management'
+import { listEvolutionInstances, getEvolutionWebhook, updateEvolutionWebhook, buildWebhookUrl, deleteEvolutionInstance } from '@/_lib/evolution/instance-management'
 
 const discoverInstancesSchema = z.object({})
 
@@ -99,19 +99,20 @@ export const discoverInstances = orgActionClient
       })
     }
 
-    // 8. Força webhook URL correto em todas as instâncias da org.
-    // Sempre seta via /webhook/set pois /webhook/find pode retornar o webhook
-    // global (correto) enquanto o webhook por instância (setado na criação) ainda
-    // aponta para localhost.
+    // 9. Sync webhook URLs — corrige instâncias apontando para localhost ou URL antiga
     const expectedWebhookUrl = buildWebhookUrl()
     let webhooksUpdated = 0
 
     for (const instance of orgInstances) {
       try {
-        await updateEvolutionWebhook(instance.instanceName, expectedWebhookUrl)
-        webhooksUpdated++
+        const currentUrl = await getEvolutionWebhook(instance.instanceName)
+
+        if (currentUrl !== expectedWebhookUrl) {
+          await updateEvolutionWebhook(instance.instanceName, expectedWebhookUrl)
+          webhooksUpdated++
+        }
       } catch (error) {
-        console.error('[discover-instances] webhook update failed', {
+        console.error('[discover-instances] webhook sync failed', {
           instance: instance.instanceName,
           error: error instanceof Error ? error.message : error,
         })
