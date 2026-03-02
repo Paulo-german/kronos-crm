@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "check": "pnpm exec tsc --noEmit && pnpm next lint",
     "dev": "next dev --turbopack",
     "build": "prisma generate && next build",
     "start": "next start",
