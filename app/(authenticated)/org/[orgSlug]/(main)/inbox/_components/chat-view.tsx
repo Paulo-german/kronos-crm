@@ -46,6 +46,7 @@ const POLLING_INTERVAL_MS = 5_000
 export function ChatView({ conversation }: ChatViewProps) {
   const [messages, setMessages] = useState<MessageDto[]>([])
   const [aiPaused, setAiPaused] = useState(conversation.aiPaused)
+  const [pausedAt, setPausedAt] = useState<Date | string | null>(conversation.pausedAt)
   const [text, setText] = useState('')
   const [isLoadingMessages, setIsLoadingMessages] = useState(true)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -94,6 +95,7 @@ export function ChatView({ conversation }: ChatViewProps) {
       // Só sincroniza aiPaused do servidor se não há toggle pendente
       if (togglePendingRef.current === null) {
         setAiPaused(data.aiPaused)
+        setPausedAt(data.pausedAt ?? null)
       }
       setIsLoadingMessages(false)
     } catch {
@@ -123,7 +125,8 @@ export function ChatView({ conversation }: ChatViewProps) {
   // Sync aiPaused when conversation prop changes
   useEffect(() => {
     setAiPaused(conversation.aiPaused)
-  }, [conversation.aiPaused])
+    setPausedAt(conversation.pausedAt)
+  }, [conversation.aiPaused, conversation.pausedAt])
 
   const scrollToBottom = () => {
     setTimeout(() => {
@@ -246,8 +249,10 @@ export function ChatView({ conversation }: ChatViewProps) {
           <div className="flex items-center gap-2 border-b border-kronos-yellow/20 bg-kronos-yellow/10 px-4 py-2">
             <AlertTriangle className="h-4 w-4 shrink-0 text-kronos-yellow" />
             <p className="text-xs text-kronos-yellow">
-              IA pausada. Você está no controle da conversa. A IA será reativada
-              automaticamente após 30 minutos sem interação ou ao ativar o switch.
+              IA pausada. Você está no controle da conversa.{' '}
+              {pausedAt
+                ? 'A IA será reativada automaticamente após 30 minutos sem interação ou ao ativar o switch.'
+                : 'Reative manualmente pelo switch acima.'}
             </p>
           </div>
         )}

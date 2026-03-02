@@ -38,7 +38,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 
     const conversation = await db.conversation.findFirst({
       where: { id: conversationId, organizationId: membership.orgId },
-      select: { id: true, aiPaused: true, unreadCount: true },
+      select: { id: true, aiPaused: true, pausedAt: true, unreadCount: true },
     })
 
     if (!conversation) {
@@ -74,6 +74,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     return NextResponse.json({
       messages,
       aiPaused: conversation.aiPaused,
+      pausedAt: conversation.pausedAt,
     })
   } catch (error) {
     console.error('[inbox-messages-api] Error:', error)

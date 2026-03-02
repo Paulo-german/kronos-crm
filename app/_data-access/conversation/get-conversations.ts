@@ -11,6 +11,7 @@ export interface ConversationListDto {
   inboxName: string
   channel: string
   aiPaused: boolean
+  pausedAt: Date | null
   remoteJid: string | null
   unreadCount: number
   lastMessage: {
@@ -57,6 +58,7 @@ const fetchConversationsFromDb = async (
     inboxName: conversation.inbox.name,
     channel: conversation.channel,
     aiPaused: conversation.aiPaused,
+    pausedAt: conversation.pausedAt,
     remoteJid: conversation.remoteJid,
     unreadCount: conversation.unreadCount,
     lastMessage: conversation.messages[0]
