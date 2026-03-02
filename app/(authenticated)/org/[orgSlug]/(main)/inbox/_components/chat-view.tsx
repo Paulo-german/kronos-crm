@@ -10,7 +10,7 @@ import {
 } from 'react'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
-import { CircleIcon, Loader2, Mic, Pause, Send, Square, AlertTriangle } from 'lucide-react'
+import { CircleIcon, Loader2, Mic, Pause, Send, Square, Trash2, AlertTriangle } from 'lucide-react'
 import { Alert, AlertDescription } from '@/_components/ui/alert'
 import { Avatar, AvatarFallback, AvatarImage } from '@/_components/ui/avatar'
 import { Badge } from '@/_components/ui/badge'
@@ -257,6 +257,11 @@ export function ChatView({ conversation }: ChatViewProps) {
     setRecordingDuration(0)
   }
 
+  const cancelRecording = () => {
+    cancelledRef.current = true
+    stopRecording()
+  }
+
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
@@ -437,12 +442,29 @@ export function ChatView({ conversation }: ChatViewProps) {
         <div className="p-4">
           <div className="flex items-end gap-2">
             {isRecording ? (
-              <div className="flex flex-1 items-center gap-3 rounded-md border px-4 py-2">
-                <span className="h-3 w-3 animate-pulse rounded-full bg-red-500" />
-                <span className="text-sm tabular-nums text-muted-foreground">
-                  {formatDuration(recordingDuration)}
-                </span>
-              </div>
+              <>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={cancelRecording}
+                      className="shrink-0 text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    <p>Cancelar gravação</p>
+                  </TooltipContent>
+                </Tooltip>
+                <div className="flex flex-1 items-center gap-3 rounded-md border px-4 py-2">
+                  <span className="h-3 w-3 animate-pulse rounded-full bg-red-500" />
+                  <span className="text-sm tabular-nums text-muted-foreground">
+                    {formatDuration(recordingDuration)}
+                  </span>
+                </div>
+              </>
             ) : (
               <Textarea
                 ref={textareaRef}
