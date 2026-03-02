@@ -11,7 +11,6 @@ import {
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 import { CircleIcon, Loader2, Mic, Pause, Send, Square, Trash2, AlertTriangle } from 'lucide-react'
-import { Alert, AlertDescription } from '@/_components/ui/alert'
 import { Avatar, AvatarFallback, AvatarImage } from '@/_components/ui/avatar'
 import { Badge } from '@/_components/ui/badge'
 import { Button } from '@/_components/ui/button'
@@ -456,15 +455,15 @@ export function ChatView({ conversation }: ChatViewProps) {
 
         {/* Banner de pausa */}
         {aiPaused && (
-          <Alert variant="warning" className="rounded-none border-x-0 border-t-0">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription className="text-xs">
+          <div className="flex items-center gap-2 border-b border-kronos-yellow/20 bg-kronos-yellow/10 px-4 py-2 text-xs text-kronos-yellow">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+            <span>
               IA pausada. Você está no controle da conversa.{' '}
               {pausedAt
                 ? 'A IA será reativada automaticamente após 30 minutos sem interação ou ao ativar o switch.'
                 : 'Reative manualmente pelo switch acima.'}
-            </AlertDescription>
-          </Alert>
+            </span>
+          </div>
         )}
 
         {/* Mensagens */}
