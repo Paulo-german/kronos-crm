@@ -866,8 +866,8 @@ model Inbox {
 
   conversations Conversation[]
 
+  @@unique([evolutionInstanceName])
   @@index([organizationId])
-  @@index([evolutionInstanceName])
   @@map("inboxes")
 }
 

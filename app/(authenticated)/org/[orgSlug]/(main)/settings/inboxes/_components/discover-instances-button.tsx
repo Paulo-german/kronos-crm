@@ -11,12 +11,22 @@ const DiscoverInstancesButton = () => {
     onSuccess: ({ data }) => {
       if (!data) return
 
+      const messages: string[] = []
+
       if (data.imported > 0) {
-        toast.success(
-          `${data.imported} instância(s) encontrada(s) e importada(s).`,
-        )
+        messages.push(`${data.imported} instância(s) importada(s)`)
+      }
+      if (data.orphansCleaned > 0) {
+        messages.push(`${data.orphansCleaned} órfã(s) removida(s)`)
+      }
+      if (data.webhooksUpdated > 0) {
+        messages.push(`${data.webhooksUpdated} webhook(s) atualizado(s)`)
+      }
+
+      if (messages.length > 0) {
+        toast.success(messages.join(', ') + '.')
       } else {
-        toast.info('Nenhuma instância nova encontrada.')
+        toast.info('Tudo sincronizado. Nenhuma alteração necessária.')
       }
     },
     onError: ({ error }) => {

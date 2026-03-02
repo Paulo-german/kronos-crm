@@ -6,7 +6,7 @@ import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
 import { revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
-import { listEvolutionInstances } from '@/_lib/evolution/instance-management'
+import { listEvolutionInstances, getEvolutionWebhook, updateEvolutionWebhook, buildWebhookUrl, deleteEvolutionInstance } from '@/_lib/evolution/instance-management'
 
 const discoverInstancesSchema = z.object({})
 
@@ -33,25 +33,59 @@ export const discoverInstances = orgActionClient
       instance.instanceName.startsWith(orgPrefix),
     )
 
-    // 5. Buscar inboxes existentes que já têm evolutionInstanceName
-    const existingInboxes = await db.inbox.findMany({
-      where: {
-        organizationId: ctx.orgId,
-        evolutionInstanceName: { not: null },
-      },
-      select: { evolutionInstanceName: true },
+    // 5. Buscar TODOS os inboxes da org (com e sem evolutionInstanceName)
+    const allInboxes = await db.inbox.findMany({
+      where: { organizationId: ctx.orgId },
+      select: { id: true, evolutionInstanceName: true },
     })
 
     const trackedNames = new Set(
-      existingInboxes.map((inbox) => inbox.evolutionInstanceName),
+      allInboxes
+        .filter((inbox) => inbox.evolutionInstanceName)
+        .map((inbox) => inbox.evolutionInstanceName),
+    )
+
+    // IDs de inboxes desconectados (sem evolutionInstanceName)
+    const disconnectedInboxIds = new Set(
+      allInboxes
+        .filter((inbox) => !inbox.evolutionInstanceName)
+        .map((inbox) => inbox.id),
     )
 
     // 6. Calcular diff: instâncias na Evolution que não estão no DB
-    const orphanInstances = orgInstances.filter(
+    const untracked = orgInstances.filter(
       (instance) => !trackedNames.has(instance.instanceName),
     )
 
-    // 7. Criar inbox para cada instância não rastreada
+    // 7. Separar órfãs reais de instâncias desconectadas intencionalmente
+    // Naming pattern: kronos-{orgId8}-{inboxId8}
+    const orphanInstances = []
+    let orphansCleaned = 0
+
+    for (const instance of untracked) {
+      const parts = instance.instanceName.split('-')
+      // Extrair o prefixo do inboxId (últimos 8 chars do UUID)
+      const inboxIdPrefix = parts.length >= 3 ? parts[2] : null
+
+      // Verificar se algum inbox desconectado corresponde ao prefixo
+      const wasDisconnected = inboxIdPrefix
+        ? [...disconnectedInboxIds].some((inboxId) => inboxId.startsWith(inboxIdPrefix))
+        : false
+
+      if (wasDisconnected) {
+        // Instância de inbox desconectado intencionalmente — deletar da Evolution
+        try {
+          await deleteEvolutionInstance(instance.instanceName)
+          orphansCleaned++
+        } catch {
+          // Best-effort
+        }
+      } else {
+        orphanInstances.push(instance)
+      }
+    }
+
+    // 8. Criar inbox para cada instância órfã real
     for (const instance of orphanInstances) {
       await db.inbox.create({
         data: {
@@ -65,11 +99,35 @@ export const discoverInstances = orgActionClient
       })
     }
 
-    // 8. Invalidar cache
+    // 8. Sync webhook URLs — corrige instâncias apontando para localhost ou URL antiga
+    const expectedWebhookUrl = buildWebhookUrl()
+    let webhooksUpdated = 0
+
+    for (const instance of orgInstances) {
+      try {
+        const currentUrl = await getEvolutionWebhook(instance.instanceName)
+
+        if (currentUrl && currentUrl !== expectedWebhookUrl) {
+          await updateEvolutionWebhook(instance.instanceName, expectedWebhookUrl)
+          webhooksUpdated++
+          console.log('[discover-instances] webhook updated', {
+            instance: instance.instanceName,
+            from: currentUrl,
+            to: expectedWebhookUrl,
+          })
+        }
+      } catch {
+        // Best-effort: falha no sync de uma instância não bloqueia as demais
+      }
+    }
+
+    // 9. Invalidar cache
     revalidateTag(`inboxes:${ctx.orgId}`)
 
     return {
       found: orgInstances.length,
       imported: orphanInstances.length,
+      orphansCleaned,
+      webhooksUpdated,
     }
   })

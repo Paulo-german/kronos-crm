@@ -5,7 +5,7 @@ import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
-import { disconnectEvolutionInstance } from '@/_lib/evolution/instance-management'
+import { deleteEvolutionInstance } from '@/_lib/evolution/instance-management'
 
 const disconnectEvolutionSchema = z.object({
   inboxId: z.string().uuid(),
@@ -29,7 +29,14 @@ export const disconnectEvolution = orgActionClient
       throw new Error('Esta caixa de entrada não possui instância WhatsApp.')
     }
 
-    // Limpa DB primeiro, depois desconecta Evolution API.
+    // Deleta instância na Evolution API primeiro, depois limpa DB.
+    // Usa delete (não logout) para evitar instância órfã que seria re-importada.
+    try {
+      await deleteEvolutionInstance(inbox.evolutionInstanceName)
+    } catch {
+      // Best-effort: instância pode já ter sido removida
+    }
+
     await db.inbox.update({
       where: { id: inboxId },
       data: {
@@ -37,12 +44,6 @@ export const disconnectEvolution = orgActionClient
         evolutionInstanceId: null,
       },
     })
-
-    try {
-      await disconnectEvolutionInstance(inbox.evolutionInstanceName)
-    } catch {
-      // Best-effort: sessão Evolution pode expirar sozinha
-    }
 
     revalidateTag(`inbox:${inboxId}`)
     revalidateTag(`inboxes:${ctx.orgId}`)

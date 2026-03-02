@@ -5,7 +5,7 @@ import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
-import { disconnectEvolutionInstance } from '@/_lib/evolution/instance-management'
+import { deleteEvolutionInstance } from '@/_lib/evolution/instance-management'
 
 const deleteInboxSchema = z.object({
   id: z.string().uuid(),
@@ -31,12 +31,12 @@ export const deleteInbox = orgActionClient
       throw new Error('Caixa de entrada não encontrada.')
     }
 
-    // 3. Se tem instância Evolution, desconectar (best-effort)
+    // 3. Se tem instância Evolution, deletar da API (best-effort)
     if (inbox.evolutionInstanceName) {
       try {
-        await disconnectEvolutionInstance(inbox.evolutionInstanceName)
+        await deleteEvolutionInstance(inbox.evolutionInstanceName)
       } catch {
-        // Best-effort: sessão Evolution pode expirar sozinha
+        // Best-effort: instância pode já ter sido removida
       }
     }
 
