@@ -108,12 +108,12 @@ async function seedFeaturesAndPlans() {
 
     // Agentes IA
     { planSlug: 'light', featureKey: 'ai.max_agents', valueNumber: 1 },
-    { planSlug: 'essential', featureKey: 'ai.max_agents', valueNumber: 2 },
-    { planSlug: 'scale', featureKey: 'ai.max_agents', valueNumber: 5 },
-    { planSlug: 'enterprise', featureKey: 'ai.max_agents', valueNumber: 10 },
+    { planSlug: 'essential', featureKey: 'ai.max_agents', valueNumber: 4 },
+    { planSlug: 'scale', featureKey: 'ai.max_agents', valueNumber: 10 },
+    { planSlug: 'enterprise', featureKey: 'ai.max_agents', valueNumber: 20 },
 
     // Arquivos de Conhecimento (RAG)
-    { planSlug: 'light', featureKey: 'ai.max_knowledge_files', valueNumber: 2 },
+    { planSlug: 'light', featureKey: 'ai.max_knowledge_files', valueNumber: 3 },
     { planSlug: 'essential', featureKey: 'ai.max_knowledge_files', valueNumber: 10 },
     { planSlug: 'scale', featureKey: 'ai.max_knowledge_files', valueNumber: 20 },
     { planSlug: 'enterprise', featureKey: 'ai.max_knowledge_files', valueNumber: 35 },
