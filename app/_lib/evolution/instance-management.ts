@@ -311,6 +311,32 @@ export async function listEvolutionInstances(): Promise<EvolutionInstanceSummary
 
 export { formatPhoneFromJid } from './format-phone'
 
+/**
+ * Diagnóstico: retorna dados raw da instância + webhook para debug.
+ */
+export async function debugEvolutionInstance(
+  instanceName: string,
+): Promise<{ instance: unknown; webhook: unknown }> {
+  const { apiUrl, apiKey } = getEvolutionConfig()
+  const headers = buildHeaders(apiKey)
+
+  const [instanceRes, webhookRes] = await Promise.all([
+    fetch(`${apiUrl}/instance/fetchInstances?instanceName=${encodeURIComponent(instanceName)}`, {
+      method: 'GET',
+      headers,
+    }),
+    fetch(`${apiUrl}/webhook/find/${instanceName}`, {
+      method: 'GET',
+      headers,
+    }),
+  ])
+
+  const instance = instanceRes.ok ? await instanceRes.json() : { error: instanceRes.status }
+  const webhook = webhookRes.ok ? await webhookRes.json() : { error: webhookRes.status }
+
+  return { instance, webhook }
+}
+
 export async function getEvolutionWebhook(
   instanceName: string,
 ): Promise<string | null> {

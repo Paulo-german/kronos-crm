@@ -31,6 +31,7 @@ import ConfirmationDialog from '@/_components/confirmation-dialog'
 import { connectEvolution } from '@/_actions/inbox/connect-evolution'
 import { getEvolutionQR } from '@/_actions/inbox/get-evolution-qr'
 import { disconnectEvolution } from '@/_actions/inbox/disconnect-evolution'
+import { debugInstance } from '@/_actions/inbox/debug-instance'
 import { formatPhoneFromJid } from '@/_lib/evolution/format-phone'
 import type { AgentConnectionStats } from '@/_data-access/agent/get-agent-connection-stats'
 import type { EvolutionInstanceInfo } from '@/_lib/evolution/types-instance'
@@ -107,6 +108,20 @@ const InboxConnectionCard = ({
       setConnectionState((prev) => (prev === 'checking' ? 'connecting' : prev))
     },
   })
+
+  const [debugData, setDebugData] = useState<string | null>(null)
+
+  const { execute: executeDebug, isPending: isDebugging } = useAction(
+    debugInstance,
+    {
+      onSuccess: ({ data }) => {
+        setDebugData(JSON.stringify(data, null, 2))
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError || 'Erro ao buscar debug.')
+      },
+    },
+  )
 
   const { execute: executeDisconnect, isPending: isDisconnecting } = useAction(
     disconnectEvolution,
@@ -406,6 +421,30 @@ const InboxConnectionCard = ({
                   </p>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Debug temporário */}
+          {canManage && (
+            <div className="space-y-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => executeDebug({ inboxId })}
+                disabled={isDebugging}
+              >
+                {isDebugging ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Server className="mr-2 h-4 w-4" />
+                )}
+                Debug Webhook
+              </Button>
+              {debugData && (
+                <pre className="max-h-96 overflow-auto rounded-md border bg-muted p-4 text-xs">
+                  {debugData}
+                </pre>
+              )}
             </div>
           )}
 
