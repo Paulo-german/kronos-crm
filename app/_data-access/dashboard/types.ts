@@ -56,3 +56,27 @@ export interface PendingTask {
   dealId: string
   dealTitle: string
 }
+
+export interface AiMonthlyHistory {
+  month: string // "2026-03"
+  label: string // "mar"
+  creditsSpent: number
+  messagesUsed: number
+}
+
+export interface AiMetrics {
+  creditsUsed: number
+  messagesCount: number
+  monthlyLimit: number
+  availableBalance: number
+  topUpBalance: number
+  activeAgents: number
+  totalAgents: number
+  agents: Array<{
+    id: string
+    name: string
+    modelId: string
+    isActive: boolean
+  }>
+  monthlyHistory: AiMonthlyHistory[]
+}

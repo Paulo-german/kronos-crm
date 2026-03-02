@@ -4,6 +4,7 @@ export { getRevenueOverTime } from './get-revenue-over-time'
 export { getFunnelData } from './get-funnel-data'
 export { getRecentActivities } from './get-recent-activities'
 export { getPendingTasks } from './get-pending-tasks'
+export { getAiMetrics } from './get-ai-metrics'
 export type {
   DateRange,
   KpiMetrics,
@@ -12,4 +13,6 @@ export type {
   FunnelStage,
   RecentActivity,
   PendingTask,
+  AiMetrics,
+  AiMonthlyHistory,
 } from './types'

@@ -8,6 +8,7 @@ import {
   KpiGridSkeleton,
   PipelineStatusSkeleton,
   ChartsSkeleton,
+  DashboardTabsSkeleton,
 } from './_components/skeletons'
 
 export default function DashboardLoading() {
@@ -20,6 +21,8 @@ export default function DashboardLoading() {
         </HeaderLeft>
         <Skeleton className="h-8 w-36" />
       </Header>
+
+      <DashboardTabsSkeleton />
 
       <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-3">
         <div className="flex lg:col-span-2">

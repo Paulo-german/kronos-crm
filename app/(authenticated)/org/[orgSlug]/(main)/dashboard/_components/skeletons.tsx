@@ -49,3 +49,21 @@ export function ChartsSkeleton() {
   )
 }
 
+export function DashboardTabsSkeleton() {
+  return <Skeleton className="h-12 w-full rounded-md" />
+}
+
+export function AiDashboardSkeleton() {
+  return (
+    <>
+      <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-3">
+        <div className="flex lg:col-span-2">
+          <KpiGridSkeleton />
+        </div>
+        <PipelineStatusSkeleton />
+      </div>
+      <ChartsSkeleton />
+    </>
+  )
+}
+
