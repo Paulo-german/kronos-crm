@@ -21,15 +21,19 @@ import { useSidebar } from '@/_providers/sidebar-provider'
 import { cn } from '@/_lib/utils'
 import { Button } from '@/_components/ui/button'
 import { CreditsBadgeClient } from '@/_components/credits/credits-badge-client'
+import { OrgSwitcher } from '@/_components/layout/org-switcher'
 import type { ModuleSlug } from '@/_data-access/module/types'
+import type { MemberRole } from '@prisma/client'
 
 interface AppSidebarProps {
   activeModules?: ModuleSlug[]
+  organizations?: { id: string; name: string; slug: string; role: MemberRole }[]
   credits?: { available: number; monthlyLimit: number; orgSlug: string }
 }
 
 export const AppSidebar = ({
   activeModules = [],
+  organizations = [],
   credits,
 }: AppSidebarProps) => {
   const { isCollapsed, toggle } = useSidebar()
@@ -94,6 +98,11 @@ export const AppSidebar = ({
             <ChevronLeft className="h-3 w-3" />
           )}
         </Button>
+      </div>
+
+      {/* Org Switcher */}
+      <div className="border-b border-border/50">
+        <OrgSwitcher organizations={organizations} />
       </div>
 
       {/* Menu */}

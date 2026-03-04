@@ -9,6 +9,7 @@ import { TrialReminderDialog } from '@/_components/trial/trial-reminder-dialog'
 import { getUserById } from '@/_data-access/user/get-user-by-id'
 import { getOrgModules } from '@/_data-access/module/get-org-modules'
 import { getCreditBalance } from '@/_data-access/billing/get-credit-balance'
+import { getUserOrganizations } from '@/_data-access/organization/get-user-organizations'
 
 interface MainLayoutProps {
   children: React.ReactNode
@@ -19,12 +20,14 @@ const MainLayout = async ({ children, params }: MainLayoutProps) => {
   const { orgSlug } = await params
   const { orgId, userId, userRole } = await getOrgContext(orgSlug)
 
-  const [trialStatus, user, activeModules, creditBalance] = await Promise.all([
-    getTrialStatus(orgId),
-    getUserById(userId),
-    getOrgModules(orgId),
-    getCreditBalance(orgId),
-  ])
+  const [trialStatus, user, activeModules, creditBalance, userOrganizations] =
+    await Promise.all([
+      getTrialStatus(orgId),
+      getUserById(userId),
+      getOrgModules(orgId),
+      getCreditBalance(orgId),
+      getUserOrganizations(userId),
+    ])
 
   const activeModuleSlugs = activeModules.map((mod) => mod.slug) as Array<
     'crm' | 'inbox' | 'ai-agent'
@@ -36,6 +39,7 @@ const MainLayout = async ({ children, params }: MainLayoutProps) => {
       <div className="flex min-h-0 flex-1">
         <AppSidebar
           activeModules={activeModuleSlugs}
+          organizations={userOrganizations}
           credits={{
             available: creditBalance.available,
             monthlyLimit: creditBalance.monthlyLimit,
