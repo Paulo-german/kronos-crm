@@ -13,32 +13,35 @@ import type { ModuleInfo } from './types'
 export const getOrgModules = cache(async (orgId: string): Promise<ModuleInfo[]> => {
   const getCachedModules = unstable_cache(
     async () => {
-      // 1. Buscar subscription ativa/trialing
-      const subscription = await db.subscription.findFirst({
-        where: {
-          organizationId: orgId,
-          status: { in: ['active', 'trialing'] },
-        },
-        select: { planId: true },
-        orderBy: { createdAt: 'desc' },
+      // 1. Checar plan override (grant INTERNAL/PARTNER — sem Stripe)
+      const org = await db.organization.findUnique({
+        where: { id: orgId },
+        select: { trialEndsAt: true, planOverrideId: true },
       })
 
-      let planId: string | null = subscription?.planId ?? null
+      let planId: string | null = org?.planOverrideId ?? null
 
-      // 2. Fallback: trial da org → plano "essential"
+      // 2. Buscar subscription ativa/trialing
       if (!planId) {
-        const org = await db.organization.findUnique({
-          where: { id: orgId },
-          select: { trialEndsAt: true },
+        const subscription = await db.subscription.findFirst({
+          where: {
+            organizationId: orgId,
+            status: { in: ['active', 'trialing'] },
+          },
+          select: { planId: true },
+          orderBy: { createdAt: 'desc' },
         })
 
-        if (org?.trialEndsAt && org.trialEndsAt > new Date()) {
-          const essentialPlan = await db.plan.findUnique({
-            where: { slug: 'essential' },
-            select: { id: true },
-          })
-          planId = essentialPlan?.id ?? null
-        }
+        planId = subscription?.planId ?? null
+      }
+
+      // 3. Fallback: trial da org → plano "essential"
+      if (!planId && org?.trialEndsAt && org.trialEndsAt > new Date()) {
+        const essentialPlan = await db.plan.findUnique({
+          where: { slug: 'essential' },
+          select: { id: true },
+        })
+        planId = essentialPlan?.id ?? null
       }
 
       if (!planId) return []
