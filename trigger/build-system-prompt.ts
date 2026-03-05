@@ -12,6 +12,7 @@ interface BuildSystemPromptResult {
   toolsEnabled: string[]
   pipelineIds: string[]
   knowledgeContext: string | null
+  currentStepAllowedActions: string[] | null
 }
 
 /**
@@ -19,13 +20,17 @@ interface BuildSystemPromptResult {
  * 1. Persona base (agent.systemPrompt)
  * 2. Contexto temporal (data/hora atual em SP)
  * 3. Dados do contato (nome, telefone, email, cargo)
- * 4. Mapa de steps (marcando etapa atual)
+ * 4. Dados do negócio (deal vinculado, se houver)
+ * 5. Mapa de steps (marcando etapa atual)
+ * 6. Busca RAG na base de conhecimento
  */
 export async function buildSystemPrompt(
   agentId: string,
   conversationId: string,
   latestUserMessage?: string,
 ): Promise<BuildSystemPromptResult> {
+  const now = new Date()
+
   const [agent, conversation, completedFileCount] = await Promise.all([
     db.agent.findUniqueOrThrow({
       where: { id: agentId },
@@ -40,6 +45,7 @@ export async function buildSystemPrompt(
             name: true,
             objective: true,
             order: true,
+            allowedActions: true,
           },
         },
       },
@@ -57,6 +63,46 @@ export async function buildSystemPrompt(
             role: true,
           },
         },
+        deal: {
+          select: {
+            title: true,
+            status: true,
+            priority: true,
+            value: true,
+            notes: true,
+            expectedCloseDate: true,
+            stage: { select: { name: true } },
+            company: { select: { name: true } },
+            contacts: {
+              select: {
+                contact: {
+                  select: { name: true, email: true, phone: true, role: true },
+                },
+              },
+            },
+            dealProducts: {
+              select: {
+                quantity: true,
+                unitPrice: true,
+                discountType: true,
+                discountValue: true,
+                product: { select: { name: true } },
+              },
+            },
+            tasks: {
+              where: { isCompleted: false },
+              orderBy: { dueDate: 'asc' },
+              take: 5,
+              select: { title: true, dueDate: true, type: true },
+            },
+            appointments: {
+              where: { status: 'SCHEDULED', startDate: { gte: now } },
+              orderBy: { startDate: 'asc' },
+              take: 3,
+              select: { title: true, startDate: true, endDate: true },
+            },
+          },
+        },
       },
     }),
     db.agentKnowledgeFile.count({
@@ -70,7 +116,6 @@ export async function buildSystemPrompt(
   parts.push(agent.systemPrompt)
 
   // 2. Contexto temporal
-  const now = new Date()
   const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
     timeZone: 'America/Sao_Paulo',
     dateStyle: 'full',
@@ -89,12 +134,115 @@ export async function buildSystemPrompt(
 
   parts.push(`\n[Dados do contato]\n${contactFields.join('\n')}`)
 
-  // 4. Mapa de steps (se houver)
+  // 4. Dados do negócio (se houver deal vinculado)
+  if (conversation.deal) {
+    const deal = conversation.deal
+    const dealFields: string[] = []
+
+    dealFields.push(`Título: ${deal.title}`)
+    dealFields.push(`Status: ${deal.status}`)
+    dealFields.push(`Prioridade: ${deal.priority}`)
+    dealFields.push(`Etapa: ${deal.stage.name}`)
+
+    if (Number(deal.value) > 0) {
+      dealFields.push(
+        `Valor: R$ ${Number(deal.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      )
+    }
+
+    if (deal.company) {
+      dealFields.push(`Empresa: ${deal.company.name}`)
+    }
+
+    if (deal.expectedCloseDate) {
+      dealFields.push(
+        `Previsão de fechamento: ${dateFormatter.format(deal.expectedCloseDate)}`,
+      )
+    }
+
+    if (deal.notes) {
+      dealFields.push(`Notas: ${deal.notes}`)
+    }
+
+    // Contatos vinculados ao deal
+    if (deal.contacts.length > 0) {
+      const contactLines = deal.contacts.map((dealContact) => {
+        const infoParts = [dealContact.contact.name]
+        if (dealContact.contact.role)
+          infoParts.push(`(${dealContact.contact.role})`)
+        if (dealContact.contact.email)
+          infoParts.push(`— ${dealContact.contact.email}`)
+        if (dealContact.contact.phone)
+          infoParts.push(`— ${dealContact.contact.phone}`)
+        return `  • ${infoParts.join(' ')}`
+      })
+      dealFields.push(`Contatos:\n${contactLines.join('\n')}`)
+    }
+
+    // Produtos
+    if (deal.dealProducts.length > 0) {
+      const productLines = deal.dealProducts.map((dealProduct) => {
+        const subtotal = Number(dealProduct.unitPrice) * dealProduct.quantity
+        const discount =
+          dealProduct.discountType === 'percentage'
+            ? subtotal * (Number(dealProduct.discountValue) / 100)
+            : Number(dealProduct.discountValue)
+        const finalPrice = subtotal - discount
+        return `  • ${dealProduct.product.name} — ${dealProduct.quantity}x R$ ${Number(dealProduct.unitPrice).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} = R$ ${finalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+      })
+      const totalProducts = deal.dealProducts.reduce((sum, dealProduct) => {
+        const subtotal = Number(dealProduct.unitPrice) * dealProduct.quantity
+        const discount =
+          dealProduct.discountType === 'percentage'
+            ? subtotal * (Number(dealProduct.discountValue) / 100)
+            : Number(dealProduct.discountValue)
+        return sum + subtotal - discount
+      }, 0)
+      dealFields.push(
+        `Produtos:\n${productLines.join('\n')}\n  Total: R$ ${totalProducts.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      )
+    }
+
+    // Tarefas pendentes
+    if (deal.tasks.length > 0) {
+      const taskLines = deal.tasks.map((task) => {
+        const dueFormatted = dateFormatter.format(task.dueDate)
+        return `  • ${task.title} (${task.type}) — vence ${dueFormatted}`
+      })
+      dealFields.push(`Tarefas pendentes:\n${taskLines.join('\n')}`)
+    }
+
+    // Próximos compromissos
+    if (deal.appointments.length > 0) {
+      const apptLines = deal.appointments.map((appt) => {
+        const startFormatted = dateFormatter.format(appt.startDate)
+        return `  • ${appt.title} — ${startFormatted}`
+      })
+      dealFields.push(`Próximos compromissos:\n${apptLines.join('\n')}`)
+    }
+
+    parts.push(`\n[Dados do negócio]\n${dealFields.join('\n')}`)
+  }
+
+  // 5. Mapa de steps (se houver)
+  // Encontrar o step atual e extrair allowedActions
+  const currentStep = agent.steps.find(
+    (step) => step.order === conversation.currentStepOrder,
+  )
+  const currentStepAllowedActions =
+    currentStep && currentStep.allowedActions.length > 0
+      ? currentStep.allowedActions
+      : null
+
   if (agent.steps.length > 0) {
     const stepLines = agent.steps.map((step) => {
       const isCurrent = step.order === conversation.currentStepOrder
       const marker = isCurrent ? '→' : ' '
-      return `${marker} Etapa ${step.order}: ${step.name} — ${step.objective}`
+      const actionsInfo =
+        step.allowedActions.length > 0
+          ? ` [Ações: ${step.allowedActions.join(', ')}]`
+          : ''
+      return `${marker} Etapa ${step.order}: ${step.name} — ${step.objective}${actionsInfo}`
     })
 
     parts.push(
@@ -102,7 +250,7 @@ export async function buildSystemPrompt(
     )
   }
 
-  // 5. Busca RAG na base de conhecimento (se houver arquivos e mensagem do usuário)
+  // 6. Busca RAG na base de conhecimento (se houver arquivos e mensagem do usuário)
   let knowledgeContext: string | null = null
 
   if (latestUserMessage && completedFileCount > 0) {
@@ -139,5 +287,6 @@ export async function buildSystemPrompt(
     toolsEnabled: agent.toolsEnabled,
     pipelineIds: agent.pipelineIds,
     knowledgeContext,
+    currentStepAllowedActions,
   }
 }
