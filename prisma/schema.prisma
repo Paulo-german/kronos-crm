@@ -177,7 +177,7 @@ model User {
   tasksAssigned    Task[]         @relation("TaskAssignee")
   tasksCreated     Task[]         @relation("TaskCreator")
   activitiesPerformed Activity[] @relation("ActivityPerformer")
-  appointments     Appointment[]  @relation("AppointmentAssignee")
+  appointments           Appointment[]  @relation("AppointmentAssignee")
 
   @@map("users")
 }
@@ -861,6 +861,11 @@ model Inbox {
   // IA opcional
   agentId String? @map("agent_id")
   agent   Agent?  @relation(fields: [agentId], references: [id], onDelete: SetNull)
+
+  // Captação de leads
+  autoCreateDeal      Boolean  @default(true) @map("auto_create_deal")
+  pipelineId          String?  @map("pipeline_id") @db.Uuid
+  distributionUserIds String[] @map("distribution_user_ids") @db.Uuid
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
