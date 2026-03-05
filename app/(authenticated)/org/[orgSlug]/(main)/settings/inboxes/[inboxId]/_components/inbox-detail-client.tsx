@@ -11,16 +11,22 @@ import {
   Calendar,
   MessageSquare,
   Edit,
+  Users,
+  AlertTriangleIcon,
 } from 'lucide-react'
 import { Badge } from '@/_components/ui/badge'
 import { Button } from '@/_components/ui/button'
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/_components/ui/card'
 import { Sheet } from '@/_components/ui/sheet'
+import { Switch } from '@/_components/ui/switch'
+import { Label } from '@/_components/ui/label'
+import { Checkbox } from '@/_components/ui/checkbox'
 import {
   Select,
   SelectContent,
@@ -28,10 +34,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/_components/ui/select'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/_components/ui/popover'
 import type { InboxDetailDto } from '@/_data-access/inbox/get-inbox-by-id'
 import type { AgentConnectionStats } from '@/_data-access/agent/get-agent-connection-stats'
 import type { EvolutionInstanceInfo } from '@/_lib/evolution/types-instance'
 import type { MemberRole } from '@prisma/client'
+import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
+import type { OrgPipelineDto } from '@/_data-access/pipeline/get-org-pipelines'
 import { updateInbox } from '@/_actions/inbox/update-inbox'
 import { linkInboxToAgent } from '@/_actions/inbox/link-inbox-to-agent'
 import UpsertInboxSheetContent from '../../_components/upsert-inbox-sheet-content'
@@ -49,6 +62,8 @@ interface InboxDetailClientProps {
   orgSlug: string
   connectionStats: AgentConnectionStats | null
   instanceInfo: EvolutionInstanceInfo | null
+  members: AcceptedMemberDto[]
+  pipelines: OrgPipelineDto[]
 }
 
 const channelLabels: Record<string, string> = {
@@ -63,9 +78,12 @@ const InboxDetailClient = ({
   orgSlug,
   connectionStats,
   instanceInfo,
+  members,
+  pipelines,
 }: InboxDetailClientProps) => {
   const canManage = userRole === 'OWNER' || userRole === 'ADMIN'
   const [isEditOpen, setIsEditOpen] = useState(false)
+  const [localDistributionUserIds, setLocalDistributionUserIds] = useState(inbox.distributionUserIds)
 
   const { execute: executeUpdate, isPending: isUpdating } = useAction(
     updateInbox,
@@ -76,6 +94,18 @@ const InboxDetailClient = ({
       },
       onError: ({ error }) => {
         toast.error(error.serverError || 'Erro ao atualizar.')
+      },
+    },
+  )
+
+  const { execute: executeInlineUpdate } = useAction(
+    updateInbox,
+    {
+      onSuccess: () => {
+        toast.success('Configuração salva!')
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError || 'Erro ao salvar.')
       },
     },
   )
@@ -97,6 +127,18 @@ const InboxDetailClient = ({
     month: 'long',
     year: 'numeric',
   }).format(new Date(inbox.createdAt))
+
+  const assignableMembers = members.filter((member) => member.userId)
+
+  const handleToggleDistributionUser = (userId: string) => {
+    setLocalDistributionUserIds((current) => {
+      const updated = current.includes(userId)
+        ? current.filter((id) => id !== userId)
+        : [...current, userId]
+      executeInlineUpdate({ id: inbox.id, distributionUserIds: updated })
+      return updated
+    })
+  }
 
   return (
     <div className="flex h-fit flex-col gap-6 bg-background p-6">
@@ -203,6 +245,131 @@ const InboxDetailClient = ({
                 <p className="text-sm font-medium">{formattedDate}</p>
               </div>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Lead Capture Card */}
+      <Card className="border-border/50 bg-secondary/20">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold">
+            <Users className="h-4 w-4" />
+            Captação de Leads
+          </CardTitle>
+          <CardDescription>
+            Configure como novos contatos e negócios são criados a partir desta caixa de entrada.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {/* Auto Create Deal Toggle */}
+          <div className="flex items-center justify-between rounded-md border border-border/50 bg-background/70 p-3">
+            <div className="space-y-0.5">
+              <Label className="text-sm font-medium">Criar negócio automaticamente</Label>
+              <p className="text-xs text-muted-foreground">
+                Cria um negócio para cada nova conversa iniciada nesta caixa.
+              </p>
+            </div>
+            <Switch
+              checked={inbox.autoCreateDeal}
+              onCheckedChange={(checked) => {
+                executeInlineUpdate({ id: inbox.id, autoCreateDeal: checked })
+              }}
+              disabled={!canManage}
+            />
+          </div>
+
+          {/* Pipeline Select */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Pipeline de destino</Label>
+            <Select
+              value={inbox.pipelineId ?? 'auto'}
+              onValueChange={(value) => {
+                executeInlineUpdate({
+                  id: inbox.id,
+                  pipelineId: value === 'auto' ? null : value,
+                })
+              }}
+              disabled={!canManage}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="auto">Automático (primeiro pipeline)</SelectItem>
+                {pipelines.map((pipeline) => (
+                  <SelectItem key={pipeline.id} value={pipeline.id}>
+                    {pipeline.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Pipeline onde novos negócios serão criados.
+            </p>
+          </div>
+
+          {/* Distribution Users Multi-select */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Distribuição de leads</Label>
+            {assignableMembers.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhum membro disponível.</p>
+            ) : (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    type="button"
+                    disabled={!canManage}
+                  >
+                    {localDistributionUserIds.length === 0
+                      ? 'Selecionar membros...'
+                      : `${localDistributionUserIds.length} membro(s) selecionado(s)`}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80">
+                  <div className="space-y-2">
+                    {assignableMembers.map((member) => (
+                      <div key={member.userId} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`dist-inbox-${member.userId}`}
+                          checked={localDistributionUserIds.includes(member.userId!)}
+                          onCheckedChange={() => handleToggleDistributionUser(member.userId!)}
+                          disabled={!canManage}
+                        />
+                        <Label htmlFor={`dist-inbox-${member.userId}`} className="cursor-pointer">
+                          {member.user?.fullName ?? member.email}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            )}
+
+            {localDistributionUserIds.length === 0 && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <AlertTriangleIcon className="h-4 w-4" />
+                <span>Leads serão atribuídos ao dono da organização.</span>
+              </div>
+            )}
+
+            {localDistributionUserIds.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {localDistributionUserIds.map((userId) => {
+                  const member = members.find((m) => m.userId === userId)
+                  return member ? (
+                    <Badge key={userId} variant="secondary">
+                      {member.user?.fullName ?? member.email}
+                    </Badge>
+                  ) : null
+                })}
+              </div>
+            )}
+
+            <p className="text-xs text-muted-foreground">
+              Leads serão distribuídos em round-robin entre os membros selecionados.
+            </p>
           </div>
         </CardContent>
       </Card>
