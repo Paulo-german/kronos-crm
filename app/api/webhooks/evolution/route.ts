@@ -58,6 +58,9 @@ export async function POST(req: Request) {
       id: true,
       isActive: true,
       organizationId: true,
+      autoCreateDeal: true,
+      pipelineId: true,
+      distributionUserIds: true,
       agent: {
         select: {
           id: true,
@@ -79,6 +82,19 @@ export async function POST(req: Request) {
 
   const agent = inbox.agent
   const orgId = inbox.organizationId
+
+  const contactAssignContext = {
+    distributionUserIds: inbox.distributionUserIds,
+    inboxId: inbox.id,
+  }
+
+  const dealContext = inbox.autoCreateDeal
+    ? {
+        pipelineId: inbox.pipelineId,
+        distributionUserIds: inbox.distributionUserIds,
+        inboxId: inbox.id,
+      }
+    : undefined
   log('step:3 inbox_lookup', 'PASS', { inboxId: inbox.id, orgId, inboxActive: inbox.isActive, hasAgent: !!agent, agentActive: agent?.isActive })
 
   // 5. Tratamento fromMe — checar dedup ANTES de qualquer DB call
@@ -109,7 +125,16 @@ export async function POST(req: Request) {
       remoteJid,
       normalizedMsg.phoneNumber,
       normalizedMsg.pushName,
+      dealContext,
+      contactAssignContext,
     )
+
+    if (resolveResult.isNew) {
+      revalidateTag(`pipeline:${orgId}`)
+      revalidateTag(`deals:${orgId}`)
+      revalidateTag(`contacts:${orgId}`)
+      revalidateTag(`dashboard:${orgId}`)
+    }
 
     await db.message.create({
       data: {
@@ -155,7 +180,16 @@ export async function POST(req: Request) {
       remoteJid,
       normalizedMsg.phoneNumber,
       normalizedMsg.pushName,
+      dealContext,
+      contactAssignContext,
     )
+
+    if (resolveResult.isNew) {
+      revalidateTag(`pipeline:${orgId}`)
+      revalidateTag(`deals:${orgId}`)
+      revalidateTag(`contacts:${orgId}`)
+      revalidateTag(`dashboard:${orgId}`)
+    }
 
     const dedupResult = await redis
       .set(`dedup:${messageId}`, '1', 'EX', 300, 'NX')
@@ -213,7 +247,16 @@ export async function POST(req: Request) {
         remoteJid,
         normalizedMsg.phoneNumber,
         normalizedMsg.pushName,
+        dealContext,
+        contactAssignContext,
       )
+
+      if (resolveResult.isNew) {
+        revalidateTag(`pipeline:${orgId}`)
+        revalidateTag(`deals:${orgId}`)
+        revalidateTag(`contacts:${orgId}`)
+        revalidateTag(`dashboard:${orgId}`)
+      }
 
       // Dedup de mensagem — protege contra webhook retry da Evolution
       const dedupResult = await redis
@@ -288,6 +331,8 @@ export async function POST(req: Request) {
       remoteJid,
       normalizedMessage.phoneNumber,
       normalizedMessage.pushName,
+      dealContext,
+      contactAssignContext,
     ),
   ])
 
@@ -298,6 +343,14 @@ export async function POST(req: Request) {
   }
 
   const { conversationId } = resolveResult
+
+  if (resolveResult.isNew) {
+    revalidateTag(`pipeline:${orgId}`)
+    revalidateTag(`deals:${orgId}`)
+    revalidateTag(`contacts:${orgId}`)
+    revalidateTag(`dashboard:${orgId}`)
+  }
+
   log('step:8 dedup+resolve', 'PASS', { conversationId, isNewConversation: resolveResult.isNew })
 
   // 10. Verificar se IA está pausada na conversa (com auto-unpause após 30 min)
