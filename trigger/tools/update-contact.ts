@@ -2,6 +2,7 @@ import { tool } from 'ai'
 import { z } from 'zod'
 import { db } from '@/_lib/prisma'
 import { logger } from '@trigger.dev/sdk/v3'
+import { revalidateTags } from './lib/revalidate-tags'
 import type { ToolContext } from './types'
 
 interface UpdateContactResult {
@@ -60,6 +61,12 @@ export function createUpdateContactTool(ctx: ToolContext) {
           },
         })
       }
+
+      await revalidateTags([
+        `contacts:${ctx.organizationId}`,
+        `contact:${ctx.contactId}`,
+        ...(ctx.dealId ? [`deal:${ctx.dealId}`] : []),
+      ]).catch(() => {})
 
       logger.info('Tool update_contact executed', {
         contactId: ctx.contactId,

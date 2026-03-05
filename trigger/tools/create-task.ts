@@ -2,6 +2,7 @@ import { tool } from 'ai'
 import { z } from 'zod'
 import { db } from '@/_lib/prisma'
 import { logger } from '@trigger.dev/sdk/v3'
+import { revalidateTags } from './lib/revalidate-tags'
 import type { ToolContext } from './types'
 
 interface CreateTaskResult {
@@ -67,6 +68,12 @@ export function createCreateTaskTool(ctx: ToolContext) {
           metadata: { agentId: ctx.agentId, agentName: ctx.agentName },
         },
       })
+
+      await revalidateTags([
+        `deal:${ctx.dealId}`,
+        `deals:${ctx.organizationId}`,
+        `tasks:${ctx.organizationId}`,
+      ]).catch(() => {})
 
       logger.info('Tool create_task executed', {
         title,

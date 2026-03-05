@@ -2,6 +2,7 @@ import { tool } from 'ai'
 import { z } from 'zod'
 import { db } from '@/_lib/prisma'
 import { logger } from '@trigger.dev/sdk/v3'
+import { revalidateTags } from './lib/revalidate-tags'
 import type { ToolContext } from './types'
 
 interface UpdateDealResult {
@@ -33,7 +34,7 @@ export function createUpdateDealTool(ctx: ToolContext) {
       notes: z
         .string()
         .optional()
-        .describe('Notas ou observações sobre o negócio'),
+        .describe('Notas a adicionar ao negócio (concatenadas com notas existentes)'),
       status: z
         .enum(['WON', 'LOST'])
         .optional()
@@ -42,7 +43,7 @@ export function createUpdateDealTool(ctx: ToolContext) {
         .string()
         .optional()
         .describe(
-          'Motivo da perda (quando status = LOST). Usado apenas no registro de atividade, não é salvo no negócio.',
+          'Motivo da perda (quando status = LOST). Use exatamente um dos motivos listados em [Motivos de perda disponíveis] no system prompt.',
         ),
     }),
     execute: async (input): Promise<UpdateDealResult> => {
@@ -73,6 +74,14 @@ export function createUpdateDealTool(ctx: ToolContext) {
         }
       }
 
+      // Fix 3: Guard contra deals já finalizados
+      if ((deal.status === 'WON' || deal.status === 'LOST') && input.status) {
+        return {
+          success: false,
+          message: `Negócio já está finalizado (${deal.status === 'WON' ? 'GANHO' : 'PERDIDO'}).`,
+        }
+      }
+
       // Construir dados para atualização
       const data: Record<string, unknown> = {}
       const updatedFields: string[] = []
@@ -94,8 +103,9 @@ export function createUpdateDealTool(ctx: ToolContext) {
         updatedFields.push(`prioridade: ${input.priority}`)
       }
 
+      // Fix 4: Notes append em vez de overwrite
       if (input.notes !== undefined) {
-        data.notes = input.notes
+        data.notes = deal.notes ? `${deal.notes}\n\n---\n${input.notes}` : input.notes
         updatedFields.push('notas atualizadas')
       }
 
@@ -116,6 +126,24 @@ export function createUpdateDealTool(ctx: ToolContext) {
       } else if (input.status === 'LOST') {
         data.status = 'LOST'
         updatedFields.push('status: PERDIDO')
+
+        // Fix 2: Vincular lossReasonId — exact match primeiro, fuzzy como fallback
+        if (input.reason) {
+          const reasons = await db.dealLostReason.findMany({
+            where: { organizationId: ctx.organizationId, isActive: true },
+          })
+          const reasonLower = input.reason.toLowerCase().trim()
+          const matched =
+            reasons.find((r) => r.name.toLowerCase() === reasonLower) ??
+            reasons.find(
+              (r) =>
+                reasonLower.includes(r.name.toLowerCase()) ||
+                r.name.toLowerCase().includes(reasonLower),
+            )
+          if (matched) {
+            data.lossReasonId = matched.id
+          }
+        }
       }
 
       if (updatedFields.length === 0) {
@@ -165,6 +193,16 @@ export function createUpdateDealTool(ctx: ToolContext) {
           },
         })
       }
+
+      // Fix 1c: Invalidar cache
+      await revalidateTags([
+        `pipeline:${ctx.organizationId}`,
+        `deals:${ctx.organizationId}`,
+        `deals-options:${ctx.organizationId}`,
+        `deal:${ctx.dealId}`,
+        `dashboard:${ctx.organizationId}`,
+        `dashboard-charts:${ctx.organizationId}`,
+      ]).catch(() => {})
 
       logger.info('Tool update_deal executed', {
         dealId: ctx.dealId,

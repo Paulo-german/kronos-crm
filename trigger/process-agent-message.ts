@@ -182,7 +182,7 @@ export const processAgentMessage = task({
     log('step:4 context_loading', 'PASS')
 
     const [promptContext, messageHistory, conversation] = await Promise.all([
-      buildSystemPrompt(agentId, conversationId, messageText ?? undefined),
+      buildSystemPrompt(agentId, conversationId, organizationId, messageText ?? undefined),
       db.message.findMany({
         where: {
           conversationId,

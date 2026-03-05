@@ -14,19 +14,31 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json()
-  const { conversationId, organizationId } = body as {
+  const { conversationId, organizationId, tags } = body as {
     conversationId?: string
     organizationId?: string
+    tags?: string[]
   }
 
-  if (!conversationId) {
-    return NextResponse.json({ error: 'conversationId is required' }, { status: 400 })
+  if (!conversationId && (!tags || tags.length === 0)) {
+    return NextResponse.json(
+      { error: 'conversationId or tags is required' },
+      { status: 400 },
+    )
   }
 
-  revalidateTag(`conversation-messages:${conversationId}`)
+  if (conversationId) {
+    revalidateTag(`conversation-messages:${conversationId}`)
+  }
 
   if (organizationId) {
     revalidateTag(`credits:${organizationId}`)
+  }
+
+  if (tags) {
+    for (const tag of tags) {
+      revalidateTag(tag)
+    }
   }
 
   return NextResponse.json({ revalidated: true })

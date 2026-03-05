@@ -2,6 +2,7 @@ import { tool } from 'ai'
 import { z } from 'zod'
 import { db } from '@/_lib/prisma'
 import { logger } from '@trigger.dev/sdk/v3'
+import { revalidateTags } from './lib/revalidate-tags'
 import type { ToolContext } from './types'
 
 export function createHandOffToHumanTool(ctx: ToolContext) {
@@ -36,6 +37,11 @@ export function createHandOffToHumanTool(ctx: ToolContext) {
           },
         })
       }
+
+      await revalidateTags([
+        `conversation:${ctx.conversationId}`,
+        `conversations:${ctx.organizationId}`,
+      ]).catch(() => {})
 
       logger.info('Tool hand_off_to_human executed', {
         reason,

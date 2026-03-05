@@ -2,6 +2,7 @@ import { tool } from 'ai'
 import { z } from 'zod'
 import { db } from '@/_lib/prisma'
 import { logger } from '@trigger.dev/sdk/v3'
+import { revalidateTags } from './lib/revalidate-tags'
 import type { ToolContext } from './types'
 
 interface CreateAppointmentResult {
@@ -99,6 +100,11 @@ export function createCreateAppointmentTool(ctx: ToolContext) {
         dateStyle: 'short',
         timeStyle: 'short',
       })
+
+      await revalidateTags([
+        `deal:${ctx.dealId}`,
+        `deals:${ctx.organizationId}`,
+      ]).catch(() => {})
 
       logger.info('Tool create_appointment executed', {
         title,
