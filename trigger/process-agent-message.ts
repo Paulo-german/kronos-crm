@@ -15,9 +15,6 @@ import { downloadAndStoreMedia } from './utils/download-and-store-media'
 import type { ToolContext } from './tools/types'
 import type { NormalizedWhatsAppMessage } from '@/_lib/evolution/types'
 
-const NO_CREDITS_MESSAGE =
-  'Desculpe, no momento não consigo responder pois os créditos de IA da empresa foram esgotados. Por favor, entre em contato com o administrador.'
-
 async function revalidateConversationCache(conversationId: string, organizationId?: string) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL
   const secret = process.env.INTERNAL_API_SECRET
@@ -274,19 +271,6 @@ export const processAgentMessage = task({
 
     if (!optimisticDebited) {
       log('step:4b optimistic_debit', 'EXIT', { reason: 'no_credits', estimatedCost, estimatedInputTokens })
-
-      const noCreditsIds = await sendWhatsAppMessage(
-        message.instanceName,
-        message.remoteJid,
-        NO_CREDITS_MESSAGE,
-      )
-
-      await Promise.all(
-        noCreditsIds.map((sentId) =>
-          redis.set(`dedup:${sentId}`, '1', 'EX', 300).catch(() => {}),
-        ),
-      )
-
       return { skipped: true, reason: 'no_credits' }
     }
     log('step:4b optimistic_debit', 'PASS', { estimatedCost, estimatedInputTokens })
@@ -303,7 +287,14 @@ export const processAgentMessage = task({
       pipelineIds: promptContext.pipelineIds,
     }
 
-    const tools = buildToolSet(promptContext.toolsEnabled, toolContext)
+    // Filtrar tools pela etapa atual (se configurada)
+    const effectiveToolsEnabled = promptContext.currentStepAllowedActions
+      ? promptContext.toolsEnabled.filter((tool) =>
+          promptContext.currentStepAllowedActions!.includes(tool),
+        )
+      : promptContext.toolsEnabled
+
+    const tools = buildToolSet(effectiveToolsEnabled, toolContext)
 
     // -----------------------------------------------------------------------
     // 5. Typing presence — "digitando..." antes do LLM
