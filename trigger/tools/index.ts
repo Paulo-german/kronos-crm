@@ -1,14 +1,18 @@
 import type { ToolContext } from './types'
 import { createMoveDealTool } from './move-deal'
 import { createUpdateContactTool } from './update-contact'
+import { createUpdateDealTool } from './update-deal'
 import { createCreateTaskTool } from './create-task'
+import { createCreateAppointmentTool } from './create-appointment'
 import { createHandOffToHumanTool } from './hand-off-to-human'
 import { createSearchKnowledgeTool } from './search-knowledge'
 
 const TOOL_REGISTRY = {
   move_deal: createMoveDealTool,
   update_contact: createUpdateContactTool,
+  update_deal: createUpdateDealTool,
   create_task: createCreateTaskTool,
+  create_appointment: createCreateAppointmentTool,
   hand_off_to_human: createHandOffToHumanTool,
   search_knowledge: createSearchKnowledgeTool,
 } as const

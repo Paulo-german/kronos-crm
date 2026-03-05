@@ -20,9 +20,19 @@ export const TOOL_OPTIONS = [
     description: 'Atualiza dados do contato (nome, email, telefone)',
   },
   {
+    value: 'update_deal',
+    label: 'Atualizar Negócio',
+    description: 'Atualiza título, valor, prioridade, previsão e status do negócio',
+  },
+  {
     value: 'create_task',
     label: 'Criar Tarefa',
     description: 'Cria tarefas no CRM vinculadas ao negócio',
+  },
+  {
+    value: 'create_appointment',
+    label: 'Agendar Compromisso',
+    description: 'Agenda reuniões, demos e visitas vinculadas ao negócio',
   },
   {
     value: 'hand_off_to_human',

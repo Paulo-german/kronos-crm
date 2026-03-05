@@ -452,6 +452,8 @@ model Activity {
   type    ActivityType
   content String       @db.Text
 
+  metadata Json? @db.JsonB
+
   createdAt DateTime @default(now()) @map("created_at")
 
   performedBy String? @map("performed_by")
@@ -762,7 +764,7 @@ model Agent {
   pipelineIds     String[] @map("pipeline_ids") @db.Uuid
 
   // Tools habilitadas para este agente (ex: ["search_knowledge", "move_deal", "update_contact"])
-  toolsEnabled String[] @default(["search_knowledge", "move_deal", "update_contact", "create_task", "hand_off_to_human"]) @map("tools_enabled")
+  toolsEnabled String[] @default(["search_knowledge", "move_deal", "update_contact", "update_deal", "create_task", "create_appointment", "hand_off_to_human"]) @map("tools_enabled")
 
   // Horário de funcionamento
   businessHoursEnabled  Boolean @default(false) @map("business_hours_enabled")

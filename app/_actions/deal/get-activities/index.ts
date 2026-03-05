@@ -39,5 +39,6 @@ export const getActivities = orgActionClient
       content: a.content,
       createdAt: a.createdAt,
       performer: a.performer,
+      metadata: (a.metadata as Record<string, unknown>) ?? null,
     }))
   })

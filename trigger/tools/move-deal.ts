@@ -70,6 +70,7 @@ export function createMoveDealTool(ctx: ToolContext) {
           content: `${deal.stage.name} → ${newStage.name}`,
           dealId,
           performedBy: null,
+          metadata: { agentId: ctx.agentId, agentName: ctx.agentName },
         },
       })
 

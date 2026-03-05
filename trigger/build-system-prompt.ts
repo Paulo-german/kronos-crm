@@ -5,6 +5,7 @@ import { logger } from '@trigger.dev/sdk/v3'
 interface BuildSystemPromptResult {
   systemPrompt: string
   modelId: string
+  agentName: string
   summary: string | null
   contactName: string
   currentStepOrder: number
@@ -35,6 +36,7 @@ export async function buildSystemPrompt(
     db.agent.findUniqueOrThrow({
       where: { id: agentId },
       select: {
+        name: true,
         systemPrompt: true,
         modelId: true,
         toolsEnabled: true,
@@ -280,6 +282,7 @@ export async function buildSystemPrompt(
   return {
     systemPrompt,
     modelId: agent.modelId,
+    agentName: agent.name,
     summary: conversation.summary,
     contactName: contact.name,
     currentStepOrder: conversation.currentStepOrder,

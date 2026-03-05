@@ -24,6 +24,7 @@ export interface DealActivityDto {
     fullName: string | null
     avatarUrl: string | null
   } | null
+  metadata: Record<string, unknown> | null
 }
 
 export interface DealTaskDto {
@@ -225,6 +226,7 @@ const fetchDealDetailsFromDb = async (
       content: a.content,
       createdAt: a.createdAt,
       performer: a.performer,
+      metadata: (a.metadata as Record<string, unknown>) ?? null,
     })),
     totalActivities: deal._count.activities,
     tasks: deal.tasks.map((t) => ({

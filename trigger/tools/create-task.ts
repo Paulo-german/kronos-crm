@@ -64,6 +64,7 @@ export function createCreateTaskTool(ctx: ToolContext) {
           content: title,
           dealId: ctx.dealId,
           performedBy: null,
+          metadata: { agentId: ctx.agentId, agentName: ctx.agentName },
         },
       })
 

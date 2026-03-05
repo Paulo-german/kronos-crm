@@ -281,6 +281,7 @@ export const processAgentMessage = task({
     const toolContext: ToolContext = {
       organizationId,
       agentId,
+      agentName: promptContext.agentName,
       conversationId,
       contactId: conversation.contactId,
       dealId: conversation.dealId,

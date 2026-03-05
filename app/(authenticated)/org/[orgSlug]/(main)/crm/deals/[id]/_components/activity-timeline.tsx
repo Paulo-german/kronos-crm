@@ -26,6 +26,7 @@ import {
   UserPlus,
   UserMinus,
   User2Icon,
+  Bot,
   Loader2,
 } from 'lucide-react'
 import { useAction } from 'next-safe-action/hooks'
@@ -312,7 +313,7 @@ const ActivityTimeline = ({
                         </span>
                       </div>
 
-                      {activity.performer && (
+                      {activity.performer ? (
                         <Tooltip>
                           <TooltipTrigger>
                             <Badge
@@ -330,7 +331,25 @@ const ActivityTimeline = ({
                             </p>
                           </TooltipContent>
                         </Tooltip>
-                      )}
+                      ) : activity.metadata?.agentName ? (
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Badge
+                              variant="secondary"
+                              className="flex items-center gap-2 rounded-full bg-secondary/40 px-2.5 py-1.5 text-xs font-normal hover:bg-secondary/30"
+                            >
+                              <Bot size={14} className="text-primary" />
+                              {activity.metadata.agentName as string}
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>
+                              Ação realizada pelo agente{' '}
+                              {activity.metadata.agentName as string}
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : null}
                     </div>
                     <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                       {activity.content}
