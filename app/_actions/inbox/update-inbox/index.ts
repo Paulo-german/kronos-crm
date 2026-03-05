@@ -34,6 +34,37 @@ export const updateInbox = orgActionClient
       }
     }
 
+    // 3b. Se pipelineId mudar, validar que pertence à org
+    if (data.pipelineId !== undefined && data.pipelineId !== null) {
+      const pipeline = await db.pipeline.findFirst({
+        where: { id: data.pipelineId, organizationId: ctx.orgId },
+        select: { id: true },
+      })
+
+      if (!pipeline) {
+        throw new Error('Pipeline não encontrado ou não pertence à organização.')
+      }
+    }
+
+    // 3c. Se distributionUserIds mudar, validar que são membros da org
+    if (data.distributionUserIds !== undefined && data.distributionUserIds.length > 0) {
+      const validMembers = await db.member.findMany({
+        where: {
+          organizationId: ctx.orgId,
+          userId: { in: data.distributionUserIds },
+          status: 'ACCEPTED',
+        },
+        select: { userId: true },
+      })
+
+      const validUserIds = new Set(validMembers.map((member) => member.userId))
+      const invalidIds = data.distributionUserIds.filter((id) => !validUserIds.has(id))
+
+      if (invalidIds.length > 0) {
+        throw new Error('Um ou mais membros selecionados não pertencem à organização.')
+      }
+    }
+
     // 4. Update com spread condicional
     await db.inbox.update({
       where: { id: data.id },
@@ -41,6 +72,9 @@ export const updateInbox = orgActionClient
         ...(data.name !== undefined && { name: data.name }),
         ...(data.agentId !== undefined && { agentId: data.agentId }),
         ...(data.isActive !== undefined && { isActive: data.isActive }),
+        ...(data.autoCreateDeal !== undefined && { autoCreateDeal: data.autoCreateDeal }),
+        ...(data.pipelineId !== undefined && { pipelineId: data.pipelineId }),
+        ...(data.distributionUserIds !== undefined && { distributionUserIds: data.distributionUserIds }),
       },
     })
 

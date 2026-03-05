@@ -12,6 +12,9 @@ export interface InboxDetailDto {
   evolutionInstanceId: string | null
   agentId: string | null
   agentName: string | null
+  autoCreateDeal: boolean
+  pipelineId: string | null
+  distributionUserIds: string[]
   organizationId: string
   createdAt: Date
   updatedAt: Date
@@ -39,6 +42,9 @@ const fetchInboxByIdFromDb = async (
     evolutionInstanceId: inbox.evolutionInstanceId,
     agentId: inbox.agentId,
     agentName: inbox.agent?.name ?? null,
+    autoCreateDeal: inbox.autoCreateDeal ?? true,
+    pipelineId: inbox.pipelineId ?? null,
+    distributionUserIds: inbox.distributionUserIds ?? [],
     organizationId: inbox.organizationId,
     createdAt: inbox.createdAt,
     updatedAt: inbox.updatedAt,
