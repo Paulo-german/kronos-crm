@@ -46,51 +46,61 @@ export function OrgSwitcher({ organizations }: OrgSwitcherProps) {
     router.push(`/org/${slug}/dashboard`)
   }
 
-  // Se só 1 org, renderiza nome estático sem dropdown
-  if (organizations.length <= 1) {
-    if (isCollapsed) {
-      return (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="flex items-center justify-center py-3">
-              <Building2 className="h-4 w-4 text-muted-foreground" />
-            </div>
-          </TooltipTrigger>
-          <TooltipContent side="right">{organization.name}</TooltipContent>
-        </Tooltip>
-      )
-    }
+  const hasMultipleOrgs = organizations.length > 1
 
-    return (
-      <div className="flex items-center gap-2 px-3 py-3">
-        <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
-        <span className="truncate text-sm font-medium">
-          {organization.name}
-        </span>
+  const content = (
+    <div
+      role={hasMultipleOrgs ? 'button' : undefined}
+      className={cn(
+        'ease-[cubic-bezier(0.25,0.76,0.35,1)] group flex items-center rounded-md py-2 text-sm font-medium text-muted-foreground transition-all duration-500',
+        hasMultipleOrgs && 'cursor-pointer hover:bg-primary/10 hover:text-primary',
+        isCollapsed ? 'ml-2 mr-2 pl-3 pr-0' : 'px-3',
+      )}
+    >
+      <div className="flex items-center">
+        <Building2 className="h-4 w-4 shrink-0" />
       </div>
+      <span
+        className={cn(
+          'ease-[cubic-bezier(0.25,0.76,0.35,1)] flex items-center justify-between overflow-hidden whitespace-nowrap transition-all duration-500',
+          isCollapsed ? 'w-0 opacity-0' : 'ml-3 w-full opacity-100 delay-100',
+        )}
+      >
+        <span className="truncate">{organization.name}</span>
+        {hasMultipleOrgs && (
+          <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        )}
+      </span>
+    </div>
+  )
+
+  // Collapsed: sempre mostra tooltip
+  if (isCollapsed && !hasMultipleOrgs) {
+    return (
+      <Tooltip delayDuration={0}>
+        <TooltipTrigger asChild>{content}</TooltipTrigger>
+        <TooltipContent side="right" sideOffset={10}>
+          {organization.name}
+        </TooltipContent>
+      </Tooltip>
     )
   }
 
+  // Sem dropdown se só 1 org
+  if (!hasMultipleOrgs) {
+    return content
+  }
+
+  // Multi-org: dropdown
   const trigger = isCollapsed ? (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button className="flex w-full items-center justify-center rounded-md py-3 hover:bg-accent">
-          <Building2 className="h-4 w-4 text-muted-foreground" />
-        </button>
-      </TooltipTrigger>
-      <TooltipContent side="right">Trocar organização</TooltipContent>
+    <Tooltip delayDuration={0}>
+      <TooltipTrigger asChild>{content}</TooltipTrigger>
+      <TooltipContent side="right" sideOffset={10}>
+        Trocar organização
+      </TooltipContent>
     </Tooltip>
   ) : (
-    <button
-      className={cn(
-        'flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent',
-        'transition-colors',
-      )}
-    >
-      <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
-      <span className="flex-1 truncate text-left">{organization.name}</span>
-      <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-    </button>
+    content
   )
 
   return (
@@ -111,7 +121,7 @@ export function OrgSwitcher({ organizations }: OrgSwitcherProps) {
             >
               <div className="flex items-center gap-2">
                 {isActive ? (
-                  <Check className="h-4 w-4 shrink-0" />
+                  <Check className="h-4 w-4 shrink-0 text-primary" />
                 ) : (
                   <div className="h-4 w-4 shrink-0" />
                 )}

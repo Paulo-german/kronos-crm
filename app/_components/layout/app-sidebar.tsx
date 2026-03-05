@@ -101,7 +101,12 @@ export const AppSidebar = ({
       </div>
 
       {/* Org Switcher */}
-      <div className="border-b border-border/50">
+      <div
+        className={cn(
+          'border-b border-border/50 py-2',
+          isCollapsed ? 'px-2' : 'px-4',
+        )}
+      >
         <OrgSwitcher organizations={organizations} />
       </div>
 
