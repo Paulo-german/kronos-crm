@@ -49,6 +49,18 @@ export function createUpdateContactTool(ctx: ToolContext) {
         data,
       })
 
+      if (ctx.dealId) {
+        await db.activity.create({
+          data: {
+            type: 'note',
+            content: `Contato atualizado pelo agente: ${updatedFields.join(', ')}`,
+            dealId: ctx.dealId,
+            performedBy: null,
+            metadata: { agentId: ctx.agentId, agentName: ctx.agentName },
+          },
+        })
+      }
+
       logger.info('Tool update_contact executed', {
         contactId: ctx.contactId,
         updatedFields,

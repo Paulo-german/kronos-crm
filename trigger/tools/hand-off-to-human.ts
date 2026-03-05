@@ -25,6 +25,18 @@ export function createHandOffToHumanTool(ctx: ToolContext) {
         },
       })
 
+      if (ctx.dealId) {
+        await db.activity.create({
+          data: {
+            type: 'note',
+            content: `Conversa transferida para atendimento humano. Motivo: ${reason}`,
+            dealId: ctx.dealId,
+            performedBy: null,
+            metadata: { agentId: ctx.agentId, agentName: ctx.agentName },
+          },
+        })
+      }
+
       logger.info('Tool hand_off_to_human executed', {
         reason,
         conversationId: ctx.conversationId,
