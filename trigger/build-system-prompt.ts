@@ -22,17 +22,20 @@ interface BuildSystemPromptResult {
  * 2. Contexto temporal (data/hora atual em SP)
  * 3. Dados do contato (nome, telefone, email, cargo)
  * 4. Dados do negócio (deal vinculado, se houver)
- * 5. Mapa de steps (marcando etapa atual)
- * 6. Busca RAG na base de conhecimento
+ * 5. Etapas do pipeline (se move_deal habilitado e deal vinculado)
+ * 6. Motivos de perda disponíveis (se update_deal habilitado)
+ * 7. Mapa de steps (marcando etapa atual)
+ * 8. Busca RAG na base de conhecimento
  */
 export async function buildSystemPrompt(
   agentId: string,
   conversationId: string,
+  organizationId: string,
   latestUserMessage?: string,
 ): Promise<BuildSystemPromptResult> {
   const now = new Date()
 
-  const [agent, conversation, completedFileCount] = await Promise.all([
+  const [agent, conversation, completedFileCount, lossReasons] = await Promise.all([
     db.agent.findUniqueOrThrow({
       where: { id: agentId },
       select: {
@@ -73,7 +76,19 @@ export async function buildSystemPrompt(
             value: true,
             notes: true,
             expectedCloseDate: true,
-            stage: { select: { name: true } },
+            stage: {
+              select: {
+                name: true,
+                pipeline: {
+                  select: {
+                    stages: {
+                      orderBy: { position: 'asc' },
+                      select: { name: true, position: true },
+                    },
+                  },
+                },
+              },
+            },
             company: { select: { name: true } },
             contacts: {
               select: {
@@ -109,6 +124,11 @@ export async function buildSystemPrompt(
     }),
     db.agentKnowledgeFile.count({
       where: { agentId, status: 'COMPLETED' },
+    }),
+    db.dealLostReason.findMany({
+      where: { organizationId, isActive: true },
+      select: { name: true },
+      orderBy: { name: 'asc' },
     }),
   ])
 
@@ -224,9 +244,28 @@ export async function buildSystemPrompt(
     }
 
     parts.push(`\n[Dados do negócio]\n${dealFields.join('\n')}`)
+
+    // 5. Etapas do pipeline (só se a tool move_deal está habilitada)
+    if (agent.toolsEnabled.includes('move_deal')) {
+      const pipelineStages = deal.stage.pipeline.stages
+      const stageLines = pipelineStages.map(
+        (stage) => `  ${stage.position}. ${stage.name}`,
+      )
+      parts.push(
+        `\n[Etapas do pipeline]\nAo mover um negócio, use o campo "stageName" com uma das etapas abaixo:\n${stageLines.join('\n')}\nEtapa atual: ${deal.stage.name}`,
+      )
+    }
   }
 
-  // 5. Mapa de steps (se houver)
+  // 6. Motivos de perda disponíveis (só se a tool update_deal está habilitada)
+  if (lossReasons.length > 0 && agent.toolsEnabled.includes('update_deal')) {
+    const reasonNames = lossReasons.map((r) => r.name)
+    parts.push(
+      `\n[Motivos de perda disponíveis]\nAo marcar um negócio como LOST, use o campo "reason" com um dos motivos abaixo (exatamente como escrito):\n${reasonNames.map((name) => `  • ${name}`).join('\n')}`,
+    )
+  }
+
+  // 7. Mapa de steps (se houver)
   // Encontrar o step atual e extrair allowedActions
   const currentStep = agent.steps.find(
     (step) => step.order === conversation.currentStepOrder,
@@ -252,7 +291,7 @@ export async function buildSystemPrompt(
     )
   }
 
-  // 6. Busca RAG na base de conhecimento (se houver arquivos e mensagem do usuário)
+  // 8. Busca RAG na base de conhecimento (se houver arquivos e mensagem do usuário)
   let knowledgeContext: string | null = null
 
   if (latestUserMessage && completedFileCount > 0) {

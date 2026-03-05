@@ -2,6 +2,7 @@ import { tool } from 'ai'
 import { z } from 'zod'
 import { db } from '@/_lib/prisma'
 import { logger } from '@trigger.dev/sdk/v3'
+import { revalidateTags } from './lib/revalidate-tags'
 import type { ToolContext } from './types'
 
 interface MoveDealResult {
@@ -14,13 +15,23 @@ export function createMoveDealTool(ctx: ToolContext) {
     description:
       'Move um negócio para outra etapa do pipeline de vendas. Use quando o cliente avançar ou regredir no funil.',
     inputSchema: z.object({
-      dealId: z.string().uuid().describe('ID do negócio a mover'),
-      stageId: z.string().uuid().describe('ID da nova etapa do pipeline'),
+      stageName: z
+        .string()
+        .describe(
+          'Nome da etapa destino (ex: "Proposta Enviada"). Consulte [Etapas do pipeline] no system prompt.',
+        ),
     }),
-    execute: async ({ dealId, stageId }): Promise<MoveDealResult> => {
+    execute: async ({ stageName }): Promise<MoveDealResult> => {
+      if (!ctx.dealId) {
+        return {
+          success: false,
+          message: 'Nenhum negócio vinculado a esta conversa.',
+        }
+      }
+
       const deal = await db.deal.findFirst({
         where: {
-          id: dealId,
+          id: ctx.dealId,
           organizationId: ctx.organizationId,
         },
         include: {
@@ -41,25 +52,49 @@ export function createMoveDealTool(ctx: ToolContext) {
         }
       }
 
-      const newStage = await db.pipelineStage.findFirst({
-        where: {
-          id: stageId,
-          pipelineId: deal.stage.pipelineId,
-        },
-      })
-
-      if (!newStage) {
-        return { success: false, message: 'Etapa não pertence a este pipeline.' }
+      if (deal.status === 'WON' || deal.status === 'LOST') {
+        return {
+          success: false,
+          message: `Negócio já está finalizado (${deal.status === 'WON' ? 'GANHO' : 'PERDIDO'}).`,
+        }
       }
 
-      if (deal.pipelineStageId === stageId) {
+      // Buscar todas as stages do pipeline para resolver por nome
+      const pipelineStages = await db.pipelineStage.findMany({
+        where: { pipelineId: deal.stage.pipelineId },
+        orderBy: { position: 'asc' },
+      })
+
+      // Resolver stageName → stage: exact match (case-insensitive), fallback fuzzy (includes)
+      const normalizedInput = stageName.trim().toLowerCase()
+
+      let newStage = pipelineStages.find(
+        (stage) => stage.name.toLowerCase() === normalizedInput,
+      )
+
+      if (!newStage) {
+        newStage = pipelineStages.find((stage) =>
+          stage.name.toLowerCase().includes(normalizedInput) ||
+          normalizedInput.includes(stage.name.toLowerCase()),
+        )
+      }
+
+      if (!newStage) {
+        const validNames = pipelineStages.map((stage) => stage.name).join(', ')
+        return {
+          success: false,
+          message: `Etapa "${stageName}" não encontrada. Etapas válidas: ${validNames}`,
+        }
+      }
+
+      if (deal.pipelineStageId === newStage.id) {
         return { success: true, message: 'Negócio já está nesta etapa.' }
       }
 
       await db.deal.update({
-        where: { id: dealId },
+        where: { id: ctx.dealId },
         data: {
-          pipelineStageId: stageId,
+          pipelineStageId: newStage.id,
           ...(deal.status === 'OPEN' && { status: 'IN_PROGRESS' }),
         },
       })
@@ -68,14 +103,22 @@ export function createMoveDealTool(ctx: ToolContext) {
         data: {
           type: 'stage_change',
           content: `${deal.stage.name} → ${newStage.name}`,
-          dealId,
+          dealId: ctx.dealId,
           performedBy: null,
           metadata: { agentId: ctx.agentId, agentName: ctx.agentName },
         },
       })
 
+      await revalidateTags([
+        `pipeline:${ctx.organizationId}`,
+        `deals:${ctx.organizationId}`,
+        `deal:${ctx.dealId}`,
+        `dashboard:${ctx.organizationId}`,
+        `dashboard-charts:${ctx.organizationId}`,
+      ]).catch(() => {})
+
       logger.info('Tool move_deal executed', {
-        dealId,
+        dealId: ctx.dealId,
         fromStage: deal.stage.name,
         toStage: newStage.name,
         conversationId: ctx.conversationId,
