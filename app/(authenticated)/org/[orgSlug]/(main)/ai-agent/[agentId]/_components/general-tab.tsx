@@ -371,7 +371,7 @@ const GeneralTab = ({ agent, pipelines, canManage }: GeneralTabProps) => {
           </CardContent>
         </Card>
 
-        {/* Card 5 — Horário de Funcionamento */}
+        {/* Card 6 — Horário de Funcionamento */}
         <Card className="border-border/50 bg-secondary/20">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
