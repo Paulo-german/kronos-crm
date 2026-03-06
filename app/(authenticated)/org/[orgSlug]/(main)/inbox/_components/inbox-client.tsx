@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useState, useEffect, useRef } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { MessageSquare } from 'lucide-react'
 import {
   Card,
@@ -13,7 +13,7 @@ import {
 import { ConversationList } from './conversation-list'
 import { ChatView } from './chat-view'
 import { EmptyInbox } from './empty-inbox'
-import type { ConversationListDto } from '@/_data-access/conversation/get-conversations'
+import { useConversations } from '../_hooks/use-conversations'
 
 interface InboxOption {
   id: string
@@ -22,71 +22,67 @@ interface InboxOption {
 }
 
 interface InboxClientProps {
-  conversations: ConversationListDto[]
   inboxOptions: InboxOption[]
   orgSlug: string
 }
 
-const REFRESH_INTERVAL_MS = 5_000
+type FilterTab = 'all' | 'unread'
 
-export function InboxClient({ conversations, inboxOptions, orgSlug }: InboxClientProps) {
-  const router = useRouter()
+export function InboxClient({ inboxOptions, orgSlug }: InboxClientProps) {
   const searchParams = useSearchParams()
   const [selectedInboxId, setSelectedInboxId] = useState<string | null>(null)
+  const [filter, setFilter] = useState<FilterTab>('all')
+  const [search, setSearch] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const didApplyContactParam = useRef(false)
+  const didApplyDeepLink = useRef(false)
 
-  // Selecionar conversa via query param ?contactId=xxx (deep link do CRM)
+  const contactId = searchParams.get('contactId')
+
+  const {
+    conversations,
+    isLoading,
+    isLoadingMore,
+    hasMore,
+    totalCount,
+    totalUnread,
+    deepLinkConversationId,
+    sentinelRef,
+  } = useConversations({
+    inboxId: selectedInboxId,
+    unreadOnly: filter === 'unread',
+    search,
+    contactId,
+  })
+
+  // Deep link: auto-selecionar conversa
   useEffect(() => {
-    if (didApplyContactParam.current) return
-    const contactId = searchParams.get('contactId')
-    if (!contactId || conversations.length === 0) return
+    if (didApplyDeepLink.current || !deepLinkConversationId) return
+    setSelectedId(deepLinkConversationId)
+    didApplyDeepLink.current = true
+  }, [deepLinkConversationId])
 
-    const match = conversations.find(
-      (conversation) => conversation.contactId === contactId,
+  // Quando conversas mudam, manter seleção se possível, senão selecionar primeira
+  useEffect(() => {
+    if (isLoading || conversations.length === 0) return
+    const selectionExists = selectedId && conversations.some(
+      (conversation) => conversation.id === selectedId,
     )
-    if (match) {
-      setSelectedInboxId(match.inboxId)
-      setSelectedId(match.id)
-      didApplyContactParam.current = true
+    if (!selectionExists) {
+      setSelectedId(conversations[0]?.id ?? null)
     }
-  }, [searchParams, conversations])
-
-  // Filtrar conversas pela inbox selecionada
-  const filteredConversations = useMemo(() => {
-    if (!selectedInboxId) return conversations
-    return conversations.filter(
-      (conversation) => conversation.inboxId === selectedInboxId,
-    )
-  }, [conversations, selectedInboxId])
-
-  // Inicializar selectedId quando conversas mudam
-  useEffect(() => {
-    if (!selectedId || !filteredConversations.find((conversation) => conversation.id === selectedId)) {
-      setSelectedId(filteredConversations[0]?.id ?? null)
-    }
-  }, [filteredConversations, selectedId])
-
-  // Polling para atualizar lista de conversas via server
-  useEffect(() => {
-    const interval = setInterval(() => {
-      router.refresh()
-    }, REFRESH_INTERVAL_MS)
-
-    return () => clearInterval(interval)
-  }, [router])
+  }, [conversations, isLoading, selectedId])
 
   // Se não tem nenhuma inbox, mostrar empty state com CTA
   if (inboxOptions.length === 0) {
     return <EmptyInbox orgSlug={orgSlug} hasNoInbox />
   }
 
-  // Se tem inboxes mas sem conversas
-  if (conversations.length === 0) {
+  // Se terminou de carregar e não tem conversas (sem filtros ativos)
+  if (!isLoading && conversations.length === 0 && !search && filter === 'all' && !selectedInboxId) {
     return <EmptyInbox orgSlug={orgSlug} />
   }
 
-  const selectedConversation = filteredConversations.find(
+  const selectedConversation = conversations.find(
     (conversation) => conversation.id === selectedId,
   )
 
@@ -95,12 +91,22 @@ export function InboxClient({ conversations, inboxOptions, orgSlug }: InboxClien
       {/* Sidebar */}
       <div className="w-80 shrink-0">
         <ConversationList
-          conversations={filteredConversations}
+          conversations={conversations}
           selectedId={selectedId}
           onSelect={setSelectedId}
           inboxOptions={inboxOptions}
           selectedInboxId={selectedInboxId}
           onInboxSelect={setSelectedInboxId}
+          search={search}
+          onSearchChange={setSearch}
+          filter={filter}
+          onFilterChange={setFilter}
+          totalCount={totalCount}
+          totalUnread={totalUnread}
+          isLoading={isLoading}
+          isLoadingMore={isLoadingMore}
+          hasMore={hasMore}
+          sentinelRef={sentinelRef}
         />
       </div>
 
@@ -119,13 +125,13 @@ export function InboxClient({ conversations, inboxOptions, orgSlug }: InboxClien
                   <MessageSquare className="h-6 w-6 text-muted-foreground" />
                 </div>
                 <CardTitle className="text-base">
-                  {filteredConversations.length === 0
-                    ? 'Nenhuma conversa nesta caixa'
+                  {!isLoading && conversations.length === 0
+                    ? 'Nenhuma conversa encontrada'
                     : 'Selecione uma conversa'}
                 </CardTitle>
                 <CardDescription>
-                  {filteredConversations.length === 0
-                    ? 'Esta caixa de entrada ainda não possui conversas.'
+                  {!isLoading && conversations.length === 0
+                    ? 'Nenhuma conversa corresponde aos filtros aplicados.'
                     : 'Escolha uma conversa na lista ao lado para visualizar as mensagens e interagir.'}
                 </CardDescription>
               </CardHeader>
