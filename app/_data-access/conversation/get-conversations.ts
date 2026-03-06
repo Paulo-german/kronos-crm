@@ -1,7 +1,6 @@
 import 'server-only'
-import { cache } from 'react'
-import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
+import type { Prisma } from '@prisma/client'
 
 export interface ConversationListDto {
   id: string
@@ -26,32 +25,78 @@ export interface ConversationListDto {
   updatedAt: Date
 }
 
-const fetchConversationsFromDb = async (
-  orgId: string,
-): Promise<ConversationListDto[]> => {
-  const conversations = await db.conversation.findMany({
-    where: { organizationId: orgId },
-    include: {
-      contact: { select: { name: true, phone: true } },
-      inbox: {
-        select: {
-          id: true,
-          name: true,
-          agent: { select: { name: true } },
-        },
-      },
-      messages: {
-        where: { isArchived: false },
-        orderBy: { createdAt: 'desc' },
-        take: 1,
-        select: { content: true, role: true, createdAt: true, metadata: true },
-      },
-      _count: { select: { messages: true } },
-    },
-    orderBy: { updatedAt: 'desc' },
-  })
+export interface ConversationFilters {
+  inboxId?: string
+  unreadOnly?: boolean
+  search?: string
+}
 
-  return conversations.map((conversation) => ({
+export interface PaginatedConversationsResult {
+  conversations: ConversationListDto[]
+  hasMore: boolean
+  totalCount: number
+  totalUnread: number
+}
+
+export async function getConversationsPaginated(
+  orgId: string,
+  limit = 20,
+  cursor?: string,
+  filters?: ConversationFilters,
+): Promise<PaginatedConversationsResult> {
+  const where: Prisma.ConversationWhereInput = {
+    organizationId: orgId,
+    ...(filters?.inboxId ? { inboxId: filters.inboxId } : {}),
+    ...(filters?.unreadOnly ? { unreadCount: { gt: 0 } } : {}),
+    ...(filters?.search
+      ? {
+          contact: {
+            name: { contains: filters.search, mode: 'insensitive' },
+          },
+        }
+      : {}),
+  }
+
+  const unreadWhere: Prisma.ConversationWhereInput = {
+    organizationId: orgId,
+    unreadCount: { gt: 0 },
+    ...(filters?.inboxId ? { inboxId: filters.inboxId } : {}),
+  }
+
+  const [conversations, totalCount, totalUnread] = await Promise.all([
+    db.conversation.findMany({
+      where,
+      take: limit + 1,
+      ...(cursor
+        ? { cursor: { id: cursor }, skip: 1 }
+        : {}),
+      orderBy: { updatedAt: 'desc' },
+      include: {
+        contact: { select: { name: true, phone: true } },
+        inbox: {
+          select: {
+            id: true,
+            name: true,
+            agent: { select: { name: true } },
+          },
+        },
+        messages: {
+          where: { isArchived: false },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { content: true, role: true, createdAt: true, metadata: true },
+        },
+        _count: { select: { messages: true } },
+      },
+    }),
+    db.conversation.count({ where }),
+    db.conversation.count({ where: unreadWhere }),
+  ])
+
+  const hasMore = conversations.length > limit
+  const sliced = hasMore ? conversations.slice(0, limit) : conversations
+
+  const mapped: ConversationListDto[] = sliced.map((conversation) => ({
     id: conversation.id,
     contactId: conversation.contactId,
     contactName: conversation.contact.name,
@@ -75,15 +120,6 @@ const fetchConversationsFromDb = async (
     messageCount: conversation._count.messages,
     updatedAt: conversation.updatedAt,
   }))
-}
 
-export const getConversations = cache(
-  async (orgId: string): Promise<ConversationListDto[]> => {
-    const getCached = unstable_cache(
-      async () => fetchConversationsFromDb(orgId),
-      [`conversations-${orgId}`],
-      { tags: [`conversations:${orgId}`] },
-    )
-    return getCached()
-  },
-)
+  return { conversations: mapped, hasMore, totalCount, totalUnread }
+}

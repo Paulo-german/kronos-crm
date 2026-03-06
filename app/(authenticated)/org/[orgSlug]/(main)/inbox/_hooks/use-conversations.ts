@@ -1,0 +1,212 @@
+'use client'
+
+import { useState, useEffect, useCallback, useRef } from 'react'
+import type { ConversationListDto } from '@/_data-access/conversation/get-conversations'
+
+const POLL_INTERVAL_MS = 5_000
+const DEBOUNCE_MS = 300
+
+interface UseConversationsOptions {
+  inboxId: string | null
+  unreadOnly: boolean
+  search: string
+  contactId: string | null
+}
+
+interface UseConversationsReturn {
+  conversations: ConversationListDto[]
+  isLoading: boolean
+  isLoadingMore: boolean
+  hasMore: boolean
+  totalCount: number
+  totalUnread: number
+  deepLinkConversationId: string | null
+  loadMore: () => void
+  sentinelRef: (node: HTMLElement | null) => void
+}
+
+interface ApiResponse {
+  conversations: ConversationListDto[]
+  hasMore: boolean
+  totalCount: number
+  totalUnread: number
+  deepLinkConversationId?: string
+}
+
+function buildUrl(options: UseConversationsOptions, cursor?: string): string {
+  const params = new URLSearchParams()
+  params.set('limit', '20')
+  if (cursor) params.set('cursor', cursor)
+  if (options.inboxId) params.set('inboxId', options.inboxId)
+  if (options.unreadOnly) params.set('unread', 'true')
+  if (options.search) params.set('search', options.search)
+  if (options.contactId) params.set('contactId', options.contactId)
+  return `/api/inbox/conversations?${params.toString()}`
+}
+
+export function useConversations(options: UseConversationsOptions): UseConversationsReturn {
+  const { inboxId, unreadOnly, search, contactId } = options
+
+  const [conversations, setConversations] = useState<ConversationListDto[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
+  const [totalCount, setTotalCount] = useState(0)
+  const [totalUnread, setTotalUnread] = useState(0)
+  const [deepLinkConversationId, setDeepLinkConversationId] = useState<string | null>(null)
+
+  const [debouncedSearch, setDebouncedSearch] = useState(search)
+  const observerRef = useRef<IntersectionObserver | null>(null)
+  const didDeepLink = useRef(false)
+  const cursorRef = useRef<string | undefined>(undefined)
+  const abortRef = useRef<AbortController | null>(null)
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), DEBOUNCE_MS)
+    return () => clearTimeout(timer)
+  }, [search])
+
+  // Fetch first page (on filter change)
+  const fetchFirstPage = useCallback(async (signal?: AbortSignal) => {
+    const fetchContactId = !didDeepLink.current ? contactId : null
+    const url = buildUrl(
+      { inboxId, unreadOnly, search: debouncedSearch, contactId: fetchContactId },
+    )
+
+    try {
+      const response = await fetch(url, { signal })
+      if (!response.ok || signal?.aborted) return null
+      const data: ApiResponse = await response.json()
+
+      if (data.deepLinkConversationId) {
+        setDeepLinkConversationId(data.deepLinkConversationId)
+        didDeepLink.current = true
+      }
+
+      return data
+    } catch {
+      return null
+    }
+  }, [inboxId, unreadOnly, debouncedSearch, contactId])
+
+  // Initial fetch + reset on filter change
+  useEffect(() => {
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+
+    setIsLoading(true)
+    cursorRef.current = undefined
+
+    fetchFirstPage(controller.signal).then((data) => {
+      if (controller.signal.aborted) return
+      if (!data) {
+        setIsLoading(false)
+        return
+      }
+      setConversations(data.conversations)
+      setHasMore(data.hasMore)
+      setTotalCount(data.totalCount)
+      setTotalUnread(data.totalUnread)
+      cursorRef.current = data.conversations.at(-1)?.id
+      setIsLoading(false)
+    })
+
+    return () => controller.abort()
+  }, [fetchFirstPage])
+
+  // Polling: re-fetch first page and merge
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      const url = buildUrl({ inboxId, unreadOnly, search: debouncedSearch, contactId: null })
+      try {
+        const response = await fetch(url)
+        if (!response.ok) return
+        const data: ApiResponse = await response.json()
+
+        setConversations((prev) => {
+          const merged = new Map<string, ConversationListDto>()
+          for (const conv of prev) merged.set(conv.id, conv)
+          for (const conv of data.conversations) merged.set(conv.id, conv)
+          return Array.from(merged.values()).sort(
+            (convA, convB) =>
+              new Date(convB.updatedAt).getTime() - new Date(convA.updatedAt).getTime(),
+          )
+        })
+        setTotalCount(data.totalCount)
+        setTotalUnread(data.totalUnread)
+      } catch {
+        // Silently ignore polling errors
+      }
+    }, POLL_INTERVAL_MS)
+
+    return () => clearInterval(interval)
+  }, [inboxId, unreadOnly, debouncedSearch])
+
+  // Load more (infinite scroll)
+  const loadMore = useCallback(async () => {
+    if (isLoadingMore || !hasMore || !cursorRef.current) return
+
+    setIsLoadingMore(true)
+    const url = buildUrl(
+      { inboxId, unreadOnly, search: debouncedSearch, contactId: null },
+      cursorRef.current,
+    )
+
+    try {
+      const response = await fetch(url)
+      if (!response.ok) return
+      const data: ApiResponse = await response.json()
+
+      setConversations((prev) => {
+        const merged = new Map<string, ConversationListDto>()
+        for (const conv of prev) merged.set(conv.id, conv)
+        for (const conv of data.conversations) merged.set(conv.id, conv)
+        return Array.from(merged.values()).sort(
+          (convA, convB) =>
+            new Date(convB.updatedAt).getTime() - new Date(convA.updatedAt).getTime(),
+        )
+      })
+      setHasMore(data.hasMore)
+      cursorRef.current = data.conversations.at(-1)?.id
+    } catch {
+      // Silently ignore
+    } finally {
+      setIsLoadingMore(false)
+    }
+  }, [isLoadingMore, hasMore, inboxId, unreadOnly, debouncedSearch])
+
+  // IntersectionObserver sentinel ref callback
+  const sentinelRef = useCallback(
+    (node: HTMLElement | null) => {
+      if (observerRef.current) {
+        observerRef.current.disconnect()
+      }
+      if (!node) return
+
+      observerRef.current = new IntersectionObserver(
+        (entries) => {
+          if (entries[0]?.isIntersecting) {
+            loadMore()
+          }
+        },
+        { threshold: 0.1 },
+      )
+      observerRef.current.observe(node)
+    },
+    [loadMore],
+  )
+
+  return {
+    conversations,
+    isLoading,
+    isLoadingMore,
+    hasMore,
+    totalCount,
+    totalUnread,
+    deepLinkConversationId,
+    loadMore,
+    sentinelRef,
+  }
+}
