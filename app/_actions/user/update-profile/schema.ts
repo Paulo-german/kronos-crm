@@ -6,6 +6,7 @@ export const updateProfileSchema = z.object({
     .min(2, 'Nome deve ter pelo menos 2 caracteres')
     .max(100, 'Nome muito longo'),
   avatarUrl: z.string().url('URL inválida').nullable().optional(),
+  phone: z.string().max(20, 'Telefone muito longo').nullable().optional(),
 })
 
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>

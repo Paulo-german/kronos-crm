@@ -35,6 +35,7 @@ interface UserProfile {
   email: string
   fullName: string | null
   avatarUrl: string | null
+  phone: string | null
   createdAt: Date | string
 }
 
@@ -48,6 +49,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
     defaultValues: {
       fullName: user.fullName ?? '',
       avatarUrl: user.avatarUrl,
+      phone: user.phone,
     },
   })
 
@@ -59,6 +61,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
         form.reset({
           fullName: form.getValues('fullName'),
           avatarUrl: form.getValues('avatarUrl'),
+          phone: form.getValues('phone'),
         })
       },
       onError: ({ error }) => {
@@ -73,9 +76,12 @@ export function ProfileForm({ user }: ProfileFormProps) {
 
   const watchedName = form.watch('fullName')
   const watchedAvatar = form.watch('avatarUrl')
+  const watchedPhone = form.watch('phone')
 
   const hasChanges =
-    watchedName !== (user.fullName ?? '') || watchedAvatar !== user.avatarUrl
+    watchedName !== (user.fullName ?? '') ||
+    watchedAvatar !== user.avatarUrl ||
+    watchedPhone !== user.phone
 
   const initials = (watchedName || user.email)
     .split(' ')
@@ -142,6 +148,27 @@ export function ProfileForm({ user }: ProfileFormProps) {
                   <FormLabel>Nome completo</FormLabel>
                   <FormControl>
                     <Input placeholder="Seu nome completo" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Telefone</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="(11) 99999-9999"
+                      {...field}
+                      value={field.value ?? ''}
+                      onChange={(event) =>
+                        field.onChange(event.target.value || null)
+                      }
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

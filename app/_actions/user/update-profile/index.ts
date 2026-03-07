@@ -7,12 +7,13 @@ import { revalidateTag } from 'next/cache'
 
 export const updateProfile = authActionClient
   .schema(updateProfileSchema)
-  .action(async ({ parsedInput: { fullName, avatarUrl }, ctx }) => {
+  .action(async ({ parsedInput: { fullName, avatarUrl, phone }, ctx }) => {
     await db.user.update({
       where: { id: ctx.userId },
       data: {
         fullName,
         avatarUrl: avatarUrl ?? null,
+        phone: phone ?? null,
       },
     })
 

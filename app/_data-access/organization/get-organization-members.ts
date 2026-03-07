@@ -11,6 +11,7 @@ export interface AcceptedMemberDto {
   user: {
     fullName: string | null
     avatarUrl: string | null
+    phone: string | null
   } | null
   joinedAt: Date
 }
@@ -29,6 +30,7 @@ export const getOrganizationMembers = cache(async (orgId: string) => {
             select: {
               fullName: true,
               avatarUrl: true,
+              phone: true,
             },
           },
         },

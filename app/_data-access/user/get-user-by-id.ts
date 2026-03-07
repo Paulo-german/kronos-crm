@@ -10,6 +10,7 @@ async function fetchUserById(userId: string) {
       email: true,
       fullName: true,
       avatarUrl: true,
+      phone: true,
       createdAt: true,
     },
   })
