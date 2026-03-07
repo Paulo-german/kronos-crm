@@ -4,6 +4,7 @@ import './globals.css'
 import { ThemeProvider } from '@/_components/theme-provider'
 import { Toaster } from '@/_components/ui/sonner'
 import { TooltipProvider } from './_components/ui/tooltip'
+import { MetaPixel } from './_components/meta-pixel'
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -39,6 +40,7 @@ export default function RootLayout({
       <body
         className={`${jakarta.variable} ${martian.variable} font-sans antialiased`}
       >
+        <MetaPixel />
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
