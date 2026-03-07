@@ -13,7 +13,7 @@ export const updateProfile = authActionClient
       data: {
         fullName,
         avatarUrl: avatarUrl ?? null,
-        phone: phone ?? null,
+        phone,
       },
     })
 

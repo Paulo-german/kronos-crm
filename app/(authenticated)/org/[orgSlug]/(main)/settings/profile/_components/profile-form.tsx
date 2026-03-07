@@ -21,6 +21,8 @@ import {
   FormMessage,
 } from '@/_components/ui/form'
 import { Input } from '@/_components/ui/input'
+import { PhoneInput } from '@/_components/form-controls/phone-input'
+import type { NumberFormatValues } from 'react-number-format'
 import { Button } from '@/_components/ui/button'
 import { Label } from '@/_components/ui/label'
 import { Avatar, AvatarFallback, AvatarImage } from '@/_components/ui/avatar'
@@ -49,7 +51,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
     defaultValues: {
       fullName: user.fullName ?? '',
       avatarUrl: user.avatarUrl,
-      phone: user.phone,
+      phone: user.phone ?? '',
     },
   })
 
@@ -81,7 +83,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
   const hasChanges =
     watchedName !== (user.fullName ?? '') ||
     watchedAvatar !== user.avatarUrl ||
-    watchedPhone !== user.phone
+    watchedPhone !== (user.phone ?? '')
 
   const initials = (watchedName || user.email)
     .split(' ')
@@ -161,12 +163,11 @@ export function ProfileForm({ user }: ProfileFormProps) {
                 <FormItem>
                   <FormLabel>Telefone</FormLabel>
                   <FormControl>
-                    <Input
+                    <PhoneInput
                       placeholder="(11) 99999-9999"
-                      {...field}
-                      value={field.value ?? ''}
-                      onChange={(event) =>
-                        field.onChange(event.target.value || null)
+                      value={field.value || ''}
+                      onValueChange={(values: NumberFormatValues) =>
+                        field.onChange(values.value)
                       }
                     />
                   </FormControl>
