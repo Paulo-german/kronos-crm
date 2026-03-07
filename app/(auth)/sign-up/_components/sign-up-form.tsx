@@ -12,6 +12,8 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 
 import { Input } from '@/_components/ui/input'
+import { PhoneInput } from '@/_components/form-controls/phone-input'
+import type { NumberFormatValues } from 'react-number-format'
 import { Button } from '@/_components/ui/button'
 import InputPassword from '../../_components/input-password'
 import {
@@ -32,6 +34,7 @@ const SignUpForm = () => {
     resolver: zodResolver(signUpFormSchema),
     defaultValues: {
       fullName: '',
+      phone: '',
       email: '',
       password: '',
     },
@@ -69,6 +72,25 @@ const SignUpForm = () => {
               <FormLabel>Nome completo</FormLabel>
               <FormControl>
                 <Input placeholder="Seu nome completo" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="phone"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Telefone</FormLabel>
+              <FormControl>
+                <PhoneInput
+                  placeholder="(11) 99999-9999"
+                  value={field.value || ''}
+                  onValueChange={(values: NumberFormatValues) =>
+                    field.onChange(values.value)
+                  }
+                />
               </FormControl>
               <FormMessage />
             </FormItem>

@@ -11,7 +11,7 @@ export const signUp = actionClient
   .schema(signUpSchema)
   .action(
     async ({
-      parsedInput: { fullName, email, password, captchaToken },
+      parsedInput: { fullName, phone, email, password, captchaToken },
     }: {
       parsedInput: SignUpSchema
     }) => {
@@ -35,6 +35,7 @@ export const signUp = actionClient
         options: {
           data: {
             full_name: fullName,
+            phone,
           },
         },
       })
@@ -50,6 +51,7 @@ export const signUp = actionClient
           id: authData.user.id,
           email: email,
           fullName: fullName,
+          phone: phone,
           // Role default já é 'owner' pelo schema do Prisma
         },
       })
