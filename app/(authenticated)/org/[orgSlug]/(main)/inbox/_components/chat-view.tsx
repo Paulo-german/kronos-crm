@@ -25,6 +25,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/_components/ui/tooltip'
+import { isToday, isYesterday } from 'date-fns'
+import { formatDate } from '@/_lib/utils'
 import { MessageBubble } from './message-bubble'
 import { ConversationEventBubble } from './conversation-event-bubble'
 import { sendMessage } from '@/_actions/inbox/send-message'
@@ -44,12 +46,20 @@ interface MessageDto {
 type TimelineItem =
   | { kind: 'message'; data: MessageDto }
   | { kind: 'event'; data: ConversationEventDto }
+  | { kind: 'day-separator'; date: string }
 
 // MessageDto permanece local porque é derivada da resposta da API de mensagens,
 // não do módulo conversation-events. TimelineItem une os dois tipos localmente.
 
 interface ChatViewProps {
   conversation: ConversationListDto
+}
+
+function formatDayLabel(dateKey: string): string {
+  const date = new Date(dateKey + 'T12:00:00') // Meio-dia para evitar timezone shift
+  if (isToday(date)) return 'Hoje'
+  if (isYesterday(date)) return 'Ontem'
+  return formatDate(date) // "6 de março de 2026"
 }
 
 const POLLING_INTERVAL_MS = 5_000
@@ -430,7 +440,8 @@ export function ChatView({ conversation }: ChatViewProps) {
     }
 
     // Build timeline items
-    const timeline: TimelineItem[] = [
+    type DataItem = Exclude<TimelineItem, { kind: 'day-separator' }>
+    const timeline: DataItem[] = [
       ...expandedMessages.map((data) => ({ kind: 'message' as const, data })),
       ...events.map((data) => ({ kind: 'event' as const, data })),
     ]
@@ -441,7 +452,20 @@ export function ChatView({ conversation }: ChatViewProps) {
         new Date(a.data.createdAt).getTime() - new Date(b.data.createdAt).getTime(),
     )
 
-    return timeline
+    // Inject day separators
+    const withSeparators: TimelineItem[] = []
+    let lastDateKey = ''
+
+    for (const item of timeline) {
+      const dateKey = new Date(item.data.createdAt).toLocaleDateString('en-CA') // "2026-03-08"
+      if (dateKey !== lastDateKey) {
+        withSeparators.push({ kind: 'day-separator', date: dateKey })
+        lastDateKey = dateKey
+      }
+      withSeparators.push(item)
+    }
+
+    return withSeparators
   }, [messages, events])
 
   const initials = conversation.contactName
@@ -580,7 +604,15 @@ export function ChatView({ conversation }: ChatViewProps) {
             )}
 
             {displayTimeline.map((item) =>
-              item.kind === 'event' ? (
+              item.kind === 'day-separator' ? (
+                <div key={`day-${item.date}`} className="flex items-center gap-3 py-2">
+                  <div className="h-px flex-1 bg-border/30" />
+                  <span className="shrink-0 text-[11px] font-medium text-muted-foreground">
+                    {formatDayLabel(item.date)}
+                  </span>
+                  <div className="h-px flex-1 bg-border/30" />
+                </div>
+              ) : item.kind === 'event' ? (
                 <ConversationEventBubble
                   key={`event-${item.data.id}`}
                   type={item.data.type}
