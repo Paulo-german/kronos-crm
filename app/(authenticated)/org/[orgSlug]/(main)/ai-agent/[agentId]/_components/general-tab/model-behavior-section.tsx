@@ -52,7 +52,7 @@ export const ModelBehaviorSection = ({ form, canManage }: SectionProps) => {
                 <SelectContent>
                   {MODEL_OPTIONS.map((model) => (
                     <SelectItem key={model.value} value={model.value}>
-                      <div className="flex flex-col">
+                      <div className="flex items-baseline gap-2">
                         <span>{model.label}</span>
                         <span className="text-xs text-muted-foreground">
                           {model.description}

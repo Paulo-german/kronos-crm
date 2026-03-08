@@ -33,7 +33,7 @@ export const BusinessHoursSection = ({ form, canManage }: SectionProps) => {
 
   return (
     <Card className="border-border/50 bg-secondary/20">
-      <CardHeader className="pb-3">
+      <CardHeader className={watchBusinessHoursEnabled ? 'pb-3' : 'pb-5'}>
         <div className="flex items-center justify-between">
           <div className="space-y-1">
             <CardTitle className="flex items-center gap-2 text-base font-semibold">
@@ -130,7 +130,12 @@ export const BusinessHoursSection = ({ form, canManage }: SectionProps) => {
                             type="time"
                             className="h-8 w-28"
                             {...field}
-                            disabled={!canManage || !form.watch(`businessHoursConfig.${dayKey}.enabled`)}
+                            disabled={
+                              !canManage ||
+                              !form.watch(
+                                `businessHoursConfig.${dayKey}.enabled`,
+                              )
+                            }
                           />
                         </FormControl>
                       </FormItem>
@@ -149,7 +154,12 @@ export const BusinessHoursSection = ({ form, canManage }: SectionProps) => {
                             type="time"
                             className="h-8 w-28"
                             {...field}
-                            disabled={!canManage || !form.watch(`businessHoursConfig.${dayKey}.enabled`)}
+                            disabled={
+                              !canManage ||
+                              !form.watch(
+                                `businessHoursConfig.${dayKey}.enabled`,
+                              )
+                            }
                           />
                         </FormControl>
                         <FormMessage />
@@ -172,12 +182,15 @@ export const BusinessHoursSection = ({ form, canManage }: SectionProps) => {
                     placeholder="Ex: Olá! Nosso horário de atendimento é de segunda a sexta, das 9h às 18h. Retornaremos assim que possível!"
                     className="min-h-[80px] resize-y"
                     value={field.value ?? ''}
-                    onChange={(event) => field.onChange(event.target.value || null)}
+                    onChange={(event) =>
+                      field.onChange(event.target.value || null)
+                    }
                     disabled={!canManage}
                   />
                 </FormControl>
                 <p className="text-xs text-muted-foreground">
-                  Se preenchida, será enviada automaticamente quando alguém enviar mensagem fora do horário.
+                  Se preenchida, será enviada automaticamente quando alguém
+                  enviar mensagem fora do horário.
                 </p>
                 <FormMessage />
               </FormItem>

@@ -8,12 +8,6 @@ import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import { Form } from '@/_components/ui/form'
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@/_components/ui/tabs'
 import { updateAgent } from '@/_actions/agent/update-agent'
 import { businessHoursConfigSchema } from '@/_actions/agent/update-agent/schema'
 import { DEFAULT_BUSINESS_HOURS_CONFIG } from './constants'
@@ -85,31 +79,11 @@ const GeneralTab = ({ agent, pipelines, canManage }: GeneralTabProps) => {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <Tabs defaultValue="basic">
-          <TabsList className="grid h-12 w-full grid-cols-5">
-            <TabsTrigger value="basic">Básico</TabsTrigger>
-            <TabsTrigger value="model">Modelo</TabsTrigger>
-            <TabsTrigger value="pipelines">Pipelines</TabsTrigger>
-            <TabsTrigger value="tools">Ferramentas</TabsTrigger>
-            <TabsTrigger value="hours">Horários</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="basic">
-            <BasicSettingsSection form={form} canManage={canManage} />
-          </TabsContent>
-          <TabsContent value="model">
-            <ModelBehaviorSection form={form} canManage={canManage} />
-          </TabsContent>
-          <TabsContent value="pipelines">
-            <PipelinesSection form={form} canManage={canManage} pipelines={pipelines} />
-          </TabsContent>
-          <TabsContent value="tools">
-            <ToolsSection form={form} canManage={canManage} />
-          </TabsContent>
-          <TabsContent value="hours">
-            <BusinessHoursSection form={form} canManage={canManage} />
-          </TabsContent>
-        </Tabs>
+        <BasicSettingsSection form={form} canManage={canManage} />
+        <ModelBehaviorSection form={form} canManage={canManage} />
+        <PipelinesSection form={form} canManage={canManage} pipelines={pipelines} />
+        <ToolsSection form={form} canManage={canManage} />
+        <BusinessHoursSection form={form} canManage={canManage} />
 
         {canManage && (
           <div className="flex justify-end">
