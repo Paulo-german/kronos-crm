@@ -1,6 +1,7 @@
 'use client'
 
 import { Dispatch, SetStateAction } from 'react'
+import { useParams, useRouter } from 'next/navigation'
 import { Control, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAction } from 'next-safe-action/hooks'
@@ -266,6 +267,9 @@ const UpsertAgentSheetContent = ({
   isUpdating: isUpdatingProp = false,
 }: UpsertAgentSheetContentProps) => {
   const isEditing = !!defaultValues?.id
+  const router = useRouter()
+  const params = useParams()
+  const orgSlug = params?.orgSlug as string
 
   const form = useForm<CreateAgentInput | EditAgentInput>({
     resolver: zodResolver(isEditing ? editAgentSchema : createAgentSchema),
@@ -306,6 +310,9 @@ const UpsertAgentSheetContent = ({
         }
         form.reset()
         setIsOpen(false)
+        if (data?.agentId) {
+          router.push(`/org/${orgSlug}/ai-agent/${data.agentId}`)
+        }
       },
       onError: ({ error }) => {
         toast.error(error.serverError || 'Erro ao criar agente.')
