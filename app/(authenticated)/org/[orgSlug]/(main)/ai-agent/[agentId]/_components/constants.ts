@@ -1,4 +1,5 @@
 import type { BusinessHoursConfig } from '@/_actions/agent/update-agent/schema'
+import type { PromptConfig } from '@/_actions/agent/shared/prompt-config-schema'
 
 export const MODEL_OPTIONS = [
   { value: 'openai/gpt-5.2', label: 'GPT 5.2', description: 'Mais inteligente da OpenAI. Maior custo por mensagem.' },
@@ -89,4 +90,45 @@ export const DEFAULT_BUSINESS_HOURS_CONFIG: BusinessHoursConfig = {
   friday: { enabled: true, start: '09:00', end: '18:00' },
   saturday: { enabled: false, start: '09:00', end: '13:00' },
   sunday: { enabled: false, start: '09:00', end: '13:00' },
+}
+
+export const ROLE_OPTIONS = [
+  { value: 'sdr', label: 'SDR', description: 'Prospecta e qualifica leads' },
+  { value: 'closer', label: 'Closer', description: 'Fecha negócios e negocia' },
+  { value: 'support', label: 'Suporte', description: 'Atende dúvidas e resolve problemas' },
+  { value: 'receptionist', label: 'Recepcionista', description: 'Recepciona e direciona contatos' },
+  { value: 'custom', label: 'Personalizado', description: 'Defina um papel customizado' },
+] as const
+
+export const TONE_OPTIONS = [
+  { value: 'formal', label: 'Formal' },
+  { value: 'professional', label: 'Profissional' },
+  { value: 'friendly', label: 'Amigável' },
+  { value: 'casual', label: 'Casual' },
+] as const
+
+export const RESPONSE_LENGTH_OPTIONS = [
+  { value: 'short', label: 'Curta', description: '1-2 frases' },
+  { value: 'medium', label: 'Média', description: '2-4 frases' },
+  { value: 'detailed', label: 'Detalhada', description: '4+ frases' },
+] as const
+
+export const LANGUAGE_OPTIONS = [
+  { value: 'pt-BR', label: 'Português (BR)' },
+  { value: 'en', label: 'Inglês' },
+  { value: 'es', label: 'Espanhol' },
+  { value: 'auto', label: 'Automático (idioma do cliente)' },
+] as const
+
+export const DEFAULT_PROMPT_CONFIG: PromptConfig = {
+  role: 'sdr',
+  companyName: '',
+  companyDescription: '',
+  targetAudience: '',
+  tone: 'professional',
+  responseLength: 'medium',
+  useEmojis: false,
+  language: 'pt-BR',
+  guidelines: [],
+  restrictions: [],
 }

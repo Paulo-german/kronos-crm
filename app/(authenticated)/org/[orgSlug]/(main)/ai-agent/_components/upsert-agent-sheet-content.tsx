@@ -1,7 +1,7 @@
 'use client'
 
 import { Dispatch, SetStateAction } from 'react'
-import { useForm } from 'react-hook-form'
+import { Control, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
@@ -19,10 +19,18 @@ import {
   FormLabel,
   FormMessage,
 } from '@/_components/ui/form'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/_components/ui/select'
 import { Input } from '@/_components/ui/input'
 import { Textarea } from '@/_components/ui/textarea'
 import { Button } from '@/_components/ui/button'
 import { Switch } from '@/_components/ui/switch'
+import { Separator } from '@/_components/ui/separator'
 import { Loader2 } from 'lucide-react'
 import { createAgent } from '@/_actions/agent/create-agent'
 import {
@@ -30,6 +38,12 @@ import {
   type CreateAgentInput,
 } from '@/_actions/agent/create-agent/schema'
 import type { UpdateAgentInput } from '@/_actions/agent/update-agent/schema'
+import {
+  ROLE_OPTIONS,
+  TONE_OPTIONS,
+  RESPONSE_LENGTH_OPTIONS,
+  LANGUAGE_OPTIONS,
+} from '../[agentId]/_components/constants'
 import { z } from 'zod'
 
 const editAgentSchema = z.object({
@@ -38,6 +52,205 @@ const editAgentSchema = z.object({
 })
 
 type EditAgentInput = z.infer<typeof editAgentSchema>
+
+interface CreateAgentPromptFieldsProps {
+  control: Control<CreateAgentInput>
+}
+
+const CreateAgentPromptFields = ({ control }: CreateAgentPromptFieldsProps) => {
+  const watchRole = useWatch({ control, name: 'promptConfig.role' })
+
+  return (
+    <>
+      {/* Identidade */}
+      <FormField
+        control={control}
+        name="promptConfig.role"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Papel *</FormLabel>
+            <Select value={field.value} onValueChange={field.onChange}>
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {ROLE_OPTIONS.map((role) => (
+                  <SelectItem key={role.value} value={role.value}>
+                    <div className="flex items-baseline gap-2">
+                      <span>{role.label}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {role.description}
+                      </span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      {watchRole === 'custom' && (
+        <FormField
+          control={control}
+          name="promptConfig.roleCustom"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Papel personalizado *</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="Ex: Consultor financeiro"
+                  {...field}
+                  value={field.value ?? ''}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      )}
+
+      <Separator />
+
+      {/* Empresa */}
+      <FormField
+        control={control}
+        name="promptConfig.companyName"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Empresa *</FormLabel>
+            <FormControl>
+              <Input placeholder="Ex: Kronos CRM" {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={control}
+        name="promptConfig.companyDescription"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Descrição da empresa *</FormLabel>
+            <FormControl>
+              <Textarea
+                placeholder="Descreva brevemente o que a empresa faz..."
+                className="min-h-[80px] resize-y"
+                {...field}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <Separator />
+
+      {/* Comunicação */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <FormField
+          control={control}
+          name="promptConfig.tone"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Tom de voz</FormLabel>
+              <Select value={field.value} onValueChange={field.onChange}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {TONE_OPTIONS.map((tone) => (
+                    <SelectItem key={tone.value} value={tone.value}>
+                      {tone.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={control}
+          name="promptConfig.responseLength"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Tamanho das respostas</FormLabel>
+              <Select value={field.value} onValueChange={field.onChange}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {RESPONSE_LENGTH_OPTIONS.map((length) => (
+                    <SelectItem key={length.value} value={length.value}>
+                      <div className="flex items-baseline gap-2">
+                        <span>{length.label}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {length.description}
+                        </span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={control}
+          name="promptConfig.language"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Idioma</FormLabel>
+              <Select value={field.value} onValueChange={field.onChange}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {LANGUAGE_OPTIONS.map((lang) => (
+                    <SelectItem key={lang.value} value={lang.value}>
+                      {lang.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={control}
+          name="promptConfig.useEmojis"
+          render={({ field }) => (
+            <FormItem className="flex items-center space-x-3 space-y-0 self-end rounded-md border border-border/50 px-4 py-3">
+              <FormControl>
+                <Switch
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              </FormControl>
+              <FormLabel>Usar emojis</FormLabel>
+            </FormItem>
+          )}
+        />
+      </div>
+    </>
+  )
+}
 
 interface UpsertAgentSheetContentProps {
   defaultValues?: { id: string; name: string; isActive: boolean }
@@ -58,7 +271,23 @@ const UpsertAgentSheetContent = ({
     resolver: zodResolver(isEditing ? editAgentSchema : createAgentSchema),
     defaultValues: isEditing
       ? { name: defaultValues.name, isActive: defaultValues.isActive }
-      : { name: '', systemPrompt: '', isActive: true },
+      : {
+          name: '',
+          isActive: true,
+          promptConfig: {
+            role: 'sdr',
+            roleCustom: '',
+            companyName: '',
+            companyDescription: '',
+            targetAudience: '',
+            tone: 'professional',
+            responseLength: 'medium',
+            useEmojis: false,
+            language: 'pt-BR',
+            guidelines: [],
+            restrictions: [],
+          },
+        },
   })
 
   const { execute: executeCreate, isPending: isCreating } = useAction(
@@ -86,7 +315,6 @@ const UpsertAgentSheetContent = ({
 
   const onSubmit = (data: CreateAgentInput | EditAgentInput) => {
     if (isEditing && defaultValues?.id) {
-      // Edição rápida: envia apenas name e isActive
       onUpdate?.({ id: defaultValues.id, name: data.name, isActive: data.isActive } as UpdateAgentInput)
     } else {
       executeCreate(data as CreateAgentInput)
@@ -99,6 +327,7 @@ const UpsertAgentSheetContent = ({
   }
 
   const isPending = isCreating || isUpdatingProp
+  const createControl = form.control as Control<CreateAgentInput>
 
   return (
     <SheetContent className="overflow-y-auto sm:max-w-xl">
@@ -109,7 +338,7 @@ const UpsertAgentSheetContent = ({
         <SheetDescription>
           {isEditing
             ? 'Atualize as informações básicas do agente. Para editar o prompt e demais configurações, acesse a página de detalhes.'
-            : 'Preencha os dados para criar um novo agente IA.'}
+            : 'Configure o agente IA com todas as definições do prompt.'}
         </SheetDescription>
       </SheetHeader>
 
@@ -129,25 +358,8 @@ const UpsertAgentSheetContent = ({
             )}
           />
 
-          {/* Prompt só aparece na criação — edição completa na página de detalhes */}
           {!isEditing && (
-            <FormField
-              control={form.control}
-              name="systemPrompt"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Prompt do Sistema *</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Descreva o comportamento e personalidade do agente..."
-                      className="min-h-[120px] resize-y"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <CreateAgentPromptFields control={createControl} />
           )}
 
           <FormField

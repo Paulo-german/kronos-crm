@@ -1,6 +1,5 @@
 import { Input } from '@/_components/ui/input'
 import { Textarea } from '@/_components/ui/textarea'
-import { Switch } from '@/_components/ui/switch'
 import {
   Card,
   CardContent,
@@ -10,6 +9,7 @@ import {
 } from '@/_components/ui/card'
 import {
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -17,24 +17,28 @@ import {
 } from '@/_components/ui/form'
 import type { SectionProps } from './types'
 
-export const BasicSettingsSection = ({ form, canManage }: SectionProps) => {
+export const CompanySection = ({ form, canManage }: SectionProps) => {
   return (
     <Card className="border-border/50 bg-secondary/20">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base font-semibold">Configurações Básicas</CardTitle>
+        <CardTitle className="text-base font-semibold">Empresa</CardTitle>
         <CardDescription>
-          Nome, prompt e status do agente.
+          Informações sobre a empresa que o agente representa.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <FormField
           control={form.control}
-          name="name"
+          name="promptConfig.companyName"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Nome</FormLabel>
+              <FormLabel>Nome da empresa</FormLabel>
               <FormControl>
-                <Input {...field} disabled={!canManage} />
+                <Input
+                  placeholder="Ex: Kronos CRM"
+                  {...field}
+                  disabled={!canManage}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -43,19 +47,15 @@ export const BasicSettingsSection = ({ form, canManage }: SectionProps) => {
 
         <FormField
           control={form.control}
-          name="systemPrompt"
+          name="promptConfig.companyDescription"
           render={({ field }) => (
             <FormItem>
-              <div className="flex items-center justify-between">
-                <FormLabel>Prompt do Sistema</FormLabel>
-                <span className="text-xs text-muted-foreground">
-                  {field.value.length} caracteres
-                </span>
-              </div>
+              <FormLabel>Descrição da empresa</FormLabel>
               <FormControl>
                 <Textarea
+                  placeholder="Descreva o que a empresa faz, seus produtos e serviços..."
+                  className="min-h-[100px] resize-y"
                   {...field}
-                  className="min-h-[200px] resize-y"
                   disabled={!canManage}
                 />
               </FormControl>
@@ -66,17 +66,22 @@ export const BasicSettingsSection = ({ form, canManage }: SectionProps) => {
 
         <FormField
           control={form.control}
-          name="isActive"
+          name="promptConfig.targetAudience"
           render={({ field }) => (
-            <FormItem className="flex items-center space-x-3 space-y-0">
+            <FormItem>
+              <FormLabel>Público-alvo</FormLabel>
               <FormControl>
-                <Switch
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
+                <Input
+                  placeholder="Ex: Pequenas empresas de tecnologia"
+                  {...field}
+                  value={field.value ?? ''}
                   disabled={!canManage}
                 />
               </FormControl>
-              <FormLabel>Agente ativo</FormLabel>
+              <FormDescription>
+                Descreva o perfil dos clientes que o agente irá atender.
+              </FormDescription>
+              <FormMessage />
             </FormItem>
           )}
         />
