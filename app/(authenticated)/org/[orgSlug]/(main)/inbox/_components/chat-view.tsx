@@ -331,8 +331,24 @@ export function ChatView({ conversation }: ChatViewProps) {
 
       recorder.start()
       setIsRecording(true)
-    } catch {
-      toast.error('Não foi possível acessar o microfone. Verifique as permissões do navegador.')
+    } catch (error) {
+      if (error instanceof DOMException) {
+        if (error.name === 'NotAllowedError') {
+          toast.error(
+            'Permissão de microfone negada. Clique no ícone de cadeado na barra de endereço para habilitar.',
+          )
+          return
+        }
+        if (error.name === 'NotFoundError') {
+          toast.error(
+            'Nenhum microfone encontrado. Conecte um microfone e tente novamente.',
+          )
+          return
+        }
+      }
+      toast.error(
+        'Não foi possível acessar o microfone. Verifique as permissões do navegador.',
+      )
     }
   }
 
