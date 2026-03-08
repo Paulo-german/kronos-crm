@@ -95,7 +95,7 @@ export function InboxClient({ inboxOptions, orgSlug }: InboxClientProps) {
           <span>Conexão instável. Verifique sua internet.</span>
         </div>
       )}
-      <div className="flex flex-1 border-t border-border/50">
+      <div className="flex min-h-0 flex-1 border-t border-border/50">
       {/* Sidebar */}
       <div className="w-80 shrink-0">
         <ConversationList
