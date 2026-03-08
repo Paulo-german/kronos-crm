@@ -4,6 +4,7 @@ import { authActionClient } from '@/_lib/safe-action'
 import { createOrganizationSchema } from './schema'
 import { db } from '@/_lib/prisma'
 import { revalidateTag } from 'next/cache'
+import { createDefaultPipeline } from '@/_data-access/pipeline/create-default-pipeline'
 
 function generateSlug(name: string): string {
   return name
@@ -85,6 +86,9 @@ export const createOrganization = authActionClient
 
       return org
     })
+
+    // Criar pipeline padrão (fora da transaction — idempotente)
+    await createDefaultPipeline({ orgId: organization.id })
 
     revalidateTag(`user-orgs:${ctx.userId}`)
     revalidateTag(`membership:${ctx.userId}:${organization.slug}`)
