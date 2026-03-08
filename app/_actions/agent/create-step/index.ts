@@ -19,24 +19,26 @@ export const createStep = orgActionClient
       throw new Error('Agente não encontrado.')
     }
 
-    // Próxima ordem = max(order) + 1
-    const maxStep = await db.agentStep.findFirst({
-      where: { agentId: data.agentId },
-      orderBy: { order: 'desc' },
-      select: { order: true },
-    })
+    // Próxima ordem = max(order) + 1 — em transaction para evitar race condition
+    const step = await db.$transaction(async (tx) => {
+      const maxStep = await tx.agentStep.findFirst({
+        where: { agentId: data.agentId },
+        orderBy: { order: 'desc' },
+        select: { order: true },
+      })
 
-    const nextOrder = (maxStep?.order ?? -1) + 1
+      const nextOrder = (maxStep?.order ?? -1) + 1
 
-    const step = await db.agentStep.create({
-      data: {
-        agentId: data.agentId,
-        name: data.name,
-        objective: data.objective,
-        allowedActions: data.allowedActions || [],
-        activationRequirement: data.activationRequirement || null,
-        order: nextOrder,
-      },
+      return tx.agentStep.create({
+        data: {
+          agentId: data.agentId,
+          name: data.name,
+          objective: data.objective,
+          allowedActions: data.allowedActions || [],
+          activationRequirement: data.activationRequirement || null,
+          order: nextOrder,
+        },
+      })
     })
 
     revalidateTag(`agent:${data.agentId}`)

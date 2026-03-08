@@ -61,7 +61,14 @@ export async function POST(request: NextRequest) {
       userRole: membership.userRole as MemberRole,
     }
 
-    requirePermission(canPerformAction(ctx, 'agent', 'update'))
+    try {
+      requirePermission(canPerformAction(ctx, 'agent', 'update'))
+    } catch {
+      return NextResponse.json(
+        { error: 'Você não tem permissão para fazer upload de arquivos.' },
+        { status: 403 },
+      )
+    }
 
     // 3. Parse FormData
     const formData = await request.formData()

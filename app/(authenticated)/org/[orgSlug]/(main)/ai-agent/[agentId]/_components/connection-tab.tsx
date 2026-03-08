@@ -192,7 +192,7 @@ const ConnectionTab = ({ agent, canManage, availableInboxes }: ConnectionTabProp
           {/* Vincular existente */}
           {!showLinkForm && !showCreateForm && (
             <div className="flex gap-3">
-              {unlinkedInboxes.length > 0 && (
+              {unlinkedInboxes.length > 0 ? (
                 <Button
                   variant="outline"
                   onClick={() => setShowLinkForm(true)}
@@ -200,6 +200,10 @@ const ConnectionTab = ({ agent, canManage, availableInboxes }: ConnectionTabProp
                   <Link2 className="mr-2 h-4 w-4" />
                   Vincular Inbox Existente
                 </Button>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Todas as caixas de entrada já estão vinculadas a agentes.
+                </p>
               )}
               <Button
                 variant="outline"

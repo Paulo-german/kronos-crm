@@ -27,6 +27,8 @@ export const deleteAgent = orgActionClient
 
     revalidateTag(`agents:${ctx.orgId}`)
     revalidateTag(`agent:${id}`)
+    revalidateTag(`inboxes:${ctx.orgId}`)
+    revalidateTag(`conversations:${ctx.orgId}`)
 
     return { success: true }
   })

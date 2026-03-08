@@ -114,18 +114,18 @@ const KnowledgeTab = ({ agent, canManage }: KnowledgeTabProps) => {
           } else {
             toast.success('Arquivo enviado para processamento!')
             router.refresh()
+            // Limpa o input para permitir re-seleção do mesmo arquivo
+            if (fileInputRef.current) {
+              fileInputRef.current.value = ''
+            }
           }
         } catch {
-          toast.error('Erro ao enviar arquivo. Tente novamente.')
+          toast.error('Erro de conexão. Verifique sua internet e tente novamente.')
         } finally {
           setIsUploading(false)
         }
       }
 
-      // Limpa o input para permitir re-seleção do mesmo arquivo
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
-      }
     },
     [agent.id, isUploading, router],
   )

@@ -1,4 +1,6 @@
 import 'server-only'
+import { cache } from 'react'
+import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 import type { Prisma } from '@prisma/client'
 
@@ -38,9 +40,9 @@ export interface PaginatedConversationsResult {
   totalUnread: number
 }
 
-export async function getConversationsPaginated(
+async function fetchConversationsPaginatedFromDb(
   orgId: string,
-  limit = 20,
+  limit: number,
   cursor?: string,
   filters?: ConversationFilters,
 ): Promise<PaginatedConversationsResult> {
@@ -123,3 +125,20 @@ export async function getConversationsPaginated(
 
   return { conversations: mapped, hasMore, totalCount, totalUnread }
 }
+
+export const getConversationsPaginated = cache(
+  async (
+    orgId: string,
+    limit = 20,
+    cursor?: string,
+    filters?: ConversationFilters,
+  ): Promise<PaginatedConversationsResult> => {
+    const filterKey = JSON.stringify(filters ?? {})
+    const getCached = unstable_cache(
+      async () => fetchConversationsPaginatedFromDb(orgId, limit, cursor, filters),
+      [`conversations-${orgId}-${limit}-${cursor ?? 'none'}-${filterKey}`],
+      { tags: [`conversations:${orgId}`], revalidate: 30 },
+    )
+    return getCached()
+  },
+)

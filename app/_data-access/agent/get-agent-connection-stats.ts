@@ -1,4 +1,6 @@
 import 'server-only'
+import { cache } from 'react'
+import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 
 export interface AgentConnectionStats {
@@ -7,9 +9,9 @@ export interface AgentConnectionStats {
   lastMessageAt: Date | null
 }
 
-export async function getAgentConnectionStats(
+const fetchConnectionStatsFromDb = async (
   inboxId: string,
-): Promise<AgentConnectionStats> {
+): Promise<AgentConnectionStats> => {
   const todayStart = new Date()
   todayStart.setHours(0, 0, 0, 0)
 
@@ -36,3 +38,15 @@ export async function getAgentConnectionStats(
     lastMessageAt: lastMessage?.createdAt ?? null,
   }
 }
+
+export const getAgentConnectionStats = cache(
+  async (inboxId: string): Promise<AgentConnectionStats> => {
+    const getCached = unstable_cache(
+      async () => fetchConnectionStatsFromDb(inboxId),
+      [`agent-connection-stats-${inboxId}`],
+      { tags: [`inbox:${inboxId}`], revalidate: 300 },
+    )
+
+    return getCached()
+  },
+)

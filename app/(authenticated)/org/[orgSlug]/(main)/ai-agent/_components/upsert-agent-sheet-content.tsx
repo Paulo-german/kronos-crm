@@ -30,6 +30,14 @@ import {
   type CreateAgentInput,
 } from '@/_actions/agent/create-agent/schema'
 import type { UpdateAgentInput } from '@/_actions/agent/update-agent/schema'
+import { z } from 'zod'
+
+const editAgentSchema = z.object({
+  name: z.string().min(1, 'Nome não pode ser vazio'),
+  isActive: z.boolean(),
+})
+
+type EditAgentInput = z.infer<typeof editAgentSchema>
 
 interface UpsertAgentSheetContentProps {
   defaultValues?: { id: string; name: string; isActive: boolean }
@@ -46,10 +54,10 @@ const UpsertAgentSheetContent = ({
 }: UpsertAgentSheetContentProps) => {
   const isEditing = !!defaultValues?.id
 
-  const form = useForm<CreateAgentInput>({
-    resolver: isEditing ? undefined : zodResolver(createAgentSchema),
+  const form = useForm<CreateAgentInput | EditAgentInput>({
+    resolver: zodResolver(isEditing ? editAgentSchema : createAgentSchema),
     defaultValues: isEditing
-      ? { name: defaultValues.name, systemPrompt: 'placeholder', isActive: defaultValues.isActive }
+      ? { name: defaultValues.name, isActive: defaultValues.isActive }
       : { name: '', systemPrompt: '', isActive: true },
   })
 
@@ -76,12 +84,12 @@ const UpsertAgentSheetContent = ({
     },
   )
 
-  const onSubmit = (data: CreateAgentInput) => {
+  const onSubmit = (data: CreateAgentInput | EditAgentInput) => {
     if (isEditing && defaultValues?.id) {
       // Edição rápida: envia apenas name e isActive
-      onUpdate?.({ id: defaultValues.id, name: data.name, isActive: data.isActive })
+      onUpdate?.({ id: defaultValues.id, name: data.name, isActive: data.isActive } as UpdateAgentInput)
     } else {
-      executeCreate(data)
+      executeCreate(data as CreateAgentInput)
     }
   }
 

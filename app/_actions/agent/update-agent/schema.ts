@@ -1,10 +1,15 @@
 import { z } from 'zod'
 
-const dayScheduleSchema = z.object({
-  enabled: z.boolean(),
-  start: z.string().regex(/^\d{2}:\d{2}$/, 'Formato inválido (HH:MM)'),
-  end: z.string().regex(/^\d{2}:\d{2}$/, 'Formato inválido (HH:MM)'),
-})
+const dayScheduleSchema = z
+  .object({
+    enabled: z.boolean(),
+    start: z.string().regex(/^\d{2}:\d{2}$/, 'Formato inválido (HH:MM)'),
+    end: z.string().regex(/^\d{2}:\d{2}$/, 'Formato inválido (HH:MM)'),
+  })
+  .refine((data) => !data.enabled || data.start < data.end, {
+    message: 'Horário de início deve ser anterior ao fim.',
+    path: ['end'],
+  })
 
 export const businessHoursConfigSchema = z.object({
   monday: dayScheduleSchema,

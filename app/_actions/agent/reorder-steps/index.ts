@@ -29,6 +29,13 @@ export const reorderSteps = orgActionClient
       throw new Error('Uma ou mais etapas não pertencem a este agente.')
     }
 
+    // Garante que TODAS as etapas estão incluídas (evita gaps de order)
+    const totalSteps = await db.agentStep.count({ where: { agentId } })
+
+    if (stepIds.length !== totalSteps) {
+      throw new Error('Todas as etapas devem ser incluídas na reordenação.')
+    }
+
     // Atualiza a ordem de cada step em uma transaction
     await db.$transaction(
       stepIds.map((stepId, index) =>
