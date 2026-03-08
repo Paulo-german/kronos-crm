@@ -884,6 +884,7 @@ model Inbox {
 
   @@unique([evolutionInstanceName])
   @@index([organizationId])
+  @@index([agentId])
   @@map("inboxes")
 }
 
@@ -920,6 +921,7 @@ model Conversation {
   @@index([organizationId, inboxId])
   @@index([contactId])
   @@index([remoteJid, inboxId])
+  @@index([dealId])
   @@map("conversations")
 }
 
