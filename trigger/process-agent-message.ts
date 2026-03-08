@@ -10,6 +10,7 @@ import { sendWhatsAppMessage, sendPresence } from '@/_lib/evolution/send-message
 import { buildSystemPrompt } from './build-system-prompt'
 import { buildToolSet } from './tools'
 import { langfuseTracer, flushLangfuse } from './lib/langfuse'
+import { createConversationEvent, createToolEvents } from './lib/create-conversation-event'
 import { transcribeAudio } from './utils/transcribe-audio'
 import { downloadAndStoreMedia } from './utils/download-and-store-media'
 import type { ToolContext } from './tools/types'
@@ -70,7 +71,7 @@ export interface ProcessAgentMessagePayload {
 export const processAgentMessage = task({
   id: 'process-agent-message',
   retry: {
-    maxAttempts: 1,
+    maxAttempts: 3,
   },
   run: async (payload: ProcessAgentMessagePayload) => {
     return observe(async () => {
@@ -271,6 +272,13 @@ export const processAgentMessage = task({
 
     if (!optimisticDebited) {
       log('step:4b optimistic_debit', 'EXIT', { reason: 'no_credits', estimatedCost, estimatedInputTokens })
+      await createConversationEvent({
+        conversationId,
+        type: 'PROCESSING_ERROR',
+        content: 'Créditos de IA insuficientes para processar esta mensagem.',
+        metadata: { subtype: 'NO_CREDITS', estimatedCost },
+      })
+      await revalidateConversationCache(conversationId, organizationId)
       return { skipped: true, reason: 'no_credits' }
     }
     log('step:4b optimistic_debit', 'PASS', { estimatedCost, estimatedInputTokens })
@@ -333,6 +341,13 @@ export const processAgentMessage = task({
     }).catch(async (llmError: unknown) => {
       // LLM falhou — devolver créditos do débito otimista
       log('step:5 llm_call', 'EXIT', { reason: 'llm_error', error: llmError instanceof Error ? llmError.message : String(llmError) })
+      await createConversationEvent({
+        conversationId,
+        type: 'PROCESSING_ERROR',
+        content: 'Erro ao processar mensagem com IA.',
+        metadata: { subtype: 'LLM_ERROR', error: llmError instanceof Error ? llmError.message : String(llmError) },
+      })
+      await revalidateConversationCache(conversationId, organizationId)
       await refundCredits(organizationId, estimatedCost, 'Refund — erro na chamada LLM', {
         agentId, conversationId, model: promptContext.modelId, estimatedCost, reason: 'llm_error',
       }).catch((refundError) => {
@@ -355,6 +370,13 @@ export const processAgentMessage = task({
           agentId, conversationId, model: promptContext.modelId, estimatedCost, actualCost: emptyActualCost,
         })
       }
+      await createConversationEvent({
+        conversationId,
+        type: 'PROCESSING_ERROR',
+        content: 'A IA não gerou uma resposta para esta mensagem.',
+        metadata: { subtype: 'EMPTY_RESPONSE' },
+      })
+      await revalidateConversationCache(conversationId, organizationId)
       log('step:5 llm_call', 'EXIT', { reason: 'empty_response', llmDurationMs, actualCost: emptyActualCost })
       return { skipped: true, reason: 'empty_response' }
     }
@@ -368,6 +390,11 @@ export const processAgentMessage = task({
         (step) => step.toolCalls?.map((toolCall) => toolCall.toolName) ?? [],
       ) ?? [],
     })
+
+    // Create tool events from LLM steps
+    if (result.steps?.length) {
+      await createToolEvents(conversationId, result.steps)
+    }
 
     // -----------------------------------------------------------------------
     // 7. Double-check anti-atropelamento — re-query aiPaused
@@ -404,6 +431,12 @@ export const processAgentMessage = task({
         })
       }
 
+      await createConversationEvent({
+        conversationId,
+        type: 'INFO',
+        content: 'IA foi pausada durante geração. Resposta salva mas não enviada.',
+        metadata: { subtype: 'AI_PAUSED_DURING_GENERATION' },
+      })
       await revalidateConversationCache(conversationId, organizationId)
       log('step:6 pause_recheck', 'EXIT', { reason: 'ai_paused_during_generation', llmDurationMs })
       return { skipped: true, reason: 'ai_paused_during_generation' }

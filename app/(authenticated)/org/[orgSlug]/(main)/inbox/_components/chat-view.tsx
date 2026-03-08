@@ -26,10 +26,12 @@ import {
   TooltipTrigger,
 } from '@/_components/ui/tooltip'
 import { MessageBubble } from './message-bubble'
+import { ConversationEventBubble } from './conversation-event-bubble'
 import { sendMessage } from '@/_actions/inbox/send-message'
 import { sendAudio } from '@/_actions/inbox/send-audio'
 import { toggleAiPause } from '@/_actions/inbox/toggle-ai-pause'
 import type { ConversationListDto } from '@/_data-access/conversation/get-conversations'
+import type { ConversationEventDto } from '@/_lib/conversation-events/types'
 
 interface MessageDto {
   id: string
@@ -39,6 +41,13 @@ interface MessageDto {
   createdAt: Date | string
 }
 
+type TimelineItem =
+  | { kind: 'message'; data: MessageDto }
+  | { kind: 'event'; data: ConversationEventDto }
+
+// MessageDto permanece local porque é derivada da resposta da API de mensagens,
+// não do módulo conversation-events. TimelineItem une os dois tipos localmente.
+
 interface ChatViewProps {
   conversation: ConversationListDto
 }
@@ -47,6 +56,7 @@ const POLLING_INTERVAL_MS = 5_000
 
 export function ChatView({ conversation }: ChatViewProps) {
   const [messages, setMessages] = useState<MessageDto[]>([])
+  const [events, setEvents] = useState<ConversationEventDto[]>([])
   const [aiPaused, setAiPaused] = useState(conversation.aiPaused)
   const [pausedAt, setPausedAt] = useState<Date | string | null>(conversation.pausedAt)
   const [text, setText] = useState('')
@@ -134,6 +144,23 @@ export function ChatView({ conversation }: ChatViewProps) {
         )
       })
 
+      // Merge events via Map (same pattern as messages)
+      if (data.events) {
+        setEvents((prev) => {
+          const merged = new Map<string, ConversationEventDto>()
+          for (const event of prev) {
+            merged.set(event.id, event)
+          }
+          for (const event of data.events) {
+            merged.set(event.id, event)
+          }
+          return Array.from(merged.values()).sort(
+            (a, b) =>
+              new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+          )
+        })
+      }
+
       // Só sincroniza aiPaused do servidor se não há toggle pendente
       if (togglePendingRef.current === null) {
         setAiPaused(data.aiPaused)
@@ -159,6 +186,7 @@ export function ChatView({ conversation }: ChatViewProps) {
   useEffect(() => {
     setIsLoadingMessages(true)
     setMessages([])
+    setEvents([])
     setHasMore(false)
     lastMessageIdRef.current = null
     fetchMessages()
@@ -340,9 +368,10 @@ export function ChatView({ conversation }: ChatViewProps) {
     }
   }, [conversation.id])
 
-  // Expandir mensagens da AI em chunks separados (mesma lógica do WhatsApp: split por \n\n)
-  const displayMessages = useMemo(() => {
-    const result: MessageDto[] = []
+  // Merge messages (expanded AI chunks) + events into a sorted timeline
+  const displayTimeline = useMemo(() => {
+    // Expand AI messages into chunks
+    const expandedMessages: MessageDto[] = []
     for (const message of messages) {
       const meta = message.metadata as Record<string, unknown> | null
       const isAiGenerated = message.role === 'assistant' && !!meta?.model
@@ -355,7 +384,7 @@ export function ChatView({ conversation }: ChatViewProps) {
 
         if (chunks.length > 1) {
           for (let index = 0; index < chunks.length; index++) {
-            result.push({
+            expandedMessages.push({
               ...message,
               id: `${message.id}-${index}`,
               content: chunks[index],
@@ -365,10 +394,23 @@ export function ChatView({ conversation }: ChatViewProps) {
         }
       }
 
-      result.push(message)
+      expandedMessages.push(message)
     }
-    return result
-  }, [messages])
+
+    // Build timeline items
+    const timeline: TimelineItem[] = [
+      ...expandedMessages.map((data) => ({ kind: 'message' as const, data })),
+      ...events.map((data) => ({ kind: 'event' as const, data })),
+    ]
+
+    // Sort by createdAt
+    timeline.sort(
+      (a, b) =>
+        new Date(a.data.createdAt).getTime() - new Date(b.data.createdAt).getTime(),
+    )
+
+    return timeline
+  }, [messages, events])
 
   const initials = conversation.contactName
     .split(' ')
@@ -497,17 +539,26 @@ export function ChatView({ conversation }: ChatViewProps) {
               </div>
             )}
 
-            {displayMessages.map((message) => (
-              <MessageBubble
-                key={message.id}
-                id={message.id}
-                conversationId={conversation.id}
-                role={message.role}
-                content={message.content}
-                metadata={message.metadata}
-                createdAt={message.createdAt}
-              />
-            ))}
+            {displayTimeline.map((item) =>
+              item.kind === 'event' ? (
+                <ConversationEventBubble
+                  key={`event-${item.data.id}`}
+                  type={item.data.type}
+                  content={item.data.content}
+                  createdAt={item.data.createdAt}
+                />
+              ) : (
+                <MessageBubble
+                  key={item.data.id}
+                  id={item.data.id}
+                  conversationId={conversation.id}
+                  role={item.data.role}
+                  content={item.data.content}
+                  metadata={item.data.metadata}
+                  createdAt={item.data.createdAt}
+                />
+              ),
+            )}
 
             <div ref={scrollRef} />
           </div>

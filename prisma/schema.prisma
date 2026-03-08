@@ -157,6 +157,13 @@ enum InboxChannel {
   WEB_CHAT
 }
 
+enum ConversationEventType {
+  TOOL_SUCCESS
+  TOOL_FAILURE
+  PROCESSING_ERROR
+  INFO
+}
+
 // -----------------------------------------------------------------------------
 // MODELS
 // -----------------------------------------------------------------------------
@@ -907,6 +914,7 @@ model Conversation {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   messages Message[]
+  events   ConversationEvent[]
 
   @@unique([inboxId, contactId, channel])
   @@index([organizationId, inboxId])
@@ -934,4 +942,19 @@ model Message {
 
   @@index([conversationId, isArchived, createdAt(sort: Desc)])
   @@map("messages")
+}
+
+model ConversationEvent {
+  id             String                @id @default(uuid())
+  conversationId String                @map("conversation_id")
+  conversation   Conversation          @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  type           ConversationEventType
+  toolName       String?               @map("tool_name")
+  content        String
+  metadata       Json?
+  visibleToUser  Boolean               @default(true) @map("visible_to_user")
+  createdAt      DateTime              @default(now()) @map("created_at")
+
+  @@index([conversationId, createdAt(sort: Desc)])
+  @@map("conversation_events")
 }
