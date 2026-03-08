@@ -2,9 +2,11 @@
 
 import { orgActionClient } from '@/_lib/safe-action'
 import { updateAgentSchema } from './schema'
+import { Prisma } from '@prisma/client'
 import { db } from '@/_lib/prisma'
 import { revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
+import { pickDefined, OPTIONAL_AGENT_FIELDS } from '../shared/pick-defined'
 
 export const updateAgent = orgActionClient
   .schema(updateAgentSchema)
@@ -26,27 +28,10 @@ export const updateAgent = orgActionClient
         ...(data.systemPrompt !== undefined && {
           systemPrompt: data.systemPrompt,
         }),
-        ...(data.modelId !== undefined && { modelId: data.modelId }),
-        ...(data.debounceSeconds !== undefined && {
-          debounceSeconds: data.debounceSeconds,
+        ...(data.promptConfig !== undefined && {
+          promptConfig: data.promptConfig === null ? Prisma.DbNull : data.promptConfig,
         }),
-        ...(data.pipelineIds !== undefined && { pipelineIds: data.pipelineIds }),
-        ...(data.toolsEnabled !== undefined && {
-          toolsEnabled: data.toolsEnabled,
-        }),
-        ...(data.isActive !== undefined && { isActive: data.isActive }),
-        ...(data.businessHoursEnabled !== undefined && {
-          businessHoursEnabled: data.businessHoursEnabled,
-        }),
-        ...(data.businessHoursTimezone !== undefined && {
-          businessHoursTimezone: data.businessHoursTimezone,
-        }),
-        ...(data.businessHoursConfig !== undefined && {
-          businessHoursConfig: data.businessHoursConfig,
-        }),
-        ...(data.outOfHoursMessage !== undefined && {
-          outOfHoursMessage: data.outOfHoursMessage,
-        }),
+        ...pickDefined(data, [...OPTIONAL_AGENT_FIELDS]),
       },
     })
 

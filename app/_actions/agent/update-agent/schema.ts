@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { promptConfigSchema } from '../shared/prompt-config-schema'
 
 const dayScheduleSchema = z
   .object({
@@ -27,7 +28,8 @@ export type BusinessHoursConfig = z.infer<typeof businessHoursConfigSchema>
 export const updateAgentSchema = z.object({
   id: z.string().uuid(),
   name: z.string().min(1, 'Nome não pode ser vazio').optional(),
-  systemPrompt: z.string().min(1, 'Prompt não pode ser vazio').optional(),
+  promptConfig: promptConfigSchema.nullable().optional(),
+  systemPrompt: z.string().optional(),
   modelId: z.string().optional(),
   debounceSeconds: z.number().int().min(0).max(30).optional(),
   pipelineIds: z.array(z.string().uuid()).optional(),

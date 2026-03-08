@@ -6,6 +6,7 @@ import { db } from '@/_lib/prisma'
 import { revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission, requireQuota } from '@/_lib/rbac'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
+import { pickDefined, OPTIONAL_AGENT_FIELDS } from '../shared/pick-defined'
 
 export const createAgent = orgActionClient
   .schema(createAgentSchema)
@@ -18,28 +19,9 @@ export const createAgent = orgActionClient
       data: {
         organizationId: ctx.orgId,
         name: data.name,
-        systemPrompt: data.systemPrompt,
-        ...(data.modelId !== undefined && { modelId: data.modelId }),
-        ...(data.debounceSeconds !== undefined && {
-          debounceSeconds: data.debounceSeconds,
-        }),
-        ...(data.pipelineIds !== undefined && { pipelineIds: data.pipelineIds }),
-        ...(data.toolsEnabled !== undefined && {
-          toolsEnabled: data.toolsEnabled,
-        }),
-        ...(data.isActive !== undefined && { isActive: data.isActive }),
-        ...(data.businessHoursEnabled !== undefined && {
-          businessHoursEnabled: data.businessHoursEnabled,
-        }),
-        ...(data.businessHoursTimezone !== undefined && {
-          businessHoursTimezone: data.businessHoursTimezone,
-        }),
-        ...(data.businessHoursConfig !== undefined && {
-          businessHoursConfig: data.businessHoursConfig,
-        }),
-        ...(data.outOfHoursMessage !== undefined && {
-          outOfHoursMessage: data.outOfHoursMessage,
-        }),
+        systemPrompt: data.systemPrompt ?? '',
+        promptConfig: data.promptConfig,
+        ...pickDefined(data, [...OPTIONAL_AGENT_FIELDS]),
       },
     })
 

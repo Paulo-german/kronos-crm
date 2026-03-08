@@ -4,6 +4,8 @@ import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 import type { KnowledgeFileStatus } from '@prisma/client'
 import type { BusinessHoursConfig } from '@/_actions/agent/update-agent/schema'
+import { promptConfigSchema } from '@/_actions/agent/shared/prompt-config-schema'
+import type { PromptConfig } from '@/_actions/agent/shared/prompt-config-schema'
 
 export interface AgentStepDto {
   id: string
@@ -37,6 +39,7 @@ export interface AgentDetailDto {
   id: string
   name: string
   systemPrompt: string
+  promptConfig: PromptConfig | null
   isActive: boolean
   modelId: string
   debounceSeconds: number
@@ -68,10 +71,16 @@ const fetchAgentByIdFromDb = async (
 
   if (!agent) return null
 
+  const parsedPromptConfig = promptConfigSchema.safeParse(agent.promptConfig)
+  if (!parsedPromptConfig.success) {
+    console.warn('[get-agent-by-id] Invalid promptConfig for agent', agentId, parsedPromptConfig.error.flatten())
+  }
+
   return {
     id: agent.id,
     name: agent.name,
     systemPrompt: agent.systemPrompt,
+    promptConfig: parsedPromptConfig.success ? parsedPromptConfig.data : null,
     isActive: agent.isActive,
     modelId: agent.modelId,
     debounceSeconds: agent.debounceSeconds,

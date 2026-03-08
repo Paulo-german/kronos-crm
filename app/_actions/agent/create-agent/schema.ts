@@ -1,9 +1,11 @@
 import { z } from 'zod'
 import { businessHoursConfigSchema } from '../update-agent/schema'
+import { promptConfigSchema } from '../shared/prompt-config-schema'
 
 export const createAgentSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
-  systemPrompt: z.string().min(1, 'Prompt do sistema é obrigatório'),
+  promptConfig: promptConfigSchema,
+  systemPrompt: z.string().optional(),
   modelId: z.string().optional(),
   debounceSeconds: z.number().int().min(0).max(30).optional(),
   pipelineIds: z.array(z.string().uuid()).optional(),

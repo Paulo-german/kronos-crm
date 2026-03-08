@@ -766,6 +766,7 @@ model Agent {
 
   name            String
   systemPrompt    String  @map("system_prompt") @db.Text
+  promptConfig    Json?   @map("prompt_config")
   isActive        Boolean @default(true) @map("is_active")
   modelId         String  @default("anthropic/claude-sonnet-4") @map("model_id")
   debounceSeconds Int     @default(3) @map("debounce_seconds")

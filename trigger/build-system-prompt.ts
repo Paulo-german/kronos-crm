@@ -1,6 +1,53 @@
 import { db } from '@/_lib/prisma'
 import { searchKnowledge } from './utils/search-knowledge'
 import { logger } from '@trigger.dev/sdk/v3'
+import { promptConfigSchema } from '@/_actions/agent/shared/prompt-config-schema'
+import type { PromptConfig } from '@/_actions/agent/shared/prompt-config-schema'
+import {
+  ROLE_LABELS,
+  TONE_INSTRUCTIONS,
+  LENGTH_INSTRUCTIONS,
+  LANGUAGE_INSTRUCTIONS,
+} from '@/_actions/agent/shared/prompt-labels'
+
+function compilePromptConfig(config: PromptConfig, agentName: string): string {
+  const sections: string[] = []
+
+  const roleName =
+    config.role === 'custom'
+      ? config.roleCustom || 'Assistente virtual'
+      : ROLE_LABELS[config.role]
+  sections.push(
+    `Você é ${agentName}, ${roleName} da empresa ${config.companyName}.`,
+  )
+
+  sections.push(`\n[Sobre a empresa]\n${config.companyDescription}`)
+  if (config.targetAudience) {
+    sections.push(`Público-alvo: ${config.targetAudience}`)
+  }
+
+  const style = [
+    `Tom de voz: ${TONE_INSTRUCTIONS[config.tone]}`,
+    `Tamanho das respostas: ${LENGTH_INSTRUCTIONS[config.responseLength]}`,
+    config.useEmojis
+      ? 'Use emojis quando apropriado para tornar a conversa mais leve'
+      : 'Não use emojis nas respostas',
+    `Idioma: responda sempre em ${LANGUAGE_INSTRUCTIONS[config.language]}`,
+  ]
+  sections.push(`\n[Estilo de comunicação]\n${style.join('\n')}`)
+
+  if (config.guidelines.length > 0) {
+    const lines = config.guidelines.map((guideline) => `- ${guideline}`)
+    sections.push(`\n[Diretrizes]\n${lines.join('\n')}`)
+  }
+
+  if (config.restrictions.length > 0) {
+    const lines = config.restrictions.map((restriction) => `- ${restriction}`)
+    sections.push(`\n[Restrições — NUNCA faça]\n${lines.join('\n')}`)
+  }
+
+  return sections.join('\n')
+}
 
 interface BuildSystemPromptResult {
   systemPrompt: string
@@ -41,6 +88,7 @@ export async function buildSystemPrompt(
       select: {
         name: true,
         systemPrompt: true,
+        promptConfig: true,
         modelId: true,
         toolsEnabled: true,
         pipelineIds: true,
@@ -134,8 +182,23 @@ export async function buildSystemPrompt(
 
   const parts: string[] = []
 
-  // 1. Persona base
-  parts.push(agent.systemPrompt)
+  // 1. Persona base (structured or legacy)
+  const parsedConfig = promptConfigSchema.safeParse(agent.promptConfig)
+  const promptConfig: PromptConfig | null = parsedConfig.success
+    ? parsedConfig.data
+    : null
+  if (promptConfig) {
+    parts.push(compilePromptConfig(promptConfig, agent.name))
+    if (agent.systemPrompt.trim()) {
+      parts.push(`\n[Instruções adicionais]\n${agent.systemPrompt}`)
+    }
+  } else {
+    logger.warn('Invalid promptConfig, falling back to raw systemPrompt', {
+      agentId,
+      errors: parsedConfig.error?.flatten(),
+    })
+    parts.push(agent.systemPrompt)
+  }
 
   // 2. Contexto temporal
   const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
