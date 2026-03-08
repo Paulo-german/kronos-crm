@@ -10,8 +10,6 @@ import { z } from 'zod'
 import { toast } from 'sonner'
 import {
   Inbox,
-  Wifi,
-  WifiOff,
   ExternalLink,
   Plus,
   Link2,
@@ -45,7 +43,9 @@ import {
 } from '@/_components/ui/form'
 import { linkInboxToAgent } from '@/_actions/inbox/link-inbox-to-agent'
 import { createInbox } from '@/_actions/inbox/create-inbox'
+import InboxConnectionCard from '@/(authenticated)/org/[orgSlug]/(main)/settings/inboxes/[inboxId]/_components/inbox-connection-card'
 import type { AgentDetailDto, AgentInboxDto } from '@/_data-access/agent/get-agent-by-id'
+import type { InboxConnectionDataMap } from './agent-detail-client'
 
 interface InboxOptionDto {
   id: string
@@ -58,6 +58,7 @@ interface ConnectionTabProps {
   agent: AgentDetailDto
   canManage: boolean
   availableInboxes: InboxOptionDto[]
+  inboxConnectionData: InboxConnectionDataMap
 }
 
 const createInlineInboxSchema = z.object({
@@ -66,7 +67,7 @@ const createInlineInboxSchema = z.object({
 
 type CreateInlineInboxInput = z.infer<typeof createInlineInboxSchema>
 
-const ConnectionTab = ({ agent, canManage, availableInboxes }: ConnectionTabProps) => {
+const ConnectionTab = ({ agent, canManage, availableInboxes, inboxConnectionData }: ConnectionTabProps) => {
   const params = useParams()
   const orgSlug = params?.orgSlug as string
   const [showLinkForm, setShowLinkForm] = useState(false)
@@ -153,11 +154,12 @@ const ConnectionTab = ({ agent, canManage, availableInboxes }: ConnectionTabProp
               Caixas de Entrada Vinculadas
             </CardTitle>
             <CardDescription>
-              Gerencie as caixas de entrada conectadas a este agente. A conexão
-              WhatsApp é feita na página de cada caixa de entrada.
+              Gerencie as caixas de entrada conectadas a este agente. Conecte o
+              WhatsApp diretamente abaixo ou acesse a página da inbox para
+              configurações avançadas.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
             {agent.inboxes.map((inbox) => (
               <InboxRow
                 key={inbox.id}
@@ -166,6 +168,7 @@ const ConnectionTab = ({ agent, canManage, availableInboxes }: ConnectionTabProp
                 canManage={canManage}
                 onUnlink={() => handleUnlink(inbox.id)}
                 isUnlinking={isUnlinking}
+                connectionData={inboxConnectionData[inbox.id]}
               />
             ))}
           </CardContent>
@@ -333,6 +336,7 @@ interface InboxRowProps {
   canManage: boolean
   onUnlink: () => void
   isUnlinking: boolean
+  connectionData?: { stats: InboxConnectionDataMap[string]['stats']; info: InboxConnectionDataMap[string]['info'] }
 }
 
 const InboxRow = ({
@@ -341,53 +345,53 @@ const InboxRow = ({
   canManage,
   onUnlink,
   isUnlinking,
+  connectionData,
 }: InboxRowProps) => {
-  const isConnected = !!inbox.evolutionInstanceName
-
   return (
-    <div className="flex items-center justify-between rounded-md border border-border/50 bg-background/70 p-3">
-      <div className="flex items-center gap-3">
-        {isConnected ? (
-          <Badge
-            variant="outline"
-            className="gap-1.5 bg-kronos-green/10 text-kronos-green border-kronos-green/20"
-          >
-            <Wifi className="h-3 w-3" />
-            Conectado
+    <div className="rounded-lg border border-border/50 bg-background/70 overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between p-3 border-b border-border/30">
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-medium">{inbox.name}</span>
+          <Badge variant="secondary" className="text-xs">
+            {inbox.channel === 'WHATSAPP' ? 'WhatsApp' : 'Web Chat'}
           </Badge>
-        ) : (
-          <Badge variant="outline" className="gap-1.5">
-            <WifiOff className="h-3 w-3" />
-            Desconectado
-          </Badge>
-        )}
-        <span className="text-sm font-medium">{inbox.name}</span>
-        <Badge variant="secondary" className="text-xs">
-          {inbox.channel === 'WHATSAPP' ? 'WhatsApp' : 'Web Chat'}
-        </Badge>
-      </div>
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="sm" asChild>
-          <Link href={`/org/${orgSlug}/settings/inboxes/${inbox.id}`}>
-            <ExternalLink className="mr-2 h-4 w-4" />
-            Gerenciar
-          </Link>
-        </Button>
-        {canManage && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onUnlink}
-            disabled={isUnlinking}
-            className="text-muted-foreground hover:text-destructive"
-          >
-            {isUnlinking ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Unlink className="h-4 w-4" />
-            )}
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" asChild>
+            <Link href={`/org/${orgSlug}/settings/inboxes/${inbox.id}`}>
+              <ExternalLink className="mr-2 h-4 w-4" />
+              Gerenciar
+            </Link>
           </Button>
-        )}
+          {canManage && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onUnlink}
+              disabled={isUnlinking}
+              className="text-muted-foreground hover:text-destructive"
+            >
+              {isUnlinking ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Unlink className="h-4 w-4" />
+              )}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Inline connection card */}
+      <div className="p-3">
+        <InboxConnectionCard
+          inboxId={inbox.id}
+          canManage={canManage}
+          connectionStats={connectionData?.stats ?? null}
+          instanceInfo={connectionData?.info ?? null}
+          hasInstance={!!inbox.evolutionInstanceName}
+          instanceName={inbox.evolutionInstanceName}
+        />
       </div>
     </div>
   )
