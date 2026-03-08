@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { MessageSquare } from 'lucide-react'
+import { MessageSquare, WifiOff } from 'lucide-react'
 import {
   Card,
   CardContent,
@@ -46,6 +46,7 @@ export function InboxClient({ inboxOptions, orgSlug }: InboxClientProps) {
     totalCount,
     totalUnread,
     deepLinkConversationId,
+    connectionError,
     sentinelRef,
   } = useConversations({
     inboxId: selectedInboxId,
@@ -87,7 +88,14 @@ export function InboxClient({ inboxOptions, orgSlug }: InboxClientProps) {
   )
 
   return (
-    <div className="flex h-full border-t border-border/50">
+    <div className="flex h-full flex-col">
+      {connectionError && (
+        <div className="flex items-center gap-2 border-b border-destructive/20 bg-destructive/10 px-4 py-2 text-xs text-destructive">
+          <WifiOff className="h-3.5 w-3.5 shrink-0" />
+          <span>Conexão instável. Verifique sua internet.</span>
+        </div>
+      )}
+      <div className="flex flex-1 border-t border-border/50">
       {/* Sidebar */}
       <div className="w-80 shrink-0">
         <ConversationList
@@ -139,6 +147,7 @@ export function InboxClient({ inboxOptions, orgSlug }: InboxClientProps) {
             </Card>
           </div>
         )}
+      </div>
       </div>
     </div>
   )

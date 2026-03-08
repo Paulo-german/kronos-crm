@@ -5,6 +5,7 @@ import type { ConversationListDto } from '@/_data-access/conversation/get-conver
 
 const POLL_INTERVAL_MS = 5_000
 const DEBOUNCE_MS = 300
+const MAX_CONSECUTIVE_FAILURES = 3
 
 interface UseConversationsOptions {
   inboxId: string | null
@@ -21,6 +22,7 @@ interface UseConversationsReturn {
   totalCount: number
   totalUnread: number
   deepLinkConversationId: string | null
+  connectionError: boolean
   loadMore: () => void
   sentinelRef: (node: HTMLElement | null) => void
 }
@@ -56,10 +58,12 @@ export function useConversations(options: UseConversationsOptions): UseConversat
   const [deepLinkConversationId, setDeepLinkConversationId] = useState<string | null>(null)
 
   const [debouncedSearch, setDebouncedSearch] = useState(search)
+  const [connectionError, setConnectionError] = useState(false)
   const observerRef = useRef<IntersectionObserver | null>(null)
   const didDeepLink = useRef(false)
   const cursorRef = useRef<string | undefined>(undefined)
   const abortRef = useRef<AbortController | null>(null)
+  const failCountRef = useRef(0)
 
   // Debounce search
   useEffect(() => {
@@ -102,9 +106,15 @@ export function useConversations(options: UseConversationsOptions): UseConversat
     fetchFirstPage(controller.signal).then((data) => {
       if (controller.signal.aborted) return
       if (!data) {
+        failCountRef.current += 1
+        if (failCountRef.current >= MAX_CONSECUTIVE_FAILURES) {
+          setConnectionError(true)
+        }
         setIsLoading(false)
         return
       }
+      failCountRef.current = 0
+      setConnectionError(false)
       setConversations(data.conversations)
       setHasMore(data.hasMore)
       setTotalCount(data.totalCount)
@@ -136,8 +146,13 @@ export function useConversations(options: UseConversationsOptions): UseConversat
         })
         setTotalCount(data.totalCount)
         setTotalUnread(data.totalUnread)
+        failCountRef.current = 0
+        setConnectionError(false)
       } catch {
-        // Silently ignore polling errors
+        failCountRef.current += 1
+        if (failCountRef.current >= MAX_CONSECUTIVE_FAILURES) {
+          setConnectionError(true)
+        }
       }
     }, POLL_INTERVAL_MS)
 
@@ -206,6 +221,7 @@ export function useConversations(options: UseConversationsOptions): UseConversat
     totalCount,
     totalUnread,
     deepLinkConversationId,
+    connectionError,
     loadMore,
     sentinelRef,
   }

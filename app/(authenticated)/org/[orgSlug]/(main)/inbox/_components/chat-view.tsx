@@ -10,7 +10,7 @@ import {
 } from 'react'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
-import { CircleIcon, Loader2, Mic, Pause, Send, Square, Trash2, AlertTriangle } from 'lucide-react'
+import { CircleIcon, Loader2, Mic, Pause, Send, Square, Trash2, AlertTriangle, WifiOff } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/_components/ui/avatar'
 import { Badge } from '@/_components/ui/badge'
 import { Button } from '@/_components/ui/button'
@@ -53,6 +53,7 @@ interface ChatViewProps {
 }
 
 const POLLING_INTERVAL_MS = 5_000
+const MAX_CONSECUTIVE_FAILURES = 3
 
 export function ChatView({ conversation }: ChatViewProps) {
   const [messages, setMessages] = useState<MessageDto[]>([])
@@ -76,6 +77,9 @@ export function ChatView({ conversation }: ChatViewProps) {
   const cancelledRef = useRef(false)
   // Rastreia toggle in-flight para evitar que polling sobrescreva estado otimista
   const togglePendingRef = useRef<boolean | null>(null)
+  const failCountRef = useRef(0)
+  const connectionErrorRef = useRef(false)
+  const [connectionError, setConnectionError] = useState(false)
 
   // Actions
   const sendAction = useAction(sendMessage, {
@@ -167,8 +171,17 @@ export function ChatView({ conversation }: ChatViewProps) {
         setPausedAt(data.pausedAt ?? null)
       }
       setIsLoadingMessages(false)
+      failCountRef.current = 0
+      if (connectionErrorRef.current) {
+        connectionErrorRef.current = false
+        setConnectionError(false)
+      }
     } catch {
-      // Silencioso em polling
+      failCountRef.current += 1
+      if (failCountRef.current >= MAX_CONSECUTIVE_FAILURES && !connectionErrorRef.current) {
+        connectionErrorRef.current = true
+        setConnectionError(true)
+      }
     }
   }, [conversation.id])
 
@@ -189,6 +202,9 @@ export function ChatView({ conversation }: ChatViewProps) {
     setEvents([])
     setHasMore(false)
     lastMessageIdRef.current = null
+    failCountRef.current = 0
+    connectionErrorRef.current = false
+    setConnectionError(false)
     fetchMessages()
 
     const interval = setInterval(fetchMessages, POLLING_INTERVAL_MS)
@@ -510,6 +526,14 @@ export function ChatView({ conversation }: ChatViewProps) {
             </Tooltip>
           </div>
         </div>
+
+        {/* Banner de conexão */}
+        {connectionError && (
+          <div className="flex items-center gap-2 border-b border-destructive/20 bg-destructive/10 px-4 py-2 text-xs text-destructive">
+            <WifiOff className="h-3.5 w-3.5 shrink-0" />
+            <span>Conexão instável. Verifique sua internet.</span>
+          </div>
+        )}
 
         {/* Banner de pausa */}
         {aiPaused && (
