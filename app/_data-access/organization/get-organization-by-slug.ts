@@ -29,6 +29,9 @@ async function fetchOrganizationBySlug(slug: string) {
       billingCity: true,
       billingState: true,
       billingCountry: true,
+      // Onboarding
+      onboardingCompleted: true,
+      niche: true,
     },
   })
 }
