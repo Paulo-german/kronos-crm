@@ -45,6 +45,22 @@ export async function sendWhatsAppMessage(
 
     if (!response.ok) {
       const errorBody = await response.text().catch(() => 'unknown')
+
+      // Detectar número inexistente no WhatsApp (exists: false)
+      if (response.status === 400) {
+        try {
+          const parsed = JSON.parse(errorBody)
+          const msg = parsed?.response?.message
+          if (Array.isArray(msg) && msg.some((entry: { exists?: boolean }) => entry.exists === false)) {
+            throw new Error('Este número não possui WhatsApp. Verifique o telefone do contato.')
+          }
+        } catch (parseError) {
+          if (parseError instanceof Error && parseError.message.includes('não possui WhatsApp')) {
+            throw parseError
+          }
+        }
+      }
+
       throw new Error(
         `Evolution API sendText failed (${response.status}): ${errorBody}`,
       )
