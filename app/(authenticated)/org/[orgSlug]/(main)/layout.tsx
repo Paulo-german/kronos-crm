@@ -1,7 +1,9 @@
+import { redirect } from 'next/navigation'
 import { AppSidebar } from '@/_components/layout/app-sidebar'
 import HeaderStick from '@/_components/layout/header-stick'
 import { ContentWrapper } from '@/(authenticated)/_components/content-wrapper'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
+import { getOnboardingStatus } from '@/_data-access/organization/get-onboarding-status'
 import { getTrialStatus } from '@/_data-access/billing/get-trial-status'
 import { TrialBanner } from '@/_components/trial/trial-banner'
 import { TrialGateClient } from '@/_components/trial/trial-gate-client'
@@ -10,6 +12,7 @@ import { getUserById } from '@/_data-access/user/get-user-by-id'
 import { getOrgModules } from '@/_data-access/module/get-org-modules'
 import { getCreditBalance } from '@/_data-access/billing/get-credit-balance'
 import { getUserOrganizations } from '@/_data-access/organization/get-user-organizations'
+import { DashboardTourTrigger } from '@/_components/onboarding/dashboard-tour-trigger'
 
 interface MainLayoutProps {
   children: React.ReactNode
@@ -20,14 +23,25 @@ const MainLayout = async ({ children, params }: MainLayoutProps) => {
   const { orgSlug } = await params
   const { orgId, userId, userRole } = await getOrgContext(orgSlug)
 
-  const [trialStatus, user, activeModules, creditBalance, userOrganizations] =
-    await Promise.all([
-      getTrialStatus(orgId),
-      getUserById(userId),
-      getOrgModules(orgId),
-      getCreditBalance(orgId),
-      getUserOrganizations(userId),
-    ])
+  const [
+    onboardingStatus,
+    trialStatus,
+    user,
+    activeModules,
+    creditBalance,
+    userOrganizations,
+  ] = await Promise.all([
+    getOnboardingStatus(orgId),
+    getTrialStatus(orgId),
+    getUserById(userId),
+    getOrgModules(orgId),
+    getCreditBalance(orgId),
+    getUserOrganizations(userId),
+  ])
+
+  if (!onboardingStatus.onboardingCompleted) {
+    redirect(`/org/${orgSlug}/onboarding`)
+  }
 
   const activeModuleSlugs = activeModules.map((mod) => mod.slug) as Array<
     'crm' | 'inbox' | 'ai-agent'
@@ -59,6 +73,7 @@ const MainLayout = async ({ children, params }: MainLayoutProps) => {
           )}
         </div>
       </div>
+      <DashboardTourTrigger />
     </div>
   )
 }

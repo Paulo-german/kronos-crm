@@ -17,9 +17,10 @@ interface SidebarItemProps {
   icon: React.ReactNode
   label: string
   badge?: string
+  dataTour?: string
 }
 
-export const SidebarItem = ({ href, label, badge, icon }: SidebarItemProps) => {
+export const SidebarItem = ({ href, label, badge, icon, dataTour }: SidebarItemProps) => {
   const pathname = usePathname()
   const { isCollapsed } = useSidebar()
   const isActive = pathname === href || pathname.startsWith(`${href}/`)
@@ -27,6 +28,7 @@ export const SidebarItem = ({ href, label, badge, icon }: SidebarItemProps) => {
   const linkContent = (
     <Link
       href={href}
+      data-tour={dataTour}
       className={cn(
         'ease-[cubic-bezier(0.25,0.76,0.35,1)] group flex items-center rounded-md py-2 pl-0 pr-0 text-sm font-medium transition-all duration-1000 hover:bg-primary/10 hover:text-primary',
         isActive

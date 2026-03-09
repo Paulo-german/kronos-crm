@@ -124,11 +124,13 @@ export const AppSidebar = ({
               href={buildHref('/dashboard')}
               label="Dashboard"
               icon={<LayoutDashboard className="h-4 w-4" />}
+              dataTour="dashboard"
             />
             <SidebarItem
               href={buildHref('/contacts')}
               label="Contatos"
               icon={<Users className="h-4 w-4" />}
+              dataTour="contacts"
             />
           </div>
 
@@ -145,6 +147,7 @@ export const AppSidebar = ({
                 href={buildHref('/crm/deals')}
                 label="Negociações"
                 icon={<Kanban className="h-4 w-4" />}
+                dataTour="deals"
               />
               <SidebarItem
                 href={buildHref('/crm/appointments')}
@@ -162,6 +165,7 @@ export const AppSidebar = ({
                 href={buildHref('/inbox')}
                 label="Conversas"
                 icon={<Inbox className="h-4 w-4" />}
+                dataTour="inbox"
               />
             </div>
           )}
@@ -174,6 +178,7 @@ export const AppSidebar = ({
                 href={buildHref('/ai-agent')}
                 label="Agentes"
                 icon={<Bot className="h-4 w-4" />}
+                dataTour="ai-agent"
               />
             </div>
           )}
@@ -202,6 +207,7 @@ export const AppSidebar = ({
           href={buildHref('/settings')}
           label="Configurações"
           icon={<Settings className="h-4 w-4" />}
+          dataTour="settings"
         />
         <SignOutButton isCollapsed={isCollapsed} />
       </div>
