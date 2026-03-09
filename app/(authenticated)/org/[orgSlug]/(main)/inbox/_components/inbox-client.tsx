@@ -10,15 +10,18 @@ import {
   CardHeader,
   CardTitle,
 } from '@/_components/ui/card'
+import type { ConversationListDto } from '@/_data-access/conversation/get-conversations'
 import { ConversationList } from './conversation-list'
 import { ChatView } from './chat-view'
 import { EmptyInbox } from './empty-inbox'
+import { StartConversationPanel } from './start-conversation-panel'
 import { useConversations } from '../_hooks/use-conversations'
 
 interface InboxOption {
   id: string
   name: string
   channel: string
+  isConnected: boolean
 }
 
 interface InboxClientProps {
@@ -46,6 +49,8 @@ export function InboxClient({ inboxOptions, orgSlug }: InboxClientProps) {
     totalCount,
     totalUnread,
     deepLinkConversationId,
+    deepLinkConversation,
+    deepLinkContact,
     connectionError,
     sentinelRef,
   } = useConversations({
@@ -55,37 +60,48 @@ export function InboxClient({ inboxOptions, orgSlug }: InboxClientProps) {
     contactId,
   })
 
-  // Deep link: auto-selecionar conversa
+  // Seleção automática de conversa com cadeia de prioridade
   useEffect(() => {
-    if (didApplyDeepLink.current || !deepLinkConversationId) return
-    setSelectedId(deepLinkConversationId)
-    didApplyDeepLink.current = true
-  }, [deepLinkConversationId])
+    if (isLoading) return
 
-  // Quando conversas mudam, manter seleção se possível, senão selecionar primeira
-  useEffect(() => {
-    if (isLoading || conversations.length === 0) return
-    const selectionExists = selectedId && conversations.some(
-      (conversation) => conversation.id === selectedId,
-    )
-    if (!selectionExists) {
-      setSelectedId(conversations[0]?.id ?? null)
+    // Prioridade 1: deep link com conversa existente
+    if (!didApplyDeepLink.current && deepLinkConversationId) {
+      setSelectedId(deepLinkConversationId)
+      didApplyDeepLink.current = true
+      return
     }
-  }, [conversations, isLoading, selectedId])
+
+    // Prioridade 1b: deep link sem conversa (contato sem conversa) — não auto-selecionar
+    if (deepLinkContact && !deepLinkConversationId) {
+      return
+    }
+
+    if (conversations.length === 0) return
+
+    // Prioridade 2: manter seleção atual se ainda existe na lista ou é deep link
+    if (selectedId && (conversations.some((conv) => conv.id === selectedId) || selectedId === deepLinkConversationId)) return
+
+    // Prioridade 3: fallback para a primeira conversa
+    setSelectedId(conversations[0]?.id ?? null)
+  }, [conversations, isLoading, deepLinkConversationId, deepLinkContact, selectedId])
+
+  const handleConversationCreated = (conversation: ConversationListDto) => {
+    setSelectedId(conversation.id)
+  }
 
   // Se não tem nenhuma inbox, mostrar empty state com CTA
   if (inboxOptions.length === 0) {
     return <EmptyInbox orgSlug={orgSlug} hasNoInbox />
   }
 
-  // Se terminou de carregar e não tem conversas (sem filtros ativos)
-  if (!isLoading && conversations.length === 0 && !search && filter === 'all' && !selectedInboxId) {
+  // Se terminou de carregar e não tem conversas (sem filtros ativos) e não é deep link de contato
+  if (!isLoading && conversations.length === 0 && !search && filter === 'all' && !selectedInboxId && !deepLinkContact) {
     return <EmptyInbox orgSlug={orgSlug} />
   }
 
-  const selectedConversation = conversations.find(
-    (conversation) => conversation.id === selectedId,
-  )
+  const selectedConversation =
+    conversations.find((conversation) => conversation.id === selectedId)
+    ?? (selectedId === deepLinkConversationId ? deepLinkConversation : null)
 
   return (
     <div className="flex h-full flex-col">
@@ -124,6 +140,13 @@ export function InboxClient({ inboxOptions, orgSlug }: InboxClientProps) {
           <ChatView
             key={selectedConversation.id}
             conversation={selectedConversation}
+          />
+        ) : deepLinkContact && !selectedConversation ? (
+          <StartConversationPanel
+            contact={deepLinkContact}
+            inboxOptions={inboxOptions}
+            orgSlug={orgSlug}
+            onConversationCreated={handleConversationCreated}
           />
         ) : (
           <div className="flex h-full items-center justify-center p-6">

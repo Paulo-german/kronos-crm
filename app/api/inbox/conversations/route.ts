@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { cookies } from 'next/headers'
 import { createClient } from '@/_lib/supabase/server'
 import { validateMembership } from '@/_data-access/organization/validate-membership'
-import { getConversationsPaginated } from '@/_data-access/conversation/get-conversations'
+import { getConversationsPaginated, getConversationAsDto } from '@/_data-access/conversation/get-conversations'
 import { ORG_SLUG_COOKIE } from '@/_lib/constants'
 import { db } from '@/_lib/prisma'
 
@@ -44,20 +44,33 @@ export async function GET(request: NextRequest) {
     })
 
     let deepLinkConversationId: string | undefined
+    let deepLinkConversation = undefined
+    let deepLinkContact: { id: string; name: string; phone: string | null } | undefined
     if (contactId) {
       const match = await db.conversation.findFirst({
         where: { organizationId: membership.orgId, contactId },
-        select: { id: true, inboxId: true },
+        select: { id: true },
         orderBy: { updatedAt: 'desc' },
       })
       if (match) {
         deepLinkConversationId = match.id
+        deepLinkConversation = await getConversationAsDto(membership.orgId, match.id)
+      } else {
+        const contact = await db.contact.findFirst({
+          where: { id: contactId, organizationId: membership.orgId },
+          select: { id: true, name: true, phone: true },
+        })
+        if (contact) {
+          deepLinkContact = { id: contact.id, name: contact.name, phone: contact.phone }
+        }
       }
     }
 
     return NextResponse.json({
       ...result,
       ...(deepLinkConversationId ? { deepLinkConversationId } : {}),
+      ...(deepLinkConversation ? { deepLinkConversation } : {}),
+      ...(deepLinkContact ? { deepLinkContact } : {}),
     })
   } catch (error) {
     console.error('[inbox-conversations-api] Error:', error)

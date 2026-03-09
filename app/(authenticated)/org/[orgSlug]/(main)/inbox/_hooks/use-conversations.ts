@@ -14,6 +14,12 @@ interface UseConversationsOptions {
   contactId: string | null
 }
 
+interface DeepLinkContact {
+  id: string
+  name: string
+  phone: string | null
+}
+
 interface UseConversationsReturn {
   conversations: ConversationListDto[]
   isLoading: boolean
@@ -22,6 +28,8 @@ interface UseConversationsReturn {
   totalCount: number
   totalUnread: number
   deepLinkConversationId: string | null
+  deepLinkConversation: ConversationListDto | null
+  deepLinkContact: DeepLinkContact | null
   connectionError: boolean
   loadMore: () => void
   sentinelRef: (node: HTMLElement | null) => void
@@ -33,6 +41,8 @@ interface ApiResponse {
   totalCount: number
   totalUnread: number
   deepLinkConversationId?: string
+  deepLinkConversation?: ConversationListDto
+  deepLinkContact?: DeepLinkContact
 }
 
 function buildUrl(options: UseConversationsOptions, cursor?: string): string {
@@ -56,6 +66,8 @@ export function useConversations(options: UseConversationsOptions): UseConversat
   const [totalCount, setTotalCount] = useState(0)
   const [totalUnread, setTotalUnread] = useState(0)
   const [deepLinkConversationId, setDeepLinkConversationId] = useState<string | null>(null)
+  const [deepLinkConversation, setDeepLinkConversation] = useState<ConversationListDto | null>(null)
+  const [deepLinkContact, setDeepLinkContact] = useState<DeepLinkContact | null>(null)
 
   const [debouncedSearch, setDebouncedSearch] = useState(search)
   const [connectionError, setConnectionError] = useState(false)
@@ -85,6 +97,12 @@ export function useConversations(options: UseConversationsOptions): UseConversat
 
       if (data.deepLinkConversationId) {
         setDeepLinkConversationId(data.deepLinkConversationId)
+        if (data.deepLinkConversation) {
+          setDeepLinkConversation(data.deepLinkConversation)
+        }
+        didDeepLink.current = true
+      } else if (data.deepLinkContact) {
+        setDeepLinkContact(data.deepLinkContact)
         didDeepLink.current = true
       }
 
@@ -221,6 +239,8 @@ export function useConversations(options: UseConversationsOptions): UseConversat
     totalCount,
     totalUnread,
     deepLinkConversationId,
+    deepLinkConversation,
+    deepLinkContact,
     connectionError,
     loadMore,
     sentinelRef,

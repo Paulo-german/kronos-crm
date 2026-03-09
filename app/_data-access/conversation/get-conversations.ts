@@ -40,6 +40,67 @@ export interface PaginatedConversationsResult {
   totalUnread: number
 }
 
+const conversationListInclude = {
+  contact: { select: { name: true, phone: true } },
+  inbox: {
+    select: {
+      id: true,
+      name: true,
+      agent: { select: { name: true } },
+    },
+  },
+  messages: {
+    where: { isArchived: false },
+    orderBy: { createdAt: 'desc' as const },
+    take: 1,
+    select: { content: true, role: true, createdAt: true, metadata: true },
+  },
+  _count: { select: { messages: true } },
+} satisfies Prisma.ConversationInclude
+
+type ConversationWithIncludes = Prisma.ConversationGetPayload<{
+  include: typeof conversationListInclude
+}>
+
+function mapConversationToDto(conversation: ConversationWithIncludes): ConversationListDto {
+  return {
+    id: conversation.id,
+    contactId: conversation.contactId,
+    contactName: conversation.contact.name,
+    contactPhone: conversation.contact.phone,
+    agentName: conversation.inbox.agent?.name ?? null,
+    inboxId: conversation.inbox.id,
+    inboxName: conversation.inbox.name,
+    channel: conversation.channel,
+    aiPaused: conversation.aiPaused,
+    pausedAt: conversation.pausedAt,
+    remoteJid: conversation.remoteJid,
+    unreadCount: conversation.unreadCount,
+    lastMessage: conversation.messages[0]
+      ? {
+          content: conversation.messages[0].content,
+          role: conversation.messages[0].role,
+          createdAt: conversation.messages[0].createdAt,
+          metadata: conversation.messages[0].metadata,
+        }
+      : null,
+    messageCount: conversation._count.messages,
+    updatedAt: conversation.updatedAt,
+  }
+}
+
+export async function getConversationAsDto(
+  orgId: string,
+  conversationId: string,
+): Promise<ConversationListDto | null> {
+  const conversation = await db.conversation.findFirst({
+    where: { id: conversationId, organizationId: orgId },
+    include: conversationListInclude,
+  })
+  if (!conversation) return null
+  return mapConversationToDto(conversation)
+}
+
 async function fetchConversationsPaginatedFromDb(
   orgId: string,
   limit: number,
@@ -73,23 +134,7 @@ async function fetchConversationsPaginatedFromDb(
         ? { cursor: { id: cursor }, skip: 1 }
         : {}),
       orderBy: { updatedAt: 'desc' },
-      include: {
-        contact: { select: { name: true, phone: true } },
-        inbox: {
-          select: {
-            id: true,
-            name: true,
-            agent: { select: { name: true } },
-          },
-        },
-        messages: {
-          where: { isArchived: false },
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-          select: { content: true, role: true, createdAt: true, metadata: true },
-        },
-        _count: { select: { messages: true } },
-      },
+      include: conversationListInclude,
     }),
     db.conversation.count({ where }),
     db.conversation.count({ where: unreadWhere }),
@@ -97,31 +142,7 @@ async function fetchConversationsPaginatedFromDb(
 
   const hasMore = conversations.length > limit
   const sliced = hasMore ? conversations.slice(0, limit) : conversations
-
-  const mapped: ConversationListDto[] = sliced.map((conversation) => ({
-    id: conversation.id,
-    contactId: conversation.contactId,
-    contactName: conversation.contact.name,
-    contactPhone: conversation.contact.phone,
-    agentName: conversation.inbox.agent?.name ?? null,
-    inboxId: conversation.inbox.id,
-    inboxName: conversation.inbox.name,
-    channel: conversation.channel,
-    aiPaused: conversation.aiPaused,
-    pausedAt: conversation.pausedAt,
-    remoteJid: conversation.remoteJid,
-    unreadCount: conversation.unreadCount,
-    lastMessage: conversation.messages[0]
-      ? {
-          content: conversation.messages[0].content,
-          role: conversation.messages[0].role,
-          createdAt: conversation.messages[0].createdAt,
-          metadata: conversation.messages[0].metadata,
-        }
-      : null,
-    messageCount: conversation._count.messages,
-    updatedAt: conversation.updatedAt,
-  }))
+  const mapped = sliced.map(mapConversationToDto)
 
   return { conversations: mapped, hasMore, totalCount, totalUnread }
 }
