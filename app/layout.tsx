@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Plus_Jakarta_Sans, Martian_Mono } from 'next/font/google'
 import './globals.css'
+import { NuqsAdapter } from 'nuqs/adapters/next/app'
 import { ThemeProvider } from '@/_components/theme-provider'
 import { Toaster } from '@/_components/ui/sonner'
 import { TooltipProvider } from './_components/ui/tooltip'
@@ -38,10 +39,10 @@ export default function RootLayout({
     <html
       lang="pt-BR"
       suppressHydrationWarning
-      className="w-auto overflow-y-hidden"
+      className="min-h-screen w-auto overflow-y-hidden bg-background"
     >
       <body
-        className={`${jakarta.variable} ${martian.variable} font-sans antialiased`}
+        className={`${jakarta.variable} ${martian.variable} min-h-screen font-sans antialiased`}
       >
         <GoogleTagManagerNoscript />
         <GoogleTagManager />
@@ -51,7 +52,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <TooltipProvider delayDuration={500}>{children}</TooltipProvider>
+          <NuqsAdapter>
+            <TooltipProvider delayDuration={500}>{children}</TooltipProvider>
+          </NuqsAdapter>
           <Toaster position="bottom-right" />
         </ThemeProvider>
       </body>
