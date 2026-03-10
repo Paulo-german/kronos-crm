@@ -173,7 +173,7 @@ const StepActionBuilder = ({
                                   {group.stages.map((stage) => (
                                     <SelectItem
                                       key={stage.stageId}
-                                      value={stage.stageName}
+                                      value={stage.stageId}
                                     >
                                       {Object.keys(groupedStages).length > 1
                                         ? `${group.pipelineName} → ${stage.stageName}`
