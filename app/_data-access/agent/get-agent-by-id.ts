@@ -1,18 +1,24 @@
 import 'server-only'
 import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
+import { z } from 'zod'
 import { db } from '@/_lib/prisma'
 import type { KnowledgeFileStatus } from '@prisma/client'
 import type { BusinessHoursConfig } from '@/_actions/agent/update-agent/schema'
 import { promptConfigSchema } from '@/_actions/agent/shared/prompt-config-schema'
 import type { PromptConfig } from '@/_actions/agent/shared/prompt-config-schema'
+import {
+  stepActionSchema,
+  type StepAction,
+} from '@/_actions/agent/shared/step-action-schema'
 
 export interface AgentStepDto {
   id: string
   name: string
   objective: string
-  allowedActions: string[]
-  activationRequirement: string | null
+  actions: StepAction[]
+  keyQuestion: string | null
+  messageTemplate: string | null
   order: number
 }
 
@@ -98,14 +104,18 @@ const fetchAgentByIdFromDb = async (
       evolutionInstanceName: inbox.evolutionInstanceName,
       evolutionInstanceId: inbox.evolutionInstanceId,
     })),
-    steps: agent.steps.map((step) => ({
-      id: step.id,
-      name: step.name,
-      objective: step.objective,
-      allowedActions: step.allowedActions,
-      activationRequirement: step.activationRequirement,
-      order: step.order,
-    })),
+    steps: agent.steps.map((step) => {
+      const parsed = z.array(stepActionSchema).safeParse(step.actions)
+      return {
+        id: step.id,
+        name: step.name,
+        objective: step.objective,
+        actions: parsed.success ? parsed.data : [],
+        keyQuestion: step.keyQuestion,
+        messageTemplate: step.messageTemplate,
+        order: step.order,
+      }
+    }),
     knowledgeFiles: agent.knowledgeFiles.map((file) => ({
       id: file.id,
       fileName: file.fileName,

@@ -1,11 +1,9 @@
 import { z } from 'zod'
+import { stepFieldsSchema } from '../shared/step-fields-schema'
 
-export const createStepSchema = z.object({
+export const createStepSchema = stepFieldsSchema.extend({
   agentId: z.string().uuid(),
-  name: z.string().min(1, 'Nome é obrigatório'),
-  objective: z.string().min(1, 'Objetivo é obrigatório'),
-  allowedActions: z.array(z.string()).optional(),
-  activationRequirement: z.string().optional(),
 })
 
 export type CreateStepInput = z.infer<typeof createStepSchema>
+export type CreateStepFormInput = z.input<typeof createStepSchema>

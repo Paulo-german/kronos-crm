@@ -805,8 +805,11 @@ model AgentStep {
 
   name                  String
   objective             String   @db.Text
-  allowedActions        String[] @map("allowed_actions")
+  allowedActions        String[] @default([]) @map("allowed_actions")
   activationRequirement String?  @map("activation_requirement") @db.Text
+  actions               Json?    @map("actions")
+  keyQuestion           String?  @map("key_question") @db.Text
+  messageTemplate       String?  @map("message_template") @db.Text
   order                 Int
 
   createdAt DateTime @default(now()) @map("created_at")
