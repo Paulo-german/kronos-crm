@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import { db } from '@/_lib/prisma'
 import { searchKnowledge } from './utils/search-knowledge'
 import { logger } from '@trigger.dev/sdk/v3'
@@ -9,6 +10,7 @@ import {
   LENGTH_INSTRUCTIONS,
   LANGUAGE_INSTRUCTIONS,
 } from '@/_actions/agent/shared/prompt-labels'
+import { stepActionSchema, type StepAction } from '@/_actions/agent/shared/step-action-schema'
 
 function compilePromptConfig(config: PromptConfig, agentName: string): string {
   const sections: string[] = []
@@ -21,7 +23,7 @@ function compilePromptConfig(config: PromptConfig, agentName: string): string {
     `Você é ${agentName}, ${roleName} da empresa ${config.companyName}.`,
   )
 
-  sections.push(`\n[Sobre a empresa]\n${config.companyDescription}`)
+  sections.push(`\n## Sobre a Empresa\n${config.companyDescription}`)
   if (config.targetAudience) {
     sections.push(`Público-alvo: ${config.targetAudience}`)
   }
@@ -30,23 +32,68 @@ function compilePromptConfig(config: PromptConfig, agentName: string): string {
     `Tom de voz: ${TONE_INSTRUCTIONS[config.tone]}`,
     `Tamanho das respostas: ${LENGTH_INSTRUCTIONS[config.responseLength]}`,
     config.useEmojis
-      ? 'Use emojis quando apropriado para tornar a conversa mais leve'
-      : 'Não use emojis nas respostas',
-    `Idioma: responda sempre em ${LANGUAGE_INSTRUCTIONS[config.language]}`,
+      ? 'Use emojis quando apropriado para tornar a conversa mais leve.'
+      : 'Não use emojis nas respostas.',
+    `Idioma: responda sempre em ${LANGUAGE_INSTRUCTIONS[config.language]}.`,
+    '',
+    'Formato de mensagens:',
+    '- Use *negrito* com apenas um asterisco de cada lado.',
+    '- Mantenha frases curtas e naturais, no máximo 120 caracteres por bloco.',
+    '- NUNCA use listas com marcadores (-, *, •). Prefira mensagens corridas e naturais.',
+    '- NUNCA use headers (#, ##), links em markdown [texto](url) ou formatação técnica.',
+    '- Se a resposta for longa, divida em parágrafos curtos com linha em branco entre eles.',
+    '- NUNCA comece respostas com "Entendi", "Compreendo", "Ótimo", "Perfeito", "Interessante". Vá direto ao ponto.',
+    '- NUNCA mencione nomes técnicos de ferramentas (move_deal, update_contact, etc.) nas mensagens ao cliente.',
+    '- Seja conversacional. Escreva como uma pessoa real escreveria, não como um relatório.',
   ]
-  sections.push(`\n[Estilo de comunicação]\n${style.join('\n')}`)
+  sections.push(`\n## Estilo e Formato de Comunicação\n${style.join('\n')}`)
 
+  const ruleLines: string[] = []
   if (config.guidelines.length > 0) {
-    const lines = config.guidelines.map((guideline) => `- ${guideline}`)
-    sections.push(`\n[Diretrizes]\n${lines.join('\n')}`)
+    ruleLines.push('**Diretrizes que você DEVE seguir:**')
+    ruleLines.push(
+      ...config.guidelines.map((guideline) => `- ${guideline}`),
+    )
   }
-
   if (config.restrictions.length > 0) {
-    const lines = config.restrictions.map((restriction) => `- ${restriction}`)
-    sections.push(`\n[Restrições — NUNCA faça]\n${lines.join('\n')}`)
+    if (ruleLines.length > 0) ruleLines.push('')
+    ruleLines.push('**NUNCA faça:**')
+    ruleLines.push(
+      ...config.restrictions.map((restriction) => `- ${restriction}`),
+    )
+  }
+  if (ruleLines.length > 0) {
+    sections.push(`\n## Regras do Atendimento\n${ruleLines.join('\n')}`)
   }
 
   return sections.join('\n')
+}
+
+function compileStepActions(actions: StepAction[]): string[] {
+  return actions.map((action) => {
+    const { trigger } = action
+
+    switch (action.type) {
+      case 'move_deal':
+        return `* ${trigger} → execute \`move_deal\` para a etapa "${action.targetStage}".`
+      case 'update_contact':
+        return `* ${trigger} → execute \`update_contact\` para registrar no contato.`
+      case 'update_deal':
+        return `* ${trigger} → execute \`update_deal\` para atualizar o negócio.`
+      case 'create_task':
+        return `* ${trigger} → execute \`create_task\` com título "${action.title}"${action.dueDaysOffset ? ` (vencimento em ${action.dueDaysOffset} dias)` : ''}.`
+      case 'create_appointment':
+        return `* ${trigger} → execute \`create_appointment\` com título "${action.title}".`
+      case 'search_knowledge':
+        return `* ${trigger} → execute \`search_knowledge\` para consultar a base.`
+      case 'hand_off_to_human':
+        return `* ${trigger} → execute \`hand_off_to_human\` para transferir.`
+      default: {
+        const _exhaustive: never = action
+        throw new Error(`Tipo de ação desconhecido: ${(_exhaustive as StepAction).type}`)
+      }
+    }
+  })
 }
 
 interface BuildSystemPromptResult {
@@ -55,12 +102,10 @@ interface BuildSystemPromptResult {
   agentName: string
   summary: string | null
   contactName: string
-  currentStepOrder: number
   estimatedTokens: number
   toolsEnabled: string[]
   pipelineIds: string[]
   knowledgeContext: string | null
-  currentStepAllowedActions: string[] | null
 }
 
 /**
@@ -69,10 +114,9 @@ interface BuildSystemPromptResult {
  * 2. Contexto temporal (data/hora atual em SP)
  * 3. Dados do contato (nome, telefone, email, cargo)
  * 4. Dados do negócio (deal vinculado, se houver)
- * 5. Etapas do pipeline (se move_deal habilitado e deal vinculado)
- * 6. Motivos de perda disponíveis (se update_deal habilitado)
- * 7. Mapa de steps (marcando etapa atual)
- * 8. Busca RAG na base de conhecimento
+ * 5. Motivos de perda disponíveis (se update_deal habilitado)
+ * 6. Processo de atendimento (etapas com ações imperativas)
+ * 7. Busca RAG na base de conhecimento
  */
 export async function buildSystemPrompt(
   agentId: string,
@@ -98,7 +142,9 @@ export async function buildSystemPrompt(
             name: true,
             objective: true,
             order: true,
-            allowedActions: true,
+            actions: true,
+            keyQuestion: true,
+            messageTemplate: true,
           },
         },
       },
@@ -107,7 +153,6 @@ export async function buildSystemPrompt(
       where: { id: conversationId },
       select: {
         summary: true,
-        currentStepOrder: true,
         contact: {
           select: {
             name: true,
@@ -124,19 +169,7 @@ export async function buildSystemPrompt(
             value: true,
             notes: true,
             expectedCloseDate: true,
-            stage: {
-              select: {
-                name: true,
-                pipeline: {
-                  select: {
-                    stages: {
-                      orderBy: { position: 'asc' },
-                      select: { name: true, position: true },
-                    },
-                  },
-                },
-              },
-            },
+            stage: { select: { name: true } },
             company: { select: { name: true } },
             contacts: {
               select: {
@@ -197,7 +230,7 @@ export async function buildSystemPrompt(
       agentId,
       errors: parsedConfig.error?.flatten(),
     })
-    parts.push(agent.systemPrompt)
+    parts.push(`Seu nome é ${agent.name}.\n\n${agent.systemPrompt}`)
   }
 
   // 2. Contexto temporal
@@ -307,17 +340,6 @@ export async function buildSystemPrompt(
     }
 
     parts.push(`\n[Dados do negócio]\n${dealFields.join('\n')}`)
-
-    // 5. Etapas do pipeline (só se a tool move_deal está habilitada)
-    if (agent.toolsEnabled.includes('move_deal')) {
-      const pipelineStages = deal.stage.pipeline.stages
-      const stageLines = pipelineStages.map(
-        (stage) => `  ${stage.position}. ${stage.name}`,
-      )
-      parts.push(
-        `\n[Etapas do pipeline]\nAo mover um negócio, use o campo "stageName" com uma das etapas abaixo:\n${stageLines.join('\n')}\nEtapa atual: ${deal.stage.name}`,
-      )
-    }
   }
 
   // 6. Motivos de perda disponíveis (só se a tool update_deal está habilitada)
@@ -328,30 +350,39 @@ export async function buildSystemPrompt(
     )
   }
 
-  // 7. Mapa de steps (se houver)
-  // Encontrar o step atual e extrair allowedActions
-  const currentStep = agent.steps.find(
-    (step) => step.order === conversation.currentStepOrder,
-  )
-  const currentStepAllowedActions =
-    currentStep && currentStep.allowedActions.length > 0
-      ? currentStep.allowedActions
-      : null
-
+  // 7. Processo de atendimento (etapas com ações imperativas)
   if (agent.steps.length > 0) {
-    const stepLines = agent.steps.map((step) => {
-      const isCurrent = step.order === conversation.currentStepOrder
-      const marker = isCurrent ? '→' : ' '
-      const actionsInfo =
-        step.allowedActions.length > 0
-          ? ` [Ações: ${step.allowedActions.join(', ')}]`
-          : ''
-      return `${marker} Etapa ${step.order}: ${step.name} — ${step.objective}${actionsInfo}`
-    })
+    const lines: string[] = []
 
-    parts.push(
-      `\n[Etapas do atendimento]\n${stepLines.join('\n')}\nEtapa atual: ${conversation.currentStepOrder}`,
+    lines.push('## Processo de Atendimento')
+    lines.push('')
+    lines.push(
+      'Siga as etapas abaixo na ordem. Identifique em que ponto da conversa ' +
+      'você está pelo contexto do histórico e conduza o lead para a próxima etapa naturalmente.',
     )
+
+    for (const step of agent.steps) {
+      lines.push('')
+      lines.push(`**${step.order + 1}. ${step.name}**`)
+      lines.push(step.objective)
+
+      if (step.keyQuestion) {
+        lines.push(`* Pergunta-chave: "${step.keyQuestion}"`)
+      }
+
+      const parsed = z.array(stepActionSchema).safeParse(step.actions)
+      if (parsed.success && parsed.data.length > 0) {
+        lines.push(...compileStepActions(parsed.data))
+      }
+
+      if (step.messageTemplate) {
+        lines.push('')
+        lines.push('**Exemplo de fechamento:**')
+        lines.push(`"${step.messageTemplate}"`)
+      }
+    }
+
+    parts.push(`\n${lines.join('\n')}`)
   }
 
   // 8. Busca RAG na base de conhecimento (se houver arquivos e mensagem do usuário)
@@ -387,11 +418,9 @@ export async function buildSystemPrompt(
     agentName: agent.name,
     summary: conversation.summary,
     contactName: contact.name,
-    currentStepOrder: conversation.currentStepOrder,
     estimatedTokens,
     toolsEnabled: agent.toolsEnabled,
     pipelineIds: agent.pipelineIds,
     knowledgeContext,
-    currentStepAllowedActions,
   }
 }

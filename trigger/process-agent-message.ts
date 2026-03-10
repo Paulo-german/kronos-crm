@@ -296,12 +296,7 @@ export const processAgentMessage = task({
       pipelineIds: promptContext.pipelineIds,
     }
 
-    // Filtrar tools pela etapa atual (se configurada)
-    const effectiveToolsEnabled = promptContext.currentStepAllowedActions
-      ? promptContext.toolsEnabled.filter((tool) =>
-          promptContext.currentStepAllowedActions!.includes(tool),
-        )
-      : promptContext.toolsEnabled
+    const effectiveToolsEnabled = promptContext.toolsEnabled
 
     const tools = buildToolSet(effectiveToolsEnabled, toolContext)
 
