@@ -157,13 +157,34 @@ export const seedOrganization = orgActionClient
 
       // 5. Seedar etapas de atendimento do blueprint (só se agent novo)
       if (!existingAgent && blueprint.agentSteps.length > 0) {
+        const stages = await tx.pipelineStage.findMany({
+          where: { pipelineId },
+          orderBy: { position: 'asc' },
+          select: { id: true, position: true },
+        })
+
         await tx.agentStep.createMany({
           data: blueprint.agentSteps.map((step) => ({
             agentId,
             name: step.name,
             objective: step.objective,
-            allowedActions: step.allowedActions,
-            activationRequirement: step.activationRequirement,
+            actions: step.actions.length > 0
+              ? step.actions.map((action) => {
+                  if (action.type === 'move_deal' && action.targetStagePosition !== undefined) {
+                    const stage = stages.find((s) => s.position === action.targetStagePosition)
+                    return {
+                      type: action.type,
+                      trigger: action.trigger,
+                      targetStage: stage?.id ?? '',
+                    }
+                  }
+                  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                  const { targetStagePosition, ...rest } = action
+                  return rest
+                })
+              : undefined,
+            keyQuestion: step.keyQuestion,
+            messageTemplate: step.messageTemplate,
             order: step.order,
           })),
         })

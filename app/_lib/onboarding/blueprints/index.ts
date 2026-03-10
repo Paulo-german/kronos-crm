@@ -120,47 +120,58 @@ LINGUAGEM:
 - Quando citar números ou cases, seja específico ("redução de 32% no tempo de onboarding") ao invés de vago ("melhoria significativa").`,
     agentSteps: [
       {
-        name: 'Recepção',
-        objective:
-          'Cumprimentar o lead de forma profissional e coletar nome completo, empresa, cargo e e-mail. Identificar rapidamente o canal de origem (indicação, site, evento) e registrar no contato. Se o lead já iniciar falando sobre uma necessidade, acolher brevemente e informar que vai entender melhor o cenário na próxima etapa. Avançar quando tiver nome + empresa + forma de contato.',
-        allowedActions: ['update_contact'],
-        activationRequirement: 'Início da conversa ou primeiro contato do lead',
+        name: 'Recepção e Identificação',
+        objective: 'Apresente-se, descubra o nome do lead, a empresa e o que motivou o contato.',
+        keyQuestion: 'Qual o seu nome e de qual empresa está falando?',
+        messageTemplate: null,
+        actions: [
+          { type: 'update_deal', trigger: 'Ao identificar a empresa e o motivo do contato' },
+        ],
         order: 0,
       },
       {
-        name: 'Qualificação BANT',
-        objective:
-          'Aplicar framework BANT para qualificar o lead. Investigar: (1) Budget — existe verba alocada ou previsão orçamentária? (2) Authority — quem decide e quem influencia? (3) Need — qual o problema concreto e qual o impacto no negócio? (4) Timeline — qual a urgência e prazo esperado? Registrar cada informação no contato. Se surgir objeção ("não tenho orçamento", "não sou eu quem decide"), tratar com empatia, reformular o valor e continuar a qualificação no mesmo fluxo. Mover deal para "Qualificação" quando iniciar. Avançar quando tiver pelo menos 3 dos 4 critérios BANT preenchidos.',
-        allowedActions: ['update_contact', 'search_knowledge', 'move_deal'],
-        activationRequirement:
-          'Informações básicas de contato já coletadas na etapa anterior',
+        name: 'Qualificação',
+        objective: 'Entenda a necessidade, o prazo, quem decide e se há orçamento previsto.',
+        keyQuestion: 'Pode me contar mais sobre o que vocês estão buscando resolver?',
+        messageTemplate: null,
+        actions: [
+          { type: 'search_knowledge', trigger: 'Se precisar de informações sobre serviços ou cases' },
+          { type: 'update_deal', trigger: 'Ao coletar informações sobre necessidade, prazo ou orçamento' },
+          { type: 'move_deal', trigger: 'Ao confirmar que o lead tem necessidade real', targetStagePosition: 1 },
+        ],
         order: 1,
       },
       {
-        name: 'Proposta de Valor',
-        objective:
-          'Apresentar a solução conectada diretamente às dores identificadas no BANT. Buscar na base de conhecimento cases de sucesso, diferenciais e materiais relevantes ao segmento do lead. Enquadrar sempre em termos de ROI e impacto no negócio. Se o lead levantar objeções ("é caro", "já tentamos algo parecido"), reconhecer a preocupação, apresentar evidência contrária (case, dado, comparativo) e redirecionar para o valor. Atualizar o deal com valor estimado e informações coletadas. Mover para "Proposta Enviada" quando apresentar a solução. Avançar quando o lead demonstrar interesse em avançar ou pedir proposta formal.',
-        allowedActions: ['search_knowledge', 'update_deal', 'move_deal'],
-        activationRequirement:
-          'Pelo menos 3 dos 4 critérios BANT preenchidos na etapa anterior',
+        name: 'Apresentação de Valor',
+        objective: 'Conecte a solução às dores identificadas. Apresente cases e diferenciais relevantes.',
+        keyQuestion: null,
+        messageTemplate: 'Com base no que você me contou, acredito que nossa {solução} seria o caminho ideal para resolver {dor}. Tivemos um cliente em situação parecida que conseguiu {resultado}.',
+        actions: [
+          { type: 'search_knowledge', trigger: 'Ao apresentar cases ou diferenciais' },
+          { type: 'move_deal', trigger: 'Após apresentar a proposta de valor', targetStagePosition: 2 },
+        ],
         order: 2,
       },
       {
         name: 'Agendamento',
-        objective:
-          'Propor horários específicos para uma reunião de aprofundamento ou demo com o closer/especialista. Sempre oferecer 2-3 opções de horário ao invés de perguntas abertas. Confirmar quem participará da reunião (mapear todos os participantes). Se o lead hesitar ("preciso pensar", "vou consultar meu sócio"), validar a preocupação, reforçar o valor da reunião como próximo passo sem compromisso, e manter a proposta de agendamento. Criar appointment com data, horário e participantes. Mover deal para "Negociação". Avançar quando o agendamento estiver confirmado ou o lead declinar explicitamente.',
-        allowedActions: ['create_appointment', 'create_task', 'move_deal'],
-        activationRequirement:
-          'Lead demonstrou interesse na proposta de valor apresentada',
+        objective: 'Proponha uma reunião com especialista. Ofereça 2-3 horários específicos.',
+        keyQuestion: null,
+        messageTemplate: 'Posso agendar uma conversa com nosso especialista para aprofundar? Temos horário disponível amanhã às 10h ou quinta às 14h, qual funciona melhor para você?',
+        actions: [
+          { type: 'create_appointment', trigger: 'Ao confirmar horário da reunião', title: 'Reunião de Discovery' },
+          { type: 'move_deal', trigger: 'Após confirmar o agendamento', targetStagePosition: 3 },
+        ],
         order: 3,
       },
       {
-        name: 'Encerramento',
-        objective:
-          'Se reunião agendada: confirmar data/hora, informar o que o lead pode esperar na reunião, transferir o contexto completo para o closer via hand_off. Se o lead não qualificou ou declinou: agradecer, criar task de follow-up para 7 dias e encerrar cordialmente deixando porta aberta. Registrar o motivo de não avanço para análise futura.',
-        allowedActions: ['hand_off_to_human', 'create_task'],
-        activationRequirement:
-          'Agendamento confirmado ou lead declinou explicitamente',
+        name: 'Encerramento e Próximos Passos',
+        objective: 'Confirme os detalhes da reunião, crie follow-up e transfira para o closer se necessário.',
+        keyQuestion: null,
+        messageTemplate: 'Perfeito, {nome}! Reunião confirmada para {data}. Vou enviar o convite por e-mail. Qualquer dúvida antes, é só me chamar aqui.',
+        actions: [
+          { type: 'create_task', trigger: 'Se o lead não avançou', title: 'Follow-up pós-conversa', dueDaysOffset: 2 },
+          { type: 'hand_off_to_human', trigger: 'Se o lead solicitar atendimento humano ou tiver objeção complexa' },
+        ],
         order: 4,
       },
     ],
@@ -242,37 +253,49 @@ LINGUAGEM:
 - Mensagens curtas e conversacionais. Evite textões — quebre em mensagens menores se necessário.`,
     agentSteps: [
       {
-        name: 'Recepção & Conexão',
-        objective:
-          'Acolher o lead com tom amigável e empático. Coletar nome, e-mail e de onde conheceu o produto/empresa (Instagram, YouTube, indicação, anúncio). Criar rapport perguntando o que chamou atenção ou o que o levou a entrar em contato. Registrar canal de origem no contato. Avançar quando tiver nome + contato + contexto de interesse.',
-        allowedActions: ['update_contact'],
-        activationRequirement: 'Início da conversa ou primeiro contato do lead',
+        name: 'Recepção e Conexão',
+        objective: 'Acolha o lead com empatia. Descubra o nome, de onde veio e o que chamou atenção no produto.',
+        keyQuestion: 'O que te trouxe até aqui? O que chamou sua atenção?',
+        messageTemplate: null,
+        actions: [
+          { type: 'update_deal', trigger: 'Ao identificar o canal de origem e interesse do lead' },
+        ],
         order: 0,
       },
       {
-        name: 'Identificação de Dor & Comprometimento',
-        objective:
-          'Investigar a dor principal do lead com perguntas abertas: o que ele quer resolver, há quanto tempo enfrenta o problema, o que já tentou antes e não funcionou. Avaliar o nível de comprometimento: está disposto a investir tempo e dinheiro para resolver? Buscar na base de conhecimento depoimentos e resultados relevantes ao perfil. Se surgir objeção ("não sei se funciona pra mim"), validar o sentimento e conectar com um case de alguém em situação similar, trazendo de volta para a conversa de transformação. Mover deal para "Engajamento". Avançar quando tiver dor clara + nível de comprometimento avaliado.',
-        allowedActions: ['update_contact', 'search_knowledge', 'move_deal'],
-        activationRequirement: 'Lead já se apresentou e demonstrou interesse',
+        name: 'Identificação de Dor',
+        objective: 'Investigue a dor principal do lead: o que quer resolver, há quanto tempo enfrenta o problema e o que já tentou.',
+        keyQuestion: 'Há quanto tempo você vem tentando resolver isso? O que já tentou antes?',
+        messageTemplate: null,
+        actions: [
+          { type: 'search_knowledge', trigger: 'Se precisar de depoimentos ou resultados de alunos' },
+          { type: 'update_deal', trigger: 'Ao identificar a dor e o nível de comprometimento' },
+          { type: 'move_deal', trigger: 'Ao confirmar que o lead tem dor real e comprometimento', targetStagePosition: 1 },
+        ],
         order: 1,
       },
       {
         name: 'Apresentação da Transformação',
-        objective:
-          'Conectar a dor identificada com a transformação que o produto oferece. Apresentar a metodologia/conteúdo de forma que o lead se veja dentro da solução. Usar prova social (resultados, depoimentos) da base de conhecimento. Apresentar investimento e opções de parcelamento de forma natural. Se surgir objeção de preço ("é caro"), recontextualizar como investimento, mostrar custo-benefício vs. continuar com o problema, e apresentar parcelamento. Se surgir "não é o momento", explorar o custo de esperar e criar senso de urgência com ética (vagas, bônus, turma). Atualizar valor do deal. Mover para "Aplicação". Avançar quando o lead demonstrar interesse em comprar ou pedir mais detalhes de pagamento.',
-        allowedActions: ['search_knowledge', 'move_deal', 'update_deal'],
-        activationRequirement:
-          'Dor identificada e nível de comprometimento avaliado',
+        objective: 'Conecte a dor com a transformação do produto. Use prova social e apresente o investimento naturalmente.',
+        keyQuestion: null,
+        messageTemplate: 'Pelo que você me contou, o {produto} foi feito exatamente para quem está nessa situação. Tivemos um aluno que também {situação_similar} e em {prazo} conseguiu {resultado}.',
+        actions: [
+          { type: 'search_knowledge', trigger: 'Ao apresentar resultados, depoimentos ou metodologia' },
+          { type: 'update_deal', trigger: 'Ao apresentar valor do investimento' },
+          { type: 'move_deal', trigger: 'Após apresentar a transformação e o investimento', targetStagePosition: 2 },
+        ],
         order: 2,
       },
       {
-        name: 'Direcionamento & Follow-up',
-        objective:
-          'Se o lead está pronto para comprar: transferir para closer ou time de vendas via hand_off com todo o contexto (dor, objeções tratadas, nível de comprometimento). Se o lead precisa de mais tempo: criar task de follow-up para 48h com nota sobre onde a conversa parou e quais objeções restam. Encerrar com mensagem positiva reforçando a transformação e deixando porta aberta.',
-        allowedActions: ['create_task', 'hand_off_to_human'],
-        activationRequirement:
-          'Lead demonstrou interesse em comprar ou declinou após apresentação',
+        name: 'Direcionamento e Follow-up',
+        objective: 'Se o lead quer comprar, transfira para o closer. Se precisa de tempo, crie follow-up e encerre com porta aberta.',
+        keyQuestion: null,
+        messageTemplate: 'Vou te conectar com nosso time para finalizar sua inscrição. Eles vão te ajudar com as condições de pagamento e tirar qualquer dúvida final.',
+        actions: [
+          { type: 'move_deal', trigger: 'Ao direcionar para compra ou call de vendas', targetStagePosition: 3 },
+          { type: 'create_task', trigger: 'Se o lead precisa de mais tempo para decidir', title: 'Follow-up lead indeciso', dueDaysOffset: 2 },
+          { type: 'hand_off_to_human', trigger: 'Se o lead estiver pronto para comprar ou solicitar atendimento humano' },
+        ],
         order: 3,
       },
     ],
@@ -354,46 +377,58 @@ LINGUAGEM:
     agentSteps: [
       {
         name: 'Recepção',
-        objective:
-          'Cumprimentar o lead e identificar rapidamente: nome, empresa, cargo e tamanho da equipe. Entender o que motivou o contato (viu anúncio, indicação, pesquisa, comparando ferramentas). Registrar no contato. Avançar quando tiver dados básicos + motivação de contato.',
-        allowedActions: ['update_contact'],
-        activationRequirement: 'Início da conversa ou primeiro contato do lead',
+        objective: 'Identifique o lead: nome, empresa, cargo e tamanho da equipe. Entenda o que motivou o contato.',
+        keyQuestion: 'Qual ferramenta vocês usam hoje e o que gostariam de melhorar?',
+        messageTemplate: null,
+        actions: [
+          { type: 'update_deal', trigger: 'Ao identificar a empresa e a motivação do contato' },
+        ],
         order: 0,
       },
       {
         name: 'Discovery Técnico',
-        objective:
-          'Mapear o cenário técnico completo do lead: (1) Qual ferramenta/processo usa hoje para resolver o problema? (2) Quais são os maiores pontos de dor (lentidão, falta de integração, custo, limitação)? (3) Quais integrações são essenciais (outras ferramentas do stack)? (4) Quantos usuários precisariam de acesso? (5) Qual o prazo para implementar uma solução? Buscar na base de conhecimento informações relevantes ao caso. Se surgir objeção ("nosso processo atual funciona"), explorar ineficiências e custo oculto de manter o status quo. Mover deal para "Ativação". Avançar quando tiver pain points claros + requisitos técnicos.',
-        allowedActions: ['update_contact', 'search_knowledge', 'move_deal'],
-        activationRequirement:
-          'Informações básicas de contato e empresa já coletadas',
+        objective: 'Mapeie o cenário técnico: ferramenta atual, pontos de dor, integrações essenciais, número de usuários e prazo.',
+        keyQuestion: 'Quais são os maiores problemas que vocês enfrentam com a solução atual?',
+        messageTemplate: null,
+        actions: [
+          { type: 'search_knowledge', trigger: 'Se precisar de informações sobre funcionalidades ou integrações' },
+          { type: 'update_deal', trigger: 'Ao coletar requisitos técnicos e pain points' },
+          { type: 'move_deal', trigger: 'Ao identificar pain points claros e requisitos', targetStagePosition: 1 },
+        ],
         order: 1,
       },
       {
-        name: 'Proposta de Valor & Comparativo',
-        objective:
-          'Apresentar a solução endereçando diretamente cada pain point identificado no discovery. Usar comparativos e dados de ROI da base de conhecimento. Destacar integrações compatíveis com o stack do lead. Posicionar diferencial competitivo sem atacar concorrentes. Se surgir objeção de preço ("é mais caro que X"), reframear com TCO (custo total de propriedade), economia de tempo e funcionalidades inclusas. Se surgir objeção técnica ("parece complexo"), apresentar onboarding assistido e time to value. Atualizar deal com valor e informações. Mover para "Demo Agendada" quando apresentar proposta. Avançar quando o lead quiser ver o produto em ação.',
-        allowedActions: ['search_knowledge', 'update_deal', 'move_deal'],
-        activationRequirement:
-          'Pain points e requisitos técnicos identificados no discovery',
+        name: 'Proposta de Valor',
+        objective: 'Apresente a solução endereçando cada pain point. Use comparativos de ROI e destaque integrações compatíveis.',
+        keyQuestion: null,
+        messageTemplate: 'Considerando o que você me contou sobre {pain_point}, nossa plataforma resolve isso com {funcionalidade}. Clientes em cenário parecido reportam {resultado}.',
+        actions: [
+          { type: 'search_knowledge', trigger: 'Ao apresentar comparativos, ROI ou cases' },
+          { type: 'update_deal', trigger: 'Ao apresentar proposta com valor estimado' },
+          { type: 'move_deal', trigger: 'Após apresentar a proposta de valor', targetStagePosition: 2 },
+        ],
         order: 2,
       },
       {
         name: 'Agendamento de Demo',
-        objective:
-          'Agendar demo personalizada focada nos casos de uso do lead. Oferecer 2-3 horários específicos. Confirmar quem da equipe do lead participará (decisor técnico + decisor de negócio). Informar o que será demonstrado e quanto tempo dura. Se o lead hesitar ("preciso alinhar internamente"), ajudar a mapear stakeholders e sugerir formato que inclua todos. Criar appointment. Mover para "Proposta". Avançar quando demo confirmada ou lead declinar.',
-        allowedActions: ['create_appointment', 'create_task', 'move_deal'],
-        activationRequirement:
-          'Lead demonstrou interesse na proposta e quer ver o produto',
+        objective: 'Agende demo personalizada focada nos casos de uso do lead. Ofereça 2-3 horários e confirme participantes.',
+        keyQuestion: null,
+        messageTemplate: 'Posso agendar uma demo focada em {caso_de_uso}? Temos disponibilidade amanhã às 10h ou quinta às 15h. Quem da equipe participaria?',
+        actions: [
+          { type: 'create_appointment', trigger: 'Ao confirmar horário da demo', title: 'Demo Personalizada' },
+          { type: 'move_deal', trigger: 'Após confirmar o agendamento da demo', targetStagePosition: 3 },
+        ],
         order: 3,
       },
       {
         name: 'Encerramento',
-        objective:
-          'Se demo agendada: confirmar detalhes, enviar resumo do que será apresentado, transferir contexto para AE/closer. Se o lead não avançou: criar task de follow-up para 5 dias, registrar motivo de não avanço. Encerrar profissionalmente deixando porta aberta para retomar quando conveniente.',
-        allowedActions: ['hand_off_to_human', 'create_task'],
-        activationRequirement:
-          'Demo confirmada ou lead declinou explicitamente',
+        objective: 'Confirme detalhes da demo e transfira contexto para o AE. Se não avançou, crie follow-up.',
+        keyQuestion: null,
+        messageTemplate: 'Demo confirmada para {data}. Nosso especialista vai focar em {pontos_relevantes}. Qualquer dúvida antes, estou por aqui.',
+        actions: [
+          { type: 'create_task', trigger: 'Se o lead não avançou para demo', title: 'Follow-up lead SaaS', dueDaysOffset: 5 },
+          { type: 'hand_off_to_human', trigger: 'Se demo confirmada ou lead solicitar atendimento humano' },
+        ],
         order: 4,
       },
     ],
@@ -475,46 +510,58 @@ LINGUAGEM:
     agentSteps: [
       {
         name: 'Recepção',
-        objective:
-          'Cumprimentar com simpatia e identificar imediatamente o tipo de interesse: compra, venda, aluguel ou investimento. Coletar nome, telefone e e-mail. Perguntar como conheceu a imobiliária/empreendimento. Registrar tudo no contato. Avançar quando tiver tipo de interesse + dados de contato.',
-        allowedActions: ['update_contact'],
-        activationRequirement: 'Início da conversa ou primeiro contato',
+        objective: 'Cumprimente com simpatia. Identifique o tipo de interesse (compra, aluguel, investimento) e colete dados básicos.',
+        keyQuestion: 'Você está buscando um imóvel para morar ou para investir?',
+        messageTemplate: null,
+        actions: [
+          { type: 'update_deal', trigger: 'Ao identificar tipo de interesse e dados do cliente' },
+        ],
         order: 0,
       },
       {
         name: 'Levantamento de Preferências',
-        objective:
-          'Fazer levantamento detalhado das preferências: (1) Tipo de imóvel (apartamento, casa, terreno, comercial). (2) Região/bairro de interesse. (3) Faixa de preço e forma de pagamento (à vista, financiamento, FGTS). (4) Número de quartos, vagas de garagem, metragem mínima. (5) Características especiais (varanda, churrasqueira, piscina, pet-friendly). (6) Prazo para mudança. Buscar na base de conhecimento imóveis compatíveis. Se surgir objeção ("os preços estão muito altos na região"), validar a percepção e apresentar alternativas (regiões próximas, imóveis na planta, condições de financiamento). Mover deal para "Novo Interesse". Avançar quando tiver perfil completo de busca.',
-        allowedActions: ['update_contact', 'search_knowledge', 'move_deal'],
-        activationRequirement:
-          'Tipo de interesse (compra/venda/aluguel) identificado',
+        objective: 'Levante preferências detalhadas: tipo de imóvel, região, faixa de preço, quartos, vagas e prazo para mudança.',
+        keyQuestion: 'Qual região e faixa de preço você tem em mente? Quantos quartos precisa?',
+        messageTemplate: null,
+        actions: [
+          { type: 'search_knowledge', trigger: 'Ao buscar imóveis compatíveis com o perfil' },
+          { type: 'update_deal', trigger: 'Ao coletar preferências detalhadas do cliente' },
+          { type: 'move_deal', trigger: 'Ao ter perfil de busca completo', targetStagePosition: 1 },
+        ],
         order: 1,
       },
       {
         name: 'Apresentação de Imóveis',
-        objective:
-          'Apresentar opções de imóveis que atendam ao perfil levantado. Enviar fichas técnicas, fotos e diferenciais de cada opção. Destacar pontos que casam com as preferências do cliente. Informar sobre infraestrutura do bairro, valorização e potencial de investimento. Se surgir objeção sobre localização ("longe do trabalho"), apresentar dados de acesso/transporte e alternativas na região desejada. Se objeção sobre preço, apresentar simulação de financiamento e condições facilitadas. Atualizar deal com imóveis de interesse. Avançar quando o cliente demonstrar interesse em visitar algum imóvel.',
-        allowedActions: ['search_knowledge', 'update_deal', 'move_deal'],
-        activationRequirement:
-          'Preferências coletadas e perfil de busca definido',
+        objective: 'Apresente opções compatíveis com o perfil. Destaque diferenciais e infraestrutura do bairro.',
+        keyQuestion: null,
+        messageTemplate: 'Encontrei algumas opções que combinam com o que você busca. O primeiro é um {tipo} em {bairro}, com {quartos} quartos e {diferencial}. O valor está em {valor}.',
+        actions: [
+          { type: 'search_knowledge', trigger: 'Ao apresentar fichas técnicas ou informações do bairro' },
+          { type: 'update_deal', trigger: 'Ao registrar imóveis de interesse do cliente' },
+          { type: 'move_deal', trigger: 'Ao apresentar opções e cliente demonstrar interesse em visitar', targetStagePosition: 2 },
+        ],
         order: 2,
       },
       {
         name: 'Agendamento de Visita',
-        objective:
-          'Agendar visita presencial ou tour virtual nos imóveis de interesse. Oferecer horários flexíveis incluindo finais de semana. Confirmar endereço completo e orientações de acesso. Informar documentos necessários caso queira fazer proposta na visita. Se o cliente hesitar ("preciso ver com meu cônjuge/família"), sugerir visita conjunta e facilitar horário. Criar appointment com imóvel, data e endereço. Mover para "Visita Agendada". Avançar quando visita confirmada.',
-        allowedActions: ['create_appointment', 'create_task', 'move_deal'],
-        activationRequirement:
-          'Cliente demonstrou interesse em visitar imóvel apresentado',
+        objective: 'Agende visita presencial ou virtual. Ofereça horários flexíveis incluindo finais de semana.',
+        keyQuestion: null,
+        messageTemplate: 'Posso agendar uma visita para você conhecer o imóvel pessoalmente? Temos disponibilidade sábado de manhã ou terça à tarde, qual prefere?',
+        actions: [
+          { type: 'create_appointment', trigger: 'Ao confirmar data e horário da visita', title: 'Visita ao Imóvel' },
+          { type: 'move_deal', trigger: 'Após confirmar agendamento da visita', targetStagePosition: 3 },
+        ],
         order: 3,
       },
       {
         name: 'Encerramento',
-        objective:
-          'Se visita agendada: confirmar detalhes, transferir para corretor responsável com contexto completo (preferências, objeções tratadas, imóveis de interesse). Se cliente não avançou: criar task de follow-up para 3 dias, registrar motivo. Encerrar cordialmente informando que novas opções serão compartilhadas conforme surgirem.',
-        allowedActions: ['hand_off_to_human', 'create_task'],
-        activationRequirement:
-          'Visita confirmada ou cliente declinou explicitamente',
+        objective: 'Confirme detalhes da visita e transfira para o corretor. Se não avançou, crie follow-up.',
+        keyQuestion: null,
+        messageTemplate: 'Visita confirmada para {data}. O corretor {nome} vai te receber no local. Leve um documento com foto caso queira já fazer proposta.',
+        actions: [
+          { type: 'create_task', trigger: 'Se o cliente não agendou visita', title: 'Follow-up imobiliário', dueDaysOffset: 3 },
+          { type: 'hand_off_to_human', trigger: 'Se visita agendada ou cliente tiver dúvidas contratuais' },
+        ],
         order: 4,
       },
     ],
@@ -602,37 +649,47 @@ LINGUAGEM:
     agentSteps: [
       {
         name: 'Recepção',
-        objective:
-          'Acolher o paciente com empatia e cordialidade. Coletar nome completo, telefone, e-mail e data de nascimento. Identificar o motivo do contato: agendar consulta, tirar dúvida sobre procedimento, retorno, ou informações sobre valores. Perguntar se é primeira vez ou paciente recorrente. Registrar no contato. Avançar quando tiver dados básicos + motivo do contato.',
-        allowedActions: ['update_contact'],
-        activationRequirement: 'Início da conversa ou primeiro contato',
+        objective: 'Acolha o paciente com empatia. Colete nome, telefone e identifique o motivo do contato (consulta, procedimento, retorno, valores).',
+        keyQuestion: 'É a primeira vez que entra em contato conosco? Como posso te ajudar?',
+        messageTemplate: null,
+        actions: [
+          { type: 'update_deal', trigger: 'Ao identificar motivo do contato e se é paciente novo ou retorno' },
+        ],
         order: 0,
       },
       {
-        name: 'Triagem & Coleta de Informações',
-        objective:
-          'Coletar informações relevantes para direcionar o atendimento: (1) Queixa principal ou procedimento de interesse. (2) Há quanto tempo apresenta o sintoma/desejo. (3) Já realizou algum tratamento anterior para isso. (4) Possui plano de saúde (qual). (5) Tem alguma alergia ou condição médica relevante. Buscar na base de conhecimento informações sobre o procedimento/consulta solicitada (preparos, valores, duração). Se surgir objeção de preço ("achei caro"), apresentar formas de pagamento e parcelamento disponíveis, sem pressionar. NUNCA fornecer diagnóstico, prescrição ou recomendação de tratamento. Mover deal para "Avaliação". Avançar quando tiver informações suficientes para agendar.',
-        allowedActions: ['update_contact', 'search_knowledge', 'move_deal'],
-        activationRequirement:
-          'Paciente identificado e motivo do contato coletado',
+        name: 'Triagem',
+        objective: 'Colete informações relevantes: queixa principal, histórico, plano de saúde e alergias. NUNCA forneça diagnóstico ou prescrição.',
+        keyQuestion: 'Qual procedimento ou consulta você gostaria de agendar? Possui plano de saúde?',
+        messageTemplate: null,
+        actions: [
+          { type: 'search_knowledge', trigger: 'Ao buscar informações sobre procedimentos, preparos ou valores' },
+          { type: 'update_deal', trigger: 'Ao coletar informações de triagem e plano de saúde' },
+          { type: 'move_deal', trigger: 'Ao completar a triagem e estar pronto para agendar', targetStagePosition: 1 },
+        ],
         order: 1,
       },
       {
         name: 'Agendamento',
-        objective:
-          'Apresentar horários disponíveis para o profissional/procedimento solicitado. Priorizar encaixe rápido para casos com urgência. Informar: preparos necessários (jejum, exames prévios), documentos para levar, endereço e orientações de acesso, valor e formas de pagamento. Se o paciente hesitar ("preciso verificar minha agenda"), facilitar oferecendo 2-3 opções de horário e informando que pode reagendar se necessário. Criar appointment com profissional, data, procedimento e preparos. Mover para "Agendamento". Avançar quando consulta confirmada ou paciente declinar.',
-        allowedActions: ['create_appointment', 'create_task', 'move_deal'],
-        activationRequirement:
-          'Triagem realizada e tipo de atendimento identificado',
+        objective: 'Apresente horários disponíveis e informe preparos necessários, documentos e endereço. Priorize encaixe rápido para urgências.',
+        keyQuestion: null,
+        messageTemplate: 'Temos horário disponível {dia} às {hora} com o Dr(a). {profissional}. Para essa consulta, você vai precisar {preparo}. O valor é {valor} e aceitamos {pagamento}.',
+        actions: [
+          { type: 'create_appointment', trigger: 'Ao confirmar data e horário da consulta', title: 'Consulta Médica' },
+          { type: 'move_deal', trigger: 'Após confirmar o agendamento', targetStagePosition: 3 },
+        ],
         order: 2,
       },
       {
-        name: 'Confirmação & Encerramento',
-        objective:
-          'Se consulta agendada: confirmar data, horário, endereço e preparos. Criar task de confirmação 24h antes. Informar canais de contato para reagendamento. Se for emergência médica em qualquer momento: orientar a procurar pronto-socorro imediato e transferir para humano. Se paciente não agendou: criar task de follow-up para 48h, encerrar com empatia. Transferir para profissional de saúde se surgir qualquer dúvida clínica que fuja do escopo.',
-        allowedActions: ['hand_off_to_human', 'create_task'],
-        activationRequirement:
-          'Consulta confirmada ou paciente declinou',
+        name: 'Confirmação e Encerramento',
+        objective: 'Confirme detalhes da consulta e crie lembrete. Se emergência médica, oriente pronto-socorro e transfira imediatamente.',
+        keyQuestion: null,
+        messageTemplate: 'Consulta confirmada para {data} às {hora}. Endereço: {endereço}. Lembre-se de {preparo}. Se precisar reagendar, é só me chamar aqui.',
+        actions: [
+          { type: 'create_task', trigger: 'Ao confirmar consulta para lembrete 24h antes', title: 'Confirmação de consulta', dueDaysOffset: 1 },
+          { type: 'create_task', trigger: 'Se paciente não agendou', title: 'Follow-up paciente', dueDaysOffset: 2 },
+          { type: 'hand_off_to_human', trigger: 'Se emergência médica ou dúvida clínica fora do escopo' },
+        ],
         order: 3,
       },
     ],
@@ -720,42 +777,49 @@ LINGUAGEM:
 - Agradeça sempre a compra e convide a voltar.`,
     agentSteps: [
       {
-        name: 'Recepção & Identificação',
-        objective:
-          'Cumprimentar o cliente de forma simpática. Identificar rapidamente o motivo do contato: (1) Dúvida sobre produto, (2) Status de pedido/entrega, (3) Troca ou devolução, (4) Problema com pedido, (5) Interesse em comprar. Coletar nome e e-mail. Se já for cliente, pedir número do pedido. Registrar no contato. Avançar quando tiver tipo de atendimento identificado + dados básicos.',
-        allowedActions: ['update_contact'],
-        activationRequirement: 'Início da conversa ou primeiro contato',
+        name: 'Identificação',
+        objective: 'Identifique o motivo do contato: dúvida sobre produto, status de pedido, troca/devolução ou interesse em compra.',
+        keyQuestion: 'Como posso te ajudar? Está com dúvida sobre algum produto ou acompanhando um pedido?',
+        messageTemplate: null,
+        actions: [
+          { type: 'update_deal', trigger: 'Ao identificar tipo de demanda e dados do cliente' },
+        ],
         order: 0,
       },
       {
-        name: 'Atendimento & Resolução',
-        objective:
-          'Resolver a demanda do cliente conforme o tipo identificado. Para dúvidas de produto: buscar na base de conhecimento especificações, disponibilidade e comparativos. Para status de pedido: solicitar número do pedido e fornecer atualização. Para trocas/devoluções: explicar a política da loja, prazos e procedimentos. Para interesse em compra: apresentar produtos, opções de frete e prazos de entrega. Se surgir objeção de preço ("encontrei mais barato"), verificar se há cupom disponível ou condição especial, sem ultrapassar limite autorizado. Se o frete for a objeção, apresentar alternativas de envio. Mover deal para "Contato Realizado". Avançar quando a demanda estiver encaminhada ou precisar de ação adicional.',
-        allowedActions: ['update_contact', 'search_knowledge', 'move_deal'],
-        activationRequirement: 'Tipo de atendimento identificado na recepção',
+        name: 'Atendimento',
+        objective: 'Resolva a demanda: para produtos busque informações, para pedidos dê status, para trocas explique a política. Resolva antes de vender.',
+        keyQuestion: null,
+        messageTemplate: null,
+        actions: [
+          { type: 'search_knowledge', trigger: 'Ao responder dúvidas sobre produtos, especificações ou disponibilidade' },
+          { type: 'update_deal', trigger: 'Ao registrar detalhes da demanda' },
+          { type: 'move_deal', trigger: 'Ao resolver a demanda inicial', targetStagePosition: 1 },
+        ],
         order: 1,
       },
       {
-        name: 'Conversão & Upsell',
-        objective:
-          'Se o cliente demonstrou interesse em compra: sugerir produtos complementares (cross-sell) ou versão superior (upsell) quando pertinente, sem ser invasivo. Oferecer cupom de primeira compra ou recuperação se aplicável. Informar promoções ativas. Se for recuperação de carrinho abandonado: relembrar os itens, tirar dúvidas e oferecer incentivo. Atualizar deal com produtos de interesse e valor. Mover para "Negociação" ou "Pedido Confirmado" conforme avanço. Avançar quando o cliente decidir (comprou, desistiu ou precisa de suporte humano).',
-        allowedActions: [
-          'update_deal',
-          'move_deal',
-          'create_task',
-          'search_knowledge',
+        name: 'Conversão',
+        objective: 'Se há interesse em compra, sugira complementos (cross-sell) e informe promoções. Para carrinho abandonado, relembre itens e ofereça incentivo.',
+        keyQuestion: null,
+        messageTemplate: 'Quem leva esse {produto} geralmente aproveita também {complemento}. E hoje temos {promoção} que pode te interessar.',
+        actions: [
+          { type: 'search_knowledge', trigger: 'Ao buscar produtos complementares ou promoções' },
+          { type: 'update_deal', trigger: 'Ao registrar produtos de interesse e valor' },
+          { type: 'move_deal', trigger: 'Ao confirmar pedido ou avançar negociação', targetStagePosition: 2 },
         ],
-        activationRequirement:
-          'Demanda inicial resolvida e oportunidade de venda identificada',
         order: 2,
       },
       {
-        name: 'Encerramento & Pós-venda',
-        objective:
-          'Se pedido confirmado: confirmar resumo do pedido, prazo de entrega e canal de rastreamento. Criar task de follow-up pós-entrega para pesquisa de satisfação. Se problema não resolvido (chargeback, fraude, defeito grave): transferir para supervisor via hand_off com contexto completo. Se o cliente desistiu: criar task de follow-up para 7 dias com motivo da desistência. Encerrar agradecendo e convidando a voltar.',
-        allowedActions: ['hand_off_to_human', 'create_task'],
-        activationRequirement:
-          'Cliente decidiu (comprou, desistiu ou precisa de suporte humano)',
+        name: 'Encerramento e Pós-venda',
+        objective: 'Confirme o pedido com prazo de entrega. Crie follow-up pós-entrega. Se problema grave, transfira para supervisor.',
+        keyQuestion: null,
+        messageTemplate: 'Pedido confirmado! Prazo de entrega: {prazo}. Você receberá o código de rastreamento por aqui. Qualquer dúvida, é só chamar.',
+        actions: [
+          { type: 'move_deal', trigger: 'Ao confirmar pedido do cliente', targetStagePosition: 3 },
+          { type: 'create_task', trigger: 'Ao confirmar pedido para pesquisa de satisfação', title: 'Follow-up pós-entrega', dueDaysOffset: 7 },
+          { type: 'hand_off_to_human', trigger: 'Se problema não resolvido, chargeback ou fraude' },
+        ],
         order: 3,
       },
     ],
@@ -843,46 +907,58 @@ LINGUAGEM:
     agentSteps: [
       {
         name: 'Recepção',
-        objective:
-          'Cumprimentar e identificar se é aluno potencial ou responsável (pai/mãe). Coletar nome, e-mail, telefone e curso/série de interesse. Perguntar a motivação (primeira graduação, transferência, pós-graduação, ensino técnico). Registrar no contato. Avançar quando tiver dados básicos + curso de interesse.',
-        allowedActions: ['update_contact'],
-        activationRequirement: 'Início da conversa ou primeiro contato',
+        objective: 'Identifique se é aluno ou responsável. Colete nome, contato e curso de interesse. Entenda a motivação.',
+        keyQuestion: 'Qual curso te interessa? Seria para você ou para alguém da família?',
+        messageTemplate: null,
+        actions: [
+          { type: 'update_deal', trigger: 'Ao identificar curso de interesse e perfil do candidato' },
+        ],
         order: 0,
       },
       {
-        name: 'Informações & Apresentação',
-        objective:
-          'Fornecer informações completas sobre o curso de interesse: grade curricular, duração, modalidade (presencial/EAD/híbrido), turno e carga horária. Informar valores de mensalidade, matrícula e formas de pagamento. Apresentar diferenciais da instituição (infraestrutura, corpo docente, empregabilidade). Buscar na base de conhecimento materiais sobre o curso. Se surgir objeção de preço ("a mensalidade é alta"), apresentar bolsas de estudo, descontos (pontualidade, convênio empresa) e financiamento estudantil (FIES, PRAVALER). Se comparar com concorrente, destacar diferenciais sem depreciar a outra instituição. Mover deal para "Inscrição". Avançar quando o candidato tiver as informações necessárias.',
-        allowedActions: ['update_contact', 'search_knowledge', 'move_deal'],
-        activationRequirement:
-          'Curso de interesse identificado e perfil do candidato coletado',
+        name: 'Informações do Curso',
+        objective: 'Forneça informações sobre o curso: grade, duração, modalidade, turno, valores e diferenciais da instituição.',
+        keyQuestion: 'Gostaria de saber sobre valores e formas de pagamento?',
+        messageTemplate: null,
+        actions: [
+          { type: 'search_knowledge', trigger: 'Ao buscar grade curricular, valores ou materiais do curso' },
+          { type: 'update_deal', trigger: 'Ao apresentar valores e informações do curso' },
+          { type: 'move_deal', trigger: 'Ao apresentar informações completas do curso', targetStagePosition: 1 },
+        ],
         order: 1,
       },
       {
-        name: 'Qualificação & Processo Seletivo',
-        objective:
-          'Orientar sobre o processo seletivo: datas, formato (prova, entrevista, análise de histórico), documentos necessários e taxa de inscrição. Verificar se o candidato atende aos pré-requisitos (escolaridade, idade). Avaliar o nível de interesse e prontidão para se inscrever. Se o candidato hesitar ("preciso pensar mais"), reforçar prazos de inscrição e benefícios de se inscrever cedo (desconto early bird, vagas limitadas). Atualizar deal com informações do candidato. Mover para "Prova/Entrevista" quando se inscrever. Avançar quando o candidato estiver pronto para próximo passo.',
-        allowedActions: ['update_deal', 'move_deal'],
-        activationRequirement:
-          'Informações sobre curso fornecidas e interesse confirmado',
+        name: 'Qualificação',
+        objective: 'Oriente sobre o processo seletivo: datas, formato, documentos e pré-requisitos. Avalie prontidão para inscrição.',
+        keyQuestion: null,
+        messageTemplate: 'O processo seletivo para {curso} funciona assim: {etapas}. As inscrições vão até {data}. Posso te ajudar com a inscrição agora?',
+        actions: [
+          { type: 'update_deal', trigger: 'Ao avaliar prontidão e qualificação do candidato' },
+          { type: 'move_deal', trigger: 'Ao confirmar interesse em se inscrever', targetStagePosition: 2 },
+        ],
         order: 2,
       },
       {
-        name: 'Inscrição & Visita',
-        objective:
-          'Se o candidato quer se inscrever: direcionar para o link/formulário de inscrição e criar task de acompanhamento. Se quer visitar o campus antes: agendar visita guiada com data e horário. Informar documentos necessários para matrícula (RG, CPF, histórico escolar, fotos, comprovante de residência). Se for menor de idade, informar que responsável deve assinar documentos. Criar appointment para visita ou task de acompanhamento de inscrição. Avançar quando inscrição realizada ou visita agendada.',
-        allowedActions: ['create_task', 'create_appointment', 'move_deal'],
-        activationRequirement:
-          'Candidato pronto para se inscrever ou visitar o campus',
+        name: 'Inscrição e Visita',
+        objective: 'Direcione para inscrição ou agende visita ao campus. Informe documentos necessários para matrícula.',
+        keyQuestion: null,
+        messageTemplate: 'Posso agendar uma visita guiada ao campus para você conhecer a estrutura. Temos disponibilidade {dias}. Qual horário funciona melhor?',
+        actions: [
+          { type: 'create_appointment', trigger: 'Ao confirmar visita ao campus', title: 'Visita ao Campus' },
+          { type: 'create_task', trigger: 'Ao direcionar para inscrição online', title: 'Acompanhar inscrição do candidato', dueDaysOffset: 3 },
+          { type: 'move_deal', trigger: 'Ao confirmar inscrição ou agendar visita', targetStagePosition: 3 },
+        ],
         order: 3,
       },
       {
         name: 'Encerramento',
-        objective:
-          'Se inscrito: confirmar próximas etapas do processo seletivo (data da prova, resultado, matrícula). Criar task de acompanhamento pós-prova. Se visitou: criar task de follow-up pós-visita para 48h. Se não avançou: criar task de follow-up para 5 dias com motivo. Transferir para coordenação se surgir dúvida pedagógica, transferência de créditos ou situação especial. Encerrar com mensagem acolhedora.',
-        allowedActions: ['hand_off_to_human', 'create_task'],
-        activationRequirement:
-          'Inscrição realizada, visita agendada ou candidato declinou',
+        objective: 'Confirme próximas etapas do processo seletivo. Crie follow-up e transfira para coordenação se necessário.',
+        keyQuestion: null,
+        messageTemplate: 'Sua inscrição está confirmada! As próximas etapas são: {etapas}. Qualquer dúvida sobre o processo, estou por aqui.',
+        actions: [
+          { type: 'create_task', trigger: 'Se candidato não avançou', title: 'Follow-up candidato', dueDaysOffset: 5 },
+          { type: 'hand_off_to_human', trigger: 'Se dúvida pedagógica, transferência de créditos ou situação especial' },
+        ],
         order: 4,
       },
     ],
@@ -958,37 +1034,47 @@ LINGUAGEM:
     agentSteps: [
       {
         name: 'Recepção',
-        objective:
-          'Cumprimentar o lead de forma profissional. Coletar nome completo, empresa (se aplicável), e-mail e telefone. Entender o canal de origem e o que motivou o contato. Registrar tudo no contato. Avançar quando tiver dados básicos + contexto do contato.',
-        allowedActions: ['update_contact'],
-        activationRequirement: 'Início da conversa ou primeiro contato do lead',
+        objective: 'Apresente-se e entenda o contexto: quem é o lead, de onde veio e o que precisa.',
+        keyQuestion: 'Como posso te ajudar? O que você está buscando?',
+        messageTemplate: null,
+        actions: [
+          { type: 'update_deal', trigger: 'Ao identificar o lead e o motivo do contato' },
+        ],
         order: 0,
       },
       {
         name: 'Qualificação',
-        objective:
-          'Entender as necessidades do lead com perguntas abertas: o que está buscando, qual o problema a resolver, qual o prazo e o orçamento disponível. Identificar quem decide e quem influencia. Buscar na base de conhecimento informações relevantes. Se surgir objeção, ouvir com atenção, reconhecer a preocupação e redirecionar para o valor da solução. Mover deal para "Qualificação". Avançar quando tiver necessidade clara + perfil do lead.',
-        allowedActions: ['update_contact', 'move_deal', 'search_knowledge'],
-        activationRequirement:
-          'Informações básicas de contato já coletadas na etapa anterior',
+        objective: 'Entenda a necessidade do lead: o que busca, qual o problema, prazo e orçamento disponível.',
+        keyQuestion: 'Pode me contar mais sobre o que você precisa resolver?',
+        messageTemplate: null,
+        actions: [
+          { type: 'search_knowledge', trigger: 'Se precisar de informações sobre produtos ou serviços' },
+          { type: 'update_deal', trigger: 'Ao coletar necessidade, prazo ou orçamento' },
+          { type: 'move_deal', trigger: 'Ao confirmar necessidade real do lead', targetStagePosition: 1 },
+        ],
         order: 1,
       },
       {
-        name: 'Apresentação & Negociação',
-        objective:
-          'Apresentar a solução de forma conectada às necessidades identificadas. Usar materiais da base de conhecimento quando disponíveis. Informar valores, condições e diferenciais. Se surgir objeção de preço ou timing, tratar com empatia e apresentar alternativas. Atualizar deal com valor e informações. Mover para "Proposta". Avançar quando o lead demonstrar interesse em avançar ou pedir mais detalhes.',
-        allowedActions: ['search_knowledge', 'update_deal', 'move_deal'],
-        activationRequirement:
-          'Necessidade clara e perfil do lead identificados',
+        name: 'Apresentação',
+        objective: 'Apresente a solução conectada às necessidades identificadas. Informe valores e diferenciais.',
+        keyQuestion: null,
+        messageTemplate: 'Com base no que você me contou, a melhor opção seria {solução}. Ela resolve {necessidade} e nossos clientes costumam ver {resultado}.',
+        actions: [
+          { type: 'search_knowledge', trigger: 'Ao apresentar cases, materiais ou diferenciais' },
+          { type: 'update_deal', trigger: 'Ao apresentar proposta com valor' },
+          { type: 'move_deal', trigger: 'Após apresentar a solução', targetStagePosition: 2 },
+        ],
         order: 2,
       },
       {
         name: 'Encerramento',
-        objective:
-          'Se o lead quer avançar: transferir para responsável via hand_off com contexto completo ou criar task de próximos passos. Se precisa de mais tempo: criar task de follow-up para 48h. Encerrar cordialmente deixando porta aberta.',
-        allowedActions: ['create_task', 'hand_off_to_human'],
-        activationRequirement:
-          'Lead demonstrou interesse ou declinou após apresentação',
+        objective: 'Se o lead quer avançar, transfira para o responsável. Se precisa de tempo, crie follow-up.',
+        keyQuestion: null,
+        messageTemplate: 'Vou te conectar com nosso especialista para dar sequência. Ele já vai ter todo o contexto da nossa conversa.',
+        actions: [
+          { type: 'create_task', trigger: 'Se o lead precisa de mais tempo', title: 'Follow-up lead', dueDaysOffset: 2 },
+          { type: 'hand_off_to_human', trigger: 'Se o lead quiser avançar ou solicitar atendimento humano' },
+        ],
         order: 3,
       },
     ],
