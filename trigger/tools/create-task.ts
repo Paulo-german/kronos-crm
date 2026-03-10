@@ -35,11 +35,15 @@ export function createCreateTaskTool(ctx: ToolContext) {
           id: ctx.dealId,
           organizationId: ctx.organizationId,
         },
-        select: { assignedTo: true },
+        select: { assignedTo: true, stage: { select: { pipelineId: true } } },
       })
 
       if (!deal) {
         return { success: false, message: 'Negócio não encontrado.' }
+      }
+
+      if (!ctx.pipelineIds.includes(deal.stage.pipelineId)) {
+        return { success: false, message: 'Sem permissão para este pipeline.' }
       }
 
       const parsedDate = new Date(dueDate)

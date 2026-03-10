@@ -45,10 +45,14 @@ export function createUpdateContactTool(ctx: ToolContext) {
         return { success: false, message: 'Nenhum campo para atualizar.' }
       }
 
-      await db.contact.update({
-        where: { id: ctx.contactId },
+      const result = await db.contact.updateMany({
+        where: { id: ctx.contactId, organizationId: ctx.organizationId },
         data,
       })
+
+      if (result.count === 0) {
+        return { success: false, message: 'Contato não encontrado nesta organização.' }
+      }
 
       if (ctx.dealId) {
         await db.activity.create({

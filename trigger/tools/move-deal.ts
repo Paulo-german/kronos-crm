@@ -18,7 +18,7 @@ export function createMoveDealTool(ctx: ToolContext) {
       stageName: z
         .string()
         .describe(
-          'Nome da etapa destino (ex: "Proposta Enviada"). Consulte [Etapas do pipeline] no system prompt.',
+          'Nome exato da etapa de destino no pipeline.',
         ),
     }),
     execute: async ({ stageName }): Promise<MoveDealResult> => {

@@ -18,13 +18,17 @@ export function createHandOffToHumanTool(ctx: ToolContext) {
     }),
     execute: async ({ reason }) => {
       // pausedAt: null → pausa indefinida (auto-unpause NÃO dispara)
-      await db.conversation.update({
-        where: { id: ctx.conversationId },
+      const result = await db.conversation.updateMany({
+        where: { id: ctx.conversationId, organizationId: ctx.organizationId },
         data: {
           aiPaused: true,
           pausedAt: null,
         },
       })
+
+      if (result.count === 0) {
+        return { success: false, message: 'Conversa não encontrada nesta organização.' }
+      }
 
       if (ctx.dealId) {
         await db.activity.create({
