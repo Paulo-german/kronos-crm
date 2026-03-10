@@ -5,6 +5,10 @@ import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 import { getConversationAsDto } from '@/_data-access/conversation/get-conversations'
+import {
+  createDealForNewConversation,
+  assignContactOwner,
+} from '@/_lib/evolution/resolve-conversation'
 import { createConversationSchema } from './schema'
 
 export const createConversation = orgActionClient
@@ -16,7 +20,7 @@ export const createConversation = orgActionClient
     // 2. Validar contato pertence à org e tem telefone
     const contact = await db.contact.findFirst({
       where: { id: data.contactId, organizationId: ctx.orgId },
-      select: { id: true, phone: true },
+      select: { id: true, name: true, phone: true },
     })
 
     if (!contact) {
@@ -30,7 +34,13 @@ export const createConversation = orgActionClient
     // 3. Validar inbox pertence à org e está conectada
     const inbox = await db.inbox.findFirst({
       where: { id: data.inboxId, organizationId: ctx.orgId },
-      select: { id: true, evolutionInstanceName: true },
+      select: {
+        id: true,
+        evolutionInstanceName: true,
+        autoCreateDeal: true,
+        pipelineId: true,
+        distributionUserIds: true,
+      },
     })
 
     if (!inbox) {
@@ -86,10 +96,34 @@ export const createConversation = orgActionClient
       throw error
     }
 
-    // 5. Invalidar cache
-    revalidateTag(`conversations:${ctx.orgId}`)
+    // 5. Criar deal automaticamente (se inbox configurada para isso)
+    if (inbox.autoCreateDeal) {
+      await createDealForNewConversation(
+        ctx.orgId,
+        contact.id,
+        contact.name,
+        conversation.id,
+        {
+          pipelineId: inbox.pipelineId,
+          distributionUserIds: inbox.distributionUserIds,
+          inboxId: inbox.id,
+        },
+      )
+    } else {
+      await assignContactOwner(ctx.orgId, contact.id, {
+        distributionUserIds: inbox.distributionUserIds,
+        inboxId: inbox.id,
+      })
+    }
 
-    // 6. Retornar DTO
+    // 6. Invalidar caches
+    revalidateTag(`conversations:${ctx.orgId}`)
+    revalidateTag(`pipeline:${ctx.orgId}`)
+    revalidateTag(`deals:${ctx.orgId}`)
+    revalidateTag(`contacts:${ctx.orgId}`)
+    revalidateTag(`dashboard:${ctx.orgId}`)
+
+    // 7. Retornar DTO
     const dto = await getConversationAsDto(ctx.orgId, conversation.id)
     return { conversation: dto }
   })

@@ -30,6 +30,7 @@ export async function resolveConversation(
   pushName: string | null,
   dealContext?: DealCreationContext,
   contactAssignContext?: ContactAssignContext,
+  fromMe?: boolean,
 ): Promise<ResolveResult> {
   // 1. Buscar conversa existente
   const existing = await db.conversation.findFirst({
@@ -38,10 +39,42 @@ export async function resolveConversation(
   })
 
   if (existing) {
+    // Atualizar nome do contato na primeira resposta inbound (quando nome é placeholder)
+    if (!fromMe && pushName) {
+      const contact = await db.contact.findFirst({
+        where: { organizationId: orgId, phone: phoneNumber },
+        select: { id: true, name: true },
+      })
+
+      if (contact && contact.name === phoneNumber) {
+        const conversation = await db.conversation.findFirst({
+          where: { id: existing.id },
+          select: { dealId: true },
+        })
+
+        await Promise.all([
+          db.contact.update({
+            where: { id: contact.id },
+            data: { name: pushName },
+          }),
+          conversation?.dealId
+            ? db.deal.update({
+                where: { id: conversation.dealId },
+                data: { title: pushName },
+              })
+            : Promise.resolve(),
+        ])
+
+        return { conversationId: existing.id, isNew: false }
+      }
+    }
+
     return { conversationId: existing.id, isNew: false }
   }
 
   // 2. Buscar ou criar Contact pelo telefone na org
+  const effectiveName = fromMe ? phoneNumber : (pushName || phoneNumber)
+
   let contact = await db.contact.findFirst({
     where: { organizationId: orgId, phone: phoneNumber },
     select: { id: true, name: true },
@@ -53,7 +86,7 @@ export async function resolveConversation(
     contact = await db.contact.create({
       data: {
         organizationId: orgId,
-        name: pushName || phoneNumber,
+        name: effectiveName,
         phone: phoneNumber,
       },
       select: { id: true, name: true },
@@ -89,7 +122,7 @@ export async function resolveConversation(
   return { conversationId: conversation.id, isNew: true }
 }
 
-async function assignContactOwner(
+export async function assignContactOwner(
   orgId: string,
   contactId: string,
   context: ContactAssignContext,
@@ -107,7 +140,7 @@ async function assignContactOwner(
   }
 }
 
-async function createDealForNewConversation(
+export async function createDealForNewConversation(
   orgId: string,
   contactId: string,
   contactName: string,

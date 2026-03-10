@@ -127,6 +127,7 @@ export async function POST(req: Request) {
       normalizedMsg.pushName,
       dealContext,
       contactAssignContext,
+      true,
     )
 
     if (resolveResult.isNew) {
@@ -135,6 +136,7 @@ export async function POST(req: Request) {
       revalidateTag(`contacts:${orgId}`)
       revalidateTag(`dashboard:${orgId}`)
     }
+
 
     await db.message.create({
       data: {
@@ -182,6 +184,7 @@ export async function POST(req: Request) {
       normalizedMsg.pushName,
       dealContext,
       contactAssignContext,
+      false,
     )
 
     if (resolveResult.isNew) {
@@ -190,6 +193,7 @@ export async function POST(req: Request) {
       revalidateTag(`contacts:${orgId}`)
       revalidateTag(`dashboard:${orgId}`)
     }
+
 
     const dedupResult = await redis
       .set(`dedup:${messageId}`, '1', 'EX', 300, 'NX')
@@ -249,6 +253,7 @@ export async function POST(req: Request) {
         normalizedMsg.pushName,
         dealContext,
         contactAssignContext,
+        false,
       )
 
       if (resolveResult.isNew) {
@@ -333,6 +338,7 @@ export async function POST(req: Request) {
       normalizedMessage.pushName,
       dealContext,
       contactAssignContext,
+      false,
     ),
   ])
 
