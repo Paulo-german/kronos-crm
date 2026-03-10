@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getAgentById } from '@/_data-access/agent/get-agent-by-id'
 import { getOrgPipelines } from '@/_data-access/pipeline/get-org-pipelines'
+import { getPipelineStages } from '@/_data-access/pipeline/get-pipeline-stages'
 import { getInboxes } from '@/_data-access/inbox/get-inboxes'
 import { getAgentConnectionStats } from '@/_data-access/agent/get-agent-connection-stats'
 import { getEvolutionInstanceInfo } from '@/_lib/evolution/instance-management'
@@ -22,6 +23,8 @@ const AgentDetailPage = async ({ params }: AgentDetailPageProps) => {
   ])
 
   if (!agent) notFound()
+
+  const pipelineStages = await getPipelineStages(agent.pipelineIds, ctx.orgId)
 
   // Buscar dados de conexão para cada inbox vinculada
   const inboxConnectionEntries = await Promise.all(
@@ -54,6 +57,7 @@ const AgentDetailPage = async ({ params }: AgentDetailPageProps) => {
     <AgentDetailClient
       agent={agent}
       pipelines={pipelines}
+      pipelineStages={pipelineStages}
       userRole={ctx.userRole}
       orgSlug={orgSlug}
       availableInboxes={availableInboxes}

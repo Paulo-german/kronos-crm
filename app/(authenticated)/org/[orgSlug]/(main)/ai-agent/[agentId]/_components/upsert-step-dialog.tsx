@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAction } from 'next-safe-action/hooks'
@@ -23,22 +24,22 @@ import {
 import { Input } from '@/_components/ui/input'
 import { Textarea } from '@/_components/ui/textarea'
 import { Button } from '@/_components/ui/button'
-import { Checkbox } from '@/_components/ui/checkbox'
-import { Label } from '@/_components/ui/label'
+import StepActionBuilder from './step-action-builder'
 import { createStep } from '@/_actions/agent/create-step'
 import { updateStep } from '@/_actions/agent/update-step'
 import {
   createStepSchema,
-  type CreateStepInput,
+  type CreateStepFormInput,
 } from '@/_actions/agent/create-step/schema'
-import { TOOL_OPTIONS } from './constants'
 import type { AgentStepDto } from '@/_data-access/agent/get-agent-by-id'
+import type { PipelineStageOption } from '@/_data-access/pipeline/get-pipeline-stages'
 
 interface UpsertStepDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   agentId: string
   defaultValues?: AgentStepDto
+  pipelineStages: PipelineStageOption[]
 }
 
 const UpsertStepDialog = ({
@@ -46,19 +47,34 @@ const UpsertStepDialog = ({
   onOpenChange,
   agentId,
   defaultValues,
+  pipelineStages,
 }: UpsertStepDialogProps) => {
   const isEditing = !!defaultValues?.id
 
-  const form = useForm<CreateStepInput>({
+  const form = useForm<CreateStepFormInput>({
     resolver: zodResolver(createStepSchema),
     defaultValues: {
       agentId,
       name: defaultValues?.name || '',
       objective: defaultValues?.objective || '',
-      allowedActions: defaultValues?.allowedActions || [],
-      activationRequirement: defaultValues?.activationRequirement || '',
+      actions: defaultValues?.actions || [],
+      keyQuestion: defaultValues?.keyQuestion || '',
+      messageTemplate: defaultValues?.messageTemplate || '',
     },
   })
+
+  useEffect(() => {
+    if (open) {
+      form.reset({
+        agentId,
+        name: defaultValues?.name || '',
+        objective: defaultValues?.objective || '',
+        actions: defaultValues?.actions || [],
+        keyQuestion: defaultValues?.keyQuestion || '',
+        messageTemplate: defaultValues?.messageTemplate || '',
+      })
+    }
+  }, [open, defaultValues, agentId, form])
 
   const { execute: executeCreate, isPending: isCreating } = useAction(
     createStep,
@@ -87,15 +103,16 @@ const UpsertStepDialog = ({
     },
   )
 
-  const onSubmit = (data: CreateStepInput) => {
+  const onSubmit = (data: CreateStepFormInput) => {
     if (isEditing && defaultValues?.id) {
       executeUpdate({
         id: defaultValues.id,
         agentId,
         name: data.name,
         objective: data.objective,
-        allowedActions: data.allowedActions,
-        activationRequirement: data.activationRequirement || null,
+        actions: data.actions,
+        keyQuestion: data.keyQuestion,
+        messageTemplate: data.messageTemplate,
       })
     } else {
       executeCreate(data)
@@ -104,23 +121,9 @@ const UpsertStepDialog = ({
 
   const isPending = isCreating || isUpdating
 
-  const toggleAction = (actionValue: string) => {
-    const current = form.getValues('allowedActions') || []
-    if (current.includes(actionValue)) {
-      form.setValue(
-        'allowedActions',
-        current.filter((item) => item !== actionValue),
-      )
-    } else {
-      form.setValue('allowedActions', [...current, actionValue])
-    }
-  }
-
-  const currentActions = form.watch('allowedActions') || []
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {isEditing ? 'Editar Etapa' : 'Nova Etapa'}
@@ -166,41 +169,40 @@ const UpsertStepDialog = ({
               )}
             />
 
-            <div className="space-y-2">
-              <Label>Ações Permitidas</Label>
-              <div className="space-y-2">
-                {TOOL_OPTIONS.filter(
-                  (tool) => !('disabled' in tool && tool.disabled),
-                ).map((tool) => (
-                  <div
-                    key={tool.value}
-                    className="flex items-center space-x-2"
-                  >
-                    <Checkbox
-                      id={`step-tool-${tool.value}`}
-                      checked={currentActions.includes(tool.value)}
-                      onCheckedChange={() => toggleAction(tool.value)}
-                    />
-                    <Label
-                      htmlFor={`step-tool-${tool.value}`}
-                      className="cursor-pointer text-sm"
-                    >
-                      {tool.label}
-                    </Label>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <StepActionBuilder
+              value={form.watch('actions') ?? []}
+              onChange={(actions) => form.setValue('actions', actions)}
+              pipelineStages={pipelineStages}
+            />
 
             <FormField
               control={form.control}
-              name="activationRequirement"
+              name="keyQuestion"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Requisito de Ativação (opcional)</FormLabel>
+                  <FormLabel>Pergunta-chave (opcional)</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Ex: Só avançar quando o lead informar CNPJ..."
+                      placeholder="Ex: Qual o CNPJ da empresa?"
+                      className="min-h-[80px] resize-y"
+                      value={field.value || ''}
+                      onChange={field.onChange}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="messageTemplate"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Template de mensagem (opcional)</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Ex: Obrigado! Vou agendar uma demonstração para você..."
                       className="min-h-[80px] resize-y"
                       value={field.value || ''}
                       onChange={field.onChange}

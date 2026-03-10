@@ -11,19 +11,24 @@ import { Badge } from '@/_components/ui/badge'
 import ConfirmationDialog from '@/_components/confirmation-dialog'
 import UpsertStepDialog from './upsert-step-dialog'
 import { deleteStep } from '@/_actions/agent/delete-step'
+import { TOOL_OPTIONS } from './constants'
 import type { AgentStepDto } from '@/_data-access/agent/get-agent-by-id'
+import type { PipelineStageOption } from '@/_data-access/pipeline/get-pipeline-stages'
 
 interface SortableStepCardProps {
   step: AgentStepDto
   agentId: string
   canManage: boolean
+  pipelineStages: PipelineStageOption[]
 }
 
 const SortableStepCard = ({
   step,
   agentId,
   canManage,
+  pipelineStages,
 }: SortableStepCardProps) => {
+  const actions = step.actions ?? []
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
 
@@ -87,13 +92,16 @@ const SortableStepCard = ({
           <p className="line-clamp-2 text-sm text-muted-foreground">
             {step.objective}
           </p>
-          {step.allowedActions.length > 0 && (
+          {actions.length > 0 && (
             <div className="flex flex-wrap gap-1 pt-1">
-              {step.allowedActions.map((action) => (
-                <Badge key={action} variant="secondary" className="text-xs">
-                  {action}
-                </Badge>
-              ))}
+              {actions.map((action, index) => {
+                const toolLabel = TOOL_OPTIONS.find((tool) => tool.value === action.type)?.label ?? action.type
+                return (
+                  <Badge key={index} variant="secondary" className="text-xs">
+                    {toolLabel}
+                  </Badge>
+                )
+              })}
             </div>
           )}
         </div>
@@ -125,6 +133,7 @@ const SortableStepCard = ({
         onOpenChange={setIsEditOpen}
         agentId={agentId}
         defaultValues={step}
+        pipelineStages={pipelineStages}
       />
 
       {/* Delete Confirmation */}

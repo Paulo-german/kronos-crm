@@ -24,13 +24,15 @@ import { reorderSteps } from '@/_actions/agent/reorder-steps'
 import SortableStepCard from './sortable-step-card'
 import UpsertStepDialog from './upsert-step-dialog'
 import type { AgentDetailDto, AgentStepDto } from '@/_data-access/agent/get-agent-by-id'
+import type { PipelineStageOption } from '@/_data-access/pipeline/get-pipeline-stages'
 
 interface ProcessTabProps {
   agent: AgentDetailDto
   canManage: boolean
+  pipelineStages: PipelineStageOption[]
 }
 
-const ProcessTab = ({ agent, canManage }: ProcessTabProps) => {
+const ProcessTab = ({ agent, canManage, pipelineStages }: ProcessTabProps) => {
   const dndContextId = useId()
   const [isMounted, setIsMounted] = useState(false)
   const [steps, setSteps] = useState<AgentStepDto[]>(agent.steps)
@@ -88,6 +90,7 @@ const ProcessTab = ({ agent, canManage }: ProcessTabProps) => {
           step={step}
           agentId={agent.id}
           canManage={canManage}
+          pipelineStages={pipelineStages}
         />
       ))}
     </div>
@@ -142,6 +145,7 @@ const ProcessTab = ({ agent, canManage }: ProcessTabProps) => {
             open={isCreateOpen}
             onOpenChange={setIsCreateOpen}
             agentId={agent.id}
+            pipelineStages={pipelineStages}
           />
         </>
       )}
