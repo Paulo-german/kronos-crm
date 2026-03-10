@@ -96,6 +96,53 @@ function compileStepActions(actions: StepAction[]): string[] {
   })
 }
 
+const TOOL_PROMPT_DESCRIPTIONS: Record<string, { label: string; description: string }> = {
+  move_deal: {
+    label: 'Mover Negócio',
+    description: 'Move o negócio para outra etapa do pipeline quando a conversa progredir. Use conforme indicado nas etapas do processo.',
+  },
+  update_deal: {
+    label: 'Atualizar Negócio',
+    description: 'Registra informações coletadas no negócio (valor, notas, prioridade). Use para manter o negócio atualizado com dados da conversa.',
+  },
+  update_contact: {
+    label: 'Atualizar Contato',
+    description: 'Atualiza dados do contato (nome, email, telefone, cargo). Use quando o lead fornecer informações pessoais ou profissionais.',
+  },
+  create_task: {
+    label: 'Criar Tarefa',
+    description: 'Cria uma tarefa de follow-up ou ação futura. Use para garantir que próximos passos não se percam.',
+  },
+  create_appointment: {
+    label: 'Criar Compromisso',
+    description: 'Agenda um compromisso (reunião, visita, demo). Use quando confirmar horário com o lead.',
+  },
+  search_knowledge: {
+    label: 'Consultar Base de Conhecimento',
+    description: 'Busca informações na base de conhecimento do agente. Use para responder dúvidas sobre produtos, serviços, cases e materiais.',
+  },
+  hand_off_to_human: {
+    label: 'Transferir para Humano',
+    description: 'Transfere o atendimento para um atendente humano. Use quando o lead solicitar ou a situação fugir do seu escopo.',
+  },
+}
+
+function compileToolsSection(toolsEnabled: string[]): string | null {
+  const lines: string[] = []
+
+  for (const toolKey of toolsEnabled) {
+    const toolInfo = TOOL_PROMPT_DESCRIPTIONS[toolKey]
+    if (!toolInfo) continue
+    lines.push(`**${toolInfo.label}** (\`${toolKey}\`)`)
+    lines.push(`Quando usar: ${toolInfo.description}`)
+    lines.push('')
+  }
+
+  if (lines.length === 0) return null
+
+  return `## Ferramentas Disponíveis\n\n${lines.join('\n').trimEnd()}`
+}
+
 interface BuildSystemPromptResult {
   systemPrompt: string
   modelId: string
@@ -215,6 +262,12 @@ export async function buildSystemPrompt(
 
   const parts: string[] = []
 
+  const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    dateStyle: 'full',
+    timeStyle: 'short',
+  })
+
   // 1. Persona base (structured or legacy)
   const parsedConfig = promptConfigSchema.safeParse(agent.promptConfig)
   const promptConfig: PromptConfig | null = parsedConfig.success
@@ -233,15 +286,51 @@ export async function buildSystemPrompt(
     parts.push(`Seu nome é ${agent.name}.\n\n${agent.systemPrompt}`)
   }
 
-  // 2. Contexto temporal
-  const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
-    timeZone: 'America/Sao_Paulo',
-    dateStyle: 'full',
-    timeStyle: 'short',
-  })
+  // 2. Ferramentas disponíveis
+  const toolsSection = compileToolsSection(agent.toolsEnabled)
+  if (toolsSection) {
+    parts.push(`\n${toolsSection}`)
+  }
+
+  // 3. Processo de atendimento (etapas com ações imperativas)
+  if (agent.steps.length > 0) {
+    const lines: string[] = []
+
+    lines.push('## Processo de Atendimento')
+    lines.push('')
+    lines.push(
+      'Siga as etapas abaixo na ordem. Identifique em que ponto da conversa ' +
+      'você está pelo contexto do histórico e conduza o lead para a próxima etapa naturalmente.',
+    )
+
+    for (const step of agent.steps) {
+      lines.push('')
+      lines.push(`**${step.order + 1}. ${step.name}**`)
+      lines.push(step.objective)
+
+      if (step.keyQuestion) {
+        lines.push(`* Pergunta-chave: "${step.keyQuestion}"`)
+      }
+
+      const parsed = z.array(stepActionSchema).safeParse(step.actions)
+      if (parsed.success && parsed.data.length > 0) {
+        lines.push(...compileStepActions(parsed.data))
+      }
+
+      if (step.messageTemplate) {
+        lines.push('')
+        lines.push('**Exemplo de fechamento:**')
+        lines.push(`"${step.messageTemplate}"`)
+      }
+    }
+
+    parts.push(`\n${lines.join('\n')}`)
+  }
+
+  // 4. Contexto temporal
   parts.push(`\n[Contexto temporal]\nAgora: ${dateFormatter.format(now)}`)
 
-  // 3. Dados do contato
+  // 5. Dados do contato
   const contact = conversation.contact
   const contactFields = [
     `Nome: ${contact.name}`,
@@ -252,7 +341,7 @@ export async function buildSystemPrompt(
 
   parts.push(`\n[Dados do contato]\n${contactFields.join('\n')}`)
 
-  // 4. Dados do negócio (se houver deal vinculado)
+  // 6. Dados do negócio (se houver deal vinculado)
   if (conversation.deal) {
     const deal = conversation.deal
     const dealFields: string[] = []
@@ -342,47 +431,12 @@ export async function buildSystemPrompt(
     parts.push(`\n[Dados do negócio]\n${dealFields.join('\n')}`)
   }
 
-  // 6. Motivos de perda disponíveis (só se a tool update_deal está habilitada)
+  // 7. Motivos de perda disponíveis (só se a tool update_deal está habilitada)
   if (lossReasons.length > 0 && agent.toolsEnabled.includes('update_deal')) {
     const reasonNames = lossReasons.map((r) => r.name)
     parts.push(
       `\n[Motivos de perda disponíveis]\nAo marcar um negócio como LOST, use o campo "reason" com um dos motivos abaixo (exatamente como escrito):\n${reasonNames.map((name) => `  • ${name}`).join('\n')}`,
     )
-  }
-
-  // 7. Processo de atendimento (etapas com ações imperativas)
-  if (agent.steps.length > 0) {
-    const lines: string[] = []
-
-    lines.push('## Processo de Atendimento')
-    lines.push('')
-    lines.push(
-      'Siga as etapas abaixo na ordem. Identifique em que ponto da conversa ' +
-      'você está pelo contexto do histórico e conduza o lead para a próxima etapa naturalmente.',
-    )
-
-    for (const step of agent.steps) {
-      lines.push('')
-      lines.push(`**${step.order + 1}. ${step.name}**`)
-      lines.push(step.objective)
-
-      if (step.keyQuestion) {
-        lines.push(`* Pergunta-chave: "${step.keyQuestion}"`)
-      }
-
-      const parsed = z.array(stepActionSchema).safeParse(step.actions)
-      if (parsed.success && parsed.data.length > 0) {
-        lines.push(...compileStepActions(parsed.data))
-      }
-
-      if (step.messageTemplate) {
-        lines.push('')
-        lines.push('**Exemplo de fechamento:**')
-        lines.push(`"${step.messageTemplate}"`)
-      }
-    }
-
-    parts.push(`\n${lines.join('\n')}`)
   }
 
   // 8. Busca RAG na base de conhecimento (se houver arquivos e mensagem do usuário)
