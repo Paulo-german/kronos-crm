@@ -2,6 +2,7 @@
 
 import { orgActionClient } from '@/_lib/safe-action'
 import { updateStepSchema } from './schema'
+import { Prisma } from '@prisma/client'
 import { db } from '@/_lib/prisma'
 import { revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
@@ -30,18 +31,17 @@ export const updateStep = orgActionClient
     await db.agentStep.update({
       where: { id: data.id },
       data: {
-        ...(data.name !== undefined && { name: data.name }),
-        ...(data.objective !== undefined && { objective: data.objective }),
-        ...(data.allowedActions !== undefined && {
-          allowedActions: data.allowedActions,
-        }),
-        ...(data.activationRequirement !== undefined && {
-          activationRequirement: data.activationRequirement,
-        }),
+        name: data.name,
+        objective: data.objective,
+        actions:
+          data.actions.length > 0 ? data.actions : Prisma.JsonNull,
+        keyQuestion: data.keyQuestion || null,
+        messageTemplate: data.messageTemplate || null,
       },
     })
 
     revalidateTag(`agent:${data.agentId}`)
+    revalidateTag(`agents:${ctx.orgId}`)
 
     return { success: true }
   })

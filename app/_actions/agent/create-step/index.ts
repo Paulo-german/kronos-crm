@@ -3,6 +3,7 @@
 import { orgActionClient } from '@/_lib/safe-action'
 import { createStepSchema } from './schema'
 import { db } from '@/_lib/prisma'
+import { Prisma } from '@prisma/client'
 import { revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 
@@ -34,8 +35,9 @@ export const createStep = orgActionClient
           agentId: data.agentId,
           name: data.name,
           objective: data.objective,
-          allowedActions: data.allowedActions || [],
-          activationRequirement: data.activationRequirement || null,
+          actions: data.actions.length > 0 ? data.actions : Prisma.JsonNull,
+          keyQuestion: data.keyQuestion || null,
+          messageTemplate: data.messageTemplate || null,
           order: nextOrder,
         },
       })
