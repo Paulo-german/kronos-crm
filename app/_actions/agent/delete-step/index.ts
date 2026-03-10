@@ -32,7 +32,13 @@ export const deleteStep = orgActionClient
       throw new Error('Etapa não encontrada.')
     }
 
-    await db.agentStep.delete({ where: { id } })
+    await db.$transaction([
+      db.agentStep.delete({ where: { id } }),
+      db.agentStep.updateMany({
+        where: { agentId, order: { gt: step.order } },
+        data: { order: { decrement: 1 } },
+      }),
+    ])
 
     revalidateTag(`agent:${agentId}`)
     revalidateTag(`agents:${ctx.orgId}`)

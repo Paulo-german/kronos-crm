@@ -47,6 +47,7 @@ export const reorderSteps = orgActionClient
     )
 
     revalidateTag(`agent:${agentId}`)
+    revalidateTag(`agents:${ctx.orgId}`)
 
     return { success: true }
   })
