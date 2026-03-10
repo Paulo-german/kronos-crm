@@ -137,6 +137,12 @@ export async function POST(req: Request) {
       revalidateTag(`dashboard:${orgId}`)
     }
 
+    if (resolveResult.nameUpdated) {
+      revalidateTag(`contacts:${orgId}`)
+      revalidateTag(`deals:${orgId}`)
+      revalidateTag(`pipeline:${orgId}`)
+      revalidateTag(`conversations:${orgId}`)
+    }
 
     await db.message.create({
       data: {
@@ -194,6 +200,12 @@ export async function POST(req: Request) {
       revalidateTag(`dashboard:${orgId}`)
     }
 
+    if (resolveResult.nameUpdated) {
+      revalidateTag(`contacts:${orgId}`)
+      revalidateTag(`deals:${orgId}`)
+      revalidateTag(`pipeline:${orgId}`)
+      revalidateTag(`conversations:${orgId}`)
+    }
 
     const dedupResult = await redis
       .set(`dedup:${messageId}`, '1', 'EX', 300, 'NX')
@@ -261,6 +273,13 @@ export async function POST(req: Request) {
         revalidateTag(`deals:${orgId}`)
         revalidateTag(`contacts:${orgId}`)
         revalidateTag(`dashboard:${orgId}`)
+      }
+
+      if (resolveResult.nameUpdated) {
+        revalidateTag(`contacts:${orgId}`)
+        revalidateTag(`deals:${orgId}`)
+        revalidateTag(`pipeline:${orgId}`)
+        revalidateTag(`conversations:${orgId}`)
       }
 
       // Dedup de mensagem — protege contra webhook retry da Evolution
@@ -355,6 +374,13 @@ export async function POST(req: Request) {
     revalidateTag(`deals:${orgId}`)
     revalidateTag(`contacts:${orgId}`)
     revalidateTag(`dashboard:${orgId}`)
+  }
+
+  if (resolveResult.nameUpdated) {
+    revalidateTag(`contacts:${orgId}`)
+    revalidateTag(`deals:${orgId}`)
+    revalidateTag(`pipeline:${orgId}`)
+    revalidateTag(`conversations:${orgId}`)
   }
 
   log('step:8 dedup+resolve', 'PASS', { conversationId, isNewConversation: resolveResult.isNew })

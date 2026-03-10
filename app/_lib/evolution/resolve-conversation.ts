@@ -15,6 +15,7 @@ interface ContactAssignContext {
 interface ResolveResult {
   conversationId: string
   isNew: boolean
+  nameUpdated?: boolean
 }
 
 /**
@@ -65,7 +66,7 @@ export async function resolveConversation(
             : Promise.resolve(),
         ])
 
-        return { conversationId: existing.id, isNew: false }
+        return { conversationId: existing.id, isNew: false, nameUpdated: true }
       }
     }
 

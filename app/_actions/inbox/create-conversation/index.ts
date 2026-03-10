@@ -20,7 +20,7 @@ export const createConversation = orgActionClient
     // 2. Validar contato pertence à org e tem telefone
     const contact = await db.contact.findFirst({
       where: { id: data.contactId, organizationId: ctx.orgId },
-      select: { id: true, name: true, phone: true },
+      select: { id: true, name: true, phone: true, assignedTo: true },
     })
 
     if (!contact) {
@@ -109,7 +109,7 @@ export const createConversation = orgActionClient
           inboxId: inbox.id,
         },
       )
-    } else {
+    } else if (!contact.assignedTo) {
       await assignContactOwner(ctx.orgId, contact.id, {
         distributionUserIds: inbox.distributionUserIds,
         inboxId: inbox.id,
