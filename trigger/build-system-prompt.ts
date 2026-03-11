@@ -75,7 +75,7 @@ function compileStepActions(actions: StepAction[]): string[] {
 
     switch (action.type) {
       case 'move_deal':
-        return `* ${trigger} → execute \`move_deal\` para a etapa "${action.targetStage}".`
+        return `* ${trigger} → execute \`move_deal\` com targetStageId="${action.targetStage}".`
       case 'update_contact':
         return `* ${trigger} → execute \`update_contact\` para registrar no contato.`
       case 'update_deal':

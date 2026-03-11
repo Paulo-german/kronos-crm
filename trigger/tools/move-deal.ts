@@ -15,13 +15,13 @@ export function createMoveDealTool(ctx: ToolContext) {
     description:
       'Move um negócio para outra etapa do pipeline de vendas. Use quando o cliente avançar ou regredir no funil.',
     inputSchema: z.object({
-      stageName: z
+      targetStageId: z
         .string()
         .describe(
-          'Nome exato da etapa de destino no pipeline.',
+          'ID (UUID) da etapa de destino no pipeline.',
         ),
     }),
-    execute: async ({ stageName }): Promise<MoveDealResult> => {
+    execute: async ({ targetStageId }): Promise<MoveDealResult> => {
       if (!ctx.dealId) {
         return {
           success: false,
@@ -59,31 +59,18 @@ export function createMoveDealTool(ctx: ToolContext) {
         }
       }
 
-      // Buscar todas as stages do pipeline para resolver por nome
-      const pipelineStages = await db.pipelineStage.findMany({
-        where: { pipelineId: deal.stage.pipelineId },
-        orderBy: { position: 'asc' },
+      // Resolver targetStageId → stage por ID direto
+      const newStage = await db.pipelineStage.findFirst({
+        where: {
+          id: targetStageId,
+          pipelineId: deal.stage.pipelineId,
+        },
       })
 
-      // Resolver stageName → stage: exact match (case-insensitive), fallback fuzzy (includes)
-      const normalizedInput = stageName.trim().toLowerCase()
-
-      let newStage = pipelineStages.find(
-        (stage) => stage.name.toLowerCase() === normalizedInput,
-      )
-
       if (!newStage) {
-        newStage = pipelineStages.find((stage) =>
-          stage.name.toLowerCase().includes(normalizedInput) ||
-          normalizedInput.includes(stage.name.toLowerCase()),
-        )
-      }
-
-      if (!newStage) {
-        const validNames = pipelineStages.map((stage) => stage.name).join(', ')
         return {
           success: false,
-          message: `Etapa "${stageName}" não encontrada. Etapas válidas: ${validNames}`,
+          message: `Etapa com ID "${targetStageId}" não encontrada neste pipeline.`,
         }
       }
 
