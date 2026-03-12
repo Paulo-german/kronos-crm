@@ -5,10 +5,12 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
-import { Loader2 } from 'lucide-react'
+import { Brain } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import { Form } from '@/_components/ui/form'
+import { cn } from '@/_lib/utils'
 import { updateAgent } from '@/_actions/agent/update-agent'
+import { useTrainingProgress } from '../_hooks/use-training-progress'
 import { businessHoursConfigSchema } from '@/_actions/agent/update-agent/schema'
 import { promptConfigSchema } from '@/_actions/agent/shared/prompt-config-schema'
 import { DEFAULT_BUSINESS_HOURS_CONFIG, DEFAULT_PROMPT_CONFIG } from './constants'
@@ -66,13 +68,18 @@ const GeneralTab = ({ agent, pipelines, canManage }: GeneralTabProps) => {
     },
   })
 
+  const { progress, visible, isError, start, complete, fail } = useTrainingProgress()
+
   const { execute, isPending } = useAction(updateAgent, {
+    onExecute: () => start(),
     onSuccess: () => {
-      toast.success('Agente atualizado com sucesso!')
+      toast.success('Agente treinado e pronto para operar!')
       form.reset(form.getValues())
+      complete()
     },
     onError: ({ error }) => {
-      toast.error(error.serverError || 'Erro ao atualizar agente.')
+      toast.error(error.serverError || 'Falha ao treinar o agente. Tente novamente.')
+      fail()
     },
   })
 
@@ -97,19 +104,25 @@ const GeneralTab = ({ agent, pipelines, canManage }: GeneralTabProps) => {
         <AdvancedSection form={form} canManage={canManage} />
 
         {canManage && (
-          <div className="flex justify-end">
+          <div className="relative flex justify-end overflow-hidden">
+            {visible && (
+              <div
+                className="absolute inset-x-0 top-0 h-0.5 transition-all ease-out"
+                style={{
+                  width: `${progress}%`,
+                  transitionDuration: progress < 100 ? '1200ms' : '300ms',
+                  background: isError
+                    ? 'hsl(var(--destructive))'
+                    : 'linear-gradient(90deg, var(--kronos-purple), var(--kronos-cyan), var(--kronos-green))',
+                }}
+              />
+            )}
             <Button
               type="submit"
               disabled={isPending || !form.formState.isDirty}
             >
-              {isPending ? (
-                <div className="flex items-center gap-2">
-                  <Loader2 className="animate-spin" />
-                  Salvando...
-                </div>
-              ) : (
-                'Salvar Alterações'
-              )}
+              <Brain className={cn('mr-2 h-4 w-4', isPending && 'animate-pulse')} />
+              {isPending ? 'Treinando...' : 'Treinar Agente'}
             </Button>
           </div>
         )}
