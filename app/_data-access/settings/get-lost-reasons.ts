@@ -32,7 +32,6 @@ export const getDealLostReasons = async (organizationId: string) => {
     [`deal-lost-reasons-${organizationId}`],
     {
       tags: [`deal-lost-reasons:${organizationId}`],
-      revalidate: 3600,
     },
   )()
 }
@@ -63,7 +62,6 @@ export const getAllDealLostReasons = async (organizationId: string) => {
     [`all-deal-lost-reasons-${organizationId}`],
     {
       tags: [`deal-lost-reasons:${organizationId}`],
-      revalidate: 3600,
     },
   )()
 }

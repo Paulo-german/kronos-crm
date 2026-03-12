@@ -39,7 +39,7 @@ export const getPendingTasks = cache(
       [`dashboard-tasks-${orgId}-${userId}`],
       {
         tags: [`dashboard:${orgId}`, `tasks:${orgId}`],
-        revalidate: 300,
+        revalidate: 3600,
       },
     )
 

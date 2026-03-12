@@ -81,7 +81,7 @@ export const getTrialStatus = cache(async (orgId: string): Promise<TrialStatus> 
       }
     },
     [`trial-status-${orgId}`],
-    { tags: [`subscriptions:${orgId}`], revalidate: 300 },
+    { tags: [`subscriptions:${orgId}`], revalidate: 3600 },
   )
 
   return getCached()

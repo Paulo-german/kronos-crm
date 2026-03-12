@@ -31,7 +31,7 @@ export const getCreditBalance = cache(async (orgId: string): Promise<CreditBalan
     [`credit-balance-${orgId}`],
     {
       tags: [`credits:${orgId}`, `subscriptions:${orgId}`],
-      revalidate: 60,
+      revalidate: 300,
     },
   )
 

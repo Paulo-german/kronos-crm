@@ -107,7 +107,7 @@ export const getAiMetrics = cache(async (orgId: string): Promise<AiMetrics> => {
         `credits:${orgId}`,
         `agents:${orgId}`,
       ],
-      revalidate: 120,
+      revalidate: 3600,
     },
   )
 

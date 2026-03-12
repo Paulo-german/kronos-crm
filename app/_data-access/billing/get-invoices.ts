@@ -54,7 +54,7 @@ export const getInvoices = async (orgId: string): Promise<InvoiceDto[]> => {
     [`invoices-${orgId}`],
     {
       tags: [`subscriptions:${orgId}`],
-      revalidate: 300,
+      revalidate: 3600,
     },
   )
 

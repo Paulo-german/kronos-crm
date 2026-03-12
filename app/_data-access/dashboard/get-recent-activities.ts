@@ -48,7 +48,7 @@ export const getRecentActivities = cache(
       [`dashboard-activities-${ctx.orgId}-${ctx.userId}-${elevated}`],
       {
         tags: [`dashboard:${ctx.orgId}`, `deals:${ctx.orgId}`],
-        revalidate: 300,
+        revalidate: 3600,
       },
     )
 

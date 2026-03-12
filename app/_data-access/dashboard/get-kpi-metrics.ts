@@ -122,7 +122,7 @@ export const getKpiMetrics = cache(
       ],
       {
         tags: [`dashboard:${ctx.orgId}`, `deals:${ctx.orgId}`],
-        revalidate: 300,
+        revalidate: 3600,
       },
     )
 

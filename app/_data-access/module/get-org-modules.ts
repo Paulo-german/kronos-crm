@@ -66,7 +66,6 @@ export const getOrgModules = cache(async (orgId: string): Promise<ModuleInfo[]> 
     [`org-modules-${orgId}`],
     {
       tags: [`modules:${orgId}`, `subscriptions:${orgId}`],
-      revalidate: 3600,
     },
   )
 

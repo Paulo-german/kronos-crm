@@ -64,7 +64,7 @@ export const getRevenueOverTime = cache(
       [`dashboard-revenue-${ctx.orgId}-${ctx.userId}-${elevated}`],
       {
         tags: [`dashboard-charts:${ctx.orgId}`, `deals:${ctx.orgId}`],
-        revalidate: 7200,
+        revalidate: 3600,
       },
     )
 

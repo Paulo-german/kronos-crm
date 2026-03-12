@@ -163,7 +163,7 @@ export const getConversationsPaginated = cache(
     const getCached = unstable_cache(
       async () => fetchConversationsPaginatedFromDb(orgId, limit, cursor, filters),
       [`conversations-${orgId}-${limit}-${cursor ?? 'none'}-${filterKey}`],
-      { tags: [`conversations:${orgId}`], revalidate: 30 },
+      { tags: [`conversations:${orgId}`] },
     )
     return getCached()
   },

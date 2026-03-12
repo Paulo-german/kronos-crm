@@ -36,7 +36,7 @@ export const getDealsByStatus = cache(
       [`dashboard-status-${ctx.orgId}-${ctx.userId}-${elevated}`],
       {
         tags: [`dashboard:${ctx.orgId}`, `deals:${ctx.orgId}`],
-        revalidate: 300,
+        revalidate: 3600,
       },
     )
 

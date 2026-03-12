@@ -51,7 +51,7 @@ export const getWalletTransactions = cache(
       [`wallet-transactions-${orgId}`],
       {
         tags: [`credits:${orgId}`],
-        revalidate: 60,
+        revalidate: 300,
       },
     )
     return getCached()

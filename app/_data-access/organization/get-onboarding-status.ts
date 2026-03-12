@@ -39,7 +39,6 @@ export const getOnboardingStatus = cache(async (orgId: string) => {
     [`onboarding-status-${orgId}`],
     {
       tags: [`onboarding:${orgId}`],
-      revalidate: 3600,
     },
   )
   return getCached()
