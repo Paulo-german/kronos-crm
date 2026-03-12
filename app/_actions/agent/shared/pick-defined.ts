@@ -15,7 +15,6 @@ export const OPTIONAL_AGENT_FIELDS = [
   'modelId',
   'debounceSeconds',
   'pipelineIds',
-  'toolsEnabled',
   'isActive',
   'businessHoursEnabled',
   'businessHoursTimezone',

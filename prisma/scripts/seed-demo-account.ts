@@ -953,7 +953,6 @@ Regras importantes:
       modelId: 'anthropic/claude-sonnet-4',
       debounceSeconds: 3,
       pipelineIds: [pipeline.id],
-      toolsEnabled: ['search_knowledge', 'move_deal', 'update_contact', 'create_task', 'hand_off_to_human'],
     },
   })
 

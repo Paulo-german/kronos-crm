@@ -20,7 +20,6 @@ import { CommunicationSection } from './general-tab/communication-section'
 import { RulesSection } from './general-tab/rules-section'
 import { ModelBehaviorSection } from './general-tab/model-behavior-section'
 import { PipelinesSection } from './general-tab/pipelines-section'
-import { ToolsSection } from './general-tab/tools-section'
 import { BusinessHoursSection } from './general-tab/business-hours-section'
 import { AdvancedSection } from './general-tab/advanced-section'
 import type { AgentDetailDto } from '@/_data-access/agent/get-agent-by-id'
@@ -34,7 +33,6 @@ export const generalTabSchema = z.object({
   modelId: z.string(),
   debounceSeconds: z.number().int().min(0).max(30),
   pipelineIds: z.array(z.string().uuid()),
-  toolsEnabled: z.array(z.string()),
   businessHoursEnabled: z.boolean(),
   businessHoursTimezone: z.string(),
   businessHoursConfig: businessHoursConfigSchema,
@@ -60,7 +58,6 @@ const GeneralTab = ({ agent, pipelines, canManage }: GeneralTabProps) => {
       modelId: agent.modelId,
       debounceSeconds: agent.debounceSeconds,
       pipelineIds: agent.pipelineIds,
-      toolsEnabled: agent.toolsEnabled,
       businessHoursEnabled: agent.businessHoursEnabled,
       businessHoursTimezone: agent.businessHoursTimezone,
       businessHoursConfig: agent.businessHoursConfig ?? DEFAULT_BUSINESS_HOURS_CONFIG,
@@ -99,7 +96,6 @@ const GeneralTab = ({ agent, pipelines, canManage }: GeneralTabProps) => {
         <RulesSection form={form} canManage={canManage} />
         <ModelBehaviorSection form={form} canManage={canManage} />
         <PipelinesSection form={form} canManage={canManage} pipelines={pipelines} />
-        <ToolsSection form={form} canManage={canManage} />
         <BusinessHoursSection form={form} canManage={canManage} />
         <AdvancedSection form={form} canManage={canManage} />
 

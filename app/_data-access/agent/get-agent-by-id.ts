@@ -50,7 +50,6 @@ export interface AgentDetailDto {
   modelId: string
   debounceSeconds: number
   pipelineIds: string[]
-  toolsEnabled: string[]
   businessHoursEnabled: boolean
   businessHoursTimezone: string
   businessHoursConfig: BusinessHoursConfig | null
@@ -91,7 +90,6 @@ const fetchAgentByIdFromDb = async (
     modelId: agent.modelId,
     debounceSeconds: agent.debounceSeconds,
     pipelineIds: agent.pipelineIds,
-    toolsEnabled: agent.toolsEnabled,
     businessHoursEnabled: agent.businessHoursEnabled,
     businessHoursTimezone: agent.businessHoursTimezone,
     businessHoursConfig: agent.businessHoursConfig as BusinessHoursConfig | null,

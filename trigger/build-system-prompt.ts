@@ -224,7 +224,6 @@ export async function buildSystemPrompt(
         systemPrompt: true,
         promptConfig: true,
         modelId: true,
-        toolsEnabled: true,
         pipelineIds: true,
         steps: {
           orderBy: { order: 'asc' },
@@ -303,6 +302,16 @@ export async function buildSystemPrompt(
     }),
   ])
 
+  // Derivar conjunto de tools das actions de todos os steps
+  const effectiveTools = [
+    ...new Set(
+      agent.steps.flatMap((step) => {
+        const parsed = z.array(stepActionSchema).safeParse(step.actions)
+        return parsed.success ? parsed.data.map((action) => action.type) : []
+      }),
+    ),
+  ]
+
   const parts: string[] = []
 
   const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
@@ -330,7 +339,7 @@ export async function buildSystemPrompt(
   }
 
   // 2. Ferramentas disponíveis
-  const toolsSection = compileToolsSection(agent.toolsEnabled)
+  const toolsSection = compileToolsSection(effectiveTools)
   if (toolsSection) {
     parts.push(`\n${toolsSection}`)
   }
@@ -477,7 +486,7 @@ export async function buildSystemPrompt(
   }
 
   // 7. Motivos de perda disponíveis (só se a tool update_deal está habilitada)
-  if (lossReasons.length > 0 && agent.toolsEnabled.includes('update_deal')) {
+  if (lossReasons.length > 0 && effectiveTools.includes('update_deal')) {
     const reasonNames = lossReasons.map((r) => r.name)
     parts.push(
       `\n[Motivos de perda disponíveis]\nAo marcar um negócio como LOST, use o campo "reason" com um dos motivos abaixo (exatamente como escrito):\n${reasonNames.map((name) => `  • ${name}`).join('\n')}`,
@@ -518,7 +527,7 @@ export async function buildSystemPrompt(
     summary: conversation.summary,
     contactName: contact.name,
     estimatedTokens,
-    toolsEnabled: agent.toolsEnabled,
+    toolsEnabled: effectiveTools,
     pipelineIds: agent.pipelineIds,
     knowledgeContext,
   }

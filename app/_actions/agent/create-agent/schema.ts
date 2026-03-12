@@ -9,7 +9,6 @@ export const createAgentSchema = z.object({
   modelId: z.string().optional(),
   debounceSeconds: z.number().int().min(0).max(30).optional(),
   pipelineIds: z.array(z.string().uuid()).optional(),
-  toolsEnabled: z.array(z.string()).optional(),
   isActive: z.boolean().optional(),
   businessHoursEnabled: z.boolean().optional(),
   businessHoursTimezone: z.string().optional(),

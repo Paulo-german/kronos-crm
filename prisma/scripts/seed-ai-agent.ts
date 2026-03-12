@@ -162,13 +162,6 @@ async function main() {
         modelId: 'anthropic/claude-sonnet-4',
         debounceSeconds: 3,
         pipelineIds: [pipelineId],
-        toolsEnabled: [
-          'search_knowledge',
-          'move_deal',
-          'update_contact',
-          'create_task',
-          'hand_off_to_human',
-        ],
       },
       include: { inboxes: true },
     })
@@ -182,13 +175,6 @@ async function main() {
         modelId: 'anthropic/claude-sonnet-4',
         debounceSeconds: 3,
         pipelineIds: [pipelineId],
-        toolsEnabled: [
-          'search_knowledge',
-          'move_deal',
-          'update_contact',
-          'create_task',
-          'hand_off_to_human',
-        ],
       },
       include: { inboxes: true },
     })

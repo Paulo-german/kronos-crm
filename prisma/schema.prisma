@@ -776,9 +776,6 @@ model Agent {
   debounceSeconds Int     @default(3) @map("debounce_seconds")
   pipelineIds     String[] @map("pipeline_ids") @db.Uuid
 
-  // Tools habilitadas para este agente (ex: ["search_knowledge", "move_deal", "update_contact"])
-  toolsEnabled String[] @default(["search_knowledge", "move_deal", "update_contact", "update_deal", "create_task", "create_appointment", "hand_off_to_human"]) @map("tools_enabled")
-
   // Horário de funcionamento
   businessHoursEnabled  Boolean @default(false) @map("business_hours_enabled")
   businessHoursTimezone String  @default("America/Sao_Paulo") @map("business_hours_timezone")
