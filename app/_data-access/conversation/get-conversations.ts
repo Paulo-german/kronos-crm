@@ -16,6 +16,8 @@ export interface ConversationListDto {
   aiPaused: boolean
   pausedAt: Date | null
   remoteJid: string | null
+  dealId: string | null
+  dealTitle: string | null
   unreadCount: number
   lastMessage: {
     content: string
@@ -49,6 +51,7 @@ const conversationListInclude = {
       agent: { select: { name: true } },
     },
   },
+  deal: { select: { id: true, title: true } },
   messages: {
     where: { isArchived: false },
     orderBy: { createdAt: 'desc' as const },
@@ -75,6 +78,8 @@ function mapConversationToDto(conversation: ConversationWithIncludes): Conversat
     aiPaused: conversation.aiPaused,
     pausedAt: conversation.pausedAt,
     remoteJid: conversation.remoteJid,
+    dealId: conversation.deal?.id ?? null,
+    dealTitle: conversation.deal?.title ?? null,
     unreadCount: conversation.unreadCount,
     lastMessage: conversation.messages[0]
       ? {
