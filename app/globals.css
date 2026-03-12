@@ -5,10 +5,10 @@
 @layer base {
   :root {
     /* Base Colors (Zinc/Natural for Light Mode) */
-    --background: 0 0% 97%; /* hsl(0 0% 97%) */
+    --background: 0 0% 100%; /* hsl(0 0% 100%) */
     --foreground: 240 10% 3.9%; /* hsl(240 10% 3.9%) */
 
-    --card: 0 0% 97%; /* hsl(0 0% 97%) */
+    --card: 0 0% 100%; /* hsl(0 0% 100%) = #FFFFFF */
     --card-foreground: 240 10% 3.9%; /* hsl(240 10% 3.9%) */
 
     --tab: 0 0% 90%; /* hsl(0 0% 90%) */
@@ -26,10 +26,10 @@
     --secondary: 240 4.8% 80%; /* hsl(240 4.8% 80%) */
     --secondary-foreground: 240 5.9% 10%; /* hsl(240 5.9% 10%) */
 
-    --muted: 240 4.8% 95.9%; /* hsl(240 4.8% 95.9%) */
+    --muted: 240 5% 89%; /* hsl(240 5% 89%) = #E3E3E5 */
     --muted-foreground: 240 3.8% 46.1%; /* hsl(240 3.8% 46.1%) */
 
-    --accent: 240 4.8% 95.9%; /* hsl(240 4.8% 95.9%) */
+    --accent: 240 5% 91%; /* hsl(240 5% 91%) = #E8E8EA */
     --accent-foreground: 240 5.9% 10%; /* hsl(240 5.9% 10%) */
 
     --destructive: 0 84.2% 60.2%; /* hsl(0 84.2% 60.2%) */

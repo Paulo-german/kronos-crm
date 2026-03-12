@@ -26,7 +26,7 @@ const CardSettings = ({
 }: CardSettingsProps) => {
   return (
     <Link key={href} href={`/org/${orgSlug}/${href}`}>
-      <Card className="rounded-md transition-colors hover:bg-muted/50">
+      <Card className="rounded-md bg-muted/30 transition-colors hover:bg-muted/50">
         <CardHeader>
           <div className="flex flex-row items-center gap-4">
             <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-primary/15 text-primary">
