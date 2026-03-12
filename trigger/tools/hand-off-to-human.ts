@@ -45,7 +45,7 @@ export function createHandOffToHumanTool(ctx: ToolContext) {
       await revalidateTags([
         `conversation:${ctx.conversationId}`,
         `conversations:${ctx.organizationId}`,
-      ]).catch(() => {})
+      ])
 
       logger.info('Tool hand_off_to_human executed', {
         reason,

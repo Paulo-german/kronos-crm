@@ -102,7 +102,7 @@ export function createMoveDealTool(ctx: ToolContext) {
         `deal:${ctx.dealId}`,
         `dashboard:${ctx.organizationId}`,
         `dashboard-charts:${ctx.organizationId}`,
-      ]).catch(() => {})
+      ])
 
       logger.info('Tool move_deal executed', {
         dealId: ctx.dealId,

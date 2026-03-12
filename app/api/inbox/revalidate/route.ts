@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { revalidateTag } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 
 /**
  * API route chamada pelo Trigger.dev após salvar resposta da IA.
@@ -14,15 +14,16 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json()
-  const { conversationId, organizationId, tags } = body as {
+  const { conversationId, organizationId, tags, paths } = body as {
     conversationId?: string
     organizationId?: string
     tags?: string[]
+    paths?: string[]
   }
 
-  if (!conversationId && (!tags || tags.length === 0)) {
+  if (!conversationId && (!tags || tags.length === 0) && (!paths || paths.length === 0)) {
     return NextResponse.json(
-      { error: 'conversationId or tags is required' },
+      { error: 'conversationId, tags, or paths is required' },
       { status: 400 },
     )
   }
@@ -38,6 +39,12 @@ export async function POST(request: NextRequest) {
   if (tags) {
     for (const tag of tags) {
       revalidateTag(tag)
+    }
+  }
+
+  if (paths) {
+    for (const path of paths) {
+      revalidatePath(path, 'page')
     }
   }
 

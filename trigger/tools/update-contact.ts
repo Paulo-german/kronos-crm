@@ -70,7 +70,7 @@ export function createUpdateContactTool(ctx: ToolContext) {
         `contacts:${ctx.organizationId}`,
         `contact:${ctx.contactId}`,
         ...(ctx.dealId ? [`deal:${ctx.dealId}`] : []),
-      ]).catch(() => {})
+      ])
 
       logger.info('Tool update_contact executed', {
         contactId: ctx.contactId,

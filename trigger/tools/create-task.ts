@@ -77,7 +77,7 @@ export function createCreateTaskTool(ctx: ToolContext) {
         `deal:${ctx.dealId}`,
         `deals:${ctx.organizationId}`,
         `tasks:${ctx.organizationId}`,
-      ]).catch(() => {})
+      ])
 
       logger.info('Tool create_task executed', {
         title,

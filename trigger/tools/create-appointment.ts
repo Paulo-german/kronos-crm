@@ -25,12 +25,12 @@ export function createCreateAppointmentTool(ctx: ToolContext) {
       startDate: z
         .string()
         .describe(
-          'Data/hora início ISO 8601 (ex: 2026-03-10T14:00:00)',
+          'Data/hora início ISO 8601 com fuso horário de Brasília (ex: 2026-03-10T14:00:00-03:00)',
         ),
       endDate: z
         .string()
         .describe(
-          'Data/hora término ISO 8601 (ex: 2026-03-10T15:00:00)',
+          'Data/hora término ISO 8601 com fuso horário de Brasília (ex: 2026-03-10T15:00:00-03:00)',
         ),
     }),
     execute: async ({
@@ -109,7 +109,7 @@ export function createCreateAppointmentTool(ctx: ToolContext) {
         `appointments:${ctx.organizationId}`,
         `deal-appointments:${ctx.dealId}`,
         `deal:${ctx.dealId}`,
-      ]).catch(() => {})
+      ])
 
       logger.info('Tool create_appointment executed', {
         title,
