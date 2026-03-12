@@ -4,6 +4,9 @@ import { Card, CardContent } from '@/_components/ui/card'
 import { Input } from '@/_components/ui/input'
 import { Label } from '@/_components/ui/label'
 import { Switch } from '@/_components/ui/switch'
+import { Checkbox } from '@/_components/ui/checkbox'
+import { Badge } from '@/_components/ui/badge'
+import { Textarea } from '@/_components/ui/textarea'
 import {
   Select,
   SelectContent,
@@ -42,7 +45,7 @@ const buildDefaultAction = (type: string): StepAction => {
     case 'update_contact':
       return { type: 'update_contact', trigger: '' }
     case 'update_deal':
-      return { type: 'update_deal', trigger: '' }
+      return { type: 'update_deal', trigger: '', allowedFields: [], allowedStatuses: [] }
     case 'search_knowledge':
       return { type: 'search_knowledge', trigger: '' }
     case 'hand_off_to_human':
@@ -246,6 +249,145 @@ const StepActionBuilder = ({
                           }
                         />
                       </div>
+                    )}
+
+                    {/* update_deal: campos permitidos + status */}
+                    {action.type === 'update_deal' && (
+                      <>
+                        {/* Bloco A — Campos permitidos */}
+                        <div className="space-y-2">
+                          <Label className="text-xs">Campos que o agente pode atualizar</Label>
+                          <div className="grid grid-cols-2 gap-2">
+                            {(
+                              [
+                                { id: 'title', label: 'Título' },
+                                { id: 'value', label: 'Valor (R$)' },
+                                { id: 'priority', label: 'Prioridade' },
+                                { id: 'expectedCloseDate', label: 'Previsão de fechamento' },
+                                { id: 'notes', label: 'Notas' },
+                              ] as const
+                            ).map((field) => {
+                              const isChecked = (action.allowedFields ?? []).includes(field.id)
+                              return (
+                                <div key={field.id} className="flex items-center gap-2">
+                                  <Checkbox
+                                    id={`${action.type}-${field.id}`}
+                                    checked={isChecked}
+                                    onCheckedChange={(checked) => {
+                                      const current = action.allowedFields ?? []
+                                      updateAction('update_deal', {
+                                        allowedFields: checked
+                                          ? [...current, field.id]
+                                          : current.filter((f) => f !== field.id),
+                                        ...(field.id === 'priority' && !checked
+                                          ? { fixedPriority: undefined }
+                                          : {}),
+                                        ...(field.id === 'notes' && !checked
+                                          ? { notesTemplate: undefined }
+                                          : {}),
+                                      })
+                                    }}
+                                  />
+                                  <Label
+                                    htmlFor={`${action.type}-${field.id}`}
+                                    className="text-xs font-normal cursor-pointer"
+                                  >
+                                    {field.label}
+                                  </Label>
+                                </div>
+                              )
+                            })}
+                          </div>
+
+                          {/* Prioridade fixa (condicional) */}
+                          {(action.allowedFields ?? []).includes('priority') && (
+                            <div className="space-y-1.5 pl-1">
+                              <Label className="text-xs text-muted-foreground">
+                                Prioridade fixa (opcional)
+                              </Label>
+                              <Select
+                                value={action.fixedPriority ?? ''}
+                                onValueChange={(val) =>
+                                  updateAction('update_deal', {
+                                    fixedPriority: val || undefined,
+                                  })
+                                }
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Deixar o agente decidir" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="low">Baixa</SelectItem>
+                                  <SelectItem value="medium">Média</SelectItem>
+                                  <SelectItem value="high">Alta</SelectItem>
+                                  <SelectItem value="urgent">Urgente</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
+
+                          {/* Instruções para notas (condicional) */}
+                          {(action.allowedFields ?? []).includes('notes') && (
+                            <div className="space-y-1.5 pl-1">
+                              <Label className="text-xs text-muted-foreground">
+                                Instruções para as notas (opcional)
+                              </Label>
+                              <Textarea
+                                placeholder="Ex: Registre o decisor, orçamento disponível e prazo"
+                                value={action.notesTemplate ?? ''}
+                                onChange={(event) =>
+                                  updateAction('update_deal', {
+                                    notesTemplate: event.target.value || undefined,
+                                  })
+                                }
+                                rows={2}
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Bloco B — Status do negócio */}
+                        <div className="space-y-2 border-t pt-3">
+                          <div className="flex items-center gap-2">
+                            <Label className="text-xs">Status do negócio</Label>
+                            <Badge variant="outline" className="text-[10px] border-yellow-500 text-yellow-600">
+                              Ação irreversível
+                            </Badge>
+                          </div>
+                          <div className="space-y-2">
+                            {(
+                              [
+                                { id: 'WON', label: 'Pode marcar como Ganho (WON)' },
+                                { id: 'LOST', label: 'Pode marcar como Perdido (LOST)' },
+                              ] as const
+                            ).map((status) => {
+                              const isChecked = (action.allowedStatuses ?? []).includes(status.id)
+                              return (
+                                <div key={status.id} className="flex items-center gap-2">
+                                  <Checkbox
+                                    id={`${action.type}-${status.id}`}
+                                    checked={isChecked}
+                                    onCheckedChange={(checked) => {
+                                      const current = action.allowedStatuses ?? []
+                                      updateAction('update_deal', {
+                                        allowedStatuses: checked
+                                          ? [...current, status.id]
+                                          : current.filter((s) => s !== status.id),
+                                      })
+                                    }}
+                                  />
+                                  <Label
+                                    htmlFor={`${action.type}-${status.id}`}
+                                    className="text-xs font-normal cursor-pointer"
+                                  >
+                                    {status.label}
+                                  </Label>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      </>
                     )}
                   </div>
                 )}

@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { db } from '@/_lib/prisma'
 import { logger } from '@trigger.dev/sdk/v3'
 import { revalidateTags } from './lib/revalidate-tags'
+import { stepActionSchema } from '@/_actions/agent/shared/step-action-schema'
 import type { ToolContext } from './types'
 
 interface UpdateDealResult {
@@ -74,7 +75,7 @@ export function createUpdateDealTool(ctx: ToolContext) {
         }
       }
 
-      // Fix 3: Guard contra deals já finalizados
+      // Guard contra deals já finalizados
       if ((deal.status === 'WON' || deal.status === 'LOST') && input.status) {
         return {
           success: false,
@@ -82,35 +83,87 @@ export function createUpdateDealTool(ctx: ToolContext) {
         }
       }
 
+      // Agregar constraints de allowedFields/allowedStatuses/fixedPriority de todos os steps
+      const agentSteps = await db.agentStep.findMany({
+        where: { agentId: ctx.agentId },
+        select: { actions: true },
+      })
+
+      let aggregatedAllowedFields: string[] | null = null
+      let aggregatedAllowedStatuses: ('WON' | 'LOST')[] | null = null
+      let aggregatedFixedPriority: string | undefined
+
+      for (const step of agentSteps) {
+        const parsed = z.array(stepActionSchema).safeParse(step.actions)
+        if (!parsed.success) continue
+        for (const act of parsed.data) {
+          if (act.type !== 'update_deal') continue
+          if (act.allowedFields.length > 0) {
+            aggregatedAllowedFields = [
+              ...(aggregatedAllowedFields ?? []),
+              ...act.allowedFields,
+            ]
+          }
+          if (act.allowedStatuses.length > 0) {
+            aggregatedAllowedStatuses = [
+              ...(aggregatedAllowedStatuses ?? []),
+              ...act.allowedStatuses,
+            ]
+          }
+          if (act.fixedPriority) {
+            aggregatedFixedPriority = act.fixedPriority
+          }
+        }
+      }
+
+      // Aplicar fixedPriority (sobrescreve o que a IA enviou)
+      const effectiveInput = { ...input }
+      if (aggregatedFixedPriority) {
+        effectiveInput.priority = aggregatedFixedPriority as 'low' | 'medium' | 'high' | 'urgent'
+      }
+
+      // Bloquear status não permitido
+      if (aggregatedAllowedStatuses !== null && effectiveInput.status) {
+        if (!aggregatedAllowedStatuses.includes(effectiveInput.status)) {
+          return {
+            success: false,
+            message: `Não é permitido marcar o negócio como ${effectiveInput.status} nesta etapa.`,
+          }
+        }
+      }
+
       // Construir dados para atualização
       const data: Record<string, unknown> = {}
       const updatedFields: string[] = []
 
-      if (input.title !== undefined) {
-        data.title = input.title
-        updatedFields.push(`título: "${input.title}"`)
+      const isFieldAllowed = (field: string) =>
+        aggregatedAllowedFields === null || aggregatedAllowedFields.includes(field)
+
+      if (effectiveInput.title !== undefined && isFieldAllowed('title')) {
+        data.title = effectiveInput.title
+        updatedFields.push(`título: "${effectiveInput.title}"`)
       }
 
-      if (input.value !== undefined) {
-        data.value = input.value
+      if (effectiveInput.value !== undefined && isFieldAllowed('value')) {
+        data.value = effectiveInput.value
         updatedFields.push(
-          `valor: R$ ${input.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+          `valor: R$ ${effectiveInput.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
         )
       }
 
-      if (input.priority !== undefined) {
-        data.priority = input.priority
-        updatedFields.push(`prioridade: ${input.priority}`)
+      if (effectiveInput.priority !== undefined && isFieldAllowed('priority')) {
+        data.priority = effectiveInput.priority
+        updatedFields.push(`prioridade: ${effectiveInput.priority}`)
       }
 
-      // Fix 4: Notes append em vez de overwrite
-      if (input.notes !== undefined) {
-        data.notes = deal.notes ? `${deal.notes}\n\n---\n${input.notes}` : input.notes
+      // Notes append em vez de overwrite
+      if (effectiveInput.notes !== undefined && isFieldAllowed('notes')) {
+        data.notes = deal.notes ? `${deal.notes}\n\n---\n${effectiveInput.notes}` : effectiveInput.notes
         updatedFields.push('notas atualizadas')
       }
 
-      if (input.expectedCloseDate !== undefined) {
-        const parsedDate = new Date(input.expectedCloseDate)
+      if (effectiveInput.expectedCloseDate !== undefined && isFieldAllowed('expectedCloseDate')) {
+        const parsedDate = new Date(effectiveInput.expectedCloseDate)
         if (isNaN(parsedDate.getTime())) {
           return { success: false, message: 'Data de previsão inválida.' }
         }
@@ -120,19 +173,19 @@ export function createUpdateDealTool(ctx: ToolContext) {
         )
       }
 
-      if (input.status === 'WON') {
+      if (effectiveInput.status === 'WON') {
         data.status = 'WON'
         updatedFields.push('status: GANHO')
-      } else if (input.status === 'LOST') {
+      } else if (effectiveInput.status === 'LOST') {
         data.status = 'LOST'
         updatedFields.push('status: PERDIDO')
 
-        // Fix 2: Vincular lossReasonId — exact match primeiro, fuzzy como fallback
-        if (input.reason) {
+        // Vincular lossReasonId — exact match primeiro, fuzzy como fallback
+        if (effectiveInput.reason) {
           const reasons = await db.dealLostReason.findMany({
             where: { organizationId: ctx.organizationId, isActive: true },
           })
-          const reasonLower = input.reason.toLowerCase().trim()
+          const reasonLower = effectiveInput.reason.toLowerCase().trim()
           const matched =
             reasons.find((r) => r.name.toLowerCase() === reasonLower) ??
             reasons.find(
@@ -159,7 +212,7 @@ export function createUpdateDealTool(ctx: ToolContext) {
       })
 
       // Criar Activity
-      if (input.status === 'WON') {
+      if (effectiveInput.status === 'WON') {
         await db.activity.create({
           data: {
             type: 'deal_won',
@@ -169,9 +222,9 @@ export function createUpdateDealTool(ctx: ToolContext) {
             metadata: { agentId: ctx.agentId, agentName: ctx.agentName },
           },
         })
-      } else if (input.status === 'LOST') {
-        const lostContent = input.reason
-          ? `Negócio marcado como perdido pelo agente. Motivo: ${input.reason}`
+      } else if (effectiveInput.status === 'LOST') {
+        const lostContent = effectiveInput.reason
+          ? `Negócio marcado como perdido pelo agente. Motivo: ${effectiveInput.reason}`
           : 'Negócio marcado como perdido pelo agente'
         await db.activity.create({
           data: {
@@ -202,7 +255,7 @@ export function createUpdateDealTool(ctx: ToolContext) {
         `deal:${ctx.dealId}`,
         `dashboard:${ctx.organizationId}`,
         `dashboard-charts:${ctx.organizationId}`,
-      ]).catch(() => {})
+      ])
 
       logger.info('Tool update_deal executed', {
         dealId: ctx.dealId,

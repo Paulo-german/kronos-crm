@@ -17,6 +17,12 @@ export const stepActionSchema = z.discriminatedUnion('type', [
   z.object({
     ...baseFields,
     type: z.literal('update_deal'),
+    allowedFields: z
+      .array(z.enum(['title', 'value', 'priority', 'expectedCloseDate', 'notes']))
+      .default([]),
+    fixedPriority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
+    notesTemplate: z.string().optional(),
+    allowedStatuses: z.array(z.enum(['WON', 'LOST'])).default([]),
   }),
   z.object({
     ...baseFields,

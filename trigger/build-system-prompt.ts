@@ -78,8 +78,51 @@ function compileStepActions(actions: StepAction[]): string[] {
         return `* ${trigger} → execute \`move_deal\` com targetStageId="${action.targetStage}".`
       case 'update_contact':
         return `* ${trigger} → execute \`update_contact\` para registrar no contato.`
-      case 'update_deal':
-        return `* ${trigger} → execute \`update_deal\` para atualizar o negócio.`
+      case 'update_deal': {
+        const FIELD_LABELS: Record<string, string> = {
+          title: 'título',
+          value: 'valor em reais',
+          priority: 'prioridade',
+          expectedCloseDate: 'previsão de fechamento (ISO 8601)',
+          notes: 'notas',
+        }
+        const PRIORITY_LABELS: Record<string, string> = {
+          low: 'baixa',
+          medium: 'média',
+          high: 'alta',
+          urgent: 'urgente',
+        }
+
+        const lines: string[] = []
+
+        let instruction = `* ${trigger} → execute \`update_deal\``
+        if (action.allowedFields.length > 0) {
+          const fieldList = action.allowedFields.map((field) => FIELD_LABELS[field]).join(', ')
+          instruction += ` atualizando apenas: ${fieldList}`
+        }
+        lines.push(instruction + '.')
+
+        if (action.fixedPriority) {
+          lines.push(
+            `  → Prioridade OBRIGATÓRIA: "${PRIORITY_LABELS[action.fixedPriority]}" — não use outro valor.`,
+          )
+        }
+
+        if (action.notesTemplate) {
+          lines.push(`  → Para as notas, registre: ${action.notesTemplate}`)
+        }
+
+        if (action.allowedStatuses.length > 0) {
+          const statusLabels = action.allowedStatuses
+            .map((s) => (s === 'WON' ? 'GANHO (WON)' : 'PERDIDO (LOST)'))
+            .join(' ou ')
+          lines.push(`  → Pode alterar o status para: ${statusLabels}.`)
+        } else {
+          lines.push(`  → NÃO altere o status do negócio nesta etapa.`)
+        }
+
+        return lines.join('\n')
+      }
       case 'create_task':
         return `* ${trigger} → execute \`create_task\` com título "${action.title}"${action.dueDaysOffset ? ` (vencimento em ${action.dueDaysOffset} dias)` : ''}.`
       case 'create_appointment':
@@ -328,7 +371,9 @@ export async function buildSystemPrompt(
   }
 
   // 4. Contexto temporal
-  parts.push(`\n[Contexto temporal]\nAgora: ${dateFormatter.format(now)}`)
+  parts.push(
+    `\n[Contexto temporal]\nAgora: ${dateFormatter.format(now)} (UTC-3, horário de Brasília)\nAo gerar datas para ferramentas, use sempre ISO 8601 com offset: 2026-03-10T14:00:00-03:00`,
+  )
 
   // 5. Dados do contato
   const contact = conversation.contact

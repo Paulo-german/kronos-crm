@@ -31,6 +31,7 @@ import {
   createStepSchema,
   type CreateStepFormInput,
 } from '@/_actions/agent/create-step/schema'
+import type { StepAction } from '@/_actions/agent/shared/step-action-schema'
 import type { AgentStepDto } from '@/_data-access/agent/get-agent-by-id'
 import type { PipelineStageOption } from '@/_data-access/pipeline/get-pipeline-stages'
 
@@ -170,7 +171,7 @@ const UpsertStepDialog = ({
             />
 
             <StepActionBuilder
-              value={form.watch('actions') ?? []}
+              value={(form.watch('actions') ?? []) as StepAction[]}
               onChange={(actions) => form.setValue('actions', actions)}
               pipelineStages={pipelineStages}
             />
