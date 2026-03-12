@@ -7,7 +7,6 @@ import { cn } from '@/_lib/utils'
 import { Input } from '@/_components/ui/input'
 import { Avatar, AvatarFallback, AvatarImage } from '@/_components/ui/avatar'
 import { Badge } from '@/_components/ui/badge'
-import { ScrollArea } from '@/_components/ui/scroll-area'
 import { Skeleton } from '@/_components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger } from '@/_components/ui/tabs'
 import {
@@ -108,7 +107,9 @@ export function ConversationList({
           <div className="mb-3">
             <Select
               value={selectedInboxId ?? 'all'}
-              onValueChange={(value) => onInboxSelect(value === 'all' ? null : value)}
+              onValueChange={(value) =>
+                onInboxSelect(value === 'all' ? null : value)
+              }
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Todas as caixas" />
@@ -117,7 +118,8 @@ export function ConversationList({
                 <SelectItem value="all">Todas as caixas de entrada</SelectItem>
                 {inboxOptions.map((inbox) => (
                   <SelectItem key={inbox.id} value={inbox.id}>
-                    {inbox.name} ({channelLabels[inbox.channel] ?? inbox.channel})
+                    {inbox.name} (
+                    {channelLabels[inbox.channel] ?? inbox.channel})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -127,13 +129,20 @@ export function ConversationList({
 
         <div className="mb-3 flex items-center gap-2">
           <h2 className="text-lg font-semibold tracking-tight">Conversas</h2>
-          <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-medium">
+          <Badge
+            variant="secondary"
+            className="h-5 px-1.5 text-[10px] font-medium"
+          >
             {totalCount}
           </Badge>
         </div>
 
         {/* Filtro: Todas / Não lidas */}
-        <Tabs value={filter} onValueChange={(value) => onFilterChange(value as FilterTab)} className="mb-3">
+        <Tabs
+          value={filter}
+          onValueChange={(value) => onFilterChange(value as FilterTab)}
+          className="mb-3"
+        >
           <TabsList className="grid h-10 w-full grid-cols-2 rounded-md border border-border/50 bg-tab/30">
             <TabsTrigger
               value="all"
@@ -167,11 +176,11 @@ export function ConversationList({
       </div>
 
       {/* Lista */}
-      <ScrollArea className="flex-1">
+      <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-kronos-purple/50 [&::-webkit-scrollbar-track]:bg-transparent">
         {isLoading ? (
           <LoadingSkeleton />
         ) : (
-          <div className="py-1">
+          <div className="flex flex-col gap-1">
             {conversations.length === 0 && (
               <div className="p-4 text-center text-sm text-muted-foreground">
                 {search
@@ -191,8 +200,8 @@ export function ConversationList({
                   key={conversation.id}
                   onClick={() => onSelect(conversation.id)}
                   className={cn(
-                    'mx-2 my-0.5 flex w-[calc(100%-1rem)] items-start gap-3 rounded-lg border border-transparent p-3 text-left transition-colors duration-200 hover:bg-accent/50',
-                    isSelected && 'border-border/50 bg-accent',
+                    'flex w-full items-start gap-3 border border-transparent p-3 text-left transition-colors duration-200 hover:bg-accent/30',
+                    isSelected && 'border-border/50 bg-accent/50',
                   )}
                 >
                   <Avatar className="h-10 w-10 shrink-0">
@@ -204,10 +213,12 @@ export function ConversationList({
 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
-                      <span className={cn(
-                        'truncate text-sm',
-                        hasUnread ? 'font-semibold' : 'font-medium',
-                      )}>
+                      <span
+                        className={cn(
+                          'truncate text-sm',
+                          hasUnread ? 'font-semibold' : 'font-medium',
+                        )}
+                      >
                         {conversation.contactName}
                       </span>
                       <div className="flex shrink-0 items-center gap-1.5">
@@ -221,17 +232,21 @@ export function ConversationList({
                         )}
                         {hasUnread && (
                           <Badge className="h-5 min-w-5 rounded-full bg-kronos-green px-1 text-[10px] font-medium text-white hover:bg-kronos-green">
-                            {conversation.unreadCount > 9 ? '9+' : conversation.unreadCount}
+                            {conversation.unreadCount > 9
+                              ? '9+'
+                              : conversation.unreadCount}
                           </Badge>
                         )}
                       </div>
                     </div>
 
                     {conversation.lastMessage && (
-                      <p className={cn(
-                        'mt-0.5 truncate text-xs text-muted-foreground',
-                        hasUnread && 'font-medium text-foreground/80',
-                      )}>
+                      <p
+                        className={cn(
+                          'mt-0.5 truncate text-xs text-muted-foreground',
+                          hasUnread && 'font-medium text-foreground/80',
+                        )}
+                      >
                         {conversation.lastMessage.role === 'assistant' && (
                           <span className="font-medium">Você: </span>
                         )}
@@ -284,7 +299,7 @@ export function ConversationList({
             )}
           </div>
         )}
-      </ScrollArea>
+      </div>
     </div>
   )
 }
