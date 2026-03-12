@@ -106,8 +106,9 @@ export function createCreateAppointmentTool(ctx: ToolContext) {
       })
 
       await revalidateTags([
+        `appointments:${ctx.organizationId}`,
+        `deal-appointments:${ctx.dealId}`,
         `deal:${ctx.dealId}`,
-        `deals:${ctx.organizationId}`,
       ]).catch(() => {})
 
       logger.info('Tool create_appointment executed', {
