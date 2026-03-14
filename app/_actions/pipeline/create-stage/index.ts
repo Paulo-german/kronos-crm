@@ -43,7 +43,7 @@ export const createStage = orgActionClient
       },
     })
 
-    revalidatePath('/crm/deals/pipeline')
+    revalidatePath('/crm/deals/pipeline', 'layout')
     revalidateTag(`pipeline:${ctx.orgId}`)
 
     return { success: true, stageId: stage.id }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 import { Plus } from 'lucide-react'
@@ -22,12 +23,14 @@ interface AddStageButtonProps {
 export function AddStageButton({ pipelineId }: AddStageButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [name, setName] = useState('')
+  const router = useRouter()
 
   const { execute, isPending } = useAction(createStage, {
     onSuccess: () => {
       toast.success('Etapa criada!')
       setIsOpen(false)
       setName('')
+      router.refresh()
     },
     onError: ({ error }) => {
       toast.error(error.serverError || 'Erro ao criar etapa.')
