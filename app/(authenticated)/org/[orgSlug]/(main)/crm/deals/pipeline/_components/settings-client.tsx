@@ -135,7 +135,7 @@ export function SettingsClient({ pipeline }: SettingsClientProps) {
                   <SortableStageRow
                     key={stage.id}
                     stage={stage}
-                    allStages={stages}
+
                     onDelete={(stage) => setDeleteTarget(stage)}
                   />
                 ))}
@@ -148,7 +148,6 @@ export function SettingsClient({ pipeline }: SettingsClientProps) {
               <SortableStageRow
                 key={stage.id}
                 stage={stage}
-                allStages={stages}
                 onDelete={(stage) => setDeleteTarget(stage)}
               />
             ))}

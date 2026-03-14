@@ -13,13 +13,11 @@ import type { StageDto } from '@/_data-access/pipeline/get-user-pipeline'
 
 interface SortableStageRowProps {
   stage: StageDto
-  allStages: StageDto[]
   onDelete: (stage: StageDto) => void
 }
 
 export function SortableStageRow({
   stage,
-  allStages: _allStages,
   onDelete,
 }: SortableStageRowProps) {
   const [isEditing, setIsEditing] = useState(false)
