@@ -21,7 +21,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/_components/ui/dropdown-menu'
-import { TOOL_OPTIONS } from './constants'
+import { Switch } from '@/_components/ui/switch'
+import { DAYS_AHEAD_OPTIONS, DURATION_OPTIONS, TOOL_OPTIONS } from './constants'
 import type { StepAction } from '@/_actions/agent/shared/step-action-schema'
 import type { PipelineStageOption } from '@/_data-access/pipeline/get-pipeline-stages'
 
@@ -36,7 +37,8 @@ const TRIGGER_PLACEHOLDERS: Record<string, string> = {
   update_contact: 'Ex: Ao coletar dados do contato',
   update_deal: 'Ex: Ao coletar informações do negócio',
   create_task: 'Ex: Ao identificar necessidade de follow-up',
-  create_appointment: 'Ex: Quando o lead confirmar a visita',
+  list_availability: 'Ex: Quando o lead quiser agendar uma reunião',
+  create_event: 'Ex: Quando o lead confirmar o horário do evento',
   search_knowledge: 'Ex: Se precisar de informações específicas',
   hand_off_to_human: 'Ex: Se necessário atendimento humano',
 }
@@ -47,12 +49,31 @@ const buildDefaultAction = (type: string): StepAction => {
       return { type: 'move_deal', trigger: '', targetStage: '' }
     case 'create_task':
       return { type: 'create_task', trigger: '', title: '' }
-    case 'create_appointment':
-      return { type: 'create_appointment', trigger: '', title: '' }
     case 'update_contact':
       return { type: 'update_contact', trigger: '' }
     case 'update_deal':
       return { type: 'update_deal', trigger: '', allowedFields: [], allowedStatuses: [] }
+    case 'list_availability':
+      return {
+        type: 'list_availability',
+        trigger: '',
+        daysAhead: 5,
+        slotDuration: 60,
+        startTime: '08:00',
+        endTime: '18:00',
+        provider: 'internal',
+      }
+    case 'create_event':
+      return {
+        type: 'create_event',
+        trigger: '',
+        titleInstructions: '',
+        duration: 60,
+        startTime: '08:00',
+        endTime: '18:00',
+        allowReschedule: false,
+        provider: 'internal',
+      }
     case 'search_knowledge':
       return { type: 'search_knowledge', trigger: '' }
     case 'hand_off_to_human':
@@ -242,24 +263,6 @@ const StepActionBuilder = ({
                     </>
                   )}
 
-                  {/* create_appointment: título */}
-                  {action.type === 'create_appointment' && (
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">
-                        Título do compromisso *
-                      </Label>
-                      <Input
-                        placeholder="Ex: Reunião de demonstração"
-                        value={action.title}
-                        onChange={(event) =>
-                          updateAction('create_appointment', {
-                            title: event.target.value,
-                          })
-                        }
-                      />
-                    </div>
-                  )}
-
                   {/* update_deal: campos permitidos + status */}
                   {action.type === 'update_deal' && (
                     <>
@@ -395,6 +398,193 @@ const StepActionBuilder = ({
                             )
                           })}
                         </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* list_availability: janela de busca de disponibilidade */}
+                  {action.type === 'list_availability' && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Dias para frente *</Label>
+                        <Select
+                          value={String(action.daysAhead)}
+                          onValueChange={(val) =>
+                            updateAction('list_availability', { daysAhead: val })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {DAYS_AHEAD_OPTIONS.map((option) => (
+                              <SelectItem key={option.value} value={String(option.value)}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Duração do slot *</Label>
+                        <Select
+                          value={String(action.slotDuration)}
+                          onValueChange={(val) =>
+                            updateAction('list_availability', { slotDuration: val })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {DURATION_OPTIONS.map((option) => (
+                              <SelectItem key={option.value} value={String(option.value)}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Horário de início *</Label>
+                        <Input
+                          placeholder="07:00"
+                          pattern="\d{2}:\d{2}"
+                          value={action.startTime}
+                          onChange={(event) =>
+                            updateAction('list_availability', {
+                              startTime: event.target.value,
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Horário de fim *</Label>
+                        <Input
+                          placeholder="23:00"
+                          pattern="\d{2}:\d{2}"
+                          value={action.endTime}
+                          onChange={(event) =>
+                            updateAction('list_availability', {
+                              endTime: event.target.value,
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* create_event: instruções de título + duração + janela de horário + reagendamento */}
+                  {action.type === 'create_event' && (
+                    <>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Instruções para o título *</Label>
+                        <Textarea
+                          placeholder="Ex: Use o nome do contato + tipo de reunião"
+                          value={action.titleInstructions}
+                          onChange={(event) =>
+                            updateAction('create_event', {
+                              titleInstructions: event.target.value,
+                            })
+                          }
+                          rows={2}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Duração do evento *</Label>
+                        <Select
+                          value={String(action.duration)}
+                          onValueChange={(val) =>
+                            updateAction('create_event', { duration: val })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {DURATION_OPTIONS.map((option) => (
+                              <SelectItem key={option.value} value={String(option.value)}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Janela de tempo */}
+                      <div className="space-y-2">
+                        <div>
+                          <Label className="text-xs">Janela de tempo para agendamentos</Label>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            A IA só poderá agendar dentro deste horário
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs text-muted-foreground">Início</Label>
+                            <Input
+                              placeholder="08:00"
+                              pattern="\d{2}:\d{2}"
+                              value={action.startTime}
+                              onChange={(event) =>
+                                updateAction('create_event', {
+                                  startTime: event.target.value,
+                                })
+                              }
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs text-muted-foreground">Fim</Label>
+                            <Input
+                              placeholder="18:00"
+                              pattern="\d{2}:\d{2}"
+                              value={action.endTime}
+                              onChange={(event) =>
+                                updateAction('create_event', {
+                                  endTime: event.target.value,
+                                })
+                              }
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Switch de reagendamento */}
+                      <div className="space-y-2 border-t pt-3">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label className="text-xs">Permitir reagendamento</Label>
+                            <p className="text-[11px] text-muted-foreground">
+                              Habilita a IA a reagendar eventos existentes quando solicitado
+                            </p>
+                          </div>
+                          <Switch
+                            checked={action.allowReschedule}
+                            onCheckedChange={(checked) =>
+                              updateAction('create_event', {
+                                allowReschedule: checked,
+                                ...(!checked ? { rescheduleInstructions: undefined } : {}),
+                              })
+                            }
+                          />
+                        </div>
+                        {action.allowReschedule && (
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">
+                              Instruções de reagendamento (opcional)
+                            </Label>
+                            <Input
+                              placeholder="Ex: Limite a 2 reagendamentos por evento"
+                              value={action.rescheduleInstructions ?? ''}
+                              onChange={(event) =>
+                                updateAction('create_event', {
+                                  rescheduleInstructions:
+                                    event.target.value || undefined,
+                                })
+                              }
+                            />
+                          </div>
+                        )}
                       </div>
                     </>
                   )}

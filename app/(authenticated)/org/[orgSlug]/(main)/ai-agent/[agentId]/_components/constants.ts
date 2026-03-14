@@ -31,8 +31,13 @@ export const TOOL_OPTIONS = [
     description: 'Cria tarefas no CRM vinculadas ao negócio',
   },
   {
-    value: 'create_appointment',
-    label: 'Agendar Compromisso',
+    value: 'list_availability',
+    label: 'Consultar Disponibilidade',
+    description: 'Consulta horários disponíveis na agenda para sugerir ao cliente',
+  },
+  {
+    value: 'create_event',
+    label: 'Criar Evento',
     description: 'Agenda reuniões, demos e visitas vinculadas ao negócio',
   },
   {
@@ -45,6 +50,25 @@ export const TOOL_OPTIONS = [
     label: 'Buscar Conhecimento',
     description: 'Busca na base de conhecimento do agente',
   },
+] as const
+
+export const DURATION_OPTIONS = [
+  { value: 15, label: '15 minutos' },
+  { value: 30, label: '30 minutos' },
+  { value: 45, label: '45 minutos' },
+  { value: 60, label: '1 hora' },
+  { value: 90, label: '1h 30min' },
+  { value: 120, label: '2 horas' },
+] as const
+
+export const DAYS_AHEAD_OPTIONS = [
+  { value: 1, label: '1 dia' },
+  { value: 2, label: '2 dias' },
+  { value: 3, label: '3 dias' },
+  { value: 4, label: '4 dias' },
+  { value: 5, label: '5 dias' },
+  { value: 6, label: '6 dias' },
+  { value: 7, label: '7 dias' },
 ] as const
 
 export const TIMEZONE_OPTIONS = [
