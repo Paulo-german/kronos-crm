@@ -91,9 +91,17 @@ export const stepActionSchema = z.discriminatedUnion('type', [
     ...baseFields,
     type: z.literal('search_knowledge'),
   }),
+
+  // Transfere para humano — notificação via WhatsApp é best-effort e configurável
+  // notifyTarget com .default('none') garante retrocompatibilidade com steps existentes
   z.object({
     ...baseFields,
     type: z.literal('hand_off_to_human'),
+    notifyTarget: z
+      .enum(['none', 'specific_number', 'deal_assignee'])
+      .default('none'),
+    specificPhone: z.string().optional(),
+    notificationMessage: z.string().optional(),
   }),
 ])
 

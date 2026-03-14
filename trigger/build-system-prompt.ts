@@ -147,8 +147,16 @@ function compileStepActions(actions: StepAction[]): string[] {
       }
       case 'search_knowledge':
         return `* ${trigger} → execute \`search_knowledge\` para consultar a base.`
-      case 'hand_off_to_human':
-        return `* ${trigger} → execute \`hand_off_to_human\` para transferir.`
+      case 'hand_off_to_human': {
+        const base = `* ${trigger} → execute \`hand_off_to_human\` para transferir.`
+        if (action.notifyTarget === 'specific_number') {
+          return `${base}\n  → O atendente será notificado automaticamente via WhatsApp.`
+        }
+        if (action.notifyTarget === 'deal_assignee') {
+          return `${base}\n  → O responsável pelo negócio será notificado automaticamente via WhatsApp.`
+        }
+        return base
+      }
       default: {
         const _exhaustive: never = action
         throw new Error(`Tipo de ação desconhecido: ${(_exhaustive as StepAction).type}`)

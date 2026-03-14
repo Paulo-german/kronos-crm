@@ -12,12 +12,12 @@ import { createUpdateEventTool } from './update-event'
 
 // Registry de tools simples (recebem apenas ctx, sem config do step)
 // update_event não está aqui — sua ativação é controlada por allowReschedule no create_event
+// hand_off_to_human não está aqui — é config-aware (notificação WhatsApp configurável)
 const SIMPLE_TOOL_REGISTRY = {
   move_deal: createMoveDealTool,
   update_contact: createUpdateContactTool,
   update_deal: createUpdateDealTool,
   create_task: createCreateTaskTool,
-  hand_off_to_human: createHandOffToHumanTool,
   search_knowledge: createSearchKnowledgeTool,
 } as const
 
@@ -34,6 +34,7 @@ export function buildToolSet(
     | ReturnType<typeof createListAvailabilityTool>
     | ReturnType<typeof createCreateEventTool>
     | ReturnType<typeof createUpdateEventTool>
+    | ReturnType<typeof createHandOffToHumanTool>
   > = {}
 
   for (const toolName of toolsEnabled) {
@@ -67,6 +68,21 @@ export function buildToolSet(
         if (config.allowReschedule) {
           tools['update_event'] = createUpdateEventTool(ctx)
         }
+      }
+      continue
+    }
+
+    if (toolName === 'hand_off_to_human') {
+      const config = stepActions.find((action) => action.type === 'hand_off_to_human')
+      if (config && config.type === 'hand_off_to_human') {
+        tools[toolName] = createHandOffToHumanTool(ctx, {
+          notifyTarget: config.notifyTarget,
+          specificPhone: config.specificPhone,
+          notificationMessage: config.notificationMessage,
+        })
+      } else {
+        // Retrocompat: step sem config de notificação → tool sem config (comportamento original)
+        tools[toolName] = createHandOffToHumanTool(ctx)
       }
       continue
     }
