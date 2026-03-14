@@ -32,6 +32,12 @@ interface StepActionBuilderProps {
   pipelineStages: PipelineStageOption[]
 }
 
+const NOTIFY_TARGET_OPTIONS = [
+  { value: 'none', label: 'Sem notificação' },
+  { value: 'specific_number', label: 'Número específico' },
+  { value: 'deal_assignee', label: 'Responsável pelo negócio' },
+] as const
+
 const TRIGGER_PLACEHOLDERS: Record<string, string> = {
   move_deal: 'Ex: Ao concluir esta etapa',
   update_contact: 'Ex: Ao coletar dados do contato',
@@ -77,7 +83,7 @@ const buildDefaultAction = (type: string): StepAction => {
     case 'search_knowledge':
       return { type: 'search_knowledge', trigger: '' }
     case 'hand_off_to_human':
-      return { type: 'hand_off_to_human', trigger: '' }
+      return { type: 'hand_off_to_human', trigger: '', notifyTarget: 'none' as const }
     default:
       return { type: 'update_contact', trigger: '' }
   }
@@ -587,6 +593,91 @@ const StepActionBuilder = ({
                         )}
                       </div>
                     </>
+                  )}
+
+                  {/* hand_off_to_human: notificação ao atendente via WhatsApp */}
+                  {action.type === 'hand_off_to_human' && (
+                    <div className="space-y-3 border-t pt-3">
+                      <Label className="text-xs">Notificação ao atendente</Label>
+
+                      {/* Select de modo de notificação */}
+                      <div className="space-y-1.5">
+                        <Select
+                          value={action.notifyTarget}
+                          onValueChange={(val) =>
+                            updateAction('hand_off_to_human', {
+                              notifyTarget: val,
+                              ...(val === 'none'
+                                ? { specificPhone: undefined, notificationMessage: undefined }
+                                : {}),
+                              ...(val === 'deal_assignee'
+                                ? { specificPhone: undefined }
+                                : {}),
+                            })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o tipo de notificação" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {NOTIFY_TARGET_OPTIONS.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* specific_number: input de telefone */}
+                      {action.notifyTarget === 'specific_number' && (
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Número de WhatsApp *</Label>
+                          <Input
+                            placeholder="5511999999999"
+                            value={action.specificPhone ?? ''}
+                            onChange={(event) =>
+                              updateAction('hand_off_to_human', {
+                                specificPhone: event.target.value || undefined,
+                              })
+                            }
+                          />
+                          <p className="text-[11px] text-muted-foreground">
+                            Informe o número com DDD e código do país
+                          </p>
+                        </div>
+                      )}
+
+                      {/* deal_assignee: texto informativo */}
+                      {action.notifyTarget === 'deal_assignee' && (
+                        <p className="text-[11px] text-muted-foreground">
+                          O responsável pelo negócio será notificado no WhatsApp cadastrado no
+                          perfil dele. Se não houver telefone, a notificação será ignorada
+                          silenciosamente.
+                        </p>
+                      )}
+
+                      {/* specific_number OU deal_assignee: mensagem personalizada */}
+                      {(action.notifyTarget === 'specific_number' ||
+                        action.notifyTarget === 'deal_assignee') && (
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Mensagem personalizada (opcional)</Label>
+                          <Textarea
+                            placeholder="Ex: Conversa transferida. Por favor, assuma o atendimento."
+                            value={action.notificationMessage ?? ''}
+                            onChange={(event) =>
+                              updateAction('hand_off_to_human', {
+                                notificationMessage: event.target.value || undefined,
+                              })
+                            }
+                            rows={2}
+                          />
+                          <p className="text-[11px] text-muted-foreground">
+                            Se vazio, será enviada uma mensagem padrão com o nome do contato e motivo
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               </CardContent>
