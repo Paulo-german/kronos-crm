@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useId, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   DndContext,
   closestCenter,
@@ -18,10 +19,14 @@ import {
 } from '@dnd-kit/sortable'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
+import { Trash2 } from 'lucide-react'
 
 import { SortableStageRow } from './sortable-stage-row'
 import { AddStageButton } from '../../_components/add-stage-button'
+import { DeleteStageDialog } from '../../_components/delete-stage-dialog'
+import ConfirmationDialog from '@/_components/confirmation-dialog'
 import { reorderStages } from '@/_actions/pipeline/reorder-stages'
+import { deleteStage } from '@/_actions/pipeline/delete-stage'
 import type {
   PipelineWithStagesDto,
   StageDto,
@@ -35,13 +40,23 @@ export function SettingsClient({ pipeline }: SettingsClientProps) {
   // ID estável para evitar hydration mismatch
   const dndContextId = useId()
   const [isMounted, setIsMounted] = useState(false)
+  const router = useRouter()
 
   useEffect(() => {
     setIsMounted(true)
   }, [])
 
-  // Estado local para optimistic reordering
+  // Estado local para optimistic reordering — sincroniza quando props mudam (router.refresh)
   const [stages, setStages] = useState<StageDto[]>(pipeline.stages)
+  const [prevStages, setPrevStages] = useState<StageDto[]>(pipeline.stages)
+
+  // Etapa alvo para exclusão (null = nenhum dialog aberto)
+  const [deleteTarget, setDeleteTarget] = useState<StageDto | null>(null)
+
+  if (pipeline.stages !== prevStages) {
+    setPrevStages(pipeline.stages)
+    setStages(pipeline.stages)
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -60,6 +75,20 @@ export function SettingsClient({ pipeline }: SettingsClientProps) {
       toast.error(error.serverError || 'Erro ao reordenar etapas.')
     },
   })
+
+  const { execute: executeDelete, isPending: isDeleting } = useAction(
+    deleteStage,
+    {
+      onSuccess: () => {
+        toast.success('Etapa excluída!')
+        setDeleteTarget(null)
+        router.refresh()
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError || 'Erro ao excluir etapa.')
+      },
+    },
+  )
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
@@ -107,6 +136,7 @@ export function SettingsClient({ pipeline }: SettingsClientProps) {
                     key={stage.id}
                     stage={stage}
                     allStages={stages}
+                    onDelete={(stage) => setDeleteTarget(stage)}
                   />
                 ))}
               </div>
@@ -119,6 +149,7 @@ export function SettingsClient({ pipeline }: SettingsClientProps) {
                 key={stage.id}
                 stage={stage}
                 allStages={stages}
+                onDelete={(stage) => setDeleteTarget(stage)}
               />
             ))}
           </div>
@@ -126,6 +157,37 @@ export function SettingsClient({ pipeline }: SettingsClientProps) {
 
         <AddStageButton pipelineId={pipeline.id} />
       </div>
+
+      {/* Dialog de exclusão simples (etapa sem deals) — renderizado fora do DndContext */}
+      {deleteTarget && deleteTarget.dealCount === 0 && (
+        <ConfirmationDialog
+          open={!!deleteTarget}
+          onOpenChange={(open) => !open && setDeleteTarget(null)}
+          variant="destructive"
+          icon={<Trash2 className="h-6 w-6" />}
+          title="Excluir etapa"
+          description={
+            <p>
+              Tem certeza que deseja excluir a etapa{' '}
+              <strong>{deleteTarget.name}</strong>? Esta ação não pode ser
+              desfeita.
+            </p>
+          }
+          confirmLabel="Excluir"
+          isLoading={isDeleting}
+          onConfirm={() => executeDelete({ id: deleteTarget.id })}
+        />
+      )}
+
+      {/* Dialog de exclusão com migração (etapa com deals) — renderizado fora do DndContext */}
+      {deleteTarget && deleteTarget.dealCount > 0 && (
+        <DeleteStageDialog
+          open={!!deleteTarget}
+          onOpenChange={(open) => !open && setDeleteTarget(null)}
+          stage={deleteTarget}
+          availableStages={stages.filter((s) => s.id !== deleteTarget.id)}
+        />
+      )}
     </div>
   )
 }

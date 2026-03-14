@@ -8,21 +8,22 @@ import { toast } from 'sonner'
 import { GripVertical, Pencil, Trash2, Check, X } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import { Input } from '@/_components/ui/input'
-import { deleteStage } from '@/_actions/pipeline/delete-stage'
 import { updateStage } from '@/_actions/pipeline/update-stage'
-import { DeleteStageDialog } from './delete-stage-dialog'
 import type { StageDto } from '@/_data-access/pipeline/get-user-pipeline'
 
 interface SortableStageRowProps {
   stage: StageDto
   allStages: StageDto[]
+  onDelete: (stage: StageDto) => void
 }
 
-export function SortableStageRow({ stage, allStages }: SortableStageRowProps) {
+export function SortableStageRow({
+  stage,
+  allStages: _allStages,
+  onDelete,
+}: SortableStageRowProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [name, setName] = useState(stage.name)
-
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
   const {
     attributes,
@@ -52,45 +53,18 @@ export function SortableStageRow({ stage, allStages }: SortableStageRowProps) {
     },
   )
 
-  const { execute: executeDelete, isPending: isDeleting } = useAction(
-    deleteStage,
-    {
-      onSuccess: () => {
-        toast.success('Etapa excluída!')
-      },
-      onError: ({ error }) => {
-        toast.error(error.serverError || 'Erro ao excluir etapa.')
-      },
-    },
-  )
-
   const handleSave = () => {
     executeUpdate({ id: stage.id, name })
   }
 
   const handleCancel = () => {
     setName(stage.name)
-
     setIsEditing(false)
   }
 
   const handleDelete = () => {
-    // Se tem deals, abre modal para migração
-    if (stage.dealCount > 0) {
-      setShowDeleteDialog(true)
-      return
-    }
-
-    // Se não tem deals, confirma e deleta diretamente
-    if (confirm('Tem certeza que deseja excluir esta etapa?')) {
-      executeDelete({ id: stage.id })
-    }
+    onDelete(stage)
   }
-
-  // Etapas disponíveis para migração (excluindo a própria etapa)
-  const availableStages = allStages.filter((s) => s.id !== stage.id)
-
-  const isPending = isUpdating || isDeleting
 
   return (
     <div
@@ -133,7 +107,7 @@ export function SortableStageRow({ stage, allStages }: SortableStageRowProps) {
             variant="ghost"
             size="icon"
             onClick={handleSave}
-            disabled={isPending}
+            disabled={isUpdating}
           >
             <Check className="h-4 w-4 text-green-600" />
           </Button>
@@ -141,7 +115,7 @@ export function SortableStageRow({ stage, allStages }: SortableStageRowProps) {
             variant="ghost"
             size="icon"
             onClick={handleCancel}
-            disabled={isPending}
+            disabled={isUpdating}
           >
             <X className="h-4 w-4 text-red-600" />
           </Button>
@@ -159,20 +133,11 @@ export function SortableStageRow({ stage, allStages }: SortableStageRowProps) {
             variant="ghost"
             size="icon"
             onClick={handleDelete}
-            disabled={isPending}
           >
             <Trash2 className="h-4 w-4" />
           </Button>
         </>
       )}
-
-      {/* Dialog de Reatribuição */}
-      <DeleteStageDialog
-        open={showDeleteDialog}
-        onOpenChange={setShowDeleteDialog}
-        stage={stage}
-        availableStages={availableStages}
-      />
     </div>
   )
 }

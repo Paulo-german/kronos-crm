@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 import {
@@ -36,6 +37,7 @@ export function DeleteStageDialog({
   availableStages,
 }: DeleteStageDialogProps) {
   const [targetStageId, setTargetStageId] = useState<string>('')
+  const router = useRouter()
 
   const { execute, isPending } = useAction(deleteStageWithMigration, {
     onSuccess: ({ data }) => {
@@ -43,6 +45,7 @@ export function DeleteStageDialog({
         `Etapa excluída! ${data?.movedDealsCount || 0} deal(s) movido(s).`,
       )
       onOpenChange(false)
+      router.refresh()
     },
     onError: ({ error }) => {
       toast.error(error.serverError || 'Erro ao excluir etapa.')
