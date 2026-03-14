@@ -125,8 +125,26 @@ function compileStepActions(actions: StepAction[]): string[] {
       }
       case 'create_task':
         return `* ${trigger} → execute \`create_task\` com título "${action.title}"${action.dueDaysOffset ? ` (vencimento em ${action.dueDaysOffset} dias)` : ''}.`
-      case 'create_appointment':
-        return `* ${trigger} → execute \`create_appointment\` com título "${action.title}".`
+      case 'list_availability':
+        return `* ${trigger} → execute \`list_availability\` para consultar horários disponíveis.`
+      case 'create_event': {
+        const durationMinutes = action.duration
+        const durationLabel =
+          durationMinutes >= 60
+            ? `${Math.floor(durationMinutes / 60)}h${durationMinutes % 60 > 0 ? ` ${durationMinutes % 60}min` : ''}`
+            : `${durationMinutes}min`
+        const lines = [
+          `* ${trigger} → execute \`create_event\` (duração: ${durationLabel}, janela: ${action.startTime}–${action.endTime}).`,
+          `  → Para o título, siga: ${action.titleInstructions}`,
+        ]
+        if (action.allowReschedule) {
+          const rescheduleNote = action.rescheduleInstructions
+            ? `  → Reagendamento permitido. ${action.rescheduleInstructions}`
+            : `  → Reagendamento permitido: use \`update_event\` quando o cliente solicitar mudança de horário.`
+          lines.push(rescheduleNote)
+        }
+        return lines.join('\n')
+      }
       case 'search_knowledge':
         return `* ${trigger} → execute \`search_knowledge\` para consultar a base.`
       case 'hand_off_to_human':
@@ -156,9 +174,20 @@ const TOOL_PROMPT_DESCRIPTIONS: Record<string, { label: string; description: str
     label: 'Criar Tarefa',
     description: 'Cria uma tarefa de follow-up ou ação futura. Use para garantir que próximos passos não se percam.',
   },
-  create_appointment: {
-    label: 'Criar Compromisso',
-    description: 'Agenda um compromisso (reunião, visita, demo). Use quando confirmar horário com o lead.',
+  list_availability: {
+    label: 'Consultar Disponibilidade',
+    description:
+      'Consulta horários disponíveis na agenda. Use ANTES de sugerir horários ao cliente para garantir que o slot está livre.',
+  },
+  create_event: {
+    label: 'Criar Evento',
+    description:
+      'Agenda um evento (reunião, visita, demo) vinculado ao negócio. Use quando confirmar horário com o lead.',
+  },
+  update_event: {
+    label: 'Reagendar Evento',
+    description:
+      'Altera a data/hora de um evento existente. Use quando o cliente solicitar reagendamento.',
   },
   search_knowledge: {
     label: 'Consultar Base de Conhecimento',
@@ -196,6 +225,7 @@ interface BuildSystemPromptResult {
   toolsEnabled: string[]
   pipelineIds: string[]
   knowledgeContext: string | null
+  allStepActions: StepAction[]
 }
 
 /**
@@ -302,15 +332,22 @@ export async function buildSystemPrompt(
     }),
   ])
 
+  // Coletar flat array de todas as actions parseadas (usado pelo buildToolSet config-aware)
+  const allStepActions: StepAction[] = agent.steps.flatMap((step) => {
+    const parsed = z.array(stepActionSchema).safeParse(step.actions)
+    return parsed.success ? parsed.data : []
+  })
+
   // Derivar conjunto de tools das actions de todos os steps
-  const effectiveTools = [
-    ...new Set(
-      agent.steps.flatMap((step) => {
-        const parsed = z.array(stepActionSchema).safeParse(step.actions)
-        return parsed.success ? parsed.data.map((action) => action.type) : []
-      }),
-    ),
-  ]
+  const baseEffectiveTools = [...new Set(allStepActions.map((action) => action.type))]
+
+  // update_event não é um tipo de action — é ativado via allowReschedule no create_event
+  const hasReschedulableEvent = allStepActions.some(
+    (action) => action.type === 'create_event' && action.allowReschedule,
+  )
+  const effectiveTools = hasReschedulableEvent
+    ? [...baseEffectiveTools, 'update_event']
+    : baseEffectiveTools
 
   const parts: string[] = []
 
@@ -530,5 +567,6 @@ export async function buildSystemPrompt(
     toolsEnabled: effectiveTools,
     pipelineIds: agent.pipelineIds,
     knowledgeContext,
+    allStepActions,
   }
 }

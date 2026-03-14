@@ -298,7 +298,11 @@ export const processAgentMessage = task({
 
     const effectiveToolsEnabled = promptContext.toolsEnabled
 
-    const tools = buildToolSet(effectiveToolsEnabled, toolContext)
+    const tools = buildToolSet(
+      effectiveToolsEnabled,
+      toolContext,
+      promptContext.allStepActions,
+    )
 
     // -----------------------------------------------------------------------
     // 5. Typing presence — "digitando..." antes do LLM
