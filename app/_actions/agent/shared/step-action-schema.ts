@@ -4,6 +4,25 @@ const baseFields = {
   trigger: z.string().min(1),
 }
 
+// Provider para preparação futura de Google Calendar
+const schedulingProviderSchema = z
+  .enum(['internal', 'google_calendar'])
+  .default('internal')
+
+// Duração de slots/eventos em minutos — valores discretos permitidos
+const durationSchema = z.coerce
+  .number()
+  .pipe(
+    z.union([
+      z.literal(15),
+      z.literal(30),
+      z.literal(45),
+      z.literal(60),
+      z.literal(90),
+      z.literal(120),
+    ]),
+  )
+
 export const stepActionSchema = z.discriminatedUnion('type', [
   z.object({
     ...baseFields,
@@ -30,11 +49,44 @@ export const stepActionSchema = z.discriminatedUnion('type', [
     title: z.string().min(1),
     dueDaysOffset: z.number().int().positive().optional(),
   }),
+
+  // Consulta slots disponíveis na agenda — config vem do step builder, não do LLM
   z.object({
     ...baseFields,
-    type: z.literal('create_appointment'),
-    title: z.string().min(1),
+    type: z.literal('list_availability'),
+    daysAhead: z.number().int().min(1).max(7).default(5),
+    slotDuration: durationSchema.default(60),
+    startTime: z
+      .string()
+      .regex(/^\d{2}:\d{2}$/)
+      .default('08:00'),
+    endTime: z
+      .string()
+      .regex(/^\d{2}:\d{2}$/)
+      .default('18:00'),
+    provider: schedulingProviderSchema,
   }),
+
+  // Cria evento (substitui create_appointment) — endDate calculado via duration
+  // allowReschedule: se true, a tool update_event também é registrada no runtime
+  z.object({
+    ...baseFields,
+    type: z.literal('create_event'),
+    titleInstructions: z.string().min(1),
+    duration: durationSchema.default(60),
+    startTime: z
+      .string()
+      .regex(/^\d{2}:\d{2}$/)
+      .default('08:00'),
+    endTime: z
+      .string()
+      .regex(/^\d{2}:\d{2}$/)
+      .default('18:00'),
+    allowReschedule: z.boolean().default(false),
+    rescheduleInstructions: z.string().optional(),
+    provider: schedulingProviderSchema,
+  }),
+
   z.object({
     ...baseFields,
     type: z.literal('search_knowledge'),
