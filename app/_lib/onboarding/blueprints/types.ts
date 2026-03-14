@@ -7,13 +7,59 @@ export interface PipelineStageBlueprint {
   color: string
 }
 
-export interface BlueprintStepAction {
-  type: 'move_deal' | 'update_contact' | 'update_deal' | 'create_task' | 'create_appointment' | 'search_knowledge' | 'hand_off_to_human'
-  trigger: string
-  targetStagePosition?: number  // Só para move_deal — resolve para UUID no seed
-  title?: string                // Para create_task / create_appointment
-  dueDaysOffset?: number        // Para create_task
-}
+export type BlueprintStepAction =
+  | {
+      type: 'move_deal'
+      trigger: string
+      targetStagePosition: number
+    }
+  | {
+      type: 'create_task'
+      trigger: string
+      title: string
+      dueDaysOffset: number
+    }
+  | {
+      type: 'create_event'
+      trigger: string
+      titleInstructions?: string
+      duration?: number
+      startTime?: string
+      endTime?: string
+      allowReschedule?: boolean
+      rescheduleInstructions?: string
+    }
+  | {
+      type: 'list_availability'
+      trigger: string
+      daysAhead?: number
+      slotDuration?: number
+      startTime?: string
+      endTime?: string
+    }
+  | {
+      type: 'hand_off_to_human'
+      trigger: string
+      notifyTarget?: 'none' | 'specific_number' | 'deal_assignee'
+      specificPhone?: string
+      notificationMessage?: string
+    }
+  | {
+      type: 'update_deal'
+      trigger: string
+      allowedFields?: ('title' | 'value' | 'priority' | 'expectedCloseDate' | 'notes')[]
+      fixedPriority?: 'low' | 'medium' | 'high' | 'urgent'
+      notesTemplate?: string
+      allowedStatuses?: ('WON' | 'LOST')[]
+    }
+  | {
+      type: 'search_knowledge'
+      trigger: string
+    }
+  | {
+      type: 'update_contact'
+      trigger: string
+    }
 
 export interface AgentStepBlueprint {
   name: string
