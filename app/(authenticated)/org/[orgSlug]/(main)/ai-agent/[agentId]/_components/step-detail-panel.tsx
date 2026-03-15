@@ -39,6 +39,7 @@ interface StepDetailPanelProps {
   pipelineStages: PipelineStageOption[]
   onCreateSuccess: () => void
   onDeleteSuccess: () => void
+  onSaveSuccess?: () => void
 }
 
 const StepDetailPanel = ({
@@ -48,6 +49,7 @@ const StepDetailPanel = ({
   pipelineStages,
   onCreateSuccess,
   onDeleteSuccess,
+  onSaveSuccess,
 }: StepDetailPanelProps) => {
   const isEditing = !!step?.id
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
@@ -73,6 +75,8 @@ const StepDetailPanel = ({
         toast.success('Nova etapa adicionada ao treinamento do agente!')
         complete()
         onCreateSuccess()
+        // Notifica o painel de chat para auto-reset (nova etapa afeta o comportamento)
+        onSaveSuccess?.()
       },
       onError: ({ error }) => {
         toast.error(error.serverError || 'Não foi possível criar a etapa.')
@@ -88,6 +92,8 @@ const StepDetailPanel = ({
       onSuccess: () => {
         toast.success('Agente treinado com o novo processo!')
         complete()
+        // Notifica o painel de chat para auto-reset
+        onSaveSuccess?.()
       },
       onError: ({ error }) => {
         toast.error(error.serverError || 'Falha ao treinar o agente com esta etapa.')
@@ -103,6 +109,8 @@ const StepDetailPanel = ({
         toast.success('Etapa removida do fluxo de treinamento.')
         setIsDeleteOpen(false)
         onDeleteSuccess()
+        // Notifica o painel de chat para auto-reset (etapa removida afeta o comportamento)
+        onSaveSuccess?.()
       },
       onError: ({ error }) => {
         toast.error(error.serverError || 'Não foi possível remover a etapa.')

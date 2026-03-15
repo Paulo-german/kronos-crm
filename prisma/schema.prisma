@@ -246,9 +246,10 @@ model Organization {
   lostReasons   DealLostReason[]
   creditWallet  CreditWallet?
   aiUsage       AiUsage[]
-  agents        Agent[]
-  inboxes       Inbox[]
-  conversations Conversation[]
+  agents                Agent[]
+  inboxes               Inbox[]
+  conversations         Conversation[]
+  agentTestConversations AgentTestConversation[]
 
   @@map("organizations")
 }
@@ -785,10 +786,11 @@ model Agent {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  steps           AgentStep[]
-  knowledgeFiles  AgentKnowledgeFile[]
-  knowledgeChunks AgentKnowledgeChunk[]
-  inboxes         Inbox[]
+  steps             AgentStep[]
+  knowledgeFiles    AgentKnowledgeFile[]
+  knowledgeChunks   AgentKnowledgeChunk[]
+  inboxes           Inbox[]
+  testConversations AgentTestConversation[]
 
   @@index([organizationId, isActive])
   @@map("agents")
@@ -964,4 +966,51 @@ model ConversationEvent {
 
   @@index([conversationId, createdAt(sort: Desc)])
   @@map("conversation_events")
+}
+
+// -----------------------------------------------------------------------------
+// AGENT TEST CHAT MODELS
+// -----------------------------------------------------------------------------
+
+model AgentTestConversation {
+  id String @id @default(uuid())
+
+  agentId String @map("agent_id")
+  agent   Agent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  organizationId String       @map("organization_id")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  userId String @map("user_id")
+
+  currentStepOrder Int     @default(0) @map("current_step_order")
+  summary          String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  messages AgentTestMessage[]
+
+  @@unique([agentId, userId])
+  @@index([organizationId])
+  @@map("agent_test_conversations")
+}
+
+model AgentTestMessage {
+  id String @id @default(uuid())
+
+  testConversationId String                @map("test_conversation_id")
+  testConversation   AgentTestConversation @relation(fields: [testConversationId], references: [id], onDelete: Cascade)
+
+  role    MessageRole
+  content String      @db.Text
+
+  inputTokens  Int?  @map("input_tokens")
+  outputTokens Int?  @map("output_tokens")
+  metadata     Json?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([testConversationId, createdAt(sort: Desc)])
+  @@map("agent_test_messages")
 }

@@ -105,9 +105,10 @@ interface ProcessTabProps {
   agent: AgentDetailDto
   canManage: boolean
   pipelineStages: PipelineStageOption[]
+  onSaveSuccess?: () => void
 }
 
-const ProcessTab = ({ agent, canManage, pipelineStages }: ProcessTabProps) => {
+const ProcessTab = ({ agent, canManage, pipelineStages, onSaveSuccess }: ProcessTabProps) => {
   const dndContextId = useId()
   const [isMounted, setIsMounted] = useState(false)
   const [steps, setSteps] = useState<AgentStepDto[]>(agent.steps)
@@ -273,6 +274,7 @@ const ProcessTab = ({ agent, canManage, pipelineStages }: ProcessTabProps) => {
               pipelineStages={pipelineStages}
               onCreateSuccess={handleCreateSuccess}
               onDeleteSuccess={handleDeleteSuccess}
+              onSaveSuccess={onSaveSuccess}
             />
           )}
         </CardContent>

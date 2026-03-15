@@ -16,15 +16,20 @@ export const ContentWrapper = ({ children }: ContentWrapperProps) => {
       pathname,
     )
 
-  // Inbox precisa de layout full-height sem padding
+  // Inbox e detalhe do agente precisam de layout full-height sem padding
   const isInboxPage = /\/inbox(\/|$)/.test(pathname)
+  const isAgentDetailPage =
+    /\/ai-agent\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(
+      pathname,
+    )
 
-  const isFullBleed = isDealDetailPage || isInboxPage
+  const isFullBleed = isDealDetailPage || isInboxPage || isAgentDetailPage
 
   return (
     <main
       className={cn(
-        'min-h-0 flex-1 overflow-y-auto',
+        'min-h-0 flex-1',
+        isAgentDetailPage ? 'flex overflow-hidden' : 'overflow-y-auto',
         !isFullBleed && 'p-4 md:p-8',
       )}
     >

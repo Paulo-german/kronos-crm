@@ -45,9 +45,10 @@ interface GeneralTabProps {
   agent: AgentDetailDto
   pipelines: OrgPipelineDto[]
   canManage: boolean
+  onSaveSuccess?: () => void
 }
 
-const GeneralTab = ({ agent, pipelines, canManage }: GeneralTabProps) => {
+const GeneralTab = ({ agent, pipelines, canManage, onSaveSuccess }: GeneralTabProps) => {
   const form = useForm<GeneralTabFormValues>({
     resolver: zodResolver(generalTabSchema),
     defaultValues: {
@@ -73,6 +74,8 @@ const GeneralTab = ({ agent, pipelines, canManage }: GeneralTabProps) => {
       toast.success('Agente treinado e pronto para operar!')
       form.reset(form.getValues())
       complete()
+      // Notifica o painel de chat para auto-reset (configuração foi alterada)
+      onSaveSuccess?.()
     },
     onError: ({ error }) => {
       toast.error(error.serverError || 'Falha ao treinar o agente. Tente novamente.')

@@ -37,6 +37,7 @@ const STATUS_BADGE_MAP: Record<
 interface KnowledgeTabProps {
   agent: AgentDetailDto
   canManage: boolean
+  onSaveSuccess?: () => void
 }
 
 function formatFileSize(bytes: number): string {
@@ -47,7 +48,7 @@ function formatFileSize(bytes: number): string {
 
 const POLLING_INTERVAL_MS = 5000
 
-const KnowledgeTab = ({ agent, canManage }: KnowledgeTabProps) => {
+const KnowledgeTab = ({ agent, canManage, onSaveSuccess }: KnowledgeTabProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const [isUploading, setIsUploading] = useState(false)
@@ -78,6 +79,8 @@ const KnowledgeTab = ({ agent, canManage }: KnowledgeTabProps) => {
         toast.success('Arquivo excluído com sucesso!')
         setIsDeleteOpen(false)
         setDeletingFile(null)
+        // Notifica o painel de chat para auto-reset (base de conhecimento mudou)
+        onSaveSuccess?.()
       },
       onError: ({ error }) => {
         toast.error(error.serverError || 'Erro ao excluir arquivo.')
@@ -114,6 +117,8 @@ const KnowledgeTab = ({ agent, canManage }: KnowledgeTabProps) => {
           } else {
             toast.success('Arquivo enviado para processamento!')
             router.refresh()
+            // Notifica o painel de chat para auto-reset (novo arquivo na KB)
+            onSaveSuccess?.()
             // Limpa o input para permitir re-seleção do mesmo arquivo
             if (fileInputRef.current) {
               fileInputRef.current.value = ''
