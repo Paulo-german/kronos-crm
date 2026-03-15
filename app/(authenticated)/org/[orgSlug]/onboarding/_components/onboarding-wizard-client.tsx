@@ -65,8 +65,9 @@ export function OnboardingWizardClient({
   }, [setWhatsappConnected, setStep])
 
   const handleSkipWhatsapp = useCallback(() => {
-    router.push(`/org/${orgSlug}/crm/deals/pipeline`)
-  }, [router, orgSlug])
+    setDirection(1)
+    setStep(2)
+  }, [setStep])
 
   const handleSetupComplete = useCallback(() => {
     setDirection(1)

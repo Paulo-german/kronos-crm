@@ -57,23 +57,8 @@ export const seedOrganization = orgActionClient
 
       if (existingPipeline) {
         pipelineId = existingPipeline.id
-
-        // Se já existem stages com deals vinculados, mantém os existentes
-        const stageCount = await tx.pipelineStage.count({
-          where: { pipelineId },
-        })
-
-        if (stageCount === 0) {
-          // Pipeline vazio — cria stages do blueprint
-          await tx.pipelineStage.createMany({
-            data: blueprint.pipelineStages.map((stage) => ({
-              pipelineId,
-              name: stage.name,
-              position: stage.position,
-              color: stage.color,
-            })),
-          })
-        }
+        // Sempre substituir stages pelo blueprint do nicho selecionado
+        await tx.pipelineStage.deleteMany({ where: { pipelineId } })
       } else {
         const newPipeline = await tx.pipeline.create({
           data: {
@@ -82,17 +67,17 @@ export const seedOrganization = orgActionClient
           },
         })
         pipelineId = newPipeline.id
-
-        // Cria stages do blueprint
-        await tx.pipelineStage.createMany({
-          data: blueprint.pipelineStages.map((stage) => ({
-            pipelineId,
-            name: stage.name,
-            position: stage.position,
-            color: stage.color,
-          })),
-        })
       }
+
+      // Criar stages do blueprint (sempre)
+      await tx.pipelineStage.createMany({
+        data: blueprint.pipelineStages.map((stage) => ({
+          pipelineId,
+          name: stage.name,
+          position: stage.position,
+          color: stage.color,
+        })),
+      })
 
       // 2. Agent: reutiliza existente ou cria com promptConfig do blueprint
       const existingAgent = await tx.agent.findFirst({
@@ -102,15 +87,30 @@ export const seedOrganization = orgActionClient
 
       let agentId: string
 
+      const promptConfig: PromptConfig = {
+        ...blueprint.agentConfig,
+        companyName,
+        companyDescription,
+      }
+
       if (existingAgent) {
         agentId = existingAgent.id
+        // Atualizar config do agent para o nicho atual
+        await tx.agent.update({
+          where: { id: agentId },
+          data: {
+            name: agentName,
+            systemPrompt: blueprint.systemPrompt,
+            promptConfig: promptConfig as unknown as Prisma.InputJsonValue,
+            pipelineIds: [pipelineId],
+            businessHoursEnabled: blueprint.businessHoursEnabled,
+            businessHoursTimezone: 'America/Sao_Paulo',
+            businessHoursConfig:
+              blueprint.businessHoursConfig as unknown as Prisma.InputJsonValue,
+            outOfHoursMessage: blueprint.outOfHoursMessage,
+          },
+        })
       } else {
-        const promptConfig: PromptConfig = {
-          ...blueprint.agentConfig,
-          companyName,
-          companyDescription,
-        }
-
         const agent = await tx.agent.create({
           data: {
             organizationId: ctx.orgId,
@@ -141,12 +141,10 @@ export const seedOrganization = orgActionClient
         })
       }
 
-      // 4. Seedar motivos de perda do blueprint (idempotente)
-      const existingReasons = await tx.dealLostReason.count({
-        where: { organizationId: ctx.orgId },
-      })
+      // 4. Seedar motivos de perda do blueprint (sempre recriar)
+      await tx.dealLostReason.deleteMany({ where: { organizationId: ctx.orgId } })
 
-      if (existingReasons === 0 && blueprint.lostReasons.length > 0) {
+      if (blueprint.lostReasons.length > 0) {
         await tx.dealLostReason.createMany({
           data: blueprint.lostReasons.map((name) => ({
             organizationId: ctx.orgId,
@@ -155,8 +153,11 @@ export const seedOrganization = orgActionClient
         })
       }
 
-      // 5. Seedar etapas de atendimento do blueprint (só se agent novo)
-      if (!existingAgent && blueprint.agentSteps.length > 0) {
+      // 5. Seedar etapas de atendimento do blueprint (sempre recriar)
+      if (blueprint.agentSteps.length > 0) {
+        // Limpar steps antigos (se houver)
+        await tx.agentStep.deleteMany({ where: { agentId } })
+
         const stages = await tx.pipelineStage.findMany({
           where: { pipelineId },
           orderBy: { position: 'asc' },

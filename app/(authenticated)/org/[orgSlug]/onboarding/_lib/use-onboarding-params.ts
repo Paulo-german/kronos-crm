@@ -22,11 +22,8 @@ function syncToUrl(params: Record<string, string | null>) {
 
 function computeMaxValidStep(
   niche: string | null,
-  whatsappConnected: boolean,
-  hasInbox: boolean,
 ): number {
   if (!niche) return 0
-  if (!whatsappConnected && !hasInbox) return 1
   return 3
 }
 
@@ -71,11 +68,7 @@ export function useOnboardingParams(initialStatus: OnboardingStatus) {
     })
   }, [stepRaw, niche, inboxId, whatsappConnected])
 
-  const maxValidStep = computeMaxValidStep(
-    niche,
-    whatsappConnected,
-    initialStatus.hasInbox,
-  )
+  const maxValidStep = computeMaxValidStep(niche)
 
   const step = Math.min(stepRaw, maxValidStep)
 
