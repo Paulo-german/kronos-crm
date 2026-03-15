@@ -170,7 +170,7 @@ export const seedOrganization = orgActionClient
             objective: step.objective,
             actions: step.actions.length > 0
               ? step.actions.map((action) => {
-                  if (action.type === 'move_deal' && action.targetStagePosition !== undefined) {
+                  if (action.type === 'move_deal') {
                     const stage = stages.find((s) => s.position === action.targetStagePosition)
                     return {
                       type: action.type,
@@ -178,9 +178,7 @@ export const seedOrganization = orgActionClient
                       targetStage: stage?.id ?? '',
                     }
                   }
-                  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                  const { targetStagePosition, ...rest } = action
-                  return rest
+                  return action
                 })
               : undefined,
             keyQuestion: step.keyQuestion,
