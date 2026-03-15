@@ -12,7 +12,7 @@ import {
 } from '@/_actions/agent/shared/prompt-labels'
 import { stepActionSchema, type StepAction } from '@/_actions/agent/shared/step-action-schema'
 
-function compilePromptConfig(config: PromptConfig, agentName: string): string {
+export function compilePromptConfig(config: PromptConfig, agentName: string): string {
   const sections: string[] = []
 
   const roleName =
@@ -69,7 +69,7 @@ function compilePromptConfig(config: PromptConfig, agentName: string): string {
   return sections.join('\n')
 }
 
-function compileStepActions(actions: StepAction[]): string[] {
+export function compileStepActions(actions: StepAction[]): string[] {
   return actions.map((action) => {
     const { trigger } = action
 
@@ -165,7 +165,7 @@ function compileStepActions(actions: StepAction[]): string[] {
   })
 }
 
-const TOOL_PROMPT_DESCRIPTIONS: Record<string, { label: string; description: string }> = {
+export const TOOL_PROMPT_DESCRIPTIONS: Record<string, { label: string; description: string }> = {
   move_deal: {
     label: 'Mover Negócio',
     description: 'Move o negócio para outra etapa do pipeline quando a conversa progredir. Use conforme indicado nas etapas do processo.',
@@ -207,7 +207,7 @@ const TOOL_PROMPT_DESCRIPTIONS: Record<string, { label: string; description: str
   },
 }
 
-function compileToolsSection(toolsEnabled: string[]): string | null {
+export function compileToolsSection(toolsEnabled: string[]): string | null {
   const lines: string[] = []
 
   for (const toolKey of toolsEnabled) {
@@ -223,7 +223,7 @@ function compileToolsSection(toolsEnabled: string[]): string | null {
   return `## Ferramentas Disponíveis\n\n${lines.join('\n').trimEnd()}`
 }
 
-interface BuildSystemPromptResult {
+export interface BuildSystemPromptResult {
   systemPrompt: string
   modelId: string
   agentName: string
