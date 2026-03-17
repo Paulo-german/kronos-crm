@@ -80,7 +80,7 @@ export async function createToolEvents(
             toolName: toolCall.toolName,
             content,
             metadata: { subtype: alwaysSuccessSubtype, input: toolInput } as Prisma.InputJsonValue,
-            visibleToUser: toolCall.toolName !== 'search_knowledge',
+            visibleToUser: toolCall.toolName !== 'search_knowledge' && toolCall.toolName !== 'list_availability',
           })
           continue
         }

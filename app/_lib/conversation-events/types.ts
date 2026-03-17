@@ -20,6 +20,9 @@ export type ToolSuccessSubtype =
   | 'DEAL_LOST'
   | 'TASK_CREATED'
   | 'APPOINTMENT_CREATED'
+  | 'EVENT_CREATED'
+  | 'EVENT_RESCHEDULED'
+  | 'AVAILABILITY_LISTED'
   | 'HAND_OFF_TO_HUMAN'
   | 'KNOWLEDGE_FOUND'
 
@@ -29,6 +32,8 @@ export type ToolFailureSubtype =
   | 'DEAL_UPDATE_FAILED'
   | 'TASK_CREATE_FAILED'
   | 'APPOINTMENT_CREATE_FAILED'
+  | 'EVENT_CREATE_FAILED'
+  | 'EVENT_RESCHEDULE_FAILED'
 
 export type ProcessingErrorSubtype =
   | 'NO_CREDITS'
@@ -50,12 +55,15 @@ export const TOOL_SUBTYPE_MAP: Record<
   update_deal: { success: 'DEAL_UPDATED', failure: 'DEAL_UPDATE_FAILED' },
   create_task: { success: 'TASK_CREATED', failure: 'TASK_CREATE_FAILED' },
   create_appointment: { success: 'APPOINTMENT_CREATED', failure: 'APPOINTMENT_CREATE_FAILED' },
+  create_event: { success: 'EVENT_CREATED', failure: 'EVENT_CREATE_FAILED' },
+  update_event: { success: 'EVENT_RESCHEDULED', failure: 'EVENT_RESCHEDULE_FAILED' },
 }
 
 // Tools que sempre resultam em success e têm subtype especial
 export const ALWAYS_SUCCESS_TOOLS: Record<string, ToolSuccessSubtype> = {
   hand_off_to_human: 'HAND_OFF_TO_HUMAN',
   search_knowledge: 'KNOWLEDGE_FOUND',
+  list_availability: 'AVAILABILITY_LISTED',
 }
 
 // ---------------------------------------------------------------------------
