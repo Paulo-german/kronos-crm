@@ -254,7 +254,7 @@ export async function buildSystemPrompt(
 ): Promise<BuildSystemPromptResult> {
   const now = new Date()
 
-  const [agent, conversation, completedFileCount, lossReasons] = await Promise.all([
+  const [agent, conversation, completedFileCount, lossReasons, recentToolEvents] = await Promise.all([
     db.agent.findUniqueOrThrow({
       where: { id: agentId },
       select: {
@@ -337,6 +337,20 @@ export async function buildSystemPrompt(
       where: { organizationId, isActive: true },
       select: { name: true },
       orderBy: { name: 'asc' },
+    }),
+    db.conversationEvent.findMany({
+      where: {
+        conversationId,
+        type: { in: ['TOOL_SUCCESS', 'TOOL_FAILURE'] },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+      select: {
+        type: true,
+        content: true,
+        metadata: true,
+        createdAt: true,
+      },
     }),
   ])
 
@@ -538,7 +552,49 @@ export async function buildSystemPrompt(
     )
   }
 
-  // 8. Busca RAG na base de conhecimento (se houver arquivos e mensagem do usuário)
+  // 8. Ações já realizadas nesta conversa (tool calls anteriores)
+  if (recentToolEvents.length > 0) {
+    const SUBTYPE_LABELS: Record<string, string> = {
+      DEAL_MOVED: 'Negocio movido de etapa',
+      CONTACT_UPDATED: 'Contato atualizado',
+      DEAL_UPDATED: 'Negocio atualizado',
+      DEAL_WON: 'Negocio marcado como GANHO',
+      DEAL_LOST: 'Negocio marcado como PERDIDO',
+      TASK_CREATED: 'Tarefa criada',
+      APPOINTMENT_CREATED: 'Compromisso criado',
+      EVENT_CREATED: 'Evento agendado',
+      EVENT_RESCHEDULED: 'Evento reagendado',
+      AVAILABILITY_LISTED: 'Disponibilidade consultada',
+      KNOWLEDGE_FOUND: 'Base de conhecimento consultada',
+      HAND_OFF_TO_HUMAN: 'Transferido para humano',
+      DEAL_MOVE_FAILED: 'Falha ao mover negocio',
+      CONTACT_UPDATE_FAILED: 'Falha ao atualizar contato',
+      DEAL_UPDATE_FAILED: 'Falha ao atualizar negocio',
+      TASK_CREATE_FAILED: 'Falha ao criar tarefa',
+      APPOINTMENT_CREATE_FAILED: 'Falha ao agendar compromisso',
+      EVENT_CREATE_FAILED: 'Falha ao agendar evento',
+      EVENT_RESCHEDULE_FAILED: 'Falha ao reagendar evento',
+    }
+
+    const actionLines = recentToolEvents
+      .reverse()
+      .map((event) => {
+        const meta = event.metadata as { subtype?: string } | null
+        const subtype = meta?.subtype ?? ''
+        const label = SUBTYPE_LABELS[subtype] ?? subtype
+        const status = event.type === 'TOOL_SUCCESS' ? '✓' : '✗'
+        return `- ${status} ${label}: ${event.content}`
+      })
+      .join('\n')
+
+    parts.push(
+      `\n[Acoes ja realizadas nesta conversa]\n` +
+      `NAO repita acoes ja concluidas com sucesso. Se uma acao falhou, voce pode tentar novamente apenas se fizer sentido.\n` +
+      actionLines,
+    )
+  }
+
+  // 9. Busca RAG na base de conhecimento (se houver arquivos e mensagem do usuário)
   let knowledgeContext: string | null = null
 
   if (latestUserMessage && completedFileCount > 0) {
