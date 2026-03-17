@@ -2,6 +2,7 @@
 // Maior = modelo mais barato = mais tokens por crédito.
 // Calibração: Claude Sonnet 4 (default) com ~1900 tokens ≈ 10 créditos.
 const MODEL_TOKENS_PER_CREDIT: Record<string, number> = {
+  'openai/gpt-4o-mini': 4500,
   'google/gemini-2.5-flash': 4500,
   'openai/gpt-4.1-mini': 1700,
   'google/gemini-2.5-pro': 350,

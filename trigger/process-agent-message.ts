@@ -12,6 +12,7 @@ import { buildToolSet } from './tools'
 import { langfuseTracer, flushLangfuse } from './lib/langfuse'
 import { createConversationEvent, createToolEvents } from './lib/create-conversation-event'
 import { transcribeAudio } from './utils/transcribe-audio'
+import { transcribeImage } from './utils/transcribe-image'
 import { downloadAndStoreMedia } from './utils/download-and-store-media'
 import type { ToolContext } from './tools/types'
 import type { NormalizedWhatsAppMessage } from '@/_lib/evolution/types'
@@ -168,8 +169,35 @@ export const processAgentMessage = task({
       })
     }
 
-    // Para image/document: IA não "vê" a mídia mas sabe que foi enviada
-    if (message.type === 'image') {
+    // Para image: transcrever com visão; document: placeholder
+    if (message.type === 'image' && message.media) {
+      log('step:3c image_transcription', 'PASS', { hasCaption: !!message.text })
+      try {
+        const description = await transcribeImage(
+          message.instanceName,
+          message.messageId,
+          message.text ?? undefined,
+        )
+        const caption = message.text ? `\nLegenda do cliente: "${message.text}"` : ''
+        messageText = `[Imagem enviada pelo cliente — descrição: ${description}${caption}]`
+        log('step:3c image_transcribed', 'PASS', { length: description.length })
+        await db.message.updateMany({
+          where: { providerMessageId: message.messageId },
+          data: { content: messageText },
+        })
+      } catch (error) {
+        logger.warn('Image transcription failed, using placeholder', {
+          ...ctx,
+          error: error instanceof Error ? error.message : String(error),
+        })
+        const caption = message.text ? ` com legenda: "${message.text}"` : ''
+        messageText = `[O cliente enviou uma imagem${caption}]`
+        await db.message.updateMany({
+          where: { providerMessageId: message.messageId },
+          data: { content: messageText },
+        })
+      }
+    } else if (message.type === 'image') {
       const caption = message.text ? ` com legenda: "${message.text}"` : ''
       messageText = `[O cliente enviou uma imagem${caption}]`
     } else if (message.type === 'document') {
