@@ -7,6 +7,7 @@ import { stripe } from '@/_lib/stripe'
 import { db } from '@/_lib/prisma'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 import { resolveProductKeyFromPriceId } from '@/_lib/stripe-utils'
+import { revalidateTag } from 'next/cache'
 
 /**
  * Cria uma assinatura ATIVA com o método de pagamento já validado.
@@ -96,6 +97,8 @@ export const createSubscription = orgActionClient
         planId: plan?.id ?? null,
       },
     })
+
+    revalidateTag(`subscriptions:${ctx.orgId}`)
 
     return {
       subscriptionId: subscription.id,
