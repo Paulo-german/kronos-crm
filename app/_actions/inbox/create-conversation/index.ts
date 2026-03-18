@@ -37,6 +37,7 @@ export const createConversation = orgActionClient
       select: {
         id: true,
         evolutionInstanceName: true,
+        metaPhoneNumberId: true,
         autoCreateDeal: true,
         pipelineId: true,
         distributionUserIds: true,
@@ -47,7 +48,7 @@ export const createConversation = orgActionClient
       throw new Error('Caixa de entrada não encontrada.')
     }
 
-    if (!inbox.evolutionInstanceName) {
+    if (!inbox.evolutionInstanceName && !inbox.metaPhoneNumberId) {
       throw new Error('Esta caixa não está conectada ao WhatsApp.')
     }
 
