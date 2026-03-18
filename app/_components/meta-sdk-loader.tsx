@@ -1,8 +1,5 @@
 'use client'
 
-import { useState } from 'react'
-import Script from 'next/script'
-
 // Declaracao global para tipar window.FB (Facebook SDK)
 declare global {
   interface Window {
@@ -46,57 +43,30 @@ export interface FBLoginOptions {
   }
 }
 
-// Contexto global de estado do SDK — evita multiplos carregamentos
+// Estado global do SDK — sobrevive entre re-renders
 let sdkReady = false
-let pendingCallback: (() => void) | null = null
+let sdkLoading = false
 
 /**
- * Hook que indica se o Facebook SDK esta carregado e inicializado.
- * Deve ser usado em componentes que precisam do FB.login().
- */
-export function useMetaSdk(): { ready: boolean } {
-  const [ready] = useState(sdkReady)
-
-  return { ready }
-}
-
-interface MetaSdkLoaderProps {
-  onReady?: () => void
-}
-
-/**
- * Carrega o Facebook SDK usando o padrao oficial fbAsyncInit.
+ * Carrega o Facebook SDK e chama o callback quando estiver pronto.
  *
- * O SDK do Facebook chama window.fbAsyncInit quando esta pronto internamente.
- * Usar onLoad do Script NAO e suficiente — o arquivo pode ter sido baixado
- * mas o SDK ainda nao inicializou (causa "FB.login() called before FB.init()").
+ * Usa o padrao classico da Meta: define window.fbAsyncInit, depois
+ * insere o script tag manualmente. O SDK chama fbAsyncInit quando
+ * termina sua inicializacao interna.
  *
- * Fluxo:
- * 1. Registra window.fbAsyncInit com FB.init() + callback onReady
- * 2. Monta <Script> que carrega o SDK
- * 3. SDK chama fbAsyncInit → FB.init() → onReady()
+ * Seguro para chamar multiplas vezes — ignora chamadas duplicadas.
  */
-const MetaSdkLoader = ({ onReady }: MetaSdkLoaderProps) => {
+export function loadMetaSdk(onReady: () => void): void {
   const appId = process.env.NEXT_PUBLIC_META_APP_ID ?? ''
 
-  // Se o SDK ja foi inicializado, dispara onReady imediatamente
+  // Ja inicializado — dispara callback imediatamente
   if (sdkReady && window.FB) {
-    // Dispara no proximo tick para nao chamar durante render
-    if (onReady) {
-      pendingCallback = onReady
-      queueMicrotask(() => {
-        pendingCallback?.()
-        pendingCallback = null
-      })
-    }
-
-    return null
+    onReady()
+    return
   }
 
-  // Registra o callback oficial do Facebook SDK ANTES do script carregar
-  if (typeof window !== 'undefined' && !sdkReady) {
-    pendingCallback = onReady ?? null
-
+  // Ja esta carregando — substitui o callback pendente
+  if (sdkLoading) {
     window.fbAsyncInit = () => {
       window.FB.init({
         appId,
@@ -104,19 +74,30 @@ const MetaSdkLoader = ({ onReady }: MetaSdkLoaderProps) => {
         xfbml: true,
         version: 'v25.0',
       })
-
       sdkReady = true
-      pendingCallback?.()
-      pendingCallback = null
+      onReady()
     }
+    return
   }
 
-  return (
-    <Script
-      src="https://connect.facebook.net/en_US/sdk.js"
-      strategy="afterInteractive"
-    />
-  )
-}
+  sdkLoading = true
 
-export default MetaSdkLoader
+  // 1. Registrar fbAsyncInit ANTES de inserir o script
+  window.fbAsyncInit = () => {
+    window.FB.init({
+      appId,
+      cookie: true,
+      xfbml: true,
+      version: 'v25.0',
+    })
+    sdkReady = true
+    onReady()
+  }
+
+  // 2. Inserir script tag manualmente (padrao oficial da Meta)
+  const script = document.createElement('script')
+  script.id = 'facebook-jssdk'
+  script.src = 'https://connect.facebook.net/en_US/sdk.js'
+  script.async = true
+  document.body.appendChild(script)
+}

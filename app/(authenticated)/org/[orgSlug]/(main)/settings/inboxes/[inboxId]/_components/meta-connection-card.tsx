@@ -23,9 +23,7 @@ import {
 } from '@/_components/ui/card'
 import { Badge } from '@/_components/ui/badge'
 import ConfirmationDialog from '@/_components/confirmation-dialog'
-import MetaSdkLoader, {
-  type FBLoginResponse,
-} from '@/_components/meta-sdk-loader'
+import { loadMetaSdk, type FBLoginResponse } from '@/_components/meta-sdk-loader'
 import { connectMeta } from '@/_actions/inbox/connect-meta'
 import { disconnectMeta } from '@/_actions/inbox/disconnect-meta'
 import { formatDistanceToNow } from 'date-fns'
@@ -66,7 +64,6 @@ const MetaConnectionCard = ({
   metaWabaId,
   connectionStats,
 }: MetaConnectionCardProps) => {
-  const [sdkLoaderMounted, setSdkLoaderMounted] = useState(false)
   const [isDisconnectOpen, setIsDisconnectOpen] = useState(false)
   // Controla estado de loading durante o fluxo de autorizacao (entre clicar e receber code)
   const [isAuthPending, setIsAuthPending] = useState(false)
@@ -103,10 +100,9 @@ const MetaConnectionCard = ({
   )
 
   const handleConnectClick = () => {
-    // Marca como pendente e monta o loader do SDK.
-    // Quando o SDK carregar, handleSdkReady e chamado automaticamente pelo onLoad.
     setIsAuthPending(true)
-    setSdkLoaderMounted(true)
+    // Carrega o SDK e chama handleSdkReady quando estiver pronto
+    loadMetaSdk(handleSdkReady)
   }
 
   const handleSdkReady = () => {
@@ -306,11 +302,7 @@ const MetaConnectionCard = ({
 
   // Estado: Desconectado
   return (
-    <>
-      {/* Carrega o SDK apenas quando o usuario clicar em conectar */}
-      {sdkLoaderMounted && <MetaSdkLoader onReady={handleSdkReady} />}
-
-      <Card className="border-border/50 bg-secondary/20">
+    <Card className="border-border/50 bg-secondary/20">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base font-semibold">
             <WifiOff className="h-5 w-5" />
@@ -357,7 +349,6 @@ const MetaConnectionCard = ({
           </div>
         </CardContent>
       </Card>
-    </>
   )
 }
 
