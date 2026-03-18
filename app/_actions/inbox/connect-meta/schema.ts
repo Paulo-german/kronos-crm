@@ -7,4 +7,4 @@ export const connectMetaSchema = z.object({
   phoneNumberId: z.string().min(1, 'Phone Number ID is required'),
 })
 
-export interface ConnectMetaInput extends z.infer<typeof connectMetaSchema> {}
+export type ConnectMetaInput = z.infer<typeof connectMetaSchema>

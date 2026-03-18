@@ -4,4 +4,4 @@ export const disconnectMetaSchema = z.object({
   inboxId: z.string().uuid(),
 })
 
-export interface DisconnectMetaInput extends z.infer<typeof disconnectMetaSchema> {}
+export type DisconnectMetaInput = z.infer<typeof disconnectMetaSchema>

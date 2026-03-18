@@ -54,7 +54,7 @@ let sdkReady = false
  * Deve ser usado em componentes que precisam do FB.login().
  */
 export function useMetaSdk(): { ready: boolean } {
-  const [ready, setReady] = useState(sdkReady)
+  const [ready] = useState(sdkReady)
 
   // O estado e atualizado via callback do Script onLoad — sem useEffect
   return { ready }
