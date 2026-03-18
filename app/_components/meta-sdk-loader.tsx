@@ -48,6 +48,7 @@ export interface FBLoginOptions {
 
 // Contexto global de estado do SDK — evita multiplos carregamentos
 let sdkReady = false
+let pendingCallback: (() => void) | null = null
 
 /**
  * Hook que indica se o Facebook SDK esta carregado e inicializado.
@@ -56,7 +57,6 @@ let sdkReady = false
 export function useMetaSdk(): { ready: boolean } {
   const [ready] = useState(sdkReady)
 
-  // O estado e atualizado via callback do Script onLoad — sem useEffect
   return { ready }
 }
 
@@ -65,33 +65,56 @@ interface MetaSdkLoaderProps {
 }
 
 /**
- * Carrega o Facebook SDK de forma lazy usando o componente Script do Next.js.
- * NAO usa useEffect — o onLoad do Script e o padrao correto para scripts externos.
+ * Carrega o Facebook SDK usando o padrao oficial fbAsyncInit.
  *
- * Deve ser montado uma unica vez no layout ou no componente que precisa do SDK.
+ * O SDK do Facebook chama window.fbAsyncInit quando esta pronto internamente.
+ * Usar onLoad do Script NAO e suficiente — o arquivo pode ter sido baixado
+ * mas o SDK ainda nao inicializou (causa "FB.login() called before FB.init()").
+ *
+ * Fluxo:
+ * 1. Registra window.fbAsyncInit com FB.init() + callback onReady
+ * 2. Monta <Script> que carrega o SDK
+ * 3. SDK chama fbAsyncInit → FB.init() → onReady()
  */
 const MetaSdkLoader = ({ onReady }: MetaSdkLoaderProps) => {
   const appId = process.env.NEXT_PUBLIC_META_APP_ID ?? ''
 
-  const handleLoad = () => {
-    if (!window.FB) return
+  // Se o SDK ja foi inicializado, dispara onReady imediatamente
+  if (sdkReady && window.FB) {
+    // Dispara no proximo tick para nao chamar durante render
+    if (onReady) {
+      pendingCallback = onReady
+      queueMicrotask(() => {
+        pendingCallback?.()
+        pendingCallback = null
+      })
+    }
 
-    window.FB.init({
-      appId,
-      cookie: true,
-      xfbml: true,
-      version: 'v25.0',
-    })
+    return null
+  }
 
-    sdkReady = true
-    onReady?.()
+  // Registra o callback oficial do Facebook SDK ANTES do script carregar
+  if (typeof window !== 'undefined' && !sdkReady) {
+    pendingCallback = onReady ?? null
+
+    window.fbAsyncInit = () => {
+      window.FB.init({
+        appId,
+        cookie: true,
+        xfbml: true,
+        version: 'v25.0',
+      })
+
+      sdkReady = true
+      pendingCallback?.()
+      pendingCallback = null
+    }
   }
 
   return (
     <Script
       src="https://connect.facebook.net/en_US/sdk.js"
-      strategy="lazyOnload"
-      onLoad={handleLoad}
+      strategy="afterInteractive"
     />
   )
 }
