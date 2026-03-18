@@ -1,6 +1,7 @@
 import { logger } from '@trigger.dev/sdk/v3'
 import { db } from '@/_lib/prisma'
 import { uploadMediaToStorage } from '@/_lib/supabase/storage'
+import { downloadMetaMedia } from '@/_lib/meta/download-meta-media'
 import type { Prisma } from '@prisma/client'
 
 interface EvolutionBase64Response {
@@ -12,6 +13,16 @@ interface EvolutionBase64Response {
 interface DownloadAndStoreMediaParams {
   instanceName: string
   messageId: string
+  providerMessageId: string
+  conversationId: string
+  organizationId: string
+  mimetype: string
+  fileName?: string
+}
+
+interface DownloadAndStoreMetaMediaParams {
+  mediaId: string
+  accessToken: string
   providerMessageId: string
   conversationId: string
   organizationId: string
@@ -121,6 +132,78 @@ export async function downloadAndStoreMedia({
   } catch (error) {
     logger.warn('downloadAndStoreMedia failed (non-fatal)', {
       messageId,
+      error: error instanceof Error ? error.message : String(error),
+    })
+    return null
+  }
+}
+
+/**
+ * Baixa midia da Meta Graph API e persiste no Supabase Storage.
+ * Atualiza metadata da Message com a URL publica.
+ * Best-effort: falha nao bloqueia o fluxo principal.
+ */
+export async function downloadAndStoreMetaMedia({
+  mediaId,
+  accessToken,
+  providerMessageId,
+  conversationId,
+  organizationId,
+  mimetype,
+  fileName,
+}: DownloadAndStoreMetaMediaParams): Promise<string | null> {
+  try {
+    // 1. Baixar binario da Meta Media API (2 steps: info -> download)
+    const mediaBuffer = await downloadMetaMedia(mediaId, accessToken)
+
+    // 2. Converter Buffer para base64 para upload no Supabase Storage
+    const base64 = mediaBuffer.toString('base64')
+
+    // 3. Upload para Supabase Storage
+    const { publicUrl } = await uploadMediaToStorage({
+      organizationId,
+      conversationId,
+      messageId: providerMessageId,
+      base64,
+      mimetype,
+      fileName,
+    })
+
+    // 4. Atualizar metadata da mensagem com a URL publica
+    const existingMessage = await db.message.findFirst({
+      where: { providerMessageId },
+      select: { id: true, metadata: true },
+    })
+
+    if (existingMessage) {
+      const currentMetadata = (existingMessage.metadata as Record<string, unknown>) ?? {}
+      const currentMedia = (currentMetadata.media as Record<string, unknown>) ?? {}
+
+      await db.message.update({
+        where: { id: existingMessage.id },
+        data: {
+          metadata: {
+            ...currentMetadata,
+            media: {
+              ...currentMedia,
+              url: publicUrl,
+              storedInSupabase: true,
+            },
+          } as unknown as Prisma.InputJsonValue,
+        },
+      })
+    }
+
+    logger.info('Meta media downloaded and stored', {
+      mediaId,
+      publicUrl,
+      mimetype,
+    })
+
+    return publicUrl
+  } catch (error) {
+    logger.warn('downloadAndStoreMetaMedia failed (non-fatal)', {
+      mediaId,
       error: error instanceof Error ? error.message : String(error),
     })
     return null

@@ -37,8 +37,12 @@ export interface AgentInboxDto {
   name: string
   channel: string
   isActive: boolean
+  connectionType: string
   evolutionInstanceName: string | null
   evolutionInstanceId: string | null
+  metaPhoneNumberId: string | null
+  metaPhoneDisplay: string | null
+  // NAO incluir metaAccessToken (seguranca — nunca expor ao cliente via DTO)
 }
 
 export interface AgentDetailDto {
@@ -99,8 +103,11 @@ const fetchAgentByIdFromDb = async (
       name: inbox.name,
       channel: inbox.channel,
       isActive: inbox.isActive,
+      connectionType: inbox.connectionType,
       evolutionInstanceName: inbox.evolutionInstanceName,
       evolutionInstanceId: inbox.evolutionInstanceId,
+      metaPhoneNumberId: inbox.metaPhoneNumberId,
+      metaPhoneDisplay: inbox.metaPhoneDisplay,
     })),
     steps: agent.steps.map((step) => {
       const parsed = z.array(stepActionSchema).safeParse(step.actions)

@@ -8,7 +8,12 @@ export interface InboxListDto {
   name: string
   channel: string
   isActive: boolean
+  connectionType: string
   evolutionInstanceName: string | null
+  metaWabaId: string | null
+  metaPhoneNumberId: string | null
+  metaPhoneDisplay: string | null
+  // NAO incluir metaAccessToken na listagem (seguranca — nunca expor ao cliente)
   agentId: string | null
   agentName: string | null
   conversationsCount: number
@@ -30,7 +35,11 @@ const fetchInboxesFromDb = async (orgId: string): Promise<InboxListDto[]> => {
     name: inbox.name,
     channel: inbox.channel,
     isActive: inbox.isActive,
+    connectionType: inbox.connectionType,
     evolutionInstanceName: inbox.evolutionInstanceName,
+    metaWabaId: inbox.metaWabaId,
+    metaPhoneNumberId: inbox.metaPhoneNumberId,
+    metaPhoneDisplay: inbox.metaPhoneDisplay,
     agentId: inbox.agentId,
     agentName: inbox.agent?.name ?? null,
     conversationsCount: inbox._count.conversations,

@@ -8,8 +8,12 @@ export interface InboxDetailDto {
   name: string
   channel: string
   isActive: boolean
+  connectionType: string
   evolutionInstanceName: string | null
   evolutionInstanceId: string | null
+  metaWabaId: string | null
+  metaPhoneNumberId: string | null
+  metaPhoneDisplay: string | null
   agentId: string | null
   agentName: string | null
   autoCreateDeal: boolean
@@ -38,8 +42,12 @@ const fetchInboxByIdFromDb = async (
     name: inbox.name,
     channel: inbox.channel,
     isActive: inbox.isActive,
+    connectionType: inbox.connectionType,
     evolutionInstanceName: inbox.evolutionInstanceName,
     evolutionInstanceId: inbox.evolutionInstanceId,
+    metaWabaId: inbox.metaWabaId,
+    metaPhoneNumberId: inbox.metaPhoneNumberId,
+    metaPhoneDisplay: inbox.metaPhoneDisplay,
     agentId: inbox.agentId,
     agentName: inbox.agent?.name ?? null,
     autoCreateDeal: inbox.autoCreateDeal ?? true,

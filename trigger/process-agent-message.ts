@@ -7,6 +7,7 @@ import { redis } from '@/_lib/redis'
 import { debitCredits, refundCredits } from '@/_lib/billing/credit-utils'
 import { estimateMaxCost, calculateCreditCost } from '@/_lib/billing/model-pricing'
 import { sendWhatsAppMessage, sendPresence } from '@/_lib/evolution/send-message'
+import { sendMetaTextMessage } from '@/_lib/meta/send-meta-message'
 import { buildSystemPrompt } from './build-system-prompt'
 import { buildToolSet } from './tools'
 import { langfuseTracer, flushLangfuse } from './lib/langfuse'
@@ -126,17 +127,37 @@ export const processAgentMessage = task({
 
     // -----------------------------------------------------------------------
     // 2b. Se áudio, transcrever com Whisper
+    // Para Meta Cloud: o media.url armazena o mediaId — download separado necessario
     // -----------------------------------------------------------------------
     let messageText = message.text
     if (message.type === 'audio' && message.media) {
-      log('step:3a audio_transcription', 'PASS', { seconds: message.media.seconds })
+      log('step:3a audio_transcription', 'PASS', { seconds: message.media.seconds, provider: message.provider })
 
-      const transcription = await transcribeAudio(
-        message.instanceName,
-        message.messageId,
-      )
+      let transcription: string
+
+      if (message.provider === 'meta_cloud') {
+        // Para Meta: baixar audio via Media API antes de transcrever
+        const { downloadMetaMedia } = await import('@/_lib/meta/download-meta-media')
+        const metaInbox = await db.inbox.findFirst({
+          where: { metaPhoneNumberId: message.instanceName },
+          select: { metaAccessToken: true },
+        })
+
+        if (metaInbox?.metaAccessToken) {
+          // media.url armazena o mediaId quando provider = meta_cloud (ver parse-meta-message.ts)
+          const audioBuffer = await downloadMetaMedia(message.media.url, metaInbox.metaAccessToken)
+          const { transcribeAudioFromBuffer } = await import('./utils/transcribe-audio')
+          transcription = await transcribeAudioFromBuffer(audioBuffer, message.media.mimetype)
+        } else {
+          log('step:3a audio_transcription', 'SKIP', { reason: 'no_meta_access_token' })
+          transcription = '[Áudio não transcrito — token de acesso não disponível]'
+        }
+      } else {
+        // Para Evolution: buscar audio via getBase64FromMediaMessage
+        transcription = await transcribeAudio(message.instanceName, message.messageId)
+      }
+
       messageText = transcription
-
       log('step:3a audio_transcribed', 'PASS', { length: transcription.length })
 
       // Atualizar mensagem no DB com a transcrição real
@@ -148,36 +169,91 @@ export const processAgentMessage = task({
 
     // -----------------------------------------------------------------------
     // 2c. Download de mídia + contexto LLM para image/document
+    // Para Meta Cloud: media.url contem o mediaId — download via Media API
     // -----------------------------------------------------------------------
     if (message.media && (message.type === 'image' || message.type === 'document' || message.type === 'audio')) {
-      log('step:3b media_download', 'PASS', { type: message.type, mimetype: message.media.mimetype })
+      log('step:3b media_download', 'PASS', { type: message.type, mimetype: message.media.mimetype, provider: message.provider })
 
-      // Best-effort: falha não bloqueia o fluxo
-      await downloadAndStoreMedia({
-        instanceName: message.instanceName,
-        messageId: message.messageId,
-        providerMessageId: message.messageId,
-        conversationId,
-        organizationId,
-        mimetype: message.media.mimetype,
-        fileName: message.media.fileName,
-      }).catch((error) => {
-        logger.warn('Media download failed (non-fatal)', {
-          ...ctx,
-          error: error instanceof Error ? error.message : String(error),
+      if (message.provider === 'meta_cloud') {
+        // Para Meta: download via Media API usando o mediaId armazenado em media.url
+        const metaInbox = await db.inbox.findFirst({
+          where: { metaPhoneNumberId: message.instanceName },
+          select: { metaAccessToken: true },
         })
-      })
+
+        if (metaInbox?.metaAccessToken) {
+          const { downloadAndStoreMetaMedia } = await import('./utils/download-and-store-media')
+          await downloadAndStoreMetaMedia({
+            mediaId: message.media.url,
+            accessToken: metaInbox.metaAccessToken,
+            providerMessageId: message.messageId,
+            conversationId,
+            organizationId,
+            mimetype: message.media.mimetype,
+            fileName: message.media.fileName,
+          }).catch((error) => {
+            logger.warn('Meta media download failed (non-fatal)', {
+              ...ctx,
+              error: error instanceof Error ? error.message : String(error),
+            })
+          })
+        }
+      } else {
+        // Best-effort para Evolution: falha não bloqueia o fluxo
+        await downloadAndStoreMedia({
+          instanceName: message.instanceName,
+          messageId: message.messageId,
+          providerMessageId: message.messageId,
+          conversationId,
+          organizationId,
+          mimetype: message.media.mimetype,
+          fileName: message.media.fileName,
+        }).catch((error) => {
+          logger.warn('Media download failed (non-fatal)', {
+            ...ctx,
+            error: error instanceof Error ? error.message : String(error),
+          })
+        })
+      }
     }
 
     // Para image: transcrever com visão; document: placeholder
     if (message.type === 'image' && message.media) {
-      log('step:3c image_transcription', 'PASS', { hasCaption: !!message.text })
+      log('step:3c image_transcription', 'PASS', { hasCaption: !!message.text, provider: message.provider })
       try {
-        const description = await transcribeImage(
-          message.instanceName,
-          message.messageId,
-          message.text ?? undefined,
-        )
+        let description: string
+
+        if (message.provider === 'meta_cloud') {
+          // Para Meta: baixar imagem via Media API antes de transcrever
+          // media.url armazena o mediaId (ver parse-meta-message.ts)
+          const { downloadMetaMedia } = await import('@/_lib/meta/download-meta-media')
+          const metaInboxForImage = await db.inbox.findFirst({
+            where: { metaPhoneNumberId: message.instanceName },
+            select: { metaAccessToken: true },
+          })
+
+          if (!metaInboxForImage?.metaAccessToken) {
+            throw new Error('Meta access token not found for image transcription')
+          }
+
+          const imageBuffer = await downloadMetaMedia(message.media.url, metaInboxForImage.metaAccessToken)
+          const imageBase64 = imageBuffer.toString('base64')
+
+          description = await transcribeImage(
+            message.instanceName,
+            message.messageId,
+            message.text ?? undefined,
+            { base64: imageBase64, mimetype: message.media.mimetype },
+          )
+        } else {
+          // Para Evolution: buscar imagem via getBase64FromMediaMessage
+          description = await transcribeImage(
+            message.instanceName,
+            message.messageId,
+            message.text ?? undefined,
+          )
+        }
+
         const caption = message.text ? `\nLegenda do cliente: "${message.text}"` : ''
         messageText = `[Imagem enviada pelo cliente — descrição: ${description}${caption}]`
         log('step:3c image_transcribed', 'PASS', { length: description.length })
@@ -334,8 +410,11 @@ export const processAgentMessage = task({
 
     // -----------------------------------------------------------------------
     // 5. Typing presence — "digitando..." antes do LLM
+    // Meta Cloud API nao suporta composing para business — apenas Evolution
     // -----------------------------------------------------------------------
-    await sendPresence(message.instanceName, message.remoteJid, 'composing')
+    if (message.provider === 'evolution') {
+      await sendPresence(message.instanceName, message.remoteJid, 'composing')
+    }
 
     // -----------------------------------------------------------------------
     // 6. Call LLM (com logging de duração)
@@ -537,12 +616,35 @@ export const processAgentMessage = task({
 
     // -----------------------------------------------------------------------
     // 10. Send WhatsApp message + pre-register dedup keys
+    // Roteamento pelo provider: Evolution ou Meta Cloud
     // -----------------------------------------------------------------------
-    const sentMessageIds = await sendWhatsAppMessage(
-      message.instanceName,
-      message.remoteJid,
-      responseText,
-    )
+    let sentMessageIds: string[]
+
+    if (message.provider === 'meta_cloud') {
+      // Para Meta Cloud: buscar metaAccessToken do inbox (nunca vem no payload por seguranca)
+      const metaInbox = await db.inbox.findFirst({
+        where: { metaPhoneNumberId: message.instanceName },
+        select: { metaAccessToken: true },
+      })
+
+      if (!metaInbox?.metaAccessToken) {
+        throw new Error(`Meta access token not found for phoneNumberId: ${message.instanceName}`)
+      }
+
+      sentMessageIds = await sendMetaTextMessage(
+        message.instanceName,
+        metaInbox.metaAccessToken,
+        message.remoteJid.replace('@s.whatsapp.net', ''),
+        responseText,
+      )
+    } else {
+      // Provider Evolution (default)
+      sentMessageIds = await sendWhatsAppMessage(
+        message.instanceName,
+        message.remoteJid,
+        responseText,
+      )
+    }
 
     // Pré-registrar dedup keys para que o webhook fromMe ignore estas mensagens
     // (evita duplicata no banco + auto-pause da IA)
@@ -552,7 +654,7 @@ export const processAgentMessage = task({
       ),
     )
 
-    log('step:9 whatsapp_sent', 'PASS', { responseLength: responseText.length, sentMessageIds })
+    log('step:9 whatsapp_sent', 'PASS', { responseLength: responseText.length, sentMessageIds, provider: message.provider })
 
     // -----------------------------------------------------------------------
     // 11. Memory compression — se >= threshold msgs, summarizar e arquivar

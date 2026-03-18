@@ -21,6 +21,30 @@ interface EvolutionBase64Response {
 }
 
 /**
+ * Transcreve audio a partir de um Buffer (provider-agnostic).
+ * Usado para Meta Cloud onde o audio ja foi baixado via downloadMetaMedia().
+ */
+export async function transcribeAudioFromBuffer(
+  audioBuffer: Buffer,
+  mimetype: string,
+): Promise<string> {
+  return observe(async () => {
+  const ext = MIME_TO_EXT[mimetype] ?? 'ogg'
+  const resolvedMimetype = mimetype || 'audio/ogg'
+
+  const file = await toFile(audioBuffer, `audio.${ext}`, { type: resolvedMimetype })
+
+  const transcription = await openai.audio.transcriptions.create({
+    model: 'whisper-1',
+    file,
+    language: 'pt',
+  })
+
+  return transcription.text
+  }, { name: 'audio-transcription-from-buffer' })()
+}
+
+/**
  * Busca o áudio via Evolution API (getBase64FromMediaMessage) e transcreve com Whisper.
  *
  * A URL no audioMessage do webhook é interna do WhatsApp CDN e não é acessível diretamente.
@@ -68,21 +92,8 @@ export async function transcribeAudio(
     throw new Error('Evolution returned empty base64 for audio message')
   }
 
-  // 2. Converter base64 para Buffer
+  // 2. Converter base64 para Buffer e transcrever
   const audioBuffer = Buffer.from(data.base64, 'base64')
-  const mimetype = data.mimetype ?? 'audio/ogg'
-  const ext = MIME_TO_EXT[mimetype] ?? 'ogg'
-
-  // 3. Converter para File que o SDK OpenAI reconhece
-  const file = await toFile(audioBuffer, `audio.${ext}`, { type: mimetype })
-
-  // 4. Enviar para Whisper
-  const transcription = await openai.audio.transcriptions.create({
-    model: 'whisper-1',
-    file,
-    language: 'pt',
-  })
-
-  return transcription.text
+  return transcribeAudioFromBuffer(audioBuffer, data.mimetype ?? 'audio/ogg')
   }, { name: 'audio-transcription' })() // observe
 }
