@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 import {
@@ -68,9 +68,9 @@ const MetaConnectionCard = ({
   // Controla estado de loading durante o fluxo de autorizacao (entre clicar e receber code)
   const [isAuthPending, setIsAuthPending] = useState(false)
 
-  // Estado local para capturar dados do Embedded Signup antes do callback
-  const [capturedSessionInfo, setCapturedSessionInfo] =
-    useState<EmbeddedSignupSessionInfo | null>(null)
+  // Ref para capturar dados do Embedded Signup antes do callback do FB.login.
+  // Precisa ser ref (nao state) para evitar stale closure no callback.
+  const sessionInfoRef = useRef<EmbeddedSignupSessionInfo | null>(null)
 
   const { execute: executeConnect, isPending: isConnecting } = useAction(
     connectMeta,
@@ -100,6 +100,7 @@ const MetaConnectionCard = ({
   )
 
   const handleConnectClick = () => {
+    sessionInfoRef.current = null
     setIsAuthPending(true)
     // Carrega o SDK e chama handleSdkReady quando estiver pronto
     loadMetaSdk(handleSdkReady)
@@ -119,7 +120,7 @@ const MetaConnectionCard = ({
 
         if (data?.type === 'WA_EMBEDDED_SIGNUP' && data?.event === 'FINISH') {
           const sessionInfo = data.data as EmbeddedSignupSessionInfo
-          setCapturedSessionInfo(sessionInfo)
+          sessionInfoRef.current = sessionInfo
           window.removeEventListener('message', sessionInfoListener)
         }
       } catch {
@@ -143,8 +144,8 @@ const MetaConnectionCard = ({
 
         const code = response.authResponse.code
 
-        // Tenta usar sessionInfo capturado antes do callback
-        const sessionInfo = capturedSessionInfo
+        // Usa ref para acessar o valor mais recente (evita stale closure)
+        const sessionInfo = sessionInfoRef.current
         const wabaId = sessionInfo?.waba_id
         const phoneNumberId = sessionInfo?.phone_number_id
 

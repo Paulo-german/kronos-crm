@@ -6,7 +6,7 @@ declare global {
     FB: {
       init: (params: {
         appId: string
-        cookie: boolean
+        autoLogAppEvents: boolean
         xfbml: boolean
         version: string
       }) => void
@@ -43,61 +43,78 @@ export interface FBLoginOptions {
   }
 }
 
-// Estado global do SDK — sobrevive entre re-renders
-let sdkReady = false
-let sdkLoading = false
+// Rastreia se FB.init() ja foi chamado por ESTE modulo.
+// Pode ser resetado pelo Next.js (code splitting), por isso
+// sempre checamos window.FB como fonte de verdade complementar.
+let initialized = false
+
+// Fila de callbacks pendentes — enfileira em vez de substituir
+const pendingCallbacks: Array<() => void> = []
+
+function initFb(): void {
+  const appId = process.env.NEXT_PUBLIC_META_APP_ID ?? ''
+  window.FB.init({
+    appId,
+    autoLogAppEvents: true,
+    xfbml: true,
+    version: 'v25.0',
+  })
+  initialized = true
+}
+
+function flushCallbacks(): void {
+  while (pendingCallbacks.length > 0) {
+    const callback = pendingCallbacks.shift()
+    callback?.()
+  }
+}
 
 /**
  * Carrega o Facebook SDK e chama o callback quando estiver pronto.
  *
- * Usa o padrao classico da Meta: define window.fbAsyncInit, depois
- * insere o script tag manualmente. O SDK chama fbAsyncInit quando
- * termina sua inicializacao interna.
- *
- * Seguro para chamar multiplas vezes — ignora chamadas duplicadas.
+ * Seguro para chamar multiplas vezes — enfileira callbacks e evita
+ * scripts duplicados usando o DOM como fonte de verdade.
  */
 export function loadMetaSdk(onReady: () => void): void {
-  const appId = process.env.NEXT_PUBLIC_META_APP_ID ?? ''
-
-  // Ja inicializado — dispara callback imediatamente
-  if (sdkReady && window.FB) {
+  // 1. SDK ja inicializado e presente — dispara imediatamente
+  if (initialized && window.FB) {
     onReady()
     return
   }
 
-  // Ja esta carregando — substitui o callback pendente
-  if (sdkLoading) {
+  // 2. Modulo re-avaliado (code splitting) mas SDK ja esta no window
+  //    Basta chamar init() novamente e disparar o callback
+  if (!initialized && window.FB) {
+    initFb()
+    onReady()
+    return
+  }
+
+  // 3. SDK ainda nao carregou — enfileira callback
+  pendingCallbacks.push(onReady)
+
+  // 4. Script ja esta no DOM (outra chamada ja inseriu) —
+  //    Atualiza fbAsyncInit para flush a fila quando o SDK carregar
+  const existingScript = document.getElementById('facebook-jssdk')
+  if (existingScript) {
     window.fbAsyncInit = () => {
-      window.FB.init({
-        appId,
-        cookie: true,
-        xfbml: true,
-        version: 'v25.0',
-      })
-      sdkReady = true
-      onReady()
+      initFb()
+      flushCallbacks()
     }
     return
   }
 
-  sdkLoading = true
-
-  // 1. Registrar fbAsyncInit ANTES de inserir o script
+  // 5. Primeira vez — registra fbAsyncInit e insere o script
   window.fbAsyncInit = () => {
-    window.FB.init({
-      appId,
-      cookie: true,
-      xfbml: true,
-      version: 'v25.0',
-    })
-    sdkReady = true
-    onReady()
+    initFb()
+    flushCallbacks()
   }
 
-  // 2. Inserir script tag manualmente (padrao oficial da Meta)
   const script = document.createElement('script')
   script.id = 'facebook-jssdk'
   script.src = 'https://connect.facebook.net/en_US/sdk.js'
   script.async = true
+  script.defer = true
+  script.crossOrigin = 'anonymous'
   document.body.appendChild(script)
 }
