@@ -145,6 +145,11 @@ enum KnowledgeFileStatus {
   FAILED
 }
 
+enum ConnectionType {
+  EVOLUTION
+  META_CLOUD
+}
+
 enum MessageRole {
   user
   assistant
@@ -871,9 +876,18 @@ model Inbox {
   channel  InboxChannel @default(WHATSAPP)
   isActive Boolean      @default(true) @map("is_active")
 
-  // Conexão WhatsApp (movido do Agent)
+  // Tipo de conexao WhatsApp (default EVOLUTION para backward compat)
+  connectionType ConnectionType @default(EVOLUTION) @map("connection_type")
+
+  // Conexão WhatsApp via Evolution API
   evolutionInstanceName String? @map("evolution_instance_name")
   evolutionInstanceId   String? @map("evolution_instance_id")
+
+  // Campos Meta Cloud API (nullable — so preenchidos quando connectionType = META_CLOUD)
+  metaWabaId        String? @map("meta_waba_id")
+  metaPhoneNumberId String? @map("meta_phone_number_id")
+  metaAccessToken   String? @map("meta_access_token")  // Token permanente do Embedded Signup
+  metaPhoneDisplay  String? @map("meta_phone_display")  // Numero formatado para exibicao
 
   // IA opcional
   agentId String? @map("agent_id")
@@ -892,6 +906,7 @@ model Inbox {
   @@unique([evolutionInstanceName])
   @@index([organizationId])
   @@index([agentId])
+  @@index([metaPhoneNumberId])
   @@map("inboxes")
 }
 

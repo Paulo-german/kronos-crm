@@ -27,6 +27,7 @@ export function parseEvolutionMessage(
     text,
     media,
     instanceName,
+    provider: 'evolution' as const,
   }
 }
 

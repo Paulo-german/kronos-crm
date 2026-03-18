@@ -70,5 +70,8 @@ export interface NormalizedWhatsAppMessage {
   type: NormalizedMessageType
   text: string | null
   media: NormalizedMediaInfo | null
+  /** Para Evolution: evolutionInstanceName. Para Meta: phoneNumberId. */
   instanceName: string
+  /** Identifica o provider de origem — usado pelo Trigger.dev para rotear o envio da resposta. */
+  provider: 'evolution' | 'meta_cloud'
 }
