@@ -107,6 +107,7 @@ const MetaConnectionCard = ({
   }
 
   const handleSdkReady = () => {
+    console.log('[MetaSDK] handleSdkReady() called — window.FB:', !!window.FB)
     if (!window.FB) return
 
     // Listener para capturar sessionInfo do Embedded Signup
@@ -130,8 +131,10 @@ const MetaConnectionCard = ({
 
     window.addEventListener('message', sessionInfoListener)
 
+    console.log('[MetaSDK] Calling FB.login() — FB object keys:', Object.keys(window.FB))
     window.FB.login(
       (response: FBLoginResponse) => {
+        console.log('[MetaSDK] FB.login callback — status:', response.status, 'hasCode:', !!response.authResponse?.code)
         window.removeEventListener('message', sessionInfoListener)
 
         if (!response.authResponse?.code) {
