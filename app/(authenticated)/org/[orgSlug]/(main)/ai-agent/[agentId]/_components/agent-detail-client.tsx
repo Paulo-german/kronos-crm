@@ -46,6 +46,7 @@ interface AgentDetailClientProps {
   orgSlug: string
   availableInboxes: InboxOptionDto[]
   inboxConnectionData: InboxConnectionDataMap
+  metaCloudEnabled: boolean
 }
 
 const AgentDetailClient = ({
@@ -56,6 +57,7 @@ const AgentDetailClient = ({
   orgSlug,
   availableInboxes,
   inboxConnectionData,
+  metaCloudEnabled,
 }: AgentDetailClientProps) => {
   const canManage = userRole === 'OWNER' || userRole === 'ADMIN'
 
@@ -168,6 +170,7 @@ const AgentDetailClient = ({
                 canManage={canManage}
                 availableInboxes={availableInboxes}
                 inboxConnectionData={inboxConnectionData}
+                metaCloudEnabled={metaCloudEnabled}
               />
             </TabsContent>
           </Tabs>

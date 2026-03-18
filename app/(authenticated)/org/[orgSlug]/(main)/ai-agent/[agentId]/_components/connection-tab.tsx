@@ -44,6 +44,8 @@ import {
 import { linkInboxToAgent } from '@/_actions/inbox/link-inbox-to-agent'
 import { createInbox } from '@/_actions/inbox/create-inbox'
 import InboxConnectionCard from '@/(authenticated)/org/[orgSlug]/(main)/settings/inboxes/[inboxId]/_components/inbox-connection-card'
+import MetaConnectionCard from '@/(authenticated)/org/[orgSlug]/(main)/settings/inboxes/[inboxId]/_components/meta-connection-card'
+import ConnectionProviderSelector from '@/(authenticated)/org/[orgSlug]/(main)/settings/inboxes/[inboxId]/_components/connection-provider-selector'
 import type { AgentDetailDto, AgentInboxDto } from '@/_data-access/agent/get-agent-by-id'
 import type { InboxConnectionDataMap } from './agent-detail-client'
 
@@ -59,6 +61,7 @@ interface ConnectionTabProps {
   canManage: boolean
   availableInboxes: InboxOptionDto[]
   inboxConnectionData: InboxConnectionDataMap
+  metaCloudEnabled: boolean
 }
 
 const createInlineInboxSchema = z.object({
@@ -67,7 +70,7 @@ const createInlineInboxSchema = z.object({
 
 type CreateInlineInboxInput = z.infer<typeof createInlineInboxSchema>
 
-const ConnectionTab = ({ agent, canManage, availableInboxes, inboxConnectionData }: ConnectionTabProps) => {
+const ConnectionTab = ({ agent, canManage, availableInboxes, inboxConnectionData, metaCloudEnabled }: ConnectionTabProps) => {
   const params = useParams()
   const orgSlug = params?.orgSlug as string
   const [showLinkForm, setShowLinkForm] = useState(false)
@@ -169,6 +172,7 @@ const ConnectionTab = ({ agent, canManage, availableInboxes, inboxConnectionData
                 onUnlink={() => handleUnlink(inbox.id)}
                 isUnlinking={isUnlinking}
                 connectionData={inboxConnectionData[inbox.id]}
+                metaCloudEnabled={metaCloudEnabled}
               />
             ))}
           </CardContent>
@@ -337,6 +341,7 @@ interface InboxRowProps {
   onUnlink: () => void
   isUnlinking: boolean
   connectionData?: { stats: InboxConnectionDataMap[string]['stats']; info: InboxConnectionDataMap[string]['info'] }
+  metaCloudEnabled: boolean
 }
 
 const InboxRow = ({
@@ -346,6 +351,7 @@ const InboxRow = ({
   onUnlink,
   isUnlinking,
   connectionData,
+  metaCloudEnabled,
 }: InboxRowProps) => {
   return (
     <div className="rounded-lg border border-border/50 bg-background/70 overflow-hidden">
@@ -382,19 +388,70 @@ const InboxRow = ({
         </div>
       </div>
 
-      {/* Inline connection card */}
+      {/* Inline connection card — roteado por provider */}
       <div className="p-3">
+        {renderInboxConnectionCard()}
+      </div>
+    </div>
+  )
+
+  /**
+   * Decide qual card de conexao renderizar baseado no connectionType e estado.
+   */
+  function renderInboxConnectionCard() {
+    const isMetaConnected =
+      inbox.connectionType === 'META_CLOUD' && !!inbox.metaPhoneNumberId
+    const isEvolutionConnected = !!inbox.evolutionInstanceName
+
+    if (isMetaConnected) {
+      return (
+        <MetaConnectionCard
+          inboxId={inbox.id}
+          canManage={canManage}
+          isConnected
+          metaPhoneDisplay={inbox.metaPhoneDisplay}
+          metaWabaId={null}
+          connectionStats={connectionData?.stats ?? null}
+        />
+      )
+    }
+
+    if (isEvolutionConnected) {
+      return (
         <InboxConnectionCard
           inboxId={inbox.id}
           canManage={canManage}
           connectionStats={connectionData?.stats ?? null}
           instanceInfo={connectionData?.info ?? null}
-          hasInstance={!!inbox.evolutionInstanceName}
+          hasInstance
           instanceName={inbox.evolutionInstanceName}
         />
-      </div>
-    </div>
-  )
+      )
+    }
+
+    // Se Meta Cloud nao esta habilitado para esta org, ir direto para Evolution
+    if (!metaCloudEnabled) {
+      return (
+        <InboxConnectionCard
+          inboxId={inbox.id}
+          canManage={canManage}
+          connectionStats={connectionData?.stats ?? null}
+          instanceInfo={connectionData?.info ?? null}
+          hasInstance={false}
+          instanceName={null}
+        />
+      )
+    }
+
+    return (
+      <ConnectionProviderSelector
+        inboxId={inbox.id}
+        canManage={canManage}
+        connectionStats={connectionData?.stats ?? null}
+        instanceInfo={connectionData?.info ?? null}
+      />
+    )
+  }
 }
 
 export default ConnectionTab

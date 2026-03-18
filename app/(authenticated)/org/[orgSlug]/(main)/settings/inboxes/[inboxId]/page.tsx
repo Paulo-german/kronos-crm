@@ -37,6 +37,9 @@ const InboxDetailPage = async ({ params }: InboxDetailPageProps) => {
     name: agent.name,
   }))
 
+  const metaBetaOrgIds = (process.env.NEXT_PUBLIC_META_BETA_ORG_IDS ?? '').split(',').filter(Boolean)
+  const metaCloudEnabled = metaBetaOrgIds.length === 0 || metaBetaOrgIds.includes(ctx.orgId)
+
   return (
     <InboxDetailClient
       inbox={inbox}
@@ -47,6 +50,7 @@ const InboxDetailPage = async ({ params }: InboxDetailPageProps) => {
       instanceInfo={instanceInfo}
       members={membersData.accepted}
       pipelines={pipelines}
+      metaCloudEnabled={metaCloudEnabled}
     />
   )
 }

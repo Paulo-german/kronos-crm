@@ -53,6 +53,9 @@ const AgentDetailPage = async ({ params }: AgentDetailPageProps) => {
     agentId: inbox.agentId,
   }))
 
+  const metaBetaOrgIds = (process.env.NEXT_PUBLIC_META_BETA_ORG_IDS ?? '').split(',').filter(Boolean)
+  const metaCloudEnabled = metaBetaOrgIds.length === 0 || metaBetaOrgIds.includes(ctx.orgId)
+
   return (
     <AgentDetailClient
       agent={agent}
@@ -62,6 +65,7 @@ const AgentDetailPage = async ({ params }: AgentDetailPageProps) => {
       orgSlug={orgSlug}
       availableInboxes={availableInboxes}
       inboxConnectionData={inboxConnectionData}
+      metaCloudEnabled={metaCloudEnabled}
     />
   )
 }

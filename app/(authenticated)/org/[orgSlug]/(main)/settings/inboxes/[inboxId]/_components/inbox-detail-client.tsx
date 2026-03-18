@@ -49,6 +49,8 @@ import { updateInbox } from '@/_actions/inbox/update-inbox'
 import { linkInboxToAgent } from '@/_actions/inbox/link-inbox-to-agent'
 import UpsertInboxSheetContent from '../../_components/upsert-inbox-sheet-content'
 import InboxConnectionCard from './inbox-connection-card'
+import MetaConnectionCard from './meta-connection-card'
+import ConnectionProviderSelector from './connection-provider-selector'
 
 interface AgentOption {
   id: string
@@ -64,6 +66,7 @@ interface InboxDetailClientProps {
   instanceInfo: EvolutionInstanceInfo | null
   members: AcceptedMemberDto[]
   pipelines: OrgPipelineDto[]
+  metaCloudEnabled: boolean
 }
 
 const channelLabels: Record<string, string> = {
@@ -80,6 +83,7 @@ const InboxDetailClient = ({
   instanceInfo,
   members,
   pipelines,
+  metaCloudEnabled,
 }: InboxDetailClientProps) => {
   const canManage = userRole === 'OWNER' || userRole === 'ADMIN'
   const [isEditOpen, setIsEditOpen] = useState(false)
@@ -140,6 +144,69 @@ const InboxDetailClient = ({
     })
   }
 
+  /**
+   * Decide qual card de conexao renderizar com base no estado atual do inbox.
+   *
+   * Logica de decisao:
+   * - META_CLOUD com phoneNumberId preenchido -> MetaConnectionCard (conectado)
+   * - EVOLUTION com evolutionInstanceName preenchido -> InboxConnectionCard (Evolution conectado)
+   * - Sem conexao ativa -> ConnectionProviderSelector
+   */
+  const renderConnectionSection = () => {
+    const isMetaConnected =
+      inbox.connectionType === 'META_CLOUD' && !!inbox.metaPhoneNumberId
+    const isEvolutionConnected = !!inbox.evolutionInstanceName
+
+    if (isMetaConnected) {
+      return (
+        <MetaConnectionCard
+          inboxId={inbox.id}
+          canManage={canManage}
+          isConnected
+          metaPhoneDisplay={inbox.metaPhoneDisplay}
+          metaWabaId={inbox.metaWabaId}
+          connectionStats={connectionStats}
+        />
+      )
+    }
+
+    if (isEvolutionConnected) {
+      return (
+        <InboxConnectionCard
+          inboxId={inbox.id}
+          canManage={canManage}
+          connectionStats={connectionStats}
+          instanceInfo={instanceInfo}
+          hasInstance
+          instanceName={inbox.evolutionInstanceName}
+        />
+      )
+    }
+
+    // Se Meta Cloud nao esta habilitado para esta org, ir direto para Evolution
+    if (!metaCloudEnabled) {
+      return (
+        <InboxConnectionCard
+          inboxId={inbox.id}
+          canManage={canManage}
+          connectionStats={connectionStats}
+          instanceInfo={instanceInfo}
+          hasInstance={false}
+          instanceName={null}
+        />
+      )
+    }
+
+    return (
+      <ConnectionProviderSelector
+        inboxId={inbox.id}
+        canManage={canManage}
+        connectionStats={connectionStats}
+        instanceInfo={instanceInfo}
+      />
+    )
+  }
+
   return (
     <div className="flex h-fit flex-col gap-6 bg-background p-6">
       {/* Back + Title */}
@@ -154,7 +221,8 @@ const InboxDetailClient = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold tracking-tight">{inbox.name}</h1>
-            {inbox.evolutionInstanceName ? (
+            {inbox.evolutionInstanceName ||
+            (inbox.connectionType === 'META_CLOUD' && inbox.metaPhoneNumberId) ? (
               <Badge
                 variant="outline"
                 className="h-6 gap-1.5 px-2 text-xs font-semibold bg-kronos-green/10 text-kronos-green border-kronos-green/20 hover:bg-kronos-green/20"
@@ -374,17 +442,8 @@ const InboxDetailClient = ({
         </CardContent>
       </Card>
 
-      {/* Connection Card */}
-      {inbox.channel === 'WHATSAPP' && (
-        <InboxConnectionCard
-          inboxId={inbox.id}
-          canManage={canManage}
-          connectionStats={connectionStats}
-          instanceInfo={instanceInfo}
-          hasInstance={!!inbox.evolutionInstanceName}
-          instanceName={inbox.evolutionInstanceName}
-        />
-      )}
+      {/* Connection Card — roteado por provider */}
+      {inbox.channel === 'WHATSAPP' && renderConnectionSection()}
 
       {/* Edit Sheet */}
       <Sheet
