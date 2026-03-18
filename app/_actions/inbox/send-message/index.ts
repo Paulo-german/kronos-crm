@@ -5,7 +5,7 @@ import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
-import { sendWhatsAppMessage } from '@/_lib/evolution/send-message'
+import { resolveWhatsAppProvider } from '@/_lib/whatsapp/provider'
 import { sendMessageSchema } from './schema'
 
 export const sendMessage = orgActionClient
@@ -14,11 +14,18 @@ export const sendMessage = orgActionClient
     // 1. Verificar permissão
     requirePermission(canPerformAction(ctx, 'conversation', 'update'))
 
-    // 2. Validar conversa pertence à org
+    // 2. Validar conversa pertence à org — incluir campos necessarios para routing
     const conversation = await db.conversation.findFirst({
       where: { id: data.conversationId, organizationId: ctx.orgId },
       include: {
-        inbox: { select: { evolutionInstanceName: true } },
+        inbox: {
+          select: {
+            connectionType: true,
+            evolutionInstanceName: true,
+            metaPhoneNumberId: true,
+            metaAccessToken: true,
+          },
+        },
       },
     })
 
@@ -26,7 +33,7 @@ export const sendMessage = orgActionClient
       throw new Error('Conversa não encontrada.')
     }
 
-    if (!conversation.remoteJid || !conversation.inbox.evolutionInstanceName) {
+    if (!conversation.remoteJid) {
       throw new Error('Esta conversa não possui conexão WhatsApp ativa.')
     }
 
@@ -37,12 +44,9 @@ export const sendMessage = orgActionClient
     })
     const senderName = sender?.fullName || sender?.email || 'Membro'
 
-    // 4. Enviar via WhatsApp
-    const sentMessageIds = await sendWhatsAppMessage(
-      conversation.inbox.evolutionInstanceName,
-      conversation.remoteJid,
-      data.text,
-    )
+    // 4. Enviar via provider correto (Evolution ou Meta Cloud)
+    const provider = resolveWhatsAppProvider(conversation.inbox)
+    const sentMessageIds = await provider.sendText(conversation.remoteJid, data.text)
 
     // Pré-registrar dedup keys para que o webhook fromMe ignore estas mensagens
     await Promise.all(

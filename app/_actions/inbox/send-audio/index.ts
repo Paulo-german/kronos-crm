@@ -5,7 +5,7 @@ import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
-import { sendWhatsAppAudio } from '@/_lib/evolution/send-audio'
+import { resolveWhatsAppProvider } from '@/_lib/whatsapp/provider'
 import { sendAudioSchema } from './schema'
 
 export const sendAudio = orgActionClient
@@ -14,11 +14,18 @@ export const sendAudio = orgActionClient
     // 1. Verificar permissão
     requirePermission(canPerformAction(ctx, 'conversation', 'update'))
 
-    // 2. Validar conversa pertence à org
+    // 2. Validar conversa pertence à org — incluir campos necessarios para routing
     const conversation = await db.conversation.findFirst({
       where: { id: data.conversationId, organizationId: ctx.orgId },
       include: {
-        inbox: { select: { evolutionInstanceName: true } },
+        inbox: {
+          select: {
+            connectionType: true,
+            evolutionInstanceName: true,
+            metaPhoneNumberId: true,
+            metaAccessToken: true,
+          },
+        },
       },
     })
 
@@ -26,7 +33,7 @@ export const sendAudio = orgActionClient
       throw new Error('Conversa não encontrada.')
     }
 
-    if (!conversation.remoteJid || !conversation.inbox.evolutionInstanceName) {
+    if (!conversation.remoteJid) {
       throw new Error('Esta conversa não possui conexão WhatsApp ativa.')
     }
 
@@ -37,12 +44,9 @@ export const sendAudio = orgActionClient
     })
     const senderName = sender?.fullName || sender?.email || 'Membro'
 
-    // 4. Enviar via WhatsApp
-    const messageId = await sendWhatsAppAudio(
-      conversation.inbox.evolutionInstanceName,
-      conversation.remoteJid,
-      data.audioBase64,
-    )
+    // 4. Enviar via provider correto (Evolution ou Meta Cloud)
+    const provider = resolveWhatsAppProvider(conversation.inbox)
+    const messageId = await provider.sendAudio(conversation.remoteJid, data.audioBase64)
 
     // Pré-registrar dedup key para que o webhook fromMe ignore esta mensagem
     await redis.set(`dedup:${messageId}`, '1', 'EX', 300).catch(() => {})

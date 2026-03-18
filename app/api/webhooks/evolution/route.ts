@@ -517,6 +517,7 @@ export async function POST(req: Request) {
   return NextResponse.json({ success: true })
 }
 
+// TODO: extract to shared module (duplicado no webhook Meta)
 function resolveMessageContent(message: NormalizedWhatsAppMessage): string {
   switch (message.type) {
     case 'audio':
