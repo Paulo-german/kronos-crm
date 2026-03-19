@@ -1,4 +1,4 @@
-import { task, logger } from '@trigger.dev/sdk/v3'
+import { task, tasks, logger } from '@trigger.dev/sdk/v3'
 import { generateText, stepCountIs } from 'ai'
 import { observe, updateActiveTrace } from '@langfuse/tracing'
 import { getModel } from '@/_lib/ai'
@@ -446,14 +446,10 @@ export const processAgentMessage = task({
       },
     }).catch(async (llmError: unknown) => {
       // LLM falhou — devolver créditos do débito otimista
+      // NÃO cria PROCESSING_ERROR aqui: o Trigger.dev pode fazer retry e o evento
+      // ficaria "órfão" se o retry tiver sucesso. O evento é criado no onFailure
+      // (só executa quando TODOS os retries falharam).
       log('step:5 llm_call', 'EXIT', { reason: 'llm_error', error: llmError instanceof Error ? llmError.message : String(llmError) })
-      await createConversationEvent({
-        conversationId,
-        type: 'PROCESSING_ERROR',
-        content: 'Erro ao processar mensagem com IA.',
-        metadata: { subtype: 'LLM_ERROR', error: llmError instanceof Error ? llmError.message : String(llmError) },
-      })
-      await revalidateConversationCache(conversationId, organizationId)
       await refundCredits(organizationId, estimatedCost, 'Refund — erro na chamada LLM', {
         agentId, conversationId, model: promptContext.modelId, estimatedCost, reason: 'llm_error',
       }).catch((refundError) => {
@@ -464,10 +460,63 @@ export const processAgentMessage = task({
 
     const llmDurationMs = Date.now() - llmStartMs
 
-    const responseText = result.text
+    let responseText = result.text
+
+    // Se o LLM gastou todos os steps em tool calls e não gerou texto,
+    // faz uma chamada extra SEM tools para gerar a resposta ao cliente.
+    if (!responseText) {
+      const hasToolCalls = result.steps?.some(
+        (step) => step.toolCalls && step.toolCalls.length > 0,
+      )
+
+      if (hasToolCalls) {
+        log('step:5b tool_only_fallback', 'PASS', {
+          steps: result.steps?.length,
+          toolCalls: result.steps?.flatMap(
+            (step) => step.toolCalls?.map((tc) => tc.toolName) ?? [],
+          ),
+        })
+
+        // Construir mensagens com o histórico + resultados das tools para contexto
+        const fallbackMessages = [
+          ...llmMessages,
+          // Incluir um resumo das ações realizadas pelas tools
+          {
+            role: 'system' as const,
+            content:
+              'Você acabou de executar ações (tool calls) para o cliente, mas não gerou uma resposta textual. ' +
+              'Agora responda ao cliente de forma natural, informando o que foi feito. ' +
+              'Seja breve e objetivo.',
+          },
+        ]
+
+        const fallbackResult = await generateText({
+          model: getModel(promptContext.modelId),
+          messages: fallbackMessages,
+          maxOutputTokens: MAX_OUTPUT_TOKENS,
+          experimental_telemetry: {
+            isEnabled: true,
+            tracer: langfuseTracer,
+            functionId: 'chat-completion-fallback',
+            metadata: { agentId, conversationId, reason: 'tool_only_fallback' },
+          },
+        }).catch((fallbackError) => {
+          logger.warn('Tool-only fallback LLM call failed', {
+            conversationId,
+            error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
+          })
+          return null
+        })
+
+        if (fallbackResult?.text) {
+          responseText = fallbackResult.text
+          log('step:5b tool_only_fallback', 'PASS', { responseLength: responseText.length })
+        }
+      }
+    }
 
     if (!responseText) {
-      // Ajustar créditos: cobrar custo real dos tokens consumidos, refundar o resto
+      // Genuinamente sem resposta (sem tool calls ou fallback falhou)
       const emptyTotalTokens = (result.usage?.inputTokens ?? 0) + (result.usage?.outputTokens ?? 0)
       const emptyActualCost = calculateCreditCost(promptContext.modelId, emptyTotalTokens)
       const emptyRefund = estimatedCost - emptyActualCost
@@ -679,6 +728,29 @@ export const processAgentMessage = task({
     }
     }, { name: 'process-agent-message' })() // observe
   },
+})
+
+// ---------------------------------------------------------------------------
+// onFailure — só executa quando TODOS os retries falharam
+// Cria o PROCESSING_ERROR event aqui para evitar eventos órfãos em retries bem-sucedidos
+// ---------------------------------------------------------------------------
+
+tasks.onFailure(async ({ payload, error }) => {
+  const { conversationId, organizationId } = payload as ProcessAgentMessagePayload
+  logger.error('process-agent-message failed after all retries', {
+    conversationId,
+    error: error instanceof Error ? error.message : String(error),
+  })
+  await createConversationEvent({
+    conversationId,
+    type: 'PROCESSING_ERROR',
+    content: 'Erro ao processar mensagem com IA.',
+    metadata: {
+      subtype: 'LLM_ERROR',
+      error: error instanceof Error ? error.message : String(error),
+    },
+  })
+  await revalidateConversationCache(conversationId, organizationId)
 })
 
 // ---------------------------------------------------------------------------
