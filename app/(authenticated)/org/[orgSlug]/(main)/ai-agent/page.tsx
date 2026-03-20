@@ -1,6 +1,5 @@
 import Header, {
   HeaderLeft,
-  HeaderRight,
   HeaderTitle,
   HeaderSubTitle,
 } from '@/_components/header'
@@ -8,8 +7,7 @@ import { QuotaHint } from '@/_components/trial/quota-hint'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getAgents } from '@/_data-access/agent/get-agents'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
-import { AgentsDataTable } from './_components/agents-data-table'
-import CreateAgentButton from './_components/create-agent-button'
+import { AgentsCardGrid } from './_components/agents-card-grid'
 
 interface AiAgentPageProps {
   params: Promise<{ orgSlug: string }>
@@ -34,15 +32,13 @@ const AiAgentPage = async ({ params }: AiAgentPageProps) => {
           </HeaderSubTitle>
           <QuotaHint orgId={ctx.orgId} entity="agent" />
         </HeaderLeft>
-        <HeaderRight>
-          <CreateAgentButton withinQuota={quota.withinQuota} />
-        </HeaderRight>
       </Header>
 
-      <AgentsDataTable
+      <AgentsCardGrid
         agents={agents}
         orgSlug={orgSlug}
         userRole={ctx.userRole}
+        withinQuota={quota.withinQuota}
       />
     </div>
   )
