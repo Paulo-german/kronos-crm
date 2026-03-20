@@ -4,6 +4,7 @@ import { db } from '@/_lib/prisma'
 import { logger } from '@trigger.dev/sdk/v3'
 import { sendWhatsAppMessage } from '@/_lib/evolution/send-message'
 import { revalidateTags } from './lib/revalidate-tags'
+import { withRetry, safeBestEffort } from './lib/with-retry'
 import type { ToolContext } from './types'
 
 export interface HandOffNotificationConfig {
@@ -49,59 +50,70 @@ export function createHandOffToHumanTool(
         ),
     }),
     execute: async ({ reason }) => {
-      // pausedAt: null → pausa indefinida (auto-unpause NÃO dispara)
-      const result = await db.conversation.updateMany({
-        where: { id: ctx.conversationId, organizationId: ctx.organizationId },
-        data: {
-          aiPaused: true,
-          pausedAt: null,
-        },
-      })
+      try {
+        // pausedAt: null → pausa indefinida (auto-unpause NÃO dispara)
+        const result = await withRetry(
+          () =>
+            db.conversation.updateMany({
+              where: { id: ctx.conversationId, organizationId: ctx.organizationId },
+              data: {
+                aiPaused: true,
+                pausedAt: null,
+              },
+            }),
+          'db.conversation.updateMany',
+        )
 
-      if (result.count === 0) {
-        return { success: false, message: 'Conversa não encontrada nesta organização.' }
-      }
-
-      if (ctx.dealId) {
-        await db.activity.create({
-          data: {
-            type: 'note',
-            content: `Conversa transferida para atendimento humano. Motivo: ${reason}`,
-            dealId: ctx.dealId,
-            performedBy: null,
-            metadata: { agentId: ctx.agentId, agentName: ctx.agentName },
-          },
-        })
-      }
-
-      // Bloco de notificação WhatsApp — best-effort: falha loga warning mas não bloqueia
-      if (config && config.notifyTarget !== 'none') {
-        try {
-          await sendHandOffNotification(ctx, config, reason)
-        } catch (error) {
-          logger.warn('Hand-off WhatsApp notification failed (best-effort)', {
-            conversationId: ctx.conversationId,
-            notifyTarget: config.notifyTarget,
-            error,
-          })
+        if (result.count === 0) {
+          return { success: false, message: 'Conversa não encontrada nesta organização.' }
         }
-      }
 
-      await revalidateTags([
-        `conversation:${ctx.conversationId}`,
-        `conversations:${ctx.organizationId}`,
-      ])
+        if (ctx.dealId) {
+          await safeBestEffort(
+            () =>
+              db.activity.create({
+                data: {
+                  type: 'note',
+                  content: `Conversa transferida para atendimento humano. Motivo: ${reason}`,
+                  dealId: ctx.dealId!,
+                  performedBy: null,
+                  metadata: { agentId: ctx.agentId, agentName: ctx.agentName },
+                },
+              }),
+            'activity.create',
+          )
+        }
 
-      logger.info('Tool hand_off_to_human executed', {
-        reason,
-        conversationId: ctx.conversationId,
-        agentId: ctx.agentId,
-        notifyTarget: config?.notifyTarget ?? 'none',
-      })
+        // Bloco de notificação WhatsApp — best-effort: falha loga warning mas não bloqueia
+        await safeBestEffort(async () => {
+          if (config && config.notifyTarget !== 'none') {
+            await sendHandOffNotification(ctx, config, reason)
+          }
+        }, 'whatsapp.notification')
 
-      return {
-        success: true,
-        message: 'Conversa transferida para atendimento humano.',
+        await safeBestEffort(
+          () =>
+            revalidateTags([
+              `conversation:${ctx.conversationId}`,
+              `conversations:${ctx.organizationId}`,
+            ]),
+          'revalidateTags',
+        )
+
+        logger.info('Tool hand_off_to_human executed', {
+          reason,
+          conversationId: ctx.conversationId,
+          agentId: ctx.agentId,
+          notifyTarget: config?.notifyTarget ?? 'none',
+        })
+
+        return {
+          success: true,
+          message: 'Conversa transferida para atendimento humano.',
+        }
+      } catch (error) {
+        logger.error('Tool hand_off_to_human failed', { error })
+        return { success: false, message: 'Erro interno ao transferir conversa. Tente novamente.' }
       }
     },
   })

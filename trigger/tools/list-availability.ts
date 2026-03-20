@@ -112,121 +112,129 @@ export function createListAvailabilityTool(
     // O LLM não define os parâmetros de busca — a config vem do step builder
     inputSchema: z.object({}),
     execute: async (): Promise<ListAvailabilityResult> => {
-      if (!ctx.dealId) {
-        return {
-          success: false,
-          message: 'Nenhum negócio vinculado a esta conversa.',
+      try {
+        if (!ctx.dealId) {
+          return {
+            success: false,
+            message: 'Nenhum negócio vinculado a esta conversa.',
+          }
         }
-      }
 
-      const deal = await db.deal.findFirst({
-        where: {
-          id: ctx.dealId,
-          organizationId: ctx.organizationId,
-        },
-        select: { assignedTo: true, stage: { select: { pipelineId: true } } },
-      })
+        const deal = await db.deal.findFirst({
+          where: {
+            id: ctx.dealId,
+            organizationId: ctx.organizationId,
+          },
+          select: { assignedTo: true, stage: { select: { pipelineId: true } } },
+        })
 
-      if (!deal) {
-        return { success: false, message: 'Negócio não encontrado.' }
-      }
+        if (!deal) {
+          return { success: false, message: 'Negócio não encontrado.' }
+        }
 
-      if (!ctx.pipelineIds.includes(deal.stage.pipelineId)) {
-        return { success: false, message: 'Sem permissão para este pipeline.' }
-      }
+        if (!ctx.pipelineIds.includes(deal.stage.pipelineId)) {
+          return { success: false, message: 'Sem permissão para este pipeline.' }
+        }
 
-      // Determinar janela de busca em UTC (hoje até hoje + daysAhead)
-      const now = new Date()
-      const todayStr = toLocalDateString(now)
+        // Determinar janela de busca em UTC (hoje até hoje + daysAhead)
+        const now = new Date()
+        const todayStr = toLocalDateString(now)
 
-      // Calcular rangeStart e rangeEnd para consultar appointments existentes
-      const rangeStart = new Date(`${todayStr}T00:00:00${BRAZIL_OFFSET}`)
-      const rangeEndDateStr = toLocalDateString(
-        new Date(rangeStart.getTime() + config.daysAhead * 24 * 60 * 60 * 1000),
-      )
-      const rangeEnd = new Date(`${rangeEndDateStr}T23:59:59${BRAZIL_OFFSET}`)
-
-      // Buscar todos os appointments ativos do responsável no range
-      const existingAppointments = await getAppointmentsByDateRange(
-        ctx.organizationId,
-        deal.assignedTo,
-        rangeStart,
-        rangeEnd,
-      )
-
-      const slots: AvailabilitySlot[] = []
-
-      const startMinutes = timeToMinutes(config.startTime)
-      const endMinutes = timeToMinutes(config.endTime)
-
-      // Iterar cada dia da janela
-      for (let dayOffset = 0; dayOffset < config.daysAhead; dayOffset++) {
-        const dayDate = new Date(
-          rangeStart.getTime() + dayOffset * 24 * 60 * 60 * 1000,
+        // Calcular rangeStart e rangeEnd para consultar appointments existentes
+        const rangeStart = new Date(`${todayStr}T00:00:00${BRAZIL_OFFSET}`)
+        const rangeEndDateStr = toLocalDateString(
+          new Date(rangeStart.getTime() + config.daysAhead * 24 * 60 * 60 * 1000),
         )
-        const dateStr = toLocalDateString(dayDate)
-        const dayOfWeekIndex = toLocalDayOfWeek(dayDate)
-        const dayOfWeekLabel = DAY_OF_WEEK_LABELS[dayOfWeekIndex] ?? 'desconhecido'
+        const rangeEnd = new Date(`${rangeEndDateStr}T23:59:59${BRAZIL_OFFSET}`)
 
-        // Gerar todos os slots sequenciais do dia
-        let slotStart = startMinutes
-        while (slotStart + config.slotDuration <= endMinutes) {
-          const slotEnd = slotStart + config.slotDuration
+        // Buscar todos os appointments ativos do responsável no range
+        const existingAppointments = await getAppointmentsByDateRange(
+          ctx.organizationId,
+          deal.assignedTo,
+          rangeStart,
+          rangeEnd,
+        )
 
-          const slotStartIso = toIsoWithBrOffset(dateStr, minutesToTime(slotStart))
-          const slotEndIso = toIsoWithBrOffset(dateStr, minutesToTime(slotEnd))
+        const slots: AvailabilitySlot[] = []
 
-          const slotStartDate = new Date(slotStartIso)
-          const slotEndDate = new Date(slotEndIso)
+        const startMinutes = timeToMinutes(config.startTime)
+        const endMinutes = timeToMinutes(config.endTime)
 
-          // Verificar conflito com appointments existentes
-          // Conflito: slotStart < apptEnd && slotEnd > apptStart
-          const hasConflict = existingAppointments.some(
-            (appt) =>
-              slotStartDate < appt.endDate && slotEndDate > appt.startDate,
+        // Iterar cada dia da janela
+        for (let dayOffset = 0; dayOffset < config.daysAhead; dayOffset++) {
+          const dayDate = new Date(
+            rangeStart.getTime() + dayOffset * 24 * 60 * 60 * 1000,
           )
+          const dateStr = toLocalDateString(dayDate)
+          const dayOfWeekIndex = toLocalDayOfWeek(dayDate)
+          const dayOfWeekLabel = DAY_OF_WEEK_LABELS[dayOfWeekIndex] ?? 'desconhecido'
 
-          if (!hasConflict) {
-            slots.push({
-              date: dateStr,
-              dayOfWeek: dayOfWeekLabel,
-              startTime: minutesToTime(slotStart),
-              endTime: minutesToTime(slotEnd),
-              startIso: slotStartIso,
-            })
+          // Gerar todos os slots sequenciais do dia
+          let slotStart = startMinutes
+          while (slotStart + config.slotDuration <= endMinutes) {
+            const slotEnd = slotStart + config.slotDuration
+
+            const slotStartIso = toIsoWithBrOffset(dateStr, minutesToTime(slotStart))
+            const slotEndIso = toIsoWithBrOffset(dateStr, minutesToTime(slotEnd))
+
+            const slotStartDate = new Date(slotStartIso)
+            const slotEndDate = new Date(slotEndIso)
+
+            // Verificar conflito com appointments existentes
+            // Conflito: slotStart < apptEnd && slotEnd > apptStart
+            const hasConflict = existingAppointments.some(
+              (appt) =>
+                slotStartDate < appt.endDate && slotEndDate > appt.startDate,
+            )
+
+            if (!hasConflict) {
+              slots.push({
+                date: dateStr,
+                dayOfWeek: dayOfWeekLabel,
+                startTime: minutesToTime(slotStart),
+                endTime: minutesToTime(slotEnd),
+                startIso: slotStartIso,
+              })
+            }
+
+            slotStart += config.slotDuration
+
+            // Limitar para não poluir o contexto do LLM
+            if (slots.length >= MAX_SLOTS_TO_RETURN) break
           }
 
-          slotStart += config.slotDuration
-
-          // Limitar para não poluir o contexto do LLM
           if (slots.length >= MAX_SLOTS_TO_RETURN) break
         }
 
-        if (slots.length >= MAX_SLOTS_TO_RETURN) break
-      }
+        logger.info('Tool list_availability executed', {
+          dealId: ctx.dealId,
+          conversationId: ctx.conversationId,
+          daysAhead: config.daysAhead,
+          slotDuration: config.slotDuration,
+          slotsFound: slots.length,
+        })
 
-      logger.info('Tool list_availability executed', {
-        dealId: ctx.dealId,
-        conversationId: ctx.conversationId,
-        daysAhead: config.daysAhead,
-        slotDuration: config.slotDuration,
-        slotsFound: slots.length,
-      })
+        if (slots.length === 0) {
+          return {
+            success: true,
+            message: `Nenhum horário disponível nos próximos ${config.daysAhead} dias.`,
+            slots: [],
+            totalSlots: 0,
+          }
+        }
 
-      if (slots.length === 0) {
         return {
           success: true,
-          message: `Nenhum horário disponível nos próximos ${config.daysAhead} dias.`,
-          slots: [],
-          totalSlots: 0,
+          message: `Encontrei ${slots.length} horário(s) disponível(is) nos próximos ${config.daysAhead} dias.`,
+          slots,
+          totalSlots: slots.length,
         }
-      }
-
-      return {
-        success: true,
-        message: `Encontrei ${slots.length} horário(s) disponível(is) nos próximos ${config.daysAhead} dias.`,
-        slots,
-        totalSlots: slots.length,
+      } catch (error) {
+        logger.error('Tool list_availability failed', { error })
+        return {
+          success: false,
+          message: 'Erro interno ao consultar disponibilidade. Tente novamente.',
+        }
       }
     },
   })

@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { db } from '@/_lib/prisma'
 import { logger } from '@trigger.dev/sdk/v3'
 import { revalidateTags } from './lib/revalidate-tags'
+import { withRetry, safeBestEffort } from './lib/with-retry'
 import type { ToolContext } from './types'
 
 interface UpdateEventResult {
@@ -25,6 +26,7 @@ export function createUpdateEventTool(ctx: ToolContext) {
         ),
     }),
     execute: async ({ appointmentId, newStartDate }): Promise<UpdateEventResult> => {
+      try {
       if (!ctx.dealId) {
         return {
           success: false,
@@ -77,55 +79,74 @@ export function createUpdateEventTool(ctx: ToolContext) {
       }
 
       // Preservar a duração original do evento ao reagendar
-      const originalDurationMs = appointment.endDate.getTime() - appointment.startDate.getTime()
-      const newEndDate = new Date(parsedNewStart.getTime() + originalDurationMs)
+        const originalDurationMs = appointment.endDate.getTime() - appointment.startDate.getTime()
+        const newEndDate = new Date(parsedNewStart.getTime() + originalDurationMs)
 
-      await db.appointment.update({
-        where: { id: appointmentId },
-        data: {
-          startDate: parsedNewStart,
-          endDate: newEndDate,
-        },
-      })
+        await withRetry(
+          () =>
+            db.appointment.update({
+              where: { id: appointmentId },
+              data: {
+                startDate: parsedNewStart,
+                endDate: newEndDate,
+              },
+            }),
+          'db.appointment.update',
+        )
 
-      await db.activity.create({
-        data: {
-          type: 'appointment_updated',
-          content: `Evento reagendado: ${appointment.title}`,
+        await safeBestEffort(
+          () =>
+            db.activity.create({
+              data: {
+                type: 'appointment_updated',
+                content: `Evento reagendado: ${appointment.title}`,
+                dealId: ctx.dealId!,
+                performedBy: null,
+                metadata: {
+                  agentId: ctx.agentId,
+                  agentName: ctx.agentName,
+                  previousStartDate: appointment.startDate.toISOString(),
+                  newStartDate: parsedNewStart.toISOString(),
+                },
+              },
+            }),
+          'activity.create',
+        )
+
+        const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
+          timeZone: 'America/Sao_Paulo',
+          dateStyle: 'short',
+          timeStyle: 'short',
+        })
+
+        await safeBestEffort(
+          () =>
+            revalidateTags([
+              `appointments:${ctx.organizationId}`,
+              `deal-appointments:${ctx.dealId}`,
+              `deal:${ctx.dealId}`,
+            ]),
+          'revalidateTags',
+        )
+
+        logger.info('Tool update_event executed', {
+          appointmentId,
+          newStartDate,
+          newEndDate: newEndDate.toISOString(),
           dealId: ctx.dealId,
-          performedBy: null,
-          metadata: {
-            agentId: ctx.agentId,
-            agentName: ctx.agentName,
-            previousStartDate: appointment.startDate.toISOString(),
-            newStartDate: parsedNewStart.toISOString(),
-          },
-        },
-      })
+          conversationId: ctx.conversationId,
+        })
 
-      const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
-        timeZone: 'America/Sao_Paulo',
-        dateStyle: 'short',
-        timeStyle: 'short',
-      })
-
-      await revalidateTags([
-        `appointments:${ctx.organizationId}`,
-        `deal-appointments:${ctx.dealId}`,
-        `deal:${ctx.dealId}`,
-      ])
-
-      logger.info('Tool update_event executed', {
-        appointmentId,
-        newStartDate,
-        newEndDate: newEndDate.toISOString(),
-        dealId: ctx.dealId,
-        conversationId: ctx.conversationId,
-      })
-
-      return {
-        success: true,
-        message: `Evento "${appointment.title}" reagendado para ${dateFormatter.format(parsedNewStart)}.`,
+        return {
+          success: true,
+          message: `Evento "${appointment.title}" reagendado para ${dateFormatter.format(parsedNewStart)}.`,
+        }
+      } catch (error) {
+        logger.error('Tool update_event failed', { error })
+        return {
+          success: false,
+          message: 'Erro interno ao reagendar evento. Tente novamente.',
+        }
       }
     },
   })

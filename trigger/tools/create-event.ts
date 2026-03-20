@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { db } from '@/_lib/prisma'
 import { logger } from '@trigger.dev/sdk/v3'
 import { revalidateTags } from './lib/revalidate-tags'
+import { withRetry, safeBestEffort } from './lib/with-retry'
 import type { ToolContext } from './types'
 
 interface CreateEventResult {
@@ -80,6 +81,7 @@ export function createCreateEventTool(ctx: ToolContext, config: CreateEventConfi
       description,
       startDate,
     }): Promise<CreateEventResult> => {
+      try {
       if (!ctx.dealId) {
         return {
           success: false,
@@ -122,56 +124,72 @@ export function createCreateEventTool(ctx: ToolContext, config: CreateEventConfi
         }
       }
 
-      // endDate calculado a partir do startDate + duration — o LLM não precisa informar
-      const parsedEnd = new Date(parsedStart.getTime() + config.duration * 60_000)
+        // endDate calculado a partir do startDate + duration — o LLM não precisa informar
+        const parsedEnd = new Date(parsedStart.getTime() + config.duration * 60_000)
 
-      await db.appointment.create({
-        data: {
-          organizationId: ctx.organizationId,
+        await withRetry(
+          () =>
+            db.appointment.create({
+              data: {
+                organizationId: ctx.organizationId,
+                title,
+                description: description ?? null,
+                startDate: parsedStart,
+                endDate: parsedEnd,
+                status: 'SCHEDULED',
+                assignedTo: deal.assignedTo,
+                dealId: ctx.dealId!,
+              },
+            }),
+          'db.appointment.create',
+        )
+
+        await safeBestEffort(
+          () =>
+            db.activity.create({
+              data: {
+                type: 'appointment_created',
+                content: `Evento agendado: ${title}`,
+                dealId: ctx.dealId!,
+                performedBy: null,
+                metadata: { agentId: ctx.agentId, agentName: ctx.agentName },
+              },
+            }),
+          'activity.create',
+        )
+
+        const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
+          timeZone: 'America/Sao_Paulo',
+          dateStyle: 'short',
+          timeStyle: 'short',
+        })
+
+        await safeBestEffort(
+          () =>
+            revalidateTags([
+              `appointments:${ctx.organizationId}`,
+              `deal-appointments:${ctx.dealId}`,
+              `deal:${ctx.dealId}`,
+            ]),
+          'revalidateTags',
+        )
+
+        logger.info('Tool create_event executed', {
           title,
-          description: description ?? null,
-          startDate: parsedStart,
-          endDate: parsedEnd,
-          status: 'SCHEDULED',
-          assignedTo: deal.assignedTo,
+          startDate,
+          endDate: parsedEnd.toISOString(),
+          duration: config.duration,
           dealId: ctx.dealId,
-        },
-      })
+          conversationId: ctx.conversationId,
+        })
 
-      await db.activity.create({
-        data: {
-          type: 'appointment_created',
-          content: `Evento agendado: ${title}`,
-          dealId: ctx.dealId,
-          performedBy: null,
-          metadata: { agentId: ctx.agentId, agentName: ctx.agentName },
-        },
-      })
-
-      const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
-        timeZone: 'America/Sao_Paulo',
-        dateStyle: 'short',
-        timeStyle: 'short',
-      })
-
-      await revalidateTags([
-        `appointments:${ctx.organizationId}`,
-        `deal-appointments:${ctx.dealId}`,
-        `deal:${ctx.dealId}`,
-      ])
-
-      logger.info('Tool create_event executed', {
-        title,
-        startDate,
-        endDate: parsedEnd.toISOString(),
-        duration: config.duration,
-        dealId: ctx.dealId,
-        conversationId: ctx.conversationId,
-      })
-
-      return {
-        success: true,
-        message: `Evento "${title}" agendado para ${dateFormatter.format(parsedStart)} (duração: ${durationLabel}).`,
+        return {
+          success: true,
+          message: `Evento "${title}" agendado para ${dateFormatter.format(parsedStart)} (duração: ${durationLabel}).`,
+        }
+      } catch (error) {
+        logger.error('Tool create_event failed', { error })
+        return { success: false, message: 'Erro interno ao criar evento. Tente novamente.' }
       }
     },
   })

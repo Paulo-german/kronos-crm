@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { db } from '@/_lib/prisma'
 import { logger } from '@trigger.dev/sdk/v3'
 import { revalidateTags } from './lib/revalidate-tags'
+import { withRetry, safeBestEffort } from './lib/with-retry'
 import { stepActionSchema } from '@/_actions/agent/shared/step-action-schema'
 import type { ToolContext } from './types'
 
@@ -48,6 +49,7 @@ export function createUpdateDealTool(ctx: ToolContext) {
         ),
     }),
     execute: async (input): Promise<UpdateDealResult> => {
+      try {
       if (!ctx.dealId) {
         return {
           success: false,
@@ -206,66 +208,89 @@ export function createUpdateDealTool(ctx: ToolContext) {
         }
       }
 
-      await db.deal.update({
-        where: { id: ctx.dealId },
-        data,
-      })
+        await withRetry(
+          () => db.deal.update({ where: { id: ctx.dealId! }, data }),
+          'db.deal.update',
+        )
 
-      // Criar Activity
-      if (effectiveInput.status === 'WON') {
-        await db.activity.create({
-          data: {
-            type: 'deal_won',
-            content: `Negócio marcado como ganho pelo agente`,
-            dealId: ctx.dealId,
-            performedBy: null,
-            metadata: { agentId: ctx.agentId, agentName: ctx.agentName },
-          },
+        // Criar Activity
+        if (effectiveInput.status === 'WON') {
+          await safeBestEffort(
+            () =>
+              db.activity.create({
+                data: {
+                  type: 'deal_won',
+                  content: `Negócio marcado como ganho pelo agente`,
+                  dealId: ctx.dealId!,
+                  performedBy: null,
+                  metadata: { agentId: ctx.agentId, agentName: ctx.agentName },
+                },
+              }),
+            'activity.create',
+          )
+        } else if (effectiveInput.status === 'LOST') {
+          const lostContent = effectiveInput.reason
+            ? `Negócio marcado como perdido pelo agente. Motivo: ${effectiveInput.reason}`
+            : 'Negócio marcado como perdido pelo agente'
+          await safeBestEffort(
+            () =>
+              db.activity.create({
+                data: {
+                  type: 'deal_lost',
+                  content: lostContent,
+                  dealId: ctx.dealId!,
+                  performedBy: null,
+                  metadata: { agentId: ctx.agentId, agentName: ctx.agentName },
+                },
+              }),
+            'activity.create',
+          )
+        } else {
+          await safeBestEffort(
+            () =>
+              db.activity.create({
+                data: {
+                  type: 'note',
+                  content: `Negócio atualizado pelo agente: ${updatedFields.join(', ')}`,
+                  dealId: ctx.dealId!,
+                  performedBy: null,
+                  metadata: { agentId: ctx.agentId, agentName: ctx.agentName },
+                },
+              }),
+            'activity.create',
+          )
+        }
+
+        // Invalidar cache
+        await safeBestEffort(
+          () =>
+            revalidateTags([
+              `pipeline:${ctx.organizationId}`,
+              `deals:${ctx.organizationId}`,
+              `deals-options:${ctx.organizationId}`,
+              `deal:${ctx.dealId}`,
+              `dashboard:${ctx.organizationId}`,
+              `dashboard-charts:${ctx.organizationId}`,
+            ]),
+          'revalidateTags',
+        )
+
+        logger.info('Tool update_deal executed', {
+          dealId: ctx.dealId,
+          updatedFields,
+          conversationId: ctx.conversationId,
         })
-      } else if (effectiveInput.status === 'LOST') {
-        const lostContent = effectiveInput.reason
-          ? `Negócio marcado como perdido pelo agente. Motivo: ${effectiveInput.reason}`
-          : 'Negócio marcado como perdido pelo agente'
-        await db.activity.create({
-          data: {
-            type: 'deal_lost',
-            content: lostContent,
-            dealId: ctx.dealId,
-            performedBy: null,
-            metadata: { agentId: ctx.agentId, agentName: ctx.agentName },
-          },
-        })
-      } else {
-        await db.activity.create({
-          data: {
-            type: 'note',
-            content: `Negócio atualizado pelo agente: ${updatedFields.join(', ')}`,
-            dealId: ctx.dealId,
-            performedBy: null,
-            metadata: { agentId: ctx.agentId, agentName: ctx.agentName },
-          },
-        })
-      }
 
-      // Fix 1c: Invalidar cache
-      await revalidateTags([
-        `pipeline:${ctx.organizationId}`,
-        `deals:${ctx.organizationId}`,
-        `deals-options:${ctx.organizationId}`,
-        `deal:${ctx.dealId}`,
-        `dashboard:${ctx.organizationId}`,
-        `dashboard-charts:${ctx.organizationId}`,
-      ])
-
-      logger.info('Tool update_deal executed', {
-        dealId: ctx.dealId,
-        updatedFields,
-        conversationId: ctx.conversationId,
-      })
-
-      return {
-        success: true,
-        message: `Negócio atualizado: ${updatedFields.join(', ')}.`,
+        return {
+          success: true,
+          message: `Negócio atualizado: ${updatedFields.join(', ')}.`,
+        }
+      } catch (error) {
+        logger.error('Tool update_deal failed', { error })
+        return {
+          success: false,
+          message: 'Erro interno ao atualizar negócio. Tente novamente.',
+        }
       }
     },
   })

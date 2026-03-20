@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { db } from '@/_lib/prisma'
 import { logger } from '@trigger.dev/sdk/v3'
 import { revalidateTags } from './lib/revalidate-tags'
+import { withRetry, safeBestEffort } from './lib/with-retry'
 import type { ToolContext } from './types'
 
 interface UpdateContactResult {
@@ -21,6 +22,7 @@ export function createUpdateContactTool(ctx: ToolContext) {
       role: z.string().optional().describe('Cargo/função do contato'),
     }),
     execute: async (updates): Promise<UpdateContactResult> => {
+      try {
       const data: Record<string, string | null> = {}
       const updatedFields: string[] = []
 
@@ -45,42 +47,58 @@ export function createUpdateContactTool(ctx: ToolContext) {
         return { success: false, message: 'Nenhum campo para atualizar.' }
       }
 
-      const result = await db.contact.updateMany({
-        where: { id: ctx.contactId, organizationId: ctx.organizationId },
-        data,
-      })
+        const result = await withRetry(
+          () =>
+            db.contact.updateMany({
+              where: { id: ctx.contactId, organizationId: ctx.organizationId },
+              data,
+            }),
+          'db.contact.updateMany',
+        )
 
-      if (result.count === 0) {
-        return { success: false, message: 'Contato não encontrado nesta organização.' }
-      }
+        if (result.count === 0) {
+          return { success: false, message: 'Contato não encontrado nesta organização.' }
+        }
 
-      if (ctx.dealId) {
-        await db.activity.create({
-          data: {
-            type: 'note',
-            content: `Contato atualizado pelo agente: ${updatedFields.join(', ')}`,
-            dealId: ctx.dealId,
-            performedBy: null,
-            metadata: { agentId: ctx.agentId, agentName: ctx.agentName },
-          },
+        if (ctx.dealId) {
+          await safeBestEffort(
+            () =>
+              db.activity.create({
+                data: {
+                  type: 'note',
+                  content: `Contato atualizado pelo agente: ${updatedFields.join(', ')}`,
+                  dealId: ctx.dealId!,
+                  performedBy: null,
+                  metadata: { agentId: ctx.agentId, agentName: ctx.agentName },
+                },
+              }),
+            'activity.create',
+          )
+        }
+
+        await safeBestEffort(
+          () =>
+            revalidateTags([
+              `contacts:${ctx.organizationId}`,
+              `contact:${ctx.contactId}`,
+              ...(ctx.dealId ? [`deal:${ctx.dealId}`] : []),
+            ]),
+          'revalidateTags',
+        )
+
+        logger.info('Tool update_contact executed', {
+          contactId: ctx.contactId,
+          updatedFields,
+          conversationId: ctx.conversationId,
         })
-      }
 
-      await revalidateTags([
-        `contacts:${ctx.organizationId}`,
-        `contact:${ctx.contactId}`,
-        ...(ctx.dealId ? [`deal:${ctx.dealId}`] : []),
-      ])
-
-      logger.info('Tool update_contact executed', {
-        contactId: ctx.contactId,
-        updatedFields,
-        conversationId: ctx.conversationId,
-      })
-
-      return {
-        success: true,
-        message: `Campos atualizados: ${updatedFields.join(', ')}.`,
+        return {
+          success: true,
+          message: `Campos atualizados: ${updatedFields.join(', ')}.`,
+        }
+      } catch (error) {
+        logger.error('Tool update_contact failed', { error })
+        return { success: false, message: 'Erro interno ao atualizar contato. Tente novamente.' }
       }
     },
   })

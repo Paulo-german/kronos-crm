@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { db } from '@/_lib/prisma'
 import { logger } from '@trigger.dev/sdk/v3'
 import { revalidateTags } from './lib/revalidate-tags'
+import { withRetry, safeBestEffort } from './lib/with-retry'
 import type { ToolContext } from './types'
 
 interface MoveDealResult {
@@ -22,6 +23,7 @@ export function createMoveDealTool(ctx: ToolContext) {
         ),
     }),
     execute: async ({ targetStageId }): Promise<MoveDealResult> => {
+      try {
       if (!ctx.dealId) {
         return {
           success: false,
@@ -78,42 +80,61 @@ export function createMoveDealTool(ctx: ToolContext) {
         return { success: true, message: 'Negócio já está nesta etapa.' }
       }
 
-      await db.deal.update({
-        where: { id: ctx.dealId },
-        data: {
-          pipelineStageId: newStage.id,
-          ...(deal.status === 'OPEN' && { status: 'IN_PROGRESS' }),
-        },
-      })
+        await withRetry(
+          () =>
+            db.deal.update({
+              where: { id: ctx.dealId! },
+              data: {
+                pipelineStageId: newStage.id,
+                ...(deal.status === 'OPEN' && { status: 'IN_PROGRESS' }),
+              },
+            }),
+          'db.deal.update',
+        )
 
-      await db.activity.create({
-        data: {
-          type: 'stage_change',
-          content: `${deal.stage.name} → ${newStage.name}`,
+        await safeBestEffort(
+          () =>
+            db.activity.create({
+              data: {
+                type: 'stage_change',
+                content: `${deal.stage.name} → ${newStage.name}`,
+                dealId: ctx.dealId!,
+                performedBy: null,
+                metadata: { agentId: ctx.agentId, agentName: ctx.agentName },
+              },
+            }),
+          'activity.create',
+        )
+
+        await safeBestEffort(
+          () =>
+            revalidateTags([
+              `pipeline:${ctx.organizationId}`,
+              `deals:${ctx.organizationId}`,
+              `deal:${ctx.dealId}`,
+              `dashboard:${ctx.organizationId}`,
+              `dashboard-charts:${ctx.organizationId}`,
+            ]),
+          'revalidateTags',
+        )
+
+        logger.info('Tool move_deal executed', {
           dealId: ctx.dealId,
-          performedBy: null,
-          metadata: { agentId: ctx.agentId, agentName: ctx.agentName },
-        },
-      })
+          fromStage: deal.stage.name,
+          toStage: newStage.name,
+          conversationId: ctx.conversationId,
+        })
 
-      await revalidateTags([
-        `pipeline:${ctx.organizationId}`,
-        `deals:${ctx.organizationId}`,
-        `deal:${ctx.dealId}`,
-        `dashboard:${ctx.organizationId}`,
-        `dashboard-charts:${ctx.organizationId}`,
-      ])
-
-      logger.info('Tool move_deal executed', {
-        dealId: ctx.dealId,
-        fromStage: deal.stage.name,
-        toStage: newStage.name,
-        conversationId: ctx.conversationId,
-      })
-
-      return {
-        success: true,
-        message: `Negócio movido de "${deal.stage.name}" para "${newStage.name}".`,
+        return {
+          success: true,
+          message: `Negócio movido de "${deal.stage.name}" para "${newStage.name}".`,
+        }
+      } catch (error) {
+        logger.error('Tool move_deal failed', { error })
+        return {
+          success: false,
+          message: 'Erro interno ao mover negócio. Tente novamente.',
+        }
       }
     },
   })

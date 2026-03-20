@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { db } from '@/_lib/prisma'
 import { logger } from '@trigger.dev/sdk/v3'
 import { revalidateTags } from './lib/revalidate-tags'
+import { withRetry, safeBestEffort } from './lib/with-retry'
 import type { ToolContext } from './types'
 
 interface CreateAppointmentResult {
@@ -39,6 +40,7 @@ export function createCreateAppointmentTool(ctx: ToolContext) {
       startDate,
       endDate,
     }): Promise<CreateAppointmentResult> => {
+      try {
       if (!ctx.dealId) {
         return {
           success: false,
@@ -76,52 +78,71 @@ export function createCreateAppointmentTool(ctx: ToolContext) {
         }
       }
 
-      await db.appointment.create({
-        data: {
-          organizationId: ctx.organizationId,
+        await withRetry(
+          () =>
+            db.appointment.create({
+              data: {
+                organizationId: ctx.organizationId,
+                title,
+                description: description ?? null,
+                startDate: parsedStart,
+                endDate: parsedEnd,
+                status: 'SCHEDULED',
+                assignedTo: deal.assignedTo,
+                dealId: ctx.dealId!,
+              },
+            }),
+          'db.appointment.create',
+        )
+
+        await safeBestEffort(
+          () =>
+            db.activity.create({
+              data: {
+                type: 'appointment_created',
+                content: `Compromisso agendado: ${title}`,
+                dealId: ctx.dealId!,
+                performedBy: null,
+                metadata: { agentId: ctx.agentId, agentName: ctx.agentName },
+              },
+            }),
+          'activity.create',
+        )
+
+        const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
+          timeZone: 'America/Sao_Paulo',
+          dateStyle: 'short',
+          timeStyle: 'short',
+        })
+
+        await safeBestEffort(
+          () =>
+            revalidateTags([
+              `appointments:${ctx.organizationId}`,
+              `deal-appointments:${ctx.dealId}`,
+              `deal:${ctx.dealId}`,
+            ]),
+          'revalidateTags',
+        )
+
+        logger.info('Tool create_appointment executed', {
           title,
-          description: description ?? null,
-          startDate: parsedStart,
-          endDate: parsedEnd,
-          status: 'SCHEDULED',
-          assignedTo: deal.assignedTo,
+          startDate,
+          endDate,
           dealId: ctx.dealId,
-        },
-      })
+          conversationId: ctx.conversationId,
+        })
 
-      await db.activity.create({
-        data: {
-          type: 'appointment_created',
-          content: `Compromisso agendado: ${title}`,
-          dealId: ctx.dealId,
-          performedBy: null,
-          metadata: { agentId: ctx.agentId, agentName: ctx.agentName },
-        },
-      })
-
-      const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
-        timeZone: 'America/Sao_Paulo',
-        dateStyle: 'short',
-        timeStyle: 'short',
-      })
-
-      await revalidateTags([
-        `appointments:${ctx.organizationId}`,
-        `deal-appointments:${ctx.dealId}`,
-        `deal:${ctx.dealId}`,
-      ])
-
-      logger.info('Tool create_appointment executed', {
-        title,
-        startDate,
-        endDate,
-        dealId: ctx.dealId,
-        conversationId: ctx.conversationId,
-      })
-
-      return {
-        success: true,
-        message: `Compromisso "${title}" agendado para ${dateFormatter.format(parsedStart)}.`,
+        return {
+          success: true,
+          message: `Compromisso "${title}" agendado para ${dateFormatter.format(parsedStart)}.`,
+        }
+      } catch (error) {
+        logger.error('Tool create_appointment failed', { error })
+        return {
+          success: false,
+          message: 'Erro interno ao criar compromisso. Tente novamente.',
+        }
       }
     },
   })
