@@ -301,13 +301,13 @@ const ContactWidget = ({ deal, contacts }: ContactWidgetProps) => {
               className="group flex items-start gap-2"
             >
               <div className="flex-1 space-y-3">
-                <div className="flex items-center">
+                <div className="flex items-center min-w-0">
                   {/* Avatar e Nome (Bloco Clicável) */}
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Link
                         href={`/contacts/${contact.contactId}`}
-                        className="flex w-full items-center gap-3 rounded-md p-2 transition-colors hover:bg-muted/50"
+                        className="flex min-w-0 flex-1 items-center gap-3 rounded-md p-2 transition-colors hover:bg-muted/50"
                       >
                         <div className="relative">
                           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/60 text-sm font-bold text-white shadow-md">
