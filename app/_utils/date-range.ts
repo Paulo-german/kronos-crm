@@ -1,6 +1,8 @@
 import {
   startOfMonth,
   endOfMonth,
+  startOfYear,
+  subDays,
   subMonths,
   differenceInMilliseconds,
 } from 'date-fns'
@@ -48,6 +50,11 @@ export function getDateRangePresets(): Array<{
   const now = new Date()
   return [
     {
+      label: 'Últimos 7 dias',
+      start: subDays(now, 6),
+      end: now,
+    },
+    {
       label: 'Este mês',
       start: startOfMonth(now),
       end: endOfMonth(now),
@@ -60,6 +67,11 @@ export function getDateRangePresets(): Array<{
     {
       label: 'Último trimestre',
       start: subMonths(startOfMonth(now), 2),
+      end: endOfMonth(now),
+    },
+    {
+      label: 'Este ano',
+      start: startOfYear(now),
       end: endOfMonth(now),
     },
   ]
