@@ -33,7 +33,7 @@ async function fetchKpiMetrics(
     prevAvgAgg,
     prevNewLeads,
   ] = await Promise.all([
-    // Valor total do pipeline (OPEN + IN_PROGRESS)
+    // Valor total do pipeline (OPEN + IN_PROGRESS) — snapshot ALL TIME
     db.deal.aggregate({
       _sum: { value: true },
       where: { ...rbac, status: { in: ['OPEN', 'IN_PROGRESS'] } },
@@ -63,7 +63,7 @@ async function fetchKpiMetrics(
         createdAt: { gte: dateRange.start, lte: dateRange.end },
       },
     }),
-    // Período anterior
+    // Pipeline não tem período anterior (é snapshot ALL TIME)
     db.deal.aggregate({
       _sum: { value: true },
       where: { ...rbac, status: { in: ['OPEN', 'IN_PROGRESS'] } },

@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { Card, CardContent } from '@/_components/ui/card'
 import { cn } from '@/_lib/utils'
 import type { LucideIcon } from 'lucide-react'
@@ -10,11 +11,15 @@ interface KpiCardProps {
     value: string
     isPositive: boolean
   }
+  href?: string
 }
 
-export function KpiCard({ title, value, icon: Icon, variation }: KpiCardProps) {
-  return (
-    <Card className="flex h-full w-full flex-col">
+export function KpiCard({ title, value, icon: Icon, variation, href }: KpiCardProps) {
+  const card = (
+    <Card className={cn(
+      'flex h-full w-full flex-col',
+      href && 'hover:border-primary/50 transition-colors cursor-pointer',
+    )}>
       <CardContent className="flex flex-1 flex-col justify-center p-4">
         <div className="flex items-center gap-2">
           <Icon className="size-4 text-muted-foreground" />
@@ -36,4 +41,10 @@ export function KpiCard({ title, value, icon: Icon, variation }: KpiCardProps) {
       </CardContent>
     </Card>
   )
+
+  if (href) {
+    return <Link href={href} className="h-full">{card}</Link>
+  }
+
+  return card
 }

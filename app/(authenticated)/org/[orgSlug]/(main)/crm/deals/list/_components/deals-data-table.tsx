@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react'
 import Link from 'next/link'
+import { usePathname, useRouter } from 'next/navigation'
 import { ColumnDef } from '@tanstack/react-table'
 import {
   BriefcaseIcon,
@@ -14,6 +15,7 @@ import {
   CalendarIcon,
   UserCogIcon,
   TrashIcon,
+  XIcon,
 } from 'lucide-react'
 import { Badge } from '@/_components/ui/badge'
 import { CircleIcon } from 'lucide-react'
@@ -51,6 +53,7 @@ interface DealsDataTableProps {
   members: MemberDto[]
   currentUserId: string
   userRole: MemberRole
+  initialStatusFilter?: string
 }
 
 const STATUS_CONFIG: Record<DealStatus, { label: string; color: string }> = {
@@ -104,7 +107,17 @@ export function DealsDataTable({
   deals,
   stages,
   contacts,
+  initialStatusFilter,
 }: DealsDataTableProps) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const [statusFilter, setStatusFilter] = useState<string | undefined>(initialStatusFilter)
+
+  function clearStatusFilter() {
+    setStatusFilter(undefined)
+    router.push(pathname)
+  }
+
   // Estado do Sheet de edição (elevado para sobreviver ao re-render da tabela)
   const [editingDeal, setEditingDeal] = useState<DealListDto | null>(null)
   const [isEditSheetOpen, setIsEditSheetOpen] = useState(false)
@@ -407,10 +420,35 @@ export function DealsDataTable({
         confirmLabel="Confirmar Exclusão"
       />
 
+      {statusFilter && (
+        <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-1.5">
+          <span className="text-sm text-muted-foreground">Filtrado por status:</span>
+          <Badge
+            variant="secondary"
+            className="gap-1.5"
+          >
+            {STATUS_CONFIG[statusFilter as DealStatus]?.label || statusFilter}
+            <button
+              type="button"
+              onClick={clearStatusFilter}
+              className="ml-0.5 rounded-sm opacity-70 hover:opacity-100"
+            >
+              <XIcon className="h-3 w-3" />
+            </button>
+          </Badge>
+        </div>
+      )}
+
       <DataTable
+        key={statusFilter || 'all'}
         columns={columns}
         data={deals}
         enableSelection={true}
+        initialColumnFilters={
+          statusFilter
+            ? [{ id: 'status', value: statusFilter }]
+            : []
+        }
         bulkActions={({ selectedRows, resetSelection }) => {
           resetSelectionRef.current = resetSelection
           return (

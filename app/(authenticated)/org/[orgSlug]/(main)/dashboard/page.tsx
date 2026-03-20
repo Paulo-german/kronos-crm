@@ -55,17 +55,17 @@ export default async function DashboardPage({
           <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-3">
             <div className="flex lg:col-span-2">
               <Suspense fallback={<KpiGridSkeleton />}>
-                <KpiGrid ctx={ctx} dateRange={dateRange} />
+                <KpiGrid ctx={ctx} dateRange={dateRange} orgSlug={orgSlug} />
               </Suspense>
             </div>
             <Suspense fallback={<PipelineStatusSkeleton />}>
-              <PipelineStatusSection ctx={ctx} />
+              <PipelineStatusSection ctx={ctx} dateRange={dateRange} />
             </Suspense>
           </div>
 
           {/* Row 2: Charts */}
           <Suspense fallback={<ChartsSkeleton />}>
-            <ChartsSection ctx={ctx} />
+            <ChartsSection ctx={ctx} dateRange={dateRange} />
           </Suspense>
         </>
       ) : (

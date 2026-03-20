@@ -2,8 +2,10 @@
 
 import {
   ColumnDef,
+  ColumnFiltersState,
   flexRender,
   getCoreRowModel,
+  getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
   RowSelectionState,
@@ -42,6 +44,7 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
   enableSelection?: boolean
+  initialColumnFilters?: ColumnFiltersState
   bulkActions?: (props: {
     selectedRows: TData[]
     resetSelection: () => void
@@ -52,9 +55,11 @@ export const DataTable = <TData, TValue>({
   columns,
   data,
   enableSelection = false,
+  initialColumnFilters = [],
   bulkActions,
 }: DataTableProps<TData, TValue>) => {
   const [sorting, setSorting] = useState<SortingState>([])
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>(initialColumnFilters)
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
 
   const tableColumns = useMemo(() => {
@@ -92,12 +97,15 @@ export const DataTable = <TData, TValue>({
     data,
     columns: tableColumns,
     getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
     onRowSelectionChange: setRowSelection,
     state: {
       sorting,
+      columnFilters,
       rowSelection,
     },
     initialState: {

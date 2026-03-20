@@ -9,9 +9,10 @@ import { KpiCard } from './kpi-card'
 interface KpiGridProps {
   ctx: { userId: string; orgId: string; userRole: MemberRole }
   dateRange: DateRange
+  orgSlug: string
 }
 
-export async function KpiGrid({ ctx, dateRange }: KpiGridProps) {
+export async function KpiGrid({ ctx, dateRange, orgSlug }: KpiGridProps) {
   const prevRange = getPreviousPeriod(dateRange)
   const kpi = await getKpiMetrics(ctx, dateRange, prevRange)
 
@@ -21,24 +22,28 @@ export async function KpiGrid({ ctx, dateRange }: KpiGridProps) {
         title="Valor do Pipeline"
         value={formatCurrency(kpi.totalPipelineValue)}
         icon={DollarSign}
+        href={`/org/${orgSlug}/crm/deals/pipeline`}
       />
       <KpiCard
         title="Receita do Período"
         value={formatCurrency(kpi.wonDealsValue)}
         icon={TrendingUp}
         variation={formatVariation(kpi.wonDealsValue, kpi.prevWonDealsValue)}
+        href={`/org/${orgSlug}/crm/deals/list?status=WON`}
       />
       <KpiCard
         title="Ticket Médio"
         value={formatCurrency(kpi.avgTicket)}
         icon={Target}
         variation={formatVariation(kpi.avgTicket, kpi.prevAvgTicket)}
+        href={`/org/${orgSlug}/crm/deals/list?status=WON`}
       />
       <KpiCard
         title="Novos Leads"
         value={String(kpi.newLeadsCount)}
         icon={Users}
         variation={formatVariation(kpi.newLeadsCount, kpi.prevNewLeadsCount)}
+        href={`/org/${orgSlug}/crm/deals/list?status=OPEN`}
       />
     </div>
   )

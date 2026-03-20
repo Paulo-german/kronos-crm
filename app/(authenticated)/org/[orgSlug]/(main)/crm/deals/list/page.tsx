@@ -19,10 +19,12 @@ import Header, {
 
 interface DealsListPageProps {
   params: Promise<{ orgSlug: string }>
+  searchParams: Promise<{ status?: string }>
 }
 
-const DealsListPage = async ({ params }: DealsListPageProps) => {
+const DealsListPage = async ({ params, searchParams }: DealsListPageProps) => {
   const { orgSlug } = await params
+  const { status: statusParam } = await searchParams
   const ctx = await getOrgContext(orgSlug)
 
   const pipelineRaw = await getOrgPipeline(ctx.orgId)
@@ -67,6 +69,7 @@ const DealsListPage = async ({ params }: DealsListPageProps) => {
         members={members.accepted}
         currentUserId={ctx.userId}
         userRole={ctx.userRole}
+        initialStatusFilter={statusParam}
       />
     </div>
   )
