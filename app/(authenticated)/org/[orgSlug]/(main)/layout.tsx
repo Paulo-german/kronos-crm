@@ -48,7 +48,7 @@ const MainLayout = async ({ children, params }: MainLayoutProps) => {
   >
 
   return (
-    <div className="flex h-screen w-full flex-col bg-background">
+    <div className="flex h-dvh w-full flex-col bg-background">
       <TrialBanner orgId={orgId} orgSlug={orgSlug} userRole={userRole} />
       <div className="flex min-h-0 flex-1">
         <AppSidebar
