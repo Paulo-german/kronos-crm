@@ -18,14 +18,20 @@ interface FunnelBarChartProps {
 }
 
 export function FunnelBarChart({ data }: FunnelBarChartProps) {
+  const hasMonetaryValues = data.some((stage) => stage.value > 0)
+  const dataKey = hasMonetaryValues ? 'value' : 'count'
+
   const chartConfig = useMemo(() => {
     const config: ChartConfig = {
-      count: { label: 'Deals', color: BAR_COLORS[0] },
+      [dataKey]: {
+        label: hasMonetaryValues ? 'Valor' : 'Deals',
+        color: BAR_COLORS[0],
+      },
     }
     return config
-  }, [])
+  }, [dataKey, hasMonetaryValues])
 
-  if (data.length === 0 || data.every((d) => d.count === 0)) {
+  if (data.length === 0 || data.every((stage) => stage.count === 0)) {
     return (
       <div className="flex min-h-full items-center justify-center text-sm text-muted-foreground">
         Nenhum deal no pipeline
@@ -33,9 +39,9 @@ export function FunnelBarChart({ data }: FunnelBarChartProps) {
     )
   }
 
-  const chartData = data.map((d, i) => ({
-    ...d,
-    fill: BAR_COLORS[i % 2],
+  const chartData = data.map((stage, index) => ({
+    ...stage,
+    fill: BAR_COLORS[index % 2],
   }))
 
   return (
@@ -49,7 +55,24 @@ export function FunnelBarChart({ data }: FunnelBarChartProps) {
         accessibilityLayer
         margin={{ top: 5, right: 10, left: 10, bottom: 0 }}
       >
-        <XAxis type="number" axisLine={false} tickLine={false} allowDecimals={false} />
+        <XAxis
+          type="number"
+          axisLine={false}
+          tickLine={false}
+          allowDecimals={!hasMonetaryValues}
+          tickFormatter={
+            hasMonetaryValues
+              ? (tick: number) => {
+                  if (tick >= 1_000_000) return `R$ ${(tick / 1_000_000).toFixed(1)}M`
+                  if (tick >= 1_000) {
+                    const k = tick / 1_000
+                    return `R$ ${k % 1 === 0 ? k.toFixed(0) : k.toFixed(1)}K`
+                  }
+                  return `R$ ${tick}`
+                }
+              : undefined
+          }
+        />
         <YAxis
           dataKey="stageName"
           type="category"
@@ -61,7 +84,7 @@ export function FunnelBarChart({ data }: FunnelBarChartProps) {
           content={
             <ChartTooltipContent
               hideLabel
-              formatter={(value, _name, item) => {
+              formatter={(_value, _name, item) => {
                 const stage = item.payload as FunnelStage
                 return (
                   <div className="flex items-center justify-between gap-4">
@@ -69,7 +92,9 @@ export function FunnelBarChart({ data }: FunnelBarChartProps) {
                       {stage.stageName}
                     </span>
                     <span className="font-mono font-medium tabular-nums">
-                      {value} deals &middot; {formatCurrency(stage.value)}
+                      {hasMonetaryValues
+                        ? `${formatCurrency(stage.value)} \u00b7 ${stage.count} deals`
+                        : `${stage.count} deals`}
                     </span>
                   </div>
                 )
@@ -77,7 +102,7 @@ export function FunnelBarChart({ data }: FunnelBarChartProps) {
             />
           }
         />
-        <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={32}>
+        <Bar dataKey={dataKey} radius={[0, 4, 4, 0]} maxBarSize={32}>
           {chartData.map((entry) => (
             <Cell key={entry.stageId} fill={entry.fill} />
           ))}
