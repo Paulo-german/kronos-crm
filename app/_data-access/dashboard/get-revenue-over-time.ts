@@ -3,35 +3,37 @@ import 'server-only'
 import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
-import { subMonths, format, startOfMonth } from 'date-fns'
+import { format, eachMonthOfInterval } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import type { RBACContext } from '@/_lib/rbac'
 import { isElevated } from '@/_lib/rbac'
-import type { RevenueByMonth } from './types'
+import type { DateRange, RevenueByMonth } from './types'
 
 async function fetchRevenueOverTime(
   orgId: string,
   userId: string,
   elevated: boolean,
+  dateRange: DateRange,
 ): Promise<RevenueByMonth[]> {
-  const sixMonthsAgo = startOfMonth(subMonths(new Date(), 5))
-
   const deals = await db.deal.findMany({
     where: {
       organizationId: orgId,
       ...(elevated ? {} : { assignedTo: userId }),
       status: 'WON',
-      updatedAt: { gte: sixMonthsAgo },
+      updatedAt: { gte: dateRange.start, lte: dateRange.end },
     },
     select: { value: true, updatedAt: true },
   })
 
   const grouped = new Map<string, { revenue: number; count: number }>()
 
-  // Inicializa os últimos 6 meses
-  for (let i = 5; i >= 0; i--) {
-    const date = subMonths(new Date(), i)
-    const key = format(date, 'yyyy-MM')
+  // Gerar buckets mensais dinamicamente a partir do range
+  const months = eachMonthOfInterval({
+    start: dateRange.start,
+    end: dateRange.end,
+  })
+  for (const month of months) {
+    const key = format(month, 'yyyy-MM')
     grouped.set(key, { revenue: 0, count: 0 })
   }
 
@@ -56,12 +58,20 @@ async function fetchRevenueOverTime(
 }
 
 export const getRevenueOverTime = cache(
-  async (ctx: RBACContext): Promise<RevenueByMonth[]> => {
+  async (
+    ctx: RBACContext,
+    dateRange: DateRange,
+  ): Promise<RevenueByMonth[]> => {
     const elevated = isElevated(ctx.userRole)
+    const startISO = dateRange.start.toISOString()
+    const endISO = dateRange.end.toISOString()
 
     const getCached = unstable_cache(
-      async () => fetchRevenueOverTime(ctx.orgId, ctx.userId, elevated),
-      [`dashboard-revenue-${ctx.orgId}-${ctx.userId}-${elevated}`],
+      async () =>
+        fetchRevenueOverTime(ctx.orgId, ctx.userId, elevated, dateRange),
+      [
+        `dashboard-revenue-${ctx.orgId}-${ctx.userId}-${elevated}-${startISO}-${endISO}`,
+      ],
       {
         tags: [`dashboard-charts:${ctx.orgId}`, `deals:${ctx.orgId}`],
         revalidate: 3600,

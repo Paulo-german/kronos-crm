@@ -5,12 +5,13 @@ import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 import type { RBACContext } from '@/_lib/rbac'
 import { isElevated } from '@/_lib/rbac'
-import type { FunnelStage } from './types'
+import type { DateRange, FunnelStage } from './types'
 
 async function fetchFunnelData(
   orgId: string,
   userId: string,
   elevated: boolean,
+  dateRange: DateRange,
 ): Promise<FunnelStage[]> {
   const [groups, stages] = await Promise.all([
     db.deal.groupBy({
@@ -20,6 +21,7 @@ async function fetchFunnelData(
       where: {
         organizationId: orgId,
         ...(elevated ? {} : { assignedTo: userId }),
+        createdAt: { gte: dateRange.start, lte: dateRange.end },
       },
     }),
     db.pipelineStage.findMany({
@@ -43,12 +45,17 @@ async function fetchFunnelData(
 }
 
 export const getFunnelData = cache(
-  async (ctx: RBACContext): Promise<FunnelStage[]> => {
+  async (ctx: RBACContext, dateRange: DateRange): Promise<FunnelStage[]> => {
     const elevated = isElevated(ctx.userRole)
+    const startISO = dateRange.start.toISOString()
+    const endISO = dateRange.end.toISOString()
 
     const getCached = unstable_cache(
-      async () => fetchFunnelData(ctx.orgId, ctx.userId, elevated),
-      [`dashboard-funnel-${ctx.orgId}-${ctx.userId}-${elevated}`],
+      async () =>
+        fetchFunnelData(ctx.orgId, ctx.userId, elevated, dateRange),
+      [
+        `dashboard-funnel-${ctx.orgId}-${ctx.userId}-${elevated}-${startISO}-${endISO}`,
+      ],
       {
         tags: [`dashboard-charts:${ctx.orgId}`, `deals:${ctx.orgId}`],
         revalidate: 3600,

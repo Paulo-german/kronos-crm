@@ -5,12 +5,13 @@ import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 import type { RBACContext } from '@/_lib/rbac'
 import { isElevated } from '@/_lib/rbac'
-import type { DealsByStatus } from './types'
+import type { DateRange, DealsByStatus } from './types'
 
 async function fetchDealsByStatus(
   orgId: string,
   userId: string,
   elevated: boolean,
+  dateRange: DateRange,
 ): Promise<DealsByStatus[]> {
   const groups = await db.deal.groupBy({
     by: ['status'],
@@ -18,6 +19,7 @@ async function fetchDealsByStatus(
     where: {
       organizationId: orgId,
       ...(elevated ? {} : { assignedTo: userId }),
+      createdAt: { gte: dateRange.start, lte: dateRange.end },
     },
   })
 
@@ -28,12 +30,17 @@ async function fetchDealsByStatus(
 }
 
 export const getDealsByStatus = cache(
-  async (ctx: RBACContext): Promise<DealsByStatus[]> => {
+  async (ctx: RBACContext, dateRange: DateRange): Promise<DealsByStatus[]> => {
     const elevated = isElevated(ctx.userRole)
+    const startISO = dateRange.start.toISOString()
+    const endISO = dateRange.end.toISOString()
 
     const getCached = unstable_cache(
-      async () => fetchDealsByStatus(ctx.orgId, ctx.userId, elevated),
-      [`dashboard-status-${ctx.orgId}-${ctx.userId}-${elevated}`],
+      async () =>
+        fetchDealsByStatus(ctx.orgId, ctx.userId, elevated, dateRange),
+      [
+        `dashboard-status-${ctx.orgId}-${ctx.userId}-${elevated}-${startISO}-${endISO}`,
+      ],
       {
         tags: [`dashboard:${ctx.orgId}`, `deals:${ctx.orgId}`],
         revalidate: 3600,

@@ -1,17 +1,20 @@
 import type { MemberRole } from '@prisma/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import { getDealsByStatus } from '@/_data-access/dashboard'
+import type { DateRange } from '@/_data-access/dashboard/types'
 import { PipelineDonutChart } from './pipeline-donut-chart'
 import { DEAL_STATUS_CONFIG, DEAL_STATUS_ORDER } from './deal-status-config'
 
 interface PipelineStatusSectionProps {
   ctx: { userId: string; orgId: string; userRole: MemberRole }
+  dateRange: DateRange
 }
 
 export async function PipelineStatusSection({
   ctx,
+  dateRange,
 }: PipelineStatusSectionProps) {
-  const data = await getDealsByStatus(ctx)
+  const data = await getDealsByStatus(ctx, dateRange)
 
   const filteredData = data.filter((d) => d.status !== 'PAUSED')
   const countMap = new Map(data.map((d) => [d.status, d.count]))
