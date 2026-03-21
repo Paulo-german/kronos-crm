@@ -32,6 +32,8 @@ import Header, {
   HeaderSubTitle,
   HeaderRight,
 } from '@/_components/header'
+import { PageTourTrigger } from '@/_components/onboarding/page-tour-trigger'
+import { DEALS_TOUR_STEPS } from '@/_lib/onboarding/tours/deals-tour'
 
 interface PipelineClientProps {
   pipeline: PipelineWithStagesDto | null
@@ -117,6 +119,7 @@ export const PipelineClient = ({
         </HeaderRight>
       </Header>
 
+      <div data-tour="deals-kanban">
       <KanbanBoard
         pipeline={pipeline}
         dealsByStage={dealsByStage}
@@ -124,11 +127,13 @@ export const PipelineClient = ({
         onDealClick={handleDealClick}
         filters={filters}
         filtersSheet={
+          <div data-tour="deals-filters">
           <PipelineFiltersSheet
             filters={filters}
             onFiltersChange={setFilters}
             activeFilterCount={activeFilterCount}
           />
+          </div>
         }
         filterBadges={
           <PipelineFilterBadges
@@ -139,6 +144,7 @@ export const PipelineClient = ({
           />
         }
       />
+      </div>
 
       <Sheet
         open={dialogState.isOpen}
@@ -170,6 +176,8 @@ export const PipelineClient = ({
           </div>
         </SheetContent>
       </Sheet>
+
+      <PageTourTrigger tourId="deals" steps={DEALS_TOUR_STEPS} />
     </>
   )
 }

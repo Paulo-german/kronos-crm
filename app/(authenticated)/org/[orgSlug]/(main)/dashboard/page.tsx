@@ -13,6 +13,8 @@ import { ChartsSection } from './_components/charts-section'
 import { DateRangePicker } from './_components/date-range-picker'
 import { DashboardTabs } from './_components/dashboard-tabs'
 import { AiDashboardSection } from './_components/ai-dashboard-section'
+import { PageTourTrigger } from '@/_components/onboarding/page-tour-trigger'
+import { DASHBOARD_TOUR_STEPS } from '@/_lib/onboarding/tours/dashboard-tour'
 import {
   KpiGridSkeleton,
   PipelineStatusSkeleton,
@@ -52,7 +54,7 @@ export default async function DashboardPage({
       {activeTab === 'reports' ? (
         <>
           {/* Row 1: KPIs (2/3) + Pipeline Status (1/3) */}
-          <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-3">
+          <div data-tour="dashboard-kpis" className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-3">
             <div className="flex lg:col-span-2">
               <Suspense fallback={<KpiGridSkeleton />}>
                 <KpiGrid ctx={ctx} dateRange={dateRange} orgSlug={orgSlug} />
@@ -64,15 +66,19 @@ export default async function DashboardPage({
           </div>
 
           {/* Row 2: Charts */}
+          <div data-tour="dashboard-charts">
           <Suspense fallback={<ChartsSkeleton />}>
             <ChartsSection ctx={ctx} dateRange={dateRange} />
           </Suspense>
+          </div>
         </>
       ) : (
         <Suspense fallback={<AiDashboardSkeleton />}>
           <AiDashboardSection orgId={ctx.orgId} />
         </Suspense>
       )}
+
+      <PageTourTrigger tourId="dashboard" steps={DASHBOARD_TOUR_STEPS} />
     </div>
   )
 }

@@ -18,6 +18,8 @@ import { ChatView } from './chat-view'
 import { EmptyInbox } from './empty-inbox'
 import { StartConversationPanel } from './start-conversation-panel'
 import { useConversations } from '../_hooks/use-conversations'
+import { PageTourTrigger } from '@/_components/onboarding/page-tour-trigger'
+import { INBOX_TOUR_STEPS } from '@/_lib/onboarding/tours/inbox-tour'
 
 interface InboxOption {
   id: string
@@ -117,7 +119,7 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
       )}
       <div className="flex min-h-0 flex-1 border-t border-border/50">
       {/* Sidebar */}
-      <div className="w-80 shrink-0">
+      <div data-tour="inbox-list" className="w-80 shrink-0">
         <ConversationList
           conversations={conversations}
           selectedId={selectedId}
@@ -139,7 +141,7 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
       </div>
 
       {/* Chat panel */}
-      <div className="flex flex-1 flex-col">
+      <div data-tour="inbox-chat" className="flex flex-1 flex-col">
         {selectedConversation ? (
           <ChatView
             key={selectedConversation.id}
@@ -179,6 +181,8 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
         )}
       </div>
       </div>
+
+      <PageTourTrigger tourId="inbox" steps={INBOX_TOUR_STEPS} />
     </div>
   )
 }

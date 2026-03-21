@@ -45,12 +45,14 @@ const InboxPage = async ({ params }: InboxPageProps) => {
             </HeaderSubTitle>
           </HeaderLeft>
           <HeaderRight>
-            <Button variant="outline" asChild>
-              <Link href={`/org/${orgSlug}/settings/inboxes`}>
-                <Settings2 className="mr-2 h-4 w-4" />
-                Gerenciar Caixas
-              </Link>
-            </Button>
+            <div data-tour="inbox-manage">
+              <Button variant="outline" asChild>
+                <Link href={`/org/${orgSlug}/settings/inboxes`}>
+                  <Settings2 className="mr-2 h-4 w-4" />
+                  Gerenciar Caixas
+                </Link>
+              </Button>
+            </div>
           </HeaderRight>
         </Header>
       </div>

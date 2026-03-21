@@ -14,6 +14,8 @@ import Header, {
 import Link from 'next/link'
 import { Button } from '@/_components/ui/button'
 import { Upload } from 'lucide-react'
+import { PageTourTrigger } from '@/_components/onboarding/page-tour-trigger'
+import { CONTACTS_TOUR_STEPS } from '@/_lib/onboarding/tours/contacts-tour'
 
 interface ContactsPageProps {
   params: Promise<{ orgSlug: string }>
@@ -44,16 +46,22 @@ const ContactsPage = async ({ params }: ContactsPageProps) => {
               Importar
             </Link>
           </Button>
-          <CreateContactButton
-            companyOptions={companies}
-            withinQuota={quota.withinQuota}
-          />
+          <div data-tour="contacts-create">
+            <CreateContactButton
+              companyOptions={companies}
+              withinQuota={quota.withinQuota}
+            />
+          </div>
         </HeaderRight>
       </Header>
-      <ContactsDataTable
-        contacts={contacts}
-        companyOptions={companies}
-      />
+      <div data-tour="contacts-table">
+        <ContactsDataTable
+          contacts={contacts}
+          companyOptions={companies}
+        />
+      </div>
+
+      <PageTourTrigger tourId="contacts" steps={CONTACTS_TOUR_STEPS} />
     </div>
   )
 }

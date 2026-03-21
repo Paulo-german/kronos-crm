@@ -381,7 +381,7 @@ export function KanbanBoard({
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex min-h-0 flex-1 gap-4 overflow-x-auto overflow-y-hidden">
+        <div data-tour="deals-card" className="flex min-h-0 flex-1 gap-4 overflow-x-auto overflow-y-hidden">
           {pipeline.stages.map((stage) => (
             <KanbanColumn
               key={stage.id}

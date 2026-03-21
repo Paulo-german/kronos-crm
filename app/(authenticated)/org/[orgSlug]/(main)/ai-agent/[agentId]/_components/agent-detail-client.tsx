@@ -23,6 +23,8 @@ import ProcessTab from './process-tab'
 import KnowledgeTab from './knowledge-tab'
 import ConnectionTab from './connection-tab'
 import TestChatPanel from './test-chat-panel'
+import { PageTourTrigger } from '@/_components/onboarding/page-tour-trigger'
+import { AGENT_DETAIL_TOUR_STEPS } from '@/_lib/onboarding/tours/agent-detail-tour'
 
 interface InboxOptionDto {
   id: string
@@ -111,7 +113,7 @@ const AgentDetailClient = ({
 
           {/* Tabs — mantém grid-cols-4 sem adicionar 5a tab */}
           <Tabs defaultValue="general">
-            <TabsList className="grid h-12 w-full grid-cols-4 rounded-md border border-border/50 bg-tab/30">
+            <TabsList data-tour="agent-tabs" className="grid h-12 w-full grid-cols-4 rounded-md border border-border/50 bg-tab/30">
               <TabsTrigger
                 value="general"
                 className="rounded-md py-2 data-[state=active]:bg-card/80"
@@ -126,6 +128,7 @@ const AgentDetailClient = ({
               </TabsTrigger>
               <TabsTrigger
                 value="knowledge"
+                data-tour="agent-knowledge"
                 className="rounded-md py-2 data-[state=active]:bg-card/80"
               >
                 Conhecimento
@@ -197,6 +200,7 @@ const AgentDetailClient = ({
             <TooltipTrigger asChild>
               <Button
                 size="icon"
+                data-tour="agent-test"
                 onClick={() => setIsChatOpen(true)}
                 className="h-12 w-12 rounded-full shadow-lg"
                 aria-label="Abrir chat de teste do agente"
@@ -210,6 +214,8 @@ const AgentDetailClient = ({
           </Tooltip>
         </div>
       )}
+
+      <PageTourTrigger tourId="agent-detail" steps={AGENT_DETAIL_TOUR_STEPS} />
     </TooltipProvider>
   )
 }
