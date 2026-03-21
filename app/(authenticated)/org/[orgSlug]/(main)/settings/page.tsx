@@ -2,6 +2,7 @@ import {
   Building2,
   CreditCard,
   Package,
+  Plug,
   UserIcon,
   Users,
   Ban,
@@ -35,6 +36,14 @@ const SettingsPage = async ({ params }: SettingsPageProps) => {
           orgSlug={orgSlug}
         >
           <UserIcon size={20} />
+        </CardSettings>
+        <CardSettings
+          title="Integrações"
+          description="Conecte seu Google Calendar e outras ferramentas."
+          href="settings/integrations"
+          orgSlug={orgSlug}
+        >
+          <Plug size={20} />
         </CardSettings>
         {userRole !== 'MEMBER' && (
           <>
