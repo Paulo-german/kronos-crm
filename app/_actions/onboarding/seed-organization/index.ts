@@ -7,6 +7,7 @@ import { revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 import { getBlueprint } from '@/_lib/onboarding/blueprints'
 import type { PromptConfig } from '@/_actions/agent/shared/prompt-config-schema'
+import type { NicheBlueprint } from '@/_lib/onboarding/blueprints/types'
 import type { Prisma } from '@prisma/client'
 
 export const seedOrganization = orgActionClient
@@ -28,14 +29,55 @@ export const seedOrganization = orgActionClient
       return { success: true, alreadyCompleted: true }
     }
 
-    if (!org.niche) {
-      throw new Error('Selecione um segmento antes de continuar.')
-    }
+    // -------------------------------------------------------------------------
+    // Resolve o blueprint: caminho IA (generatedBlueprint) ou caminho legado (niche)
+    // -------------------------------------------------------------------------
+    let blueprint: NicheBlueprint
+    let companyName: string
+    let companyDescription: string
+    let agentName: string
 
-    const blueprint = getBlueprint(org.niche)
-    const companyName = data.companyName || org.name
-    const companyDescription = data.companyDescription || `Empresa do segmento ${blueprint.label}`
-    const agentName = data.agentName || 'Assistente Kronos'
+    if (data.generatedBlueprint) {
+      // Caminho IA: marca o niche como 'ai_generated'
+      await db.organization.update({
+        where: { id: ctx.orgId },
+        data: { niche: 'ai_generated' },
+      })
+
+      const gen = data.generatedBlueprint
+
+      blueprint = {
+        key: 'ai_generated',
+        label: gen.configBundle.promptConfig.targetAudience,
+        description: gen.companyDescription,
+        icon: 'Bot',
+        pipelineStages: gen.configBundle.pipelineStages,
+        agentConfig: gen.configBundle.promptConfig,
+        lostReasons: gen.configBundle.lostReasons,
+        // Cast necessário: agentStepBlueprintSchema tem campos com .default() que geram tipos
+        // levemente diferentes de BlueprintStepAction (campos opcionais vs obrigatórios com default).
+        // Em runtime os dados são compatíveis — a conversão de targetStagePosition → UUID acontece abaixo.
+        agentSteps: gen.agentSteps as unknown as NicheBlueprint['agentSteps'],
+        systemPrompt: gen.systemPrompt,
+        businessHoursEnabled: gen.configBundle.businessHoursEnabled,
+        businessHoursConfig: gen.configBundle.businessHoursConfig,
+        outOfHoursMessage: gen.configBundle.outOfHoursMessage,
+      }
+
+      companyName = gen.companyName
+      companyDescription = gen.companyDescription
+      agentName = gen.agentName
+    } else {
+      // Caminho legado: blueprint estático por niche
+      if (!org.niche) {
+        throw new Error('Selecione um segmento antes de continuar.')
+      }
+
+      blueprint = getBlueprint(org.niche)
+      companyName = data.companyName || org.name
+      companyDescription = data.companyDescription || `Empresa do segmento ${blueprint.label}`
+      agentName = data.agentName || 'Assistente Kronos'
+    }
 
     // Busca inbox WhatsApp (se conectada no step anterior)
     const inbox = await db.inbox.findFirst({
@@ -57,7 +99,7 @@ export const seedOrganization = orgActionClient
 
       if (existingPipeline) {
         pipelineId = existingPipeline.id
-        // Sempre substituir stages pelo blueprint do nicho selecionado
+        // Sempre substituir stages pelo blueprint selecionado
         await tx.pipelineStage.deleteMany({ where: { pipelineId } })
       } else {
         const newPipeline = await tx.pipeline.create({
@@ -69,7 +111,7 @@ export const seedOrganization = orgActionClient
         pipelineId = newPipeline.id
       }
 
-      // Criar stages do blueprint (sempre)
+      // Criar stages do blueprint
       await tx.pipelineStage.createMany({
         data: blueprint.pipelineStages.map((stage) => ({
           pipelineId,
@@ -95,7 +137,6 @@ export const seedOrganization = orgActionClient
 
       if (existingAgent) {
         agentId = existingAgent.id
-        // Atualizar config do agent para o nicho atual
         await tx.agent.update({
           where: { id: agentId },
           data: {
@@ -155,7 +196,6 @@ export const seedOrganization = orgActionClient
 
       // 5. Seedar etapas de atendimento do blueprint (sempre recriar)
       if (blueprint.agentSteps.length > 0) {
-        // Limpar steps antigos (se houver)
         await tx.agentStep.deleteMany({ where: { agentId } })
 
         const stages = await tx.pipelineStage.findMany({
@@ -169,19 +209,22 @@ export const seedOrganization = orgActionClient
             agentId,
             name: step.name,
             objective: step.objective,
-            actions: step.actions.length > 0
-              ? step.actions.map((action) => {
-                  if (action.type === 'move_deal') {
-                    const stage = stages.find((s) => s.position === action.targetStagePosition)
-                    return {
-                      type: action.type,
-                      trigger: action.trigger,
-                      targetStage: stage?.id ?? '',
+            actions:
+              step.actions.length > 0
+                ? step.actions.map((action) => {
+                    if (action.type === 'move_deal') {
+                      const stage = stages.find(
+                        (s) => s.position === action.targetStagePosition,
+                      )
+                      return {
+                        type: action.type,
+                        trigger: action.trigger,
+                        targetStage: stage?.id ?? '',
+                      }
                     }
-                  }
-                  return action
-                })
-              : undefined,
+                    return action
+                  })
+                : undefined,
             keyQuestion: step.keyQuestion,
             messageTemplate: step.messageTemplate,
             order: step.order,
@@ -196,8 +239,7 @@ export const seedOrganization = orgActionClient
       })
     })
 
-    // Invalida caches relevantes (exceto onboarding — será revalidado pela action completeOnboarding
-    // após a tela de celebração)
+    // Invalida caches relevantes
     revalidateTag(`organization:${org.slug}`)
     revalidateTag(`pipeline:${ctx.orgId}`)
     revalidateTag(`agents:${ctx.orgId}`)
