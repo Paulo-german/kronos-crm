@@ -1,10 +1,11 @@
 'use client'
 
-import { CircleIcon, Pause, Settings2 } from 'lucide-react'
+import { Info } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/_components/ui/avatar'
 import { Badge } from '@/_components/ui/badge'
 import { Button } from '@/_components/ui/button'
 import { Label } from '@/_components/ui/label'
+import { Separator } from '@/_components/ui/separator'
 import { Switch } from '@/_components/ui/switch'
 import {
   Tooltip,
@@ -64,23 +65,6 @@ export function ChatHeader({
                 {agentName}
               </Badge>
             )}
-            {aiPaused ? (
-              <Badge
-                variant="outline"
-                className="h-5 gap-1 border-kronos-yellow/20 bg-kronos-yellow/10 px-1.5 text-[10px] text-kronos-yellow"
-              >
-                <Pause className="h-3 w-3" />
-                Pausada
-              </Badge>
-            ) : (
-              <Badge
-                variant="outline"
-                className="h-5 gap-1 border-kronos-green/20 bg-kronos-green/10 px-1.5 text-[10px] text-kronos-green"
-              >
-                <CircleIcon className="h-2 w-2 fill-current" />
-                Ativa
-              </Badge>
-            )}
           </div>
           {contactPhone && (
             <p className="text-left text-xs text-muted-foreground">
@@ -90,22 +74,25 @@ export function ChatHeader({
         </div>
       </button>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8"
+              className="h-8 w-8 bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary"
               onClick={onOpenSettings}
             >
-              <Settings2 className="h-4 w-4" />
+              <Info className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
           <TooltipContent side="bottom">
-            <p>Configurações da conversa</p>
+            <p>Detalhes da conversa</p>
           </TooltipContent>
         </Tooltip>
+
+        <Separator orientation="vertical" className="h-6" />
+
         <Tooltip>
           <TooltipTrigger asChild>
             <div className="flex items-center gap-2">

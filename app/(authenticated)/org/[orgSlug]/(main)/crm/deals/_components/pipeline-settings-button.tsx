@@ -24,9 +24,13 @@ export function PipelineSettingsButton({
 
   return (
     <>
-      <Button variant="outline" onClick={() => setSettingsOpen(true)}>
-        <Settings2Icon className="mr-2 h-4 w-4" />
-        Configurar Pipeline
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8"
+        onClick={() => setSettingsOpen(true)}
+      >
+        <Settings2Icon className="h-4 w-4" />
       </Button>
 
       <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>

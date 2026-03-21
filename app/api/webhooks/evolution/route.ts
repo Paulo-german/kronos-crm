@@ -7,6 +7,7 @@ import { parseEvolutionMessage, isGroupMessage, resolveEffectiveJid } from '@/_l
 import { resolveConversation } from '@/_lib/evolution/resolve-conversation'
 import { sendWhatsAppMessage, sendPresence } from '@/_lib/evolution/send-message'
 import { checkBusinessHours } from '@/_lib/agent/check-business-hours'
+import { notifyOrgAdmins } from '@/_lib/notifications/notify-org-admins'
 import { tasks } from '@trigger.dev/sdk/v3'
 import type { processAgentMessage } from '@/../../trigger/process-agent-message'
 import type { EvolutionWebhookPayload, NormalizedWhatsAppMessage } from '@/_lib/evolution/types'
@@ -175,6 +176,32 @@ export async function POST(req: Request) {
   // 6. Inbox desativada, agente ausente ou desativado — salvar mensagem mas não processar com IA
   if (!inbox.isActive || !agent || !agent.isActive) {
     log('step:5 agent_active_check', 'EXIT', { reason: !inbox.isActive ? 'inbox_inactive' : 'agent_inactive', inboxActive: inbox.isActive, hasAgent: !!agent, agentActive: agent?.isActive })
+
+    // Notificar OWNER/ADMIN quando inbox esta desativada (WhatsApp desconectado)
+    // Anti-spam: verifica se ja existe notificacao nao lida com mesmo titulo nas ultimas 24h
+    if (!inbox.isActive) {
+      const recentDisconnectedNotification = await db.notification.findFirst({
+        where: {
+          organizationId: orgId,
+          type: 'SYSTEM',
+          title: 'WhatsApp desconectado',
+          readAt: null,
+          createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+        },
+      })
+
+      if (!recentDisconnectedNotification) {
+        void notifyOrgAdmins({
+          orgId,
+          type: 'SYSTEM',
+          title: 'WhatsApp desconectado',
+          body: `A conexão WhatsApp "${instanceName}" está desativada. Mensagens não estão sendo processadas.`,
+          actionPath: '/settings/inboxes',
+          resourceType: 'inbox',
+          resourceId: inbox.id,
+        })
+      }
+    }
     const normalizedMsg = parseEvolutionMessage(data, instanceName)
 
     if (normalizedMsg.type === 'text' && !normalizedMsg.text) {

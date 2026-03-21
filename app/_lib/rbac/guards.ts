@@ -141,6 +141,7 @@ function getEntityLabel(entity: RBACEntity): string {
     inbox: 'caixas de entrada',
     conversation: 'conversas',
     integration: 'integrações',
+    notification: 'notificações',
   }
   return labels[entity]
 }

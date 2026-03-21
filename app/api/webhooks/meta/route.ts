@@ -8,6 +8,7 @@ import { parseMetaMessage } from '@/_lib/meta/parse-meta-message'
 import { sendMetaTextMessage } from '@/_lib/meta/send-meta-message'
 import { resolveConversation } from '@/_lib/evolution/resolve-conversation'
 import { checkBusinessHours } from '@/_lib/agent/check-business-hours'
+import { notifyOrgAdmins } from '@/_lib/notifications/notify-org-admins'
 import { tasks } from '@trigger.dev/sdk/v3'
 import type { processAgentMessage } from '@/../../trigger/process-agent-message'
 import type { MetaWebhookPayload, MetaWebhookValue } from '@/_lib/meta/types'
@@ -144,6 +145,32 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
     // 6. Inbox desativada, agente ausente ou desativado
     if (!inbox.isActive || !agent || !agent.isActive) {
       logMsg('step:5 agent_active_check', 'EXIT', { reason: !inbox.isActive ? 'inbox_inactive' : 'agent_inactive' })
+
+      // Notificar OWNER/ADMIN quando inbox esta desativada (WhatsApp desconectado)
+      // Anti-spam: verifica se ja existe notificacao nao lida com mesmo titulo nas ultimas 24h
+      if (!inbox.isActive) {
+        const recentDisconnectedNotification = await db.notification.findFirst({
+          where: {
+            organizationId: orgId,
+            type: 'SYSTEM',
+            title: 'WhatsApp desconectado',
+            readAt: null,
+            createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+          },
+        })
+
+        if (!recentDisconnectedNotification) {
+          void notifyOrgAdmins({
+            orgId,
+            type: 'SYSTEM',
+            title: 'WhatsApp desconectado',
+            body: `A conexão WhatsApp "${phoneNumberId}" está desativada. Mensagens não estão sendo processadas.`,
+            actionPath: '/settings/inboxes',
+            resourceType: 'inbox',
+            resourceId: inbox.id,
+          })
+        }
+      }
 
       const normalizedMsg = parseMetaMessage(message, contact, phoneNumberId)
 

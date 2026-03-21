@@ -185,6 +185,12 @@ enum SyncDirection {
   BIDIRECTIONAL
 }
 
+enum NotificationType {
+  SYSTEM
+  USER_ACTION
+  PLATFORM_ANNOUNCEMENT
+}
+
 // -----------------------------------------------------------------------------
 // MODELS
 // -----------------------------------------------------------------------------
@@ -195,19 +201,26 @@ model User {
   fullName  String? @map("full_name")
   avatarUrl String? @map("avatar_url")
   phone     String?
-  
+
+  notificationPreferences Json? @map("notification_preferences") @db.JsonB
+
+  // Flag de super admin — acesso ao painel Creta
+  isSuperAdmin Boolean @default(false) @map("is_super_admin")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relacionamentos Ativos
-  memberships      Member[]
-  dealsAssigned    Deal[]         @relation("DealAssignee")
-  contactsAssigned Contact[]      @relation("ContactAssignee")
-  tasksAssigned    Task[]         @relation("TaskAssignee")
-  tasksCreated     Task[]         @relation("TaskCreator")
-  activitiesPerformed Activity[] @relation("ActivityPerformer")
-  appointments           Appointment[]  @relation("AppointmentAssignee")
-  integrations     UserIntegration[]
+  memberships         Member[]
+  dealsAssigned       Deal[]         @relation("DealAssignee")
+  contactsAssigned    Contact[]      @relation("ContactAssignee")
+  tasksAssigned       Task[]         @relation("TaskAssignee")
+  tasksCreated        Task[]         @relation("TaskCreator")
+  activitiesPerformed Activity[]     @relation("ActivityPerformer")
+  appointments        Appointment[]  @relation("AppointmentAssignee")
+  integrations        UserIntegration[]
+  notifications       Notification[]
+  announcements       Announcement[]
 
   @@map("users")
 }
@@ -256,23 +269,24 @@ model Organization {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  members       Member[]
-  contacts      Contact[]
-  companies     Company[]
-  pipelines     Pipeline[]
-  products      Product[]
-  tasks         Task[]
-  Deal          Deal[]
-  appointments  Appointment[]
-  subscriptions Subscription[]
-  lostReasons   DealLostReason[]
-  creditWallet  CreditWallet?
-  aiUsage       AiUsage[]
-  agents                Agent[]
-  inboxes               Inbox[]
-  conversations         Conversation[]
+  members                Member[]
+  contacts               Contact[]
+  companies              Company[]
+  pipelines              Pipeline[]
+  products               Product[]
+  tasks                  Task[]
+  Deal                   Deal[]
+  appointments           Appointment[]
+  subscriptions          Subscription[]
+  lostReasons            DealLostReason[]
+  creditWallet           CreditWallet?
+  aiUsage                AiUsage[]
+  agents                 Agent[]
+  inboxes                Inbox[]
+  conversations          Conversation[]
   agentTestConversations AgentTestConversation[]
-  userIntegrations      UserIntegration[]
+  userIntegrations       UserIntegration[]
+  notifications          Notification[]
 
   @@map("organizations")
 }
@@ -1111,4 +1125,66 @@ model CalendarSyncMapping {
   @@unique([integrationId, externalEventId])
   @@index([appointmentId])
   @@map("calendar_sync_mappings")
+}
+
+// -----------------------------------------------------------------------------
+// ADMIN / SUPER ADMIN
+// -----------------------------------------------------------------------------
+
+model Announcement {
+  id    String @id @default(uuid())
+  title String
+  body  String @db.Text
+
+  // URL opcional para o usuário clicar na notificação
+  actionUrl String? @map("action_url")
+
+  // Escopo: [] = todas as orgs ativas, ids preenchidos = orgs específicas
+  targetOrgIds String[] @default([]) @map("target_org_ids")
+
+  // Quem enviou o comunicado (super admin)
+  createdBy     String @map("created_by")
+  createdByUser User   @relation(fields: [createdBy], references: [id])
+
+  // Métricas de entrega
+  totalRecipients Int @default(0) @map("total_recipients")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt(sort: Desc)])
+  @@map("announcements")
+}
+
+// -----------------------------------------------------------------------------
+// NOTIFICATIONS
+// -----------------------------------------------------------------------------
+
+model Notification {
+  id String @id @default(uuid())
+
+  organizationId String       @map("organization_id")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type  NotificationType
+  title String
+  body  String           @db.Text
+
+  // Link para acao (ex: /org/slug/crm/deals/uuid)
+  actionUrl String? @map("action_url")
+
+  // Link polimorfico para recurso (ex: resourceType="deal", resourceId="uuid")
+  resourceType String? @map("resource_type")
+  resourceId   String? @map("resource_id")
+
+  // null = nao lida
+  readAt DateTime? @map("read_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId, readAt, createdAt(sort: Desc)])
+  @@index([organizationId, userId, createdAt(sort: Desc)])
+  @@map("notifications")
 }

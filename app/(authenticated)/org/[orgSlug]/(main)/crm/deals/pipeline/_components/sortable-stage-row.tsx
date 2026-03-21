@@ -95,7 +95,7 @@ export function SortableStageRow({
 
       {/* Deal count */}
       <span className="text-sm text-muted-foreground">
-        {stage.dealCount} deals
+        {stage.dealCount} negociações
       </span>
 
       {/* Actions */}

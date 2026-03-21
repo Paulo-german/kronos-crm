@@ -27,6 +27,7 @@ export type RBACEntity =
   | 'inbox'
   | 'conversation'
   | 'integration'
+  | 'notification'
 
 /**
  * Ações possíveis em cada entidade

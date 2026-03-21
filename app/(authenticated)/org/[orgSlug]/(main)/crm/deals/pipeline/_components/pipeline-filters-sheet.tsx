@@ -88,14 +88,14 @@ export function PipelineFiltersSheet({
   return (
     <Sheet open={isOpen} onOpenChange={handleOpenChange}>
       <SheetTrigger asChild>
-        <Button variant="outline" className="gap-2">
+        <Button
+          variant="ghost"
+          className="gap-2 bg-primary/20 text-primary hover:bg-primary/30 hover:text-primary"
+        >
           <Filter className="h-4 w-4" />
           Filtros
           {activeFilterCount > 0 && (
-            <Badge
-              variant="secondary"
-              className="ml-1 h-5 min-w-5 px-1.5 text-xs"
-            >
+            <Badge className="ml-1 h-5 min-w-5 bg-primary/30 px-1.5 text-xs text-primary hover:bg-primary/30">
               {activeFilterCount}
             </Badge>
           )}
@@ -260,7 +260,7 @@ export function PipelineFiltersSheet({
 
           {/* Value Range Filter */}
           <div className="space-y-3">
-            <Label className="text-sm font-semibold">Valor do Deal</Label>
+            <Label className="text-sm font-semibold">Valor da Negociação</Label>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Mínimo</Label>

@@ -9,6 +9,8 @@ import {
   requirePermission,
   resolveAssignedTo,
 } from '@/_lib/rbac'
+import { createNotification } from '@/_lib/notifications/create-notification'
+import { getOrgSlug } from '@/_lib/notifications/get-org-slug'
 
 export const createTask = orgActionClient
   .schema(createTaskSchema)
@@ -35,7 +37,7 @@ export const createTask = orgActionClient
     }
 
     // 5. Criação
-    await db.task.create({
+    const task = await db.task.create({
       data: {
         organizationId: ctx.orgId,
         title: data.title,
@@ -63,6 +65,22 @@ export const createTask = orgActionClient
     revalidatePath('/crm/tasks')
     revalidatePath('/crm/deals/pipeline')
     revalidatePath(`/crm/deals/${data.dealId}`)
+
+    // Notificar responsável quando a tarefa é atribuída a outro usuário
+    if (assignedTo !== ctx.userId) {
+      void getOrgSlug(ctx.orgId).then((slug) => {
+        void createNotification({
+          orgId: ctx.orgId,
+          userId: assignedTo,
+          type: 'USER_ACTION',
+          title: 'Nova tarefa atribuída a você',
+          body: `A tarefa "${data.title}" foi atribuída a você.`,
+          actionUrl: `/org/${slug}/crm/tasks`,
+          resourceType: 'task',
+          resourceId: task.id,
+        })
+      })
+    }
 
     return { success: true }
   })

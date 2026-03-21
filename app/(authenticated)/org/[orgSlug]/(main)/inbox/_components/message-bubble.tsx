@@ -1,9 +1,134 @@
 'use client'
 
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { format } from 'date-fns'
 import { cn } from '@/_lib/utils'
-import { Bot, FileDown, UserRound } from 'lucide-react'
+import { Bot, FileDown, Pause, Play, UserRound } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
+
+function formatAudioDuration(seconds: number): string {
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.floor(seconds % 60)
+  return `${mins}:${secs.toString().padStart(2, '0')}`
+}
+
+function AudioPlayer({ src, isUser }: { src: string; isUser: boolean }) {
+  const audioRef = useRef<HTMLAudioElement>(null)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [duration, setDuration] = useState(0)
+
+  const togglePlay = useCallback(() => {
+    const audio = audioRef.current
+    if (!audio) return
+
+    if (isPlaying) {
+      audio.pause()
+    } else {
+      audio.play()
+    }
+  }, [isPlaying])
+
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!audio) return
+
+    const handlePlay = () => setIsPlaying(true)
+    const handlePause = () => setIsPlaying(false)
+    const handleEnded = () => {
+      setIsPlaying(false)
+      setProgress(0)
+    }
+    const handleTimeUpdate = () => {
+      if (audio.duration) {
+        setProgress((audio.currentTime / audio.duration) * 100)
+      }
+    }
+    const handleLoadedMetadata = () => {
+      if (audio.duration && isFinite(audio.duration)) {
+        setDuration(audio.duration)
+      }
+    }
+
+    audio.addEventListener('play', handlePlay)
+    audio.addEventListener('pause', handlePause)
+    audio.addEventListener('ended', handleEnded)
+    audio.addEventListener('timeupdate', handleTimeUpdate)
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata)
+
+    return () => {
+      audio.removeEventListener('play', handlePlay)
+      audio.removeEventListener('pause', handlePause)
+      audio.removeEventListener('ended', handleEnded)
+      audio.removeEventListener('timeupdate', handleTimeUpdate)
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata)
+    }
+  }, [])
+
+  const handleSeek = (event: React.MouseEvent<HTMLDivElement>) => {
+    const audio = audioRef.current
+    if (!audio || !audio.duration) return
+
+    const rect = event.currentTarget.getBoundingClientRect()
+    const percent = (event.clientX - rect.left) / rect.width
+    audio.currentTime = percent * audio.duration
+  }
+
+  return (
+    <div
+      className={cn(
+        'mb-1 flex min-w-[220px] items-center gap-2.5 rounded-lg px-3 py-2',
+        isUser ? 'bg-secondary/40' : 'bg-primary-foreground/10',
+      )}
+    >
+      <button
+        type="button"
+        onClick={togglePlay}
+        className={cn(
+          'flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors',
+          isUser
+            ? 'bg-primary/10 text-primary hover:bg-primary/20'
+            : 'bg-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/30',
+        )}
+      >
+        {isPlaying ? (
+          <Pause className="h-3.5 w-3.5" />
+        ) : (
+          <Play className="h-3.5 w-3.5 translate-x-[1px]" />
+        )}
+      </button>
+
+      <div className="flex flex-1 flex-col gap-1">
+        <div
+          className={cn(
+            'h-1 cursor-pointer rounded-full',
+            isUser ? 'bg-border' : 'bg-primary-foreground/20',
+          )}
+          onClick={handleSeek}
+        >
+          <div
+            className={cn(
+              'h-full rounded-full transition-all',
+              isUser ? 'bg-primary' : 'bg-primary-foreground/70',
+            )}
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      </div>
+
+      <span
+        className={cn(
+          'text-[10px] tabular-nums',
+          isUser ? 'text-muted-foreground' : 'text-primary-foreground/60',
+        )}
+      >
+        {duration > 0 ? formatAudioDuration(duration) : '0:00'}
+      </span>
+
+      <audio ref={audioRef} src={src} preload="metadata" />
+    </div>
+  )
+}
 
 interface MediaMetadata {
   url?: string
@@ -60,8 +185,8 @@ export function MessageBubble({ id, conversationId, role, content, metadata, cre
         className={cn(
           'max-w-[75%] rounded-2xl px-4 py-2',
           isUser
-            ? 'rounded-bl-md bg-secondary/40'
-            : 'rounded-br-md bg-primary text-primary-foreground',
+            ? 'rounded-bl-md border border-border/30 bg-secondary/60 shadow-sm'
+            : 'rounded-br-md bg-primary text-primary-foreground shadow-sm',
         )}
       >
         {/* Mídia */}
@@ -71,17 +196,15 @@ export function MessageBubble({ id, conversationId, role, content, metadata, cre
             src={`/api/inbox/${conversationId}/media/${id}`}
             alt="Imagem"
             loading="lazy"
-            className="mb-2 max-h-64 rounded object-contain"
+            className="mb-2 max-h-64 rounded-lg object-contain shadow-sm transition-all hover:ring-2 hover:ring-primary/20"
           />
         )}
 
         {hasAudio && (
-          <audio controls className="mb-1 min-w-[250px]" preload="none">
-            <source
-              src={`/api/inbox/${conversationId}/media/${id}`}
-              type={media!.mimetype}
-            />
-          </audio>
+          <AudioPlayer
+            src={`/api/inbox/${conversationId}/media/${id}`}
+            isUser={isUser}
+          />
         )}
 
         {hasDocument && (
@@ -92,8 +215,8 @@ export function MessageBubble({ id, conversationId, role, content, metadata, cre
             className={cn(
               'mb-2 w-full justify-start gap-2 text-xs',
               isUser
-                ? 'border-border hover:bg-accent'
-                : 'border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground',
+                ? 'border-border/50 bg-primary/5 hover:bg-primary/10'
+                : 'border-primary-foreground/20 bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground',
             )}
           >
             <a

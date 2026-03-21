@@ -10,6 +10,8 @@ import {
   requireQuota,
   resolveAssignedTo,
 } from '@/_lib/rbac'
+import { createNotification } from '@/_lib/notifications/create-notification'
+import { getOrgSlug } from '@/_lib/notifications/get-org-slug'
 
 export const createDeal = orgActionClient
   .schema(createDealSchema)
@@ -88,6 +90,22 @@ export const createDeal = orgActionClient
     revalidateTag(`deals:${ctx.orgId}`)
     revalidateTag(`deals-options:${ctx.orgId}`)
     revalidateTag(`dashboard:${ctx.orgId}`)
+
+    // Notificar responsável quando o deal é atribuído a outro usuário
+    if (assignedTo !== ctx.userId) {
+      void getOrgSlug(ctx.orgId).then((slug) => {
+        void createNotification({
+          orgId: ctx.orgId,
+          userId: assignedTo,
+          type: 'USER_ACTION',
+          title: 'Novo deal atribuído a você',
+          body: `O deal "${data.title}" foi atribuído a você.`,
+          actionUrl: `/org/${slug}/crm/deals/${deal.id}`,
+          resourceType: 'deal',
+          resourceId: deal.id,
+        })
+      })
+    }
 
     return { success: true, dealId: deal.id }
   })

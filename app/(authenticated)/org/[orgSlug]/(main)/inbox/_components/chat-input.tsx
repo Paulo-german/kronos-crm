@@ -66,7 +66,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
 
     return (
       <div className="p-4">
-        <div className="flex items-end gap-2">
+        <div className="flex items-center gap-2 rounded-xl border border-border/50 bg-secondary/20 p-2">
           {isRecording ? (
             <>
               <Tooltip>
@@ -84,7 +84,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
                   <p>Cancelar gravação</p>
                 </TooltipContent>
               </Tooltip>
-              <div className="flex flex-1 items-center gap-3 rounded-md border px-4 py-2">
+              <div className="flex flex-1 items-center gap-3 px-4 py-2">
                 <span className="h-3 w-3 animate-pulse rounded-full bg-red-500" />
                 <span className="text-sm tabular-nums text-muted-foreground">
                   {formatDuration(recordingDuration)}
@@ -98,7 +98,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
               onChange={(event) => onTextChange(event.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Digite uma mensagem..."
-              className="max-h-[120px] min-h-[44px] resize-none"
+              className="max-h-[120px] min-h-[44px] resize-none border-0 bg-transparent shadow-none focus-visible:ring-0"
               rows={1}
               disabled={isSendPending || isAudioPending}
             />

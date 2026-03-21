@@ -3,13 +3,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { MessageSquare, WifiOff } from 'lucide-react'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/_components/ui/card'
 import type { ConversationListDto } from '@/_data-access/conversation/get-conversations'
 import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
 import type { ContactOptionDto } from '@/_data-access/contact/get-contacts-options'
@@ -137,6 +130,7 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
           isLoadingMore={isLoadingMore}
           hasMore={hasMore}
           sentinelRef={sentinelRef}
+          orgSlug={orgSlug}
         />
       </div>
 
@@ -158,25 +152,25 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
             onConversationCreated={handleConversationCreated}
           />
         ) : (
-          <div className="flex h-full items-center justify-center p-6">
-            <Card className="max-w-sm border-border/50 bg-secondary/20">
-              <CardHeader className="items-center pb-3 text-center">
-                <div className="rounded-full bg-muted p-4">
-                  <MessageSquare className="h-6 w-6 text-muted-foreground" />
-                </div>
-                <CardTitle className="text-base">
-                  {!isLoading && conversations.length === 0
-                    ? 'Nenhuma conversa encontrada'
-                    : 'Selecione uma conversa'}
-                </CardTitle>
-                <CardDescription>
-                  {!isLoading && conversations.length === 0
-                    ? 'Nenhuma conversa corresponde aos filtros aplicados.'
-                    : 'Escolha uma conversa na lista ao lado para visualizar as mensagens e interagir.'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent />
-            </Card>
+          <div className="flex h-full flex-col items-center justify-center gap-4 p-6">
+            <div className="relative">
+              <div className="absolute inset-0 animate-pulse rounded-full bg-primary/10 blur-xl" />
+              <div className="relative flex size-16 items-center justify-center rounded-full bg-gradient-to-br from-primary/80 to-primary/50 shadow-md shadow-primary/15">
+                <MessageSquare className="size-8 text-primary-foreground" />
+              </div>
+            </div>
+            <div className="max-w-sm space-y-1 text-center">
+              <h3 className="text-base font-semibold tracking-tight">
+                {!isLoading && conversations.length === 0
+                  ? 'Nenhuma conversa encontrada'
+                  : 'Selecione uma conversa'}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {!isLoading && conversations.length === 0
+                  ? 'Nenhuma conversa corresponde aos filtros aplicados.'
+                  : 'Escolha uma conversa na lista ao lado para visualizar as mensagens e interagir.'}
+              </p>
+            </div>
           </div>
         )}
       </div>

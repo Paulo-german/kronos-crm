@@ -41,16 +41,23 @@ import {
   PopoverAnchor,
   PopoverContent,
 } from '@/_components/ui/popover'
-import { Button } from '@/_components/ui/button'
-import { ArrowUpDown, Plus } from 'lucide-react'
+import { ArrowUpDown, User } from 'lucide-react'
+import type { MemberRole } from '@prisma/client'
 import type { PipelineFilters } from '../_lib/pipeline-filters'
+import type { MemberOption } from './pipeline-client'
 
 interface KanbanBoardProps {
   pipeline: PipelineWithStagesDto
   dealsByStage: DealsByStageDto
+  members: MemberOption[]
+  currentUserId: string
+  userRole: MemberRole
   onAddDeal: (stageId: string) => void
   onDealClick: (deal: DealDto) => void
   filters: PipelineFilters
+  viewToggle: React.ReactNode
+  settingsButton: React.ReactNode
+  createButton: React.ReactNode
   filtersSheet: React.ReactNode
   filterBadges: React.ReactNode
 }
@@ -80,14 +87,24 @@ const priorityWeight: Record<string, number> = {
 export function KanbanBoard({
   pipeline,
   dealsByStage,
+  members,
+  currentUserId,
+  userRole,
   onAddDeal,
   onDealClick,
   filters,
+  viewToggle,
+  settingsButton,
+  createButton,
   filtersSheet,
   filterBadges,
 }: KanbanBoardProps) {
   const [activeId, setActiveId] = useState<string | null>(null)
   const [sortBy, setSortBy] = useState<SortOption>('created-desc')
+  const isMember = userRole === 'MEMBER'
+  const [assigneeFilter, setAssigneeFilter] = useState<string>(
+    isMember ? currentUserId : 'all',
+  )
 
   // Singleton priority popover
   const [priorityPopover, setPriorityPopover] = useState<{
@@ -141,10 +158,10 @@ export function KanbanBoard({
 
   const { execute: executeMove } = useAction(moveDealToStage, {
     onSuccess: () => {
-      toast.success('Deal movido com sucesso!')
+      toast.success('Negociação movida com sucesso!')
     },
     onError: ({ error }) => {
-      toast.error(error.serverError || 'Erro ao mover deal.')
+      toast.error(error.serverError || 'Erro ao mover negociação.')
     },
   })
 
@@ -173,6 +190,13 @@ export function KanbanBoard({
 
     for (const [stageId, deals] of Object.entries(optimisticDeals)) {
       let stageDeals = deals
+
+      // Filtro de Responsável
+      if (assigneeFilter !== 'all') {
+        stageDeals = stageDeals.filter(
+          (deal) => deal.assignedTo === assigneeFilter,
+        )
+      }
 
       // Filtro de Status
       if (filters.status.length > 0) {
@@ -247,7 +271,18 @@ export function KanbanBoard({
     }
 
     return filtered
-  }, [optimisticDeals, sortBy, filters])
+  }, [optimisticDeals, sortBy, filters, assigneeFilter])
+
+  // Valor total do pipeline (filtrado) — usado na barra de progresso por coluna
+  const totalPipelineValue = useMemo(() => {
+    let total = 0
+    for (const deals of Object.values(filteredDealsByStage)) {
+      for (const deal of deals) {
+        total += deal.totalValue
+      }
+    }
+    return total
+  }, [filteredDealsByStage])
 
   // Mapa de lookup dealId → stageId para O(1) no drag-end
   const dealToStageMap = useMemo(() => {
@@ -269,13 +304,6 @@ export function KanbanBoard({
     }
     return null
   }, [activeId, optimisticDeals])
-
-  const handleHeaderAddDeal = () => {
-    const firstStageId = pipeline.stages[0]?.id
-    if (firstStageId) {
-      onAddDeal(firstStageId)
-    }
-  }
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string)
@@ -344,14 +372,22 @@ export function KanbanBoard({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
-      {/* Sort and Filter bar */}
+      {/* Toolbar row 1: Navigation + Actions */}
+      <div className="flex items-center gap-2">
+        {viewToggle}
+        <div className="flex-1" />
+        {settingsButton}
+        {createButton}
+      </div>
+
+      {/* Toolbar row 2: Sort + Assignee + Filters */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
           <Select
             value={sortBy}
             onValueChange={(v) => setSortBy(v as SortOption)}
           >
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-[300px]">
               <ArrowUpDown className="mr-2 h-4 w-4 text-muted-foreground" />
               <SelectValue placeholder="Ordenar por" />
             </SelectTrigger>
@@ -364,12 +400,30 @@ export function KanbanBoard({
               <SelectItem value="title-asc">A-Z</SelectItem>
             </SelectContent>
           </Select>
+          <Select
+            value={assigneeFilter}
+            onValueChange={setAssigneeFilter}
+            disabled={isMember}
+          >
+            <SelectTrigger className="w-[300px]">
+              <User className="mr-2 h-4 w-4 text-muted-foreground" />
+              <SelectValue placeholder="Responsável" />
+            </SelectTrigger>
+            <SelectContent>
+              {!isMember && (
+                <SelectItem value="all">Todos os responsáveis</SelectItem>
+              )}
+              {(isMember
+                ? members.filter((member) => member.userId === currentUserId)
+                : members
+              ).map((member) => (
+                <SelectItem key={member.userId} value={member.userId}>
+                  {member.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           {filtersSheet}
-          <div className="flex-1" />
-          <Button onClick={handleHeaderAddDeal}>
-            <Plus className="mr-2 h-4 w-4" />
-            Adicionar Negociação
-          </Button>
         </div>
         {filterBadges}
       </div>
@@ -381,12 +435,16 @@ export function KanbanBoard({
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div data-tour="deals-card" className="flex min-h-0 flex-1 gap-4 overflow-x-auto overflow-y-hidden">
+        <div
+          data-tour="deals-card"
+          className="flex min-h-0 flex-1 gap-4 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
           {pipeline.stages.map((stage) => (
             <KanbanColumn
               key={stage.id}
               stage={stage}
               deals={filteredDealsByStage[stage.id] || []}
+              totalPipelineValue={totalPipelineValue}
               onAddDeal={onAddDeal}
               onDealClick={onDealClick}
               onPriorityClick={handlePriorityClick}
@@ -397,10 +455,12 @@ export function KanbanBoard({
 
         <DragOverlay>
           {activeDeal && (
-            <KanbanCard
-              deal={activeDeal}
-              priorityOverride={priorityOverrides[activeDeal.id]}
-            />
+            <div className="rotate-2 scale-105 rounded-lg shadow-2xl ring-2 ring-primary/30">
+              <KanbanCard
+                deal={activeDeal}
+                priorityOverride={priorityOverrides[activeDeal.id]}
+              />
+            </div>
           )}
         </DragOverlay>
       </DndContext>

@@ -1,10 +1,4 @@
 import { Suspense } from 'react'
-import Header, {
-  HeaderLeft,
-  HeaderRight,
-  HeaderSubTitle,
-  HeaderTitle,
-} from '@/_components/header'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { parseDateRange } from '@/_utils/date-range'
 import { KpiGrid } from './_components/kpi-grid'
@@ -39,17 +33,11 @@ export default async function DashboardPage({
 
   return (
     <div className="flex h-full flex-col gap-6">
-      <Header>
-        <HeaderLeft>
-          <HeaderTitle>Dashboard</HeaderTitle>
-          <HeaderSubTitle>Visão geral da sua operação</HeaderSubTitle>
-        </HeaderLeft>
-        <HeaderRight>
-          {activeTab === 'reports' && <DateRangePicker />}
-        </HeaderRight>
-      </Header>
-
-      <DashboardTabs activeTab={activeTab} />
+      <div className="flex items-center gap-2">
+        <DashboardTabs activeTab={activeTab} />
+        <div className="flex-1" />
+        {activeTab === 'reports' && <DateRangePicker />}
+      </div>
 
       {activeTab === 'reports' ? (
         <>

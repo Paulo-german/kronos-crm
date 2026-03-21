@@ -10,8 +10,8 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/_components/ui/sheet'
-import { Settings2Icon } from 'lucide-react'
 import { KanbanBoard } from './kanban-board'
+import CreateDealButton from '../../_components/create-deal-button'
 import { DealDialogContent } from '../../_components/deal-dialog-content'
 import { ViewToggle } from '../../_components/view-toggle'
 import { EmptyPipeline } from './empty-pipeline'
@@ -26,19 +26,21 @@ import type {
 } from '@/_data-access/deal/get-deals-by-pipeline'
 import type { ContactDto } from '@/_data-access/contact/get-contacts'
 import type { MemberRole } from '@prisma/client'
-import Header, {
-  HeaderLeft,
-  HeaderTitle,
-  HeaderSubTitle,
-  HeaderRight,
-} from '@/_components/header'
+import { Settings2Icon } from 'lucide-react'
 import { PageTourTrigger } from '@/_components/onboarding/page-tour-trigger'
 import { DEALS_TOUR_STEPS } from '@/_lib/onboarding/tours/deals-tour'
+
+export interface MemberOption {
+  userId: string
+  name: string
+}
 
 interface PipelineClientProps {
   pipeline: PipelineWithStagesDto | null
   dealsByStage: DealsByStageDto
   contacts: ContactDto[]
+  members: MemberOption[]
+  currentUserId: string
   userRole: MemberRole
 }
 
@@ -51,6 +53,8 @@ export const PipelineClient = ({
   pipeline,
   dealsByStage,
   contacts,
+  members,
+  currentUserId,
   userRole,
 }: PipelineClientProps) => {
   const router = useRouter()
@@ -99,33 +103,35 @@ export const PipelineClient = ({
 
   return (
     <>
-      <Header>
-        <HeaderLeft>
-          <div className="flex items-center gap-4">
-            <HeaderTitle>Negociações</HeaderTitle>
-          </div>
-          <HeaderSubTitle>
-            Visualize e gerencie suas oportunidades
-          </HeaderSubTitle>
-        </HeaderLeft>
-        <HeaderRight>
-          <ViewToggle activeView="pipeline" />
-          {canManagePipeline && (
-            <Button variant="outline" onClick={() => setSettingsOpen(true)}>
-              <Settings2Icon className="mr-2 h-4 w-4" />
-              Configurar Pipeline
-            </Button>
-          )}
-        </HeaderRight>
-      </Header>
-
-      <div data-tour="deals-kanban">
+      <div data-tour="deals-kanban" className="flex flex-1 min-h-0 flex-col">
       <KanbanBoard
         pipeline={pipeline}
         dealsByStage={dealsByStage}
+        members={members}
+        currentUserId={currentUserId}
+        userRole={userRole}
         onAddDeal={handleAddDeal}
         onDealClick={handleDealClick}
         filters={filters}
+        viewToggle={<ViewToggle activeView="pipeline" />}
+        settingsButton={
+          canManagePipeline ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setSettingsOpen(true)}
+            >
+              <Settings2Icon className="h-4 w-4" />
+            </Button>
+          ) : null
+        }
+        createButton={
+          <CreateDealButton
+            stages={pipeline.stages}
+            contacts={contacts}
+          />
+        }
         filtersSheet={
           <div data-tour="deals-filters">
           <PipelineFiltersSheet

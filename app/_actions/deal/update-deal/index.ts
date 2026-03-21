@@ -11,6 +11,8 @@ import {
   requirePermission,
   isOwnershipChange,
 } from '@/_lib/rbac'
+import { createNotification } from '@/_lib/notifications/create-notification'
+import { getOrgSlug } from '@/_lib/notifications/get-org-slug'
 
 export const updateDeal = orgActionClient
   .schema(updateDealSchema)
@@ -183,6 +185,26 @@ export const updateDeal = orgActionClient
     revalidateTag(`deals:${ctx.orgId}`)
     revalidateTag(`contacts:${ctx.orgId}`)
     revalidateTag(`deal:${data.id}`)
+
+    // Notificar novo responsável quando há transferência de ownership para outro usuário
+    if (
+      data.assignedTo &&
+      isOwnershipChange(data.assignedTo, deal.assignedTo) &&
+      data.assignedTo !== ctx.userId
+    ) {
+      void getOrgSlug(ctx.orgId).then((slug) => {
+        void createNotification({
+          orgId: ctx.orgId,
+          userId: data.assignedTo!,
+          type: 'USER_ACTION',
+          title: 'Deal transferido para você',
+          body: `O deal "${deal.title}" foi transferido para você.`,
+          actionUrl: `/org/${slug}/crm/deals/${data.id}`,
+          resourceType: 'deal',
+          resourceId: data.id,
+        })
+      })
+    }
 
     return { success: true }
   })

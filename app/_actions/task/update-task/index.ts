@@ -11,6 +11,8 @@ import {
   requirePermission,
   isOwnershipChange,
 } from '@/_lib/rbac'
+import { createNotification } from '@/_lib/notifications/create-notification'
+import { getOrgSlug } from '@/_lib/notifications/get-org-slug'
 
 export const updateTask = orgActionClient
   .schema(updateTaskSchema)
@@ -81,6 +83,25 @@ export const updateTask = orgActionClient
     revalidatePath(`/crm/deals/${data.dealId}`)
     if (existingTask.dealId !== data.dealId) {
       revalidatePath(`/crm/deals/${existingTask.dealId}`)
+    }
+
+    // Notificar novo responsável quando há transferência de ownership para outro usuário
+    if (
+      isOwnershipChange(data.assignedTo, existingTask.assignedTo) &&
+      data.assignedTo !== ctx.userId
+    ) {
+      void getOrgSlug(ctx.orgId).then((slug) => {
+        void createNotification({
+          orgId: ctx.orgId,
+          userId: data.assignedTo!,
+          type: 'USER_ACTION',
+          title: 'Tarefa transferida para você',
+          body: `A tarefa "${existingTask.title}" foi transferida para você.`,
+          actionUrl: `/org/${slug}/crm/tasks`,
+          resourceType: 'task',
+          resourceId: data.id,
+        })
+      })
     }
 
     return { success: true }

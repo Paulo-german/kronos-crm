@@ -1,14 +1,22 @@
 'use client'
 
+import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { CircleIcon, Loader2, Pause, Search } from 'lucide-react'
+import { CircleIcon, Loader2, Pause, Search, Settings2 } from 'lucide-react'
 import { cn } from '@/_lib/utils'
+import { Button } from '@/_components/ui/button'
 import { Input } from '@/_components/ui/input'
 import { Avatar, AvatarFallback, AvatarImage } from '@/_components/ui/avatar'
 import { Badge } from '@/_components/ui/badge'
 import { Skeleton } from '@/_components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger } from '@/_components/ui/tabs'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/_components/ui/tooltip'
 import {
   Select,
   SelectContent,
@@ -43,6 +51,7 @@ interface ConversationListProps {
   isLoadingMore: boolean
   hasMore: boolean
   sentinelRef: (node: HTMLElement | null) => void
+  orgSlug: string
 }
 
 function getInitials(name: string): string {
@@ -98,6 +107,7 @@ export function ConversationList({
   isLoadingMore,
   hasMore,
   sentinelRef,
+  orgSlug,
 }: ConversationListProps) {
   return (
     <div className="flex h-full flex-col border-r border-border/50">
@@ -135,6 +145,28 @@ export function ConversationList({
           >
             {totalCount}
           </Badge>
+          <div className="flex-1" />
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div data-tour="inbox-manage">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary"
+                    asChild
+                  >
+                    <Link href={`/org/${orgSlug}/settings/inboxes`}>
+                      <Settings2 className="h-3.5 w-3.5" />
+                    </Link>
+                  </Button>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                <p>Gerenciar Caixas</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
 
         {/* Filtro: Todas / Não lidas */}
@@ -200,8 +232,9 @@ export function ConversationList({
                   key={conversation.id}
                   onClick={() => onSelect(conversation.id)}
                   className={cn(
-                    'flex w-full items-start gap-3 border border-transparent p-3 text-left transition-colors duration-200 hover:bg-accent/30',
-                    isSelected && 'border-border/50 bg-accent/50',
+                    'flex w-full items-start gap-3 border-l-2 border-l-transparent p-3 text-left transition-colors duration-200 hover:bg-accent/30',
+                    isSelected && 'border-l-primary bg-accent/50',
+                    !isSelected && hasUnread && 'bg-primary/[0.03]',
                   )}
                 >
                   <Avatar className="h-10 w-10 shrink-0">
@@ -244,7 +277,7 @@ export function ConversationList({
                       <p
                         className={cn(
                           'mt-0.5 truncate text-xs text-muted-foreground',
-                          hasUnread && 'font-medium text-foreground/80',
+                          hasUnread && 'font-medium text-foreground/90',
                         )}
                       >
                         {conversation.lastMessage.role === 'assistant' && (

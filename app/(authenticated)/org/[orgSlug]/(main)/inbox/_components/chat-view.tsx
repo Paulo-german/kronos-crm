@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useMemo } from 'react'
+import { useState, useRef, useMemo, useEffect } from 'react'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 import { Separator } from '@/_components/ui/separator'
@@ -31,6 +31,10 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug }:
   const [text, setText] = useState('')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const chatInputRef = useRef<ChatInputHandle>(null)
+
+  useEffect(() => {
+    chatInputRef.current?.focus()
+  }, [])
 
   const {
     messages,

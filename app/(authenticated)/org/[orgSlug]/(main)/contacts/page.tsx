@@ -5,12 +5,6 @@ import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 import { ContactsDataTable } from './_components/contacts-data-table'
 import CreateContactButton from './_components/create-contact-button'
 import { QuotaHint } from '@/_components/trial/quota-hint'
-import Header, {
-  HeaderLeft,
-  HeaderTitle,
-  HeaderSubTitle,
-  HeaderRight,
-} from '@/_components/header'
 import Link from 'next/link'
 import { Button } from '@/_components/ui/button'
 import { Upload } from 'lucide-react'
@@ -33,27 +27,22 @@ const ContactsPage = async ({ params }: ContactsPageProps) => {
 
   return (
     <div className="space-y-6">
-      <Header>
-        <HeaderLeft>
-          <HeaderTitle>Contatos</HeaderTitle>
-          <HeaderSubTitle>Gerencie seus contatos e leads</HeaderSubTitle>
-          <QuotaHint orgId={ctx.orgId} entity="contact" />
-        </HeaderLeft>
-        <HeaderRight>
-          <Button variant="outline" asChild>
-            <Link href={`/org/${orgSlug}/contacts/import`}>
-              <Upload className="mr-2 h-4 w-4" />
-              Importar
-            </Link>
-          </Button>
-          <div data-tour="contacts-create">
-            <CreateContactButton
-              companyOptions={companies}
-              withinQuota={quota.withinQuota}
-            />
-          </div>
-        </HeaderRight>
-      </Header>
+      <div className="flex items-center gap-2">
+        <QuotaHint orgId={ctx.orgId} entity="contact" />
+        <div className="flex-1" />
+        <Button variant="outline" asChild>
+          <Link href={`/org/${orgSlug}/contacts/import`}>
+            <Upload className="mr-2 h-4 w-4" />
+            Importar
+          </Link>
+        </Button>
+        <div data-tour="contacts-create">
+          <CreateContactButton
+            companyOptions={companies}
+            withinQuota={quota.withinQuota}
+          />
+        </div>
+      </div>
       <div data-tour="contacts-table">
         <ContactsDataTable
           contacts={contacts}

@@ -382,6 +382,57 @@ export const processAgentMessage = task({
         content: 'Créditos de IA insuficientes para processar esta mensagem.',
         metadata: { subtype: 'NO_CREDITS', estimatedCost },
       })
+
+      // Notificar OWNER/ADMIN apenas se nao existe notificacao nao lida com mesmo titulo
+      // nas ultimas 24h — evita spam por cada mensagem sem credito
+      const recentCreditNotification = await db.notification.findFirst({
+        where: {
+          organizationId,
+          type: 'SYSTEM',
+          title: 'Créditos de IA esgotados',
+          readAt: null,
+          createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+        },
+      })
+
+      if (!recentCreditNotification) {
+        const [orgAdmins, organization] = await Promise.all([
+          db.member.findMany({
+            where: {
+              organizationId,
+              role: { in: ['OWNER', 'ADMIN'] },
+              status: 'ACCEPTED',
+              userId: { not: null },
+            },
+            select: { userId: true },
+          }),
+          db.organization.findUnique({
+            where: { id: organizationId },
+            select: { slug: true },
+          }),
+        ])
+
+        if (orgAdmins.length > 0) {
+          // Criar notificacoes diretamente (sem import server-only — ambiente Trigger.dev)
+          for (const admin of orgAdmins) {
+            void db.notification.create({
+              data: {
+                organizationId,
+                userId: admin.userId!,
+                type: 'SYSTEM',
+                title: 'Créditos de IA esgotados',
+                body: 'Seus créditos de IA acabaram. Recarregue para continuar usando o agente.',
+                actionUrl: organization
+                  ? `/org/${organization.slug}/settings/billing`
+                  : null,
+                resourceType: 'credit',
+                resourceId: null,
+              },
+            })
+          }
+        }
+      }
+
       await revalidateConversationCache(conversationId, organizationId)
       return { skipped: true, reason: 'no_credits' }
     }

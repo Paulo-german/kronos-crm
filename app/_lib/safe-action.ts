@@ -2,6 +2,7 @@ import { createSafeActionClient } from 'next-safe-action'
 import { cookies } from 'next/headers'
 import { createClient } from '@/_lib/supabase/server'
 import { validateMembership } from '@/_data-access/organization/validate-membership'
+import { db } from '@/_lib/prisma'
 import type { MemberRole } from '@prisma/client'
 
 import { ORG_SLUG_COOKIE } from '@/_lib/constants'
@@ -89,4 +90,25 @@ export const orgActionClient = createSafeActionClient({
       userRole: membership.userRole as MemberRole,
     },
   })
+})
+
+/**
+ * Action client exclusivo para super admins (painel Creta).
+ * Herda autenticação do authActionClient e verifica isSuperAdmin no banco.
+ * Use para: TODAS as actions do painel /admin que manipulam dados globais da plataforma.
+ *
+ * Disponibiliza no contexto:
+ * - ctx.userId: ID do usuário autenticado e verificado como super admin
+ */
+export const superAdminActionClient = authActionClient.use(async ({ ctx, next }) => {
+  const user = await db.user.findUnique({
+    where: { id: ctx.userId },
+    select: { isSuperAdmin: true },
+  })
+
+  if (!user?.isSuperAdmin) {
+    throw new Error('Acesso negado.')
+  }
+
+  return next({ ctx })
 })

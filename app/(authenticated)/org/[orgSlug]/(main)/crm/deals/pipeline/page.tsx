@@ -2,6 +2,7 @@ import { getOrgContext } from '@/_data-access/organization/get-organization-cont
 import { getOrgPipeline } from '@/_data-access/pipeline/get-user-pipeline'
 import { getDealsByPipeline } from '@/_data-access/deal/get-deals-by-pipeline'
 import { getContacts } from '@/_data-access/contact/get-contacts'
+import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
 import { PipelineClient } from './_components/pipeline-client'
 import { createDefaultPipeline } from '@/_data-access/pipeline/create-default-pipeline'
 
@@ -20,8 +21,8 @@ const PipelinePage = async ({ params }: PipelinePageProps) => {
   const finalPipeline =
     pipeline || (await createDefaultPipeline({ orgId: ctx.orgId }))
 
-  // Busca deals e contatos em paralelo (com contexto RBAC)
-  const [dealsByStage, contacts] = await Promise.all([
+  // Busca deals, contatos e membros em paralelo (com contexto RBAC)
+  const [dealsByStage, contacts, orgMembers] = await Promise.all([
     finalPipeline
       ? getDealsByPipeline(
           finalPipeline.stages.map((s) => s.id),
@@ -29,7 +30,12 @@ const PipelinePage = async ({ params }: PipelinePageProps) => {
         )
       : {},
     getContacts(ctx),
+    getOrganizationMembers(ctx.orgId),
   ])
+
+  const members = orgMembers.accepted
+    .filter((member) => member.userId && member.user?.fullName)
+    .map((member) => ({ userId: member.userId!, name: member.user!.fullName! }))
 
   return (
     <div className="flex h-full flex-col space-y-6 overflow-hidden">
@@ -37,6 +43,8 @@ const PipelinePage = async ({ params }: PipelinePageProps) => {
         pipeline={finalPipeline}
         dealsByStage={dealsByStage}
         contacts={contacts}
+        members={members}
+        currentUserId={ctx.userId}
         userRole={ctx.userRole}
       />
     </div>

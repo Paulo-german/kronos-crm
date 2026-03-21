@@ -10,12 +10,6 @@ import CreateDealButton from '../_components/create-deal-button'
 import { ViewToggle } from '../_components/view-toggle'
 import { PipelineSettingsButton } from '../_components/pipeline-settings-button'
 import { QuotaHint } from '@/_components/trial/quota-hint'
-import Header, {
-  HeaderLeft,
-  HeaderTitle,
-  HeaderSubTitle,
-  HeaderRight,
-} from '@/_components/header'
 
 interface DealsListPageProps {
   params: Promise<{ orgSlug: string }>
@@ -39,29 +33,21 @@ const DealsListPage = async ({ params, searchParams }: DealsListPageProps) => {
   ])
 
   return (
-    <div className="space-y-6">
-      <Header>
-        <HeaderLeft>
-          <div className="flex items-center gap-4">
-            <HeaderTitle>Negociações</HeaderTitle>
-          </div>
-          <HeaderSubTitle>
-            Visualize e gerencie todas as suas negociações
-          </HeaderSubTitle>
-          <QuotaHint orgId={ctx.orgId} entity="deal" />
-        </HeaderLeft>
-        <HeaderRight>
-          <ViewToggle activeView="list" />
-          {(ctx.userRole === 'ADMIN' || ctx.userRole === 'OWNER') && (
-            <PipelineSettingsButton pipeline={pipeline} />
-          )}
-          <CreateDealButton
-            stages={pipeline.stages}
-            contacts={contacts}
-            withinQuota={quota.withinQuota}
-          />
-        </HeaderRight>
-      </Header>
+    <div className="space-y-4">
+      {/* Toolbar */}
+      <div className="flex items-center gap-2">
+        <ViewToggle activeView="list" />
+        <QuotaHint orgId={ctx.orgId} entity="deal" />
+        <div className="flex-1" />
+        {(ctx.userRole === 'ADMIN' || ctx.userRole === 'OWNER') && (
+          <PipelineSettingsButton pipeline={pipeline} />
+        )}
+        <CreateDealButton
+          stages={pipeline.stages}
+          contacts={contacts}
+          withinQuota={quota.withinQuota}
+        />
+      </div>
       <DealsDataTable
         deals={deals}
         stages={pipeline.stages}

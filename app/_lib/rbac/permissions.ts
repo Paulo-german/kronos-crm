@@ -104,6 +104,18 @@ const PERMISSION_MATRIX: Record<RBACEntity, Record<RBACAction, MemberRole[]>> = 
     delete: ['OWNER', 'ADMIN', 'MEMBER'],
     transfer: [],
   },
+  notification: {
+    // Criacao e backend-only (helper createNotification, nao exposto ao client)
+    create: [],
+    // Cada usuario ve apenas as proprias (filtro por userId no data-access)
+    read: ['OWNER', 'ADMIN', 'MEMBER'],
+    // Marcar como lida
+    update: ['OWNER', 'ADMIN', 'MEMBER'],
+    // Deletar proprias notificacoes
+    delete: ['OWNER', 'ADMIN', 'MEMBER'],
+    // Nao se aplica a notificacoes
+    transfer: [],
+  },
 }
 
 /**

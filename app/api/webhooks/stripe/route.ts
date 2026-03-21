@@ -4,6 +4,7 @@ import { stripe } from '@/_lib/stripe'
 import { db } from '@/_lib/prisma'
 import { revalidateTag } from 'next/cache'
 import { getSubscriptionPeriodEnd, resolveProductKeyFromPriceId } from '@/_lib/stripe-utils'
+import { notifyOrgAdmins } from '@/_lib/notifications/notify-org-admins'
 import type Stripe from 'stripe'
 
 export async function POST(req: Request) {
@@ -58,6 +59,12 @@ export async function POST(req: Request) {
       case 'customer.subscription.deleted':
         await handleSubscriptionDeleted(
           event.data.object as Stripe.Subscription,
+        )
+        break
+
+      case 'invoice.payment_failed':
+        await handleInvoicePaymentFailed(
+          event.data.object as Stripe.Invoice,
         )
         break
 
@@ -216,6 +223,33 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   })
 
   revalidateTag(`subscriptions:${existing.organizationId}`)
+}
+
+async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
+  const subDetails = invoice.parent?.subscription_details
+  if (!subDetails?.subscription) return
+
+  const subscriptionId =
+    typeof subDetails.subscription === 'string'
+      ? subDetails.subscription
+      : subDetails.subscription.id
+
+  const existing = await db.subscription.findUnique({
+    where: { stripeSubscriptionId: subscriptionId },
+    select: { organizationId: true },
+  })
+
+  if (!existing) return
+
+  await notifyOrgAdmins({
+    orgId: existing.organizationId,
+    type: 'SYSTEM',
+    title: 'Falha no pagamento',
+    body: 'Houve um problema com o pagamento da sua assinatura. Verifique seu método de pagamento.',
+    actionPath: '/settings/billing',
+    resourceType: 'subscription',
+    resourceId: subscriptionId,
+  })
 }
 
 /**

@@ -4,6 +4,7 @@ import { authActionClient } from '@/_lib/safe-action'
 import { acceptInviteSchema } from './schema'
 import { db } from '@/_lib/prisma'
 import { revalidateTag } from 'next/cache'
+import { createNotification } from '@/_lib/notifications/create-notification'
 
 export const acceptInvite = authActionClient
   .schema(acceptInviteSchema)
@@ -69,5 +70,30 @@ export const acceptInvite = authActionClient
     revalidateTag(`user-orgs:${ctx.userId}`) // Para aparecer no seletor de orgs
     revalidateTag(`org-members:${member.organizationId}`) // Para atualizar lista de membros
 
-    return { success: true, orgSlug: member.organization.slug }
+    // Notificar OWNERs e ADMINs da org sobre o novo membro
+    const orgSlug = member.organization.slug
+    const admins = await db.member.findMany({
+      where: {
+        organizationId: member.organizationId,
+        status: 'ACCEPTED',
+        role: { in: ['OWNER', 'ADMIN'] },
+        userId: { not: null },
+      },
+      select: { userId: true },
+    })
+
+    for (const admin of admins) {
+      void createNotification({
+        orgId: member.organizationId,
+        userId: admin.userId!,
+        type: 'USER_ACTION',
+        title: 'Novo membro na equipe',
+        body: `${member.email} aceitou o convite e entrou na equipe.`,
+        actionUrl: `/org/${orgSlug}/settings/members`,
+        resourceType: 'member',
+        resourceId: member.id,
+      })
+    }
+
+    return { success: true, orgSlug }
   })

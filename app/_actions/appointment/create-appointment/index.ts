@@ -10,6 +10,8 @@ import {
   resolveAssignedTo,
   findDealWithRBAC,
 } from '@/_lib/rbac'
+import { createNotification } from '@/_lib/notifications/create-notification'
+import { getOrgSlug } from '@/_lib/notifications/get-org-slug'
 
 export const createAppointment = orgActionClient
   .schema(createAppointmentSchema)
@@ -42,7 +44,7 @@ export const createAppointment = orgActionClient
     }
 
     // 6. Criar agendamento
-    await db.appointment.create({
+    const appointment = await db.appointment.create({
       data: {
         organizationId: ctx.orgId,
         title: data.title,
@@ -68,6 +70,22 @@ export const createAppointment = orgActionClient
     revalidateTag(`appointments:${ctx.orgId}`)
     revalidateTag(`deal-appointments:${data.dealId}`)
     revalidateTag(`deal:${data.dealId}`)
+
+    // Notificar responsável quando o agendamento é atribuído a outro usuário
+    if (assignedTo !== ctx.userId) {
+      void getOrgSlug(ctx.orgId).then((slug) => {
+        void createNotification({
+          orgId: ctx.orgId,
+          userId: assignedTo,
+          type: 'USER_ACTION',
+          title: 'Novo agendamento atribuído a você',
+          body: `O agendamento "${data.title}" foi atribuído a você.`,
+          actionUrl: `/org/${slug}/crm/appointments`,
+          resourceType: 'appointment',
+          resourceId: appointment.id,
+        })
+      })
+    }
 
     return { success: true }
   })

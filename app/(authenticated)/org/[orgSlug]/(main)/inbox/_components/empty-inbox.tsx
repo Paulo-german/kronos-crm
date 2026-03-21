@@ -1,15 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { Inbox, Plus } from 'lucide-react'
+import { Inbox, MessageSquare, Sparkles } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/_components/ui/card'
 
 interface EmptyInboxProps {
   orgSlug: string
@@ -18,34 +11,39 @@ interface EmptyInboxProps {
 
 export function EmptyInbox({ orgSlug, hasNoInbox = false }: EmptyInboxProps) {
   return (
-    <div className="flex h-full flex-1 items-center justify-center p-6">
-      <Card className="max-w-md border-border/50 bg-secondary/20">
-        <CardHeader className="items-center pb-3 text-center">
-          <div className="rounded-full bg-muted p-4">
-            <Inbox className="h-6 w-6 text-muted-foreground" />
-          </div>
-          <CardTitle className="text-xl">
-            {hasNoInbox
-              ? 'Nenhuma caixa de entrada'
-              : 'Nenhuma conversa ainda'}
-          </CardTitle>
-          <CardDescription>
-            {hasNoInbox
-              ? 'Crie sua primeira caixa de entrada para começar a receber mensagens via WhatsApp.'
-              : 'Quando seus agentes de IA começarem a conversar com clientes via WhatsApp, as conversas aparecerão aqui.'}
-          </CardDescription>
-        </CardHeader>
-        {hasNoInbox && (
-          <CardContent className="flex justify-center pb-6">
-            <Button asChild>
-              <Link href={`/org/${orgSlug}/settings/inboxes`}>
-                <Plus className="mr-2 h-4 w-4" />
-                Criar Caixa de Entrada
-              </Link>
-            </Button>
-          </CardContent>
-        )}
-      </Card>
+    <div className="flex h-[60vh] flex-1 flex-col items-center justify-center gap-6 px-4">
+      <div className="relative">
+        <div className="absolute inset-0 animate-pulse rounded-full bg-primary/20 blur-2xl" />
+        <div className="relative flex size-20 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/25">
+          {hasNoInbox ? (
+            <Inbox className="size-10 text-primary-foreground" />
+          ) : (
+            <MessageSquare className="size-10 text-primary-foreground" />
+          )}
+        </div>
+      </div>
+
+      <div className="max-w-md space-y-2 text-center">
+        <h3 className="text-xl font-semibold tracking-tight">
+          {hasNoInbox
+            ? 'Nenhuma caixa de entrada'
+            : 'Nenhuma conversa ainda'}
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          {hasNoInbox
+            ? 'Crie sua primeira caixa de entrada para começar a receber mensagens via WhatsApp.'
+            : 'Quando seus agentes de IA começarem a conversar com clientes via WhatsApp, as conversas aparecerão aqui.'}
+        </p>
+      </div>
+
+      {hasNoInbox && (
+        <Button asChild>
+          <Link href={`/org/${orgSlug}/settings/inboxes`}>
+            <Sparkles className="mr-2 h-4 w-4" />
+            Criar Caixa de Entrada
+          </Link>
+        </Button>
+      )}
     </div>
   )
 }

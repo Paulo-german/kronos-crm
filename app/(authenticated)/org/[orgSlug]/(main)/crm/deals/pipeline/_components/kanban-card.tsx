@@ -104,9 +104,7 @@ const KanbanCard = ({
     onClick?.()
   }
 
-  const draggingClass = isDragging
-    ? 'opacity-30 ring-2 ring-primary rotate-2'
-    : ''
+  const draggingClass = isDragging ? 'opacity-20 scale-[0.98]' : ''
 
   return (
     <Card
