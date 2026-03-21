@@ -169,6 +169,22 @@ enum ConversationEventType {
   INFO
 }
 
+enum IntegrationProvider {
+  GOOGLE_CALENDAR
+}
+
+enum IntegrationStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+}
+
+enum SyncDirection {
+  CRM_TO_EXTERNAL
+  EXTERNAL_TO_CRM
+  BIDIRECTIONAL
+}
+
 // -----------------------------------------------------------------------------
 // MODELS
 // -----------------------------------------------------------------------------
@@ -191,6 +207,7 @@ model User {
   tasksCreated     Task[]         @relation("TaskCreator")
   activitiesPerformed Activity[] @relation("ActivityPerformer")
   appointments           Appointment[]  @relation("AppointmentAssignee")
+  integrations     UserIntegration[]
 
   @@map("users")
 }
@@ -255,6 +272,7 @@ model Organization {
   inboxes               Inbox[]
   conversations         Conversation[]
   agentTestConversations AgentTestConversation[]
+  userIntegrations      UserIntegration[]
 
   @@map("organizations")
 }
@@ -498,6 +516,7 @@ model Appointment {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   user         User         @relation("AppointmentAssignee", fields: [assignedTo], references: [id])
   deal         Deal         @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  syncMappings CalendarSyncMapping[]
 
   @@index([organizationId])
   @@index([assignedTo])
@@ -1028,4 +1047,68 @@ model AgentTestMessage {
 
   @@index([testConversationId, createdAt(sort: Desc)])
   @@map("agent_test_messages")
+}
+
+// -----------------------------------------------------------------------------
+// INTEGRATIONS MODELS
+// -----------------------------------------------------------------------------
+
+model UserIntegration {
+  id String @id @default(uuid())
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  organizationId String       @map("organization_id")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  provider IntegrationProvider
+  status   IntegrationStatus   @default(ACTIVE)
+
+  accessTokenEncrypted  String   @map("access_token_encrypted")
+  refreshTokenEncrypted String   @map("refresh_token_encrypted")
+  tokenExpiresAt        DateTime @map("token_expires_at")
+  scope                 String
+
+  providerAccountId String? @map("provider_account_id")
+  providerMetadata  Json?   @map("provider_metadata") @db.JsonB
+
+  lastSyncAt DateTime? @map("last_sync_at")
+  syncError  String?   @map("sync_error")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  syncMappings CalendarSyncMapping[]
+
+  @@unique([userId, organizationId, provider])
+  @@index([organizationId, provider, status])
+  @@index([userId, provider])
+  @@map("user_integrations")
+}
+
+model CalendarSyncMapping {
+  id String @id @default(uuid())
+
+  integrationId String          @map("integration_id")
+  integration   UserIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  appointmentId String      @map("appointment_id")
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  externalEventId    String @map("external_event_id")
+  externalCalendarId String @map("external_calendar_id")
+
+  direction         SyncDirection @default(CRM_TO_EXTERNAL)
+  lastSyncedAt      DateTime      @map("last_synced_at")
+  externalUpdatedAt DateTime?     @map("external_updated_at")
+  checksum          String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([integrationId, appointmentId])
+  @@unique([integrationId, externalEventId])
+  @@index([appointmentId])
+  @@map("calendar_sync_mappings")
 }

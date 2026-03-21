@@ -140,6 +140,7 @@ function getEntityLabel(entity: RBACEntity): string {
     agent: 'agentes IA',
     inbox: 'caixas de entrada',
     conversation: 'conversas',
+    integration: 'integrações',
   }
   return labels[entity]
 }

@@ -26,6 +26,7 @@ export type RBACEntity =
   | 'agent'
   | 'inbox'
   | 'conversation'
+  | 'integration'
 
 /**
  * Ações possíveis em cada entidade

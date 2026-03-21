@@ -36,6 +36,12 @@ const MODULE_NAV_CONFIG: Record<ModuleSlug, ModuleNavGroup> = {
       { label: 'Agentes', iconName: 'Bot', href: '/ai-agent', badge: 'Em breve' },
     ],
   },
+  // Integrações não possuem navegação própria na sidebar — vivem em Settings
+  integrations: {
+    moduleSlug: 'integrations',
+    moduleTitle: 'Integrações',
+    items: [],
+  },
 }
 
 /**

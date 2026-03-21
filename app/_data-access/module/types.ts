@@ -3,4 +3,4 @@ export interface ModuleInfo {
   name: string
 }
 
-export type ModuleSlug = 'crm' | 'inbox' | 'ai-agent'
+export type ModuleSlug = 'crm' | 'inbox' | 'ai-agent' | 'integrations'
