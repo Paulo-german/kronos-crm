@@ -4,10 +4,12 @@ import { Check } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { cn } from '@/_lib/utils'
 
+// Step 4 (celebracao) nao aparece no stepper
 const ONBOARDING_STEPS = [
-  { id: 'niche', label: 'Segmento' },
+  { id: 'conversation', label: 'Seu Negócio' },
+  { id: 'config', label: 'Configuração' },
+  { id: 'agent', label: 'Agente IA' },
   { id: 'whatsapp', label: 'WhatsApp' },
-  { id: 'setup', label: 'Configuração' },
 ] as const
 
 interface OnboardingStepperProps {
@@ -46,7 +48,7 @@ export function OnboardingStepper({ currentStep }: OnboardingStepperProps) {
               </div>
               <span
                 className={cn(
-                  'text-sm font-medium',
+                  'hidden text-sm font-medium sm:inline',
                   isCurrent && 'text-foreground',
                   isCompleted && 'text-foreground',
                   isFuture && 'text-muted-foreground/50',
@@ -57,7 +59,7 @@ export function OnboardingStepper({ currentStep }: OnboardingStepperProps) {
             </div>
 
             {index < ONBOARDING_STEPS.length - 1 && (
-              <div className="relative mx-2 h-px w-8 bg-border sm:w-12">
+              <div className="relative mx-2 h-px w-6 bg-border sm:w-12">
                 <motion.div
                   className="absolute inset-0 bg-primary"
                   initial={{ scaleX: 0 }}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import type { OnboardingStatus } from '@/_data-access/organization/get-onboarding-status'
 
 function readUrlParam(key: string): string | null {
@@ -20,74 +20,80 @@ function syncToUrl(params: Record<string, string | null>) {
   window.history.replaceState({}, '', url)
 }
 
-function computeMaxValidStep(
-  niche: string | null,
-): number {
-  if (!niche) return 0
-  return 3
-}
-
 export function useOnboardingParams(initialStatus: OnboardingStatus) {
-  const computedInitialStep = !initialStatus.niche
-    ? 0
-    : !initialStatus.hasInbox
-      ? 1
-      : 2
+  // Valores default seguros para SSR (sem acesso a window)
+  const computedInitialStep = !initialStatus.hasInbox ? 0 : 3
 
-  const [stepRaw, setStepRaw] = useState(() => {
-    const urlVal = readUrlParam('s')
-    if (urlVal !== null) {
-      const parsed = parseInt(urlVal, 10)
-      if (!isNaN(parsed)) return parsed
+  const [step, setStepRaw] = useState(computedInitialStep)
+  const [inboxId, setInboxIdRaw] = useState<string | null>(null)
+  const [whatsappConnected, setWhatsappConnectedRaw] = useState(
+    initialStatus.hasInbox,
+  )
+  const [configApproved, setConfigApprovedRaw] = useState(false)
+  const [agentApproved, setAgentApprovedRaw] = useState(false)
+
+  // Hidrata do URL params no client (uma vez, no mount)
+  const hydratedRef = useRef(false)
+  useEffect(() => {
+    if (hydratedRef.current) return
+    hydratedRef.current = true
+
+    const urlStep = readUrlParam('s')
+    if (urlStep !== null) {
+      const parsed = parseInt(urlStep, 10)
+      if (!isNaN(parsed)) setStepRaw(Math.min(parsed, 4))
     }
-    return computedInitialStep
-  })
 
-  const [niche, setNicheRaw] = useState<string | null>(
-    () => readUrlParam('n') || initialStatus.niche,
-  )
+    const urlInboxId = readUrlParam('iid')
+    if (urlInboxId) setInboxIdRaw(urlInboxId)
 
-  const [inboxId, setInboxIdRaw] = useState<string | null>(
-    () => readUrlParam('iid') || null,
-  )
+    const urlWc = readUrlParam('wc')
+    if (urlWc === 'true') setWhatsappConnectedRaw(true)
 
-  const [whatsappConnected, setWhatsappConnectedRaw] = useState(() => {
-    const urlVal = readUrlParam('wc')
-    if (urlVal === 'true') return true
-    if (urlVal === 'false') return false
-    return initialStatus.hasInbox
-  })
+    const urlCa = readUrlParam('ca')
+    if (urlCa === 'true') setConfigApprovedRaw(true)
+
+    const urlAa = readUrlParam('aa')
+    if (urlAa === 'true') setAgentApprovedRaw(true)
+  }, [])
 
   // Sync state → URL
   useEffect(() => {
+    if (!hydratedRef.current) return
     syncToUrl({
-      s: String(stepRaw),
-      n: niche,
+      s: String(step),
       iid: inboxId,
       wc: whatsappConnected ? 'true' : null,
+      ca: configApproved ? 'true' : null,
+      aa: agentApproved ? 'true' : null,
     })
-  }, [stepRaw, niche, inboxId, whatsappConnected])
-
-  const maxValidStep = computeMaxValidStep(niche)
-
-  const step = Math.min(stepRaw, maxValidStep)
+  }, [step, inboxId, whatsappConnected, configApproved, agentApproved])
 
   const setStep = useCallback((value: number) => setStepRaw(value), [])
-  const setNiche = useCallback((value: string) => setNicheRaw(value), [])
   const setInboxId = useCallback((value: string) => setInboxIdRaw(value), [])
   const setWhatsappConnected = useCallback(
     (value: boolean) => setWhatsappConnectedRaw(value),
+    [],
+  )
+  const setConfigApproved = useCallback(
+    (value: boolean) => setConfigApprovedRaw(value),
+    [],
+  )
+  const setAgentApproved = useCallback(
+    (value: boolean) => setAgentApprovedRaw(value),
     [],
   )
 
   return {
     step,
     setStep,
-    niche,
-    setNiche,
     inboxId,
     setInboxId,
     whatsappConnected,
     setWhatsappConnected,
+    configApproved,
+    setConfigApproved,
+    agentApproved,
+    setAgentApproved,
   }
 }
