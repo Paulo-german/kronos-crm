@@ -48,6 +48,7 @@ import {
 import ConfirmationDialog from '@/_components/confirmation-dialog'
 import type { DealDetailsDto } from '@/_data-access/deal/get-deal-details'
 import { formatPhone } from '@/_utils/format-phone'
+import { formatPhoneForWhatsApp } from '@/_utils/format-phone-whatsapp'
 import type { ContactDto } from '@/_data-access/contact/get-contacts'
 import { addDealContact } from '@/_actions/deal/add-deal-contact'
 import { removeDealContact } from '@/_actions/deal/remove-deal-contact'
@@ -139,16 +140,6 @@ const ContactWidget = ({ deal, contacts }: ContactWidgetProps) => {
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text)
     toast.success(`${label} copiado!`)
-  }
-
-  // Helper para formatar número para WhatsApp (remove caracteres não numéricos)
-  const formatPhoneForWhatsApp = (phone: string) => {
-    const cleaned = phone.replace(/\D/g, '')
-    // Adiciona código do país se não tiver (assumindo Brasil +55)
-    if (cleaned.length === 11 || cleaned.length === 10) {
-      return `55${cleaned}`
-    }
-    return cleaned
   }
 
   const getInitials = (name: string) => {

@@ -1,316 +1,123 @@
 'use client'
 
-import { useState, useRef } from 'react'
-import Link from 'next/link'
-import { ColumnDef } from '@tanstack/react-table'
-import {
-  UserIcon,
-  MailIcon,
-  PhoneIcon,
-  Building2Icon,
-  User2Icon,
-  AxeIcon,
-  TrashIcon,
-} from 'lucide-react'
-import { Badge } from '@/_components/ui/badge'
-import { DataTable } from '@/_components/data-table'
-import { formatPhone } from '@/_utils/format-phone'
-import type { ContactDto } from '@/_data-access/contact/get-contacts'
-import type { CompanyDto } from '@/_data-access/company/get-companies'
-import ContactTableDropdownMenu from './table-dropdown-menu'
+import { useState, useCallback } from 'react'
+import { TrashIcon } from 'lucide-react'
+import { Checkbox } from '@/_components/ui/checkbox'
 import { Button } from '@/_components/ui/button'
-import { Sheet } from '@/_components/ui/sheet'
-import { useAction } from 'next-safe-action/hooks'
-import { bulkDeleteContacts } from '@/_actions/contact/bulk-delete-contacts'
-import { deleteContact } from '@/_actions/contact/delete-contact'
-import { updateContact } from '@/_actions/contact/update-contact'
-import { toast } from 'sonner'
-import ConfirmationDialog from '@/_components/confirmation-dialog'
-import UpsertContactDialogContent from './upsert-dialog-content'
+import { ContactCardRow } from './contact-card-row'
+import type { ContactDto } from '@/_data-access/contact/get-contacts'
 
 interface ContactsDataTableProps {
-  contacts: ContactDto[]
-  companyOptions: CompanyDto[]
+  filteredContacts: ContactDto[]
+  onEdit: (contact: ContactDto) => void
+  onDelete: (contact: ContactDto) => void
+  onBulkDelete: (ids: string[]) => void
+  orgSlug: string
 }
 
 export function ContactsDataTable({
-  contacts,
-  companyOptions,
+  filteredContacts,
+  onEdit,
+  onDelete,
+  onBulkDelete,
+  orgSlug,
 }: ContactsDataTableProps) {
-  // Estado do dialog de edição (levantado para cá para sobreviver ao re-render da tabela)
-  const [editingContact, setEditingContact] = useState<ContactDto | null>(null)
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-  // Estado do dialog de deleção individual
-  const [deletingContact, setDeletingContact] = useState<ContactDto | null>(null)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  // Estado do dialog de deleção em massa
-  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false)
-  const [bulkDeleteIds, setBulkDeleteIds] = useState<string[]>([])
-  const resetSelectionRef = useRef<(() => void) | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
-  // Hook para deletar em massa
-  const { execute: executeBulkDelete, isExecuting: isDeleting } = useAction(
-    bulkDeleteContacts,
-    {
-      onSuccess: ({ data }) => {
-        toast.success(`${data?.count || 1} contato(s) excluído(s) com sucesso.`)
-        setIsBulkDeleteOpen(false)
-        resetSelectionRef.current?.()
-      },
-      onError: () => {
-        toast.error('Erro ao excluir contatos.')
-      },
+  const isAllSelected =
+    filteredContacts.length > 0 &&
+    filteredContacts.every((contact) => selectedIds.has(contact.id))
+
+  const isIndeterminate =
+    !isAllSelected && filteredContacts.some((contact) => selectedIds.has(contact.id))
+
+  const handleSelectAll = useCallback(
+    (checked: boolean) => {
+      if (checked) {
+        setSelectedIds(new Set(filteredContacts.map((contact) => contact.id)))
+      } else {
+        setSelectedIds(new Set())
+      }
     },
+    [filteredContacts],
   )
 
-  // Hook para deletar individualmente (precisa estar aqui para não desmontar com a linha da tabela)
-  const { execute: executeDelete, isExecuting: isDeletingIndividual } =
-    useAction(deleteContact, {
-      onSuccess: () => {
-        toast.success('Contato excluído com sucesso.')
-        setIsDeleteDialogOpen(false)
-        setDeletingContact(null)
-      },
-      onError: ({ error }) => {
-        toast.error(error.serverError || 'Erro ao excluir contato.')
-      },
+  const handleSelectionChange = useCallback((id: string, checked: boolean) => {
+    setSelectedIds((previous) => {
+      const next = new Set(previous)
+      if (checked) {
+        next.add(id)
+      } else {
+        next.delete(id)
+      }
+      return next
     })
+  }, [])
 
-  // Hook para atualizar individualmente (precisa estar aqui para não desmontar com a linha da tabela)
-  const { execute: executeUpdate, isPending: isUpdating } = useAction(
-    updateContact,
-    {
-      onSuccess: () => {
-        toast.success('Contato atualizado com sucesso!')
-        setIsEditDialogOpen(false)
-        setEditingContact(null)
-      },
-      onError: ({ error }) => {
-        toast.error(error.serverError || 'Erro ao atualizar contato.')
-      },
-    },
-  )
-
-  const handleEdit = (contact: ContactDto) => {
-    setEditingContact(contact)
-    setIsEditDialogOpen(true)
+  const handleBulkDelete = () => {
+    onBulkDelete(Array.from(selectedIds))
+    setSelectedIds(new Set())
   }
 
-  const columns: ColumnDef<ContactDto>[] = [
-    {
-      accessorKey: 'name',
-      header: () => (
-        <div className="flex items-center gap-2">
-          <UserIcon className="h-4 w-4 text-muted-foreground" />
-          <span>Nome</span>
-        </div>
-      ),
-      cell: ({ row }) => {
-        const contact = row.original
-        return (
-          <Link
-            href={`/contacts/${contact.id}`}
-            className="ml-2 font-medium hover:underline text-left"
-          >
-            {contact.name}
-          </Link>
-        )
-      },
-    },
-    {
-      accessorKey: 'email',
-      header: () => (
-        <div className="flex items-center gap-2">
-          <MailIcon className="h-4 w-4 text-muted-foreground" />
-          <span>Email</span>
-        </div>
-      ),
-      cell: ({ row }) => {
-        const email = row.getValue('email') as string | null
-        if (!email) return <span className="text-muted-foreground">-</span>
-        return <div className="flex items-center gap-2">{email}</div>
-      },
-    },
-    {
-      accessorKey: 'phone',
-      header: () => (
-        <div className="flex items-center gap-2">
-          <PhoneIcon className="h-4 w-4 text-muted-foreground" />
-          <span>Telefone</span>
-        </div>
-      ),
-      cell: ({ row }) => {
-        const phone = row.getValue('phone') as string | null
-        if (!phone) return <span className="text-muted-foreground">-</span>
-        return (
-          <div className="flex items-center gap-2">{formatPhone(phone)}</div>
-        )
-      },
-    },
-    {
-      accessorKey: 'companyName',
-      header: () => (
-        <div className="flex items-center gap-2">
-          <Building2Icon className="h-4 w-4 text-muted-foreground" />
-          <span>Empresa</span>
-        </div>
-      ),
-      cell: ({ row }) => {
-        const companyName = row.getValue('companyName') as string | null
-        if (!companyName) {
-          return '-'
-        }
-        return <div className="flex items-center gap-2">{companyName}</div>
-      },
-    },
-    {
-      accessorKey: 'role',
-      header: () => (
-        <div className="flex items-center gap-2">
-          <User2Icon className="h-4 w-4 text-muted-foreground" />
-          <span>Cargo</span>
-        </div>
-      ),
-      cell: ({ row }) => {
-        const role = row.getValue('role') as string | null
-        return role || <span className="text-muted-foreground">-</span>
-      },
-    },
-    {
-      accessorKey: 'isDecisionMaker',
-      header: () => (
-        <div className="flex items-center gap-2">
-          <AxeIcon className="h-4 w-4 text-muted-foreground" />
-          <span>Decisor</span>
-        </div>
-      ),
-      cell: ({ row }) => {
-        const isDecisionMaker = row.getValue('isDecisionMaker') as boolean
-        return isDecisionMaker ? (
-          <Badge variant="default">Sim</Badge>
-        ) : (
-          <Badge variant="secondary">Não</Badge>
-        )
-      },
-    },
-    {
-      id: 'actions',
-      cell: ({ row }) => {
-        const contact = row.original
-        return (
-          <ContactTableDropdownMenu
-            contact={contact}
-            onDelete={() => {
-              setDeletingContact(contact)
-              setIsDeleteDialogOpen(true)
-            }}
-            onEdit={() => handleEdit(contact)}
-          />
-        )
-      },
-    },
-  ]
+  if (filteredContacts.length === 0) {
+    return (
+      <div className="flex h-40 items-center justify-center rounded-lg border border-dashed">
+        <p className="text-sm text-muted-foreground">
+          Nenhum contato encontrado com os filtros aplicados.
+        </p>
+      </div>
+    )
+  }
 
   return (
-    <>
-      {/* Sheet de edição fora da tabela para sobreviver ao re-render */}
-      <Sheet
-        open={isEditDialogOpen}
-        onOpenChange={(open) => {
-          setIsEditDialogOpen(open)
-          if (!open) setEditingContact(null)
-        }}
-      >
-        {editingContact && (
-          <UpsertContactDialogContent
-            key={editingContact.id}
-            defaultValues={{
-              id: editingContact.id,
-              name: editingContact.name,
-              email: editingContact.email || '',
-              phone: editingContact.phone || '',
-              role: editingContact.role || '',
-              cpf: editingContact.cpf || '',
-              companyId: editingContact.companyId || undefined,
-              isDecisionMaker: editingContact.isDecisionMaker,
-            }}
-            setIsOpen={setIsEditDialogOpen}
-            companyOptions={companyOptions}
-            onUpdate={(data) => executeUpdate(data)}
-            isUpdating={isUpdating}
-          />
-        )}
-      </Sheet>
-
-      {/* Dialog de deleção individual fora da tabela */}
-      <ConfirmationDialog
-        open={isDeleteDialogOpen}
-        onOpenChange={(open) => {
-          setIsDeleteDialogOpen(open)
-          if (!open) setDeletingContact(null)
-        }}
-        title="Você tem certeza absoluta?"
-        description={
-          <p>
-            Esta ação não pode ser desfeita. Você está prestes a remover
-            permanentemente o contato{' '}
-            <span className="font-bold text-foreground">
-              {deletingContact?.name}
+    <div className="flex flex-col gap-1">
+      {/* Cabeçalho com select all e bulk actions */}
+      <div className="flex items-center gap-3 rounded-lg px-4 py-2">
+        <Checkbox
+          checked={isIndeterminate ? 'indeterminate' : isAllSelected}
+          onCheckedChange={(checked) => handleSelectAll(checked === true)}
+          aria-label="Selecionar todos os contatos"
+        />
+        {selectedIds.size > 0 ? (
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">
+              {selectedIds.size}{' '}
+              {selectedIds.size === 1 ? 'contato selecionado' : 'contatos selecionados'}
             </span>
-          </p>
-        }
-        icon={<TrashIcon />}
-        variant="destructive"
-        onConfirm={() => {
-          if (deletingContact) executeDelete({ id: deletingContact.id })
-        }}
-        isLoading={isDeletingIndividual}
-        confirmLabel="Confirmar Exclusão"
-      />
-
-      {/* Dialog de deleção em massa fora da tabela */}
-      <ConfirmationDialog
-        open={isBulkDeleteOpen}
-        onOpenChange={setIsBulkDeleteOpen}
-        title="Excluir contatos selecionados?"
-        description={
-          <p>
-            Esta ação não pode ser desfeita. Você está prestes a remover
-            <br />
-            <span className="font-semibold text-foreground">
-              {bulkDeleteIds.length} contatos permanentemente do sistema.
-            </span>
-          </p>
-        }
-        icon={<TrashIcon />}
-        variant="destructive"
-        onConfirm={() => executeBulkDelete({ ids: bulkDeleteIds })}
-        isLoading={isDeleting}
-        confirmLabel="Confirmar Exclusão"
-      />
-
-      <DataTable
-        columns={columns}
-        data={contacts}
-        enableSelection={true}
-        bulkActions={({ selectedRows, resetSelection }) => {
-          resetSelectionRef.current = resetSelection
-          return (
             <Button
               variant="destructive"
               size="sm"
-              className="h-8"
-              onClick={() => {
-                setBulkDeleteIds(selectedRows.map((row) => row.id))
-                setIsBulkDeleteOpen(true)
-              }}
+              className="h-7 gap-1.5"
+              onClick={handleBulkDelete}
             >
-              <TrashIcon className="mr-2 h-4 w-4" />
-              Deletar
+              <TrashIcon className="h-3.5 w-3.5" />
+              Excluir selecionados
             </Button>
-          )
-        }}
-      />
-    </>
+          </div>
+        ) : (
+          <span className="text-xs text-muted-foreground">
+            {filteredContacts.length}{' '}
+            {filteredContacts.length === 1 ? 'contato' : 'contatos'}
+          </span>
+        )}
+      </div>
+
+      {/* Lista de cards */}
+      <div className="flex flex-col gap-1.5">
+        {filteredContacts.map((contact) => (
+          <ContactCardRow
+            key={contact.id}
+            contact={contact}
+            isSelected={selectedIds.has(contact.id)}
+            onSelectionChange={(checked) =>
+              handleSelectionChange(contact.id, checked)
+            }
+            onEdit={() => onEdit(contact)}
+            onDelete={() => onDelete(contact)}
+            orgSlug={orgSlug}
+          />
+        ))}
+      </div>
+    </div>
   )
 }
