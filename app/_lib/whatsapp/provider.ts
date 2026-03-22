@@ -2,11 +2,15 @@ import { sendWhatsAppMessage } from '@/_lib/evolution/send-message'
 import { sendWhatsAppAudio } from '@/_lib/evolution/send-audio'
 import { sendWhatsAppMedia } from '@/_lib/evolution/send-media'
 import { sendMetaTextMessage, sendMetaAudioMessage, sendMetaMediaMessage } from '@/_lib/meta/send-meta-message'
+import { sendZApiTextMessage } from '@/_lib/zapi/send-message'
+import { sendZApiAudio } from '@/_lib/zapi/send-audio'
+import { sendZApiMedia } from '@/_lib/zapi/send-media'
+import type { ZApiConfig } from '@/_lib/zapi/types'
 import { ConnectionType } from '@prisma/client'
 
 /**
  * Interface unificada de envio WhatsApp — usada por actions e Trigger.dev.
- * Abstrai diferencas entre Evolution API e Meta Cloud API.
+ * Abstrai diferencas entre Evolution API, Meta Cloud API e Z-API.
  */
 export interface WhatsAppProvider {
   sendText(recipientPhone: string, text: string): Promise<string[]>
@@ -27,6 +31,9 @@ interface InboxProviderContext {
   evolutionInstanceName: string | null
   metaPhoneNumberId: string | null
   metaAccessToken: string | null
+  zapiInstanceId: string | null
+  zapiToken: string | null
+  zapiClientToken: string | null
 }
 
 /**
@@ -45,13 +52,37 @@ export function resolveWhatsAppProvider(inbox: InboxProviderContext): WhatsAppPr
     const accessToken = inbox.metaAccessToken
 
     return {
-      // Strip do sufixo @s.whatsapp.net — Meta Graph API espera apenas o numero internacional
       sendText: (recipientPhone: string, text: string) =>
         sendMetaTextMessage(phoneNumberId, accessToken, recipientPhone.replace('@s.whatsapp.net', ''), text),
       sendAudio: (recipientPhone: string, audioBase64: string) =>
         sendMetaAudioMessage(phoneNumberId, accessToken, recipientPhone.replace('@s.whatsapp.net', ''), audioBase64),
       sendMedia: (recipientPhone: string, mediaBase64: string, mimetype: string, mediatype: 'image' | 'document', fileName?: string, caption?: string) =>
         sendMetaMediaMessage(phoneNumberId, accessToken, recipientPhone.replace('@s.whatsapp.net', ''), mediaBase64, mimetype, mediatype, fileName, caption),
+    }
+  }
+
+  if (inbox.connectionType === 'Z_API') {
+    if (!inbox.zapiInstanceId || !inbox.zapiToken || !inbox.zapiClientToken) {
+      throw new Error(
+        'Z-API nao configurada corretamente. Configure o Instance ID, Token e Client-Token.',
+      )
+    }
+
+    const config: ZApiConfig = {
+      instanceId: inbox.zapiInstanceId,
+      token: inbox.zapiToken,
+      clientToken: inbox.zapiClientToken,
+    }
+
+    return {
+      sendText: (recipientPhone: string, text: string) =>
+        sendZApiTextMessage(config, recipientPhone.replace('@s.whatsapp.net', ''), text),
+      sendAudio: (recipientPhone: string, audioBase64: string) =>
+        sendZApiAudio(config, recipientPhone.replace('@s.whatsapp.net', ''), audioBase64),
+      sendMedia: (recipientPhone: string, _mediaBase64: string, mimetype: string, mediatype: 'image' | 'document', fileName?: string, caption?: string, mediaUrl?: string) => {
+        if (!mediaUrl) throw new Error('Z-API requer URL publica para envio de midia. Configure o B2 Storage.')
+        return sendZApiMedia(config, recipientPhone.replace('@s.whatsapp.net', ''), mediaUrl, mimetype, mediatype, fileName, caption)
+      },
     }
   }
 

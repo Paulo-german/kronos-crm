@@ -14,6 +14,9 @@ export interface InboxDetailDto {
   metaWabaId: string | null
   metaPhoneNumberId: string | null
   metaPhoneDisplay: string | null
+  zapiInstanceId: string | null
+  zapiToken: string | null
+  zapiClientToken: string | null
   agentId: string | null
   agentName: string | null
   autoCreateDeal: boolean
@@ -48,6 +51,9 @@ const fetchInboxByIdFromDb = async (
     metaWabaId: inbox.metaWabaId,
     metaPhoneNumberId: inbox.metaPhoneNumberId,
     metaPhoneDisplay: inbox.metaPhoneDisplay,
+    zapiInstanceId: inbox.zapiInstanceId,
+    zapiToken: inbox.zapiToken,
+    zapiClientToken: inbox.zapiClientToken,
     agentId: inbox.agentId,
     agentName: inbox.agent?.name ?? null,
     autoCreateDeal: inbox.autoCreateDeal ?? true,

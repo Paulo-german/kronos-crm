@@ -491,33 +491,38 @@ model Agent {
   businessHoursConfig   Json?                   @map("business_hours_config")
   businessHoursEnabled  Boolean                 @default(false) @map("business_hours_enabled")
   businessHoursTimezone String                  @default("America/Sao_Paulo") @map("business_hours_timezone")
-  outOfHoursMessage     String?                 @map("out_of_hours_message")
-  promptConfig          Json?                   @map("prompt_config")
+  outOfHoursMessage                String?                 @map("out_of_hours_message")
+  followUpBusinessHoursEnabled     Boolean                 @default(false) @map("follow_up_business_hours_enabled")
+  followUpBusinessHoursConfig      Json?                   @map("follow_up_business_hours_config")
+  followUpBusinessHoursTimezone    String                  @default("America/Sao_Paulo") @map("follow_up_business_hours_timezone")
+  promptConfig                     Json?                   @map("prompt_config")
   knowledgeChunks       AgentKnowledgeChunk[]
   knowledgeFiles        AgentKnowledgeFile[]
   steps                 AgentStep[]
   testConversations     AgentTestConversation[]
   organization          Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   inboxes               Inbox[]
+  followUpGroups        FollowUpGroup[]
 
   @@index([organizationId, isActive])
   @@map("agents")
 }
 
 model AgentStep {
-  id                    String   @id @default(uuid())
-  agentId               String   @map("agent_id")
+  id                    String                    @id @default(uuid())
+  agentId               String                    @map("agent_id")
   name                  String
   objective             String
-  allowedActions        String[] @default([]) @map("allowed_actions")
-  activationRequirement String?  @map("activation_requirement")
+  allowedActions        String[]                  @default([]) @map("allowed_actions")
+  activationRequirement String?                   @map("activation_requirement")
   order                 Int
-  createdAt             DateTime @default(now()) @map("created_at")
-  updatedAt             DateTime @updatedAt @map("updated_at")
-  actions               Json?    @map("actions")
-  keyQuestion           String?  @map("key_question")
-  messageTemplate       String?  @map("message_template")
-  agent                 Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  createdAt             DateTime                  @default(now()) @map("created_at")
+  updatedAt             DateTime                  @updatedAt @map("updated_at")
+  actions               Json?                     @map("actions")
+  keyQuestion           String?                   @map("key_question")
+  messageTemplate       String?                   @map("message_template")
+  agent                 Agent                     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  followUpGroupLinks    FollowUpGroupAgentStep[]
 
   @@index([agentId, order])
   @@map("agent_steps")
@@ -558,6 +563,50 @@ model AgentKnowledgeChunk {
   @@map("agent_knowledge_chunks")
 }
 
+model FollowUpGroup {
+  id               String                   @id @default(uuid())
+  agentId          String                   @map("agent_id")
+  name             String
+  isActive         Boolean                  @default(true) @map("is_active")
+  exhaustedAction  String                   @default("NONE") @map("exhausted_action")
+  exhaustedConfig  Json?                    @map("exhausted_config")
+  createdAt        DateTime                 @default(now()) @map("created_at")
+  updatedAt        DateTime                 @updatedAt @map("updated_at")
+  agent            Agent                    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  steps            FollowUpStep[]
+  agentStepLinks   FollowUpGroupAgentStep[]
+  conversations    Conversation[]
+
+  @@index([agentId, isActive])
+  @@map("follow_up_groups")
+}
+
+model FollowUpStep {
+  id              String        @id @default(uuid())
+  followUpGroupId String        @map("follow_up_group_id")
+  order           Int
+  delayMinutes    Int           @map("delay_minutes")
+  messageContent  String        @map("message_content")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  followUpGroup   FollowUpGroup @relation(fields: [followUpGroupId], references: [id], onDelete: Cascade)
+
+  @@index([followUpGroupId, order])
+  @@map("follow_up_steps")
+}
+
+model FollowUpGroupAgentStep {
+  id              String        @id @default(uuid())
+  followUpGroupId String        @map("follow_up_group_id")
+  agentStepId     String        @map("agent_step_id")
+  followUpGroup   FollowUpGroup @relation(fields: [followUpGroupId], references: [id], onDelete: Cascade)
+  agentStep       AgentStep     @relation(fields: [agentStepId], references: [id], onDelete: Cascade)
+
+  @@unique([followUpGroupId, agentStepId])
+  @@index([agentStepId])
+  @@map("follow_up_group_agent_steps")
+}
+
 model Inbox {
   id                    String         @id @default(uuid())
   organizationId        String         @map("organization_id")
@@ -577,6 +626,9 @@ model Inbox {
   metaPhoneDisplay      String?        @map("meta_phone_display")
   metaPhoneNumberId     String?        @map("meta_phone_number_id")
   metaWabaId            String?        @map("meta_waba_id")
+  zapiInstanceId        String?        @unique @map("zapi_instance_id")
+  zapiToken             String?        @map("zapi_token")
+  zapiClientToken       String?        @map("zapi_client_token")
   conversations         Conversation[]
   agent                 Agent?         @relation(fields: [agentId], references: [id])
   organization          Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -584,36 +636,42 @@ model Inbox {
   @@index([organizationId])
   @@index([agentId])
   @@index([metaPhoneNumberId])
+  @@index([zapiInstanceId])
   @@map("inboxes")
 }
 
 model Conversation {
-  id               String              @id @default(uuid())
-  inboxId          String              @map("inbox_id")
-  organizationId   String              @map("organization_id")
-  contactId        String              @map("contact_id")
-  dealId           String?             @map("deal_id")
-  channel          InboxChannel        @default(WHATSAPP)
-  aiPaused         Boolean             @default(false) @map("ai_paused")
-  pausedAt         DateTime?           @map("paused_at")
-  remoteJid        String?             @map("remote_jid")
-  summary          String?
-  currentStepOrder Int                 @default(0) @map("current_step_order")
-  unreadCount      Int                 @default(0) @map("unread_count")
-  createdAt        DateTime            @default(now()) @map("created_at")
-  updatedAt        DateTime            @updatedAt @map("updated_at")
-  events           ConversationEvent[]
-  contact          Contact             @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  deal             Deal?               @relation(fields: [dealId], references: [id])
-  inbox            Inbox               @relation(fields: [inboxId], references: [id], onDelete: Cascade)
-  organization     Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  messages         Message[]
+  id                     String              @id @default(uuid())
+  inboxId                String              @map("inbox_id")
+  organizationId         String              @map("organization_id")
+  contactId              String              @map("contact_id")
+  dealId                 String?             @map("deal_id")
+  channel                InboxChannel        @default(WHATSAPP)
+  aiPaused               Boolean             @default(false) @map("ai_paused")
+  pausedAt               DateTime?           @map("paused_at")
+  remoteJid              String?             @map("remote_jid")
+  summary                String?
+  currentStepOrder       Int                 @default(0) @map("current_step_order")
+  unreadCount            Int                 @default(0) @map("unread_count")
+  createdAt              DateTime            @default(now()) @map("created_at")
+  updatedAt              DateTime            @updatedAt @map("updated_at")
+  nextFollowUpAt         DateTime?           @map("next_follow_up_at")
+  followUpCount          Int                 @default(0) @map("follow_up_count")
+  currentFollowUpGroupId String?             @map("current_follow_up_group_id")
+  events                 ConversationEvent[]
+  contact                Contact             @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  deal                   Deal?               @relation(fields: [dealId], references: [id])
+  inbox                  Inbox               @relation(fields: [inboxId], references: [id], onDelete: Cascade)
+  organization           Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  messages               Message[]
+  currentFollowUpGroup   FollowUpGroup?      @relation(fields: [currentFollowUpGroupId], references: [id], onDelete: SetNull)
 
   @@unique([inboxId, contactId, channel])
   @@index([organizationId, inboxId])
   @@index([contactId])
   @@index([remoteJid, inboxId])
   @@index([dealId])
+  @@index([nextFollowUpAt, aiPaused])
   @@map("conversations")
 }
 
@@ -895,6 +953,7 @@ enum KnowledgeFileStatus {
 enum ConnectionType {
   EVOLUTION
   META_CLOUD
+  Z_API
 }
 
 enum MessageRole {

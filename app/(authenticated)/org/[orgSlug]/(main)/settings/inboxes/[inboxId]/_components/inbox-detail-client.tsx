@@ -50,6 +50,7 @@ import { linkInboxToAgent } from '@/_actions/inbox/link-inbox-to-agent'
 import UpsertInboxSheetContent from '../../_components/upsert-inbox-sheet-content'
 import InboxConnectionCard from './inbox-connection-card'
 import MetaConnectionCard from './meta-connection-card'
+import ZApiConnectionCard from './zapi-connection-card'
 import ConnectionProviderSelector from './connection-provider-selector'
 
 interface AgentOption {
@@ -155,7 +156,21 @@ const InboxDetailClient = ({
   const renderConnectionSection = () => {
     const isMetaConnected =
       inbox.connectionType === 'META_CLOUD' && !!inbox.metaPhoneNumberId
+    const isZApiConnected =
+      inbox.connectionType === 'Z_API' && !!inbox.zapiInstanceId
     const isEvolutionConnected = !!inbox.evolutionInstanceName
+
+    if (isZApiConnected) {
+      return (
+        <ZApiConnectionCard
+          inboxId={inbox.id}
+          canManage={canManage}
+          isConnected
+          zapiPhone={null}
+          connectionStats={connectionStats}
+        />
+      )
+    }
 
     if (isMetaConnected) {
       return (

@@ -15,6 +15,7 @@ import { createConversationEvent, createToolEvents } from './lib/create-conversa
 import { transcribeAudio } from './utils/transcribe-audio'
 import { transcribeImage } from './utils/transcribe-image'
 import { downloadAndStoreMedia } from './utils/download-and-store-media'
+import { getFollowUpRulesForStep } from '@/_data-access/follow-up/get-follow-up-rules-for-step'
 import type { ToolContext } from './tools/types'
 import type { NormalizedWhatsAppMessage } from '@/_lib/evolution/types'
 
@@ -152,6 +153,12 @@ export const processAgentMessage = task({
           log('step:3a audio_transcription', 'SKIP', { reason: 'no_meta_access_token' })
           transcription = '[Áudio não transcrito — token de acesso não disponível]'
         }
+      } else if (message.provider === 'z_api') {
+        // Z-API fornece URL publica — download direto
+        const audioResponse = await fetch(message.media.url)
+        const audioBuffer = Buffer.from(await audioResponse.arrayBuffer())
+        const { transcribeAudioFromBuffer } = await import('./utils/transcribe-audio')
+        transcription = await transcribeAudioFromBuffer(audioBuffer, message.media.mimetype)
       } else {
         // Para Evolution: buscar audio via getBase64FromMediaMessage
         transcription = await transcribeAudio(message.instanceName, message.messageId)
@@ -198,6 +205,22 @@ export const processAgentMessage = task({
             })
           })
         }
+      } else if (message.provider === 'z_api') {
+        // Z-API fornece URL publica — download direto + store via Supabase
+        const { downloadAndStoreFromUrl } = await import('./utils/download-and-store-media')
+        await downloadAndStoreFromUrl({
+          mediaUrl: message.media.url,
+          providerMessageId: message.messageId,
+          conversationId,
+          organizationId,
+          mimetype: message.media.mimetype,
+          fileName: message.media.fileName,
+        }).catch((error) => {
+          logger.warn('Z-API media download failed (non-fatal)', {
+            ...ctx,
+            error: error instanceof Error ? error.message : String(error),
+          })
+        })
       } else {
         // Best-effort para Evolution: falha não bloqueia o fluxo
         await downloadAndStoreMedia({
@@ -237,6 +260,18 @@ export const processAgentMessage = task({
           }
 
           const imageBuffer = await downloadMetaMedia(message.media.url, metaInboxForImage.metaAccessToken)
+          const imageBase64 = imageBuffer.toString('base64')
+
+          description = await transcribeImage(
+            message.instanceName,
+            message.messageId,
+            message.text ?? undefined,
+            { base64: imageBase64, mimetype: message.media.mimetype },
+          )
+        } else if (message.provider === 'z_api') {
+          // Z-API fornece URL publica — download direto
+          const imageResponse = await fetch(message.media.url)
+          const imageBuffer = Buffer.from(await imageResponse.arrayBuffer())
           const imageBase64 = imageBuffer.toString('base64')
 
           description = await transcribeImage(
@@ -737,6 +772,23 @@ export const processAgentMessage = task({
         message.remoteJid.replace('@s.whatsapp.net', ''),
         responseText,
       )
+    } else if (message.provider === 'z_api') {
+      // Para Z-API: buscar credenciais do inbox (per-inbox, nunca no payload)
+      const zapiInbox = await db.inbox.findFirst({
+        where: { zapiInstanceId: message.instanceName },
+        select: { zapiInstanceId: true, zapiToken: true, zapiClientToken: true },
+      })
+
+      if (!zapiInbox?.zapiToken || !zapiInbox?.zapiClientToken || !zapiInbox?.zapiInstanceId) {
+        throw new Error(`Z-API credentials not found for instanceId: ${message.instanceName}`)
+      }
+
+      const { sendZApiTextMessage } = await import('@/_lib/zapi/send-message')
+      sentMessageIds = await sendZApiTextMessage(
+        { instanceId: zapiInbox.zapiInstanceId, token: zapiInbox.zapiToken, clientToken: zapiInbox.zapiClientToken },
+        message.remoteJid.replace('@s.whatsapp.net', ''),
+        responseText,
+      )
     } else {
       // Provider Evolution (default)
       sentMessageIds = await sendWhatsAppMessage(
@@ -755,6 +807,61 @@ export const processAgentMessage = task({
     )
 
     log('step:9 whatsapp_sent', 'PASS', { responseLength: responseText.length, sentMessageIds, provider: message.provider })
+
+    // -----------------------------------------------------------------------
+    // 10b. Schedule follow-up (se agente tem regras de FUP para o step atual)
+    // Non-fatal: falha no agendamento nao bloqueia o fluxo principal
+    // -----------------------------------------------------------------------
+    try {
+      const conversationForFup = await db.conversation.findUnique({
+        where: { id: conversationId },
+        select: { currentStepOrder: true },
+      })
+
+      if (!conversationForFup) {
+        logger.warn('[step:10b] Conversation not found for FUP scheduling', { conversationId })
+      } else {
+        const followUpGroup = await getFollowUpRulesForStep(agentId, conversationForFup.currentStepOrder)
+
+        if (followUpGroup && followUpGroup.steps.length > 0) {
+          const firstStep = followUpGroup.steps[0]
+          const nextFollowUpAt = new Date(Date.now() + firstStep.delayMinutes * 60 * 1000)
+
+          await db.conversation.update({
+            where: { id: conversationId },
+            data: {
+              nextFollowUpAt,
+              followUpCount: 0,
+              currentFollowUpGroupId: followUpGroup.id,
+            },
+          })
+
+          log('step:10b follow_up_scheduled', 'PASS', {
+            groupId: followUpGroup.id,
+            groupName: followUpGroup.name,
+            firstDelayMinutes: firstStep.delayMinutes,
+            nextFollowUpAt: nextFollowUpAt.toISOString(),
+          })
+        } else {
+          // Nenhum grupo cobre este step — limpar qualquer FUP pendente
+          await db.conversation.update({
+            where: { id: conversationId },
+            data: { nextFollowUpAt: null, followUpCount: 0, currentFollowUpGroupId: null },
+          })
+          log('step:10b follow_up_scheduled', 'SKIP', { reason: 'no_group_for_step' })
+        }
+      }
+    } catch (fupError) {
+      logger.error('Follow-up scheduling failed', {
+        conversationId,
+        error: fupError instanceof Error ? fupError.message : String(fupError),
+      })
+      // Limpar estado para evitar estado órfão que ficaria disparando o cron indefinidamente
+      await db.conversation.update({
+        where: { id: conversationId },
+        data: { currentFollowUpGroupId: null, nextFollowUpAt: null, followUpCount: 0 },
+      }).catch(() => {})
+    }
 
     // -----------------------------------------------------------------------
     // 11. Memory compression — se >= threshold msgs, summarizar e arquivar

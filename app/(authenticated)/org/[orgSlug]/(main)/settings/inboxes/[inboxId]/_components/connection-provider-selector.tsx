@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { QrCode, Phone, ArrowLeft } from 'lucide-react'
+import { QrCode, Phone, Plug, ArrowLeft } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import {
   Card,
@@ -12,10 +12,11 @@ import {
 } from '@/_components/ui/card'
 import InboxConnectionCard from './inbox-connection-card'
 import MetaConnectionCard from './meta-connection-card'
+import ZApiConnectionCard from './zapi-connection-card'
 import type { AgentConnectionStats } from '@/_data-access/agent/get-agent-connection-stats'
 import type { EvolutionInstanceInfo } from '@/_lib/evolution/types-instance'
 
-type ProviderSelection = 'evolution' | 'meta_cloud' | null
+type ProviderSelection = 'evolution' | 'meta_cloud' | 'z_api' | null
 
 interface ConnectionProviderSelectorProps {
   inboxId: string
@@ -27,9 +28,10 @@ interface ConnectionProviderSelectorProps {
 /**
  * Seletor de provider de conexao WhatsApp.
  *
- * Quando nenhuma conexao esta ativa, exibe dois cards para o usuario escolher:
+ * Quando nenhuma conexao esta ativa, exibe tres cards para o usuario escolher:
  * - Evolution (QR Code) — conexao via instancia Evolution API
  * - Meta Cloud API (API Oficial) — conexao via Embedded Signup da Meta
+ * - Z-API — conexao via Instance ID e Token
  *
  * Apos a selecao, renderiza o sub-fluxo correspondente.
  */
@@ -92,7 +94,31 @@ const ConnectionProviderSelector = ({
     )
   }
 
-  // Seletor inicial — dois cards lado a lado
+  // Sub-fluxo: Z-API
+  if (selectedProvider === 'z_api') {
+    return (
+      <div className="space-y-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-fit"
+          onClick={() => setSelectedProvider(null)}
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Voltar para selecao
+        </Button>
+        <ZApiConnectionCard
+          inboxId={inboxId}
+          canManage={canManage}
+          isConnected={false}
+          zapiPhone={null}
+          connectionStats={connectionStats}
+        />
+      </div>
+    )
+  }
+
+  // Seletor inicial — tres cards
   return (
     <div className="space-y-4">
       <div className="mb-2">
@@ -102,7 +128,7 @@ const ConnectionProviderSelector = ({
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-3">
         {/* Card Evolution — QR Code */}
         <Card className="cursor-pointer border-border/50 bg-secondary/20 transition-colors hover:border-border hover:bg-secondary/40">
           <CardHeader className="pb-3">
@@ -176,6 +202,45 @@ const ConnectionProviderSelector = ({
                 onClick={() => setSelectedProvider('meta_cloud')}
               >
                 Conectar via Meta
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Card Z-API */}
+        <Card className="cursor-pointer border-border/50 bg-secondary/20 transition-colors hover:border-border hover:bg-secondary/40">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base font-semibold">
+              <Plug className="h-5 w-5" />
+              Z-API WhatsApp
+            </CardTitle>
+            <CardDescription>
+              Conecte via Z-API usando Instance ID e Token.
+              Ideal para quem ja utiliza a plataforma Z-API.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="mb-4 space-y-1.5 text-xs text-muted-foreground">
+              <li className="flex items-center gap-2">
+                <span className="h-1 w-1 rounded-full bg-muted-foreground" />
+                Qualquer numero WhatsApp
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="h-1 w-1 rounded-full bg-muted-foreground" />
+                Conexao via QR Code ou codigo
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="h-1 w-1 rounded-full bg-muted-foreground" />
+                Gerenciado pela plataforma Z-API
+              </li>
+            </ul>
+            {canManage && (
+              <Button
+                className="w-full"
+                variant="outline"
+                onClick={() => setSelectedProvider('z_api')}
+              >
+                Conectar via Z-API
               </Button>
             )}
           </CardContent>

@@ -209,3 +209,90 @@ export async function downloadAndStoreMetaMedia({
     return null
   }
 }
+
+interface DownloadAndStoreFromUrlParams {
+  mediaUrl: string
+  providerMessageId: string
+  conversationId: string
+  organizationId: string
+  mimetype: string
+  fileName?: string
+}
+
+/**
+ * Baixa midia de uma URL publica (Z-API) e persiste no Supabase Storage.
+ * Atualiza metadata da Message com a URL publica.
+ * Best-effort: falha nao bloqueia o fluxo principal.
+ */
+export async function downloadAndStoreFromUrl({
+  mediaUrl,
+  providerMessageId,
+  conversationId,
+  organizationId,
+  mimetype,
+  fileName,
+}: DownloadAndStoreFromUrlParams): Promise<string | null> {
+  try {
+    const response = await fetch(mediaUrl)
+
+    if (!response.ok) {
+      logger.warn('Media URL download failed', {
+        status: response.status,
+        mediaUrl,
+        providerMessageId,
+      })
+      return null
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer())
+    const base64 = buffer.toString('base64')
+
+    const { publicUrl } = await uploadMediaToStorage({
+      organizationId,
+      conversationId,
+      messageId: providerMessageId,
+      base64,
+      mimetype,
+      fileName,
+    })
+
+    const existingMessage = await db.message.findFirst({
+      where: { providerMessageId },
+      select: { id: true, metadata: true },
+    })
+
+    if (existingMessage) {
+      const currentMetadata = (existingMessage.metadata as Record<string, unknown>) ?? {}
+      const currentMedia = (currentMetadata.media as Record<string, unknown>) ?? {}
+
+      await db.message.update({
+        where: { id: existingMessage.id },
+        data: {
+          metadata: {
+            ...currentMetadata,
+            media: {
+              ...currentMedia,
+              url: publicUrl,
+              storedInSupabase: true,
+            },
+          } as unknown as Prisma.InputJsonValue,
+        },
+      })
+    }
+
+    logger.info('Media downloaded from URL and stored', {
+      providerMessageId,
+      publicUrl,
+      mimetype,
+    })
+
+    return publicUrl
+  } catch (error) {
+    logger.warn('downloadAndStoreFromUrl failed (non-fatal)', {
+      mediaUrl,
+      providerMessageId,
+      error: error instanceof Error ? error.message : String(error),
+    })
+    return null
+  }
+}
