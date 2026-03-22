@@ -82,6 +82,12 @@ export function InboxesDataTable({
     WEB_CHAT: 'Web Chat',
   }
 
+  const connectionTypeLabels: Record<string, string> = {
+    EVOLUTION: 'Evolution',
+    META_CLOUD: 'API Oficial',
+    Z_API: 'Z-API',
+  }
+
   const columns: ColumnDef<InboxListDto>[] = [
     {
       accessorKey: 'name',
@@ -142,15 +148,25 @@ export function InboxesDataTable({
         </div>
       ),
       cell: ({ row }) => {
-        const hasInstance = !!row.original.evolutionInstanceName
-        return hasInstance ? (
-          <Badge
-            variant="outline"
-            className="gap-1.5 bg-kronos-green/10 text-kronos-green border-kronos-green/20"
-          >
-            <Wifi className="h-3 w-3" />
-            Conectado
-          </Badge>
+        const inbox = row.original
+        const isConnected =
+          !!inbox.evolutionInstanceName ||
+          (inbox.connectionType === 'META_CLOUD' && !!inbox.metaPhoneNumberId) ||
+          (inbox.connectionType === 'Z_API' && !!inbox.zapiInstanceId)
+
+        return isConnected ? (
+          <div className="flex items-center gap-2">
+            <Badge
+              variant="outline"
+              className="gap-1.5 bg-kronos-green/10 text-kronos-green border-kronos-green/20"
+            >
+              <Wifi className="h-3 w-3" />
+              Conectado
+            </Badge>
+            <span className="text-xs text-muted-foreground">
+              {connectionTypeLabels[inbox.connectionType] ?? inbox.connectionType}
+            </span>
+          </div>
         ) : (
           <Badge variant="outline" className="gap-1.5">
             <WifiOff className="h-3 w-3" />
@@ -229,7 +245,7 @@ export function InboxesDataTable({
           <p>
             Esta ação não pode ser desfeita. Todas as conversas e mensagens
             desta caixa de entrada serão excluídas permanentemente.
-            {deletingInbox?.evolutionInstanceName && (
+            {(deletingInbox?.evolutionInstanceName || deletingInbox?.metaPhoneNumberId || deletingInbox?.zapiInstanceId) && (
               <>
                 {' '}
                 A conexão WhatsApp também será desconectada.

@@ -132,6 +132,12 @@ export function ChatSettingsSheet({
 
   const channelLabel = conversation.channel === 'WHATSAPP' ? 'WhatsApp' : 'Web Chat'
 
+  const connectionTypeLabels: Record<string, string> = {
+    EVOLUTION: 'Evolution (QR Code)',
+    META_CLOUD: 'API Oficial (Meta)',
+    Z_API: 'Z-API',
+  }
+
   const selectedContact = contactOptions.find(
     (contact) => contact.id === conversation.contactId,
   )
@@ -376,7 +382,14 @@ export function ChatSettingsSheet({
 
               <div className="flex items-center justify-between">
                 <span className="text-xs text-muted-foreground">Inbox</span>
-                <span className="text-sm">{conversation.inboxName}</span>
+                <div className="text-right">
+                  <span className="text-sm">{conversation.inboxName}</span>
+                  {conversation.channel === 'WHATSAPP' && (
+                    <p className="text-xs text-muted-foreground">
+                      {connectionTypeLabels[conversation.inboxConnectionType] ?? conversation.inboxConnectionType}
+                    </p>
+                  )}
+                </div>
               </div>
 
               {conversation.agentName && (

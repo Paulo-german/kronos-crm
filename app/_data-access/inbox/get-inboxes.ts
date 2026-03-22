@@ -13,7 +13,8 @@ export interface InboxListDto {
   metaWabaId: string | null
   metaPhoneNumberId: string | null
   metaPhoneDisplay: string | null
-  // NAO incluir metaAccessToken na listagem (seguranca — nunca expor ao cliente)
+  zapiInstanceId: string | null
+  // NAO incluir tokens/secrets na listagem (seguranca — nunca expor ao cliente)
   agentId: string | null
   agentName: string | null
   conversationsCount: number
@@ -40,6 +41,7 @@ const fetchInboxesFromDb = async (orgId: string): Promise<InboxListDto[]> => {
     metaWabaId: inbox.metaWabaId,
     metaPhoneNumberId: inbox.metaPhoneNumberId,
     metaPhoneDisplay: inbox.metaPhoneDisplay,
+    zapiInstanceId: inbox.zapiInstanceId,
     agentId: inbox.agentId,
     agentName: inbox.agent?.name ?? null,
     conversationsCount: inbox._count.conversations,

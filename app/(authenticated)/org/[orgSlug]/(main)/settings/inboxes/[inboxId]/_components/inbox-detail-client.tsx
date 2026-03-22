@@ -75,6 +75,12 @@ const channelLabels: Record<string, string> = {
   WEB_CHAT: 'Web Chat',
 }
 
+const connectionTypeLabels: Record<string, string> = {
+  EVOLUTION: 'Evolution (QR Code)',
+  META_CLOUD: 'API Oficial (Meta)',
+  Z_API: 'Z-API',
+}
+
 const InboxDetailClient = ({
   inbox,
   agentOptions,
@@ -237,14 +243,20 @@ const InboxDetailClient = ({
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold tracking-tight">{inbox.name}</h1>
             {inbox.evolutionInstanceName ||
-            (inbox.connectionType === 'META_CLOUD' && inbox.metaPhoneNumberId) ? (
-              <Badge
-                variant="outline"
-                className="h-6 gap-1.5 px-2 text-xs font-semibold bg-kronos-green/10 text-kronos-green border-kronos-green/20 hover:bg-kronos-green/20"
-              >
-                <CircleIcon className="h-1.5 w-1.5 fill-current" />
-                Conectado
-              </Badge>
+            (inbox.connectionType === 'META_CLOUD' && inbox.metaPhoneNumberId) ||
+            (inbox.connectionType === 'Z_API' && inbox.zapiInstanceId) ? (
+              <>
+                <Badge
+                  variant="outline"
+                  className="h-6 gap-1.5 px-2 text-xs font-semibold bg-kronos-green/10 text-kronos-green border-kronos-green/20 hover:bg-kronos-green/20"
+                >
+                  <CircleIcon className="h-1.5 w-1.5 fill-current" />
+                  Conectado
+                </Badge>
+                <Badge variant="secondary" className="h-6 px-2 text-xs">
+                  {connectionTypeLabels[inbox.connectionType] ?? inbox.connectionType}
+                </Badge>
+              </>
             ) : (
               <Badge
                 variant="outline"
@@ -283,6 +295,11 @@ const InboxDetailClient = ({
                 <p className="text-sm font-medium">
                   {channelLabels[inbox.channel] ?? inbox.channel}
                 </p>
+                {inbox.channel === 'WHATSAPP' && (inbox.evolutionInstanceName || inbox.metaPhoneNumberId || inbox.zapiInstanceId) && (
+                  <p className="text-xs text-muted-foreground">
+                    {connectionTypeLabels[inbox.connectionType] ?? inbox.connectionType}
+                  </p>
+                )}
               </div>
             </div>
 

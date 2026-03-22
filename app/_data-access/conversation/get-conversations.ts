@@ -12,6 +12,7 @@ export interface ConversationListDto {
   agentName: string | null
   inboxId: string
   inboxName: string
+  inboxConnectionType: string
   channel: string
   aiPaused: boolean
   pausedAt: Date | null
@@ -48,6 +49,7 @@ const conversationListInclude = {
     select: {
       id: true,
       name: true,
+      connectionType: true,
       agent: { select: { name: true } },
     },
   },
@@ -74,6 +76,7 @@ function mapConversationToDto(conversation: ConversationWithIncludes): Conversat
     agentName: conversation.inbox.agent?.name ?? null,
     inboxId: conversation.inbox.id,
     inboxName: conversation.inbox.name,
+    inboxConnectionType: conversation.inbox.connectionType,
     channel: conversation.channel,
     aiPaused: conversation.aiPaused,
     pausedAt: conversation.pausedAt,
