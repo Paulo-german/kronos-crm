@@ -5,6 +5,8 @@ import { z } from 'zod'
 import { db } from '@/_lib/prisma'
 import type { KnowledgeFileStatus } from '@prisma/client'
 import type { BusinessHoursConfig } from '@/_actions/agent/update-agent/schema'
+import type { FollowUpBusinessHoursConfig } from '@/_actions/follow-up/update-follow-up-business-hours/schema'
+import type { ExhaustedAction, ExhaustedConfig } from '@/_data-access/follow-up/types'
 import { promptConfigSchema } from '@/_actions/agent/shared/prompt-config-schema'
 import type { PromptConfig } from '@/_actions/agent/shared/prompt-config-schema'
 import {
@@ -58,6 +60,11 @@ export interface AgentDetailDto {
   businessHoursTimezone: string
   businessHoursConfig: BusinessHoursConfig | null
   outOfHoursMessage: string | null
+  followUpBusinessHoursEnabled: boolean
+  followUpBusinessHoursTimezone: string
+  followUpBusinessHoursConfig: FollowUpBusinessHoursConfig | null
+  followUpExhaustedAction: ExhaustedAction
+  followUpExhaustedConfig: ExhaustedConfig | null
   inboxes: AgentInboxDto[]
   steps: AgentStepDto[]
   knowledgeFiles: AgentKnowledgeFileDto[]
@@ -98,6 +105,12 @@ const fetchAgentByIdFromDb = async (
     businessHoursTimezone: agent.businessHoursTimezone,
     businessHoursConfig: agent.businessHoursConfig as BusinessHoursConfig | null,
     outOfHoursMessage: agent.outOfHoursMessage,
+    followUpBusinessHoursEnabled: agent.followUpBusinessHoursEnabled,
+    followUpBusinessHoursTimezone: agent.followUpBusinessHoursTimezone,
+    followUpBusinessHoursConfig:
+      agent.followUpBusinessHoursConfig as FollowUpBusinessHoursConfig | null,
+    followUpExhaustedAction: (agent.followUpExhaustedAction as ExhaustedAction) ?? 'NONE',
+    followUpExhaustedConfig: (agent.followUpExhaustedConfig as ExhaustedConfig | null) ?? null,
     inboxes: agent.inboxes.map((inbox) => ({
       id: inbox.id,
       name: inbox.name,

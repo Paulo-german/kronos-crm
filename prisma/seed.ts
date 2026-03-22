@@ -25,6 +25,8 @@ async function seedFeaturesAndPlans() {
     { key: 'ai.max_knowledge_files', name: 'Arquivos de Conhecimento', type: 'STATIC' as const, valueType: 'NUMBER' as const },
     { key: 'ai.monthly_credits', name: 'Créditos IA mensais', type: 'STATIC' as const, valueType: 'NUMBER' as const },
     { key: 'inbox.max_inboxes', name: 'Caixas de Entrada', type: 'STATIC' as const, valueType: 'NUMBER' as const },
+    { key: 'ai.max_follow_up_monthly', name: 'Follow-ups mensais', type: 'STATIC' as const, valueType: 'NUMBER' as const },
+    { key: 'ai.max_follow_ups', name: 'Follow-ups por agente (total)', type: 'STATIC' as const, valueType: 'NUMBER' as const },
   ]
 
   const featureRecords: Record<string, { id: string }> = {}
@@ -129,6 +131,18 @@ async function seedFeaturesAndPlans() {
     { planSlug: 'essential', featureKey: 'inbox.max_inboxes', valueNumber: 3 },
     { planSlug: 'scale', featureKey: 'inbox.max_inboxes', valueNumber: 5 },
     { planSlug: 'enterprise', featureKey: 'inbox.max_inboxes', valueNumber: 10 },
+
+    // Follow-ups mensais (limite de envios por mês via cron de IA)
+    { planSlug: 'light', featureKey: 'ai.max_follow_up_monthly', valueNumber: 150 },
+    { planSlug: 'essential', featureKey: 'ai.max_follow_up_monthly', valueNumber: 550 },
+    { planSlug: 'scale', featureKey: 'ai.max_follow_up_monthly', valueNumber: 1500 },
+    { planSlug: 'enterprise', featureKey: 'ai.max_follow_up_monthly', valueNumber: 3500 },
+
+    // Follow-ups cadastrados (limite de follow-ups configurados por org)
+    { planSlug: 'light', featureKey: 'ai.max_follow_ups', valueNumber: 1 },
+    { planSlug: 'essential', featureKey: 'ai.max_follow_ups', valueNumber: 3 },
+    { planSlug: 'scale', featureKey: 'ai.max_follow_ups', valueNumber: 8 },
+    { planSlug: 'enterprise', featureKey: 'ai.max_follow_ups', valueNumber: 20 },
   ]
 
   // Resolver IDs do DB para os limites

@@ -40,7 +40,13 @@ export type ProcessingErrorSubtype =
   | 'LLM_ERROR'
   | 'EMPTY_RESPONSE'
 
-export type InfoSubtype = 'AI_PAUSED_DURING_GENERATION'
+export type InfoSubtype =
+  | 'AI_PAUSED_DURING_GENERATION'
+  | 'FOLLOW_UP_SENT'
+  | 'FOLLOW_UP_EXHAUSTED_NOTIFY'
+  | 'FOLLOW_UP_EXHAUSTED_MOVE_DEAL'
+  | 'FOLLOW_UP_PROVIDER_ERROR'
+  | 'FOLLOW_UP_QUOTA_EXCEEDED'
 
 // ---------------------------------------------------------------------------
 // Tool → Subtype mapping (apenas tools com failure real)

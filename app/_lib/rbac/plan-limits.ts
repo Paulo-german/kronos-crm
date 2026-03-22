@@ -4,7 +4,7 @@ import type { Plan } from '@prisma/client'
 import { db } from '@/_lib/prisma'
 
 // Mapeamento de entidade RBAC para feature key no catálogo
-export type QuotaEntity = 'contact' | 'deal' | 'product' | 'member' | 'agent' | 'inbox'
+export type QuotaEntity = 'contact' | 'deal' | 'product' | 'member' | 'agent' | 'inbox' | 'follow_up_monthly' | 'follow_up'
 
 // Slug do plano efetivo (usado pela UI)
 export type PlanType = 'light' | 'essential' | 'scale' | 'enterprise'
@@ -16,6 +16,8 @@ const ENTITY_FEATURE_MAP: Record<QuotaEntity, string> = {
   member: 'crm.max_members',
   agent: 'ai.max_agents',
   inbox: 'inbox.max_inboxes',
+  follow_up_monthly: 'ai.max_follow_up_monthly',
+  follow_up: 'ai.max_follow_ups',
 }
 
 /**
@@ -103,6 +105,8 @@ const ENTITY_COUNT_TAGS: Record<QuotaEntity, (orgId: string) => string[]> = {
   member: (orgId) => [`org-members:${orgId}`],
   agent: (orgId) => [`agents:${orgId}`],
   inbox: (orgId) => [`inboxes:${orgId}`],
+  follow_up_monthly: (orgId) => [`follow-up-monthly:${orgId}`],
+  follow_up: (orgId) => [`follow-ups-org:${orgId}`],
 }
 
 /**
@@ -128,6 +132,20 @@ async function countRecords(orgId: string, entity: QuotaEntity): Promise<number>
           return db.agent.count({ where: { organizationId: orgId } })
         case 'inbox':
           return db.inbox.count({ where: { organizationId: orgId } })
+        case 'follow_up_monthly': {
+          // Contar mensagens de follow-up enviadas no mês corrente pela IA
+          const now = new Date()
+          const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+          return db.message.count({
+            where: {
+              createdAt: { gte: firstDayOfMonth },
+              metadata: { path: ['source'], equals: 'follow_up' },
+              conversation: { organizationId: orgId },
+            },
+          })
+        }
+        case 'follow_up':
+          return db.followUp.count({ where: { organizationId: orgId } })
         default:
           return 0
       }
@@ -203,6 +221,8 @@ export async function requireQuota(orgId: string, entity: QuotaEntity): Promise<
       member: 'membros',
       agent: 'agentes IA',
       inbox: 'caixas de entrada',
+      follow_up_monthly: 'follow-ups mensais',
+      follow_up: 'follow-ups',
     }
 
     throw new Error(

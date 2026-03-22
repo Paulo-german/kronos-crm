@@ -81,6 +81,7 @@ model Organization {
   subscriptions          Subscription[]
   tasks                  Task[]
   userIntegrations       UserIntegration[]
+  followUps              FollowUp[]
 
   @@map("organizations")
 }
@@ -496,13 +497,15 @@ model Agent {
   followUpBusinessHoursConfig      Json?                   @map("follow_up_business_hours_config")
   followUpBusinessHoursTimezone    String                  @default("America/Sao_Paulo") @map("follow_up_business_hours_timezone")
   promptConfig                     Json?                   @map("prompt_config")
+  followUpExhaustedAction          String                  @default("NONE") @map("follow_up_exhausted_action")
+  followUpExhaustedConfig          Json?                   @map("follow_up_exhausted_config")
   knowledgeChunks       AgentKnowledgeChunk[]
   knowledgeFiles        AgentKnowledgeFile[]
   steps                 AgentStep[]
   testConversations     AgentTestConversation[]
   organization          Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   inboxes               Inbox[]
-  followUpGroups        FollowUpGroup[]
+  followUps             FollowUp[]
 
   @@index([organizationId, isActive])
   @@map("agents")
@@ -522,7 +525,7 @@ model AgentStep {
   keyQuestion           String?                   @map("key_question")
   messageTemplate       String?                   @map("message_template")
   agent                 Agent                     @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  followUpGroupLinks    FollowUpGroupAgentStep[]
+  followUpLinks         FollowUpAgentStep[]
 
   @@index([agentId, order])
   @@map("agent_steps")
@@ -563,48 +566,37 @@ model AgentKnowledgeChunk {
   @@map("agent_knowledge_chunks")
 }
 
-model FollowUpGroup {
-  id               String                   @id @default(uuid())
-  agentId          String                   @map("agent_id")
-  name             String
-  isActive         Boolean                  @default(true) @map("is_active")
-  exhaustedAction  String                   @default("NONE") @map("exhausted_action")
-  exhaustedConfig  Json?                    @map("exhausted_config")
-  createdAt        DateTime                 @default(now()) @map("created_at")
-  updatedAt        DateTime                 @updatedAt @map("updated_at")
-  agent            Agent                    @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  steps            FollowUpStep[]
-  agentStepLinks   FollowUpGroupAgentStep[]
-  conversations    Conversation[]
+model FollowUp {
+  id             String              @id @default(uuid())
+  agentId        String              @map("agent_id")
+  organizationId String              @map("organization_id")
+  delayMinutes   Int                 @map("delay_minutes")
+  messageContent String              @map("message_content")
+  order          Int                 @default(0)
+  isActive       Boolean             @default(true) @map("is_active")
+  createdAt      DateTime            @default(now()) @map("created_at")
+  updatedAt      DateTime            @updatedAt @map("updated_at")
+
+  agent          Agent               @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agentStepLinks FollowUpAgentStep[]
 
   @@index([agentId, isActive])
-  @@map("follow_up_groups")
+  @@index([organizationId])
+  @@map("follow_ups")
 }
 
-model FollowUpStep {
-  id              String        @id @default(uuid())
-  followUpGroupId String        @map("follow_up_group_id")
-  order           Int
-  delayMinutes    Int           @map("delay_minutes")
-  messageContent  String        @map("message_content")
-  createdAt       DateTime      @default(now()) @map("created_at")
-  updatedAt       DateTime      @updatedAt @map("updated_at")
-  followUpGroup   FollowUpGroup @relation(fields: [followUpGroupId], references: [id], onDelete: Cascade)
+model FollowUpAgentStep {
+  id          String    @id @default(uuid())
+  followUpId  String    @map("follow_up_id")
+  agentStepId String    @map("agent_step_id")
 
-  @@index([followUpGroupId, order])
-  @@map("follow_up_steps")
-}
+  followUp    FollowUp  @relation(fields: [followUpId], references: [id], onDelete: Cascade)
+  agentStep   AgentStep @relation(fields: [agentStepId], references: [id], onDelete: Cascade)
 
-model FollowUpGroupAgentStep {
-  id              String        @id @default(uuid())
-  followUpGroupId String        @map("follow_up_group_id")
-  agentStepId     String        @map("agent_step_id")
-  followUpGroup   FollowUpGroup @relation(fields: [followUpGroupId], references: [id], onDelete: Cascade)
-  agentStep       AgentStep     @relation(fields: [agentStepId], references: [id], onDelete: Cascade)
-
-  @@unique([followUpGroupId, agentStepId])
+  @@unique([followUpId, agentStepId])
   @@index([agentStepId])
-  @@map("follow_up_group_agent_steps")
+  @@map("follow_up_agent_steps")
 }
 
 model Inbox {
@@ -657,14 +649,12 @@ model Conversation {
   updatedAt              DateTime            @updatedAt @map("updated_at")
   nextFollowUpAt         DateTime?           @map("next_follow_up_at")
   followUpCount          Int                 @default(0) @map("follow_up_count")
-  currentFollowUpGroupId String?             @map("current_follow_up_group_id")
   events                 ConversationEvent[]
   contact                Contact             @relation(fields: [contactId], references: [id], onDelete: Cascade)
   deal                   Deal?               @relation(fields: [dealId], references: [id])
   inbox                  Inbox               @relation(fields: [inboxId], references: [id], onDelete: Cascade)
   organization           Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   messages               Message[]
-  currentFollowUpGroup   FollowUpGroup?      @relation(fields: [currentFollowUpGroupId], references: [id], onDelete: SetNull)
 
   @@unique([inboxId, contactId, channel])
   @@index([organizationId, inboxId])

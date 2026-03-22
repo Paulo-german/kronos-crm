@@ -8,6 +8,8 @@ const ENTITY_LABELS: Record<QuotaEntity, string> = {
   member: 'membros',
   agent: 'agentes IA',
   inbox: 'caixas de entrada',
+  follow_up_monthly: 'follow-ups mensais',
+  follow_up: 'follow-ups',
 }
 
 interface QuotaHintProps {
