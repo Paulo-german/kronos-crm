@@ -2,17 +2,14 @@ import { Skeleton } from '@/_components/ui/skeleton'
 
 export default function DealsListLoading() {
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="space-y-2">
-          <div className="flex items-center gap-4">
-            <Skeleton className="h-8 w-40" />
-            <Skeleton className="h-9 w-52 rounded-lg" />
-          </div>
-          <Skeleton className="h-4 w-72" />
-        </div>
-        <Skeleton className="h-10 w-32 rounded-md" />
+    <div className="space-y-4">
+      {/* Toolbar: ViewToggle + QuotaHint + spacer + PipelineSettings + CreateDeal */}
+      <div className="flex items-center gap-2">
+        <Skeleton className="h-10 w-[200px] rounded-lg" />
+        <Skeleton className="h-4 w-32" />
+        <div className="flex-1" />
+        <Skeleton className="h-10 w-10 rounded-md" />
+        <Skeleton className="h-10 w-36 rounded-md" />
       </div>
 
       {/* Table */}

@@ -2,14 +2,21 @@ import { Skeleton } from '@/_components/ui/skeleton'
 
 export default function AppointmentsLoading() {
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="space-y-2">
-          <Skeleton className="h-8 w-40" />
-          <Skeleton className="h-4 w-72" />
+    <div className="flex flex-col gap-4">
+      {/* Toolbar */}
+      <div className="flex flex-col gap-4">
+        {/* Linha 1: View toggle + criar */}
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-10 w-[200px] rounded-lg" />
+          <div className="flex-1" />
+          <Skeleton className="h-10 w-44 rounded-md" />
         </div>
-        <Skeleton className="h-10 w-44 rounded-md" />
+
+        {/* Linha 2: Select responsável + filtros */}
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-10 w-[300px] rounded-md" />
+          <Skeleton className="h-10 w-24 rounded-md" />
+        </div>
       </div>
 
       {/* Table */}
@@ -17,7 +24,6 @@ export default function AppointmentsLoading() {
         <div className="rounded-md border">
           <div className="max-h-[calc(100vh-180px)] overflow-y-auto">
             <table className="w-full caption-bottom text-sm">
-              {/* Header — 8 colunas: título, negócio, status, responsável, período, duração, criado em, ações */}
               <thead className="bg-secondary/20">
                 <tr className="border-b">
                   <th className="p-4">
@@ -46,7 +52,6 @@ export default function AppointmentsLoading() {
                   </th>
                 </tr>
               </thead>
-              {/* Body */}
               <tbody className="bg-card/80">
                 {Array.from({ length: 8 }).map((_, index) => (
                   <tr key={index} className="border-b">

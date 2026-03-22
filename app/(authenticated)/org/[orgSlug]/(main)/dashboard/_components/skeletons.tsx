@@ -111,7 +111,7 @@ export function BottomSectionSkeleton() {
 }
 
 export function DashboardTabsSkeleton() {
-  return <Skeleton className="h-12 w-full rounded-md" />
+  return <Skeleton className="h-12 w-[280px] rounded-md" />
 }
 
 export function AiDashboardSkeleton() {

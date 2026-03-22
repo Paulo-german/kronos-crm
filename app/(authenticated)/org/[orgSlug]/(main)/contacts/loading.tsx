@@ -2,14 +2,22 @@ import { Skeleton } from '@/_components/ui/skeleton'
 
 export default function ContactsLoading() {
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="space-y-2">
-          <Skeleton className="h-8 w-36" />
-          <Skeleton className="h-4 w-56" />
+    <div className="flex flex-col gap-4">
+      {/* Toolbar */}
+      <div className="flex flex-col gap-3">
+        {/* Linha 1: Search input */}
+        <Skeleton className="h-10 w-full rounded-md" />
+
+        {/* Linha 2: Ordenação + Responsável + Filtros + Importar + Criar */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Skeleton className="h-10 w-[300px] rounded-md" />
+          <Skeleton className="h-10 w-[300px] rounded-md" />
+          <Skeleton className="h-10 w-24 rounded-md" />
+          <div className="ml-auto flex items-center gap-2">
+            <Skeleton className="h-10 w-28 rounded-md" />
+            <Skeleton className="h-10 w-36 rounded-md" />
+          </div>
         </div>
-        <Skeleton className="h-10 w-44 rounded-md" />
       </div>
 
       {/* Table */}
@@ -17,7 +25,6 @@ export default function ContactsLoading() {
         <div className="rounded-md border">
           <div className="max-h-[calc(100vh-180px)] overflow-y-auto">
             <table className="w-full caption-bottom text-sm">
-              {/* Header */}
               <thead className="bg-secondary/20">
                 <tr className="border-b">
                   <th className="p-4">
@@ -46,10 +53,9 @@ export default function ContactsLoading() {
                   </th>
                 </tr>
               </thead>
-              {/* Body */}
               <tbody className="bg-card/80">
-                {Array.from({ length: 10 }).map((_, i) => (
-                  <tr key={i} className="border-b">
+                {Array.from({ length: 10 }).map((_, index) => (
+                  <tr key={index} className="border-b">
                     <td className="p-4">
                       <Skeleton className="h-4 w-4" />
                     </td>

@@ -5,29 +5,24 @@ const CALENDAR_ROWS = 5
 
 const AppointmentsCalendarLoading = () => {
   return (
-    <div className="space-y-6">
-      {/* Skeleton do Header */}
-      <div className="flex items-center justify-between">
-        <div className="space-y-2">
-          <Skeleton className="h-8 w-40" />
-          <Skeleton className="h-4 w-72" />
-        </div>
-      </div>
-
-      {/* Skeleton da Toolbar */}
-      <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-4">
+      {/* Toolbar */}
+      <div className="flex flex-col gap-4">
+        {/* Linha 1: View toggle + criar */}
         <div className="flex items-center gap-2">
-          <Skeleton className="h-10 w-24 rounded-lg" />
+          <Skeleton className="h-10 w-[200px] rounded-lg" />
           <div className="flex-1" />
-          <Skeleton className="h-10 w-44" />
+          <Skeleton className="h-10 w-44 rounded-md" />
         </div>
+
+        {/* Linha 2: Select responsável + filtros */}
         <div className="flex items-center gap-2">
-          <Skeleton className="h-10 w-[300px]" />
-          <Skeleton className="h-10 w-24" />
+          <Skeleton className="h-10 w-[300px] rounded-md" />
+          <Skeleton className="h-10 w-24 rounded-md" />
         </div>
       </div>
 
-      {/* Skeleton da navegação do mês */}
+      {/* Navegação do mês */}
       <div className="flex items-center justify-between">
         <Skeleton className="h-7 w-36" />
         <div className="flex items-center gap-1">
@@ -37,7 +32,7 @@ const AppointmentsCalendarLoading = () => {
         </div>
       </div>
 
-      {/* Skeleton do grid do calendário */}
+      {/* Grid do calendário */}
       <div className="rounded-lg border">
         {/* Cabeçalho: dias da semana */}
         <div className="grid grid-cols-7 border-b">

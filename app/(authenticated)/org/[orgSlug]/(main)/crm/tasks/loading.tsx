@@ -2,14 +2,19 @@ import { Skeleton } from '@/_components/ui/skeleton'
 
 export default function TasksLoading() {
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="space-y-2">
-          <Skeleton className="h-8 w-32" />
-          <Skeleton className="h-4 w-64" />
+    <div className="flex flex-col gap-4">
+      {/* Toolbar */}
+      <div className="flex flex-col gap-3">
+        {/* Linha 1: Search input */}
+        <Skeleton className="h-10 w-full rounded-md" />
+
+        {/* Linha 2: Select responsável + filtros + criar */}
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-10 w-[260px] rounded-md" />
+          <Skeleton className="h-10 w-24 rounded-md" />
+          <div className="flex-1" />
+          <Skeleton className="h-10 w-36 rounded-md" />
         </div>
-        <Skeleton className="h-10 w-40 rounded-md" />
       </div>
 
       {/* Table */}
@@ -17,7 +22,6 @@ export default function TasksLoading() {
         <div className="rounded-md border">
           <div className="max-h-[calc(100vh-180px)] overflow-y-auto">
             <table className="w-full caption-bottom text-sm">
-              {/* Header */}
               <thead className="bg-secondary/20">
                 <tr className="border-b">
                   <th className="p-4">
@@ -43,10 +47,9 @@ export default function TasksLoading() {
                   </th>
                 </tr>
               </thead>
-              {/* Body */}
               <tbody className="bg-card/80">
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <tr key={i} className="border-b">
+                {Array.from({ length: 8 }).map((_, index) => (
+                  <tr key={index} className="border-b">
                     <td className="p-4">
                       <Skeleton className="h-4 w-4" />
                     </td>
