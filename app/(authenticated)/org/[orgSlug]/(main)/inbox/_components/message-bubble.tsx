@@ -78,7 +78,7 @@ function AudioPlayer({ src, isUser }: { src: string; isUser: boolean }) {
     <div
       className={cn(
         'mb-1 flex min-w-[220px] items-center gap-2.5 rounded-lg px-3 py-2',
-        isUser ? 'bg-secondary/40' : 'bg-primary-foreground/10',
+        isUser ? 'bg-secondary/40' : 'bg-white/10',
       )}
     >
       <button
@@ -88,7 +88,7 @@ function AudioPlayer({ src, isUser }: { src: string; isUser: boolean }) {
           'flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors',
           isUser
             ? 'bg-primary/10 text-primary hover:bg-primary/20'
-            : 'bg-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/30',
+            : 'bg-white/20 text-white hover:bg-white/30',
         )}
       >
         {isPlaying ? (
@@ -102,14 +102,14 @@ function AudioPlayer({ src, isUser }: { src: string; isUser: boolean }) {
         <div
           className={cn(
             'h-1 cursor-pointer rounded-full',
-            isUser ? 'bg-border' : 'bg-primary-foreground/20',
+            isUser ? 'bg-border' : 'bg-white/20',
           )}
           onClick={handleSeek}
         >
           <div
             className={cn(
               'h-full rounded-full transition-all',
-              isUser ? 'bg-primary' : 'bg-primary-foreground/70',
+              isUser ? 'bg-primary' : 'bg-white/70',
             )}
             style={{ width: `${progress}%` }}
           />
@@ -119,7 +119,7 @@ function AudioPlayer({ src, isUser }: { src: string; isUser: boolean }) {
       <span
         className={cn(
           'text-[10px] tabular-nums',
-          isUser ? 'text-muted-foreground' : 'text-primary-foreground/60',
+          isUser ? 'text-muted-foreground' : 'text-white/60',
         )}
       >
         {duration > 0 ? formatAudioDuration(duration) : '0:00'}
@@ -186,7 +186,7 @@ export function MessageBubble({ id, conversationId, role, content, metadata, cre
           'max-w-[75%] rounded-2xl px-4 py-2',
           isUser
             ? 'rounded-bl-md border border-border/30 bg-secondary/60 shadow-sm'
-            : 'rounded-br-md bg-primary text-primary-foreground shadow-sm',
+            : 'rounded-br-md bg-primary text-white shadow-sm',
         )}
       >
         {/* Mídia */}
@@ -216,7 +216,7 @@ export function MessageBubble({ id, conversationId, role, content, metadata, cre
               'mb-2 w-full justify-start gap-2 text-xs',
               isUser
                 ? 'border-border/50 bg-primary/5 hover:bg-primary/10'
-                : 'border-primary-foreground/20 bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground',
+                : 'border-white/20 bg-white/10 text-white hover:bg-white/15 hover:text-white',
             )}
           >
             <a
@@ -243,18 +243,18 @@ export function MessageBubble({ id, conversationId, role, content, metadata, cre
         <div
           className={cn(
             'mt-1 flex items-center gap-1 text-[10px]',
-            isUser ? 'text-muted-foreground' : 'text-primary-foreground/70',
+            isUser ? 'text-muted-foreground' : 'text-white/70',
           )}
         >
           <span>{timestamp}</span>
           {isAiMessage && (
-            <span className="ml-1 flex items-center gap-0.5 text-primary-foreground/50">
+            <span className="ml-1 flex items-center gap-0.5 text-white/50">
               <Bot className="h-3 w-3" />
               IA
             </span>
           )}
           {isFromInbox && (
-            <span className="ml-1 flex items-center gap-0.5 text-primary-foreground/50">
+            <span className="ml-1 flex items-center gap-0.5 text-white/50">
               <UserRound className="h-3 w-3" />
               {meta?.sentByName ?? 'via inbox'}
             </span>

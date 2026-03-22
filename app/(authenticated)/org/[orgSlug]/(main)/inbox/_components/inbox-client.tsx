@@ -156,7 +156,7 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
             <div className="relative">
               <div className="absolute inset-0 animate-pulse rounded-full bg-primary/10 blur-xl" />
               <div className="relative flex size-16 items-center justify-center rounded-full bg-gradient-to-br from-primary/80 to-primary/50 shadow-md shadow-primary/15">
-                <MessageSquare className="size-8 text-primary-foreground" />
+                <MessageSquare className="size-8 text-white" />
               </div>
             </div>
             <div className="max-w-sm space-y-1 text-center">

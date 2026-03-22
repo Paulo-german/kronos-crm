@@ -16,9 +16,9 @@ export function EmptyInbox({ orgSlug, hasNoInbox = false }: EmptyInboxProps) {
         <div className="absolute inset-0 animate-pulse rounded-full bg-primary/20 blur-2xl" />
         <div className="relative flex size-20 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/25">
           {hasNoInbox ? (
-            <Inbox className="size-10 text-primary-foreground" />
+            <Inbox className="size-10 text-white" />
           ) : (
-            <MessageSquare className="size-10 text-primary-foreground" />
+            <MessageSquare className="size-10 text-white" />
           )}
         </div>
       </div>
