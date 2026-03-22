@@ -6,6 +6,7 @@ import { getPipelineStages } from '@/_data-access/pipeline/get-pipeline-stages'
 import { getInboxes } from '@/_data-access/inbox/get-inboxes'
 import { getAgentConnectionStats } from '@/_data-access/agent/get-agent-connection-stats'
 import { getEvolutionInstanceInfo } from '@/_lib/evolution/instance-management'
+import { getFollowUps } from '@/_data-access/follow-up/get-follow-ups'
 import AgentDetailClient from './_components/agent-detail-client'
 
 interface AgentDetailPageProps {
@@ -16,10 +17,11 @@ const AgentDetailPage = async ({ params }: AgentDetailPageProps) => {
   const { orgSlug, agentId } = await params
   const ctx = await getOrgContext(orgSlug)
 
-  const [agent, pipelines, inboxes] = await Promise.all([
+  const [agent, pipelines, inboxes, followUps] = await Promise.all([
     getAgentById(agentId, ctx.orgId),
     getOrgPipelines(ctx.orgId),
     getInboxes(ctx.orgId),
+    getFollowUps(agentId, ctx.orgId),
   ])
 
   if (!agent) notFound()
@@ -66,6 +68,7 @@ const AgentDetailPage = async ({ params }: AgentDetailPageProps) => {
       availableInboxes={availableInboxes}
       inboxConnectionData={inboxConnectionData}
       metaCloudEnabled={metaCloudEnabled}
+      followUps={followUps}
     />
   )
 }

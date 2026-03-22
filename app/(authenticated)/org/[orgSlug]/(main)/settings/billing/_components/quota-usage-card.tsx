@@ -12,6 +12,7 @@ const ENTITY_LABELS: Record<keyof QuotaSummary, string> = {
   deal: 'Negocios',
   product: 'Produtos',
   member: 'Membros',
+  follow_up: 'Follow-ups (Beta)',
 }
 
 function getProgressColor(pct: number): string {

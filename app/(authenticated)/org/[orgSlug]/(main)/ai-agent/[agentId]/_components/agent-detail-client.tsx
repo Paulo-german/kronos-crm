@@ -22,9 +22,11 @@ import GeneralTab from './general-tab'
 import ProcessTab from './process-tab'
 import KnowledgeTab from './knowledge-tab'
 import ConnectionTab from './connection-tab'
+import FollowUpsTab from './follow-ups-tab'
 import TestChatPanel from './test-chat-panel'
 import { PageTourTrigger } from '@/_components/onboarding/page-tour-trigger'
 import { AGENT_DETAIL_TOUR_STEPS } from '@/_lib/onboarding/tours/agent-detail-tour'
+import type { FollowUpDto, ExhaustedConfig } from '@/_data-access/follow-up/types'
 
 interface InboxOptionDto {
   id: string
@@ -49,6 +51,10 @@ interface AgentDetailClientProps {
   availableInboxes: InboxOptionDto[]
   inboxConnectionData: InboxConnectionDataMap
   metaCloudEnabled: boolean
+  followUps: FollowUpDto[]
+  followUpQuota?: { withinQuota: boolean; current: number; limit: number }
+  followUpExhaustedAction?: 'NONE' | 'NOTIFY_HUMAN' | 'MOVE_DEAL_STAGE'
+  followUpExhaustedConfig?: ExhaustedConfig | null
 }
 
 const AgentDetailClient = ({
@@ -60,6 +66,10 @@ const AgentDetailClient = ({
   availableInboxes,
   inboxConnectionData,
   metaCloudEnabled,
+  followUps,
+  followUpQuota,
+  followUpExhaustedAction,
+  followUpExhaustedConfig,
 }: AgentDetailClientProps) => {
   const canManage = userRole === 'OWNER' || userRole === 'ADMIN'
 
@@ -111,9 +121,9 @@ const AgentDetailClient = ({
             </div>
           </div>
 
-          {/* Tabs — mantém grid-cols-4 sem adicionar 5a tab */}
+          {/* Tabs — grid-cols-5 com a nova tab Follow-ups */}
           <Tabs defaultValue="general">
-            <TabsList data-tour="agent-tabs" className="grid h-12 w-full grid-cols-4 rounded-md border border-border/50 bg-tab/30">
+            <TabsList data-tour="agent-tabs" className="grid h-12 w-full grid-cols-5 rounded-md border border-border/50 bg-tab/30">
               <TabsTrigger
                 value="general"
                 className="rounded-md py-2 data-[state=active]:bg-card/80"
@@ -138,6 +148,15 @@ const AgentDetailClient = ({
                 className="rounded-md py-2 data-[state=active]:bg-card/80"
               >
                 Conexão
+              </TabsTrigger>
+              <TabsTrigger
+                value="follow-ups"
+                className="rounded-md py-2 data-[state=active]:bg-card/80"
+              >
+                Follow-ups
+                <Badge variant="outline" className="ml-1.5 border-amber-500/30 bg-amber-500/10 px-1.5 py-0 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                  Beta
+                </Badge>
               </TabsTrigger>
             </TabsList>
 
@@ -174,6 +193,21 @@ const AgentDetailClient = ({
                 availableInboxes={availableInboxes}
                 inboxConnectionData={inboxConnectionData}
                 metaCloudEnabled={metaCloudEnabled}
+              />
+            </TabsContent>
+
+            <TabsContent value="follow-ups" className="mt-6">
+              <FollowUpsTab
+                agent={{
+                  ...agent,
+                  followUpExhaustedAction: followUpExhaustedAction ?? 'NONE',
+                  followUpExhaustedConfig: followUpExhaustedConfig ?? null,
+                }}
+                followUps={followUps}
+                pipelineStages={pipelineStages}
+                canManage={canManage}
+                onSaveSuccess={handleConfigSaved}
+                followUpQuota={followUpQuota}
               />
             </TabsContent>
           </Tabs>
