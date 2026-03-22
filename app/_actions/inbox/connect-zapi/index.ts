@@ -5,6 +5,7 @@ import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 import { getZApiConnectionStatus } from '@/_lib/zapi/instance-info'
+import { configureZApiWebhooks } from '@/_lib/zapi/configure-webhooks'
 import { connectZApiSchema } from './schema'
 
 export const connectZApi = orgActionClient
@@ -78,6 +79,18 @@ export const connectZApi = orgActionClient
       },
     })
 
+    // 5b. Configurar webhooks automaticamente na Z-API
+    const webhookResult = await configureZApiWebhooks(config)
+    const webhooksConfigured = webhookResult.receivedConfigured && webhookResult.sendConfigured
+
+    if (!webhooksConfigured) {
+      console.warn('[connect-zapi] Webhook auto-config failed — user may need to configure manually', {
+        inboxId: inbox.id,
+        received: webhookResult.receivedConfigured,
+        send: webhookResult.sendConfigured,
+      })
+    }
+
     // 6. Invalidar cache
     revalidateTag(`inbox:${inbox.id}`)
     revalidateTag(`inboxes:${ctx.orgId}`)
@@ -92,5 +105,7 @@ export const connectZApi = orgActionClient
       inboxId: inbox.id,
       connected: status.connected,
       phone: status.phone,
+      webhooksConfigured,
+      webhookUrl: webhookResult.webhookUrl,
     }
   })

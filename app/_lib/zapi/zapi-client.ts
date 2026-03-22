@@ -31,3 +31,15 @@ export async function zapiPost(
     body: JSON.stringify(body),
   })
 }
+
+export async function zapiPut(
+  config: ZApiConfig,
+  endpoint: string,
+  body: unknown,
+): Promise<Response> {
+  return fetch(buildUrl(config, endpoint), {
+    method: 'PUT',
+    headers: buildHeaders(config.clientToken),
+    body: JSON.stringify(body),
+  })
+}

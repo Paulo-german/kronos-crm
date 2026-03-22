@@ -12,6 +12,9 @@ import {
   MessagesSquare,
   Activity,
   Clock,
+  Copy,
+  CheckCircle2,
+  AlertTriangle,
 } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import { Input } from '@/_components/ui/input'
@@ -24,6 +27,7 @@ import {
   CardTitle,
 } from '@/_components/ui/card'
 import { Badge } from '@/_components/ui/badge'
+import { Alert, AlertDescription, AlertTitle } from '@/_components/ui/alert'
 import ConfirmationDialog from '@/_components/confirmation-dialog'
 import { connectZApi } from '@/_actions/inbox/connect-zapi'
 import { disconnectZApi } from '@/_actions/inbox/disconnect-zapi'
@@ -61,12 +65,21 @@ const ZApiConnectionCard = ({
   const [clientToken, setClientToken] = useState('')
   const [qrBase64, setQrBase64] = useState<string | null>(null)
   const [isDisconnectOpen, setIsDisconnectOpen] = useState(false)
+  const [webhookWarning, setWebhookWarning] = useState<{ url: string } | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const { execute: executeConnect, isPending: isConnecting } = useAction(
     connectZApi,
     {
       onSuccess: ({ data }) => {
+        if (!data?.webhooksConfigured && data?.webhookUrl) {
+          setWebhookWarning({ url: data.webhookUrl })
+          toast.warning(
+            'Webhook nao configurado automaticamente. Configure manualmente no painel da Z-API.',
+            { duration: 10000 },
+          )
+        }
+
         if (data?.connected) {
           toast.success('Z-API conectada com sucesso!')
           setConnectionState('connected')
@@ -197,6 +210,8 @@ const ZApiConnectionCard = ({
               )}
             </div>
           )}
+
+          <WebhookWarningAlert warning={webhookWarning} />
 
           {canManage && (
             <>
@@ -344,6 +359,40 @@ const ZApiConnectionCard = ({
         )}
       </CardContent>
     </Card>
+  )
+}
+
+function WebhookWarningAlert({ warning }: { warning: { url: string } | null }) {
+  const [copied, setCopied] = useState(false)
+
+  if (!warning) return null
+
+  function handleCopy() {
+    navigator.clipboard.writeText(warning!.url)
+    setCopied(true)
+    toast.success('URL copiada!')
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <Alert variant="destructive">
+      <AlertTriangle className="h-4 w-4" />
+      <AlertTitle>Webhook nao configurado automaticamente</AlertTitle>
+      <AlertDescription className="space-y-2">
+        <p>
+          Configure manualmente no painel da Z-API. Cole esta URL nos campos{' '}
+          <strong>Webhook Received</strong> e <strong>Webhook Send</strong>:
+        </p>
+        <div className="flex items-center gap-2">
+          <code className="flex-1 truncate rounded bg-muted px-2 py-1 text-xs">
+            {warning.url}
+          </code>
+          <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={handleCopy}>
+            {copied ? <CheckCircle2 className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
+          </Button>
+        </div>
+      </AlertDescription>
+    </Alert>
   )
 }
 
