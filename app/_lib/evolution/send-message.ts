@@ -1,4 +1,5 @@
 import { splitIntoParagraphs } from '@/_lib/whatsapp/chunk-text'
+import { assertEvolutionConnected } from './connection-guard'
 
 const MAX_WHATSAPP_MESSAGE_LENGTH = 4000
 const DELAY_BETWEEN_CHUNKS_MS = 800
@@ -19,6 +20,8 @@ export async function sendWhatsAppMessage(
   if (!apiUrl || !apiKey) {
     throw new Error('EVOLUTION_API_URL and EVOLUTION_API_KEY must be configured')
   }
+
+  await assertEvolutionConnected(instanceName)
 
   const chunks = splitIntoParagraphs(text, MAX_WHATSAPP_MESSAGE_LENGTH)
   const messageIds: string[] = []

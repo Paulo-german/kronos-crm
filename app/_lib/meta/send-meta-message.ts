@@ -1,5 +1,6 @@
 import type { MetaSendMessageResponse } from './types'
 import { splitIntoParagraphs } from '@/_lib/whatsapp/chunk-text'
+import { assertMetaConnected } from './connection-guard'
 
 const MAX_WHATSAPP_MESSAGE_LENGTH = 4000
 const DELAY_BETWEEN_CHUNKS_MS = 800
@@ -21,6 +22,8 @@ export async function sendMetaTextMessage(
   text: string,
 ): Promise<string[]> {
   const baseUrl = getGraphApiBaseUrl()
+  await assertMetaConnected(phoneNumberId, accessToken)
+
   const chunks = splitIntoParagraphs(text, MAX_WHATSAPP_MESSAGE_LENGTH)
   const messageIds: string[] = []
 
@@ -74,6 +77,7 @@ export async function sendMetaAudioMessage(
   audioBase64: string,
 ): Promise<string> {
   const baseUrl = getGraphApiBaseUrl()
+  await assertMetaConnected(phoneNumberId, accessToken)
 
   // Primeiro: fazer upload da midia para obter um media_id permanente
   const uploadResponse = await fetch(`${baseUrl}/${phoneNumberId}/media`, {
@@ -156,6 +160,7 @@ export async function sendMetaMediaMessage(
   caption?: string,
 ): Promise<string> {
   const baseUrl = getGraphApiBaseUrl()
+  await assertMetaConnected(phoneNumberId, accessToken)
 
   // Passo 1: upload da midia para obter media_id
   const uploadResponse = await fetch(`${baseUrl}/${phoneNumberId}/media`, {

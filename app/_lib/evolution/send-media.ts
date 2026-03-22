@@ -1,3 +1,5 @@
+import { assertEvolutionConnected } from './connection-guard'
+
 /**
  * Envia mídia (imagem ou documento) via Evolution API REST.
  * Endpoint: POST /message/sendMedia/{instanceName}
@@ -20,6 +22,8 @@ export async function sendWhatsAppMedia(
   if (!apiUrl || !apiKey) {
     throw new Error('EVOLUTION_API_URL and EVOLUTION_API_KEY must be configured')
   }
+
+  await assertEvolutionConnected(instanceName)
 
   const response = await fetch(
     `${apiUrl}/message/sendMedia/${instanceName}`,

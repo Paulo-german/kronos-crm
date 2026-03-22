@@ -1,3 +1,5 @@
+import { assertEvolutionConnected } from './connection-guard'
+
 /**
  * Envia áudio via Evolution API REST.
  * Diferente de sendText, o áudio é enviado inteiro (sem chunking).
@@ -13,6 +15,8 @@ export async function sendWhatsAppAudio(
   if (!apiUrl || !apiKey) {
     throw new Error('EVOLUTION_API_URL and EVOLUTION_API_KEY must be configured')
   }
+
+  await assertEvolutionConnected(instanceName)
 
   const response = await fetch(
     `${apiUrl}/message/sendWhatsAppAudio/${instanceName}`,
