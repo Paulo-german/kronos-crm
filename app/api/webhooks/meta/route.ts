@@ -218,9 +218,14 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
           },
         })
 
+        // Reset follow-up completo + incrementar unreadCount — qualquer msg do cliente cancela ciclo FUP
         await db.conversation.update({
           where: { id: resolveResult.conversationId },
-          data: { unreadCount: { increment: 1 } },
+          data: {
+            unreadCount: { increment: 1 },
+            nextFollowUpAt: null,
+            followUpCount: 0,
+          },
         })
 
         revalidateTag(`conversations:${orgId}`)
@@ -287,9 +292,14 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
             },
           })
 
+          // Reset follow-up completo + incrementar unreadCount — qualquer msg do cliente cancela ciclo FUP
           await db.conversation.update({
             where: { id: resolveResult.conversationId },
-            data: { unreadCount: { increment: 1 } },
+            data: {
+              unreadCount: { increment: 1 },
+              nextFollowUpAt: null,
+              followUpCount: 0,
+              },
           })
         }
 
@@ -402,9 +412,14 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
             },
           })
 
+          // Reset follow-up completo + incrementar unreadCount — qualquer msg do cliente cancela ciclo FUP
           await db.conversation.update({
             where: { id: conversationId },
-            data: { unreadCount: { increment: 1 } },
+            data: {
+              unreadCount: { increment: 1 },
+              nextFollowUpAt: null,
+              followUpCount: 0,
+              },
           })
 
           revalidateTag(`conversations:${orgId}`)
@@ -455,9 +470,10 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
     const debounceTimestamp = Date.now()
 
     await Promise.all([
+      // Reset follow-up completo + incrementar unreadCount — qualquer msg do cliente cancela ciclo FUP ativo
       db.conversation.update({
         where: { id: conversationId },
-        data: { unreadCount: { increment: 1 } },
+        data: { unreadCount: { increment: 1 }, nextFollowUpAt: null, followUpCount: 0 },
       }),
       redis
         .set(

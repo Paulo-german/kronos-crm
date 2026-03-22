@@ -40,8 +40,20 @@ export const deleteStep = orgActionClient
       }),
     ])
 
+    // Limpar follow-ups pendentes nas conversas do agente — a cadeia pode ter mudado
+    // com a remoção do step (os links FollowUpAgentStep são removidos em cascade)
+    await db.conversation.updateMany({
+      where: {
+        inbox: { agentId },
+        nextFollowUpAt: { not: null },
+      },
+      data: { nextFollowUpAt: null, followUpCount: 0 },
+    })
+
     revalidateTag(`agent:${agentId}`)
     revalidateTag(`agents:${ctx.orgId}`)
+    revalidateTag(`follow-ups:${agentId}`)
+    revalidateTag(`conversations:${ctx.orgId}`)
 
     return { success: true }
   })

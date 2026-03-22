@@ -15,7 +15,7 @@ import { createConversationEvent, createToolEvents } from './lib/create-conversa
 import { transcribeAudio } from './utils/transcribe-audio'
 import { transcribeImage } from './utils/transcribe-image'
 import { downloadAndStoreMedia } from './utils/download-and-store-media'
-import { getFollowUpRulesForStep } from '@/_data-access/follow-up/get-follow-up-rules-for-step'
+import { getFollowUpsForStep } from '@/_data-access/follow-up/get-follow-ups-for-step'
 import type { ToolContext } from './tools/types'
 import type { NormalizedWhatsAppMessage } from '@/_lib/evolution/types'
 
@@ -821,34 +821,32 @@ export const processAgentMessage = task({
       if (!conversationForFup) {
         logger.warn('[step:10b] Conversation not found for FUP scheduling', { conversationId })
       } else {
-        const followUpGroup = await getFollowUpRulesForStep(agentId, conversationForFup.currentStepOrder)
+        const followUps = await getFollowUpsForStep(agentId, conversationForFup.currentStepOrder)
 
-        if (followUpGroup && followUpGroup.steps.length > 0) {
-          const firstStep = followUpGroup.steps[0]
-          const nextFollowUpAt = new Date(Date.now() + firstStep.delayMinutes * 60 * 1000)
+        if (followUps.length > 0) {
+          const firstFollowUp = followUps[0] // order 0 — o primeiro da sequência
+          const nextFollowUpAt = new Date(Date.now() + firstFollowUp.delayMinutes * 60 * 1000)
 
           await db.conversation.update({
             where: { id: conversationId },
             data: {
               nextFollowUpAt,
               followUpCount: 0,
-              currentFollowUpGroupId: followUpGroup.id,
             },
           })
 
           log('step:10b follow_up_scheduled', 'PASS', {
-            groupId: followUpGroup.id,
-            groupName: followUpGroup.name,
-            firstDelayMinutes: firstStep.delayMinutes,
+            totalFollowUps: followUps.length,
+            firstDelayMinutes: firstFollowUp.delayMinutes,
             nextFollowUpAt: nextFollowUpAt.toISOString(),
           })
         } else {
-          // Nenhum grupo cobre este step — limpar qualquer FUP pendente
+          // Nenhum follow-up cobre este step — limpar qualquer FUP pendente
           await db.conversation.update({
             where: { id: conversationId },
-            data: { nextFollowUpAt: null, followUpCount: 0, currentFollowUpGroupId: null },
+            data: { nextFollowUpAt: null, followUpCount: 0 },
           })
-          log('step:10b follow_up_scheduled', 'SKIP', { reason: 'no_group_for_step' })
+          log('step:10b follow_up_scheduled', 'SKIP', { reason: 'no_follow_ups_for_step' })
         }
       }
     } catch (fupError) {
@@ -859,7 +857,7 @@ export const processAgentMessage = task({
       // Limpar estado para evitar estado órfão que ficaria disparando o cron indefinidamente
       await db.conversation.update({
         where: { id: conversationId },
-        data: { currentFollowUpGroupId: null, nextFollowUpAt: null, followUpCount: 0 },
+        data: { nextFollowUpAt: null, followUpCount: 0 },
       }).catch(() => {})
     }
 

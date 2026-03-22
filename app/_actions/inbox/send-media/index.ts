@@ -134,7 +134,6 @@ export const sendMedia = orgActionClient
           // Reset follow-up: humano assumiu a conversa — cancelar ciclo pendente
           nextFollowUpAt: null,
           followUpCount: 0,
-          currentFollowUpGroupId: null,
         },
       }),
     ])

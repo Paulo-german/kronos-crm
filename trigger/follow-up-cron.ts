@@ -3,6 +3,7 @@ import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
 import { resolveWhatsAppProvider } from '@/_lib/whatsapp/provider'
 import { checkBusinessHours } from '@/_lib/agent/check-business-hours'
+import { getFollowUpsForStep } from '@/_data-access/follow-up/get-follow-ups-for-step'
 import type { ConnectionType, Prisma } from '@prisma/client'
 import type { BusinessHoursConfig } from '@/_actions/agent/update-agent/schema'
 
@@ -24,9 +25,12 @@ const DAY_KEYS: (keyof BusinessHoursConfig)[] = [
 // ---------------------------------------------------------------------------
 
 interface ConvInboxAgent {
+  id: string
   followUpBusinessHoursEnabled: boolean
   followUpBusinessHoursConfig: Prisma.JsonValue
   followUpBusinessHoursTimezone: string
+  followUpExhaustedAction: string
+  followUpExhaustedConfig: Prisma.JsonValue
 }
 
 interface ConvInbox {
@@ -39,23 +43,8 @@ interface ConvInbox {
   zapiInstanceId: string | null
   zapiToken: string | null
   zapiClientToken: string | null
+  agentId: string | null
   agent: ConvInboxAgent | null
-}
-
-interface ConvFollowUpGroup {
-  id: string
-  isActive: boolean
-  exhaustedAction: string
-  exhaustedConfig: Prisma.JsonValue
-  steps: Array<{
-    id: string
-    order: number
-    delayMinutes: number
-    messageContent: string
-    followUpGroupId: string
-    createdAt: Date
-    updatedAt: Date
-  }>
 }
 
 interface ConvForCron {
@@ -64,9 +53,8 @@ interface ConvForCron {
   organizationId: string
   dealId: string | null
   followUpCount: number
-  currentFollowUpGroupId: string | null
+  currentStepOrder: number
   inbox: ConvInbox
-  currentFollowUpGroup: ConvFollowUpGroup | null
 }
 
 // ---------------------------------------------------------------------------
@@ -102,54 +90,42 @@ function getNextFollowUpOpeningTime(timezone: string, config: BusinessHoursConfi
     })
 
     const parts = formatter.formatToParts(candidateUtc)
-    const hour = Number(parts.find((part) => part.type === 'hour')?.value ?? 0)
-    const minute = Number(parts.find((part) => part.type === 'minute')?.value ?? 0)
-    const weekday = parts.find((part) => part.type === 'weekday')?.value ?? ''
+    const weekdayStr = parts.find((part) => part.type === 'weekday')?.value ?? ''
 
-    const weekdayMap: Record<string, number> = {
+    // Mapear abreviação de dia para índice 0-6
+    const WEEKDAY_MAP: Record<string, number> = {
       Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
     }
+    const dayIndex = WEEKDAY_MAP[weekdayStr]
+    if (dayIndex === undefined) continue
 
-    const dayIndex = weekdayMap[weekday] ?? 0
     const dayKey = DAY_KEYS[dayIndex]
     const dayConfig = config[dayKey]
 
-    if (!dayConfig.enabled) continue
+    // Se o dia não está habilitado, pular para o próximo
+    if (!dayConfig || !dayConfig.enabled) continue
 
+    // Parsear startTime (formato "HH:mm")
     const [startHour, startMin] = dayConfig.start.split(':').map(Number)
-    const [endHour, endMin] = dayConfig.end.split(':').map(Number)
 
-    const startMinutes = startHour * 60 + startMin
-    const endMinutes = endHour * 60 + endMin
-    const currentMinutes = hour * 60 + minute
-
-    // Se é hoje (daysAhead === 0): só usar se ainda está antes do fim do horário
-    if (daysAhead === 0 && currentMinutes >= endMinutes) continue
-
-    // Se é hoje e já está dentro do horário — não deveria chegar aqui (isFollowUpWithinBusinessHours
-    // teria retornado true), mas por segurança retornar now para não adiar indevidamente
-    if (daysAhead === 0 && currentMinutes >= startMinutes) return now
-
-    // Obter o offset UTC do timezone para o dia candidato via Intl shortOffset
-    const tzOffsetFormatter = new Intl.DateTimeFormat('en-US', {
+    // Calcular o offset UTC do timezone no dia candidato usando getTimezoneOffset
+    // Usamos a data local para inferir o offset via diferença UTC vs local
+    const offsetFormatter = new Intl.DateTimeFormat('en-US', {
       timeZone: timezone,
       timeZoneName: 'shortOffset',
     })
-    const tzParts = tzOffsetFormatter.formatToParts(candidateUtc)
-    const tzName = tzParts.find((p) => p.type === 'timeZoneName')?.value ?? 'GMT+0'
+    const offsetParts = offsetFormatter.formatToParts(candidateUtc)
+    const tzName = offsetParts.find((part) => part.type === 'timeZoneName')?.value ?? ''
 
-    // Extrair offset numérico (em minutos) a partir de "GMT±H" ou "GMT±HH:MM"
-    const offsetMatch = tzName.match(/GMT([+-]\d{1,2}(?::\d{2})?)/)
+    // Parsear GMT+HH:MM ou GMT-HH:MM
     let offsetTotalMinutes = 0
-
-    if (offsetMatch) {
-      const offsetStr = offsetMatch[1]
-      // Parsing robusto: detectar sinal separadamente para evitar bug em GMT+0
-      const isNegative = offsetStr.startsWith('-')
-      const cleanStr = offsetStr.replace(/^[+-]/, '')
-      const parts = cleanStr.split(':')
-      const hours = parseInt(parts[0], 10)
-      const minutes = parts[1] ? parseInt(parts[1], 10) : 0
+    const match = tzName.match(/GMT([+-])(\d{1,2}):?(\d{0,2})/)
+    if (match) {
+      const isNegative = match[1] === '-'
+      const cleanStr = `${match[2]}:${match[3] || '00'}`
+      const parts2 = cleanStr.split(':')
+      const hours = parseInt(parts2[0], 10)
+      const minutes = parts2[1] ? parseInt(parts2[1], 10) : 0
       offsetTotalMinutes = (isNegative ? -1 : 1) * (hours * 60 + minutes)
     }
 
@@ -194,7 +170,7 @@ function getNextFollowUpOpeningTime(timezone: string, config: BusinessHoursConfi
 // Helpers
 // ---------------------------------------------------------------------------
 
-// Revalidar cache da conversa via API interna (nao usar revalidateTag — roda fora do Next.js)
+// Revalidar cache da conversa via API interna (não usar revalidateTag — roda fora do Next.js)
 async function revalidateConversationCache(conversationId: string, organizationId: string): Promise<void> {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL
   const secret = process.env.INTERNAL_API_SECRET
@@ -216,19 +192,21 @@ async function revalidateConversationCache(conversationId: string, organizationI
   }).catch(() => {})
 }
 
-// Tipos auxiliares para a config de esgotamento (espelho de ExhaustedConfig do data-access)
+// Tipos auxiliares para a config de esgotamento
 interface ExhaustedConfig {
   targetStageId?: string
   notifyTarget?: 'deal_assignee' | 'specific_number'
   specificPhone?: string
 }
 
-// Executar acao configurada quando todos os FUPs de um grupo sao esgotados
+// Executar ação configurada quando todos os follow-ups de um agente são esgotados
+// No modelo flat, exhaustedAction/Config ficam no Agent (não mais no grupo)
 async function executeExhaustedAction(conv: ConvForCron, now: Date): Promise<void> {
-  if (!conv.currentFollowUpGroup) return
+  const agent = conv.inbox.agent
+  if (!agent) return
 
-  const { exhaustedAction, exhaustedConfig } = conv.currentFollowUpGroup
-  const config = exhaustedConfig as ExhaustedConfig | null
+  const exhaustedAction = agent.followUpExhaustedAction
+  const config = agent.followUpExhaustedConfig as ExhaustedConfig | null
 
   if (exhaustedAction === 'NONE') return
 
@@ -239,7 +217,7 @@ async function executeExhaustedAction(conv: ConvForCron, now: Date): Promise<voi
       data: { aiPaused: true, pausedAt: now },
     })
 
-    // Registrar evento visivel ao usuario
+    // Registrar evento visível ao usuário
     await db.conversationEvent.create({
       data: {
         conversationId: conv.id,
@@ -249,50 +227,37 @@ async function executeExhaustedAction(conv: ConvForCron, now: Date): Promise<voi
         visibleToUser: true,
         metadata: {
           subtype: 'FOLLOW_UP_EXHAUSTED_NOTIFY',
-          followUpGroupId: conv.currentFollowUpGroupId,
           notifyTarget: config?.notifyTarget ?? 'deal_assignee',
           specificPhone: config?.specificPhone ?? null,
         } as Prisma.InputJsonValue,
       },
-    })
-
-    logger.info(`[follow-up-cron] NOTIFY_HUMAN executed for conversation ${conv.id}`)
+    }).catch(() => {})
     return
   }
 
   if (exhaustedAction === 'MOVE_DEAL_STAGE') {
     const targetStageId = config?.targetStageId
+    if (!conv.dealId || !targetStageId) return
 
-    // Sem deal ou sem stage de destino configurado — ignorar silenciosamente
-    if (!conv.dealId || !targetStageId) {
-      logger.warn(`[follow-up-cron] MOVE_DEAL_STAGE skipped for conversation ${conv.id}: dealId=${conv.dealId}, targetStageId=${targetStageId}`)
-      return
-    }
-
-    // Mover o deal para o stage de destino
     await db.deal.update({
       where: { id: conv.dealId },
       data: { pipelineStageId: targetStageId },
-    })
+    }).catch(() => {})
 
-    // Registrar evento visivel ao usuario
     await db.conversationEvent.create({
       data: {
         conversationId: conv.id,
         type: 'INFO',
         toolName: 'follow_up',
-        content: 'Follow-up esgotado. Negócio movido para nova etapa automaticamente.',
+        content: 'Follow-up esgotado. Negócio movido para nova etapa.',
         visibleToUser: true,
         metadata: {
           subtype: 'FOLLOW_UP_EXHAUSTED_MOVE_DEAL',
-          followUpGroupId: conv.currentFollowUpGroupId,
           dealId: conv.dealId,
           targetStageId,
         } as Prisma.InputJsonValue,
       },
-    })
-
-    logger.info(`[follow-up-cron] MOVE_DEAL_STAGE executed for conversation ${conv.id}, dealId=${conv.dealId}, targetStageId=${targetStageId}`)
+    }).catch(() => {})
   }
 }
 
@@ -309,7 +274,7 @@ export const followUpCron = schedules.task({
     const now = new Date()
 
     // 1. Query indexada: buscar conversas com FUP vencido
-    // O indice @@index([nextFollowUpAt, aiPaused]) garante performance
+    // O índice @@index([nextFollowUpAt, aiPaused]) garante performance
     const conversations = await db.conversation.findMany({
       where: {
         nextFollowUpAt: { lte: now },
@@ -321,7 +286,7 @@ export const followUpCron = schedules.task({
         organizationId: true,
         dealId: true,
         followUpCount: true,
-        currentFollowUpGroupId: true,
+        currentStepOrder: true,
         inbox: {
           select: {
             id: true,
@@ -333,22 +298,17 @@ export const followUpCron = schedules.task({
             zapiInstanceId: true,
             zapiToken: true,
             zapiClientToken: true,
+            agentId: true,
             agent: {
               select: {
+                id: true,
                 followUpBusinessHoursEnabled: true,
                 followUpBusinessHoursConfig: true,
                 followUpBusinessHoursTimezone: true,
+                followUpExhaustedAction: true,
+                followUpExhaustedConfig: true,
               },
             },
-          },
-        },
-        currentFollowUpGroup: {
-          select: {
-            id: true,
-            isActive: true,
-            exhaustedAction: true,
-            exhaustedConfig: true,
-            steps: { orderBy: { order: 'asc' } },
           },
         },
       },
@@ -368,40 +328,44 @@ export const followUpCron = schedules.task({
 
     for (const conv of conversations) {
       try {
-        // Validar: grupo existe e esta ativo
-        if (!conv.currentFollowUpGroup || !conv.currentFollowUpGroup.isActive) {
-          // Grupo foi desativado ou deletado — limpar campos de FUP
+        // Validar: inbox ativa, remoteJid disponível e agente existe
+        if (!conv.inbox.isActive || !conv.remoteJid || !conv.inbox.agentId || !conv.inbox.agent) {
+          // Limpar estado completo — inbox inativa ou sem agente não pode processar FUPs
           await db.conversation.update({
             where: { id: conv.id },
-            data: { nextFollowUpAt: null, followUpCount: 0, currentFollowUpGroupId: null },
+            data: { nextFollowUpAt: null, followUpCount: 0 },
           })
           skipped++
           continue
         }
 
-        // Validar: inbox ativa e remoteJid disponivel
-        if (!conv.inbox.isActive || !conv.remoteJid) {
-          // Limpar estado completo — inbox inativa nao pode processar FUPs
+        const agentId = conv.inbox.agentId
+
+        // 2. Resolver follow-ups ativos para o step atual da conversa (modelo flat)
+        // getFollowUpsForStep acessa o banco diretamente (sem cache) — seguro para Trigger.dev
+        const followUps = await getFollowUpsForStep(agentId, conv.currentStepOrder)
+
+        if (followUps.length === 0) {
+          // Nenhum follow-up cobre este step — limpar estado
           await db.conversation.update({
             where: { id: conv.id },
-            data: { nextFollowUpAt: null, followUpCount: 0, currentFollowUpGroupId: null },
+            data: { nextFollowUpAt: null, followUpCount: 0 },
           })
           skipped++
           continue
         }
 
-        const groupSteps = conv.currentFollowUpGroup.steps
-        // followUpCount e usado como indice de array (0-based), nao como valor de order
-        const currentFupStep = groupSteps[conv.followUpCount]
+        // followUpCount é o índice no array ordenado por order
+        const currentFollowUp = followUps[conv.followUpCount]
 
-        if (!currentFupStep) {
-          // Todos os FUPs esgotados — executar acao configurada antes de limpar
+        if (!currentFollowUp) {
+          // Todos os follow-ups esgotados — executar ação configurada no Agent
           await executeExhaustedAction(conv, now)
 
-          // Limpar estado de FUP (independente da acao executada)
+          // Limpar estado de FUP (independente da ação executada)
           await db.conversation.update({
             where: { id: conv.id },
-            data: { nextFollowUpAt: null, followUpCount: 0, currentFollowUpGroupId: null },
+            data: { nextFollowUpAt: null, followUpCount: 0 },
           })
           skipped++
           continue
@@ -411,14 +375,13 @@ export const followUpCron = schedules.task({
         // O cliente pode ter respondido entre a leitura do batch e este ponto
         const freshConv = await db.conversation.findUnique({
           where: { id: conv.id },
-          select: { nextFollowUpAt: true, aiPaused: true, followUpCount: true, currentFollowUpGroupId: true },
+          select: { nextFollowUpAt: true, aiPaused: true, followUpCount: true },
         })
 
         const hasFupChanged =
           !freshConv ||
           !freshConv.nextFollowUpAt ||
           freshConv.aiPaused ||
-          freshConv.currentFollowUpGroupId !== conv.currentFollowUpGroupId ||
           freshConv.followUpCount !== conv.followUpCount
 
         if (hasFupChanged) {
@@ -427,29 +390,10 @@ export const followUpCron = schedules.task({
           continue
         }
 
-        // Race condition check: verificar se o grupo ainda existe e está ativo
-        // O grupo pode ter sido deletado/desativado entre a leitura do batch e este ponto
-        if (conv.currentFollowUpGroupId) {
-          const freshGroup = await db.followUpGroup.findUnique({
-            where: { id: conv.currentFollowUpGroupId },
-            select: { isActive: true },
-          })
-
-          if (!freshGroup || !freshGroup.isActive) {
-            await db.conversation.update({
-              where: { id: conv.id },
-              data: { nextFollowUpAt: null, followUpCount: 0, currentFollowUpGroupId: null },
-            })
-            logger.info(`[follow-up-cron] Follow-up group ${conv.currentFollowUpGroupId} no longer active for conversation ${conv.id}, clearing FUP state`)
-            skipped++
-            continue
-          }
-        }
-
         // Business hours check para follow-up (config separada da do agente)
         // Se habilitado e o momento atual estiver fora do horário, adiar para próxima abertura
         const agent = conv.inbox.agent
-        if (agent?.followUpBusinessHoursEnabled && agent.followUpBusinessHoursConfig) {
+        if (agent.followUpBusinessHoursEnabled && agent.followUpBusinessHoursConfig) {
           // Validar que o config é um objeto válido antes de fazer cast — JSON pode ser malformado
           if (
             typeof agent.followUpBusinessHoursConfig !== 'object' ||
@@ -484,7 +428,7 @@ export const followUpCron = schedules.task({
           }
         }
 
-        // 2. Resolver provider com tratamento de credenciais ausentes
+        // 3. Resolver provider com tratamento de credenciais ausentes
         let provider
         try {
           provider = resolveWhatsAppProvider(conv.inbox)
@@ -495,7 +439,7 @@ export const followUpCron = schedules.task({
           // Limpar estado e registrar evento visível ao usuário
           await db.conversation.update({
             where: { id: conv.id },
-            data: { nextFollowUpAt: null, followUpCount: 0, currentFollowUpGroupId: null },
+            data: { nextFollowUpAt: null, followUpCount: 0 },
           })
           await db.conversationEvent.create({
             data: {
@@ -514,10 +458,10 @@ export const followUpCron = schedules.task({
           continue
         }
 
-        // 3. Enviar mensagem via provider correto (Evolution ou Meta Cloud)
-        const sentIds = await provider.sendText(conv.remoteJid, currentFupStep.messageContent)
+        // 4. Enviar mensagem via provider correto (Evolution, Meta Cloud ou Z-API)
+        const sentIds = await provider.sendText(conv.remoteJid, currentFollowUp.messageContent)
 
-        // 4. Pre-registrar dedup keys para evitar que webhook reprocesse como msg humana
+        // 5. Pré-registrar dedup keys para evitar que webhook reprocesse como msg humana
         // TTL 600s (10 min) para cobrir debounces e retentativas de webhook
         await Promise.all(
           sentIds.map((sentId) =>
@@ -530,21 +474,21 @@ export const followUpCron = schedules.task({
           ),
         )
 
-        // 5. Salvar como mensagem do assistant com metadata de rastreio
+        // 6. Salvar como mensagem do assistant com metadata de rastreio
         await db.message.create({
           data: {
             conversationId: conv.id,
             role: 'assistant',
-            content: currentFupStep.messageContent,
+            content: currentFollowUp.messageContent,
             metadata: {
               source: 'follow_up',
-              followUpGroupId: conv.currentFollowUpGroupId,
-              followUpStepOrder: currentFupStep.order,
+              followUpId: currentFollowUp.id,
+              followUpOrder: currentFollowUp.order,
             } as Prisma.InputJsonValue,
           },
         })
 
-        // 5b. Registrar ConversationEvent para rastreabilidade do FUP enviado
+        // 7. Registrar ConversationEvent para rastreabilidade do FUP enviado
         await db.conversationEvent.create({
           data: {
             conversationId: conv.id,
@@ -554,20 +498,20 @@ export const followUpCron = schedules.task({
             visibleToUser: true,
             metadata: {
               subtype: 'FOLLOW_UP_SENT',
-              followUpGroupId: conv.currentFollowUpGroupId,
-              followUpStepOrder: currentFupStep.order,
-              delayMinutes: currentFupStep.delayMinutes,
+              followUpId: currentFollowUp.id,
+              followUpOrder: currentFollowUp.order,
+              delayMinutes: currentFollowUp.delayMinutes,
             } as Prisma.InputJsonValue,
           },
         })
 
-        // 6. Agendar proximo FUP ou finalizar ciclo
+        // 8. Agendar próximo FUP ou finalizar ciclo
         const nextFupIndex = conv.followUpCount + 1
-        const nextFupStep = groupSteps[nextFupIndex]
+        const nextFollowUp = followUps[nextFupIndex]
 
-        if (nextFupStep) {
-          // Ha mais steps — agendar proximo com base no delay do proximo step
-          const nextFollowUpAt = new Date(now.getTime() + nextFupStep.delayMinutes * 60 * 1000)
+        if (nextFollowUp) {
+          // Há mais follow-ups — agendar próximo com base no delay do próximo
+          const nextFollowUpAt = new Date(now.getTime() + nextFollowUp.delayMinutes * 60 * 1000)
           await db.conversation.update({
             where: { id: conv.id },
             data: {
@@ -576,24 +520,23 @@ export const followUpCron = schedules.task({
             },
           })
         } else {
-          // Ultimo step enviado — limpar ciclo
+          // Último follow-up enviado — limpar ciclo
           await db.conversation.update({
             where: { id: conv.id },
             data: {
               nextFollowUpAt: null,
               followUpCount: 0,
-              currentFollowUpGroupId: null,
             },
           })
         }
 
-        // 7. Revalidar cache via API interna
+        // 9. Revalidar cache via API interna
         await revalidateConversationCache(conv.id, conv.organizationId)
 
         processed++
         logger.info(`[follow-up-cron] Sent FUP #${conv.followUpCount + 1} to conversation ${conv.id}`, {
-          groupId: conv.currentFollowUpGroupId,
-          stepOrder: currentFupStep.order,
+          followUpId: currentFollowUp.id,
+          followUpOrder: currentFollowUp.order,
         })
       } catch (error) {
         errors++
@@ -604,8 +547,8 @@ export const followUpCron = schedules.task({
         // Se o provider aceitou mas a resposta se perdeu, nextFollowUpAt ficaria no passado
         await db.conversation.update({
           where: { id: conv.id },
-          data: { nextFollowUpAt: null, followUpCount: 0, currentFollowUpGroupId: null },
-        }).catch(() => {}) // Nao falhar se a limpeza tambem falhar
+          data: { nextFollowUpAt: null, followUpCount: 0 },
+        }).catch(() => {}) // Não falhar se a limpeza também falhar
       }
     }
 

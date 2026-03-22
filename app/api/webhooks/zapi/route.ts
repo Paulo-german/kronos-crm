@@ -263,7 +263,6 @@ export async function POST(req: Request) {
           unreadCount: { increment: 1 },
           nextFollowUpAt: null,
           followUpCount: 0,
-          currentFollowUpGroupId: null,
         },
       })
 
@@ -340,8 +339,7 @@ export async function POST(req: Request) {
             unreadCount: { increment: 1 },
             nextFollowUpAt: null,
             followUpCount: 0,
-            currentFollowUpGroupId: null,
-          },
+            },
         })
       }
 
@@ -458,8 +456,7 @@ export async function POST(req: Request) {
             unreadCount: { increment: 1 },
             nextFollowUpAt: null,
             followUpCount: 0,
-            currentFollowUpGroupId: null,
-          },
+            },
         })
 
         revalidateTag(`conversations:${orgId}`)
@@ -514,7 +511,7 @@ export async function POST(req: Request) {
   await Promise.all([
     db.conversation.update({
       where: { id: conversationId },
-      data: { unreadCount: { increment: 1 }, nextFollowUpAt: null, followUpCount: 0, currentFollowUpGroupId: null },
+      data: { unreadCount: { increment: 1 }, nextFollowUpAt: null, followUpCount: 0 },
     }),
     redis
       .set(
