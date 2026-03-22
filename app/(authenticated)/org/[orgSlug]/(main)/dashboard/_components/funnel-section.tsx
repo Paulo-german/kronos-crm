@@ -1,24 +1,24 @@
 import type { MemberRole } from '@prisma/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
-import { getRevenueOverTime } from '@/_data-access/dashboard'
+import { getFunnelData } from '@/_data-access/dashboard'
 import type { DateRange } from '@/_data-access/dashboard/types'
-import { RevenueAreaChart } from './revenue-area-chart'
+import { PipelineFunnel } from './pipeline-funnel'
 
-interface ChartsSectionProps {
+interface FunnelSectionProps {
   ctx: { userId: string; orgId: string; userRole: MemberRole }
   dateRange: DateRange
 }
 
-export async function ChartsSection({ ctx, dateRange }: ChartsSectionProps) {
-  const revenueData = await getRevenueOverTime(ctx, dateRange)
+export async function FunnelSection({ ctx, dateRange }: FunnelSectionProps) {
+  const funnelData = await getFunnelData(ctx, dateRange)
 
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">Receita no Período</CardTitle>
+        <CardTitle className="text-base">Funil de Conversão</CardTitle>
       </CardHeader>
       <CardContent>
-        <RevenueAreaChart data={revenueData} />
+        <PipelineFunnel stages={funnelData} />
       </CardContent>
     </Card>
   )

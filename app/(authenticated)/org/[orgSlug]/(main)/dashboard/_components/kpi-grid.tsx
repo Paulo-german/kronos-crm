@@ -23,6 +23,8 @@ export async function KpiGrid({ ctx, dateRange, orgSlug }: KpiGridProps) {
         value={formatCurrency(kpi.totalPipelineValue)}
         icon={DollarSign}
         href={`/org/${orgSlug}/crm/deals/pipeline`}
+        iconClassName="text-emerald-500"
+        iconBgClassName="bg-emerald-500/10"
       />
       <KpiCard
         title="Receita do Período"
@@ -30,6 +32,8 @@ export async function KpiGrid({ ctx, dateRange, orgSlug }: KpiGridProps) {
         icon={TrendingUp}
         variation={formatVariation(kpi.wonDealsValue, kpi.prevWonDealsValue)}
         href={`/org/${orgSlug}/crm/deals/list?status=WON`}
+        iconClassName="text-primary"
+        iconBgClassName="bg-primary/10"
       />
       <KpiCard
         title="Ticket Médio"
@@ -37,6 +41,8 @@ export async function KpiGrid({ ctx, dateRange, orgSlug }: KpiGridProps) {
         icon={Target}
         variation={formatVariation(kpi.avgTicket, kpi.prevAvgTicket)}
         href={`/org/${orgSlug}/crm/deals/list?status=WON`}
+        iconClassName="text-amber-500"
+        iconBgClassName="bg-amber-500/10"
       />
       <KpiCard
         title="Novos Leads"
@@ -44,6 +50,8 @@ export async function KpiGrid({ ctx, dateRange, orgSlug }: KpiGridProps) {
         icon={Users}
         variation={formatVariation(kpi.newLeadsCount, kpi.prevNewLeadsCount)}
         href={`/org/${orgSlug}/crm/deals/list?status=OPEN`}
+        iconClassName="text-sky-500"
+        iconBgClassName="bg-sky-500/10"
       />
     </div>
   )

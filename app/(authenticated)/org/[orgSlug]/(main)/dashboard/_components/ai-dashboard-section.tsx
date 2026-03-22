@@ -6,9 +6,10 @@ import { AiCreditsChart } from './ai-credits-chart'
 
 interface AiDashboardSectionProps {
   orgId: string
+  dateRange: { start: Date; end: Date }
 }
 
-export async function AiDashboardSection({ orgId }: AiDashboardSectionProps) {
+export async function AiDashboardSection({ orgId, dateRange }: AiDashboardSectionProps) {
   const metrics = await getAiMetrics(orgId)
 
   return (

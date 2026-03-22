@@ -1,5 +1,6 @@
 'use client'
 
+import { PieChart as PieChartIcon } from 'lucide-react'
 import { PieChart, Pie, Label } from 'recharts'
 import type { DealsByStatus } from '@/_data-access/dashboard'
 import {
@@ -24,8 +25,14 @@ export function PipelineDonutChart({ data }: PipelineDonutChartProps) {
 
   if (total === 0) {
     return (
-      <div className="flex h-[160px] items-center justify-center text-sm text-muted-foreground">
-        Nenhum deal encontrado
+      <div className="flex h-[160px] flex-col items-center justify-center gap-3">
+        <div className="relative">
+          <div className="absolute inset-0 animate-pulse rounded-full bg-primary/20 blur-2xl" />
+          <div className="relative flex size-14 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/25">
+            <PieChartIcon className="size-7 text-white" />
+          </div>
+        </div>
+        <p className="text-sm text-muted-foreground">Nenhum deal encontrado</p>
       </div>
     )
   }
