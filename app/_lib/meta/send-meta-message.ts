@@ -138,3 +138,96 @@ export async function sendMetaAudioMessage(
 
   return messageId
 }
+
+/**
+ * Envia midia (imagem ou documento) via WhatsApp Cloud API (Meta Graph API).
+ * Segue o mesmo padrao two-step de sendMetaAudioMessage:
+ * 1. Upload do arquivo via /media endpoint
+ * 2. Envio da mensagem com o media_id retornado
+ */
+export async function sendMetaMediaMessage(
+  phoneNumberId: string,
+  accessToken: string,
+  recipientPhone: string,
+  mediaBase64: string,
+  mimetype: string,
+  mediatype: 'image' | 'document',
+  fileName?: string,
+  caption?: string,
+): Promise<string> {
+  const baseUrl = getGraphApiBaseUrl()
+
+  // Passo 1: upload da midia para obter media_id
+  const uploadResponse = await fetch(`${baseUrl}/${phoneNumberId}/media`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: (() => {
+      const formData = new FormData()
+      const binaryString = atob(mediaBase64)
+      const bytes = new Uint8Array(binaryString.length)
+      for (let byteIndex = 0; byteIndex < binaryString.length; byteIndex++) {
+        bytes[byteIndex] = binaryString.charCodeAt(byteIndex)
+      }
+      const blob = new Blob([bytes], { type: mimetype })
+      formData.append('file', blob, fileName ?? 'file')
+      formData.append('messaging_product', 'whatsapp')
+      formData.append('type', mimetype)
+      return formData
+    })(),
+  })
+
+  if (!uploadResponse.ok) {
+    const errorBody = await uploadResponse.text().catch(() => 'unknown')
+    throw new Error(`Meta Graph API media upload failed (${uploadResponse.status}): ${errorBody}`)
+  }
+
+  const uploadData = (await uploadResponse.json().catch(() => null)) as { id?: string } | null
+  const mediaId = uploadData?.id
+
+  if (!mediaId) {
+    throw new Error('Meta Graph API media upload: no mediaId returned')
+  }
+
+  // Passo 2: enviar mensagem com o media_id
+  const messagePayload: Record<string, unknown> = {
+    messaging_product: 'whatsapp',
+    recipient_type: 'individual',
+    to: recipientPhone,
+    type: mediatype,
+  }
+
+  if (mediatype === 'image') {
+    messagePayload.image = { id: mediaId, ...(caption ? { caption } : {}) }
+  } else {
+    messagePayload.document = {
+      id: mediaId,
+      ...(fileName ? { filename: fileName } : {}),
+      ...(caption ? { caption } : {}),
+    }
+  }
+
+  const response = await fetch(`${baseUrl}/${phoneNumberId}/messages`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(messagePayload),
+  })
+
+  if (!response.ok) {
+    const errorBody = await response.text().catch(() => 'unknown')
+    throw new Error(`Meta Graph API sendMedia failed (${response.status}): ${errorBody}`)
+  }
+
+  const data = (await response.json().catch(() => null)) as MetaSendMessageResponse | null
+  const messageId = data?.messages?.[0]?.id
+
+  if (!messageId) {
+    throw new Error('Meta Graph API sendMedia: no messageId returned')
+  }
+
+  return messageId
+}

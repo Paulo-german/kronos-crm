@@ -136,6 +136,7 @@ interface MediaMetadata {
   fileName?: string
   seconds?: number
   storedInSupabase?: boolean
+  storedExternally?: boolean
 }
 
 interface MessageMetadata {
@@ -167,6 +168,8 @@ export function MessageBubble({ id, conversationId, role, content, metadata, cre
     !media.mimetype.startsWith('image/') &&
     id &&
     conversationId
+  const remoteUrl = (media?.storedInSupabase || media?.storedExternally) ? media?.url : undefined
+  const mediaSrc = remoteUrl ?? `/api/inbox/${conversationId}/media/${id}`
   const isMediaPlaceholder =
     (hasAudio || hasImage || hasDocument) &&
     /^\[(Áudio \d+s|Imagem[^\]]*|Documento[^\]]*)\]$/.test(content)
@@ -193,7 +196,7 @@ export function MessageBubble({ id, conversationId, role, content, metadata, cre
         {hasImage && (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img
-            src={`/api/inbox/${conversationId}/media/${id}`}
+            src={mediaSrc}
             alt="Imagem"
             loading="lazy"
             className="mb-2 max-h-64 rounded-lg object-contain shadow-sm transition-all hover:ring-2 hover:ring-primary/20"
@@ -202,7 +205,7 @@ export function MessageBubble({ id, conversationId, role, content, metadata, cre
 
         {hasAudio && (
           <AudioPlayer
-            src={`/api/inbox/${conversationId}/media/${id}`}
+            src={mediaSrc}
             isUser={isUser}
           />
         )}
@@ -220,7 +223,7 @@ export function MessageBubble({ id, conversationId, role, content, metadata, cre
             )}
           >
             <a
-              href={`/api/inbox/${conversationId}/media/${id}`}
+              href={mediaSrc}
               target="_blank"
               rel="noopener noreferrer"
               download={media?.fileName ?? true}

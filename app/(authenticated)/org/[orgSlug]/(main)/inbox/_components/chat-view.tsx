@@ -7,7 +7,12 @@ import { Separator } from '@/_components/ui/separator'
 import { TooltipProvider } from '@/_components/ui/tooltip'
 import { sendMessage } from '@/_actions/inbox/send-message'
 import { sendAudio } from '@/_actions/inbox/send-audio'
+import { sendMedia } from '@/_actions/inbox/send-media'
 import { toggleAiPause } from '@/_actions/inbox/toggle-ai-pause'
+import {
+  ALL_ACCEPTED_MEDIA_TYPES,
+  getMaxSizeForMimetype,
+} from '@/_lib/whatsapp/media-constants'
 import type { ConversationListDto } from '@/_data-access/conversation/get-conversations'
 import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
 import type { ContactOptionDto } from '@/_data-access/contact/get-contacts-options'
@@ -30,10 +35,29 @@ interface ChatViewProps {
 export function ChatView({ conversation, dealOptions, contactOptions, orgSlug }: ChatViewProps) {
   const [text, setText] = useState('')
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [mediaPreviewUrl, setMediaPreviewUrl] = useState<string | null>(null)
+  const mediaPreviewUrlRef = useRef<string | null>(null)
   const chatInputRef = useRef<ChatInputHandle>(null)
 
   useEffect(() => {
     chatInputRef.current?.focus()
+  }, [])
+
+  // Limpar arquivo selecionado ao trocar de conversa
+  useEffect(() => {
+    if (mediaPreviewUrlRef.current) URL.revokeObjectURL(mediaPreviewUrlRef.current)
+    setSelectedFile(null)
+    setMediaPreviewUrl(null)
+    mediaPreviewUrlRef.current = null
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversation.id])
+
+  // Cleanup no unmount
+  useEffect(() => {
+    return () => {
+      if (mediaPreviewUrlRef.current) URL.revokeObjectURL(mediaPreviewUrlRef.current)
+    }
   }, [])
 
   const {
@@ -90,6 +114,25 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug }:
     },
     onError: (error) => {
       toast.error(error.error?.serverError ?? 'Erro ao enviar áudio')
+    },
+  })
+
+  const handleFileRemove = () => {
+    if (mediaPreviewUrl) URL.revokeObjectURL(mediaPreviewUrl)
+    setSelectedFile(null)
+    setMediaPreviewUrl(null)
+    mediaPreviewUrlRef.current = null
+  }
+
+  const sendMediaAction = useAction(sendMedia, {
+    onSuccess: () => {
+      handleFileRemove()
+      setText('')
+      chatInputRef.current?.focus()
+      fetchMessages()
+    },
+    onError: (error) => {
+      toast.error(error.error?.serverError ?? 'Erro ao enviar arquivo')
     },
   })
 
@@ -184,6 +227,52 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug }:
     })
   }
 
+  const handleFileSelect = (file: File) => {
+    if (!ALL_ACCEPTED_MEDIA_TYPES.includes(file.type)) {
+      toast.error('Tipo de arquivo não suportado.')
+      return
+    }
+    const maxSize = getMaxSizeForMimetype(file.type)
+    if (file.size > maxSize) {
+      const maxMB = Math.round(maxSize / (1024 * 1024))
+      toast.error(`Arquivo muito grande. Máximo: ${maxMB}MB.`)
+      return
+    }
+    const preview = file.type.startsWith('image/') ? URL.createObjectURL(file) : null
+    setSelectedFile(file)
+    setMediaPreviewUrl(preview)
+    mediaPreviewUrlRef.current = preview
+  }
+
+  const handleSendMedia = () => {
+    if (!selectedFile || sendMediaAction.isPending) return
+
+    try {
+      const reader = new FileReader()
+      reader.onerror = () => {
+        toast.error('Erro ao ler o arquivo.')
+      }
+      reader.onloadend = () => {
+        const result = reader.result as string
+        const base64 = result.split(',')[1]
+        if (!base64) {
+          toast.error('Erro ao processar arquivo.')
+          return
+        }
+        sendMediaAction.execute({
+          conversationId: conversation.id,
+          mediaBase64: base64,
+          mimetype: selectedFile.type,
+          fileName: selectedFile.name,
+          caption: text.trim() || undefined,
+        })
+      }
+      reader.readAsDataURL(selectedFile)
+    } catch {
+      toast.error('Erro ao processar arquivo.')
+    }
+  }
+
   return (
     <TooltipProvider>
       <div className="flex h-full flex-col">
@@ -225,6 +314,12 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug }:
           onStartRecording={startRecording}
           onStopRecording={stopRecording}
           onCancelRecording={cancelRecording}
+          selectedFile={selectedFile}
+          mediaPreviewUrl={mediaPreviewUrl}
+          onFileSelect={handleFileSelect}
+          onFileRemove={handleFileRemove}
+          onSendMedia={handleSendMedia}
+          isMediaPending={sendMediaAction.isPending}
         />
         <ChatSettingsSheet
           open={settingsOpen}

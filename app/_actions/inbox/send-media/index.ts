@@ -1,0 +1,144 @@
+'use server'
+
+import { revalidateTag } from 'next/cache'
+import { orgActionClient } from '@/_lib/safe-action'
+import { db } from '@/_lib/prisma'
+import { redis } from '@/_lib/redis'
+import { canPerformAction, requirePermission } from '@/_lib/rbac'
+import { resolveWhatsAppProvider } from '@/_lib/whatsapp/provider'
+import { uploadMediaToB2 } from '@/_lib/b2/storage'
+import {
+  ALL_ACCEPTED_MEDIA_TYPES,
+  isImageMimetype,
+  getMaxSizeForMimetype,
+} from '@/_lib/whatsapp/media-constants'
+import { withRetry } from '@/_lib/whatsapp/retry'
+import { sendMediaSchema } from './schema'
+
+export const sendMedia = orgActionClient
+  .schema(sendMediaSchema)
+  .action(async ({ parsedInput: data, ctx }) => {
+    // 1. Verificar permissão
+    requirePermission(canPerformAction(ctx, 'conversation', 'update'))
+
+    // 2. Validar mimetype
+    if (!ALL_ACCEPTED_MEDIA_TYPES.includes(data.mimetype)) {
+      throw new Error('Tipo de arquivo não suportado.')
+    }
+
+    // 3. Validar tamanho (base64 é ~33% maior que o binário)
+    const estimatedBytes = Math.ceil(data.mediaBase64.length * 0.75)
+    const maxSize = getMaxSizeForMimetype(data.mimetype)
+    if (estimatedBytes > maxSize) {
+      const maxMB = Math.round(maxSize / (1024 * 1024))
+      throw new Error(`Arquivo muito grande. Máximo: ${maxMB}MB.`)
+    }
+
+    // 4. Validar conversa pertence à org
+    const conversation = await db.conversation.findFirst({
+      where: { id: data.conversationId, organizationId: ctx.orgId },
+      include: {
+        inbox: {
+          select: {
+            connectionType: true,
+            evolutionInstanceName: true,
+            metaPhoneNumberId: true,
+            metaAccessToken: true,
+          },
+        },
+      },
+    })
+
+    if (!conversation) {
+      throw new Error('Conversa não encontrada.')
+    }
+
+    if (!conversation.remoteJid) {
+      throw new Error('Esta conversa não possui conexão WhatsApp ativa.')
+    }
+
+    const remoteJid = conversation.remoteJid
+
+    // 5. Buscar nome do remetente
+    const sender = await db.user.findUnique({
+      where: { id: ctx.userId },
+      select: { fullName: true, email: true },
+    })
+    const senderName = sender?.fullName || sender?.email || 'Membro'
+
+    // 6. Gerar messageId, determinar mediatype e fazer upload para B2
+    const messageId = crypto.randomUUID()
+    const mediatype = isImageMimetype(data.mimetype) ? 'image' : 'document' as const
+
+    const uploadResult = await uploadMediaToB2({
+      organizationId: ctx.orgId,
+      conversationId: data.conversationId,
+      messageId,
+      base64: data.mediaBase64,
+      mimetype: data.mimetype,
+      fileName: data.fileName,
+    })
+
+    // 7. Enviar via provider com retry (Evolution usa URL do B2, Meta usa base64)
+    const provider = resolveWhatsAppProvider(conversation.inbox)
+    const providerMessageId = await withRetry(() =>
+      provider.sendMedia(
+        remoteJid,
+        data.mediaBase64,
+        data.mimetype,
+        mediatype,
+        data.fileName,
+        data.caption,
+        uploadResult.publicUrl,
+      ),
+    )
+
+    // 8. Dedup Redis
+    await redis.set(`dedup:${providerMessageId}`, '1', 'EX', 300).catch(() => {})
+
+    // 9. Definir conteúdo e salvar message + pausar IA + cancelar FUP em paralelo
+    // O humano assumiu a conversa — FUP nao faz mais sentido
+    const content = data.caption
+      || (mediatype === 'image' ? '[Imagem]' : `[Documento: ${data.fileName}]`)
+
+    await Promise.all([
+      db.message.create({
+        data: {
+          id: messageId,
+          conversationId: data.conversationId,
+          role: 'assistant',
+          content,
+          providerMessageId,
+          metadata: {
+            sentBy: ctx.userId,
+            sentByName: senderName,
+            sentFrom: 'inbox',
+            media: {
+              mimetype: data.mimetype,
+              fileName: data.fileName,
+              url: uploadResult.publicUrl,
+              storedExternally: true,
+            },
+          },
+        },
+      }),
+      db.conversation.update({
+        where: { id: data.conversationId },
+        data: {
+          aiPaused: true,
+          pausedAt: new Date(),
+          unreadCount: 0,
+          // Reset follow-up: humano assumiu a conversa — cancelar ciclo pendente
+          nextFollowUpAt: null,
+          followUpCount: 0,
+          currentFollowUpGroupId: null,
+        },
+      }),
+    ])
+
+    // 10. Invalidar cache
+    revalidateTag(`conversations:${ctx.orgId}`)
+    revalidateTag(`conversation-messages:${data.conversationId}`)
+
+    return { success: true }
+  })

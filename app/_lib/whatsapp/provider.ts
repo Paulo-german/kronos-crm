@@ -1,6 +1,7 @@
 import { sendWhatsAppMessage } from '@/_lib/evolution/send-message'
 import { sendWhatsAppAudio } from '@/_lib/evolution/send-audio'
-import { sendMetaTextMessage, sendMetaAudioMessage } from '@/_lib/meta/send-meta-message'
+import { sendWhatsAppMedia } from '@/_lib/evolution/send-media'
+import { sendMetaTextMessage, sendMetaAudioMessage, sendMetaMediaMessage } from '@/_lib/meta/send-meta-message'
 import { ConnectionType } from '@prisma/client'
 
 /**
@@ -10,6 +11,15 @@ import { ConnectionType } from '@prisma/client'
 export interface WhatsAppProvider {
   sendText(recipientPhone: string, text: string): Promise<string[]>
   sendAudio(recipientPhone: string, audioBase64: string): Promise<string>
+  sendMedia(
+    recipientPhone: string,
+    mediaBase64: string,
+    mimetype: string,
+    mediatype: 'image' | 'document',
+    fileName?: string,
+    caption?: string,
+    mediaUrl?: string,
+  ): Promise<string>
 }
 
 interface InboxProviderContext {
@@ -40,6 +50,8 @@ export function resolveWhatsAppProvider(inbox: InboxProviderContext): WhatsAppPr
         sendMetaTextMessage(phoneNumberId, accessToken, recipientPhone.replace('@s.whatsapp.net', ''), text),
       sendAudio: (recipientPhone: string, audioBase64: string) =>
         sendMetaAudioMessage(phoneNumberId, accessToken, recipientPhone.replace('@s.whatsapp.net', ''), audioBase64),
+      sendMedia: (recipientPhone: string, mediaBase64: string, mimetype: string, mediatype: 'image' | 'document', fileName?: string, caption?: string) =>
+        sendMetaMediaMessage(phoneNumberId, accessToken, recipientPhone.replace('@s.whatsapp.net', ''), mediaBase64, mimetype, mediatype, fileName, caption),
     }
   }
 
@@ -57,5 +69,9 @@ export function resolveWhatsAppProvider(inbox: InboxProviderContext): WhatsAppPr
       sendWhatsAppMessage(instanceName, recipientPhone, text),
     sendAudio: (recipientPhone: string, audioBase64: string) =>
       sendWhatsAppAudio(instanceName, recipientPhone, audioBase64),
+    sendMedia: (recipientPhone: string, _mediaBase64: string, mimetype: string, mediatype: 'image' | 'document', fileName?: string, caption?: string, mediaUrl?: string) => {
+      if (!mediaUrl) throw new Error('Evolution API requer URL pública para envio de mídia. Configure o B2 Storage.')
+      return sendWhatsAppMedia(instanceName, recipientPhone, mediaUrl, mimetype, mediatype, fileName, caption)
+    },
   }
 }
