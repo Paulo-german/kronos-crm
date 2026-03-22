@@ -11,6 +11,7 @@ async function fetchUserById(userId: string) {
       fullName: true,
       avatarUrl: true,
       phone: true,
+      isSuperAdmin: true,
       createdAt: true,
     },
   })

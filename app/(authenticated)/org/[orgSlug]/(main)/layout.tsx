@@ -67,6 +67,7 @@ const MainLayout = async ({ children, params }: MainLayoutProps) => {
         <AppSidebar
           activeModules={activeModuleSlugs}
           organizations={userOrganizations}
+          isSuperAdmin={user?.isSuperAdmin ?? false}
           credits={{
             available: creditBalance.available,
             monthlyLimit: creditBalance.monthlyLimit,

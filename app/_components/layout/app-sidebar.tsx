@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Inbox,
   Bot,
+  Shield,
 } from 'lucide-react'
 import { SidebarItem } from '@/_components/layout/sidebar-item'
 import { KronosLogo } from '@/_components/icons/kronos-logo'
@@ -28,12 +29,14 @@ import type { MemberRole } from '@prisma/client'
 interface AppSidebarProps {
   activeModules?: ModuleSlug[]
   organizations?: { id: string; name: string; slug: string; role: MemberRole }[]
+  isSuperAdmin?: boolean
   credits?: { available: number; monthlyLimit: number; orgSlug: string }
 }
 
 export const AppSidebar = ({
   activeModules = [],
   organizations = [],
+  isSuperAdmin = false,
   credits,
 }: AppSidebarProps) => {
   const { isCollapsed, toggle } = useSidebar()
@@ -203,6 +206,13 @@ export const AppSidebar = ({
           isCollapsed ? 'px-2' : 'px-4',
         )}
       >
+        {isSuperAdmin && (
+          <SidebarItem
+            href="/admin/dashboard"
+            label="Delfos Admin"
+            icon={<Shield className="h-4 w-4" />}
+          />
+        )}
         <SidebarItem
           href={buildHref('/settings')}
           label="Configurações"

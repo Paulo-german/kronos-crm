@@ -93,7 +93,7 @@ export const orgActionClient = createSafeActionClient({
 })
 
 /**
- * Action client exclusivo para super admins (painel Creta).
+ * Action client exclusivo para super admins (painel Delfos).
  * Herda autenticação do authActionClient e verifica isSuperAdmin no banco.
  * Use para: TODAS as actions do painel /admin que manipulam dados globais da plataforma.
  *

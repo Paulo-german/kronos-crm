@@ -4,7 +4,10 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard,
+  Building2,
+  Users,
   Megaphone,
+  CreditCard,
   ArrowLeft,
   ChevronLeft,
   ChevronRight,
@@ -78,7 +81,7 @@ export const AdminSidebar = () => {
         isCollapsed ? 'w-[72px]' : 'w-64',
       )}
     >
-      {/* Header — branding "CRETA" */}
+      {/* Header — branding "DELFOS" */}
       <div
         className={cn(
           'ease-[cubic-bezier(0.25,0.76,0.35,1)] flex h-16 items-center border-b border-border/50 transition-[padding] duration-700',
@@ -96,7 +99,7 @@ export const AdminSidebar = () => {
               isCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100 delay-100',
             )}
           >
-            CRETA
+            DELFOS
           </span>
         </Link>
       </div>
@@ -140,6 +143,21 @@ export const AdminSidebar = () => {
             icon={<LayoutDashboard className="h-4 w-4" />}
           />
           <AdminNavItem
+            href="/admin/organizations"
+            label="Organizações"
+            icon={<Building2 className="h-4 w-4" />}
+          />
+          <AdminNavItem
+            href="/admin/users"
+            label="Usuários"
+            icon={<Users className="h-4 w-4" />}
+          />
+          <AdminNavItem
+            href="/admin/plans"
+            label="Planos & Limites"
+            icon={<CreditCard className="h-4 w-4" />}
+          />
+          <AdminNavItem
             href="/admin/announcements"
             label="Comunicados"
             icon={<Megaphone className="h-4 w-4" />}
@@ -154,7 +172,7 @@ export const AdminSidebar = () => {
           isCollapsed ? 'px-2' : 'px-4',
         )}
       >
-        {/* Voltar ao CRM */}
+        {/* Voltar para o Hub */}
         {isCollapsed ? (
           <Tooltip delayDuration={0}>
             <TooltipTrigger asChild>
@@ -168,7 +186,7 @@ export const AdminSidebar = () => {
               </Link>
             </TooltipTrigger>
             <TooltipContent side="right" sideOffset={10}>
-              Voltar ao CRM
+              Voltar para o Hub
             </TooltipContent>
           </Tooltip>
         ) : (
@@ -177,7 +195,7 @@ export const AdminSidebar = () => {
             className="ease-[cubic-bezier(0.25,0.76,0.35,1)] group mb-1 flex items-center rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-all duration-500 hover:bg-accent hover:text-accent-foreground"
           >
             <ArrowLeft className="h-4 w-4 shrink-0" />
-            <span className="ml-3">Voltar ao CRM</span>
+            <span className="ml-3">Voltar para o Hub</span>
           </Link>
         )}
 
