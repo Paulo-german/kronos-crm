@@ -89,7 +89,7 @@ export function resolveWhatsAppProvider(inbox: InboxProviderContext): WhatsAppPr
   // Default: EVOLUTION
   if (!inbox.evolutionInstanceName) {
     throw new Error(
-      'Evolution API nao configurada. Conecte o WhatsApp via QR Code.',
+      'Nenhum canal WhatsApp conectado. Conecte um provedor (Evolution, Meta ou Z-API) nas configurações da caixa de entrada.',
     )
   }
 

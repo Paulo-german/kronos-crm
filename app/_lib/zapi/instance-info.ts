@@ -7,13 +7,35 @@ export interface ZApiInstanceInfo {
   name: string | null
 }
 
+// Cache curto para evitar health check HTTP em toda request de envio
+const CONNECTION_CACHE_TTL_MS = 30_000
+const connectionCache = new Map<string, { connected: boolean; expiresAt: number }>()
+
 /**
  * Valida que a instancia Z-API esta conectada antes de enviar mensagens.
  * Lanca erro explicito se desconectada — evita que mensagens sejam salvas
  * como "enviadas" quando na verdade nao foram entregues.
+ * Usa cache de 30s para evitar bombardear a API com health checks.
  */
 export async function assertZApiConnected(config: ZApiConfig): Promise<void> {
+  const cacheKey = config.instanceId
+  const cached = connectionCache.get(cacheKey)
+
+  if (cached && Date.now() < cached.expiresAt) {
+    if (!cached.connected) {
+      throw new Error(
+        'WhatsApp desconectado. Reconecte o WhatsApp na Z-API antes de enviar mensagens.',
+      )
+    }
+    return
+  }
+
   const status = await getZApiConnectionStatus(config)
+  connectionCache.set(cacheKey, {
+    connected: status.connected,
+    expiresAt: Date.now() + CONNECTION_CACHE_TTL_MS,
+  })
+
   if (!status.connected) {
     throw new Error(
       'WhatsApp desconectado. Reconecte o WhatsApp na Z-API antes de enviar mensagens.',

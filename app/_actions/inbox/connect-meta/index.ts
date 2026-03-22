@@ -23,6 +23,7 @@ export const connectMeta = orgActionClient
         agentId: true,
         evolutionInstanceName: true,
         metaPhoneNumberId: true,
+        zapiInstanceId: true,
         connectionType: true,
       },
     })
@@ -38,6 +39,10 @@ export const connectMeta = orgActionClient
 
     if (inbox.evolutionInstanceName) {
       throw new Error('Esta caixa de entrada já possui uma conexão WhatsApp via QR Code. Desconecte primeiro.')
+    }
+
+    if (inbox.connectionType === 'Z_API' && inbox.zapiInstanceId) {
+      throw new Error('Esta caixa de entrada já possui uma conexão Z-API ativa. Desconecte primeiro.')
     }
 
     // 3b. Validar que o phoneNumberId nao esta associado a outro inbox da org

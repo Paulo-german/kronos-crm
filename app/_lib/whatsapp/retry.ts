@@ -25,8 +25,8 @@ export async function withRetry<T>(
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error))
 
-      // Não retentar erros 4xx (client error) — são definitivos
-      if (isClientError(lastError.message)) throw lastError
+      // Nao retentar erros definitivos (4xx, desconectado, etc.)
+      if (isNonRetryable(lastError.message)) throw lastError
 
       // Última tentativa: propagar erro
       if (attempt === maxAttempts) throw lastError
@@ -40,6 +40,10 @@ export async function withRetry<T>(
   throw lastError
 }
 
-function isClientError(message: string): boolean {
-  return /\(4\d{2}\)/.test(message)
+function isNonRetryable(message: string): boolean {
+  // Erros 4xx (client error) sao definitivos
+  if (/\(4\d{2}\)/.test(message)) return true
+  // Connection guards: WhatsApp desconectado nao se resolve com retry
+  if (/desconectad[oa]/i.test(message)) return true
+  return false
 }

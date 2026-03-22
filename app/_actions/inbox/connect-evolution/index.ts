@@ -18,6 +18,14 @@ export const connectEvolution = orgActionClient
 
     const inbox = await db.inbox.findFirst({
       where: { id: inboxId, organizationId: ctx.orgId },
+      select: {
+        id: true,
+        agentId: true,
+        connectionType: true,
+        evolutionInstanceName: true,
+        metaPhoneNumberId: true,
+        zapiInstanceId: true,
+      },
     })
 
     if (!inbox) {
@@ -28,6 +36,14 @@ export const connectEvolution = orgActionClient
       throw new Error('Esta caixa de entrada já possui uma instância WhatsApp conectada.')
     }
 
+    if (inbox.connectionType === 'META_CLOUD' && inbox.metaPhoneNumberId) {
+      throw new Error('Esta caixa de entrada já possui uma conexão Meta WhatsApp ativa. Desconecte primeiro.')
+    }
+
+    if (inbox.connectionType === 'Z_API' && inbox.zapiInstanceId) {
+      throw new Error('Esta caixa de entrada já possui uma conexão Z-API ativa. Desconecte primeiro.')
+    }
+
     // Gera nome único para a instância
     const instanceName = `kronos-${ctx.orgId.slice(0, 8)}-${inbox.id.slice(0, 8)}`
 
@@ -36,6 +52,7 @@ export const connectEvolution = orgActionClient
     await db.inbox.update({
       where: { id: inbox.id },
       data: {
+        connectionType: 'EVOLUTION',
         evolutionInstanceName: result.instanceName,
         evolutionInstanceId: result.instanceId,
       },

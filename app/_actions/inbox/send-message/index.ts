@@ -65,12 +65,15 @@ export const sendMessage = orgActionClient
 
     // 5. Salvar mensagem no banco + pausar IA + resetar unreadCount + cancelar FUP ativo
     // O humano assumiu a conversa — FUP nao faz mais sentido
+    const lastSentId = sentMessageIds[sentMessageIds.length - 1]
+
     await Promise.all([
       db.message.create({
         data: {
           conversationId: data.conversationId,
           role: 'assistant',
           content: data.text,
+          providerMessageId: lastSentId,
           metadata: {
             sentBy: ctx.userId,
             sentByName: senderName,
