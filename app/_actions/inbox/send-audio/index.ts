@@ -6,6 +6,7 @@ import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 import { resolveWhatsAppProvider } from '@/_lib/whatsapp/provider'
+import { withRetry } from '@/_lib/whatsapp/retry'
 import { sendAudioSchema } from './schema'
 
 export const sendAudio = orgActionClient
@@ -37,6 +38,8 @@ export const sendAudio = orgActionClient
       throw new Error('Esta conversa não possui conexão WhatsApp ativa.')
     }
 
+    const remoteJid = conversation.remoteJid
+
     // 3. Buscar nome do remetente
     const sender = await db.user.findUnique({
       where: { id: ctx.userId },
@@ -46,12 +49,15 @@ export const sendAudio = orgActionClient
 
     // 4. Enviar via provider correto (Evolution ou Meta Cloud)
     const provider = resolveWhatsAppProvider(conversation.inbox)
-    const messageId = await provider.sendAudio(conversation.remoteJid, data.audioBase64)
+    const messageId = await withRetry(() =>
+      provider.sendAudio(remoteJid, data.audioBase64),
+    )
 
     // Pré-registrar dedup key para que o webhook fromMe ignore esta mensagem
     await redis.set(`dedup:${messageId}`, '1', 'EX', 300).catch(() => {})
 
-    // 5. Salvar mensagem no banco + pausar IA + resetar unreadCount
+    // 5. Salvar mensagem no banco + pausar IA + resetar unreadCount + cancelar FUP ativo
+    // O humano assumiu a conversa — FUP nao faz mais sentido
     const durationRounded = Math.round(data.duration)
 
     await Promise.all([
@@ -78,6 +84,10 @@ export const sendAudio = orgActionClient
           aiPaused: true,
           pausedAt: new Date(),
           unreadCount: 0,
+          // Reset follow-up: humano assumiu a conversa — cancelar ciclo pendente
+          nextFollowUpAt: null,
+          followUpCount: 0,
+          currentFollowUpGroupId: null,
         },
       }),
     ])

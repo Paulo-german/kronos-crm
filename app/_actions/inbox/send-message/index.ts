@@ -6,6 +6,7 @@ import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 import { resolveWhatsAppProvider } from '@/_lib/whatsapp/provider'
+import { withRetry } from '@/_lib/whatsapp/retry'
 import { sendMessageSchema } from './schema'
 
 export const sendMessage = orgActionClient
@@ -37,6 +38,8 @@ export const sendMessage = orgActionClient
       throw new Error('Esta conversa não possui conexão WhatsApp ativa.')
     }
 
+    const remoteJid = conversation.remoteJid
+
     // 3. Buscar nome do remetente
     const sender = await db.user.findUnique({
       where: { id: ctx.userId },
@@ -46,7 +49,9 @@ export const sendMessage = orgActionClient
 
     // 4. Enviar via provider correto (Evolution ou Meta Cloud)
     const provider = resolveWhatsAppProvider(conversation.inbox)
-    const sentMessageIds = await provider.sendText(conversation.remoteJid, data.text)
+    const sentMessageIds = await withRetry(() =>
+      provider.sendText(remoteJid, data.text),
+    )
 
     // Pré-registrar dedup keys para que o webhook fromMe ignore estas mensagens
     await Promise.all(
@@ -55,7 +60,8 @@ export const sendMessage = orgActionClient
       ),
     )
 
-    // 5. Salvar mensagem no banco + pausar IA + resetar unreadCount
+    // 5. Salvar mensagem no banco + pausar IA + resetar unreadCount + cancelar FUP ativo
+    // O humano assumiu a conversa — FUP nao faz mais sentido
     await Promise.all([
       db.message.create({
         data: {
@@ -75,6 +81,10 @@ export const sendMessage = orgActionClient
           aiPaused: true,
           pausedAt: new Date(),
           unreadCount: 0,
+          // Reset follow-up: humano assumiu a conversa — cancelar ciclo pendente
+          nextFollowUpAt: null,
+          followUpCount: 0,
+          currentFollowUpGroupId: null,
         },
       }),
     ])
