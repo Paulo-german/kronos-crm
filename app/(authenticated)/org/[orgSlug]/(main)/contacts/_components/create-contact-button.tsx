@@ -38,7 +38,7 @@ const CreateContactButton = ({
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
-        <Button>
+        <Button data-tour="contacts-create">
           <Plus className="mr-2 h-4 w-4" />
           Novo Contato
         </Button>

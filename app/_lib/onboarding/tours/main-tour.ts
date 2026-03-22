@@ -53,6 +53,13 @@ export function buildMainTourSteps(context: MainTourContext): DriveStep[] {
       },
     },
     {
+      element: '[data-tour="contacts"]',
+      popover: {
+        title: 'Contatos',
+        description: `Aqui ficam todos os seus leads e contatos da ${companyName}. Crie manualmente ou importe de uma planilha.`,
+      },
+    },
+    {
       element: '[data-tour="deals"]',
       popover: {
         title: 'Seu Pipeline',

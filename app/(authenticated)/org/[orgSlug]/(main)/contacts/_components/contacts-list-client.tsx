@@ -16,6 +16,8 @@ import { useContactFilters } from '../_lib/use-contact-filters'
 import { updateContact } from '@/_actions/contact/update-contact'
 import { deleteContact } from '@/_actions/contact/delete-contact'
 import { bulkDeleteContacts } from '@/_actions/contact/bulk-delete-contacts'
+import { PageTourTrigger } from '@/_components/onboarding/page-tour-trigger'
+import { CONTACTS_TOUR_STEPS } from '@/_lib/onboarding/tours/contacts-tour'
 import type { ContactDto } from '@/_data-access/contact/get-contacts'
 import type { CompanyDto } from '@/_data-access/company/get-companies'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
@@ -250,6 +252,8 @@ export function ContactsListClient({
         isLoading={isBulkDeleting}
         confirmLabel="Confirmar Exclusão"
       />
+
+      <PageTourTrigger tourId="contacts" steps={CONTACTS_TOUR_STEPS} />
     </>
   )
 }

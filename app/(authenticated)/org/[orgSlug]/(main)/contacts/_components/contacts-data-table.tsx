@@ -103,7 +103,7 @@ export function ContactsDataTable({
       </div>
 
       {/* Lista de cards */}
-      <div className="flex flex-col gap-1.5">
+      <div data-tour="contacts-table" className="flex flex-col gap-1.5">
         {filteredContacts.map((contact) => (
           <ContactCardRow
             key={contact.id}

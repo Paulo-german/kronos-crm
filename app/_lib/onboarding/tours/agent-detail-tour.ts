@@ -6,7 +6,7 @@ export const AGENT_DETAIL_TOUR_STEPS: DriveStep[] = [
     popover: {
       title: 'Configuração do Agente',
       description:
-        'Configure seu agente em 4 áreas: identidade geral, processo de atendimento, base de conhecimento e conexão com WhatsApp.',
+        'Configure seu agente em 5 áreas: identidade geral, processo de atendimento, base de conhecimento, conexão com canais e follow-ups automáticos.',
     },
   },
   {
