@@ -31,10 +31,7 @@ const CreateDealButton = ({
       <Tooltip delayDuration={0}>
         <TooltipTrigger asChild>
           <span tabIndex={0}>
-            <Button
-              disabled
-              className="gap-2 bg-primary text-primary-dark hover:bg-primary/90 hover:text-primary-dark"
-            >
+            <Button disabled className="gap-2">
               <Plus className="h-4 w-4" />
               Criar Negociação
             </Button>
@@ -48,10 +45,7 @@ const CreateDealButton = ({
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
-        <Button
-          variant="ghost"
-          className="gap-2 bg-primary text-primary-dark hover:bg-primary/90 hover:text-primary-dark"
-        >
+        <Button className="gap-2">
           <Plus className="h-4 w-4" />
           Criar Negociação
         </Button>

@@ -89,8 +89,8 @@ export function PipelineFiltersSheet({
     <Sheet open={isOpen} onOpenChange={handleOpenChange}>
       <SheetTrigger asChild>
         <Button
-          variant="ghost"
-          className="gap-2 bg-primary/20 text-primary hover:bg-primary/30 hover:text-primary"
+          variant="soft"
+          className="gap-2"
         >
           <Filter className="h-4 w-4" />
           Filtros

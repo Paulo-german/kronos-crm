@@ -21,7 +21,7 @@ export function ViewToggle({ activeView }: ViewToggleProps) {
         className={cn(
           'inline-flex items-center justify-center p-2.5 transition-all',
           activeView === 'pipeline'
-            ? 'bg-primary text-primary-foreground'
+            ? 'bg-primary-dark text-primary-foreground dark:bg-primary/15 dark:text-primary'
             : 'text-primary',
         )}
       >
@@ -32,7 +32,7 @@ export function ViewToggle({ activeView }: ViewToggleProps) {
         className={cn(
           'inline-flex items-center justify-center p-2.5 transition-all',
           activeView === 'list'
-            ? 'bg-primary text-primary-foreground'
+            ? 'bg-primary-dark text-primary-foreground dark:bg-primary/15 dark:text-primary'
             : 'text-primary',
         )}
       >
