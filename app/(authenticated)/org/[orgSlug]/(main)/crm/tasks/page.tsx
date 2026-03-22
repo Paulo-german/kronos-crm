@@ -1,8 +1,8 @@
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getTasks } from '@/_data-access/task/get-tasks'
 import { getDealsOptions } from '@/_data-access/deal/get-deals-options'
-import TasksDataTable from './_components/tasks-data-table'
-import CreateTaskButton from './_components/create-task-button'
+import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
+import { TasksListClient } from './_components/tasks-list-client'
 
 interface TasksPageProps {
   params: Promise<{ orgSlug: string }>
@@ -12,19 +12,28 @@ const TasksPage = async ({ params }: TasksPageProps) => {
   const { orgSlug } = await params
   const ctx = await getOrgContext(orgSlug)
 
-  const [tasks, dealOptions] = await Promise.all([
+  const [tasks, dealOptions, members] = await Promise.all([
     getTasks(ctx),
     getDealsOptions(ctx),
+    getOrganizationMembers(ctx.orgId),
   ])
 
+  // Normaliza para um DTO simples (userId e fullName garantidos)
+  const acceptedMembers = members.accepted
+    .filter((member) => member.userId && member.user?.fullName)
+    .map((member) => ({
+      userId: member.userId!,
+      name: member.user!.fullName!,
+    }))
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-2">
-        <div className="flex-1" />
-        <CreateTaskButton dealOptions={dealOptions} />
-      </div>
-      <TasksDataTable tasks={tasks} dealOptions={dealOptions} />
-    </div>
+    <TasksListClient
+      tasks={tasks}
+      dealOptions={dealOptions}
+      members={acceptedMembers}
+      currentUserId={ctx.userId}
+      userRole={ctx.userRole}
+    />
   )
 }
 
