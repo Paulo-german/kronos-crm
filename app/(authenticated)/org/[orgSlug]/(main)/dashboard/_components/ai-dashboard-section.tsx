@@ -9,6 +9,7 @@ interface AiDashboardSectionProps {
   dateRange: { start: Date; end: Date }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function AiDashboardSection({ orgId, dateRange }: AiDashboardSectionProps) {
   const metrics = await getAiMetrics(orgId)
 
