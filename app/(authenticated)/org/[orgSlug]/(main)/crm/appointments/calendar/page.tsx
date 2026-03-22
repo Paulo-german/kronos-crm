@@ -2,15 +2,15 @@ import { getOrgContext } from '@/_data-access/organization/get-organization-cont
 import { getAppointments } from '@/_data-access/appointment/get-appointments'
 import { getDealsOptions } from '@/_data-access/deal/get-deals-options'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
-import { AppointmentsListClient } from '../_components/appointments-list-client'
+import { AppointmentsCalendarClient } from '../_components/appointments-calendar-client'
 
-interface AppointmentsListPageProps {
+interface AppointmentsCalendarPageProps {
   params: Promise<{ orgSlug: string }>
 }
 
-const AppointmentsListPage = async ({
+const AppointmentsCalendarPage = async ({
   params,
-}: AppointmentsListPageProps) => {
+}: AppointmentsCalendarPageProps) => {
   const { orgSlug } = await params
   const ctx = await getOrgContext(orgSlug)
 
@@ -21,7 +21,7 @@ const AppointmentsListPage = async ({
   ])
 
   return (
-    <AppointmentsListClient
+    <AppointmentsCalendarClient
       appointments={appointments}
       dealOptions={dealOptions}
       members={members.accepted}
@@ -31,4 +31,4 @@ const AppointmentsListPage = async ({
   )
 }
 
-export default AppointmentsListPage
+export default AppointmentsCalendarPage

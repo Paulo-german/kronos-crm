@@ -10,7 +10,7 @@ import { formatInTimeZone, fromZonedTime } from 'date-fns-tz'
 import { ptBR } from 'date-fns/locale'
 
 const SAO_PAULO_TZ = 'America/Sao_Paulo'
-import { Dispatch, SetStateAction, useState } from 'react'
+import { Dispatch, SetStateAction, useCallback, useEffect, useRef, useState } from 'react'
 import type { AppointmentDto } from '@/_data-access/appointment/get-appointments'
 
 import {
@@ -48,6 +48,7 @@ import { Calendar } from '@/_components/ui/calendar'
 import { cn } from '@/_lib/utils'
 
 import { createAppointment } from '@/_actions/appointment/create-appointment'
+import { searchDeals } from '@/_actions/deal/search-deals'
 import {
   createAppointmentFormSchema,
   CreateAppointmentInput,
@@ -65,7 +66,7 @@ import {
 
 interface UpsertAppointmentDialogContentProps {
   defaultValues?: AppointmentDto
-  dealOptions: DealOptionDto[]
+  dealOptions?: DealOptionDto[]
   members: AcceptedMemberDto[]
   setIsOpen: Dispatch<SetStateAction<boolean>>
   onUpdate?: (data: UpdateAppointmentInput) => void
@@ -76,7 +77,6 @@ interface UpsertAppointmentDialogContentProps {
 export function UpsertAppointmentDialogContent({
   defaultValues,
   setIsOpen,
-  dealOptions,
   members,
   onUpdate,
   isUpdating: isUpdatingProp = false,
@@ -85,6 +85,50 @@ export function UpsertAppointmentDialogContent({
   const isEditing = !!defaultValues
 
   const [openCombobox, setOpenCombobox] = useState(false)
+  const [dealSearch, setDealSearch] = useState('')
+  const [selectedDealTitle, setSelectedDealTitle] = useState<string | null>(
+    defaultValues?.dealTitle ?? null,
+  )
+  const [dealResults, setDealResults] = useState<
+    Array<{ id: string; title: string; contactName: string | null }>
+  >([])
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const MIN_SEARCH_CHARS = 3
+
+  const { execute: executeSearch, isPending: isSearching } = useAction(
+    searchDeals,
+    {
+      onSuccess: ({ data }) => {
+        if (data) setDealResults(data)
+      },
+    },
+  )
+
+  const handleDealSearchChange = useCallback(
+    (value: string) => {
+      setDealSearch(value)
+
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+
+      if (value.length < MIN_SEARCH_CHARS) {
+        setDealResults([])
+        return
+      }
+
+      debounceRef.current = setTimeout(() => {
+        executeSearch({ query: value })
+      }, 300)
+    },
+    [executeSearch],
+  )
+
+  // Limpar timeout no unmount
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [])
 
   const { execute: executeCreate, isPending: isCreating } = useAction(
     createAppointment,
@@ -191,48 +235,64 @@ export function UpsertAppointmentDialogContent({
                           )}
                         >
                           {field.value
-                            ? dealOptions.find(
-                                (deal) => deal.id === field.value,
-                              )?.title
+                            ? (selectedDealTitle ?? 'Negócio não encontrado')
                             : 'Selecione um negócio...'}
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[300px] p-0">
-                      <Command>
-                        <CommandInput placeholder="Buscar negócio..." />
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                      <Command shouldFilter={false}>
+                        <CommandInput
+                          placeholder="Digite pelo menos 3 caracteres..."
+                          value={dealSearch}
+                          onValueChange={handleDealSearchChange}
+                        />
                         <CommandList>
-                          <CommandEmpty>
-                            Nenhum negócio encontrado.
-                          </CommandEmpty>
-                          <CommandGroup>
-                            {dealOptions.map((deal) => (
-                              <CommandItem
-                                value={deal.title}
-                                key={deal.id}
-                                onSelect={() => {
-                                  form.setValue('dealId', deal.id)
-                                  setOpenCombobox(false)
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    'mr-2 h-4 w-4',
-                                    deal.id === field.value
-                                      ? 'opacity-100'
-                                      : 'opacity-0',
+                          {dealSearch.length < MIN_SEARCH_CHARS ? (
+                            <div className="py-6 text-center text-sm text-muted-foreground">
+                              Digite pelo menos 3 caracteres
+                            </div>
+                          ) : isSearching ? (
+                            <div className="flex items-center justify-center py-6">
+                              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                            </div>
+                          ) : dealResults.length === 0 ? (
+                            <CommandEmpty>
+                              Nenhum negócio encontrado.
+                            </CommandEmpty>
+                          ) : (
+                            <CommandGroup>
+                              {dealResults.map((deal) => (
+                                <CommandItem
+                                  key={deal.id}
+                                  value={deal.id}
+                                  onSelect={() => {
+                                    form.setValue('dealId', deal.id)
+                                    setSelectedDealTitle(deal.title)
+                                    setOpenCombobox(false)
+                                    setDealSearch('')
+                                    setDealResults([])
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      'mr-2 h-4 w-4',
+                                      deal.id === field.value
+                                        ? 'opacity-100'
+                                        : 'opacity-0',
+                                    )}
+                                  />
+                                  {deal.title}
+                                  {deal.contactName && (
+                                    <span className="ml-2 text-xs text-muted-foreground">
+                                      ({deal.contactName})
+                                    </span>
                                   )}
-                                />
-                                {deal.title}
-                                {deal.contactName && (
-                                  <span className="ml-2 text-xs text-muted-foreground">
-                                    ({deal.contactName})
-                                  </span>
-                                )}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          )}
                         </CommandList>
                       </Command>
                     </PopoverContent>
@@ -252,7 +312,7 @@ export function UpsertAppointmentDialogContent({
                 <FormLabel>Responsável</FormLabel>
                 <Select
                   onValueChange={field.onChange}
-                  defaultValue={field.value ?? undefined}
+                  value={field.value ?? undefined}
                 >
                   <FormControl>
                     <SelectTrigger>
