@@ -22,7 +22,7 @@ const InboxPage = async ({ params }: InboxPageProps) => {
     id: inbox.id,
     name: inbox.name,
     channel: inbox.channel,
-    isConnected: !!inbox.evolutionInstanceName || !!inbox.metaPhoneNumberId,
+    isConnected: !!inbox.evolutionInstanceName || !!inbox.metaPhoneNumberId || !!inbox.zapiInstanceId,
   }))
 
   return (
