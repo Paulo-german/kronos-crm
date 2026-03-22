@@ -7,6 +7,7 @@ import { getInboxes } from '@/_data-access/inbox/get-inboxes'
 import { getAgentConnectionStats } from '@/_data-access/agent/get-agent-connection-stats'
 import { getEvolutionInstanceInfo } from '@/_lib/evolution/instance-management'
 import { getFollowUps } from '@/_data-access/follow-up/get-follow-ups'
+import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 import AgentDetailClient from './_components/agent-detail-client'
 
 interface AgentDetailPageProps {
@@ -17,11 +18,12 @@ const AgentDetailPage = async ({ params }: AgentDetailPageProps) => {
   const { orgSlug, agentId } = await params
   const ctx = await getOrgContext(orgSlug)
 
-  const [agent, pipelines, inboxes, followUps] = await Promise.all([
+  const [agent, pipelines, inboxes, followUps, followUpQuota] = await Promise.all([
     getAgentById(agentId, ctx.orgId),
     getOrgPipelines(ctx.orgId),
     getInboxes(ctx.orgId),
     getFollowUps(agentId, ctx.orgId),
+    checkPlanQuota(ctx.orgId, 'follow_up'),
   ])
 
   if (!agent) notFound()
@@ -69,6 +71,7 @@ const AgentDetailPage = async ({ params }: AgentDetailPageProps) => {
       inboxConnectionData={inboxConnectionData}
       metaCloudEnabled={metaCloudEnabled}
       followUps={followUps}
+      followUpQuota={followUpQuota}
     />
   )
 }
