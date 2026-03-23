@@ -2,15 +2,48 @@ import { tool } from 'ai'
 import { z } from 'zod'
 import { db } from '@/_lib/prisma'
 import { logger } from '@trigger.dev/sdk/v3'
-import { sendWhatsAppMessage } from '@/_lib/evolution/send-message'
+import { resolveWhatsAppProvider } from '@/_lib/whatsapp/provider'
 import { revalidateTags } from './lib/revalidate-tags'
 import { withRetry, safeBestEffort } from './lib/with-retry'
+import {
+  notificationPreferencesSchema,
+} from '@/_data-access/notification/types'
+import type { NotificationType, ConnectionType } from '@prisma/client'
 import type { ToolContext } from './types'
 
 export interface HandOffNotificationConfig {
   notifyTarget: 'none' | 'specific_number' | 'deal_assignee'
   specificPhone?: string
   notificationMessage?: string
+}
+
+// ---------------------------------------------------------------------------
+// Tipo interno para dados da conversa necessarios nas notificacoes
+// ---------------------------------------------------------------------------
+
+interface ConversationDataForNotification {
+  inbox: {
+    connectionType: ConnectionType
+    evolutionInstanceName: string | null
+    metaPhoneNumberId: string | null
+    metaAccessToken: string | null
+    zapiInstanceId: string | null
+    zapiToken: string | null
+    zapiClientToken: string | null
+  }
+  contact: {
+    name: string | null
+  } | null
+  organization: {
+    slug: string
+  } | null
+}
+
+// Mapeamento de tipo de notificacao para chave de preferencia (replica create-notification.ts sem server-only)
+const TYPE_TO_PREFERENCE_KEY: Record<NotificationType, 'system' | 'userAction' | 'platformAnnouncement'> = {
+  SYSTEM: 'system',
+  USER_ACTION: 'userAction',
+  PLATFORM_ANNOUNCEMENT: 'platformAnnouncement',
 }
 
 /**
@@ -33,6 +66,164 @@ function buildNotificationMessage(
     `Motivo: ${reason}\n\n` +
     `Acesse a plataforma para continuar o atendimento.`
   )
+}
+
+/**
+ * Resolve o userId do destinatario da notificacao in-app.
+ * - deal_assignee: retorna assignedTo do deal
+ * - specific_number: busca membro da org pelo telefone
+ * - none: retorna null
+ */
+async function resolveNotificationTargetUserId(
+  ctx: ToolContext,
+  config: HandOffNotificationConfig,
+): Promise<string | null> {
+  if (config.notifyTarget === 'deal_assignee') {
+    if (!ctx.dealId) {
+      logger.warn('hand_off_to_human: deal_assignee configurado mas ctx.dealId ausente', {
+        conversationId: ctx.conversationId,
+      })
+      return null
+    }
+
+    const deal = await db.deal.findUnique({
+      where: { id: ctx.dealId },
+      select: { assignedTo: true },
+    })
+    return deal?.assignedTo ?? null
+  }
+
+  if (config.notifyTarget === 'specific_number') {
+    if (!config.specificPhone?.trim()) return null
+
+    // Buscar membro da org que tenha esse phone cadastrado
+    const member = await db.member.findFirst({
+      where: {
+        organizationId: ctx.organizationId,
+        status: 'ACCEPTED',
+        user: { phone: config.specificPhone.trim() },
+      },
+      select: { userId: true },
+    })
+
+    if (!member?.userId) {
+      logger.warn('hand_off_to_human: specific_number nao encontrado como membro da org', {
+        phone: config.specificPhone,
+        conversationId: ctx.conversationId,
+      })
+      return null
+    }
+
+    return member.userId
+  }
+
+  return null
+}
+
+/**
+ * Verifica se o usuario tem o tipo de notificacao habilitado nas suas preferencias.
+ * Replica a logica de resolveUserPreferences de create-notification.ts sem o server-only.
+ */
+async function checkUserNotificationPreference(
+  userId: string,
+  type: NotificationType,
+): Promise<boolean> {
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { notificationPreferences: true },
+  })
+
+  // Sem preferencias salvas: default eh tudo ativado
+  if (!user?.notificationPreferences) return true
+
+  const parsed = notificationPreferencesSchema.safeParse(user.notificationPreferences)
+  // Parse falhou (JSON malformado): fallback seguro — notificar
+  if (!parsed.success) return true
+
+  return parsed.data.inApp[TYPE_TO_PREFERENCE_KEY[type]]
+}
+
+/**
+ * Executa o envio da notificacao WhatsApp para o atendente.
+ * Recebe os dados ja buscados da conversation para evitar query duplicada.
+ * Lança erro em caso de falha — o caller deve capturar (best-effort).
+ */
+async function sendHandOffNotification(
+  ctx: ToolContext,
+  config: HandOffNotificationConfig,
+  reason: string,
+  conversationData: ConversationDataForNotification,
+): Promise<void> {
+  const inbox = conversationData.inbox
+  if (!inbox) {
+    logger.warn('hand_off_to_human: inbox nao encontrada, pulando notificacao WhatsApp', {
+      conversationId: ctx.conversationId,
+    })
+    return
+  }
+
+  let provider
+  try {
+    provider = resolveWhatsAppProvider(inbox)
+  } catch (providerError) {
+    logger.warn('hand_off_to_human: provider nao configurado, pulando notificacao WhatsApp', {
+      conversationId: ctx.conversationId,
+      error: providerError instanceof Error ? providerError.message : String(providerError),
+    })
+    return
+  }
+
+  const contactName = conversationData.contact?.name ?? 'Contato'
+
+  // Resolver o destinatario da notificacao WhatsApp
+  let recipientPhone: string | undefined
+
+  if (config.notifyTarget === 'specific_number') {
+    if (!config.specificPhone?.trim()) {
+      logger.warn('hand_off_to_human: specific_number configurado mas specificPhone vazio, pulando notificacao', {
+        conversationId: ctx.conversationId,
+      })
+      return
+    }
+    recipientPhone = config.specificPhone.trim()
+  } else if (config.notifyTarget === 'deal_assignee') {
+    if (!ctx.dealId) {
+      logger.warn('hand_off_to_human: deal_assignee configurado mas ctx.dealId ausente, pulando notificacao', {
+        conversationId: ctx.conversationId,
+      })
+      return
+    }
+
+    const deal = await db.deal.findUnique({
+      where: { id: ctx.dealId },
+      select: {
+        assignee: { select: { phone: true } },
+      },
+    })
+
+    if (!deal?.assignee?.phone?.trim()) {
+      logger.warn('hand_off_to_human: deal_assignee sem phone cadastrado, pulando notificacao', {
+        dealId: ctx.dealId,
+        conversationId: ctx.conversationId,
+      })
+      return
+    }
+
+    recipientPhone = deal.assignee.phone.trim()
+  }
+
+  if (!recipientPhone) {
+    return
+  }
+
+  const message = buildNotificationMessage(config, ctx.agentName, contactName, reason)
+
+  await provider.sendText(recipientPhone, message)
+
+  logger.info('hand_off_to_human: notificacao WhatsApp enviada', {
+    notifyTarget: config.notifyTarget,
+    conversationId: ctx.conversationId,
+  })
 }
 
 export function createHandOffToHumanTool(
@@ -84,19 +275,93 @@ export function createHandOffToHumanTool(
           )
         }
 
-        // Bloco de notificação WhatsApp — best-effort: falha loga warning mas não bloqueia
+        // Buscar dados da conversation uma unica vez para reutilizar em ambas as notificacoes
+        let conversationData: ConversationDataForNotification | null = null
+        try {
+          conversationData = await db.conversation.findUnique({
+            where: { id: ctx.conversationId },
+            select: {
+              inbox: {
+                select: {
+                  connectionType: true,
+                  evolutionInstanceName: true,
+                  metaPhoneNumberId: true,
+                  metaAccessToken: true,
+                  zapiInstanceId: true,
+                  zapiToken: true,
+                  zapiClientToken: true,
+                },
+              },
+              contact: { select: { name: true } },
+              organization: { select: { slug: true } },
+            },
+          })
+        } catch (queryError) {
+          logger.warn('hand_off_to_human: falha ao buscar dados da conversa, pulando notificacoes', {
+            conversationId: ctx.conversationId,
+            error: queryError instanceof Error ? queryError.message : String(queryError),
+          })
+        }
+
+        // Bloco de notificacao WhatsApp — best-effort: falha loga warning mas nao bloqueia
         await safeBestEffort(async () => {
-          if (config && config.notifyTarget !== 'none') {
-            await sendHandOffNotification(ctx, config, reason)
-          }
+          if (!config || config.notifyTarget === 'none') return
+          if (!conversationData) return
+
+          await sendHandOffNotification(ctx, config, reason, conversationData)
         }, 'whatsapp.notification')
 
+        // Bloco de notificacao in-app — best-effort: falha nao bloqueia o hand-off
+        let notifiedUserId: string | null = null
+        await safeBestEffort(async () => {
+          if (!config || config.notifyTarget === 'none') return
+          if (!conversationData) return
+
+          const targetUserId = await resolveNotificationTargetUserId(ctx, config)
+          if (!targetUserId) return
+
+          const orgSlug = conversationData.organization?.slug
+          if (!orgSlug) return
+
+          const contactName = conversationData.contact?.name ?? 'Contato'
+
+          const shouldNotify = await checkUserNotificationPreference(targetUserId, 'USER_ACTION')
+          if (!shouldNotify) return
+
+          await db.notification.create({
+            data: {
+              organizationId: ctx.organizationId,
+              userId: targetUserId,
+              type: 'USER_ACTION',
+              title: 'Transferência de atendimento',
+              body: `O agente ${ctx.agentName} transferiu a conversa com ${contactName}. Motivo: ${reason}`,
+              actionUrl: `/org/${orgSlug}/inbox?conversationId=${ctx.conversationId}`,
+              resourceType: 'conversation',
+              resourceId: ctx.conversationId,
+            },
+          })
+
+          // Setar apenas apos create ter sucesso — evita revalidacao se create falhou
+          notifiedUserId = targetUserId
+
+          logger.info('hand_off_to_human: notificacao in-app criada', {
+            userId: targetUserId,
+            conversationId: ctx.conversationId,
+          })
+        }, 'inApp.notification')
+
+        // Consolidar tags de revalidacao — incluir notificacoes apenas se notificacao foi de fato criada
+        const tagsToRevalidate = [
+          `conversation:${ctx.conversationId}`,
+          `conversations:${ctx.organizationId}`,
+        ]
+
+        if (notifiedUserId) {
+          tagsToRevalidate.push(`notifications:${notifiedUserId}`)
+        }
+
         await safeBestEffort(
-          () =>
-            revalidateTags([
-              `conversation:${ctx.conversationId}`,
-              `conversations:${ctx.organizationId}`,
-            ]),
+          () => revalidateTags(tagsToRevalidate),
           'revalidateTags',
         )
 
@@ -116,84 +381,5 @@ export function createHandOffToHumanTool(
         return { success: false, message: 'Erro interno ao transferir conversa. Tente novamente.' }
       }
     },
-  })
-}
-
-/**
- * Executa a lógica de notificação do atendente via WhatsApp.
- * Lança erro em caso de falha — o caller deve capturar (best-effort).
- */
-async function sendHandOffNotification(
-  ctx: ToolContext,
-  config: HandOffNotificationConfig,
-  reason: string,
-): Promise<void> {
-  // Buscar instanceName da inbox e nome do contato para montar a mensagem
-  const conversation = await db.conversation.findUnique({
-    where: { id: ctx.conversationId },
-    select: {
-      inbox: { select: { evolutionInstanceName: true } },
-      contact: { select: { name: true } },
-    },
-  })
-
-  const instanceName = conversation?.inbox?.evolutionInstanceName
-  if (!instanceName) {
-    logger.warn('hand_off_to_human: inbox sem evolutionInstanceName, pulando notificação', {
-      conversationId: ctx.conversationId,
-    })
-    return
-  }
-
-  const contactName = conversation?.contact?.name ?? 'Contato'
-
-  // Resolver o destinatário da notificação
-  let recipientPhone: string | undefined
-
-  if (config.notifyTarget === 'specific_number') {
-    if (!config.specificPhone?.trim()) {
-      logger.warn('hand_off_to_human: specific_number configurado mas specificPhone vazio, pulando notificação', {
-        conversationId: ctx.conversationId,
-      })
-      return
-    }
-    recipientPhone = config.specificPhone.trim()
-  } else if (config.notifyTarget === 'deal_assignee') {
-    if (!ctx.dealId) {
-      logger.warn('hand_off_to_human: deal_assignee configurado mas ctx.dealId ausente, pulando notificação', {
-        conversationId: ctx.conversationId,
-      })
-      return
-    }
-
-    const deal = await db.deal.findUnique({
-      where: { id: ctx.dealId },
-      select: {
-        assignee: { select: { phone: true, fullName: true } },
-      },
-    })
-
-    if (!deal?.assignee?.phone?.trim()) {
-      logger.warn('hand_off_to_human: deal_assignee sem phone cadastrado, pulando notificação', {
-        dealId: ctx.dealId,
-        conversationId: ctx.conversationId,
-      })
-      return
-    }
-
-    recipientPhone = deal.assignee.phone.trim()
-  }
-
-  if (!recipientPhone) {
-    return
-  }
-
-  const message = buildNotificationMessage(config, ctx.agentName, contactName, reason)
-
-  await sendWhatsAppMessage(instanceName, recipientPhone, message)
-
-  logger.info('hand_off_to_human: notificação WhatsApp enviada', {
-    notifyTarget: config.notifyTarget,
-    conversationId: ctx.conversationId,
   })
 }
