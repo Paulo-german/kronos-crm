@@ -1,3 +1,9 @@
 {
-  "regions": ["gru1"]
+  "regions": ["gru1"],
+  "git": {
+    "deploymentEnabled": {
+      "main": true,
+      "*": false
+    }
+  }
 }
