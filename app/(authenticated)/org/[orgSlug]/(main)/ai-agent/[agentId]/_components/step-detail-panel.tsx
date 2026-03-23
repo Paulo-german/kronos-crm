@@ -91,6 +91,7 @@ const StepDetailPanel = ({
       onExecute: () => start(),
       onSuccess: () => {
         toast.success('Agente treinado com o novo processo!')
+        form.reset(form.getValues())
         complete()
         // Notifica o painel de chat para auto-reset
         onSaveSuccess?.()
@@ -136,11 +137,15 @@ const StepDetailPanel = ({
 
   const isPending = isCreating || isUpdating
 
+  const onValidationError = () => {
+    toast.error('Preencha todos os campos obrigatórios antes de salvar.')
+  }
+
   return (
     <>
       <Form {...form}>
         <form
-          onSubmit={form.handleSubmit(onSubmit)}
+          onSubmit={form.handleSubmit(onSubmit, onValidationError)}
           className="flex flex-col"
         >
           <div className="p-5 space-y-5">
@@ -184,7 +189,7 @@ const StepDetailPanel = ({
             {canManage && (
               <StepActionBuilder
                 value={(form.watch('actions') ?? []) as StepAction[]}
-                onChange={(actions) => form.setValue('actions', actions)}
+                onChange={(actions) => form.setValue('actions', actions, { shouldDirty: true })}
                 pipelineStages={pipelineStages}
               />
             )}
@@ -260,7 +265,7 @@ const StepDetailPanel = ({
                 <div />
               )}
 
-              <Button type="submit" size="sm" disabled={isPending}>
+              <Button type="submit" size="sm" disabled={isPending || (isEditing && !form.formState.isDirty)}>
                 <Brain className={cn('mr-2 h-4 w-4', isPending && 'animate-pulse')} />
                 {isPending
                   ? isEditing ? 'Treinando...' : 'Criando...'
