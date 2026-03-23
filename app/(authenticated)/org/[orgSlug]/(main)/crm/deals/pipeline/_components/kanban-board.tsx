@@ -7,6 +7,7 @@ import {
   startTransition,
   useRef,
   useCallback,
+  useEffect,
 } from 'react'
 import {
   DndContext,
@@ -41,7 +42,8 @@ import {
   PopoverAnchor,
   PopoverContent,
 } from '@/_components/ui/popover'
-import { ArrowUpDown, User } from 'lucide-react'
+import { ArrowUpDown, User, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Button } from '@/_components/ui/button'
 import type { MemberRole } from '@prisma/client'
 import type { PipelineFilters } from '../_lib/pipeline-filters'
 import type { MemberOption } from './pipeline-client'
@@ -118,6 +120,11 @@ export function KanbanBoard({
   const anchorRef = useRef<{ getBoundingClientRect: () => DOMRect }>({
     getBoundingClientRect: () => new DOMRect(),
   })
+
+  // Scroll horizontal do board
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(false)
 
   // Optimistic state: atualiza instantaneamente a UI antes do servidor responder
   const [optimisticDeals, setOptimisticDeals] = useOptimistic(
@@ -370,6 +377,22 @@ export function KanbanBoard({
     [priorityPopover, executeUpdatePriority],
   )
 
+  const updateScrollState = useCallback(() => {
+    const el = scrollRef.current
+    if (!el) return
+    setCanScrollLeft(el.scrollLeft > 0)
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 1)
+  }, [])
+
+  useEffect(() => {
+    updateScrollState()
+  }, [updateScrollState, pipeline.stages])
+
+  const handleScrollLeft = () =>
+    scrollRef.current?.scrollBy({ left: -420, behavior: 'smooth' })
+  const handleScrollRight = () =>
+    scrollRef.current?.scrollBy({ left: 420, behavior: 'smooth' })
+
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
       {/* Toolbar row 1: Navigation + Actions */}
@@ -428,17 +451,40 @@ export function KanbanBoard({
         {filterBadges}
       </div>
       {/* Kanban board */}
-      <DndContext
-        id="kanban-board"
-        sensors={sensors}
-        collisionDetection={closestCorners}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
-        <div
-          data-tour="deals-card"
-          className="flex min-h-0 flex-1 gap-4 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        {canScrollLeft && (
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleScrollLeft}
+            className="absolute left-2 top-1/2 z-10 h-8 w-8 -translate-y-1/2 rounded-full shadow-md bg-primary hover:bg-primary"
+          >
+            <ChevronLeft className="h-4 w-4 text-white" />
+          </Button>
+        )}
+        {canScrollRight && (
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleScrollRight}
+            className="absolute right-2 top-1/2 z-10 h-8 w-8 -translate-y-1/2 rounded-full shadow-md bg-primary hover:bg-primary"
+          >
+            <ChevronRight className="h-4 w-4 text-white" />
+          </Button>
+        )}
+        <DndContext
+          id="kanban-board"
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
         >
+          <div
+            ref={scrollRef}
+            data-tour="deals-card"
+            onScroll={updateScrollState}
+            className="flex min-h-0 flex-1 gap-4 overflow-x-auto overflow-y-hidden pb-4 [scrollbar-width:thin] [scrollbar-color:hsl(var(--primary))_transparent] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-primary [&::-webkit-scrollbar-thumb:hover]:bg-primary"
+          >
           {pipeline.stages.map((stage) => (
             <KanbanColumn
               key={stage.id}
@@ -463,7 +509,8 @@ export function KanbanBoard({
             </div>
           )}
         </DragOverlay>
-      </DndContext>
+        </DndContext>
+      </div>
 
       {/* Singleton Priority Popover — 1 instância para todo o board */}
       <Popover
