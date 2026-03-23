@@ -416,7 +416,7 @@ const StepActionBuilder = ({
                         <Select
                           value={String(action.daysAhead)}
                           onValueChange={(val) =>
-                            updateAction('list_availability', { daysAhead: val })
+                            updateAction('list_availability', { daysAhead: parseInt(val, 10) })
                           }
                         >
                           <SelectTrigger>
