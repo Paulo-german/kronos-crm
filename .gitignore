@@ -52,3 +52,6 @@ next-env.d.ts
 .trigger/
 
 certificates
+
+# Claude Code (local AI tooling)
+.claude/
