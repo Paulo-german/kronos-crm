@@ -1,6 +1,3 @@
--- Enable pgvector extension for knowledge base embeddings
-CREATE EXTENSION IF NOT EXISTS vector;
-
 -- CreateEnum
 CREATE TYPE "MemberRole" AS ENUM ('OWNER', 'ADMIN', 'MEMBER');
 
@@ -17,7 +14,7 @@ CREATE TYPE "SubscriptionStatus" AS ENUM ('active', 'past_due', 'canceled', 'tri
 CREATE TYPE "CompanySize" AS ENUM ('1-10', '11-50', '50+');
 
 -- CreateEnum
-CREATE TYPE "ActivityType" AS ENUM ('note', 'call', 'email', 'meeting', 'stage_change', 'product_added', 'product_removed', 'product_updated', 'task_created', 'task_completed', 'deal_won', 'deal_lost', 'deal_reopened', 'assignee_changed', 'priority_changed', 'deal_paused', 'deal_unpaused', 'date_changed', 'contact_added', 'contact_removed', 'appointment_created', 'appointment_updated', 'appointment_canceled', 'appointment_deleted');
+CREATE TYPE "ActivityType" AS ENUM ('note', 'call', 'email', 'meeting', 'stage_change', 'product_added', 'product_removed', 'task_created', 'task_completed', 'deal_won', 'deal_lost', 'deal_reopened', 'product_updated', 'assignee_changed', 'priority_changed', 'deal_paused', 'deal_unpaused', 'date_changed', 'contact_added', 'contact_removed', 'appointment_created', 'appointment_updated', 'appointment_canceled', 'appointment_deleted');
 
 -- CreateEnum
 CREATE TYPE "AppointmentStatus" AS ENUM ('SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'CANCELED', 'NO_SHOW');
@@ -44,10 +41,13 @@ CREATE TYPE "WalletTransactionType" AS ENUM ('CREDIT_PURCHASE', 'USAGE_DEBIT', '
 CREATE TYPE "DealPriority" AS ENUM ('low', 'medium', 'high', 'urgent');
 
 -- CreateEnum
-CREATE TYPE "DealStatus" AS ENUM ('OPEN', 'IN_PROGRESS', 'WON', 'LOST', 'PAUSED');
+CREATE TYPE "DealStatus" AS ENUM ('OPEN', 'WON', 'LOST', 'PAUSED', 'IN_PROGRESS');
 
 -- CreateEnum
 CREATE TYPE "KnowledgeFileStatus" AS ENUM ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED');
+
+-- CreateEnum
+CREATE TYPE "ConnectionType" AS ENUM ('EVOLUTION', 'META_CLOUD', 'Z_API');
 
 -- CreateEnum
 CREATE TYPE "MessageRole" AS ENUM ('user', 'assistant', 'system', 'tool');
@@ -55,15 +55,32 @@ CREATE TYPE "MessageRole" AS ENUM ('user', 'assistant', 'system', 'tool');
 -- CreateEnum
 CREATE TYPE "InboxChannel" AS ENUM ('WHATSAPP', 'WEB_CHAT');
 
+-- CreateEnum
+CREATE TYPE "ConversationEventType" AS ENUM ('TOOL_SUCCESS', 'TOOL_FAILURE', 'PROCESSING_ERROR', 'INFO');
+
+-- CreateEnum
+CREATE TYPE "IntegrationProvider" AS ENUM ('GOOGLE_CALENDAR');
+
+-- CreateEnum
+CREATE TYPE "IntegrationStatus" AS ENUM ('ACTIVE', 'EXPIRED', 'REVOKED');
+
+-- CreateEnum
+CREATE TYPE "SyncDirection" AS ENUM ('CRM_TO_EXTERNAL', 'EXTERNAL_TO_CRM', 'BIDIRECTIONAL');
+
+-- CreateEnum
+CREATE TYPE "NotificationType" AS ENUM ('SYSTEM', 'USER_ACTION', 'PLATFORM_ANNOUNCEMENT');
+
 -- CreateTable
 CREATE TABLE "users" (
     "id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "full_name" TEXT,
     "avatar_url" TEXT,
-    "phone" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
+    "phone" TEXT,
+    "notification_preferences" JSONB,
+    "is_super_admin" BOOLEAN NOT NULL DEFAULT false,
 
     CONSTRAINT "users_pkey" PRIMARY KEY ("id")
 );
@@ -74,28 +91,30 @@ CREATE TABLE "organizations" (
     "name" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
     "stripe_customer_id" TEXT,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+    "billing_city" TEXT,
+    "billing_complement" TEXT,
+    "billing_contact_email" TEXT,
+    "billing_contact_name" TEXT,
+    "billing_contact_phone" TEXT,
+    "billing_country" TEXT DEFAULT 'BR',
+    "billing_neighborhood" TEXT,
+    "billing_number" TEXT,
+    "billing_state" TEXT,
+    "billing_street" TEXT,
+    "billing_zip_code" TEXT,
+    "is_simples" BOOLEAN NOT NULL DEFAULT false,
+    "legal_name" TEXT,
     "person_type" "PersonType",
     "tax_id" TEXT,
-    "legal_name" TEXT,
     "trade_name" TEXT,
-    "is_simples" BOOLEAN NOT NULL DEFAULT false,
-    "billing_contact_name" TEXT,
-    "billing_contact_email" TEXT,
-    "billing_contact_phone" TEXT,
-    "billing_zip_code" TEXT,
-    "billing_street" TEXT,
-    "billing_number" TEXT,
-    "billing_complement" TEXT,
-    "billing_neighborhood" TEXT,
-    "billing_city" TEXT,
-    "billing_state" TEXT,
-    "billing_country" TEXT DEFAULT 'BR',
     "trial_ends_at" TIMESTAMP(3),
     "is_read_only" BOOLEAN NOT NULL DEFAULT false,
     "grant_type" "GrantType",
     "plan_override_id" TEXT,
-    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMP(3) NOT NULL,
+    "niche" TEXT,
+    "onboarding_completed" BOOLEAN NOT NULL DEFAULT false,
 
     CONSTRAINT "organizations_pkey" PRIMARY KEY ("id")
 );
@@ -118,16 +137,16 @@ CREATE TABLE "members" (
 -- CreateTable
 CREATE TABLE "subscriptions" (
     "id" TEXT NOT NULL,
-    "organization_id" TEXT NOT NULL,
     "stripe_subscription_id" TEXT NOT NULL,
-    "stripe_price_id" TEXT NOT NULL,
-    "status" "SubscriptionStatus" NOT NULL DEFAULT 'active',
     "current_period_end" TIMESTAMP(3) NOT NULL,
     "cancel_at_period_end" BOOLEAN NOT NULL DEFAULT false,
-    "metadata" JSONB,
-    "plan_id" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "metadata" JSONB,
+    "organization_id" TEXT NOT NULL,
+    "stripe_price_id" TEXT NOT NULL,
     "updated_at" TIMESTAMP(3) NOT NULL,
+    "status" "SubscriptionStatus" NOT NULL DEFAULT 'active',
+    "plan_id" TEXT,
 
     CONSTRAINT "subscriptions_pkey" PRIMARY KEY ("id")
 );
@@ -140,9 +159,9 @@ CREATE TABLE "companies" (
     "industry" TEXT,
     "size" "CompanySize",
     "address" TEXT,
-    "organization_id" TEXT NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
+    "organization_id" TEXT NOT NULL,
 
     CONSTRAINT "companies_pkey" PRIMARY KEY ("id")
 );
@@ -150,9 +169,7 @@ CREATE TABLE "companies" (
 -- CreateTable
 CREATE TABLE "contacts" (
     "id" TEXT NOT NULL,
-    "organization_id" TEXT NOT NULL,
     "company_id" TEXT,
-    "assigned_to" TEXT,
     "name" TEXT NOT NULL,
     "email" TEXT,
     "phone" TEXT,
@@ -161,6 +178,8 @@ CREATE TABLE "contacts" (
     "is_decision_maker" BOOLEAN NOT NULL DEFAULT false,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
+    "organization_id" TEXT NOT NULL,
+    "assigned_to" TEXT,
 
     CONSTRAINT "contacts_pkey" PRIMARY KEY ("id")
 );
@@ -188,21 +207,21 @@ CREATE TABLE "pipeline_stages" (
 -- CreateTable
 CREATE TABLE "deals" (
     "id" TEXT NOT NULL,
-    "organization_id" TEXT NOT NULL,
     "pipeline_stage_id" TEXT NOT NULL,
     "company_id" TEXT,
     "title" TEXT NOT NULL,
-    "priority" "DealPriority" NOT NULL DEFAULT 'medium',
-    "status" "DealStatus" NOT NULL DEFAULT 'OPEN',
-    "notes" TEXT,
-    "value" DECIMAL(15,2) NOT NULL DEFAULT 0,
-    "lostReason" TEXT,
-    "paused_at" TIMESTAMP(3),
     "expected_close_date" TIMESTAMP(3),
     "assigned_to" TEXT NOT NULL,
-    "loss_reason_id" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
+    "lostReason" TEXT,
+    "notes" TEXT,
+    "paused_at" TIMESTAMP(3),
+    "priority" "DealPriority" NOT NULL DEFAULT 'medium',
+    "status" "DealStatus" NOT NULL DEFAULT 'OPEN',
+    "organization_id" TEXT NOT NULL,
+    "loss_reason_id" TEXT,
+    "value" DECIMAL(15,2) NOT NULL DEFAULT 0,
 
     CONSTRAINT "deals_pkey" PRIMARY KEY ("id")
 );
@@ -210,15 +229,15 @@ CREATE TABLE "deals" (
 -- CreateTable
 CREATE TABLE "tasks" (
     "id" TEXT NOT NULL,
-    "organization_id" TEXT NOT NULL,
     "deal_id" TEXT NOT NULL,
     "title" TEXT NOT NULL,
-    "type" "TaskType" NOT NULL DEFAULT 'TASK',
     "due_date" TIMESTAMP(3) NOT NULL,
     "is_completed" BOOLEAN NOT NULL DEFAULT false,
     "assigned_to" TEXT NOT NULL,
     "created_by" TEXT NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "type" "TaskType" NOT NULL DEFAULT 'TASK',
+    "organization_id" TEXT NOT NULL,
 
     CONSTRAINT "tasks_pkey" PRIMARY KEY ("id")
 );
@@ -229,9 +248,9 @@ CREATE TABLE "activities" (
     "deal_id" TEXT NOT NULL,
     "type" "ActivityType" NOT NULL,
     "content" TEXT NOT NULL,
-    "metadata" JSONB,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "performed_by" TEXT,
+    "metadata" JSONB,
 
     CONSTRAINT "activities_pkey" PRIMARY KEY ("id")
 );
@@ -256,13 +275,13 @@ CREATE TABLE "appointments" (
 -- CreateTable
 CREATE TABLE "products" (
     "id" TEXT NOT NULL,
-    "organization_id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "description" TEXT,
     "price" DECIMAL(15,2) NOT NULL,
     "is_active" BOOLEAN NOT NULL DEFAULT true,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
+    "organization_id" TEXT NOT NULL,
 
     CONSTRAINT "products_pkey" PRIMARY KEY ("id")
 );
@@ -311,9 +330,9 @@ CREATE TABLE "features" (
     "description" TEXT,
     "type" "FeatureType" NOT NULL DEFAULT 'STATIC',
     "value_type" "FeatureValueType" NOT NULL DEFAULT 'NUMBER',
-    "module_id" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
+    "module_id" TEXT,
 
     CONSTRAINT "features_pkey" PRIMARY KEY ("id")
 );
@@ -420,16 +439,21 @@ CREATE TABLE "agents" (
     "name" TEXT NOT NULL,
     "system_prompt" TEXT NOT NULL,
     "is_active" BOOLEAN NOT NULL DEFAULT true,
-    "model_id" TEXT NOT NULL DEFAULT 'anthropic/claude-sonnet-4',
-    "debounce_seconds" INTEGER NOT NULL DEFAULT 3,
     "pipeline_ids" UUID[],
-    "tools_enabled" TEXT[] DEFAULT ARRAY['search_knowledge', 'move_deal', 'update_contact', 'update_deal', 'create_task', 'create_appointment', 'hand_off_to_human']::TEXT[],
-    "business_hours_enabled" BOOLEAN NOT NULL DEFAULT false,
-    "business_hours_timezone" TEXT NOT NULL DEFAULT 'America/Sao_Paulo',
-    "business_hours_config" JSONB,
-    "out_of_hours_message" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
+    "debounce_seconds" INTEGER NOT NULL DEFAULT 3,
+    "model_id" TEXT NOT NULL DEFAULT 'google/gemini-2.5-pro',
+    "business_hours_config" JSONB,
+    "business_hours_enabled" BOOLEAN NOT NULL DEFAULT false,
+    "business_hours_timezone" TEXT NOT NULL DEFAULT 'America/Sao_Paulo',
+    "out_of_hours_message" TEXT,
+    "follow_up_business_hours_enabled" BOOLEAN NOT NULL DEFAULT false,
+    "follow_up_business_hours_config" JSONB,
+    "follow_up_business_hours_timezone" TEXT NOT NULL DEFAULT 'America/Sao_Paulo',
+    "prompt_config" JSONB,
+    "follow_up_exhausted_action" TEXT NOT NULL DEFAULT 'NONE',
+    "follow_up_exhausted_config" JSONB,
 
     CONSTRAINT "agents_pkey" PRIMARY KEY ("id")
 );
@@ -440,11 +464,14 @@ CREATE TABLE "agent_steps" (
     "agent_id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "objective" TEXT NOT NULL,
-    "allowed_actions" TEXT[],
+    "allowed_actions" TEXT[] DEFAULT ARRAY[]::TEXT[],
     "activation_requirement" TEXT,
     "order" INTEGER NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
+    "actions" JSONB,
+    "key_question" TEXT,
+    "message_template" TEXT,
 
     CONSTRAINT "agent_steps_pkey" PRIMARY KEY ("id")
 );
@@ -470,13 +497,37 @@ CREATE TABLE "agent_knowledge_files" (
 CREATE TABLE "agent_knowledge_chunks" (
     "id" TEXT NOT NULL,
     "file_id" TEXT NOT NULL,
-    "agent_id" TEXT NOT NULL,
     "content" TEXT NOT NULL,
-    "embedding" vector(1536) NOT NULL,
+    "embedding" vector NOT NULL,
     "metadata" JSONB,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "agent_id" TEXT NOT NULL,
 
     CONSTRAINT "agent_knowledge_chunks_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "follow_ups" (
+    "id" TEXT NOT NULL,
+    "agent_id" TEXT NOT NULL,
+    "organization_id" TEXT NOT NULL,
+    "delay_minutes" INTEGER NOT NULL,
+    "message_content" TEXT NOT NULL,
+    "order" INTEGER NOT NULL DEFAULT 0,
+    "is_active" BOOLEAN NOT NULL DEFAULT true,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "follow_ups_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "follow_up_agent_steps" (
+    "id" TEXT NOT NULL,
+    "follow_up_id" TEXT NOT NULL,
+    "agent_step_id" TEXT NOT NULL,
+
+    CONSTRAINT "follow_up_agent_steps_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -489,11 +540,19 @@ CREATE TABLE "inboxes" (
     "evolution_instance_name" TEXT,
     "evolution_instance_id" TEXT,
     "agent_id" TEXT,
-    "auto_create_deal" BOOLEAN NOT NULL DEFAULT true,
-    "pipeline_id" UUID,
-    "distribution_user_ids" UUID[],
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
+    "auto_create_deal" BOOLEAN NOT NULL DEFAULT true,
+    "distribution_user_ids" UUID[],
+    "pipeline_id" UUID,
+    "connection_type" "ConnectionType" NOT NULL DEFAULT 'EVOLUTION',
+    "meta_access_token" TEXT,
+    "meta_phone_display" TEXT,
+    "meta_phone_number_id" TEXT,
+    "meta_waba_id" TEXT,
+    "zapi_instance_id" TEXT,
+    "zapi_token" TEXT,
+    "zapi_client_token" TEXT,
 
     CONSTRAINT "inboxes_pkey" PRIMARY KEY ("id")
 );
@@ -514,6 +573,8 @@ CREATE TABLE "conversations" (
     "unread_count" INTEGER NOT NULL DEFAULT 0,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
+    "next_follow_up_at" TIMESTAMP(3),
+    "follow_up_count" INTEGER NOT NULL DEFAULT 0,
 
     CONSTRAINT "conversations_pkey" PRIMARY KEY ("id")
 );
@@ -532,6 +593,117 @@ CREATE TABLE "messages" (
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "messages_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "conversation_events" (
+    "id" TEXT NOT NULL,
+    "conversation_id" TEXT NOT NULL,
+    "type" "ConversationEventType" NOT NULL,
+    "tool_name" TEXT,
+    "content" TEXT NOT NULL,
+    "metadata" JSONB,
+    "visible_to_user" BOOLEAN NOT NULL DEFAULT true,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "conversation_events_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "agent_test_conversations" (
+    "id" TEXT NOT NULL,
+    "agent_id" TEXT NOT NULL,
+    "organization_id" TEXT NOT NULL,
+    "user_id" TEXT NOT NULL,
+    "current_step_order" INTEGER NOT NULL DEFAULT 0,
+    "summary" TEXT,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "agent_test_conversations_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "agent_test_messages" (
+    "id" TEXT NOT NULL,
+    "test_conversation_id" TEXT NOT NULL,
+    "role" "MessageRole" NOT NULL,
+    "content" TEXT NOT NULL,
+    "input_tokens" INTEGER,
+    "output_tokens" INTEGER,
+    "metadata" JSONB,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "agent_test_messages_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "user_integrations" (
+    "id" TEXT NOT NULL,
+    "user_id" TEXT NOT NULL,
+    "organization_id" TEXT NOT NULL,
+    "provider" "IntegrationProvider" NOT NULL,
+    "status" "IntegrationStatus" NOT NULL DEFAULT 'ACTIVE',
+    "access_token_encrypted" TEXT NOT NULL,
+    "refresh_token_encrypted" TEXT NOT NULL,
+    "token_expires_at" TIMESTAMP(3) NOT NULL,
+    "scope" TEXT NOT NULL,
+    "provider_account_id" TEXT,
+    "provider_metadata" JSONB,
+    "last_sync_at" TIMESTAMP(3),
+    "sync_error" TEXT,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "user_integrations_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "calendar_sync_mappings" (
+    "id" TEXT NOT NULL,
+    "integration_id" TEXT NOT NULL,
+    "appointment_id" TEXT NOT NULL,
+    "external_event_id" TEXT NOT NULL,
+    "external_calendar_id" TEXT NOT NULL,
+    "direction" "SyncDirection" NOT NULL DEFAULT 'CRM_TO_EXTERNAL',
+    "last_synced_at" TIMESTAMP(3) NOT NULL,
+    "external_updated_at" TIMESTAMP(3),
+    "checksum" TEXT,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "calendar_sync_mappings_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "announcements" (
+    "id" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "body" TEXT NOT NULL,
+    "action_url" TEXT,
+    "target_org_ids" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "created_by" TEXT NOT NULL,
+    "total_recipients" INTEGER NOT NULL DEFAULT 0,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "announcements_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "notifications" (
+    "id" TEXT NOT NULL,
+    "organization_id" TEXT NOT NULL,
+    "user_id" TEXT NOT NULL,
+    "type" "NotificationType" NOT NULL,
+    "title" TEXT NOT NULL,
+    "body" TEXT NOT NULL,
+    "action_url" TEXT,
+    "resource_type" TEXT,
+    "resource_id" TEXT,
+    "read_at" TIMESTAMP(3),
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "notifications_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -607,7 +779,7 @@ CREATE INDEX "deals_organization_id_status_created_at_idx" ON "deals"("organizat
 CREATE INDEX "tasks_organization_id_assigned_to_is_completed_due_date_idx" ON "tasks"("organization_id", "assigned_to", "is_completed", "due_date");
 
 -- CreateIndex
-CREATE INDEX "tasks_organization_id_is_completed_due_date_idx" ON "tasks"("organization_id", "is_completed", "due_date" ASC);
+CREATE INDEX "tasks_organization_id_is_completed_due_date_idx" ON "tasks"("organization_id", "is_completed", "due_date");
 
 -- CreateIndex
 CREATE INDEX "tasks_deal_id_organization_id_idx" ON "tasks"("deal_id", "organization_id");
@@ -697,10 +869,34 @@ CREATE INDEX "agent_knowledge_chunks_file_id_idx" ON "agent_knowledge_chunks"("f
 CREATE INDEX "agent_knowledge_chunks_agent_id_idx" ON "agent_knowledge_chunks"("agent_id");
 
 -- CreateIndex
-CREATE INDEX "inboxes_organization_id_idx" ON "inboxes"("organization_id");
+CREATE INDEX "follow_ups_agent_id_is_active_idx" ON "follow_ups"("agent_id", "is_active");
+
+-- CreateIndex
+CREATE INDEX "follow_ups_organization_id_idx" ON "follow_ups"("organization_id");
+
+-- CreateIndex
+CREATE INDEX "follow_up_agent_steps_agent_step_id_idx" ON "follow_up_agent_steps"("agent_step_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "follow_up_agent_steps_follow_up_id_agent_step_id_key" ON "follow_up_agent_steps"("follow_up_id", "agent_step_id");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "inboxes_evolution_instance_name_key" ON "inboxes"("evolution_instance_name");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "inboxes_zapi_instance_id_key" ON "inboxes"("zapi_instance_id");
+
+-- CreateIndex
+CREATE INDEX "inboxes_organization_id_idx" ON "inboxes"("organization_id");
+
+-- CreateIndex
+CREATE INDEX "inboxes_agent_id_idx" ON "inboxes"("agent_id");
+
+-- CreateIndex
+CREATE INDEX "inboxes_meta_phone_number_id_idx" ON "inboxes"("meta_phone_number_id");
+
+-- CreateIndex
+CREATE INDEX "inboxes_zapi_instance_id_idx" ON "inboxes"("zapi_instance_id");
 
 -- CreateIndex
 CREATE INDEX "conversations_organization_id_inbox_id_idx" ON "conversations"("organization_id", "inbox_id");
@@ -712,6 +908,12 @@ CREATE INDEX "conversations_contact_id_idx" ON "conversations"("contact_id");
 CREATE INDEX "conversations_remote_jid_inbox_id_idx" ON "conversations"("remote_jid", "inbox_id");
 
 -- CreateIndex
+CREATE INDEX "conversations_deal_id_idx" ON "conversations"("deal_id");
+
+-- CreateIndex
+CREATE INDEX "conversations_next_follow_up_at_ai_paused_idx" ON "conversations"("next_follow_up_at", "ai_paused");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "conversations_inbox_id_contact_id_channel_key" ON "conversations"("inbox_id", "contact_id", "channel");
 
 -- CreateIndex
@@ -719,6 +921,45 @@ CREATE UNIQUE INDEX "messages_provider_message_id_key" ON "messages"("provider_m
 
 -- CreateIndex
 CREATE INDEX "messages_conversation_id_is_archived_created_at_idx" ON "messages"("conversation_id", "is_archived", "created_at" DESC);
+
+-- CreateIndex
+CREATE INDEX "conversation_events_conversation_id_created_at_idx" ON "conversation_events"("conversation_id", "created_at" DESC);
+
+-- CreateIndex
+CREATE INDEX "agent_test_conversations_organization_id_idx" ON "agent_test_conversations"("organization_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "agent_test_conversations_agent_id_user_id_key" ON "agent_test_conversations"("agent_id", "user_id");
+
+-- CreateIndex
+CREATE INDEX "agent_test_messages_test_conversation_id_created_at_idx" ON "agent_test_messages"("test_conversation_id", "created_at" DESC);
+
+-- CreateIndex
+CREATE INDEX "user_integrations_organization_id_provider_status_idx" ON "user_integrations"("organization_id", "provider", "status");
+
+-- CreateIndex
+CREATE INDEX "user_integrations_user_id_provider_idx" ON "user_integrations"("user_id", "provider");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "user_integrations_user_id_organization_id_provider_key" ON "user_integrations"("user_id", "organization_id", "provider");
+
+-- CreateIndex
+CREATE INDEX "calendar_sync_mappings_appointment_id_idx" ON "calendar_sync_mappings"("appointment_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "calendar_sync_mappings_integration_id_appointment_id_key" ON "calendar_sync_mappings"("integration_id", "appointment_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "calendar_sync_mappings_integration_id_external_event_id_key" ON "calendar_sync_mappings"("integration_id", "external_event_id");
+
+-- CreateIndex
+CREATE INDEX "announcements_created_at_idx" ON "announcements"("created_at" DESC);
+
+-- CreateIndex
+CREATE INDEX "notifications_user_id_read_at_created_at_idx" ON "notifications"("user_id", "read_at", "created_at" DESC);
+
+-- CreateIndex
+CREATE INDEX "notifications_organization_id_user_id_created_at_idx" ON "notifications"("organization_id", "user_id", "created_at" DESC);
 
 -- AddForeignKey
 ALTER TABLE "organizations" ADD CONSTRAINT "organizations_plan_override_id_fkey" FOREIGN KEY ("plan_override_id") REFERENCES "plans"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -739,13 +980,13 @@ ALTER TABLE "subscriptions" ADD CONSTRAINT "subscriptions_plan_id_fkey" FOREIGN 
 ALTER TABLE "companies" ADD CONSTRAINT "companies_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "contacts" ADD CONSTRAINT "contacts_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "contacts" ADD CONSTRAINT "contacts_assigned_to_fkey" FOREIGN KEY ("assigned_to") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "contacts" ADD CONSTRAINT "contacts_company_id_fkey" FOREIGN KEY ("company_id") REFERENCES "companies"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "contacts" ADD CONSTRAINT "contacts_assigned_to_fkey" FOREIGN KEY ("assigned_to") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "contacts" ADD CONSTRAINT "contacts_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "pipelines" ADD CONSTRAINT "pipelines_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -754,25 +995,19 @@ ALTER TABLE "pipelines" ADD CONSTRAINT "pipelines_organization_id_fkey" FOREIGN 
 ALTER TABLE "pipeline_stages" ADD CONSTRAINT "pipeline_stages_pipeline_id_fkey" FOREIGN KEY ("pipeline_id") REFERENCES "pipelines"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "deals" ADD CONSTRAINT "deals_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "deals" ADD CONSTRAINT "deals_pipeline_stage_id_fkey" FOREIGN KEY ("pipeline_stage_id") REFERENCES "pipeline_stages"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "deals" ADD CONSTRAINT "deals_assigned_to_fkey" FOREIGN KEY ("assigned_to") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "deals" ADD CONSTRAINT "deals_company_id_fkey" FOREIGN KEY ("company_id") REFERENCES "companies"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "deals" ADD CONSTRAINT "deals_assigned_to_fkey" FOREIGN KEY ("assigned_to") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "deals" ADD CONSTRAINT "deals_loss_reason_id_fkey" FOREIGN KEY ("loss_reason_id") REFERENCES "deal_lost_reasons"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "tasks" ADD CONSTRAINT "tasks_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "deals" ADD CONSTRAINT "deals_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "tasks" ADD CONSTRAINT "tasks_deal_id_fkey" FOREIGN KEY ("deal_id") REFERENCES "deals"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "deals" ADD CONSTRAINT "deals_pipeline_stage_id_fkey" FOREIGN KEY ("pipeline_stage_id") REFERENCES "pipeline_stages"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "tasks" ADD CONSTRAINT "tasks_assigned_to_fkey" FOREIGN KEY ("assigned_to") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -781,19 +1016,25 @@ ALTER TABLE "tasks" ADD CONSTRAINT "tasks_assigned_to_fkey" FOREIGN KEY ("assign
 ALTER TABLE "tasks" ADD CONSTRAINT "tasks_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "tasks" ADD CONSTRAINT "tasks_deal_id_fkey" FOREIGN KEY ("deal_id") REFERENCES "deals"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "tasks" ADD CONSTRAINT "tasks_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "activities" ADD CONSTRAINT "activities_deal_id_fkey" FOREIGN KEY ("deal_id") REFERENCES "deals"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "activities" ADD CONSTRAINT "activities_performed_by_fkey" FOREIGN KEY ("performed_by") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "appointments" ADD CONSTRAINT "appointments_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "appointments" ADD CONSTRAINT "appointments_assigned_to_fkey" FOREIGN KEY ("assigned_to") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "appointments" ADD CONSTRAINT "appointments_deal_id_fkey" FOREIGN KEY ("deal_id") REFERENCES "deals"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "appointments" ADD CONSTRAINT "appointments_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "products" ADD CONSTRAINT "products_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -805,10 +1046,10 @@ ALTER TABLE "deal_products" ADD CONSTRAINT "deal_products_deal_id_fkey" FOREIGN 
 ALTER TABLE "deal_products" ADD CONSTRAINT "deal_products_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "products"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "deal_contacts" ADD CONSTRAINT "deal_contacts_deal_id_fkey" FOREIGN KEY ("deal_id") REFERENCES "deals"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "deal_contacts" ADD CONSTRAINT "deal_contacts_contact_id_fkey" FOREIGN KEY ("contact_id") REFERENCES "contacts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "deal_contacts" ADD CONSTRAINT "deal_contacts_contact_id_fkey" FOREIGN KEY ("contact_id") REFERENCES "contacts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "deal_contacts" ADD CONSTRAINT "deal_contacts_deal_id_fkey" FOREIGN KEY ("deal_id") REFERENCES "deals"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "deal_lost_reasons" ADD CONSTRAINT "deal_lost_reasons_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -817,10 +1058,10 @@ ALTER TABLE "deal_lost_reasons" ADD CONSTRAINT "deal_lost_reasons_organization_i
 ALTER TABLE "features" ADD CONSTRAINT "features_module_id_fkey" FOREIGN KEY ("module_id") REFERENCES "modules"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "plan_limits" ADD CONSTRAINT "plan_limits_plan_id_fkey" FOREIGN KEY ("plan_id") REFERENCES "plans"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "plan_limits" ADD CONSTRAINT "plan_limits_feature_id_fkey" FOREIGN KEY ("feature_id") REFERENCES "features"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "plan_limits" ADD CONSTRAINT "plan_limits_feature_id_fkey" FOREIGN KEY ("feature_id") REFERENCES "features"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "plan_limits" ADD CONSTRAINT "plan_limits_plan_id_fkey" FOREIGN KEY ("plan_id") REFERENCES "plans"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "credit_wallets" ADD CONSTRAINT "credit_wallets_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -832,10 +1073,10 @@ ALTER TABLE "wallet_transactions" ADD CONSTRAINT "wallet_transactions_wallet_id_
 ALTER TABLE "ai_usages" ADD CONSTRAINT "ai_usages_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "plan_modules" ADD CONSTRAINT "plan_modules_plan_id_fkey" FOREIGN KEY ("plan_id") REFERENCES "plans"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "plan_modules" ADD CONSTRAINT "plan_modules_module_id_fkey" FOREIGN KEY ("module_id") REFERENCES "modules"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "plan_modules" ADD CONSTRAINT "plan_modules_module_id_fkey" FOREIGN KEY ("module_id") REFERENCES "modules"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "plan_modules" ADD CONSTRAINT "plan_modules_plan_id_fkey" FOREIGN KEY ("plan_id") REFERENCES "plans"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "agents" ADD CONSTRAINT "agents_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -847,22 +1088,28 @@ ALTER TABLE "agent_steps" ADD CONSTRAINT "agent_steps_agent_id_fkey" FOREIGN KEY
 ALTER TABLE "agent_knowledge_files" ADD CONSTRAINT "agent_knowledge_files_agent_id_fkey" FOREIGN KEY ("agent_id") REFERENCES "agents"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "agent_knowledge_chunks" ADD CONSTRAINT "agent_knowledge_chunks_file_id_fkey" FOREIGN KEY ("file_id") REFERENCES "agent_knowledge_files"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "agent_knowledge_chunks" ADD CONSTRAINT "agent_knowledge_chunks_agent_id_fkey" FOREIGN KEY ("agent_id") REFERENCES "agents"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "inboxes" ADD CONSTRAINT "inboxes_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "agent_knowledge_chunks" ADD CONSTRAINT "agent_knowledge_chunks_file_id_fkey" FOREIGN KEY ("file_id") REFERENCES "agent_knowledge_files"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "follow_ups" ADD CONSTRAINT "follow_ups_agent_id_fkey" FOREIGN KEY ("agent_id") REFERENCES "agents"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "follow_ups" ADD CONSTRAINT "follow_ups_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "follow_up_agent_steps" ADD CONSTRAINT "follow_up_agent_steps_follow_up_id_fkey" FOREIGN KEY ("follow_up_id") REFERENCES "follow_ups"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "follow_up_agent_steps" ADD CONSTRAINT "follow_up_agent_steps_agent_step_id_fkey" FOREIGN KEY ("agent_step_id") REFERENCES "agent_steps"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "inboxes" ADD CONSTRAINT "inboxes_agent_id_fkey" FOREIGN KEY ("agent_id") REFERENCES "agents"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "conversations" ADD CONSTRAINT "conversations_inbox_id_fkey" FOREIGN KEY ("inbox_id") REFERENCES "inboxes"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "conversations" ADD CONSTRAINT "conversations_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "inboxes" ADD CONSTRAINT "inboxes_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "conversations" ADD CONSTRAINT "conversations_contact_id_fkey" FOREIGN KEY ("contact_id") REFERENCES "contacts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -871,5 +1118,44 @@ ALTER TABLE "conversations" ADD CONSTRAINT "conversations_contact_id_fkey" FOREI
 ALTER TABLE "conversations" ADD CONSTRAINT "conversations_deal_id_fkey" FOREIGN KEY ("deal_id") REFERENCES "deals"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "conversations" ADD CONSTRAINT "conversations_inbox_id_fkey" FOREIGN KEY ("inbox_id") REFERENCES "inboxes"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "conversations" ADD CONSTRAINT "conversations_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "messages" ADD CONSTRAINT "messages_conversation_id_fkey" FOREIGN KEY ("conversation_id") REFERENCES "conversations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "conversation_events" ADD CONSTRAINT "conversation_events_conversation_id_fkey" FOREIGN KEY ("conversation_id") REFERENCES "conversations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "agent_test_conversations" ADD CONSTRAINT "agent_test_conversations_agent_id_fkey" FOREIGN KEY ("agent_id") REFERENCES "agents"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "agent_test_conversations" ADD CONSTRAINT "agent_test_conversations_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "agent_test_messages" ADD CONSTRAINT "agent_test_messages_test_conversation_id_fkey" FOREIGN KEY ("test_conversation_id") REFERENCES "agent_test_conversations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "user_integrations" ADD CONSTRAINT "user_integrations_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "user_integrations" ADD CONSTRAINT "user_integrations_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "calendar_sync_mappings" ADD CONSTRAINT "calendar_sync_mappings_appointment_id_fkey" FOREIGN KEY ("appointment_id") REFERENCES "appointments"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "calendar_sync_mappings" ADD CONSTRAINT "calendar_sync_mappings_integration_id_fkey" FOREIGN KEY ("integration_id") REFERENCES "user_integrations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "announcements" ADD CONSTRAINT "announcements_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "notifications" ADD CONSTRAINT "notifications_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "notifications" ADD CONSTRAINT "notifications_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
