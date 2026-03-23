@@ -6,7 +6,7 @@
     "clean": "rm -rf node_modules .next && pnpm store prune && pnpm install",
     "check": "pnpm exec tsc --noEmit && pnpm next lint",
     "dev": "next dev --turbopack",
-    "build": "prisma generate && next build",
+    "build": "prisma migrate deploy && prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate"
