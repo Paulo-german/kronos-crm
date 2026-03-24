@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Bell } from 'lucide-react'
+import { Bell, Loader2 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useAction } from 'next-safe-action/hooks'
@@ -38,6 +38,34 @@ export const NotificationBell = ({
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount)
   const [notifications, setNotifications] = useState<NotificationDto[]>(initialNotifications)
   const [open, setOpen] = useState(false)
+  const [isFetchingList, setIsFetchingList] = useState(false)
+
+  // Busca lista de notificacoes recentes do servidor
+  const fetchRecentNotifications = useCallback(async () => {
+    setIsFetchingList(true)
+    try {
+      const response = await fetch('/api/notifications/recent')
+      if (!response.ok) return
+
+      const data = (await response.json()) as NotificationDto[]
+      setNotifications(data)
+    } catch {
+      // Silenciar erros de rede
+    } finally {
+      setIsFetchingList(false)
+    }
+  }, [])
+
+  // Ao abrir o popover, buscar lista atualizada
+  const handleOpenChange = useCallback(
+    (isOpen: boolean) => {
+      setOpen(isOpen)
+      if (isOpen) {
+        void fetchRecentNotifications()
+      }
+    },
+    [fetchRecentNotifications],
+  )
 
   // Polling para manter badge atualizado
   useEffect(() => {
@@ -102,7 +130,7 @@ export const NotificationBell = ({
   const displayCount = unreadCount > 9 ? '9+' : String(unreadCount)
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="size-4" />
@@ -136,7 +164,11 @@ export const NotificationBell = ({
 
         {/* Lista de notificações */}
         <ScrollArea className="max-h-[400px]">
-          {notifications.length === 0 ? (
+          {isFetchingList && notifications.length === 0 ? (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="size-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : notifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
               <Bell className="size-8 text-muted-foreground/50" />
               <p className="text-sm text-muted-foreground">Nenhuma notificação</p>
