@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   BotIcon,
   FileTextIcon,
@@ -59,6 +59,7 @@ export function AgentsCardGrid({
   const [isCreateOpen, setIsCreateOpen] = useState(false)
 
   const [togglingAgentId, setTogglingAgentId] = useState<string | null>(null)
+  const router = useRouter()
 
   const canManage = userRole === 'OWNER' || userRole === 'ADMIN'
 
@@ -152,10 +153,10 @@ export function AgentsCardGrid({
     <>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {agents.map((agent) => (
-          <Link
+          <div
             key={agent.id}
-            href={`/org/${orgSlug}/ai-agent/${agent.id}`}
-            className="group"
+            className="group cursor-pointer"
+            onClick={() => router.push(`/org/${orgSlug}/ai-agent/${agent.id}`)}
           >
             <Card className="flex min-h-[180px] flex-col transition-colors hover:border-primary/50">
               <CardContent className="flex flex-1 flex-col gap-3 p-5">
@@ -163,10 +164,7 @@ export function AgentsCardGrid({
                 <div className="flex items-center justify-between">
                   <div
                     className="flex items-center gap-2"
-                    onClick={(event) => {
-                      event.preventDefault()
-                      event.stopPropagation()
-                    }}
+                    onClick={(event) => event.stopPropagation()}
                   >
                     <Switch
                       checked={agent.isActive}
@@ -187,10 +185,7 @@ export function AgentsCardGrid({
                     </span>
                   </div>
                   {canManage && (
-                    <div
-                      onClick={(event) => event.preventDefault()}
-                      onClickCapture={(event) => event.stopPropagation()}
-                    >
+                    <div onClick={(event) => event.stopPropagation()}>
                       <AgentTableDropdownMenu
                         agentDetailHref={`/org/${orgSlug}/ai-agent/${agent.id}`}
                         onEdit={() => handleEdit(agent)}
@@ -228,7 +223,7 @@ export function AgentsCardGrid({
                 </div>
               </CardContent>
             </Card>
-          </Link>
+          </div>
         ))}
 
         {/* Create card */}
