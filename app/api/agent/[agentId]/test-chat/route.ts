@@ -19,6 +19,7 @@ import type { MemberRole, MessageRole } from '@prisma/client'
 import type { UIMessage } from 'ai'
 
 const MAX_OUTPUT_TOKENS = 2048
+const LLM_TEMPERATURE = 0.4
 const TEST_MESSAGE_HISTORY_LIMIT = 50
 
 interface RouteParams {
@@ -133,7 +134,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const promptContext = await buildTestSystemPrompt(
       agentId,
       ctx.orgId,
-      latestUserMessage,
     )
 
     // -------------------------------------------------------------------------
@@ -246,6 +246,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       system: promptContext.systemPrompt,
       messages: llmMessages,
       tools: hasAnyTools ? testTools : undefined,
+      temperature: LLM_TEMPERATURE,
       stopWhen: hasAnyTools ? stepCountIs(3) : stepCountIs(1),
       maxOutputTokens: MAX_OUTPUT_TOKENS,
       onFinish: async ({ steps, totalUsage }) => {
