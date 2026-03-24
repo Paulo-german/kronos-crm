@@ -1,6 +1,7 @@
 'use server'
 
 import { addDays } from 'date-fns'
+import { revalidateTag } from 'next/cache'
 import { superAdminActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { extendTrialSchema } from './schema'
@@ -28,6 +29,9 @@ export const extendTrial = superAdminActionClient
       where: { id: organizationId },
       data: { trialEndsAt: newTrialEndsAt },
     })
+
+    // Invalidar caches que dependem do estado do trial/plano
+    revalidateTag(`subscriptions:${organizationId}`)
 
     return { success: true, trialEndsAt: newTrialEndsAt }
   })

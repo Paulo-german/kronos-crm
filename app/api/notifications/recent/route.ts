@@ -4,6 +4,7 @@ import { createClient } from '@/_lib/supabase/server'
 import { db } from '@/_lib/prisma'
 import { ORG_SLUG_COOKIE } from '@/_lib/constants'
 import { getRecentNotifications } from '@/_data-access/notification/get-recent-notifications'
+import { getPendingInviteNotifications } from '@/_data-access/notification/get-pending-invite-notifications'
 
 /**
  * GET /api/notifications/recent
@@ -41,7 +42,15 @@ export async function GET() {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const notifications = await getRecentNotifications(user.id, member.organizationId)
+  const [notifications, pendingInviteNotifications] = await Promise.all([
+    getRecentNotifications(user.id, member.organizationId),
+    getPendingInviteNotifications(user.id, user.email!),
+  ])
 
-  return NextResponse.json(notifications)
+  // Mergear e ordenar por data decrescente, limitando a 10
+  const merged = [...notifications, ...pendingInviteNotifications]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 10)
+
+  return NextResponse.json(merged)
 }

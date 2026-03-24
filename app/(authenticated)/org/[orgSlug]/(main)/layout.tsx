@@ -15,6 +15,10 @@ import { getUserOrganizations } from '@/_data-access/organization/get-user-organ
 import { DashboardTourTrigger } from '@/_components/onboarding/dashboard-tour-trigger'
 import { getUnreadNotificationCount } from '@/_data-access/notification/get-unread-notification-count'
 import { getRecentNotifications } from '@/_data-access/notification/get-recent-notifications'
+import {
+  getPendingInviteNotifications,
+  getPendingInviteUnreadCount,
+} from '@/_data-access/notification/get-pending-invite-notifications'
 
 interface MainLayoutProps {
   children: React.ReactNode
@@ -44,6 +48,23 @@ const MainLayout = async ({ children, params }: MainLayoutProps) => {
     getUnreadNotificationCount(userId, orgId),
     getRecentNotifications(userId, orgId),
   ])
+
+  // Buscar notificações de orgs com convite pendente (cross-org)
+  const userEmail = user?.email ?? ''
+  const [pendingInviteNotifications, pendingInviteUnreadCount] =
+    userEmail
+      ? await Promise.all([
+          getPendingInviteNotifications(userId, userEmail),
+          getPendingInviteUnreadCount(userId, userEmail),
+        ])
+      : [[], 0]
+
+  // Mergear notificações da org atual com convites pendentes
+  const mergedNotifications = [...recentNotifications, ...pendingInviteNotifications]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 10)
+
+  const totalUnreadCount = unreadCount + pendingInviteUnreadCount
 
   if (!onboardingStatus.onboardingCompleted) {
     redirect(`/org/${orgSlug}/onboarding`)
@@ -78,8 +99,8 @@ const MainLayout = async ({ children, params }: MainLayoutProps) => {
           <TopBarWrapper
             user={topBarUser}
             orgSlug={orgSlug}
-            initialUnreadCount={unreadCount}
-            initialNotifications={recentNotifications}
+            initialUnreadCount={totalUnreadCount}
+            initialNotifications={mergedNotifications}
           />
           <TrialGateClient isExpired={trialStatus.isExpired} orgSlug={orgSlug}>
             <ContentWrapper>{children}</ContentWrapper>
