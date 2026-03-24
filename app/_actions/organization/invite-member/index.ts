@@ -7,6 +7,7 @@ import { randomUUID } from 'crypto'
 import { revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission, requireQuota } from '@/_lib/rbac'
 import { sendInviteEmail } from '@/_lib/email/send-invite-email'
+import { createNotification } from '@/_lib/notifications/create-notification'
 
 export const inviteMember = orgActionClient
   .schema(inviteMemberSchema)
@@ -48,7 +49,7 @@ export const inviteMember = orgActionClient
     const invitationToken = randomUUID()
 
     // 4. Criar registro do membro (PENDING)
-    await db.member.create({
+    const newMember = await db.member.create({
       data: {
         organizationId: ctx.orgId,
         email: data.email,
@@ -74,6 +75,25 @@ export const inviteMember = orgActionClient
     })
 
     revalidateTag(`org-members:${ctx.orgId}`)
+
+    // 6. Notificar via in-app se o convidado já tem conta no sistema
+    const existingUser = await db.user.findUnique({
+      where: { email: data.email },
+      select: { id: true },
+    })
+
+    if (existingUser) {
+      void createNotification({
+        orgId: ctx.orgId,
+        userId: existingUser.id,
+        type: 'USER_ACTION',
+        title: 'Convite para organização',
+        body: `Você foi convidado para participar de ${organization.name}.`,
+        actionUrl: `/invite/${invitationToken}`,
+        resourceType: 'member',
+        resourceId: newMember.id,
+      })
+    }
 
     return { success: true }
   })

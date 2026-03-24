@@ -4,6 +4,7 @@ import { createClient } from '@/_lib/supabase/server'
 import { db } from '@/_lib/prisma'
 import { ORG_SLUG_COOKIE } from '@/_lib/constants'
 import { getUnreadNotificationCount } from '@/_data-access/notification/get-unread-notification-count'
+import { getPendingInviteUnreadCount } from '@/_data-access/notification/get-pending-invite-notifications'
 
 /**
  * GET /api/notifications/unread-count
@@ -42,7 +43,10 @@ export async function GET() {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const count = await getUnreadNotificationCount(user.id, member.organizationId)
+  const [count, pendingInviteCount] = await Promise.all([
+    getUnreadNotificationCount(user.id, member.organizationId),
+    getPendingInviteUnreadCount(user.id, user.email!),
+  ])
 
-  return NextResponse.json({ count })
+  return NextResponse.json({ count: count + pendingInviteCount })
 }
