@@ -622,7 +622,7 @@ model Inbox {
   zapiToken             String?        @map("zapi_token")
   zapiClientToken       String?        @map("zapi_client_token")
   conversations         Conversation[]
-  agent                 Agent?         @relation(fields: [agentId], references: [id])
+  agent                 Agent?         @relation(fields: [agentId], references: [id], onDelete: SetNull)
   organization          Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
