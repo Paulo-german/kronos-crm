@@ -65,7 +65,7 @@ export const TrialBannerClient = ({
   const isAdmin = userRole === 'OWNER' || userRole === 'ADMIN'
 
   const countdownText = countdown ? (
-    <span className="inline-flex gap-1.5 text-foreground">
+    <span className="inline-flex gap-1.5 text-white">
       <span className="rounded bg-background/80 px-1.5 py-0.5">
         {pad(countdown.days)}d
       </span>
@@ -81,7 +81,7 @@ export const TrialBannerClient = ({
   )
 
   return (
-    <div className="bg-banner-premium flex items-center gap-3 border-b border-primary/50 px-4 py-2.5 text-primary-foreground">
+    <div className="bg-banner-premium flex items-center gap-3 border-b border-primary/50 px-4 py-2.5 text-white">
       {/* Lado esquerdo: countdown */}
       <span className="flex items-center gap-2 text-sm">
         {isExpired
@@ -113,7 +113,7 @@ export const TrialBannerClient = ({
             </Link>
           </Button>
         ) : (
-          <span className="text-xs text-primary-foreground/70">
+          <span className="text-xs text-white/70">
             Fale com o administrador
           </span>
         )}
