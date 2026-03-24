@@ -26,7 +26,7 @@ export function CheckoutStepper() {
                 className={cn(
                   'flex size-8 items-center justify-center rounded-full border-2 text-sm font-medium transition-colors',
                   isCompleted &&
-                    'border-primary bg-primary text-primary-foreground',
+                    'border-primary bg-primary text-white',
                   isCurrent && 'border-primary text-primary',
                   isFuture && 'border-muted-foreground/30 text-muted-foreground/50',
                 )}

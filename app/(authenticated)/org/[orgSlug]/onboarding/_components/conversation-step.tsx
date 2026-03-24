@@ -422,7 +422,7 @@ export function ConversationStep({
                         'max-w-[82%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed',
                         isAssistant
                           ? 'rounded-tl-sm bg-muted text-foreground'
-                          : 'rounded-tr-sm bg-primary text-primary-foreground',
+                          : 'rounded-tr-sm bg-primary text-white',
                       )}
                     >
                       {renderFormattedText(text)}

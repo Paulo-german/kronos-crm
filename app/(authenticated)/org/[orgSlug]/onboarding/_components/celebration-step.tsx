@@ -71,7 +71,7 @@ export function CelebrationStep({ onStart }: CelebrationStepProps) {
       >
         <div className="absolute inset-0 animate-pulse rounded-full bg-primary/20 blur-2xl" />
         <div className="relative flex size-24 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/25">
-          <Rocket className="size-12 text-primary-foreground" />
+          <Rocket className="size-12 text-white" />
         </div>
       </motion.div>
 
