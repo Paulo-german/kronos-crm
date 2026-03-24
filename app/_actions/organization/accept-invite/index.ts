@@ -56,13 +56,13 @@ export const acceptInvite = authActionClient
       )
     }
 
-    // 3. Aceitar convite
+    // 3. Aceitar convite (mantém invitationToken para que a page possa
+    //    detectar que já foi aceito e redirecionar ao invés de mostrar erro)
     await db.member.update({
       where: { id: member.id },
       data: {
         status: 'ACCEPTED',
         userId: ctx.userId,
-        invitationToken: null, // Limpar token para não ser reutilizado
       },
     })
 

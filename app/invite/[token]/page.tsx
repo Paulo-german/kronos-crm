@@ -10,22 +10,22 @@ interface InvitePageProps {
 export default async function InvitePage({ params }: InvitePageProps) {
   const { token } = await params
 
-  // 1. Validar se o token existe e é válido
+  // 1. Buscar convite pelo token (sem filtrar por status, para detectar aceites)
   const member = await db.member.findUnique({
     where: {
       invitationToken: token,
-      status: 'PENDING',
     },
     include: {
       organization: {
         select: {
           name: true,
+          slug: true,
         },
       },
     },
   })
 
-  // Se token inválido, 404
+  // Se token não existe
   if (!member) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center p-4">
@@ -37,6 +37,11 @@ export default async function InvitePage({ params }: InvitePageProps) {
         </p>
       </div>
     )
+  }
+
+  // Se já foi aceito, redirecionar para o dashboard da org
+  if (member.status === 'ACCEPTED') {
+    redirect(`/org/${member.organization.slug}/dashboard`)
   }
 
   // Verificar expiração (7 dias a partir do último envio)
