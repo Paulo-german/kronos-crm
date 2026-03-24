@@ -27,7 +27,6 @@ export interface BuildTestSystemPromptResult {
  */
 export async function buildTestSystemPrompt(
   agentId: string,
-  organizationId: string,
 ): Promise<BuildTestSystemPromptResult> {
   const now = new Date()
 

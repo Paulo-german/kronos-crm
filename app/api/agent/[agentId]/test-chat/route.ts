@@ -131,10 +131,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // -------------------------------------------------------------------------
     // 4. Build Test System Prompt
     // -------------------------------------------------------------------------
-    const promptContext = await buildTestSystemPrompt(
-      agentId,
-      ctx.orgId,
-    )
+    const promptContext = await buildTestSystemPrompt(agentId)
 
     // -------------------------------------------------------------------------
     // 5. Débito otimista de créditos (mesma lógica de produção)
