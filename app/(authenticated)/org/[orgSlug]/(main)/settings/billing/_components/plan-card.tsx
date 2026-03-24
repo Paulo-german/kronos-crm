@@ -69,7 +69,7 @@ export function PlanCard({ plan, currentPlan, orgSlug, isOnTrial }: PlanCardProp
     >
       {isHighlighted && (
         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-          <span className="bg-primary text-primary-foreground rounded-full px-3 py-1 text-xs font-medium">
+          <span className="bg-primary text-white rounded-full px-3 py-1 text-xs font-medium">
             Mais popular
           </span>
         </div>
