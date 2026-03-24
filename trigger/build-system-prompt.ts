@@ -367,9 +367,12 @@ export async function buildSystemPrompt(
   const hasReschedulableEvent = allStepActions.some(
     (action) => action.type === 'create_event' && action.allowReschedule,
   )
-  const effectiveTools = hasReschedulableEvent
-    ? [...baseEffectiveTools, 'update_event']
-    : baseEffectiveTools
+  const schedulingTools = hasReschedulableEvent ? ['update_event'] : []
+  const knowledgeTools =
+    completedFileCount > 0 && !baseEffectiveTools.includes('search_knowledge')
+      ? ['search_knowledge']
+      : []
+  const effectiveTools = [...baseEffectiveTools, ...schedulingTools, ...knowledgeTools]
 
   const parts: string[] = []
 
@@ -395,6 +398,16 @@ export async function buildSystemPrompt(
       errors: parsedConfig.error?.flatten(),
     })
     parts.push(`Seu nome é ${agent.name}.\n\n${agent.systemPrompt}`)
+  }
+
+  // 1b. Regra de consulta obrigatória à base de conhecimento
+  if (completedFileCount > 0) {
+    parts.push(
+      '\n## Regra Crítica: Consulta Obrigatória à Base de Conhecimento\n' +
+      'Você DEVE SEMPRE consultar a base de conhecimento usando a ferramenta `search_knowledge` ANTES de responder qualquer pergunta sobre a empresa, seus produtos, serviços, preços, políticas ou procedimentos.\n' +
+      'Se a busca não retornar resultados relevantes, responda: "Vou verificar essa informação com a equipe e retorno em breve."\n' +
+      'NUNCA invente informações sobre a empresa. Apenas forneça informações que você encontrou na base de conhecimento ou que foram fornecidas no contexto desta conversa.',
+    )
   }
 
   // 2. Ferramentas disponíveis
