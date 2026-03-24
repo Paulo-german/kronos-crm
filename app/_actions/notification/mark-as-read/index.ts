@@ -12,12 +12,12 @@ export const markNotificationAsRead = orgActionClient
     // 1. RBAC: verificar permissao base para atualizar notificacoes
     requirePermission(canPerformAction(ctx, 'notification', 'update'))
 
-    // 2. Ownership check: a notificacao deve pertencer ao usuario na org atual
+    // 2. Ownership check: a notificacao deve pertencer ao usuario
+    //    Sem filtro de org para suportar notificacoes cross-org (convites pendentes)
     const notification = await db.notification.findFirst({
       where: {
         id: data.notificationId,
         userId: ctx.userId,
-        organizationId: ctx.orgId,
       },
     })
 
