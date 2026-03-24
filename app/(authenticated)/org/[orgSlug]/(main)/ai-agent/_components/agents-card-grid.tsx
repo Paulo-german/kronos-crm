@@ -196,7 +196,7 @@ export function AgentsCardGrid({
                         onEdit={() => handleEdit(agent)}
                         onDelete={() => {
                           setDeletingAgent(agent)
-                          requestAnimationFrame(() => setIsDeleteOpen(true))
+                          setTimeout(() => setIsDeleteOpen(true), 150)
                         }}
                       />
                     </div>
