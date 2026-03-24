@@ -75,7 +75,6 @@ export async function getConversationMessagesPaginated(
     where: {
       conversationId,
       role: { in: ['user', 'assistant'] },
-      isArchived: false,
     },
     orderBy: { createdAt: 'desc' },
     take: limit + 1,
