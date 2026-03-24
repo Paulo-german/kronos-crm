@@ -81,13 +81,12 @@ export const registerAndAcceptInvite = actionClient
       throw new Error('Conta criada, mas erro ao fazer login. Tente logar manualmente.')
     }
 
-    // 6. Aceitar invite
+    // 6. Aceitar invite (mantém token para que a page detecte aceite e redirecione)
     await db.member.update({
       where: { id: member.id },
       data: {
         status: 'ACCEPTED',
         userId: authData.user.id,
-        invitationToken: null,
       },
     })
 
