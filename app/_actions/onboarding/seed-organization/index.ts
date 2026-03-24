@@ -240,6 +240,7 @@ export const seedOrganization = orgActionClient
     })
 
     // Invalida caches relevantes
+    revalidateTag(`onboarding:${ctx.orgId}`)
     revalidateTag(`organization:${org.slug}`)
     revalidateTag(`pipeline:${ctx.orgId}`)
     revalidateTag(`agents:${ctx.orgId}`)

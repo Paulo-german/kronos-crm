@@ -5,7 +5,6 @@ import { useAction } from 'next-safe-action/hooks'
 import { motion } from 'framer-motion'
 import {
   Rocket,
-  Loader2,
   MessageSquare,
   BarChart3,
   Users,
@@ -45,11 +44,15 @@ const FEATURES = [
 export function CelebrationStep({ onStart }: CelebrationStepProps) {
   const hasTriggered = useRef(false)
 
-  const { execute, isPending } = useAction(completeOnboarding)
+  const { execute } = useAction(completeOnboarding)
 
   useEffect(() => {
     if (hasTriggered.current) return
     hasTriggered.current = true
+
+    // Marca onboarding como completo assim que a celebração é exibida
+    execute()
+
     fireConfetti()
 
     // Segundo burst de confetti com delay
@@ -58,7 +61,7 @@ export function CelebrationStep({ onStart }: CelebrationStepProps) {
     }, 800)
 
     return () => clearTimeout(timeout)
-  }, [])
+  }, [execute])
 
   return (
     <div className="flex flex-col items-center justify-center px-4 py-16 text-center">
@@ -130,19 +133,11 @@ export function CelebrationStep({ onStart }: CelebrationStepProps) {
       >
         <Button
           size="lg"
-          onClick={() => {
-            onStart()
-            execute()
-          }}
-          disabled={isPending}
+          onClick={onStart}
           className="gap-2 px-8 text-base shadow-lg shadow-primary/20"
         >
-          {isPending ? (
-            <Loader2 className="size-5 animate-spin" />
-          ) : (
-            <Rocket className="size-5" />
-          )}
-          {isPending ? 'Preparando...' : 'Começar a usar o Kronos'}
+          <Rocket className="size-5" />
+          Começar a usar o Kronos
         </Button>
       </motion.div>
 
