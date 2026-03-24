@@ -17,7 +17,7 @@ export default async function CheckoutLayout({
   const { orgSlug } = await params
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex h-screen flex-col overflow-y-auto">
       <header className="border-b bg-background">
         <div className="container mx-auto flex items-center justify-between px-4 py-4">
           <div className="flex items-center gap-3">
