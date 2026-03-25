@@ -59,6 +59,7 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
     connectionError,
     sentinelRef,
     updateConversationLocally,
+    refetch,
   } = useConversations({
     inboxId: selectedInboxId,
     unreadOnly: filter === 'unread',
@@ -67,12 +68,14 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
     contactId,
   })
 
-  // Optimistic update para toggle read — o polling de 5s corrige eventuais falhas
+  // Optimistic update + re-fetch imediato após action completar
   const handleToggleRead = (conversationId: string) => {
     const target = conversations.find((conv) => conv.id === conversationId)
     if (!target) return
     const newUnreadCount = target.unreadCount > 0 ? 0 : 1
     updateConversationLocally(conversationId, { unreadCount: newUnreadCount })
+    // Re-fetch imediato para garantir dados frescos do servidor
+    refetch()
   }
 
   // Seleção automática de conversa com cadeia de prioridade

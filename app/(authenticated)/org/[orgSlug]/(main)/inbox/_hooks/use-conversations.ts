@@ -3,7 +3,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import type { ConversationListDto } from '@/_data-access/conversation/get-conversations'
 
-const POLL_INTERVAL_MS = 5_000
+const BASE_POLL_INTERVAL_MS = 5_000
+const MAX_POLL_INTERVAL_MS = 30_000
+const POLL_STEP_MS = 5_000
 const DEBOUNCE_MS = 300
 const MAX_CONSECUTIVE_FAILURES = 3
 
@@ -36,6 +38,7 @@ interface UseConversationsReturn {
   loadMore: () => void
   sentinelRef: (node: HTMLElement | null) => void
   updateConversationLocally: (id: string, partial: Partial<ConversationListDto>) => void
+  refetch: () => void
 }
 
 interface ApiResponse {
@@ -82,6 +85,11 @@ export function useConversations(options: UseConversationsOptions): UseConversat
   const cursorRef = useRef<string | undefined>(undefined)
   const abortRef = useRef<AbortController | null>(null)
   const failCountRef = useRef(0)
+
+  // Polling adaptativo: intervalo aumenta quando idle, reseta quando há mudanças
+  const pollIntervalRef = useRef(BASE_POLL_INTERVAL_MS)
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastDataHashRef = useRef('')
 
   // Debounce search
   useEffect(() => {
@@ -151,39 +159,98 @@ export function useConversations(options: UseConversationsOptions): UseConversat
     return () => controller.abort()
   }, [fetchFirstPage])
 
-  // Polling: re-fetch first page and merge
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      const url = buildUrl({ inboxId, unreadOnly, unansweredOnly, search: debouncedSearch, contactId: null })
-      try {
-        const response = await fetch(url)
-        if (!response.ok) return
-        const data: ApiResponse = await response.json()
+  // Função de polling reutilizável (chamada pelo timer e pelo refetch)
+  const pollConversations = useCallback(async () => {
+    const url = buildUrl({ inboxId, unreadOnly, unansweredOnly, search: debouncedSearch, contactId: null })
+    try {
+      const response = await fetch(url)
+      if (!response.ok) return
+      const data: ApiResponse = await response.json()
 
-        setConversations((prev) => {
-          const merged = new Map<string, ConversationListDto>()
-          for (const conv of prev) merged.set(conv.id, conv)
-          for (const conv of data.conversations) merged.set(conv.id, conv)
-          return Array.from(merged.values()).sort(
-            (convA, convB) =>
-              new Date(convB.updatedAt).getTime() - new Date(convA.updatedAt).getTime(),
-          )
-        })
-        setTotalCount(data.totalCount)
-        setTotalUnread(data.totalUnread)
-        setTotalUnanswered(data.totalUnanswered ?? 0)
-        failCountRef.current = 0
-        setConnectionError(false)
-      } catch {
-        failCountRef.current += 1
-        if (failCountRef.current >= MAX_CONSECUTIVE_FAILURES) {
-          setConnectionError(true)
-        }
+      // Hash simples para detectar mudanças (adaptar intervalo)
+      const dataHash = JSON.stringify(data.conversations.map((conv) => `${conv.id}:${conv.unreadCount}:${conv.lastMessageRole}:${conv.updatedAt}`))
+      const hasChanges = dataHash !== lastDataHashRef.current
+      lastDataHashRef.current = dataHash
+
+      // Intervalo adaptativo: reseta para base se há mudanças, aumenta se idle
+      if (hasChanges) {
+        pollIntervalRef.current = BASE_POLL_INTERVAL_MS
+      } else {
+        pollIntervalRef.current = Math.min(
+          pollIntervalRef.current + POLL_STEP_MS,
+          MAX_POLL_INTERVAL_MS,
+        )
       }
-    }, POLL_INTERVAL_MS)
 
-    return () => clearInterval(interval)
+      setConversations((prev) => {
+        const merged = new Map<string, ConversationListDto>()
+        for (const conv of prev) merged.set(conv.id, conv)
+        for (const conv of data.conversations) merged.set(conv.id, conv)
+        return Array.from(merged.values()).sort(
+          (convA, convB) =>
+            new Date(convB.updatedAt).getTime() - new Date(convA.updatedAt).getTime(),
+        )
+      })
+      setTotalCount(data.totalCount)
+      setTotalUnread(data.totalUnread)
+      setTotalUnanswered(data.totalUnanswered ?? 0)
+      failCountRef.current = 0
+      setConnectionError(false)
+    } catch {
+      failCountRef.current += 1
+      if (failCountRef.current >= MAX_CONSECUTIVE_FAILURES) {
+        setConnectionError(true)
+      }
+    }
   }, [inboxId, unreadOnly, unansweredOnly, debouncedSearch])
+
+  // Polling adaptativo com setTimeout recursivo (permite mudar o intervalo dinamicamente)
+  useEffect(() => {
+    let cancelled = false
+
+    const schedulePoll = () => {
+      pollTimerRef.current = setTimeout(async () => {
+        if (cancelled) return
+        await pollConversations()
+        if (!cancelled) schedulePoll()
+      }, pollIntervalRef.current)
+    }
+
+    // Reseta intervalo quando filtros mudam
+    pollIntervalRef.current = BASE_POLL_INTERVAL_MS
+    schedulePoll()
+
+    return () => {
+      cancelled = true
+      if (pollTimerRef.current) clearTimeout(pollTimerRef.current)
+    }
+  }, [pollConversations])
+
+  // Pause polling quando a tab está inativa, re-fetch imediato ao voltar
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // Pausar polling
+        if (pollTimerRef.current) clearTimeout(pollTimerRef.current)
+      } else {
+        // Tab voltou: re-fetch imediato e reiniciar polling
+        pollIntervalRef.current = BASE_POLL_INTERVAL_MS
+        pollConversations()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [pollConversations])
+
+  // Re-fetch imediato (chamado após actions para garantir dados frescos)
+  const refetch = useCallback(() => {
+    // Reseta intervalo para base (algo mudou)
+    pollIntervalRef.current = BASE_POLL_INTERVAL_MS
+    // Cancela timer pendente e faz fetch imediato
+    if (pollTimerRef.current) clearTimeout(pollTimerRef.current)
+    pollConversations()
+  }, [pollConversations])
 
   // Load more (infinite scroll)
   const loadMore = useCallback(async () => {
@@ -264,5 +331,6 @@ export function useConversations(options: UseConversationsOptions): UseConversat
     loadMore,
     sentinelRef,
     updateConversationLocally,
+    refetch,
   }
 }
