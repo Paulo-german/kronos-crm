@@ -33,6 +33,7 @@ export const generateConfigBundle = task({
           inputSchema: configBundleSchema,
         }),
       },
+      toolChoice: 'required',
       stopWhen: stepCountIs(1),
     })
 

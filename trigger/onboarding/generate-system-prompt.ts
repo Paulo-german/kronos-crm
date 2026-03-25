@@ -40,6 +40,7 @@ export const generateSystemPrompt = task({
           inputSchema: systemPromptOutputSchema,
         }),
       },
+      toolChoice: 'required',
       stopWhen: stepCountIs(1),
     })
 

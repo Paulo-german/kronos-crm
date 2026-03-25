@@ -45,6 +45,7 @@ export const generateAgentSteps = task({
           inputSchema: agentStepsOutputSchema,
         }),
       },
+      toolChoice: 'required',
       stopWhen: stepCountIs(1),
     })
 
