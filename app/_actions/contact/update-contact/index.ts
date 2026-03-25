@@ -11,8 +11,6 @@ import {
   requirePermission,
   isOwnershipChange,
 } from '@/_lib/rbac'
-import { createNotification } from '@/_lib/notifications/create-notification'
-import { getOrgSlug } from '@/_lib/notifications/get-org-slug'
 
 export const updateContact = orgActionClient
   .schema(updateContactSchema)
@@ -75,25 +73,6 @@ export const updateContact = orgActionClient
     revalidateTag(`contacts:${ctx.orgId}`)
     revalidateTag(`contact:${data.id}`)
     revalidatePath('/contacts')
-
-    // Notificar novo responsável quando há transferência de ownership para outro usuário
-    if (
-      isOwnershipChange(data.assignedTo, existingContact.assignedTo) &&
-      data.assignedTo !== ctx.userId
-    ) {
-      void getOrgSlug(ctx.orgId).then((slug) => {
-        void createNotification({
-          orgId: ctx.orgId,
-          userId: data.assignedTo!,
-          type: 'USER_ACTION',
-          title: 'Contato transferido para você',
-          body: `O contato "${existingContact.name}" foi transferido para você.`,
-          actionUrl: `/org/${slug}/contacts/${data.id}`,
-          resourceType: 'contact',
-          resourceId: data.id,
-        })
-      })
-    }
 
     return { success: true }
   })

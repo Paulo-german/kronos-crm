@@ -11,8 +11,6 @@ import {
   requirePermission,
   isOwnershipChange,
 } from '@/_lib/rbac'
-import { createNotification } from '@/_lib/notifications/create-notification'
-import { getOrgSlug } from '@/_lib/notifications/get-org-slug'
 
 export const updateDeal = orgActionClient
   .schema(updateDealSchema)
@@ -35,19 +33,10 @@ export const updateDeal = orgActionClient
     // 3. Verificar acesso ao registro (MEMBER só edita próprios)
     requirePermission(canAccessRecord(ctx, { assignedTo: deal.assignedTo }))
 
-    // 4. Se for definir como primary, remove status dos outros
-    let newAssigneeName = ''
-    if (
-      data.assignedTo &&
-      deal.assignedTo !== data.assignedTo &&
-      isOwnershipChange(data.assignedTo, deal.assignedTo)
-    ) {
+    // 4. Safety net: se assignedTo está mudando, verificar permissão de transferência
+    // (sem cascade e sem notificação — isso é responsabilidade de transferDeal)
+    if (isOwnershipChange(data.assignedTo, deal.assignedTo)) {
       requirePermission(canTransferOwnership(ctx))
-      const newAssignee = await db.user.findUnique({
-        where: { id: data.assignedTo },
-        select: { fullName: true, email: true },
-      })
-      newAssigneeName = newAssignee?.fullName || newAssignee?.email || 'Usuário'
     }
 
     // 5. Build update data
@@ -87,25 +76,7 @@ export const updateDeal = orgActionClient
 
     // TRANSACTION WRAPPER
     await db.$transaction(async (tx) => {
-      // 1. Transferir contatos se necessário
-      if (data.assignedTo && deal.assignedTo !== data.assignedTo) {
-        const dealContacts = await tx.dealContact.findMany({
-          where: { dealId: data.id },
-          select: { contactId: true },
-        })
-
-        if (dealContacts.length > 0) {
-          await tx.contact.updateMany({
-            where: {
-              id: { in: dealContacts.map((dc) => dc.contactId) },
-              organizationId: ctx.orgId,
-            },
-            data: { assignedTo: data.assignedTo },
-          })
-        }
-      }
-
-      // 2. Atualizar vínculo de contato principal
+      // 1. Atualizar vínculo de contato principal
       if (typeof data.contactId !== 'undefined') {
         await tx.dealContact.updateMany({
           where: { dealId: data.id, isPrimary: true },
@@ -128,24 +99,13 @@ export const updateDeal = orgActionClient
         }
       }
 
-      // 3. Update Deal
+      // 2. Update Deal
       await tx.deal.update({
         where: { id: data.id },
         data: updateData,
       })
 
-      // 4. Logs de Atividade
-      if (data.assignedTo && data.assignedTo !== deal.assignedTo) {
-        await tx.activity.create({
-          data: {
-            dealId: data.id,
-            type: 'assignee_changed',
-            content: `Responsável alterado para ${newAssigneeName}`,
-            performedBy: ctx.userId,
-          },
-        })
-      }
-
+      // 3. Logs de Atividade
       if (data.priority && data.priority !== deal.priority) {
         await tx.activity.create({
           data: {
@@ -180,31 +140,9 @@ export const updateDeal = orgActionClient
 
     revalidatePath('/crm/deals/pipeline')
     revalidatePath('/crm/deals/list')
-    revalidatePath('/contacts')
     revalidateTag(`pipeline:${ctx.orgId}`)
     revalidateTag(`deals:${ctx.orgId}`)
-    revalidateTag(`contacts:${ctx.orgId}`)
     revalidateTag(`deal:${data.id}`)
-
-    // Notificar novo responsável quando há transferência de ownership para outro usuário
-    if (
-      data.assignedTo &&
-      isOwnershipChange(data.assignedTo, deal.assignedTo) &&
-      data.assignedTo !== ctx.userId
-    ) {
-      void getOrgSlug(ctx.orgId).then((slug) => {
-        void createNotification({
-          orgId: ctx.orgId,
-          userId: data.assignedTo!,
-          type: 'USER_ACTION',
-          title: 'Deal transferido para você',
-          body: `O deal "${deal.title}" foi transferido para você.`,
-          actionUrl: `/org/${slug}/crm/deals/${data.id}`,
-          resourceType: 'deal',
-          resourceId: data.id,
-        })
-      })
-    }
 
     return { success: true }
   })
