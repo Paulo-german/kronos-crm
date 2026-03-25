@@ -1,6 +1,6 @@
 'use client'
 
-import { Info } from 'lucide-react'
+import { Bot, Info, UserCog } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/_components/ui/avatar'
 import { Badge } from '@/_components/ui/badge'
 import { Button } from '@/_components/ui/button'
@@ -21,6 +21,7 @@ interface ChatHeaderProps {
   isTogglePending: boolean
   onToggleAi: (checked: boolean) => void
   onOpenSettings: () => void
+  assigneeName: string | null
 }
 
 export function ChatHeader({
@@ -31,6 +32,7 @@ export function ChatHeader({
   isTogglePending,
   onToggleAi,
   onOpenSettings,
+  assigneeName,
 }: ChatHeaderProps) {
   const initials = contactName
     .split(' ')
@@ -60,8 +62,9 @@ export function ChatHeader({
             {agentName && (
               <Badge
                 variant="outline"
-                className="h-5 border-kronos-purple/20 bg-kronos-purple/10 text-[10px] text-kronos-purple"
+                className="h-5 gap-1 border-kronos-purple/20 bg-kronos-purple/10 text-[10px] text-kronos-purple"
               >
+                <Bot className="h-3 w-3" />
                 {agentName}
               </Badge>
             )}
@@ -75,6 +78,34 @@ export function ChatHeader({
       </button>
 
       <div className="flex items-center gap-3">
+        {/* Indicador do responsável — exibido para todos os roles */}
+        {assigneeName && (
+          <>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={onOpenSettings}
+                  className="flex cursor-pointer items-center gap-1.5"
+                >
+                  <Badge
+                    variant="outline"
+                    className="h-6 max-w-[120px] gap-1 truncate border-border px-2 text-[11px] text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                  >
+                    <UserCog className="h-3 w-3 shrink-0" />
+                    <span className="truncate">{assigneeName}</span>
+                  </Badge>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p>Responsável: {assigneeName}</p>
+              </TooltipContent>
+            </Tooltip>
+
+            <Separator orientation="vertical" className="h-6" />
+          </>
+        )}
+
         <Tooltip>
           <TooltipTrigger asChild>
             <Button

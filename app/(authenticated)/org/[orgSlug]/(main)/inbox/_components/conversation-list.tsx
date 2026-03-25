@@ -4,12 +4,14 @@ import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
+  Bot,
   CircleIcon,
   Loader2,
   MoreVertical,
   Pause,
   Search,
   Settings2,
+  UserCog,
 } from 'lucide-react'
 import { cn } from '@/_lib/utils'
 import { Button } from '@/_components/ui/button'
@@ -74,6 +76,7 @@ interface ConversationListProps {
   sentinelRef: (node: HTMLElement | null) => void
   orgSlug: string
   onToggleRead: (conversationId: string) => void
+  isElevated: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -155,6 +158,7 @@ export function ConversationList({
   sentinelRef,
   orgSlug,
   onToggleRead,
+  isElevated,
 }: ConversationListProps) {
   return (
     <div className="flex h-full flex-col border-r border-border/50">
@@ -352,8 +356,9 @@ export function ConversationList({
                           {conversation.agentName && (
                             <Badge
                               variant="outline"
-                              className="h-5 border-kronos-purple/20 bg-kronos-purple/10 px-1.5 text-[10px] text-kronos-purple"
+                              className="h-5 gap-1 border-kronos-purple/20 bg-kronos-purple/10 px-1.5 text-[10px] text-kronos-purple"
                             >
+                              <Bot className="h-3 w-3" />
                               {conversation.agentName}
                             </Badge>
                           )}
@@ -374,6 +379,26 @@ export function ConversationList({
                               Ativa
                             </Badge>
                           ) : null}
+
+                          {/* Badge do responsável — visível apenas para ADMIN/OWNER */}
+                          {isElevated && conversation.assigneeName && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge
+                                    variant="outline"
+                                    className="h-5 gap-1 border-border px-1.5 text-[10px] text-muted-foreground"
+                                  >
+                                    <UserCog className="h-3 w-3" />
+                                    {getInitials(conversation.assigneeName)}
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent side="right">
+                                  <p>Responsável: {conversation.assigneeName}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
                         </div>
                       </div>
                     </button>

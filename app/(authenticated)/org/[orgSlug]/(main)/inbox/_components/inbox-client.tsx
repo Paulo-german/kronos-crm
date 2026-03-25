@@ -3,9 +3,12 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { MessageSquare, WifiOff } from 'lucide-react'
+import type { MemberRole } from '@prisma/client'
 import type { ConversationListDto } from '@/_data-access/conversation/get-conversations'
 import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
 import type { ContactOptionDto } from '@/_data-access/contact/get-contacts-options'
+import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
+import { isElevated } from '@/_lib/rbac/permissions'
 import { ConversationList, type FilterTab } from './conversation-list'
 import { ChatView } from './chat-view'
 import { EmptyInbox } from './empty-inbox'
@@ -26,9 +29,13 @@ interface InboxClientProps {
   dealOptions: DealOptionDto[]
   contactOptions: ContactOptionDto[]
   orgSlug: string
+  members: AcceptedMemberDto[]
+  userRole: MemberRole
+  currentUserId: string
 }
 
-export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug }: InboxClientProps) {
+export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug, members, userRole, currentUserId }: InboxClientProps) {
+  const elevated = isElevated(userRole)
   const searchParams = useSearchParams()
   const [selectedInboxId, setSelectedInboxId] = useState<string | null>(null)
   const [filter, setFilter] = useState<FilterTab>('all')
@@ -142,6 +149,7 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
           sentinelRef={sentinelRef}
           orgSlug={orgSlug}
           onToggleRead={handleToggleRead}
+          isElevated={elevated}
         />
       </div>
 
@@ -154,6 +162,9 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
             dealOptions={dealOptions}
             contactOptions={contactOptions}
             orgSlug={orgSlug}
+            members={members}
+            isElevated={elevated}
+            currentUserId={currentUserId}
           />
         ) : deepLinkContact && !selectedConversation ? (
           <StartConversationPanel

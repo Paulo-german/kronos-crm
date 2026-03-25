@@ -16,6 +16,7 @@ import {
 import type { ConversationListDto } from '@/_data-access/conversation/get-conversations'
 import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
 import type { ContactOptionDto } from '@/_data-access/contact/get-contacts-options'
+import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import { useChatMessages } from '../_hooks/use-chat-messages'
 import { useAudioRecorder } from '../_hooks/use-audio-recorder'
 import { ChatHeader } from './chat-header'
@@ -30,9 +31,12 @@ interface ChatViewProps {
   dealOptions: DealOptionDto[]
   contactOptions: ContactOptionDto[]
   orgSlug: string
+  members: AcceptedMemberDto[]
+  isElevated: boolean
+  currentUserId: string
 }
 
-export function ChatView({ conversation, dealOptions, contactOptions, orgSlug }: ChatViewProps) {
+export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, members, isElevated }: ChatViewProps) {
   const [text, setText] = useState('')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -284,6 +288,7 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug }:
           isTogglePending={toggleAction.isPending}
           onToggleAi={handleToggleAi}
           onOpenSettings={() => setSettingsOpen(true)}
+          assigneeName={conversation.assigneeName}
         />
         <ChatBanners
           connectionError={connectionError}
@@ -328,6 +333,8 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug }:
           dealOptions={dealOptions}
           contactOptions={contactOptions}
           orgSlug={orgSlug}
+          members={members}
+          isElevated={isElevated}
         />
       </div>
     </TooltipProvider>

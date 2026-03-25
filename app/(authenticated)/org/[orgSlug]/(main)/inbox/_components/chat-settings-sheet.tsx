@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 import {
+  Bot,
   Check,
   ChevronsUpDown,
   ExternalLink,
@@ -15,9 +16,11 @@ import {
   Save,
   Unlink,
   User,
+  UserCog,
 } from 'lucide-react'
 
 import { cn } from '@/_lib/utils'
+import { Avatar, AvatarFallback, AvatarImage } from '@/_components/ui/avatar'
 import { Badge } from '@/_components/ui/badge'
 import { Button } from '@/_components/ui/button'
 import {
@@ -35,6 +38,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/_components/ui/popover'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/_components/ui/select'
 import { Separator } from '@/_components/ui/separator'
 import {
   Sheet,
@@ -48,6 +58,7 @@ import { updateConversation } from '@/_actions/inbox/update-conversation'
 import type { ConversationListDto } from '@/_data-access/conversation/get-conversations'
 import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
 import type { ContactOptionDto } from '@/_data-access/contact/get-contacts-options'
+import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 
 interface ChatSettingsSheetProps {
   open: boolean
@@ -56,6 +67,18 @@ interface ChatSettingsSheetProps {
   dealOptions: DealOptionDto[]
   contactOptions: ContactOptionDto[]
   orgSlug: string
+  members: AcceptedMemberDto[]
+  isElevated: boolean
+}
+
+function getMemberInitials(name: string | null): string {
+  if (!name) return '?'
+  return name
+    .split(' ')
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join('')
+    .toUpperCase()
 }
 
 export function ChatSettingsSheet({
@@ -65,6 +88,8 @@ export function ChatSettingsSheet({
   dealOptions,
   contactOptions,
   orgSlug,
+  members,
+  isElevated,
 }: ChatSettingsSheetProps) {
   // Inline name edit
   const [editName, setEditName] = useState(conversation.contactName)
@@ -128,6 +153,30 @@ export function ChatSettingsSheet({
       conversationId: conversation.id,
       dealId: null,
     })
+  }
+
+  const [pendingTransferName, setPendingTransferName] = useState<string | null>(null)
+
+  const transferAction = useAction(updateConversation, {
+    onSuccess: () => {
+      toast.success(
+        pendingTransferName
+          ? `Conversa transferida para ${pendingTransferName}`
+          : 'Conversa transferida com sucesso.',
+      )
+      setPendingTransferName(null)
+    },
+    onError: (error) => {
+      toast.error(error.error?.serverError ?? 'Erro ao transferir conversa.')
+      setPendingTransferName(null)
+    },
+  })
+
+  const handleTransferAssignee = (assignedTo: string) => {
+    const targetMember = members.find((member) => member.userId === assignedTo)
+    const targetName = targetMember?.user?.fullName ?? null
+    setPendingTransferName(targetName)
+    transferAction.execute({ conversationId: conversation.id, assignedTo })
   }
 
   const channelLabel = conversation.channel === 'WHATSAPP' ? 'WhatsApp' : 'Web Chat'
@@ -365,7 +414,82 @@ export function ChatSettingsSheet({
 
           <Separator />
 
-          {/* Seção 3 - Info */}
+          {/* Seção 3 - Responsável */}
+          <section className="space-y-4">
+            <div className="flex items-center gap-2">
+              <UserCog className="h-4 w-4 text-muted-foreground" />
+              <h3 className="text-sm font-semibold">Responsável</h3>
+            </div>
+
+            {/* Responsável atual */}
+            <div className="flex items-center gap-2">
+              {conversation.assigneeName ? (
+                <>
+                  <Avatar className="h-7 w-7">
+                    <AvatarImage src={conversation.assigneeAvatarUrl ?? undefined} />
+                    <AvatarFallback className="bg-primary/10 text-[10px] font-medium text-primary">
+                      {getMemberInitials(conversation.assigneeName)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm">{conversation.assigneeName}</span>
+                </>
+              ) : (
+                <span className="text-sm text-muted-foreground">Sem responsável</span>
+              )}
+            </div>
+
+            {/* Select de transferência — apenas para ADMIN/OWNER */}
+            {isElevated && (
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">
+                  Transferir conversa
+                </Label>
+                <Select
+                  value={conversation.assignedTo ?? ''}
+                  onValueChange={handleTransferAssignee}
+                  disabled={transferAction.isPending}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecione um membro..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {members.map((member) => {
+                      const displayName = member.user?.fullName ?? member.email
+                      const initials = getMemberInitials(member.user?.fullName ?? null)
+
+                      return (
+                        <SelectItem
+                          key={member.id}
+                          value={member.userId ?? member.id}
+                          disabled={!member.userId}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-5 w-5 shrink-0">
+                              <AvatarImage src={member.user?.avatarUrl ?? undefined} />
+                              <AvatarFallback className="bg-primary/10 text-[9px] font-medium text-primary">
+                                {initials}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span>{displayName}</span>
+                          </div>
+                        </SelectItem>
+                      )
+                    })}
+                  </SelectContent>
+                </Select>
+                {transferAction.isPending && (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Transferindo...
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
+
+          <Separator />
+
+          {/* Seção 4 - Info */}
           <section className="space-y-4">
             <div className="flex items-center gap-2">
               <Info className="h-4 w-4 text-muted-foreground" />
@@ -397,8 +521,9 @@ export function ChatSettingsSheet({
                   <span className="text-xs text-muted-foreground">Agente IA</span>
                   <Badge
                     variant="outline"
-                    className="border-kronos-purple/20 bg-kronos-purple/10 text-xs text-kronos-purple"
+                    className="gap-1 border-kronos-purple/20 bg-kronos-purple/10 text-xs text-kronos-purple"
                   >
+                    <Bot className="h-3 w-3" />
                     {conversation.agentName}
                   </Badge>
                 </div>
