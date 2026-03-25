@@ -3,7 +3,7 @@
 import { revalidateTag } from 'next/cache'
 import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
-import { canPerformAction, canAccessRecord, requirePermission } from '@/_lib/rbac'
+import { canPerformAction, canAccessRecord, canTransferOwnership, requirePermission } from '@/_lib/rbac'
 import { updateConversationSchema } from './schema'
 
 export const updateConversation = orgActionClient
@@ -25,7 +25,27 @@ export const updateConversation = orgActionClient
     // RBAC: MEMBER so pode atualizar conversas atribuidas a ele
     requirePermission(canAccessRecord(ctx, { assignedTo: conversation.assignedTo }))
 
-    // 3. Validar dealId se fornecido
+    // 3. Se assignedTo está sendo alterado, verificar permissão de transferência
+    if (data.assignedTo !== undefined) {
+      // RBAC: apenas ADMIN/OWNER podem transferir conversas
+      requirePermission(canTransferOwnership(ctx))
+
+      // Validar que o novo assignee pertence à org com status ACCEPTED
+      const member = await db.member.findFirst({
+        where: {
+          userId: data.assignedTo,
+          organizationId: ctx.orgId,
+          status: 'ACCEPTED',
+        },
+        select: { id: true },
+      })
+
+      if (!member) {
+        throw new Error('Membro não encontrado nesta organização.')
+      }
+    }
+
+    // 4. Validar dealId se fornecido
     if (data.dealId !== undefined && data.dealId !== null) {
       const deal = await db.deal.findFirst({
         where: { id: data.dealId, organizationId: ctx.orgId },
@@ -35,7 +55,7 @@ export const updateConversation = orgActionClient
       }
     }
 
-    // 4. Validar contactId se fornecido
+    // 5. Validar contactId se fornecido
     if (data.contactId !== undefined) {
       const contact = await db.contact.findFirst({
         where: { id: data.contactId, organizationId: ctx.orgId },
@@ -62,16 +82,17 @@ export const updateConversation = orgActionClient
 
     const oldDealId = conversation.dealId
 
-    // 5. Update
+    // 6. Update
     await db.conversation.update({
       where: { id: data.conversationId },
       data: {
         ...(data.dealId !== undefined && { dealId: data.dealId }),
         ...(data.contactId !== undefined && { contactId: data.contactId }),
+        ...(data.assignedTo !== undefined && { assignedTo: data.assignedTo }),
       },
     })
 
-    // 6. Invalidar cache
+    // 7. Invalidar cache
     revalidateTag(`conversations:${ctx.orgId}`)
     revalidateTag(`conversation:${data.conversationId}`)
     revalidateTag(`conversation-messages:${data.conversationId}`)

@@ -30,6 +30,8 @@ export interface ConversationListDto {
   messageCount: number
   updatedAt: Date
   assignedTo: string | null
+  assigneeName: string | null
+  assigneeAvatarUrl: string | null
 }
 
 export interface ConversationFilters {
@@ -65,6 +67,7 @@ const conversationListInclude = {
     select: { content: true, role: true, createdAt: true, metadata: true },
   },
   _count: { select: { messages: true } },
+  assignee: { select: { fullName: true, avatarUrl: true } },
 } satisfies Prisma.ConversationInclude
 
 type ConversationWithIncludes = Prisma.ConversationGetPayload<{
@@ -100,6 +103,8 @@ function mapConversationToDto(conversation: ConversationWithIncludes): Conversat
     messageCount: conversation._count.messages,
     updatedAt: conversation.updatedAt,
     assignedTo: conversation.assignedTo,
+    assigneeName: conversation.assignee?.fullName ?? null,
+    assigneeAvatarUrl: conversation.assignee?.avatarUrl ?? null,
   }
 }
 
