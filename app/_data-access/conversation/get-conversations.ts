@@ -131,6 +131,12 @@ async function fetchConversationsPaginatedFromDb(
   // Filtro RBAC: MEMBER ve apenas conversas atribuidas a ele; ADMIN/OWNER ve tudo
   const rbacFilter: Prisma.ConversationWhereInput = elevated ? {} : { assignedTo: userId }
 
+  // Normaliza busca: remove espaços, parênteses, traços e '+' para comparar telefones
+  const searchTerm = filters?.search?.trim() ?? ''
+  const normalizedPhone = searchTerm
+    ? searchTerm.replace(/[\s()\-+]/g, '')
+    : ''
+
   const where: Prisma.ConversationWhereInput = {
     organizationId: orgId,
     ...rbacFilter,
@@ -138,10 +144,18 @@ async function fetchConversationsPaginatedFromDb(
     ...(filters?.unreadOnly ? { unreadCount: { gt: 0 } } : {}),
     // unansweredOnly: última mensagem foi do cliente — candidata a resposta pendente
     ...(filters?.unansweredOnly ? { lastMessageRole: 'user' } : {}),
-    ...(filters?.search
+    ...(searchTerm
       ? {
           contact: {
-            name: { contains: filters.search, mode: 'insensitive' },
+            OR: [
+              { name: { contains: searchTerm, mode: 'insensitive' } },
+              { email: { contains: searchTerm, mode: 'insensitive' } },
+              // Busca telefone com termo normalizado (sem formatação)
+              ...(normalizedPhone.length >= 3
+                ? [{ phone: { contains: normalizedPhone, mode: 'insensitive' as const } }]
+                : []),
+              { company: { name: { contains: searchTerm, mode: 'insensitive' } } },
+            ],
           },
         }
       : {}),
