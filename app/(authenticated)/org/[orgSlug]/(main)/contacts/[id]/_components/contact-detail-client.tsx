@@ -3,17 +3,20 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useAction } from 'next-safe-action/hooks'
+import { toast } from 'sonner'
 import {
+  ArrowLeft,
+  AxeIcon,
+  Briefcase,
   Building2,
+  CircleIcon,
+  CreditCard,
+  Loader2,
   Mail,
   Phone,
   User2,
-  CreditCard,
-  Briefcase,
-  AxeIcon,
   UserCog,
-  CircleIcon,
-  ArrowLeft,
 } from 'lucide-react'
 
 import { Button } from '@/_components/ui/button'
@@ -21,6 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import { Badge } from '@/_components/ui/badge'
 import { Switch } from '@/_components/ui/switch'
 import { Label } from '@/_components/ui/label'
+import { Checkbox } from '@/_components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -44,6 +48,7 @@ import { InlineTextField } from '@/_components/form-controls/inline-text-field'
 import { InlineSelectField } from '@/_components/form-controls/inline-select-field'
 import { useContactFieldUpdate } from '../_hooks/use-contact-field-update'
 import { formatPhone } from '@/_utils/format-phone'
+import { transferContact } from '@/_actions/contact/transfer-contact'
 import type { MemberRole } from '@prisma/client'
 
 interface ContactDetailClientProps {
@@ -70,6 +75,27 @@ const ContactDetailClient = ({
   const [selectedMemberId, setSelectedMemberId] = useState<string | undefined>(
     undefined,
   )
+  const [cascadeDeals, setCascadeDeals] = useState(true)
+
+  const { execute: executeTransfer, isPending: isTransferring } = useAction(
+    transferContact,
+    {
+      onSuccess: () => {
+        toast.success('Contato transferido com sucesso!', {
+          position: 'bottom-right',
+        })
+        setIsTransferOpen(false)
+        setSelectedMemberId(undefined)
+        setCascadeDeals(true)
+      },
+      onError: ({ error }) => {
+        toast.error(
+          error.serverError || 'Erro ao transferir contato.',
+          { position: 'bottom-right' },
+        )
+      },
+    },
+  )
 
   const canTransfer =
     userRole === 'ADMIN' ||
@@ -78,9 +104,20 @@ const ContactDetailClient = ({
 
   const handleTransfer = () => {
     if (selectedMemberId) {
-      updateField('assignedTo', selectedMemberId)
-      setIsTransferOpen(false)
+      executeTransfer({
+        contactId: contact.id,
+        newAssigneeId: selectedMemberId,
+        cascadeDeals,
+      })
     }
+  }
+
+  const handleCloseTransferDialog = (open: boolean) => {
+    if (!open) {
+      setSelectedMemberId(undefined)
+      setCascadeDeals(true)
+    }
+    setIsTransferOpen(open)
   }
 
   const assignableMembers = members.filter(
@@ -130,7 +167,7 @@ const ContactDetailClient = ({
               variant="outline"
               size="sm"
               onClick={() => setIsTransferOpen(true)}
-              disabled={isPending}
+              disabled={isPending || isTransferring}
             >
               <UserCog className="mr-2 h-4 w-4" />
               Transferir
@@ -293,45 +330,96 @@ const ContactDetailClient = ({
       </div>
 
       {/* Dialog de Transferência */}
-      <Dialog open={isTransferOpen} onOpenChange={setIsTransferOpen}>
-        <DialogContent>
+      <Dialog open={isTransferOpen} onOpenChange={handleCloseTransferDialog}>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Transferir Contato</DialogTitle>
             <DialogDescription>
               Selecione o novo responsável por este contato.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <Label htmlFor="new-owner-page">Novo Responsável</Label>
-            <Select onValueChange={setSelectedMemberId}>
-              <SelectTrigger id="new-owner-page" className="mt-2 w-full">
-                <SelectValue placeholder="Selecione um membro..." />
-              </SelectTrigger>
-              <SelectContent>
-                {assignableMembers.map((member) => (
-                  <SelectItem
-                    key={member.id}
-                    value={member.userId as string}
-                  >
-                    {member.user?.fullName} ({member.email})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-owner-page">Novo Responsável</Label>
+              <Select
+                value={selectedMemberId}
+                onValueChange={setSelectedMemberId}
+              >
+                <SelectTrigger id="new-owner-page" className="w-full">
+                  <SelectValue placeholder="Selecione um membro..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {assignableMembers.map((member) => (
+                    <SelectItem
+                      key={member.id}
+                      value={member.userId as string}
+                    >
+                      {member.user?.fullName} ({member.email})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Checkbox de cascade para negócios vinculados */}
+            <div
+              className={`flex items-start gap-3 rounded-md border p-3 transition-opacity ${
+                contact.deals.length === 0 ? 'opacity-60' : ''
+              }`}
+            >
+              <Checkbox
+                id="cascade-deals"
+                checked={contact.deals.length > 0 ? cascadeDeals : false}
+                disabled={contact.deals.length === 0}
+                onCheckedChange={(checked) =>
+                  setCascadeDeals(checked === true)
+                }
+                className="mt-0.5"
+              />
+              <div className="grid gap-1.5 leading-none">
+                <Label
+                  htmlFor="cascade-deals"
+                  className="cursor-pointer text-sm font-medium"
+                >
+                  Transferir também os negócios vinculados
+                </Label>
+                {contact.deals.length > 0 ? (
+                  <ul className="mt-1 space-y-1 text-xs text-muted-foreground">
+                    {contact.deals.map((deal) => (
+                      <li key={deal.id} className="flex items-center gap-1.5">
+                        <span className="h-1 w-1 shrink-0 rounded-full bg-muted-foreground/50" />
+                        {deal.title}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Nenhum negócio vinculado a este contato.
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setIsTransferOpen(false)}
-              disabled={isPending}
+              onClick={() => handleCloseTransferDialog(false)}
+              disabled={isTransferring}
             >
               Cancelar
             </Button>
             <Button
               onClick={handleTransfer}
-              disabled={!selectedMemberId || isPending}
+              disabled={!selectedMemberId || isTransferring}
             >
-              Transferir
+              {isTransferring ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Transferindo...
+                </>
+              ) : (
+                'Transferir'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

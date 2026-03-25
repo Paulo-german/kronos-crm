@@ -9,6 +9,7 @@ import {
   CircleIcon,
   CircleCheck,
   CircleX,
+  Loader2,
   RotateCcw,
   UserCog,
 } from 'lucide-react'
@@ -35,9 +36,10 @@ import { Label } from '@/_components/ui/label'
 import { markDealWon } from '@/_actions/deal/mark-deal-won'
 import { markDealLost } from '@/_actions/deal/mark-deal-lost'
 import { reopenDeal } from '@/_actions/deal/reopen-deal'
-import { updateDeal } from '@/_actions/deal/update-deal'
+import { transferDeal } from '@/_actions/deal/transfer-deal'
 import type { DealDetailsDto } from '@/_data-access/deal/get-deal-details'
 import type { MemberRole } from '@prisma/client'
+import { Checkbox } from '@/_components/ui/checkbox'
 
 import TabSummary from './tab-summary'
 
@@ -142,28 +144,44 @@ const DealDetailClient = ({
   const [selectedMemberId, setSelectedMemberId] = useState<string | undefined>(
     undefined,
   )
+  const [cascadeContacts, setCascadeContacts] = useState(true)
 
-  const { execute: executeUpdate, isPending: isUpdating } = useAction(
-    updateDeal,
+  const { execute: executeTransfer, isPending: isTransferring } = useAction(
+    transferDeal,
     {
       onSuccess: () => {
-        toast.success('Deal atualizado com sucesso!', {
+        toast.success('Negociação transferida com sucesso!', {
           position: 'bottom-right',
         })
         setIsTransferOpen(false)
+        setSelectedMemberId(undefined)
+        setCascadeContacts(true)
       },
       onError: ({ error }) => {
-        toast.error(error.serverError || 'Erro ao atualizar deal.', {
-          position: 'bottom-right',
-        })
+        toast.error(
+          error.serverError || 'Erro ao transferir negociação.',
+          { position: 'bottom-right' },
+        )
       },
     },
   )
 
   const handleTransfer = () => {
     if (selectedMemberId) {
-      executeUpdate({ id: deal.id, assignedTo: selectedMemberId })
+      executeTransfer({
+        dealId: deal.id,
+        newAssigneeId: selectedMemberId,
+        cascadeContacts,
+      })
     }
+  }
+
+  const handleCloseTransferDialog = (open: boolean) => {
+    if (!open) {
+      setSelectedMemberId(undefined)
+      setCascadeContacts(true)
+    }
+    setIsTransferOpen(open)
   }
 
   const { execute: executeMarkWon, isPending: isMarkingWon } = useAction(
@@ -215,7 +233,7 @@ const DealDetailClient = ({
     },
   )
 
-  const isPending = isMarkingWon || isMarkingLost || isReopening || isUpdating
+  const isPending = isMarkingWon || isMarkingLost || isReopening || isTransferring
 
   const handleMarkWon = () => {
     executeMarkWon({ dealId: deal.id })
@@ -384,42 +402,93 @@ const DealDetailClient = ({
       </Tabs>
 
       {/* Dialog de Transferência */}
-      <Dialog open={isTransferOpen} onOpenChange={setIsTransferOpen}>
-        <DialogContent>
+      <Dialog open={isTransferOpen} onOpenChange={handleCloseTransferDialog}>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Transferir Negociação</DialogTitle>
             <DialogDescription>
               Selecione o novo responsável por esta negociação.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <Label htmlFor="new-owner-deal">Novo Responsável</Label>
-            <Select onValueChange={setSelectedMemberId}>
-              <SelectTrigger id="new-owner-deal" className="mt-2 w-full">
-                <SelectValue placeholder="Selecione um membro..." />
-              </SelectTrigger>
-              <SelectContent>
-                {assignableMembers.map((m) => (
-                  <SelectItem key={m.id} value={m.userId as string}>
-                    {m.user?.fullName} ({m.email})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-owner-deal">Novo Responsável</Label>
+              <Select
+                value={selectedMemberId}
+                onValueChange={setSelectedMemberId}
+              >
+                <SelectTrigger id="new-owner-deal" className="w-full">
+                  <SelectValue placeholder="Selecione um membro..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {assignableMembers.map((m) => (
+                    <SelectItem key={m.id} value={m.userId as string}>
+                      {m.user?.fullName} ({m.email})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Checkbox de cascade para contatos vinculados */}
+            <div
+              className={`flex items-start gap-3 rounded-md border p-3 transition-opacity ${
+                deal.contacts.length === 0 ? 'opacity-60' : ''
+              }`}
+            >
+              <Checkbox
+                id="cascade-contacts"
+                checked={deal.contacts.length > 0 ? cascadeContacts : false}
+                disabled={deal.contacts.length === 0}
+                onCheckedChange={(checked) =>
+                  setCascadeContacts(checked === true)
+                }
+                className="mt-0.5"
+              />
+              <div className="grid gap-1.5 leading-none">
+                <Label
+                  htmlFor="cascade-contacts"
+                  className="cursor-pointer text-sm font-medium"
+                >
+                  Transferir também os contatos vinculados
+                </Label>
+                {deal.contacts.length > 0 ? (
+                  <ul className="mt-1 space-y-1 text-xs text-muted-foreground">
+                    {deal.contacts.map((contact) => (
+                      <li key={contact.contactId} className="flex items-center gap-1.5">
+                        <span className="h-1 w-1 shrink-0 rounded-full bg-muted-foreground/50" />
+                        {contact.name}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Nenhum contato vinculado a este negócio.
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setIsTransferOpen(false)}
-              disabled={isPending}
+              onClick={() => handleCloseTransferDialog(false)}
+              disabled={isTransferring}
             >
               Cancelar
             </Button>
             <Button
               onClick={handleTransfer}
-              disabled={!selectedMemberId || isPending}
+              disabled={!selectedMemberId || isTransferring}
             >
-              Transferir
+              {isTransferring ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Transferindo...
+                </>
+              ) : (
+                'Transferir'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
