@@ -54,7 +54,6 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
     setSelectedFile(null)
     setMediaPreviewUrl(null)
     mediaPreviewUrlRef.current = null
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversation.id])
 
   // Cleanup no unmount
@@ -68,7 +67,6 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
     messages,
     events,
     aiPaused,
-    pausedAt,
     isLoadingMessages,
     hasMore,
     isLoadingMore,
