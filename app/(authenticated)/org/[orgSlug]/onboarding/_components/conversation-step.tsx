@@ -12,12 +12,16 @@ import {
 import { type ReactNode } from 'react'
 import { Send, Bot, User, Loader2, CheckCircle, ArrowRight, AlertCircle, RefreshCw } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useAction } from 'next-safe-action/hooks'
 import { Button } from '@/_components/ui/button'
 import { Textarea } from '@/_components/ui/textarea'
 import { ScrollArea } from '@/_components/ui/scroll-area'
 import { Badge } from '@/_components/ui/badge'
 import { cn } from '@/_lib/utils'
+import { triggerConfigGeneration } from '@/_actions/onboarding/trigger-config-generation'
 import type { BusinessProfile } from '@/_lib/onboarding/schemas/business-profile'
+
+const LS_CONFIG_TASK_ID = 'kronos_onb_config_task_id'
 
 const WELCOME_TEXT =
   'Oii! 😊 Eu sou a Kassandra, vou te ajudar a configurar o Kronos pra ficar perfeito pro seu negócio!\n\nPra começar, você tem um site ou Instagram da empresa? Me passa o link que eu já dou uma olhada! Se não tiver, sem problema — me conta o que vocês fazem que a gente conversa 💜'
@@ -248,6 +252,15 @@ export function ConversationStep({
 
   const { messages, isLoading, error, sendMessage, retry } = useOnboardingChat()
 
+  const { execute: executeConfigDispatch } = useAction(triggerConfigGeneration, {
+    onSuccess: ({ data }) => {
+      if (data?.taskId) {
+        localStorage.setItem(LS_CONFIG_TASK_ID, data.taskId)
+      }
+    },
+    // Silencioso em erro — ConfigReviewStep fara fallback e disparara a geracao normalmente
+  })
+
   // Auto-scroll para a ultima mensagem (uso valido: sync com DOM externo)
   useEffect(() => {
     const viewport = scrollAreaRef.current?.querySelector(
@@ -279,6 +292,10 @@ export function ConversationStep({
           profileExtractedRef.current = true
           setProfileDone(true)
           const profile = part.output as BusinessProfile
+
+          // Dispara config bundle em background (fire-and-forget)
+          executeConfigDispatch({ businessProfile: profile })
+
           onComplete(profile)
           return
         }
@@ -293,12 +310,16 @@ export function ConversationStep({
           profileExtractedRef.current = true
           setProfileDone(true)
           const profile = part.input as BusinessProfile
+
+          // Dispara config bundle em background (fire-and-forget)
+          executeConfigDispatch({ businessProfile: profile })
+
           onComplete(profile)
           return
         }
       }
     }
-  }, [messages, onComplete])
+  }, [messages, onComplete, executeConfigDispatch])
 
   const handleTextareaChange = useCallback(
     (event: React.ChangeEvent<HTMLTextAreaElement>) => {
