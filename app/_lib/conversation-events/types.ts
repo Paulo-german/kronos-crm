@@ -25,6 +25,8 @@ export type ToolSuccessSubtype =
   | 'AVAILABILITY_LISTED'
   | 'HAND_OFF_TO_HUMAN'
   | 'KNOWLEDGE_FOUND'
+  | 'PRODUCTS_SEARCHED'
+  | 'PRODUCT_MEDIA_SENT'
 
 export type ToolFailureSubtype =
   | 'DEAL_MOVE_FAILED'
@@ -34,6 +36,8 @@ export type ToolFailureSubtype =
   | 'APPOINTMENT_CREATE_FAILED'
   | 'EVENT_CREATE_FAILED'
   | 'EVENT_RESCHEDULE_FAILED'
+  | 'PRODUCTS_SEARCH_FAILED'
+  | 'PRODUCT_MEDIA_SEND_FAILED'
 
 export type ProcessingErrorSubtype =
   | 'NO_CREDITS'
@@ -63,13 +67,17 @@ export const TOOL_SUBTYPE_MAP: Record<
   create_appointment: { success: 'APPOINTMENT_CREATED', failure: 'APPOINTMENT_CREATE_FAILED' },
   create_event: { success: 'EVENT_CREATED', failure: 'EVENT_CREATE_FAILED' },
   update_event: { success: 'EVENT_RESCHEDULED', failure: 'EVENT_RESCHEDULE_FAILED' },
+  // send_product_media pode falhar no envio (provider error)
+  send_product_media: { success: 'PRODUCT_MEDIA_SENT', failure: 'PRODUCT_MEDIA_SEND_FAILED' },
 }
 
 // Tools que sempre resultam em success e têm subtype especial
+// search_products retorna success mesmo sem matches (nenhum produto encontrado é válido)
 export const ALWAYS_SUCCESS_TOOLS: Record<string, ToolSuccessSubtype> = {
   hand_off_to_human: 'HAND_OFF_TO_HUMAN',
   search_knowledge: 'KNOWLEDGE_FOUND',
   list_availability: 'AVAILABILITY_LISTED',
+  search_products: 'PRODUCTS_SEARCHED',
 }
 
 // ---------------------------------------------------------------------------

@@ -9,6 +9,13 @@ import { createSearchKnowledgeTool } from './search-knowledge'
 import { createCreateEventTool } from './create-event'
 import { createListAvailabilityTool } from './list-availability'
 import { createUpdateEventTool } from './update-event'
+import { createSearchProductsTool } from './search-products'
+import { createSendProductMediaTool } from './send-product-media'
+
+// Flags globais para ativar tools que não vêm de step actions
+export interface GlobalToolFlags {
+  hasActiveProductsWithMedia: boolean
+}
 
 // Registry de tools simples (recebem apenas ctx, sem config do step)
 // update_event não está aqui — sua ativação é controlada por allowReschedule no create_event
@@ -27,6 +34,7 @@ export function buildToolSet(
   toolsEnabled: string[],
   ctx: ToolContext,
   stepActions: StepAction[],
+  globalFlags?: GlobalToolFlags,
 ) {
   const tools: Record<
     string,
@@ -35,6 +43,8 @@ export function buildToolSet(
     | ReturnType<typeof createCreateEventTool>
     | ReturnType<typeof createUpdateEventTool>
     | ReturnType<typeof createHandOffToHumanTool>
+    | ReturnType<typeof createSearchProductsTool>
+    | ReturnType<typeof createSendProductMediaTool>
   > = {}
 
   for (const toolName of toolsEnabled) {
@@ -92,6 +102,12 @@ export function buildToolSet(
     if (factory) {
       tools[toolName] = factory(ctx)
     }
+  }
+
+  // Tools globais — ativadas por flags, não por step actions
+  if (globalFlags?.hasActiveProductsWithMedia) {
+    tools['search_products'] = createSearchProductsTool(ctx)
+    tools['send_product_media'] = createSendProductMediaTool(ctx)
   }
 
   return Object.keys(tools).length > 0 ? tools : undefined

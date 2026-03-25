@@ -15,6 +15,8 @@ const TOOL_LABELS: Record<string, string> = {
   create_event: 'Criar Evento',
   update_event: 'Reagendar Evento',
   hand_off_to_human: 'Transferir para Humano',
+  search_products: 'Buscar Produtos',
+  send_product_media: 'Enviar Midia do Produto',
 }
 
 /**
@@ -274,6 +276,37 @@ export function buildMockToolSet(
         }),
         execute: async (input) =>
           mockResult('hand_off_to_human', input, 'Conversa transferida para atendimento humano.'),
+      })
+      continue
+    }
+
+    // Tools globais de produtos — adicionadas quando presentes em toolsEnabled
+    if (toolName === 'search_products') {
+      tools[toolName] = tool({
+        description:
+          'Busca produtos no catalogo da empresa por nome, tipo ou caracteristicas. Use quando o cliente perguntar sobre produtos, precos ou opcoes disponiveis.',
+        inputSchema: z.object({
+          query: z.string().describe(
+            'Termo de busca para encontrar produtos (ex: nome do produto, tipo, caracteristica)',
+          ),
+        }),
+        execute: async (input) =>
+          mockResult('search_products', input, 'Encontrados 3 produto(s) no catálogo.'),
+      })
+      continue
+    }
+
+    if (toolName === 'send_product_media') {
+      tools[toolName] = tool({
+        description:
+          'Envia fotos e videos de um produto para o cliente via WhatsApp. Use apos encontrar o produto com search_products, quando o cliente quiser ver fotos ou detalhes visuais.',
+        inputSchema: z.object({
+          productId: z.string().describe(
+            'ID do produto cujas fotos/videos devem ser enviadas ao cliente. Obtenha o ID via search_products.',
+          ),
+        }),
+        execute: async (input) =>
+          mockResult('send_product_media', input, '2 mídia(s) enviada(s) com sucesso. (simulado — nenhum arquivo real foi enviado)'),
       })
       continue
     }

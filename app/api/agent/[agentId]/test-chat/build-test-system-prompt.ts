@@ -30,7 +30,7 @@ export async function buildTestSystemPrompt(
 ): Promise<BuildTestSystemPromptResult> {
   const now = new Date()
 
-  const [agent, completedFileCount] = await Promise.all([
+  const [agent, completedFileCount, activeProductMediaCount] = await Promise.all([
     db.agent.findUniqueOrThrow({
       where: { id: agentId },
       select: {
@@ -38,6 +38,7 @@ export async function buildTestSystemPrompt(
         systemPrompt: true,
         promptConfig: true,
         modelId: true,
+        organizationId: true,
         pipelineIds: true,
         steps: {
           orderBy: { order: 'asc' },
@@ -54,6 +55,14 @@ export async function buildTestSystemPrompt(
     }),
     db.agentKnowledgeFile.count({
       where: { agentId, status: 'COMPLETED' },
+    }),
+    db.product.count({
+      where: {
+        // Filtra pela org do agente usando relação — evita segundo round-trip
+        organization: { agents: { some: { id: agentId } } },
+        isActive: true,
+        media: { some: {} },
+      },
     }),
   ])
 
@@ -73,7 +82,11 @@ export async function buildTestSystemPrompt(
     completedFileCount > 0 && !baseEffectiveTools.includes('search_knowledge')
       ? ['search_knowledge']
       : []
-  const effectiveTools = [...baseEffectiveTools, ...schedulingTools, ...knowledgeTools]
+  const productMediaTools =
+    activeProductMediaCount > 0
+      ? ['search_products', 'send_product_media']
+      : []
+  const effectiveTools = [...baseEffectiveTools, ...schedulingTools, ...knowledgeTools, ...productMediaTools]
 
   const parts: string[] = []
 

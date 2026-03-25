@@ -431,7 +431,22 @@ export const processAgentMessage = task({
               }),
               db.conversation.findUniqueOrThrow({
                 where: { id: conversationId },
-                select: { contactId: true, dealId: true },
+                select: {
+                  contactId: true,
+                  dealId: true,
+                  // Dados do inbox para resolver provider em send_product_media
+                  inbox: {
+                    select: {
+                      connectionType: true,
+                      evolutionInstanceName: true,
+                      metaPhoneNumberId: true,
+                      metaAccessToken: true,
+                      zapiInstanceId: true,
+                      zapiToken: true,
+                      zapiClientToken: true,
+                    },
+                  },
+                },
               }),
             ])
 
@@ -593,6 +608,8 @@ export const processAgentMessage = task({
             contactId: conversation.contactId,
             dealId: conversation.dealId,
             pipelineIds: promptContext.pipelineIds,
+            remoteJid: message.remoteJid,
+            inboxProvider: conversation.inbox ?? null,
           }
 
           const effectiveToolsEnabled = promptContext.toolsEnabled
@@ -601,6 +618,7 @@ export const processAgentMessage = task({
             effectiveToolsEnabled,
             toolContext,
             promptContext.allStepActions,
+            { hasActiveProductsWithMedia: promptContext.hasActiveProductsWithMedia },
           )
 
           // -----------------------------------------------------------------------

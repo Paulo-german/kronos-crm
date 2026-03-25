@@ -204,6 +204,20 @@ export const TOOL_PROMPT_DESCRIPTIONS: Record<string, { label: string; descripti
     label: 'Transferir para Humano',
     description: 'Transfere o atendimento para um atendente humano. Use quando o lead solicitar ou a situação fugir do seu escopo.',
   },
+  search_products: {
+    label: 'Buscar Produtos',
+    description:
+      'Busca produtos no catalogo da empresa por nome ou caracteristicas. ' +
+      'Use quando o cliente perguntar sobre produtos, precos ou opcoes disponiveis. ' +
+      'Retorna ID, nome, descricao, preco e se tem fotos/videos.',
+  },
+  send_product_media: {
+    label: 'Enviar Midia do Produto',
+    description:
+      'Envia fotos e videos de um produto para o cliente via WhatsApp. ' +
+      'Use apos encontrar o produto com search_products, quando o cliente quiser ver fotos ou detalhes visuais. ' +
+      'Informe o productId obtido na busca.',
+  },
 }
 
 export function compileToolsSection(toolsEnabled: string[]): string | null {
@@ -232,6 +246,7 @@ export interface BuildSystemPromptResult {
   toolsEnabled: string[]
   pipelineIds: string[]
   allStepActions: StepAction[]
+  hasActiveProductsWithMedia: boolean
 }
 
 /**
@@ -253,7 +268,7 @@ export async function buildSystemPrompt(
 ): Promise<BuildSystemPromptResult> {
   const now = new Date()
 
-  const [agent, conversation, completedFileCount, lossReasons, recentToolEvents] = await Promise.all([
+  const [agent, conversation, completedFileCount, lossReasons, recentToolEvents, activeProductMediaCount] = await Promise.all([
     db.agent.findUniqueOrThrow({
       where: { id: agentId },
       select: {
@@ -351,6 +366,13 @@ export async function buildSystemPrompt(
         createdAt: true,
       },
     }),
+    db.product.count({
+      where: {
+        organizationId,
+        isActive: true,
+        media: { some: {} },
+      },
+    }),
   ])
 
   // Coletar flat array de todas as actions parseadas (usado pelo buildToolSet config-aware)
@@ -371,7 +393,11 @@ export async function buildSystemPrompt(
     completedFileCount > 0 && !baseEffectiveTools.includes('search_knowledge')
       ? ['search_knowledge']
       : []
-  const effectiveTools = [...baseEffectiveTools, ...schedulingTools, ...knowledgeTools]
+  const productMediaTools =
+    activeProductMediaCount > 0
+      ? ['search_products', 'send_product_media']
+      : []
+  const effectiveTools = [...baseEffectiveTools, ...schedulingTools, ...knowledgeTools, ...productMediaTools]
 
   const parts: string[] = []
 
@@ -438,6 +464,17 @@ export async function buildSystemPrompt(
     '- NUNCA finja ser humano se o cliente perguntar diretamente se está falando com uma IA.',
     '- NUNCA repita a mesma informação ou pergunta mais de uma vez na conversa — consulte o histórico.',
   )
+
+  // Regras de mídia de produtos — só quando as tools estão ativas
+  if (activeProductMediaCount > 0) {
+    criticalRules.push(
+      '',
+      '**Mídia de Produtos:**',
+      '- Quando o objetivo da etapa mencionar apresentação de produtos, ENVIE as mídias proativamente usando `search_products` seguido de `send_product_media`.',
+      '- Se o cliente pedir para ver fotos, vídeos ou imagens de um produto, envie imediatamente.',
+      '- Sempre use `search_products` primeiro para encontrar o produto correto e obter o ID, depois `send_product_media` para enviar as mídias.',
+    )
+  }
 
   parts.push(criticalRules.join('\n'))
 
@@ -613,6 +650,10 @@ export async function buildSystemPrompt(
       APPOINTMENT_CREATE_FAILED: 'Falha ao agendar compromisso',
       EVENT_CREATE_FAILED: 'Falha ao agendar evento',
       EVENT_RESCHEDULE_FAILED: 'Falha ao reagendar evento',
+      PRODUCTS_SEARCHED: 'Produtos buscados no catalogo',
+      PRODUCT_MEDIA_SENT: 'Midia de produto enviada',
+      PRODUCTS_SEARCH_FAILED: 'Falha ao buscar produtos',
+      PRODUCT_MEDIA_SEND_FAILED: 'Falha ao enviar midia de produto',
     }
 
     const actionLines = recentToolEvents
@@ -648,5 +689,6 @@ export async function buildSystemPrompt(
     toolsEnabled: effectiveTools,
     pipelineIds: agent.pipelineIds,
     allStepActions,
+    hasActiveProductsWithMedia: activeProductMediaCount > 0,
   }
 }
