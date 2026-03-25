@@ -1,4 +1,5 @@
 import 'server-only'
+import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 
@@ -7,6 +8,8 @@ export interface ProductDto {
   name: string
   description: string | null
   price: number
+  isActive: boolean
+  mediaCount: number
   createdAt: Date
   updatedAt: Date
 }
@@ -15,6 +18,11 @@ const fetchProductsFromDb = async (orgId: string): Promise<ProductDto[]> => {
   const products = await db.product.findMany({
     where: {
       organizationId: orgId,
+    },
+    include: {
+      _count: {
+        select: { media: true },
+      },
     },
     orderBy: {
       createdAt: 'desc',
@@ -26,6 +34,8 @@ const fetchProductsFromDb = async (orgId: string): Promise<ProductDto[]> => {
     name: product.name,
     description: product.description,
     price: Number(product.price),
+    isActive: product.isActive,
+    mediaCount: product._count.media,
     createdAt: product.createdAt,
     updatedAt: product.updatedAt,
   }))
@@ -33,9 +43,10 @@ const fetchProductsFromDb = async (orgId: string): Promise<ProductDto[]> => {
 
 /**
  * Busca todos os produtos da organização (Cacheado)
+ * Usa Request Memoization (React) + Data Cache (Next.js)
  * Multi-tenancy via organizationId
  */
-export const getProducts = async (orgId: string): Promise<ProductDto[]> => {
+export const getProducts = cache(async (orgId: string): Promise<ProductDto[]> => {
   const getCached = unstable_cache(
     async () => fetchProductsFromDb(orgId),
     [`products-${orgId}`],
@@ -45,4 +56,4 @@ export const getProducts = async (orgId: string): Promise<ProductDto[]> => {
   )
 
   return getCached()
-}
+})

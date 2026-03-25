@@ -5,6 +5,7 @@ import { productSchema } from './schema'
 import { db } from '@/_lib/prisma'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission, requireQuota } from '@/_lib/rbac'
+import { tasks } from '@trigger.dev/sdk/v3'
 
 export const createProduct = orgActionClient
   .schema(productSchema)
@@ -21,8 +22,20 @@ export const createProduct = orgActionClient
         name: data.name,
         description: data.description || null,
         price: data.price,
+        isActive: data.isActive ?? true,
       },
     })
+
+    // Disparar embedding em background (fire-and-forget)
+    // O task process-product-embedding será criado no Step 5
+    const textToEmbed = `${data.name} ${data.description ?? ''}`.trim()
+    if (textToEmbed) {
+      void tasks.trigger('process-product-embedding', {
+        productId: product.id,
+        organizationId: ctx.orgId,
+        textToEmbed,
+      })
+    }
 
     revalidateTag(`products:${ctx.orgId}`)
     revalidatePath('/org/[orgSlug]/settings/products', 'page')
