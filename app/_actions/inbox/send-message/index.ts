@@ -87,6 +87,7 @@ export const sendMessage = orgActionClient
           aiPaused: true,
           pausedAt: new Date(),
           unreadCount: 0,
+          lastMessageRole: 'assistant',
           // Reset follow-up: humano assumiu a conversa — cancelar ciclo pendente
           nextFollowUpAt: null,
           followUpCount: 0,

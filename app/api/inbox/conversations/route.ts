@@ -34,12 +34,14 @@ export async function GET(request: NextRequest) {
     const cursor = searchParams.get('cursor') ?? undefined
     const inboxId = searchParams.get('inboxId') ?? undefined
     const unreadOnly = searchParams.get('unread') === 'true'
+    const unansweredOnly = searchParams.get('unanswered') === 'true'
     const search = searchParams.get('search') ?? undefined
     const contactId = searchParams.get('contactId') ?? undefined
 
     const result = await getConversationsPaginated(membership.orgId, limit, cursor, {
       inboxId,
       unreadOnly,
+      unansweredOnly,
       search,
     })
 

@@ -162,7 +162,7 @@ export async function POST(req: Request) {
 
     await db.conversation.updateMany({
       where: { inboxId: inbox.id, remoteJid },
-      data: { aiPaused: true, pausedAt: new Date() },
+      data: { aiPaused: true, pausedAt: new Date(), lastMessageRole: 'assistant' },
     })
 
     revalidateTag(`conversations:${orgId}`)
@@ -256,6 +256,7 @@ export async function POST(req: Request) {
         where: { id: resolveResult.conversationId },
         data: {
           unreadCount: { increment: 1 },
+          lastMessageRole: 'user',
           nextFollowUpAt: null,
           followUpCount: 0,
         },
@@ -336,6 +337,7 @@ export async function POST(req: Request) {
           where: { id: resolveResult.conversationId },
           data: {
             unreadCount: { increment: 1 },
+            lastMessageRole: 'user',
             nextFollowUpAt: null,
             followUpCount: 0,
             },
@@ -457,6 +459,7 @@ export async function POST(req: Request) {
           where: { id: conversationId },
           data: {
             unreadCount: { increment: 1 },
+            lastMessageRole: 'user',
             nextFollowUpAt: null,
             followUpCount: 0,
             },
@@ -515,7 +518,7 @@ export async function POST(req: Request) {
     // Reset follow-up completo + incrementar unreadCount — qualquer msg do cliente cancela ciclo FUP ativo
     db.conversation.update({
       where: { id: conversationId },
-      data: { unreadCount: { increment: 1 }, nextFollowUpAt: null, followUpCount: 0 },
+      data: { unreadCount: { increment: 1 }, lastMessageRole: 'user', nextFollowUpAt: null, followUpCount: 0 },
     }),
     redis
       .set(

@@ -863,7 +863,7 @@ export const processAgentMessage = task({
           log('step:6 pause_recheck', 'PASS')
 
           // -----------------------------------------------------------------------
-          // 8. Salvar resposta no banco
+          // 8. Salvar resposta no banco + atualizar lastMessageRole na conversa
           // -----------------------------------------------------------------------
           await db.message.create({
             data: {
@@ -878,6 +878,13 @@ export const processAgentMessage = task({
               },
             },
           })
+
+          // Denormalizar role da última mensagem para viabilizar filtro "não respondidos"
+          await db.conversation.update({
+            where: { id: conversationId },
+            data: { lastMessageRole: 'assistant' },
+          })
+
           log('step:7 response_saved', 'PASS')
 
           await revalidateConversationCache(conversationId, organizationId)

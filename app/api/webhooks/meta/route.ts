@@ -223,6 +223,7 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
           where: { id: resolveResult.conversationId },
           data: {
             unreadCount: { increment: 1 },
+            lastMessageRole: 'user',
             nextFollowUpAt: null,
             followUpCount: 0,
           },
@@ -297,6 +298,7 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
             where: { id: resolveResult.conversationId },
             data: {
               unreadCount: { increment: 1 },
+              lastMessageRole: 'user',
               nextFollowUpAt: null,
               followUpCount: 0,
               },
@@ -417,6 +419,7 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
             where: { id: conversationId },
             data: {
               unreadCount: { increment: 1 },
+              lastMessageRole: 'user',
               nextFollowUpAt: null,
               followUpCount: 0,
               },
@@ -473,7 +476,7 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
       // Reset follow-up completo + incrementar unreadCount — qualquer msg do cliente cancela ciclo FUP ativo
       db.conversation.update({
         where: { id: conversationId },
-        data: { unreadCount: { increment: 1 }, nextFollowUpAt: null, followUpCount: 0 },
+        data: { unreadCount: { increment: 1 }, lastMessageRole: 'user', nextFollowUpAt: null, followUpCount: 0 },
       }),
       redis
         .set(

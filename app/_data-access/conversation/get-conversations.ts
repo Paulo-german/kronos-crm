@@ -20,6 +20,7 @@ export interface ConversationListDto {
   dealId: string | null
   dealTitle: string | null
   unreadCount: number
+  lastMessageRole: string | null
   lastMessage: {
     content: string
     role: string
@@ -33,6 +34,7 @@ export interface ConversationListDto {
 export interface ConversationFilters {
   inboxId?: string
   unreadOnly?: boolean
+  unansweredOnly?: boolean
   search?: string
 }
 
@@ -41,6 +43,7 @@ export interface PaginatedConversationsResult {
   hasMore: boolean
   totalCount: number
   totalUnread: number
+  totalUnanswered: number
 }
 
 const conversationListInclude = {
@@ -84,6 +87,7 @@ function mapConversationToDto(conversation: ConversationWithIncludes): Conversat
     dealId: conversation.deal?.id ?? null,
     dealTitle: conversation.deal?.title ?? null,
     unreadCount: conversation.unreadCount,
+    lastMessageRole: conversation.lastMessageRole,
     lastMessage: conversation.messages[0]
       ? {
           content: conversation.messages[0].content,
@@ -119,6 +123,8 @@ async function fetchConversationsPaginatedFromDb(
     organizationId: orgId,
     ...(filters?.inboxId ? { inboxId: filters.inboxId } : {}),
     ...(filters?.unreadOnly ? { unreadCount: { gt: 0 } } : {}),
+    // unansweredOnly: última mensagem foi do cliente — candidata a resposta pendente
+    ...(filters?.unansweredOnly ? { lastMessageRole: 'user' } : {}),
     ...(filters?.search
       ? {
           contact: {
@@ -134,7 +140,14 @@ async function fetchConversationsPaginatedFromDb(
     ...(filters?.inboxId ? { inboxId: filters.inboxId } : {}),
   }
 
-  const [conversations, totalCount, totalUnread] = await Promise.all([
+  // Conta conversas cujo cliente enviou a última mensagem (sem filtro de inboxId para total geral)
+  const unansweredWhere: Prisma.ConversationWhereInput = {
+    organizationId: orgId,
+    lastMessageRole: 'user',
+    ...(filters?.inboxId ? { inboxId: filters.inboxId } : {}),
+  }
+
+  const [conversations, totalCount, totalUnread, totalUnanswered] = await Promise.all([
     db.conversation.findMany({
       where,
       take: limit + 1,
@@ -146,13 +159,14 @@ async function fetchConversationsPaginatedFromDb(
     }),
     db.conversation.count({ where }),
     db.conversation.count({ where: unreadWhere }),
+    db.conversation.count({ where: unansweredWhere }),
   ])
 
   const hasMore = conversations.length > limit
   const sliced = hasMore ? conversations.slice(0, limit) : conversations
   const mapped = sliced.map(mapConversationToDto)
 
-  return { conversations: mapped, hasMore, totalCount, totalUnread }
+  return { conversations: mapped, hasMore, totalCount, totalUnread, totalUnanswered }
 }
 
 export const getConversationsPaginated = cache(
