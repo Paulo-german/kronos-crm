@@ -293,7 +293,6 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
         <ChatBanners
           connectionError={connectionError}
           aiPaused={aiPaused}
-          pausedAt={pausedAt}
         />
         <ChatMessageList
           conversationId={conversation.id}

@@ -421,64 +421,53 @@ export async function POST(req: Request) {
 
   log('step:8 dedup+resolve', 'PASS', { conversationId, isNewConversation: resolveResult.isNew })
 
-  // 10. Verificar se IA esta pausada na conversa (com auto-unpause apos 30 min)
+  // 10. Verificar se IA esta pausada na conversa (pausa permanente — so despausa manualmente)
   const conversation = await db.conversation.findUnique({
     where: { id: conversationId },
-    select: { aiPaused: true, pausedAt: true },
+    select: { aiPaused: true },
   })
 
   if (conversation?.aiPaused) {
-    const AUTO_UNPAUSE_MS = 30 * 60 * 1000
-    const pausedAgoMs = conversation.pausedAt ? Date.now() - conversation.pausedAt.getTime() : null
-    const shouldAutoUnpause = pausedAgoMs !== null && pausedAgoMs > AUTO_UNPAUSE_MS
+    // IA pausada — salvar mensagem do cliente mas nao processar com IA
+    try {
+      await db.message.create({
+        data: {
+          conversationId,
+          role: 'user',
+          content: resolveMessageContent(normalizedMessage),
+          providerMessageId: messageId,
+          metadata: normalizedMessage.media
+            ? ({ media: normalizedMessage.media } as unknown as Prisma.InputJsonValue)
+            : undefined,
+        },
+      })
 
-    if (shouldAutoUnpause) {
       await db.conversation.update({
         where: { id: conversationId },
-        data: { aiPaused: false, pausedAt: null },
-      })
-      log('step:9 ai_pause_check', 'PASS', { action: 'auto_unpaused', pausedAgoMin: Math.round((pausedAgoMs ?? 0) / 60000) })
-    } else {
-      try {
-        await db.message.create({
-          data: {
-            conversationId,
-            role: 'user',
-            content: resolveMessageContent(normalizedMessage),
-            providerMessageId: messageId,
-            metadata: normalizedMessage.media
-              ? ({ media: normalizedMessage.media } as unknown as Prisma.InputJsonValue)
-              : undefined,
+        data: {
+          unreadCount: { increment: 1 },
+          lastMessageRole: 'user',
+          nextFollowUpAt: null,
+          followUpCount: 0,
           },
-        })
+      })
 
-        await db.conversation.update({
-          where: { id: conversationId },
-          data: {
-            unreadCount: { increment: 1 },
-            lastMessageRole: 'user',
-            nextFollowUpAt: null,
-            followUpCount: 0,
-            },
-        })
-
-        revalidateTag(`conversations:${orgId}`)
-        revalidateTag(`conversation-messages:${conversationId}`)
-      } catch (error) {
-        if (
-          error instanceof Error &&
-          'code' in error &&
-          (error as { code: string }).code === 'P2002'
-        ) {
-          log('step:9 ai_paused_save', 'SKIP', { reason: 'duplicate_provider_message_id' })
-          return NextResponse.json({ success: true, reason: 'duplicate' })
-        }
-        throw error
+      revalidateTag(`conversations:${orgId}`)
+      revalidateTag(`conversation-messages:${conversationId}`)
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        'code' in error &&
+        (error as { code: string }).code === 'P2002'
+      ) {
+        log('step:9 ai_paused_save', 'SKIP', { reason: 'duplicate_provider_message_id' })
+        return NextResponse.json({ success: true, reason: 'duplicate' })
       }
-
-      log('step:9 ai_pause_check', 'EXIT', { reason: 'ai_paused', conversationId, pausedAgoMin: Math.round((pausedAgoMs ?? 0) / 60000), ms: Date.now() - t0 })
-      return NextResponse.json({ success: true, reason: 'ai_paused_message_saved' })
+      throw error
     }
+
+    log('step:9 ai_pause_check', 'EXIT', { reason: 'ai_paused', conversationId, ms: Date.now() - t0 })
+    return NextResponse.json({ success: true, reason: 'ai_paused_message_saved' })
   } else {
     log('step:9 ai_pause_check', 'PASS', { aiPaused: false })
   }

@@ -383,65 +383,54 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
       revalidateTag(`conversations:${orgId}`)
     }
 
-    // 10. Verificar se IA esta pausada (com auto-unpause apos 30 min)
+    // 10. Verificar se IA esta pausada (pausa permanente — so despausa manualmente)
     const conversation = await db.conversation.findUnique({
       where: { id: conversationId },
-      select: { aiPaused: true, pausedAt: true },
+      select: { aiPaused: true },
     })
 
     if (conversation?.aiPaused) {
-      const AUTO_UNPAUSE_MS = 30 * 60 * 1000
-      const pausedAgoMs = conversation.pausedAt ? Date.now() - conversation.pausedAt.getTime() : null
-      const shouldAutoUnpause = pausedAgoMs !== null && pausedAgoMs > AUTO_UNPAUSE_MS
+      // IA pausada — salvar mensagem mas nao processar com IA
+      try {
+        await db.message.create({
+          data: {
+            conversationId,
+            role: 'user',
+            content: resolveMessageContent(normalizedMessage),
+            providerMessageId: messageId,
+            metadata: normalizedMessage.media
+              ? ({ media: normalizedMessage.media } as unknown as Prisma.InputJsonValue)
+              : undefined,
+          },
+        })
 
-      if (shouldAutoUnpause) {
+        // Reset follow-up completo + incrementar unreadCount — qualquer msg do cliente cancela ciclo FUP
         await db.conversation.update({
           where: { id: conversationId },
-          data: { aiPaused: false, pausedAt: null },
-        })
-      } else {
-        // IA pausada — salvar mensagem mas nao processar com IA
-        try {
-          await db.message.create({
-            data: {
-              conversationId,
-              role: 'user',
-              content: resolveMessageContent(normalizedMessage),
-              providerMessageId: messageId,
-              metadata: normalizedMessage.media
-                ? ({ media: normalizedMessage.media } as unknown as Prisma.InputJsonValue)
-                : undefined,
+          data: {
+            unreadCount: { increment: 1 },
+            lastMessageRole: 'user',
+            nextFollowUpAt: null,
+            followUpCount: 0,
             },
-          })
+        })
 
-          // Reset follow-up completo + incrementar unreadCount — qualquer msg do cliente cancela ciclo FUP
-          await db.conversation.update({
-            where: { id: conversationId },
-            data: {
-              unreadCount: { increment: 1 },
-              lastMessageRole: 'user',
-              nextFollowUpAt: null,
-              followUpCount: 0,
-              },
-          })
-
-          revalidateTag(`conversations:${orgId}`)
-          revalidateTag(`conversation-messages:${conversationId}`)
-        } catch (error) {
-          if (
-            error instanceof Error &&
-            'code' in error &&
-            (error as { code: string }).code === 'P2002'
-          ) {
-            logMsg('step:9 ai_paused_save', 'SKIP', { reason: 'duplicate_provider_message_id' })
-            continue
-          }
-          throw error
+        revalidateTag(`conversations:${orgId}`)
+        revalidateTag(`conversation-messages:${conversationId}`)
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          'code' in error &&
+          (error as { code: string }).code === 'P2002'
+        ) {
+          logMsg('step:9 ai_paused_save', 'SKIP', { reason: 'duplicate_provider_message_id' })
+          continue
         }
-
-        logMsg('step:9 ai_pause_check', 'EXIT', { reason: 'ai_paused', conversationId, ms: Date.now() - t0 })
-        continue
+        throw error
       }
+
+      logMsg('step:9 ai_pause_check', 'EXIT', { reason: 'ai_paused', conversationId, ms: Date.now() - t0 })
+      continue
     }
 
     // 11. Salvar mensagem
