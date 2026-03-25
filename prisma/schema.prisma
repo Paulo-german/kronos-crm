@@ -645,6 +645,10 @@ model Conversation {
   summary                String?
   currentStepOrder       Int                 @default(0) @map("current_step_order")
   unreadCount            Int                 @default(0) @map("unread_count")
+  // Role da última mensagem da conversa (denormalizado para filtro "não respondidos")
+  lastMessageRole        String?             @map("last_message_role")
+  // Fixar conversa no topo — null = não fixada, preenchido = fixada (serve como flag E timestamp)
+  pinnedAt               DateTime?           @map("pinned_at")
   createdAt              DateTime            @default(now()) @map("created_at")
   updatedAt              DateTime            @updatedAt @map("updated_at")
   nextFollowUpAt         DateTime?           @map("next_follow_up_at")
@@ -662,6 +666,8 @@ model Conversation {
   @@index([remoteJid, inboxId])
   @@index([dealId])
   @@index([nextFollowUpAt, aiPaused])
+  // Índice composto para a query "não respondidos": WHERE org = X AND last_message_role = 'user' ORDER BY updated_at DESC
+  @@index([organizationId, lastMessageRole, updatedAt(sort: Desc)])
   @@map("conversations")
 }
 
