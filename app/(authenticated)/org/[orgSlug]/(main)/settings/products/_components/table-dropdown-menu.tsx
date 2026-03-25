@@ -15,6 +15,9 @@ import {
   ClipboardCopyIcon,
   EditIcon,
   TrashIcon,
+  ImagesIcon,
+  PowerIcon,
+  PowerOffIcon,
 } from 'lucide-react'
 import { ProductDto } from '@/_data-access/product/get-products'
 
@@ -22,12 +25,18 @@ interface ProductTableDropdownMenuProps {
   product: ProductDto
   onDelete: () => void
   onEdit: () => void
+  onManageMedia: () => void
+  onToggleActive: () => void
+  isTogglingActive: boolean
 }
 
 const ProductTableDropdownMenu = ({
   product,
   onDelete,
   onEdit,
+  onManageMedia,
+  onToggleActive,
+  isTogglingActive,
 }: ProductTableDropdownMenuProps) => {
   return (
     <div className="flex items-center justify-end">
@@ -53,6 +62,28 @@ const ProductTableDropdownMenu = ({
           <DropdownMenuItem className="gap-1.5" onSelect={onEdit}>
             <EditIcon size={16} />
             Editar
+          </DropdownMenuItem>
+          <DropdownMenuItem className="gap-1.5" onSelect={onManageMedia}>
+            <ImagesIcon size={16} />
+            Gerenciar Mídias
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            className="gap-1.5"
+            onSelect={onToggleActive}
+            disabled={isTogglingActive}
+          >
+            {product.isActive ? (
+              <>
+                <PowerOffIcon size={16} />
+                Desativar
+              </>
+            ) : (
+              <>
+                <PowerIcon size={16} />
+                Ativar
+              </>
+            )}
           </DropdownMenuItem>
           <DropdownMenuItem
             className="gap-1.5 text-destructive hover:text-destructive"

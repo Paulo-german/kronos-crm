@@ -2,11 +2,19 @@
 
 import { useState, useRef } from 'react'
 import { ColumnDef } from '@tanstack/react-table'
-import { DollarSignIcon, PackageIcon, TextIcon, TrashIcon } from 'lucide-react'
+import {
+  DollarSignIcon,
+  ImageIcon,
+  PackageIcon,
+  PowerIcon,
+  TextIcon,
+  TrashIcon,
+} from 'lucide-react'
 import { DataTable } from '@/_components/data-table'
 import type { ProductDto } from '@/_data-access/product/get-products'
 import { formatCurrency } from '@/_utils/format-currency'
 import ProductTableDropdownMenu from './table-dropdown-menu'
+import { Badge } from '@/_components/ui/badge'
 import { Button } from '@/_components/ui/button'
 import { Sheet } from '@/_components/ui/sheet'
 import { useAction } from 'next-safe-action/hooks'
@@ -16,6 +24,7 @@ import { updateProduct } from '@/_actions/product/update-product'
 import { toast } from 'sonner'
 import ConfirmationDialog from '@/_components/confirmation-dialog'
 import UpsertProductDialogContent from './upsert-dialog-content'
+import { ProductMediaDialog } from './product-media-dialog'
 
 interface ProductsDataTableProps {
   products: ProductDto[]
@@ -34,6 +43,10 @@ export function ProductsDataTable({ products }: ProductsDataTableProps) {
   const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false)
   const [bulkDeleteIds, setBulkDeleteIds] = useState<string[]>([])
   const resetSelectionRef = useRef<(() => void) | null>(null)
+
+  // Estado do dialog de gerenciamento de mídias
+  const [mediaProduct, setMediaProduct] = useState<ProductDto | null>(null)
+  const [isMediaDialogOpen, setIsMediaDialogOpen] = useState(false)
 
   // Hook para deletar em massa
   const { execute: executeBulkDelete, isExecuting: isDeleting } = useAction(
@@ -78,9 +91,39 @@ export function ProductsDataTable({ products }: ProductsDataTableProps) {
     },
   )
 
+  // Hook para toggle de isActive (separado para não bloquear o form de edição)
+  const { execute: executeToggleActive, isPending: isTogglingActive } =
+    useAction(updateProduct, {
+      onSuccess: ({ input }) => {
+        toast.success(
+          input.isActive
+            ? 'Produto ativado com sucesso.'
+            : 'Produto desativado.',
+        )
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError || 'Erro ao alterar status do produto.')
+      },
+    })
+
   const handleEdit = (product: ProductDto) => {
     setEditingProduct(product)
     setIsEditDialogOpen(true)
+  }
+
+  const handleManageMedia = (product: ProductDto) => {
+    setMediaProduct(product)
+    setIsMediaDialogOpen(true)
+  }
+
+  const handleToggleActive = (product: ProductDto) => {
+    executeToggleActive({
+      id: product.id,
+      name: product.name,
+      description: product.description ?? undefined,
+      price: product.price,
+      isActive: !product.isActive,
+    })
   }
   const columns: ColumnDef<ProductDto>[] = [
     {
@@ -109,6 +152,23 @@ export function ProductsDataTable({ products }: ProductsDataTableProps) {
       },
     },
     {
+      accessorKey: 'isActive',
+      header: () => (
+        <div className="flex items-center gap-2">
+          <PowerIcon className="h-4 w-4 text-muted-foreground" />
+          <span>Status</span>
+        </div>
+      ),
+      cell: ({ row }) => {
+        const active = row.getValue('isActive') as boolean
+        return active ? (
+          <Badge variant="default">Ativo</Badge>
+        ) : (
+          <Badge variant="secondary">Inativo</Badge>
+        )
+      },
+    },
+    {
       accessorKey: 'price',
       header: () => (
         <div className="flex items-center gap-2">
@@ -119,6 +179,27 @@ export function ProductsDataTable({ products }: ProductsDataTableProps) {
       cell: ({ row }) => {
         const price = row.getValue('price') as number
         return formatCurrency(price)
+      },
+    },
+    {
+      accessorKey: 'mediaCount',
+      header: () => (
+        <div className="flex items-center gap-2">
+          <ImageIcon className="h-4 w-4 text-muted-foreground" />
+          <span>Mídias</span>
+        </div>
+      ),
+      cell: ({ row }) => {
+        const count = row.getValue('mediaCount') as number
+        if (count === 0) return <span className="text-muted-foreground">-</span>
+        return (
+          <div className="flex items-center gap-1.5 text-sm">
+            <ImageIcon className="h-3.5 w-3.5 text-muted-foreground" />
+            <span>
+              {count} {count === 1 ? 'mídia' : 'mídias'}
+            </span>
+          </div>
+        )
       },
     },
     {
@@ -133,6 +214,9 @@ export function ProductsDataTable({ products }: ProductsDataTableProps) {
               setIsDeleteDialogOpen(true)
             }}
             onEdit={() => handleEdit(product)}
+            onManageMedia={() => handleManageMedia(product)}
+            onToggleActive={() => handleToggleActive(product)}
+            isTogglingActive={isTogglingActive}
           />
         )
       },
@@ -157,6 +241,7 @@ export function ProductsDataTable({ products }: ProductsDataTableProps) {
               name: editingProduct.name,
               description: editingProduct.description || '',
               price: editingProduct.price,
+              isActive: editingProduct.isActive,
             }}
             setIsOpen={setIsEditDialogOpen}
             isOpen={isEditDialogOpen}
@@ -165,6 +250,19 @@ export function ProductsDataTable({ products }: ProductsDataTableProps) {
           />
         )}
       </Sheet>
+
+      {/* Dialog de gerenciamento de mídias */}
+      {mediaProduct && (
+        <ProductMediaDialog
+          productId={mediaProduct.id}
+          productName={mediaProduct.name}
+          open={isMediaDialogOpen}
+          onOpenChange={(open) => {
+            setIsMediaDialogOpen(open)
+            if (!open) setMediaProduct(null)
+          }}
+        />
+      )}
 
       {/* Dialog de deleção individual fora da tabela */}
       <ConfirmationDialog

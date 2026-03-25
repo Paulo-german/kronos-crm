@@ -14,6 +14,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -29,6 +30,7 @@ import {
 } from '@/_actions/product/create-product/schema'
 import type { UpdateProductInput } from '@/_actions/product/update-product/schema'
 import { Loader2 } from 'lucide-react'
+import { Switch } from '@/_components/ui/switch'
 import { CurrencyInput } from '@/_components/form-controls/currency-input'
 
 interface UpsertProductDialogContentProps {
@@ -54,6 +56,7 @@ const UpsertProductDialogContent = ({
       name: '',
       description: '',
       price: undefined,
+      isActive: true,
     },
   })
 
@@ -64,6 +67,7 @@ const UpsertProductDialogContent = ({
           name: '',
           description: '',
           price: undefined,
+          isActive: true,
         },
       )
     }
@@ -159,7 +163,30 @@ const UpsertProductDialogContent = ({
             )}
           />
 
-          <div className="flex justify-end gap-2 pt-4">
+          <div className="border-t pt-4">
+            <FormField
+              control={form.control}
+              name="isActive"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <FormLabel>Produto ativo</FormLabel>
+                    <FormDescription>
+                      Produtos ativos ficam disponíveis para o agente IA
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value ?? true}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
             <Button
               type="button"
               variant="outline"
