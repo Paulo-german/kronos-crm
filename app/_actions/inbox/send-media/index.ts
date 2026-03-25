@@ -10,6 +10,7 @@ import { uploadMediaToB2 } from '@/_lib/b2/storage'
 import {
   ALL_ACCEPTED_MEDIA_TYPES,
   isImageMimetype,
+  isVideoMimetype,
   getMaxSizeForMimetype,
 } from '@/_lib/whatsapp/media-constants'
 import { withRetry } from '@/_lib/whatsapp/retry'
@@ -74,7 +75,11 @@ export const sendMedia = orgActionClient
 
     // 6. Gerar messageId, determinar mediatype e fazer upload para B2
     const messageId = crypto.randomUUID()
-    const mediatype = isImageMimetype(data.mimetype) ? 'image' : 'document' as const
+    const mediatype = isImageMimetype(data.mimetype)
+      ? 'image' as const
+      : isVideoMimetype(data.mimetype)
+        ? 'video' as const
+        : 'document' as const
 
     const uploadResult = await uploadMediaToB2({
       organizationId: ctx.orgId,
@@ -104,8 +109,12 @@ export const sendMedia = orgActionClient
 
     // 9. Definir conteúdo e salvar message + pausar IA + cancelar FUP em paralelo
     // O humano assumiu a conversa — FUP nao faz mais sentido
-    const content = data.caption
-      || (mediatype === 'image' ? '[Imagem]' : `[Documento: ${data.fileName}]`)
+    const contentFallback = mediatype === 'image'
+      ? '[Imagem]'
+      : mediatype === 'video'
+        ? '[Vídeo]'
+        : `[Documento: ${data.fileName}]`
+    const content = data.caption || contentFallback
 
     await Promise.all([
       db.message.create({

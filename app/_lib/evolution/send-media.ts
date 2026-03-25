@@ -1,18 +1,19 @@
 import { assertEvolutionConnected } from './connection-guard'
 
 /**
- * Envia mídia (imagem ou documento) via Evolution API REST.
+ * Envia mídia (imagem, documento ou video) via Evolution API REST.
  * Endpoint: POST /message/sendMedia/{instanceName}
  *
  * A Evolution API aceita URL pública no campo `media`.
  * Para arquivos grandes, enviar URL ao invés de base64.
+ * O endpoint suporta natively os tres tipos: image, document e video.
  */
 export async function sendWhatsAppMedia(
   instanceName: string,
   remoteJid: string,
   mediaSource: string,
   mimetype: string,
-  mediatype: 'image' | 'document',
+  mediatype: 'image' | 'document' | 'video',
   fileName?: string,
   caption?: string,
 ): Promise<string> {

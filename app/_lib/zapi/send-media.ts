@@ -32,8 +32,9 @@ function resolveExtension(fileName?: string, mimetype?: string): string {
 }
 
 /**
- * Envia midia (imagem ou documento) via Z-API.
+ * Envia midia (imagem, documento ou video) via Z-API.
  * - Imagem: POST /send-image — body: { phone, image, caption }
+ * - Video: POST /send-video — body: { phone, video, caption }
  * - Documento: POST /send-document/{ext} — body: { phone, document, fileName }
  *
  * Usamos URL publica do B2 (consistencia com Evolution).
@@ -43,7 +44,7 @@ export async function sendZApiMedia(
   recipientPhone: string,
   mediaUrl: string,
   mimetype: string,
-  mediatype: 'image' | 'document',
+  mediatype: 'image' | 'document' | 'video',
   fileName?: string,
   caption?: string,
 ): Promise<string> {
@@ -55,6 +56,12 @@ export async function sendZApiMedia(
     response = await zapiPost(config, 'send-image', {
       phone: recipientPhone,
       image: mediaUrl,
+      caption: caption ?? '',
+    })
+  } else if (mediatype === 'video') {
+    response = await zapiPost(config, 'send-video', {
+      phone: recipientPhone,
+      video: mediaUrl,
       caption: caption ?? '',
     })
   } else {

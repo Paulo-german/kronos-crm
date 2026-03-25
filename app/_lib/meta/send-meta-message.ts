@@ -144,10 +144,12 @@ export async function sendMetaAudioMessage(
 }
 
 /**
- * Envia midia (imagem ou documento) via WhatsApp Cloud API (Meta Graph API).
+ * Envia midia (imagem, documento ou video) via WhatsApp Cloud API (Meta Graph API).
  * Segue o mesmo padrao two-step de sendMetaAudioMessage:
  * 1. Upload do arquivo via /media endpoint
  * 2. Envio da mensagem com o media_id retornado
+ *
+ * Para video: o payload usa `type: 'video'` e o campo `video: { id, caption }`.
  */
 export async function sendMetaMediaMessage(
   phoneNumberId: string,
@@ -155,7 +157,7 @@ export async function sendMetaMediaMessage(
   recipientPhone: string,
   mediaBase64: string,
   mimetype: string,
-  mediatype: 'image' | 'document',
+  mediatype: 'image' | 'document' | 'video',
   fileName?: string,
   caption?: string,
 ): Promise<string> {
@@ -205,6 +207,8 @@ export async function sendMetaMediaMessage(
 
   if (mediatype === 'image') {
     messagePayload.image = { id: mediaId, ...(caption ? { caption } : {}) }
+  } else if (mediatype === 'video') {
+    messagePayload.video = { id: mediaId, ...(caption ? { caption } : {}) }
   } else {
     messagePayload.document = {
       id: mediaId,

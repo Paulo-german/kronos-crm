@@ -19,7 +19,7 @@ export interface WhatsAppProvider {
     recipientPhone: string,
     mediaBase64: string,
     mimetype: string,
-    mediatype: 'image' | 'document',
+    mediatype: 'image' | 'document' | 'video',
     fileName?: string,
     caption?: string,
     mediaUrl?: string,
@@ -56,7 +56,7 @@ export function resolveWhatsAppProvider(inbox: InboxProviderContext): WhatsAppPr
         sendMetaTextMessage(phoneNumberId, accessToken, recipientPhone.replace('@s.whatsapp.net', ''), text),
       sendAudio: (recipientPhone: string, audioBase64: string) =>
         sendMetaAudioMessage(phoneNumberId, accessToken, recipientPhone.replace('@s.whatsapp.net', ''), audioBase64),
-      sendMedia: (recipientPhone: string, mediaBase64: string, mimetype: string, mediatype: 'image' | 'document', fileName?: string, caption?: string) =>
+      sendMedia: (recipientPhone: string, mediaBase64: string, mimetype: string, mediatype: 'image' | 'document' | 'video', fileName?: string, caption?: string) =>
         sendMetaMediaMessage(phoneNumberId, accessToken, recipientPhone.replace('@s.whatsapp.net', ''), mediaBase64, mimetype, mediatype, fileName, caption),
     }
   }
@@ -79,7 +79,7 @@ export function resolveWhatsAppProvider(inbox: InboxProviderContext): WhatsAppPr
         sendZApiTextMessage(config, recipientPhone.replace('@s.whatsapp.net', ''), text),
       sendAudio: (recipientPhone: string, audioBase64: string) =>
         sendZApiAudio(config, recipientPhone.replace('@s.whatsapp.net', ''), audioBase64),
-      sendMedia: (recipientPhone: string, _mediaBase64: string, mimetype: string, mediatype: 'image' | 'document', fileName?: string, caption?: string, mediaUrl?: string) => {
+      sendMedia: (recipientPhone: string, _mediaBase64: string, mimetype: string, mediatype: 'image' | 'document' | 'video', fileName?: string, caption?: string, mediaUrl?: string) => {
         if (!mediaUrl) throw new Error('Z-API requer URL publica para envio de midia. Configure o B2 Storage.')
         return sendZApiMedia(config, recipientPhone.replace('@s.whatsapp.net', ''), mediaUrl, mimetype, mediatype, fileName, caption)
       },
@@ -100,7 +100,7 @@ export function resolveWhatsAppProvider(inbox: InboxProviderContext): WhatsAppPr
       sendWhatsAppMessage(instanceName, recipientPhone, text),
     sendAudio: (recipientPhone: string, audioBase64: string) =>
       sendWhatsAppAudio(instanceName, recipientPhone, audioBase64),
-    sendMedia: (recipientPhone: string, _mediaBase64: string, mimetype: string, mediatype: 'image' | 'document', fileName?: string, caption?: string, mediaUrl?: string) => {
+    sendMedia: (recipientPhone: string, _mediaBase64: string, mimetype: string, mediatype: 'image' | 'document' | 'video', fileName?: string, caption?: string, mediaUrl?: string) => {
       if (!mediaUrl) throw new Error('Evolution API requer URL pública para envio de mídia. Configure o B2 Storage.')
       return sendWhatsAppMedia(instanceName, recipientPhone, mediaUrl, mimetype, mediatype, fileName, caption)
     },
