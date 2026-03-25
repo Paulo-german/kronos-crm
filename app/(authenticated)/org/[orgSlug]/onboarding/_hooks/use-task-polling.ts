@@ -5,6 +5,7 @@ import { useAction } from 'next-safe-action/hooks'
 import { getTaskResult } from '@/_actions/onboarding/get-task-result'
 
 const POLLING_INTERVAL_MS = 2000
+const POLLING_TIMEOUT_MS = 120_000 // 2 minutos
 
 const TERMINAL_STATUSES = new Set(['COMPLETED', 'FAILED', 'CANCELED', 'CRASHED', 'SYSTEM_FAILURE', 'INTERRUPTED', 'TIMED_OUT'])
 
@@ -24,6 +25,7 @@ export function useTaskPolling(): UseTaskPollingResult {
   const [error, setError] = useState<string | null>(null)
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const taskIdRef = useRef<string | null>(null)
 
   const { execute } = useAction(getTaskResult, {
@@ -54,6 +56,10 @@ export function useTaskPolling(): UseTaskPollingResult {
       clearInterval(intervalRef.current)
       intervalRef.current = null
     }
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current)
+      timeoutRef.current = null
+    }
   }, [])
 
   const stopPolling = useCallback(() => {
@@ -79,6 +85,13 @@ export function useTaskPolling(): UseTaskPollingResult {
         if (!taskIdRef.current) return
         execute({ taskId: taskIdRef.current })
       }, POLLING_INTERVAL_MS)
+
+      // Timeout de segurança para não ficar em polling infinito
+      timeoutRef.current = setTimeout(() => {
+        clearPollingInterval()
+        setIsPolling(false)
+        setError('A geração demorou demais. Tente novamente.')
+      }, POLLING_TIMEOUT_MS)
     },
     [execute, clearPollingInterval],
   )

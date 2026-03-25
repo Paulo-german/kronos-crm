@@ -41,7 +41,7 @@ export function useOnboardingParams(initialStatus: OnboardingStatus) {
     const urlStep = readUrlParam('s')
     if (urlStep !== null) {
       const parsed = parseInt(urlStep, 10)
-      if (!isNaN(parsed)) setStepRaw(Math.min(parsed, 4))
+      if (!isNaN(parsed)) setStepRaw(Math.max(0, Math.min(parsed, 4)))
     }
 
     const urlInboxId = readUrlParam('iid')
