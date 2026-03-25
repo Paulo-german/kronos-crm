@@ -23,6 +23,7 @@ model User {
   announcements           Announcement[]
   appointments            Appointment[]     @relation("AppointmentAssignee")
   contactsAssigned        Contact[]         @relation("ContactAssignee")
+  conversationsAssigned   Conversation[]    @relation("ConversationAssignee")
   dealsAssigned           Deal[]            @relation("DealAssignee")
   memberships             Member[]
   notifications           Notification[]
@@ -638,6 +639,8 @@ model Conversation {
   organizationId         String              @map("organization_id")
   contactId              String              @map("contact_id")
   dealId                 String?             @map("deal_id")
+  // Responsável pela conversa — herdado do contato na criação, usado para filtro RBAC (MEMBER)
+  assignedTo             String?             @map("assigned_to")
   channel                InboxChannel        @default(WHATSAPP)
   aiPaused               Boolean             @default(false) @map("ai_paused")
   pausedAt               DateTime?           @map("paused_at")
@@ -654,6 +657,7 @@ model Conversation {
   nextFollowUpAt         DateTime?           @map("next_follow_up_at")
   followUpCount          Int                 @default(0) @map("follow_up_count")
   events                 ConversationEvent[]
+  assignee               User?               @relation("ConversationAssignee", fields: [assignedTo], references: [id])
   contact                Contact             @relation(fields: [contactId], references: [id], onDelete: Cascade)
   deal                   Deal?               @relation(fields: [dealId], references: [id])
   inbox                  Inbox               @relation(fields: [inboxId], references: [id], onDelete: Cascade)
@@ -662,6 +666,7 @@ model Conversation {
 
   @@unique([inboxId, contactId, channel])
   @@index([organizationId, inboxId])
+  @@index([organizationId, assignedTo])
   @@index([contactId])
   @@index([remoteJid, inboxId])
   @@index([dealId])
