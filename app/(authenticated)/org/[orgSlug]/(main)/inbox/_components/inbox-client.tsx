@@ -121,7 +121,7 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
       )}
       <div className="flex min-h-0 flex-1 border-t border-border/50">
       {/* Sidebar */}
-      <div data-tour="inbox-list" className="w-80 shrink-0">
+      <div data-tour="inbox-list" className="w-96 shrink-0">
         <ConversationList
           conversations={conversations}
           selectedId={selectedId}

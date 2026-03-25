@@ -235,7 +235,7 @@ export function ConversationList({
             >
               Não lidas
               {totalUnread > 0 && (
-                <Badge className="h-4 min-w-4 bg-kronos-green px-1 text-[10px] font-medium text-white">
+                <Badge className="flex h-5 min-w-5 items-center justify-center rounded-full bg-kronos-green px-1 text-[10px] font-medium text-white">
                   {totalUnread > 9 ? '9+' : totalUnread}
                 </Badge>
               )}
@@ -246,7 +246,7 @@ export function ConversationList({
             >
               Sem resp.
               {totalUnanswered > 0 && (
-                <Badge className="h-4 min-w-4 bg-kronos-yellow px-1 text-[10px] font-medium text-white">
+                <Badge className="flex h-5 min-w-5 items-center justify-center rounded-full bg-kronos-yellow px-1 text-[10px] font-medium text-white">
                   {totalUnanswered > 9 ? '9+' : totalUnanswered}
                 </Badge>
               )}
@@ -325,7 +325,7 @@ export function ConversationList({
                               </span>
                             )}
                             {hasUnread && (
-                              <Badge className="h-5 min-w-5 rounded-full bg-kronos-green px-1 text-[10px] font-medium text-white hover:bg-kronos-green">
+                              <Badge className="flex h-5 min-w-5 items-center justify-center rounded-full bg-kronos-green px-1 text-[10px] font-medium text-white hover:bg-kronos-green">
                                 {conversation.unreadCount > 9
                                   ? '9+'
                                   : conversation.unreadCount}
