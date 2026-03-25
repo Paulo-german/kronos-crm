@@ -10,6 +10,7 @@ const MAX_CONSECUTIVE_FAILURES = 3
 interface UseConversationsOptions {
   inboxId: string | null
   unreadOnly: boolean
+  unansweredOnly: boolean
   search: string
   contactId: string | null
 }
@@ -27,12 +28,14 @@ interface UseConversationsReturn {
   hasMore: boolean
   totalCount: number
   totalUnread: number
+  totalUnanswered: number
   deepLinkConversationId: string | null
   deepLinkConversation: ConversationListDto | null
   deepLinkContact: DeepLinkContact | null
   connectionError: boolean
   loadMore: () => void
   sentinelRef: (node: HTMLElement | null) => void
+  updateConversationLocally: (id: string, partial: Partial<ConversationListDto>) => void
 }
 
 interface ApiResponse {
@@ -40,6 +43,7 @@ interface ApiResponse {
   hasMore: boolean
   totalCount: number
   totalUnread: number
+  totalUnanswered: number
   deepLinkConversationId?: string
   deepLinkConversation?: ConversationListDto
   deepLinkContact?: DeepLinkContact
@@ -51,13 +55,14 @@ function buildUrl(options: UseConversationsOptions, cursor?: string): string {
   if (cursor) params.set('cursor', cursor)
   if (options.inboxId) params.set('inboxId', options.inboxId)
   if (options.unreadOnly) params.set('unread', 'true')
+  if (options.unansweredOnly) params.set('unanswered', 'true')
   if (options.search) params.set('search', options.search)
   if (options.contactId) params.set('contactId', options.contactId)
   return `/api/inbox/conversations?${params.toString()}`
 }
 
 export function useConversations(options: UseConversationsOptions): UseConversationsReturn {
-  const { inboxId, unreadOnly, search, contactId } = options
+  const { inboxId, unreadOnly, unansweredOnly, search, contactId } = options
 
   const [conversations, setConversations] = useState<ConversationListDto[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -65,6 +70,7 @@ export function useConversations(options: UseConversationsOptions): UseConversat
   const [hasMore, setHasMore] = useState(false)
   const [totalCount, setTotalCount] = useState(0)
   const [totalUnread, setTotalUnread] = useState(0)
+  const [totalUnanswered, setTotalUnanswered] = useState(0)
   const [deepLinkConversationId, setDeepLinkConversationId] = useState<string | null>(null)
   const [deepLinkConversation, setDeepLinkConversation] = useState<ConversationListDto | null>(null)
   const [deepLinkContact, setDeepLinkContact] = useState<DeepLinkContact | null>(null)
@@ -87,7 +93,7 @@ export function useConversations(options: UseConversationsOptions): UseConversat
   const fetchFirstPage = useCallback(async (signal?: AbortSignal) => {
     const fetchContactId = !didDeepLink.current ? contactId : null
     const url = buildUrl(
-      { inboxId, unreadOnly, search: debouncedSearch, contactId: fetchContactId },
+      { inboxId, unreadOnly, unansweredOnly, search: debouncedSearch, contactId: fetchContactId },
     )
 
     try {
@@ -110,7 +116,7 @@ export function useConversations(options: UseConversationsOptions): UseConversat
     } catch {
       return null
     }
-  }, [inboxId, unreadOnly, debouncedSearch, contactId])
+  }, [inboxId, unreadOnly, unansweredOnly, debouncedSearch, contactId])
 
   // Initial fetch + reset on filter change
   useEffect(() => {
@@ -137,6 +143,7 @@ export function useConversations(options: UseConversationsOptions): UseConversat
       setHasMore(data.hasMore)
       setTotalCount(data.totalCount)
       setTotalUnread(data.totalUnread)
+      setTotalUnanswered(data.totalUnanswered ?? 0)
       cursorRef.current = data.conversations.at(-1)?.id
       setIsLoading(false)
     })
@@ -147,7 +154,7 @@ export function useConversations(options: UseConversationsOptions): UseConversat
   // Polling: re-fetch first page and merge
   useEffect(() => {
     const interval = setInterval(async () => {
-      const url = buildUrl({ inboxId, unreadOnly, search: debouncedSearch, contactId: null })
+      const url = buildUrl({ inboxId, unreadOnly, unansweredOnly, search: debouncedSearch, contactId: null })
       try {
         const response = await fetch(url)
         if (!response.ok) return
@@ -164,6 +171,7 @@ export function useConversations(options: UseConversationsOptions): UseConversat
         })
         setTotalCount(data.totalCount)
         setTotalUnread(data.totalUnread)
+        setTotalUnanswered(data.totalUnanswered ?? 0)
         failCountRef.current = 0
         setConnectionError(false)
       } catch {
@@ -175,7 +183,7 @@ export function useConversations(options: UseConversationsOptions): UseConversat
     }, POLL_INTERVAL_MS)
 
     return () => clearInterval(interval)
-  }, [inboxId, unreadOnly, debouncedSearch])
+  }, [inboxId, unreadOnly, unansweredOnly, debouncedSearch])
 
   // Load more (infinite scroll)
   const loadMore = useCallback(async () => {
@@ -183,7 +191,7 @@ export function useConversations(options: UseConversationsOptions): UseConversat
 
     setIsLoadingMore(true)
     const url = buildUrl(
-      { inboxId, unreadOnly, search: debouncedSearch, contactId: null },
+      { inboxId, unreadOnly, unansweredOnly, search: debouncedSearch, contactId: null },
       cursorRef.current,
     )
 
@@ -208,7 +216,17 @@ export function useConversations(options: UseConversationsOptions): UseConversat
     } finally {
       setIsLoadingMore(false)
     }
-  }, [isLoadingMore, hasMore, inboxId, unreadOnly, debouncedSearch])
+  }, [isLoadingMore, hasMore, inboxId, unreadOnly, unansweredOnly, debouncedSearch])
+
+  // Optimistic update: atualiza uma conversa localmente sem aguardar polling
+  const updateConversationLocally = useCallback(
+    (id: string, partial: Partial<ConversationListDto>) => {
+      setConversations((prev) =>
+        prev.map((conv) => (conv.id === id ? { ...conv, ...partial } : conv)),
+      )
+    },
+    [],
+  )
 
   // IntersectionObserver sentinel ref callback
   const sentinelRef = useCallback(
@@ -238,11 +256,13 @@ export function useConversations(options: UseConversationsOptions): UseConversat
     hasMore,
     totalCount,
     totalUnread,
+    totalUnanswered,
     deepLinkConversationId,
     deepLinkConversation,
     deepLinkContact,
     connectionError,
     loadMore,
     sentinelRef,
+    updateConversationLocally,
   }
 }

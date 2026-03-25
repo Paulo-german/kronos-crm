@@ -6,7 +6,7 @@ import { MessageSquare, WifiOff } from 'lucide-react'
 import type { ConversationListDto } from '@/_data-access/conversation/get-conversations'
 import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
 import type { ContactOptionDto } from '@/_data-access/contact/get-contacts-options'
-import { ConversationList } from './conversation-list'
+import { ConversationList, type FilterTab } from './conversation-list'
 import { ChatView } from './chat-view'
 import { EmptyInbox } from './empty-inbox'
 import { StartConversationPanel } from './start-conversation-panel'
@@ -28,8 +28,6 @@ interface InboxClientProps {
   orgSlug: string
 }
 
-type FilterTab = 'all' | 'unread'
-
 export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug }: InboxClientProps) {
   const searchParams = useSearchParams()
   const [selectedInboxId, setSelectedInboxId] = useState<string | null>(null)
@@ -47,17 +45,28 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
     hasMore,
     totalCount,
     totalUnread,
+    totalUnanswered,
     deepLinkConversationId,
     deepLinkConversation,
     deepLinkContact,
     connectionError,
     sentinelRef,
+    updateConversationLocally,
   } = useConversations({
     inboxId: selectedInboxId,
     unreadOnly: filter === 'unread',
+    unansweredOnly: filter === 'unanswered',
     search,
     contactId,
   })
+
+  // Optimistic update para toggle read — o polling de 5s corrige eventuais falhas
+  const handleToggleRead = (conversationId: string) => {
+    const target = conversations.find((conv) => conv.id === conversationId)
+    if (!target) return
+    const newUnreadCount = target.unreadCount > 0 ? 0 : 1
+    updateConversationLocally(conversationId, { unreadCount: newUnreadCount })
+  }
 
   // Seleção automática de conversa com cadeia de prioridade
   useEffect(() => {
@@ -126,11 +135,13 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
           onFilterChange={setFilter}
           totalCount={totalCount}
           totalUnread={totalUnread}
+          totalUnanswered={totalUnanswered}
           isLoading={isLoading}
           isLoadingMore={isLoadingMore}
           hasMore={hasMore}
           sentinelRef={sentinelRef}
           orgSlug={orgSlug}
+          onToggleRead={handleToggleRead}
         />
       </div>
 
