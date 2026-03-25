@@ -78,7 +78,8 @@ export async function resolveConversation(
 
   let contact = await db.contact.findFirst({
     where: { organizationId: orgId, phone: phoneNumber },
-    select: { id: true, name: true },
+    // Incluir assignedTo para herdar o responsavel na criacao da conversa
+    select: { id: true, name: true, assignedTo: true },
   })
 
   const isNewContact = !contact
@@ -90,11 +91,11 @@ export async function resolveConversation(
         name: effectiveName,
         phone: phoneNumber,
       },
-      select: { id: true, name: true },
+      select: { id: true, name: true, assignedTo: true },
     })
   }
 
-  // 3. Criar Conversation
+  // 3. Criar Conversation herdando assignedTo do contato existente
   const conversation = await db.conversation.create({
     data: {
       inboxId,
@@ -102,6 +103,8 @@ export async function resolveConversation(
       contactId: contact.id,
       channel: 'WHATSAPP',
       remoteJid,
+      // Herda responsavel do contato existente (null se contato eh novo — round-robin vai atualizar depois)
+      assignedTo: contact.assignedTo,
     },
     select: { id: true },
   })
@@ -116,8 +119,8 @@ export async function resolveConversation(
       dealContext,
     )
   } else if (isNewContact && contactAssignContext) {
-    // Sem deal, mas atribuir contact ao round-robin
-    await assignContactOwner(orgId, contact.id, contactAssignContext)
+    // Sem deal, mas atribuir contact e conversa ao round-robin
+    await assignContactOwner(orgId, contact.id, contactAssignContext, conversation.id)
   }
 
   return { conversationId: conversation.id, isNew: true }
@@ -127,17 +130,27 @@ export async function assignContactOwner(
   orgId: string,
   contactId: string,
   context: ContactAssignContext,
+  conversationId?: string,
 ): Promise<void> {
   try {
     const assignedTo = await resolveAssignedTo(orgId, context.distributionUserIds, context.inboxId)
     if (!assignedTo) return
 
+    // Atualizar contato (apenas se ainda nao tem responsavel)
     await db.contact.updateMany({
       where: { id: contactId, assignedTo: null },
       data: { assignedTo },
     })
+
+    // Atualizar conversa com o mesmo responsavel (apenas se fornecida e ainda sem responsavel)
+    if (conversationId) {
+      await db.conversation.updateMany({
+        where: { id: conversationId, assignedTo: null },
+        data: { assignedTo },
+      })
+    }
   } catch (error) {
-    console.warn('[resolveConversation] Falha ao atribuir contact:', { orgId, contactId, error })
+    console.warn('[resolveConversation] Falha ao atribuir contact/conversation:', { orgId, contactId, error })
   }
 }
 
@@ -184,9 +197,10 @@ export async function createDealForNewConversation(
         },
       })
 
+      // Vincular deal e atribuir responsavel da conversa ao mesmo dono do deal
       await tx.conversation.update({
         where: { id: conversationId },
-        data: { dealId: deal.id },
+        data: { dealId: deal.id, assignedTo },
       })
 
       // Atribuir contact ao mesmo dono do deal (apenas se não tem dono)

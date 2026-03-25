@@ -70,6 +70,8 @@ export const createConversation = orgActionClient
           channel: 'WHATSAPP',
           remoteJid,
           aiPaused: true,
+          // Herda responsavel do contato na criacao manual (contato ja existe e pode ter assignedTo)
+          assignedTo: contact.assignedTo,
         },
       })
     } catch (error) {
@@ -112,10 +114,13 @@ export const createConversation = orgActionClient
         },
       )
     } else if (!contact.assignedTo) {
-      await assignContactOwner(ctx.orgId, contact.id, {
-        distributionUserIds: inbox.distributionUserIds,
-        inboxId: inbox.id,
-      })
+      // Contato sem dono: atribuir via round-robin e atualizar a conversa recem-criada tambem
+      await assignContactOwner(
+        ctx.orgId,
+        contact.id,
+        { distributionUserIds: inbox.distributionUserIds, inboxId: inbox.id },
+        conversation.id,
+      )
     }
 
     // 6. Invalidar caches

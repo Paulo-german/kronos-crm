@@ -95,6 +95,37 @@ export async function findContactWithRBAC(
 }
 
 /**
+ * Busca uma conversa e verifica se o usuário tem permissão de acesso
+ * Retorna a conversa se encontrada e permitida, lança erro caso contrário
+ * Retorna 404 genérico para não vazar existência de registros de outros membros
+ */
+export async function findConversationWithRBAC(
+  conversationId: string,
+  ctx: PermissionContext,
+): Promise<{ id: string; assignedTo: string | null; organizationId: string }> {
+  const conversation = await db.conversation.findFirst({
+    where: {
+      id: conversationId,
+      organizationId: ctx.orgId,
+    },
+    select: {
+      id: true,
+      assignedTo: true,
+      organizationId: true,
+    },
+  })
+
+  if (!conversation) {
+    throw new Error('Conversa não encontrada.')
+  }
+
+  // Verifica acesso RBAC (MEMBER só acessa próprias conversas)
+  requirePermission(canAccessRecord(ctx, { assignedTo: conversation.assignedTo }))
+
+  return conversation
+}
+
+/**
  * Busca um agendamento e verifica se o usuário tem permissão de acesso
  * Retorna o agendamento se encontrado e permitido, lança erro caso contrário
  */

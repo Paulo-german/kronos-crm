@@ -23,6 +23,7 @@ export interface ConversationDetailDto {
   dealId: string | null
   summary: string | null
   organizationId: string
+  assignedTo: string | null
 }
 
 const DEFAULT_MESSAGE_LIMIT = 30
@@ -131,6 +132,7 @@ const fetchConversationDetailFromDb = async (
     dealId: conversation.dealId,
     summary: conversation.summary,
     organizationId: conversation.organizationId,
+    assignedTo: conversation.assignedTo,
   }
 }
 

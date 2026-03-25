@@ -7,6 +7,7 @@ import { getConversationMessagesPaginated } from '@/_data-access/conversation/ge
 import { getConversationEvents } from '@/_data-access/conversation/get-conversation-events'
 import { ORG_SLUG_COOKIE } from '@/_lib/constants'
 import { db } from '@/_lib/prisma'
+import { isElevated } from '@/_lib/rbac'
 
 interface RouteContext {
   params: Promise<{ conversationId: string }>
@@ -36,11 +37,18 @@ export async function GET(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'No access' }, { status: 403 })
     }
 
-    // 2. Validar conversa pertence à org
+    // 2. Validar conversa pertence à org + aplicar filtro RBAC
     const { conversationId } = await context.params
 
+    // RBAC: MEMBER so pode acessar conversas atribuidas a ele (retorna 404 para nao vazar existencia)
+    const elevated = isElevated(membership.userRole!)
+
     const conversation = await db.conversation.findFirst({
-      where: { id: conversationId, organizationId: membership.orgId },
+      where: {
+        id: conversationId,
+        organizationId: membership.orgId,
+        ...(elevated ? {} : { assignedTo: user.id }),
+      },
       select: { id: true, aiPaused: true, pausedAt: true, unreadCount: true },
     })
 

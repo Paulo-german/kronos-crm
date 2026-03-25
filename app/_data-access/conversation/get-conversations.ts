@@ -29,6 +29,7 @@ export interface ConversationListDto {
   } | null
   messageCount: number
   updatedAt: Date
+  assignedTo: string | null
 }
 
 export interface ConversationFilters {
@@ -98,6 +99,7 @@ function mapConversationToDto(conversation: ConversationWithIncludes): Conversat
       : null,
     messageCount: conversation._count.messages,
     updatedAt: conversation.updatedAt,
+    assignedTo: conversation.assignedTo,
   }
 }
 
@@ -115,12 +117,18 @@ export async function getConversationAsDto(
 
 async function fetchConversationsPaginatedFromDb(
   orgId: string,
+  userId: string,
+  elevated: boolean,
   limit: number,
   cursor?: string,
   filters?: ConversationFilters,
 ): Promise<PaginatedConversationsResult> {
+  // Filtro RBAC: MEMBER ve apenas conversas atribuidas a ele; ADMIN/OWNER ve tudo
+  const rbacFilter: Prisma.ConversationWhereInput = elevated ? {} : { assignedTo: userId }
+
   const where: Prisma.ConversationWhereInput = {
     organizationId: orgId,
+    ...rbacFilter,
     ...(filters?.inboxId ? { inboxId: filters.inboxId } : {}),
     ...(filters?.unreadOnly ? { unreadCount: { gt: 0 } } : {}),
     // unansweredOnly: última mensagem foi do cliente — candidata a resposta pendente
@@ -134,15 +142,18 @@ async function fetchConversationsPaginatedFromDb(
       : {}),
   }
 
+  // Contadores de badge respeitam o mesmo filtro RBAC do usuario
   const unreadWhere: Prisma.ConversationWhereInput = {
     organizationId: orgId,
+    ...rbacFilter,
     unreadCount: { gt: 0 },
     ...(filters?.inboxId ? { inboxId: filters.inboxId } : {}),
   }
 
-  // Conta conversas cujo cliente enviou a última mensagem (sem filtro de inboxId para total geral)
+  // Conta conversas cujo cliente enviou a última mensagem (candidatas a resposta pendente)
   const unansweredWhere: Prisma.ConversationWhereInput = {
     organizationId: orgId,
+    ...rbacFilter,
     lastMessageRole: 'user',
     ...(filters?.inboxId ? { inboxId: filters.inboxId } : {}),
   }
@@ -151,9 +162,7 @@ async function fetchConversationsPaginatedFromDb(
     db.conversation.findMany({
       where,
       take: limit + 1,
-      ...(cursor
-        ? { cursor: { id: cursor }, skip: 1 }
-        : {}),
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       orderBy: { updatedAt: 'desc' },
       include: conversationListInclude,
     }),
@@ -172,14 +181,17 @@ async function fetchConversationsPaginatedFromDb(
 export const getConversationsPaginated = cache(
   async (
     orgId: string,
+    userId: string,
+    elevated: boolean,
     limit = 20,
     cursor?: string,
     filters?: ConversationFilters,
   ): Promise<PaginatedConversationsResult> => {
     const filterKey = JSON.stringify(filters ?? {})
     const getCached = unstable_cache(
-      async () => fetchConversationsPaginatedFromDb(orgId, limit, cursor, filters),
-      [`conversations-${orgId}-${limit}-${cursor ?? 'none'}-${filterKey}`],
+      async () => fetchConversationsPaginatedFromDb(orgId, userId, elevated, limit, cursor, filters),
+      // Cache key inclui userId para isolar entradas MEMBER vs ADMIN/OWNER
+      [`conversations-${orgId}-${userId}-${limit}-${cursor ?? 'none'}-${filterKey}`],
       { tags: [`conversations:${orgId}`] },
     )
     return getCached()

@@ -4,7 +4,7 @@ import { revalidateTag } from 'next/cache'
 import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
-import { canPerformAction, requirePermission } from '@/_lib/rbac'
+import { canPerformAction, canAccessRecord, requirePermission } from '@/_lib/rbac'
 import { resolveWhatsAppProvider } from '@/_lib/whatsapp/provider'
 import { uploadMediaToB2 } from '@/_lib/b2/storage'
 import {
@@ -34,7 +34,7 @@ export const sendMedia = orgActionClient
       throw new Error(`Arquivo muito grande. Máximo: ${maxMB}MB.`)
     }
 
-    // 4. Validar conversa pertence à org
+    // 4. Validar conversa pertence à org + ownership check para MEMBER
     const conversation = await db.conversation.findFirst({
       where: { id: data.conversationId, organizationId: ctx.orgId },
       include: {
@@ -55,6 +55,9 @@ export const sendMedia = orgActionClient
     if (!conversation) {
       throw new Error('Conversa não encontrada.')
     }
+
+    // RBAC: MEMBER so pode enviar midia para conversas atribuidas a ele
+    requirePermission(canAccessRecord(ctx, { assignedTo: conversation.assignedTo }))
 
     if (!conversation.remoteJid) {
       throw new Error('Esta conversa não possui conexão WhatsApp ativa.')

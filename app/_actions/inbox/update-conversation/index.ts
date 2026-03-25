@@ -3,7 +3,7 @@
 import { revalidateTag } from 'next/cache'
 import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
-import { canPerformAction, requirePermission } from '@/_lib/rbac'
+import { canPerformAction, canAccessRecord, requirePermission } from '@/_lib/rbac'
 import { updateConversationSchema } from './schema'
 
 export const updateConversation = orgActionClient
@@ -15,11 +15,15 @@ export const updateConversation = orgActionClient
     // 2. Buscar conversa existente
     const conversation = await db.conversation.findFirst({
       where: { id: data.conversationId, organizationId: ctx.orgId },
+      select: { id: true, dealId: true, inboxId: true, channel: true, assignedTo: true },
     })
 
     if (!conversation) {
       throw new Error('Conversa não encontrada.')
     }
+
+    // RBAC: MEMBER so pode atualizar conversas atribuidas a ele
+    requirePermission(canAccessRecord(ctx, { assignedTo: conversation.assignedTo }))
 
     // 3. Validar dealId se fornecido
     if (data.dealId !== undefined && data.dealId !== null) {

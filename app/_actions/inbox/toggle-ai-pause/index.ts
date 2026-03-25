@@ -3,7 +3,7 @@
 import { revalidateTag } from 'next/cache'
 import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
-import { canPerformAction, requirePermission } from '@/_lib/rbac'
+import { canPerformAction, canAccessRecord, requirePermission } from '@/_lib/rbac'
 import { toggleAiPauseSchema } from './schema'
 
 export const toggleAiPause = orgActionClient
@@ -12,14 +12,18 @@ export const toggleAiPause = orgActionClient
     // 1. Verificar permissão
     requirePermission(canPerformAction(ctx, 'conversation', 'update'))
 
-    // 2. Validar conversa pertence à org
+    // 2. Validar conversa pertence à org + ownership check para MEMBER
     const conversation = await db.conversation.findFirst({
       where: { id: data.conversationId, organizationId: ctx.orgId },
+      select: { id: true, assignedTo: true },
     })
 
     if (!conversation) {
       throw new Error('Conversa não encontrada.')
     }
+
+    // RBAC: MEMBER so pode alterar pausa de IA em conversas atribuidas a ele
+    requirePermission(canAccessRecord(ctx, { assignedTo: conversation.assignedTo }))
 
     // 3. Atualizar estado
     await db.conversation.update({

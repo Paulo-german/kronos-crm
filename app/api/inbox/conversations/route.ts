@@ -5,6 +5,7 @@ import { validateMembership } from '@/_data-access/organization/validate-members
 import { getConversationsPaginated, getConversationAsDto } from '@/_data-access/conversation/get-conversations'
 import { ORG_SLUG_COOKIE } from '@/_lib/constants'
 import { db } from '@/_lib/prisma'
+import { isElevated } from '@/_lib/rbac'
 
 export async function GET(request: NextRequest) {
   try {
@@ -38,19 +39,29 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') ?? undefined
     const contactId = searchParams.get('contactId') ?? undefined
 
-    const result = await getConversationsPaginated(membership.orgId, limit, cursor, {
-      inboxId,
-      unreadOnly,
-      unansweredOnly,
-      search,
-    })
+    // Determinar escopo RBAC do usuario para filtrar conversas
+    const elevated = isElevated(membership.userRole!)
+
+    const result = await getConversationsPaginated(
+      membership.orgId,
+      user.id,
+      elevated,
+      limit,
+      cursor,
+      { inboxId, unreadOnly, unansweredOnly, search },
+    )
 
     let deepLinkConversationId: string | undefined
     let deepLinkConversation = undefined
     let deepLinkContact: { id: string; name: string; phone: string | null } | undefined
     if (contactId) {
       const match = await db.conversation.findFirst({
-        where: { organizationId: membership.orgId, contactId },
+        where: {
+          organizationId: membership.orgId,
+          contactId,
+          // RBAC: MEMBER so pode ver conversas atribuidas a ele
+          ...(elevated ? {} : { assignedTo: user.id }),
+        },
         select: { id: true },
         orderBy: { updatedAt: 'desc' },
       })
