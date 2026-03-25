@@ -5,4 +5,4 @@ export const deleteProductMediaSchema = z.object({
   productId: z.string().uuid(),
 })
 
-export interface DeleteProductMediaInput extends z.infer<typeof deleteProductMediaSchema> {}
+export type DeleteProductMediaInput = z.infer<typeof deleteProductMediaSchema>

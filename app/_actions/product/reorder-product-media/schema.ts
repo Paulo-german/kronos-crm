@@ -5,4 +5,4 @@ export const reorderProductMediaSchema = z.object({
   mediaIds: z.array(z.string().uuid()).min(1),
 })
 
-export interface ReorderProductMediaInput extends z.infer<typeof reorderProductMediaSchema> {}
+export type ReorderProductMediaInput = z.infer<typeof reorderProductMediaSchema>

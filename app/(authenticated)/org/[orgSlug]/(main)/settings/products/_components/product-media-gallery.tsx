@@ -41,14 +41,12 @@ import { cn } from '@/_lib/utils'
 
 interface SortableMediaCardProps {
   media: ProductMediaDto
-  productId: string
   isDeleting: boolean
   onDelete: (mediaId: string) => void
 }
 
 const SortableMediaCard = ({
   media,
-  productId,
   isDeleting,
   onDelete,
 }: SortableMediaCardProps) => {
@@ -253,7 +251,6 @@ export function ProductMediaGallery({
     <SortableMediaCard
       key={item.id}
       media={item}
-      productId={productId}
       isDeleting={deletingId === item.id && isDeletePending}
       onDelete={handleDelete}
     />
