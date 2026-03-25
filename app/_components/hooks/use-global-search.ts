@@ -10,10 +10,11 @@ const DEBOUNCE_DELAY = 300
 const MIN_QUERY_LENGTH = 3
 
 const emptyResult: GlobalSearchResult = {
-  contacts: [],
-  companies: [],
-  deals: [],
+  contacts: { items: [], totalCount: 0 },
+  companies: { items: [], totalCount: 0 },
+  deals: { items: [], totalCount: 0 },
   totalCount: 0,
+  query: '',
 }
 
 export function useGlobalSearch() {
