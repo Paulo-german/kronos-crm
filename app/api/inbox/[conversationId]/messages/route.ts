@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { cookies } from 'next/headers'
+import { revalidateTag } from 'next/cache'
 import { createClient } from '@/_lib/supabase/server'
 import { validateMembership } from '@/_data-access/organization/validate-membership'
 import { getConversationMessagesPaginated } from '@/_data-access/conversation/get-conversation-messages'
@@ -53,6 +54,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         where: { id: conversationId },
         data: { unreadCount: 0 },
       })
+      revalidateTag(`conversations:${membership.orgId}`)
     }
 
     // 4. Buscar mensagens com paginação por cursor
