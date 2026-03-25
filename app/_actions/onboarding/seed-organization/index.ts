@@ -232,11 +232,6 @@ export const seedOrganization = orgActionClient
         })
       }
 
-      // 6. Marca onboarding como completo
-      await tx.organization.update({
-        where: { id: ctx.orgId },
-        data: { onboardingCompleted: true },
-      })
     })
 
     // Invalida caches relevantes

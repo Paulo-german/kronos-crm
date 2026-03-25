@@ -5,11 +5,13 @@ import { useAction } from 'next-safe-action/hooks'
 import { motion } from 'framer-motion'
 import {
   Rocket,
+  Loader2,
   MessageSquare,
   BarChart3,
   Users,
   Zap,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/_components/ui/button'
 import { fireConfetti } from '@/_lib/onboarding/fire-confetti'
 import { completeOnboarding } from '@/_actions/onboarding/complete-onboarding'
@@ -44,14 +46,21 @@ const FEATURES = [
 export function CelebrationStep({ onStart }: CelebrationStepProps) {
   const hasTriggered = useRef(false)
 
-  const { execute } = useAction(completeOnboarding)
+  const { execute, isPending } = useAction(completeOnboarding, {
+    onSuccess: () => {
+      onStart()
+    },
+    onError: ({ error }) => {
+      toast.error(
+        error.serverError || 'Erro ao finalizar. Tente novamente.',
+        { position: 'bottom-right' },
+      )
+    },
+  })
 
   useEffect(() => {
     if (hasTriggered.current) return
     hasTriggered.current = true
-
-    // Marca onboarding como completo assim que a celebração é exibida
-    execute()
 
     fireConfetti()
 
@@ -61,7 +70,7 @@ export function CelebrationStep({ onStart }: CelebrationStepProps) {
     }, 800)
 
     return () => clearTimeout(timeout)
-  }, [execute])
+  }, [])
 
   return (
     <div className="flex flex-col items-center justify-center px-4 py-16 text-center">
@@ -133,11 +142,16 @@ export function CelebrationStep({ onStart }: CelebrationStepProps) {
       >
         <Button
           size="lg"
-          onClick={onStart}
+          onClick={() => execute()}
+          disabled={isPending}
           className="gap-2 px-8 text-base shadow-lg shadow-primary/20"
         >
-          <Rocket className="size-5" />
-          Começar a usar o Kronos
+          {isPending ? (
+            <Loader2 className="size-5 animate-spin" />
+          ) : (
+            <Rocket className="size-5" />
+          )}
+          {isPending ? 'Finalizando...' : 'Começar a usar o Kronos'}
         </Button>
       </motion.div>
 
