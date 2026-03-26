@@ -25,6 +25,7 @@ import { transcribeAudio } from './utils/transcribe-audio'
 import { transcribeImage } from './utils/transcribe-image'
 import { downloadAndStoreMedia } from './utils/download-and-store-media'
 import { getFollowUpsForStep } from '@/_data-access/follow-up/get-follow-ups-for-step'
+import { createExecutionTracker } from './lib/execution-tracker'
 import type { ToolContext } from './tools/types'
 import type { NormalizedWhatsAppMessage } from '@/_lib/evolution/types'
 
@@ -122,6 +123,14 @@ export const processAgentMessage = task({
           organizationId,
         })
 
+        // Rastreador de execução — acumula steps em memória, persiste batch no final
+        const tracker = createExecutionTracker({
+          agentId,
+          organizationId,
+          conversationId,
+          triggerMessageId: message.messageId,
+        })
+
         updateActiveTrace({
           sessionId: conversationId,
           userId: organizationId,
@@ -148,12 +157,24 @@ export const processAgentMessage = task({
                 myTimestamp: debounceTimestamp,
                 currentTimestamp,
               })
+              tracker.addStep({
+                type: 'DEBOUNCE_CHECK',
+                status: 'SKIPPED',
+                output: { reason: 'newer_message_exists' },
+              })
+              await tracker.skip('debounce')
               return { skipped: true, reason: 'debounce' }
             }
             log('step:1 debounce_check', 'PASS')
+            tracker.addStep({ type: 'DEBOUNCE_CHECK', status: 'PASSED' })
           } catch (error) {
             log('step:1 debounce_check', 'PASS', {
               warning: 'redis_failed_continuing',
+            })
+            tracker.addStep({
+              type: 'DEBOUNCE_CHECK',
+              status: 'PASSED',
+              output: { warning: 'redis_failed_continuing' },
             })
             logger.warn('Redis debounce check failed, continuing', {
               ...ctx,
@@ -227,6 +248,11 @@ export const processAgentMessage = task({
             messageText = transcription
             log('step:3a audio_transcribed', 'PASS', {
               length: transcription.length,
+            })
+            tracker.addStep({
+              type: 'AUDIO_TRANSCRIPTION',
+              status: 'PASSED',
+              output: { length: transcription.length },
             })
 
             // Atualizar mensagem no DB com a transcrição real
@@ -312,6 +338,11 @@ export const processAgentMessage = task({
                 })
               })
             }
+            tracker.addStep({
+              type: 'MEDIA_DOWNLOAD',
+              status: 'PASSED',
+              output: { type: message.type, mimetype: message.media.mimetype },
+            })
           }
 
           // Para image: transcrever com visão; document: placeholder
@@ -381,6 +412,11 @@ export const processAgentMessage = task({
               log('step:3c image_transcribed', 'PASS', {
                 length: description.length,
               })
+              tracker.addStep({
+                type: 'IMAGE_TRANSCRIPTION',
+                status: 'PASSED',
+                output: { length: description.length },
+              })
               await db.message.updateMany({
                 where: { providerMessageId: message.messageId },
                 data: { content: messageText },
@@ -397,6 +433,11 @@ export const processAgentMessage = task({
               await db.message.updateMany({
                 where: { providerMessageId: message.messageId },
                 data: { content: messageText },
+              })
+              tracker.addStep({
+                type: 'IMAGE_TRANSCRIPTION',
+                status: 'PASSED',
+                output: { fallback: true },
               })
             }
           } else if (message.type === 'image') {
@@ -456,6 +497,15 @@ export const processAgentMessage = task({
             hasSummary: !!promptContext.summary,
             estimatedTokens: promptContext.estimatedTokens,
             contactName: promptContext.contactName,
+          })
+          tracker.addStep({
+            type: 'CONTEXT_LOADING',
+            status: 'PASSED',
+            output: {
+              model: promptContext.modelId,
+              historyCount: messageHistory.length,
+              hasSummary: !!promptContext.summary,
+            },
           })
 
           updateActiveTrace({
@@ -589,12 +639,23 @@ export const processAgentMessage = task({
               }
             }
 
+            tracker.addStep({
+              type: 'CREDIT_CHECK',
+              status: 'FAILED',
+              output: { reason: 'no_credits', estimatedCost },
+            })
             await revalidateConversationCache(conversationId, organizationId)
+            await tracker.skip('no_credits')
             return { skipped: true, reason: 'no_credits' }
           }
           log('step:4b optimistic_debit', 'PASS', {
             estimatedCost,
             estimatedInputTokens,
+          })
+          tracker.addStep({
+            type: 'CREDIT_CHECK',
+            status: 'PASSED',
+            output: { estimatedCost, estimatedInputTokens },
           })
 
           // -----------------------------------------------------------------------
@@ -618,7 +679,10 @@ export const processAgentMessage = task({
             effectiveToolsEnabled,
             toolContext,
             promptContext.allStepActions,
-            { hasActiveProductsWithMedia: promptContext.hasActiveProductsWithMedia },
+            {
+              hasActiveProductsWithMedia: promptContext.hasActiveProductsWithMedia,
+              hasKnowledgeBase: promptContext.hasKnowledgeBase,
+            },
           )
 
           // -----------------------------------------------------------------------
@@ -671,6 +735,17 @@ export const processAgentMessage = task({
               reason: 'llm_error',
               error:
                 llmError instanceof Error ? llmError.message : String(llmError),
+            })
+            tracker.addStep({
+              type: 'LLM_CALL',
+              status: 'FAILED',
+              output: {
+                reason: 'llm_error',
+                error:
+                  llmError instanceof Error
+                    ? llmError.message
+                    : String(llmError),
+              },
             })
             await refundCredits(
               organizationId,
@@ -755,6 +830,11 @@ export const processAgentMessage = task({
                 log('step:5b tool_only_fallback', 'PASS', {
                   responseLength: responseText.length,
                 })
+                tracker.addStep({
+                  type: 'FALLBACK_LLM_CALL',
+                  status: 'PASSED',
+                  output: { responseLength: responseText.length },
+                })
               }
             }
           }
@@ -795,6 +875,13 @@ export const processAgentMessage = task({
               llmDurationMs,
               actualCost: emptyActualCost,
             })
+            tracker.addStep({
+              type: 'LLM_CALL',
+              status: 'FAILED',
+              durationMs: llmDurationMs,
+              output: { reason: 'empty_response' },
+            })
+            await tracker.skip('empty_response')
             return { skipped: true, reason: 'empty_response' }
           }
 
@@ -809,6 +896,37 @@ export const processAgentMessage = task({
                   step.toolCalls?.map((toolCall) => toolCall.toolName) ?? [],
               ) ?? [],
           })
+          tracker.addStep({
+            type: 'LLM_CALL',
+            status: 'PASSED',
+            durationMs: llmDurationMs,
+            output: {
+              inputTokens: result.usage?.inputTokens,
+              outputTokens: result.usage?.outputTokens,
+            },
+          })
+
+          // Registrar tool calls individuais como steps
+          for (const aiStep of result.steps ?? []) {
+            for (const toolCall of aiStep.toolCalls ?? []) {
+              const toolResult = aiStep.toolResults?.find(
+                (result) => result.toolName === toolCall.toolName,
+              )
+              const toolOutput = toolResult?.output as
+                | { success?: boolean }
+                | undefined
+              const isToolSuccess = toolOutput?.success !== false
+              tracker.addStep({
+                type: 'TOOL_CALL',
+                status: isToolSuccess ? 'PASSED' : 'FAILED',
+                toolName: toolCall.toolName,
+                input: toolCall.input as Record<string, unknown>,
+                output: toolResult?.output as
+                  | Record<string, unknown>
+                  | undefined,
+              })
+            }
+          }
 
           // Create tool events from LLM steps
           if (result.steps?.length) {
@@ -876,9 +994,16 @@ export const processAgentMessage = task({
               reason: 'ai_paused_during_generation',
               llmDurationMs,
             })
+            tracker.addStep({
+              type: 'PAUSE_CHECK',
+              status: 'SKIPPED',
+              output: { reason: 'ai_paused_during_generation' },
+            })
+            await tracker.skip('ai_paused_during_generation')
             return { skipped: true, reason: 'ai_paused_during_generation' }
           }
           log('step:6 pause_recheck', 'PASS')
+          tracker.addStep({ type: 'PAUSE_CHECK', status: 'PASSED' })
 
           // -----------------------------------------------------------------------
           // 8. Salvar resposta no banco + atualizar lastMessageRole na conversa
@@ -1051,6 +1176,14 @@ export const processAgentMessage = task({
             sentMessageIds,
             provider: message.provider,
           })
+          tracker.addStep({
+            type: 'SEND_MESSAGE',
+            status: 'PASSED',
+            output: {
+              responseLength: responseText.length,
+              provider: message.provider,
+            },
+          })
 
           // -----------------------------------------------------------------------
           // 10b. Schedule follow-up (se agente tem regras de FUP para o step atual)
@@ -1092,6 +1225,14 @@ export const processAgentMessage = task({
                   firstDelayMinutes: firstFollowUp.delayMinutes,
                   nextFollowUpAt: nextFollowUpAt.toISOString(),
                 })
+                tracker.addStep({
+                  type: 'FOLLOW_UP_SCHEDULE',
+                  status: 'PASSED',
+                  output: {
+                    totalFollowUps: followUps.length,
+                    firstDelayMinutes: firstFollowUp.delayMinutes,
+                  },
+                })
               } else {
                 // Nenhum follow-up cobre este step — limpar qualquer FUP pendente
                 await db.conversation.update({
@@ -1100,6 +1241,11 @@ export const processAgentMessage = task({
                 })
                 log('step:10b follow_up_scheduled', 'SKIP', {
                   reason: 'no_follow_ups_for_step',
+                })
+                tracker.addStep({
+                  type: 'FOLLOW_UP_SCHEDULE',
+                  status: 'SKIPPED',
+                  output: { reason: 'no_follow_ups_for_step' },
                 })
               }
             }
@@ -1121,7 +1267,12 @@ export const processAgentMessage = task({
           // -----------------------------------------------------------------------
           // 11. Memory compression — se >= threshold msgs, summarizar e arquivar
           // -----------------------------------------------------------------------
-          await compressMemory(conversationId)
+          const memoryCompressed = await compressMemory(conversationId)
+          tracker.addStep({
+            type: 'MEMORY_COMPRESSION',
+            status: memoryCompressed ? 'PASSED' : 'SKIPPED',
+            output: memoryCompressed ? { compressed: true } : { reason: 'below_threshold' },
+          })
 
           // -----------------------------------------------------------------------
           // 12. Logging final
@@ -1133,6 +1284,14 @@ export const processAgentMessage = task({
             outputTokens: result.usage?.outputTokens,
             llmDurationMs,
             totalDurationMs,
+          })
+
+          // Persistir execução completa em batch — falha non-fatal (try/catch interno)
+          await tracker.complete({
+            modelId: promptContext.modelId,
+            inputTokens: result.usage?.inputTokens ?? 0,
+            outputTokens: result.usage?.outputTokens ?? 0,
+            creditsCost: actualCost,
           })
 
           return { success: true }
@@ -1151,12 +1310,37 @@ export const processAgentMessage = task({
 // ---------------------------------------------------------------------------
 
 tasks.onFailure(async ({ payload, error }) => {
-  const { conversationId, organizationId } =
-    payload as ProcessAgentMessagePayload
+  const {
+    conversationId,
+    organizationId,
+    agentId,
+    message,
+  } = payload as ProcessAgentMessagePayload
   logger.error('process-agent-message failed after all retries', {
     conversationId,
     error: error instanceof Error ? error.message : String(error),
   })
+
+  // Criar execution FAILED standalone — sem steps (tracker em memória se perdeu nos retries)
+  try {
+    await db.agentExecution.create({
+      data: {
+        id: crypto.randomUUID(),
+        agentId,
+        organizationId,
+        conversationId,
+        triggerMessageId: message.messageId,
+        status: 'FAILED',
+        startedAt: new Date(),
+        completedAt: new Date(),
+        errorMessage:
+          error instanceof Error ? error.message : String(error),
+      },
+    })
+  } catch (persistError) {
+    logger.warn('Failed to persist failed execution', { persistError })
+  }
+
   await createConversationEvent({
     conversationId,
     type: 'PROCESSING_ERROR',
@@ -1173,13 +1357,14 @@ tasks.onFailure(async ({ payload, error }) => {
 // Memory Compression
 // ---------------------------------------------------------------------------
 
-async function compressMemory(conversationId: string): Promise<void> {
+// Retorna true se a compressão foi executada, false se ficou abaixo do threshold
+async function compressMemory(conversationId: string): Promise<boolean> {
   try {
     const totalMessages = await db.message.count({
       where: { conversationId, isArchived: false },
     })
 
-    if (totalMessages < SUMMARIZATION_THRESHOLD) return
+    if (totalMessages < SUMMARIZATION_THRESHOLD) return false
 
     // Buscar todas as mensagens ativas ordenadas por data
     const allMessages = await db.message.findMany({
@@ -1194,7 +1379,7 @@ async function compressMemory(conversationId: string): Promise<void> {
 
     // Separar: arquivar tudo exceto as últimas N
     const toArchiveCount = allMessages.length - KEEP_RECENT_MESSAGES
-    if (toArchiveCount <= 0) return
+    if (toArchiveCount <= 0) return false
 
     const messagesToArchive = allMessages.slice(0, toArchiveCount)
 
@@ -1233,7 +1418,7 @@ async function compressMemory(conversationId: string): Promise<void> {
 
     if (!summary) {
       logger.warn('Summarization returned empty result', { conversationId })
-      return
+      return false
     }
 
     // Transaction: salvar summary + arquivar mensagens antigas
@@ -1255,8 +1440,10 @@ async function compressMemory(conversationId: string): Promise<void> {
       archivedCount: archiveIds.length,
       summaryLength: summary.length,
     })
+    return true
   } catch (error) {
     // Non-fatal: falha na compressão não bloqueia o fluxo
     logger.warn('Memory compression failed', { conversationId, error })
+    return false
   }
 }
