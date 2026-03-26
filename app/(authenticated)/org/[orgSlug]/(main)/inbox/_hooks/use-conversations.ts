@@ -8,6 +8,7 @@ const MAX_POLL_INTERVAL_MS = 30_000
 const POLL_STEP_MS = 5_000
 const DEBOUNCE_MS = 300
 const MAX_CONSECUTIVE_FAILURES = 3
+const OPTIMISTIC_LOCK_MS = 10_000
 
 interface UseConversationsOptions {
   inboxId: string | null
@@ -90,6 +91,8 @@ export function useConversations(options: UseConversationsOptions): UseConversat
   const pollIntervalRef = useRef(BASE_POLL_INTERVAL_MS)
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastDataHashRef = useRef('')
+  // Optimistic lock: protege conversas com update otimista recente do merge do polling
+  const optimisticLockRef = useRef<Map<string, number>>(new Map())
 
   // Debounce search
   useEffect(() => {
@@ -183,9 +186,21 @@ export function useConversations(options: UseConversationsOptions): UseConversat
       }
 
       setConversations((prev) => {
+        const now = Date.now()
         const merged = new Map<string, ConversationListDto>()
         for (const conv of prev) merged.set(conv.id, conv)
-        for (const conv of data.conversations) merged.set(conv.id, conv)
+        for (const conv of data.conversations) {
+          const lockedAt = optimisticLockRef.current.get(conv.id)
+          // Pular conversas com lock ativo (update otimista recente)
+          if (lockedAt && now - lockedAt < OPTIMISTIC_LOCK_MS) continue
+          merged.set(conv.id, conv)
+        }
+        // Limpar locks expirados
+        for (const [id, lockedAt] of optimisticLockRef.current) {
+          if (now - lockedAt >= OPTIMISTIC_LOCK_MS) {
+            optimisticLockRef.current.delete(id)
+          }
+        }
         return Array.from(merged.values()).sort(
           (convA, convB) =>
             new Date(convB.updatedAt).getTime() - new Date(convA.updatedAt).getTime(),
@@ -285,9 +300,11 @@ export function useConversations(options: UseConversationsOptions): UseConversat
     }
   }, [isLoadingMore, hasMore, inboxId, unreadOnly, unansweredOnly, debouncedSearch])
 
-  // Optimistic update: atualiza uma conversa localmente sem aguardar polling
+  // Optimistic update: atualiza uma conversa localmente e registra lock
+  // para proteger do merge do polling por OPTIMISTIC_LOCK_MS
   const updateConversationLocally = useCallback(
     (id: string, partial: Partial<ConversationListDto>) => {
+      optimisticLockRef.current.set(id, Date.now())
       setConversations((prev) =>
         prev.map((conv) => (conv.id === id ? { ...conv, ...partial } : conv)),
       )

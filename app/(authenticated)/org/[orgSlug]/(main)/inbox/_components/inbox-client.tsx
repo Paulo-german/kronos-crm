@@ -68,13 +68,13 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
     contactId,
   })
 
-  // Optimistic update + re-fetch imediato após action completar
+  // Optimistic update + refetch para atualizar contadores (totalUnread, etc.)
+  // O lock no hook protege o update otimista de ser sobrescrito pelo merge do polling
   const handleToggleRead = (conversationId: string) => {
     const target = conversations.find((conv) => conv.id === conversationId)
     if (!target) return
     const newUnreadCount = target.unreadCount > 0 ? 0 : 1
     updateConversationLocally(conversationId, { unreadCount: newUnreadCount })
-    // Re-fetch imediato para garantir dados frescos do servidor
     refetch()
   }
 
