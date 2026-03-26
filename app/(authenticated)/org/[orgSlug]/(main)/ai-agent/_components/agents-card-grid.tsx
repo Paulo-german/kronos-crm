@@ -188,6 +188,8 @@ export function AgentsCardGrid({
                     <div onClick={(event) => event.stopPropagation()}>
                       <AgentTableDropdownMenu
                         agentDetailHref={`/org/${orgSlug}/ai-agent/${agent.id}`}
+                        executionsHref={`/org/${orgSlug}/ai-agent/${agent.id}/executions`}
+                        canViewExecutions={canManage}
                         onEdit={() => handleEdit(agent)}
                         onDelete={() => {
                           setDeletingAgent(agent)

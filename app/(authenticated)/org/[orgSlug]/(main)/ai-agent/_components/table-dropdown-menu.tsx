@@ -15,16 +15,21 @@ import {
   EditIcon,
   EyeIcon,
   TrashIcon,
+  ActivityIcon,
 } from 'lucide-react'
 
 interface AgentTableDropdownMenuProps {
   agentDetailHref: string
+  executionsHref: string
+  canViewExecutions: boolean
   onEdit: () => void
   onDelete: () => void
 }
 
 const AgentTableDropdownMenu = ({
   agentDetailHref,
+  executionsHref,
+  canViewExecutions,
   onEdit,
   onDelete,
 }: AgentTableDropdownMenuProps) => {
@@ -45,6 +50,14 @@ const AgentTableDropdownMenu = ({
               Ver detalhes
             </Link>
           </DropdownMenuItem>
+          {canViewExecutions && (
+            <DropdownMenuItem className="gap-1.5" asChild>
+              <Link href={executionsHref}>
+                <ActivityIcon size={16} />
+                Execuções
+              </Link>
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem className="gap-1.5" onSelect={onEdit}>
             <EditIcon size={16} />
             Editar
