@@ -11,10 +11,12 @@ import { createListAvailabilityTool } from './list-availability'
 import { createUpdateEventTool } from './update-event'
 import { createSearchProductsTool } from './search-products'
 import { createSendProductMediaTool } from './send-product-media'
+import { createSendMediaTool } from './send-media'
 
 // Flags globais para ativar tools que não vêm de step actions
 export interface GlobalToolFlags {
   hasActiveProductsWithMedia: boolean
+  hasKnowledgeBase: boolean // true quando completedFileCount > 0
 }
 
 // Registry de tools simples (recebem apenas ctx, sem config do step)
@@ -45,6 +47,7 @@ export function buildToolSet(
     | ReturnType<typeof createHandOffToHumanTool>
     | ReturnType<typeof createSearchProductsTool>
     | ReturnType<typeof createSendProductMediaTool>
+    | ReturnType<typeof createSendMediaTool>
   > = {}
 
   for (const toolName of toolsEnabled) {
@@ -108,6 +111,11 @@ export function buildToolSet(
   if (globalFlags?.hasActiveProductsWithMedia) {
     tools['search_products'] = createSearchProductsTool(ctx)
     tools['send_product_media'] = createSendProductMediaTool(ctx)
+  }
+
+  // Tool condicional — ativada quando o agente tem knowledge base com arquivos processados
+  if (globalFlags?.hasKnowledgeBase) {
+    tools['send_media'] = createSendMediaTool(ctx)
   }
 
   return Object.keys(tools).length > 0 ? tools : undefined

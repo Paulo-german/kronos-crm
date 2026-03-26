@@ -218,6 +218,14 @@ export const TOOL_PROMPT_DESCRIPTIONS: Record<string, { label: string; descripti
       'Use apos encontrar o produto com search_products, quando o cliente quiser ver fotos ou detalhes visuais. ' +
       'Informe o productId obtido na busca.',
   },
+  send_media: {
+    label: 'Enviar Midia',
+    description:
+      'Envia uma imagem, video ou documento de uma URL publica diretamente ao cliente via WhatsApp. ' +
+      'Use quando encontrar URLs de arquivos na base de conhecimento ou em informacoes do contexto. ' +
+      'Para imagens (.jpg, .png, .webp), videos (.mp4) e documentos (.pdf), informe a URL. ' +
+      'Para links de redes sociais (Instagram, YouTube, etc.), inclua o link na mensagem de texto — nao use send_media.',
+  },
 }
 
 export function compileToolsSection(toolsEnabled: string[]): string | null {
@@ -247,6 +255,7 @@ export interface BuildSystemPromptResult {
   pipelineIds: string[]
   allStepActions: StepAction[]
   hasActiveProductsWithMedia: boolean
+  hasKnowledgeBase: boolean // true quando completedFileCount > 0
 }
 
 /**
@@ -397,7 +406,8 @@ export async function buildSystemPrompt(
     activeProductMediaCount > 0
       ? ['search_products', 'send_product_media']
       : []
-  const effectiveTools = [...baseEffectiveTools, ...schedulingTools, ...knowledgeTools, ...productMediaTools]
+  const mediaUrlTools = completedFileCount > 0 ? ['send_media'] : []
+  const effectiveTools = [...baseEffectiveTools, ...schedulingTools, ...knowledgeTools, ...productMediaTools, ...mediaUrlTools]
 
   const parts: string[] = []
 
@@ -473,6 +483,18 @@ export async function buildSystemPrompt(
       '- Quando o objetivo da etapa mencionar apresentação de produtos, ENVIE as mídias proativamente usando `search_products` seguido de `send_product_media`.',
       '- Se o cliente pedir para ver fotos, vídeos ou imagens de um produto, envie imediatamente.',
       '- Sempre use `search_products` primeiro para encontrar o produto correto e obter o ID, depois `send_product_media` para enviar as mídias.',
+    )
+  }
+
+  // Regras de envio de mídia via URL — só quando o agente tem knowledge base processada
+  if (completedFileCount > 0) {
+    criticalRules.push(
+      '',
+      '**Envio de Midia (URLs):**',
+      '- Quando o texto de uma resposta ou da base de conhecimento contiver URLs de imagens (.jpg, .png, .webp), videos (.mp4) ou documentos (.pdf), use `send_media` para enviar o arquivo diretamente ao cliente via WhatsApp.',
+      '- Para links de redes sociais (Instagram, YouTube, TikTok, etc.), inclua o link na mensagem de texto — NAO use send_media.',
+      '- Se nao tiver certeza do tipo do arquivo, informe a URL e deixe o sistema inferir pelo tipo.',
+      '- Envie no maximo 3 midias por resposta para nao sobrecarregar o cliente.',
     )
   }
 
@@ -654,6 +676,8 @@ export async function buildSystemPrompt(
       PRODUCT_MEDIA_SENT: 'Midia de produto enviada',
       PRODUCTS_SEARCH_FAILED: 'Falha ao buscar produtos',
       PRODUCT_MEDIA_SEND_FAILED: 'Falha ao enviar midia de produto',
+      MEDIA_SENT: 'Midia enviada via URL',
+      MEDIA_SEND_FAILED: 'Falha ao enviar midia via URL',
     }
 
     const actionLines = recentToolEvents
@@ -690,5 +714,6 @@ export async function buildSystemPrompt(
     pipelineIds: agent.pipelineIds,
     allStepActions,
     hasActiveProductsWithMedia: activeProductMediaCount > 0,
+    hasKnowledgeBase: completedFileCount > 0,
   }
 }

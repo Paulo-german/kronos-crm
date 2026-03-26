@@ -27,6 +27,7 @@ export type ToolSuccessSubtype =
   | 'KNOWLEDGE_FOUND'
   | 'PRODUCTS_SEARCHED'
   | 'PRODUCT_MEDIA_SENT'
+  | 'MEDIA_SENT'
 
 export type ToolFailureSubtype =
   | 'DEAL_MOVE_FAILED'
@@ -38,6 +39,7 @@ export type ToolFailureSubtype =
   | 'EVENT_RESCHEDULE_FAILED'
   | 'PRODUCTS_SEARCH_FAILED'
   | 'PRODUCT_MEDIA_SEND_FAILED'
+  | 'MEDIA_SEND_FAILED'
 
 export type ProcessingErrorSubtype =
   | 'NO_CREDITS'
@@ -69,6 +71,8 @@ export const TOOL_SUBTYPE_MAP: Record<
   update_event: { success: 'EVENT_RESCHEDULED', failure: 'EVENT_RESCHEDULE_FAILED' },
   // send_product_media pode falhar no envio (provider error)
   send_product_media: { success: 'PRODUCT_MEDIA_SENT', failure: 'PRODUCT_MEDIA_SEND_FAILED' },
+  // send_media pode falhar por URL inacessível ou tipo desconhecido
+  send_media: { success: 'MEDIA_SENT', failure: 'MEDIA_SEND_FAILED' },
 }
 
 // Tools que sempre resultam em success e têm subtype especial

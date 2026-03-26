@@ -17,6 +17,7 @@ const TOOL_LABELS: Record<string, string> = {
   hand_off_to_human: 'Transferir para Humano',
   search_products: 'Buscar Produtos',
   send_product_media: 'Enviar Midia do Produto',
+  send_media: 'Enviar Midia',
 }
 
 /**
@@ -307,6 +308,31 @@ export function buildMockToolSet(
         }),
         execute: async (input) =>
           mockResult('send_product_media', input, '2 mídia(s) enviada(s) com sucesso. (simulado — nenhum arquivo real foi enviado)'),
+      })
+      continue
+    }
+
+    if (toolName === 'send_media') {
+      tools[toolName] = tool({
+        description:
+          'Envia uma imagem, video ou documento de uma URL publica diretamente ao cliente via WhatsApp.',
+        inputSchema: z.object({
+          url: z.string().url().describe('URL publica da midia a ser enviada.'),
+          type: z
+            .enum(['image', 'video', 'document'])
+            .optional()
+            .describe('Tipo da midia (inferido automaticamente se nao informado).'),
+          caption: z
+            .string()
+            .optional()
+            .describe('Legenda opcional.'),
+        }),
+        execute: async (input) =>
+          mockResult(
+            'send_media',
+            input,
+            'Midia enviada com sucesso. (simulado — nenhum arquivo real foi enviado)',
+          ),
       })
       continue
     }

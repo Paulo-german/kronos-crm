@@ -86,7 +86,8 @@ export async function buildTestSystemPrompt(
     activeProductMediaCount > 0
       ? ['search_products', 'send_product_media']
       : []
-  const effectiveTools = [...baseEffectiveTools, ...schedulingTools, ...knowledgeTools, ...productMediaTools]
+  const mediaUrlTools = completedFileCount > 0 ? ['send_media'] : []
+  const effectiveTools = [...baseEffectiveTools, ...schedulingTools, ...knowledgeTools, ...productMediaTools, ...mediaUrlTools]
 
   const parts: string[] = []
 
@@ -148,6 +149,29 @@ export async function buildTestSystemPrompt(
     '- NUNCA finja ser humano se o cliente perguntar diretamente se está falando com uma IA.',
     '- NUNCA repita a mesma informação ou pergunta mais de uma vez na conversa — consulte o histórico.',
   )
+
+  // Regras de mídia de produtos — só quando as tools estão ativas
+  if (activeProductMediaCount > 0) {
+    criticalRules.push(
+      '',
+      '**Mídia de Produtos:**',
+      '- Quando o objetivo da etapa mencionar apresentação de produtos, ENVIE as mídias proativamente usando `search_products` seguido de `send_product_media`.',
+      '- Se o cliente pedir para ver fotos, vídeos ou imagens de um produto, envie imediatamente.',
+      '- Sempre use `search_products` primeiro para encontrar o produto correto e obter o ID, depois `send_product_media` para enviar as mídias.',
+    )
+  }
+
+  // Regras de envio de mídia via URL — só quando o agente tem knowledge base processada
+  if (completedFileCount > 0) {
+    criticalRules.push(
+      '',
+      '**Envio de Midia (URLs):**',
+      '- Quando o texto de uma resposta ou da base de conhecimento contiver URLs de imagens (.jpg, .png, .webp), videos (.mp4) ou documentos (.pdf), use `send_media` para enviar o arquivo diretamente ao cliente via WhatsApp.',
+      '- Para links de redes sociais (Instagram, YouTube, TikTok, etc.), inclua o link na mensagem de texto — NAO use send_media.',
+      '- Se nao tiver certeza do tipo do arquivo, informe a URL e deixe o sistema inferir pelo tipo.',
+      '- Envie no maximo 3 midias por resposta para nao sobrecarregar o cliente.',
+    )
+  }
 
   parts.push(criticalRules.join('\n'))
 
