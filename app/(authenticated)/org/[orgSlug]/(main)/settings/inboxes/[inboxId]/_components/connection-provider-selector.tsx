@@ -64,6 +64,7 @@ const ConnectionProviderSelector = ({
           instanceInfo={instanceInfo}
           hasInstance={false}
           instanceName={null}
+          initialConnected={false}
         />
       </div>
     )

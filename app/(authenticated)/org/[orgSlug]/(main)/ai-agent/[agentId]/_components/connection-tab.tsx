@@ -425,6 +425,7 @@ const InboxRow = ({
           instanceInfo={connectionData?.info ?? null}
           hasInstance
           instanceName={inbox.evolutionInstanceName}
+          initialConnected={inbox.evolutionConnected}
         />
       )
     }
@@ -439,6 +440,7 @@ const InboxRow = ({
           instanceInfo={connectionData?.info ?? null}
           hasInstance={false}
           instanceName={null}
+          initialConnected={false}
         />
       )
     }

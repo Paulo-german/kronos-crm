@@ -201,6 +201,7 @@ const InboxDetailClient = ({
           instanceInfo={instanceInfo}
           hasInstance
           instanceName={inbox.evolutionInstanceName}
+          initialConnected={inbox.evolutionConnected}
           onConnectionStateChange={setEvolutionConnectedOverride}
         />
       )
@@ -216,6 +217,7 @@ const InboxDetailClient = ({
           instanceInfo={instanceInfo}
           hasInstance={false}
           instanceName={null}
+          initialConnected={false}
           onConnectionStateChange={setEvolutionConnectedOverride}
         />
       )

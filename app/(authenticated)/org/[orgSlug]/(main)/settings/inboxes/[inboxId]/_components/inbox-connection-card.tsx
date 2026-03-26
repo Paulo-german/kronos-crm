@@ -32,6 +32,7 @@ import { connectEvolution } from '@/_actions/inbox/connect-evolution'
 import { getEvolutionQR } from '@/_actions/inbox/get-evolution-qr'
 import { disconnectEvolution } from '@/_actions/inbox/disconnect-evolution'
 import { debugInstance } from '@/_actions/inbox/debug-instance'
+import { syncEvolutionStatus } from '@/_actions/inbox/sync-evolution-status'
 import { formatPhoneFromJid } from '@/_lib/evolution/format-phone'
 import type { AgentConnectionStats } from '@/_data-access/agent/get-agent-connection-stats'
 import type { EvolutionInstanceInfo } from '@/_lib/evolution/types-instance'
@@ -43,6 +44,7 @@ interface InboxConnectionCardProps {
   instanceInfo: EvolutionInstanceInfo | null
   hasInstance: boolean
   instanceName: string | null
+  initialConnected: boolean
   onConnectionStateChange?: (connected: boolean) => void
 }
 
@@ -58,6 +60,7 @@ const InboxConnectionCard = ({
   instanceInfo,
   hasInstance,
   instanceName,
+  initialConnected,
   onConnectionStateChange,
 }: InboxConnectionCardProps) => {
   const [connectionState, setConnectionState] = useState<ConnectionState>(
@@ -70,6 +73,9 @@ const InboxConnectionCard = ({
   const [isDisconnectOpen, setIsDisconnectOpen] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const hasSyncedRef = useRef(false)
+
+  const { execute: executeSync } = useAction(syncEvolutionStatus)
 
   const { execute: executeConnect, isPending: isConnecting } = useAction(
     connectEvolution,
@@ -98,10 +104,21 @@ const InboxConnectionCard = ({
         setPairingCode(null)
         stopPolling()
         onConnectionStateChange?.(true)
+        // Sincronizar banco se estava marcado como desconectado
+        if (!hasSyncedRef.current && !initialConnected) {
+          hasSyncedRef.current = true
+          executeSync({ inboxId, connected: true })
+        }
         return
       }
 
       setConnectionState('connecting')
+      onConnectionStateChange?.(false)
+      // Sincronizar banco se estava marcado como conectado
+      if (!hasSyncedRef.current && initialConnected) {
+        hasSyncedRef.current = true
+        executeSync({ inboxId, connected: false })
+      }
 
       if (data.base64) setQrBase64(data.base64)
       if (data.code) setQrCode(data.code)
