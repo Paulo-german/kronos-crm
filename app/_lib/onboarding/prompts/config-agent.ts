@@ -5,7 +5,7 @@
  *
  * Few-shot examples extraídos dos blueprints B2B (b2b_services) e Healthcare (healthcare).
  */
-export const CONFIG_AGENT_PROMPT = `Você recebeu o perfil de um negócio em JSON e deve gerar a configuração base do CRM personalizada para esse negócio. Chame a tool \`generate_config\` com o resultado.
+export const CONFIG_AGENT_PROMPT = `Você recebeu o perfil de um negócio em JSON e deve gerar a configuração base do CRM personalizada para esse negócio. Retorne o JSON no formato especificado.
 
 ## Output esperado
 
@@ -214,5 +214,5 @@ Mensagem amigável para quando o usuário contatar fora do horário de atendimen
 - Os pipeline stages devem refletir o processo de vendas/atendimento real descrito no perfil.
 - Guidelines e restrictions devem ser específicas ao segmento e ao papel do agente.
 - Lost reasons devem ser realistas para o tipo de negócio.
-- Chame a tool \`generate_config\` com o JSON resultante.
+- Retorne o JSON resultante no formato especificado.
 `

@@ -5,7 +5,7 @@
  * Few-shot examples com 2 negócios diferentes pra demonstrar que keyQuestions
  * devem ser totalmente personalizadas ao segmento.
  */
-export const STEPS_AGENT_PROMPT = `Você recebeu o perfil do negócio e os pipeline stages aprovados. Deve gerar as etapas de atendimento do agente de WhatsApp (agent steps). Chame a tool \`generate_steps\` com o resultado.
+export const STEPS_AGENT_PROMPT = `Você recebeu o perfil do negócio e os pipeline stages aprovados. Deve gerar as etapas de atendimento do agente de WhatsApp (agent steps). Retorne o resultado no formato especificado.
 
 ## Estrutura de uma etapa (step)
 
@@ -373,5 +373,5 @@ O campo \`salesProcess\` do perfil do negócio descreve EXATAMENTE como o client
 - Os steps DEVEM refletir EXATAMENTE o processo de vendas que o cliente descreveu.
 - As keyQuestion DEVEM ser personalizadas ao produto/serviço/público do cliente.
 - Os targetStagePosition DEVEM ser positions existentes nos stages fornecidos como input.
-- Chame a tool \`generate_steps\` com o JSON resultante.
+- Retorne o JSON resultante no formato especificado.
 `

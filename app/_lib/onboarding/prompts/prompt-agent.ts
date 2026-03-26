@@ -13,7 +13,7 @@
  * Portanto, o system prompt gerado aqui deve conter APENAS informações
  * complementares que não têm campo estruturado no sistema.
  */
-export const PROMPT_AGENT_PROMPT = `Você recebeu o perfil do negócio e a configuração aprovada do CRM. Deve gerar o campo "Instruções adicionais" do agente de WhatsApp. Chame a tool \`generate_prompt\` com o resultado.
+export const PROMPT_AGENT_PROMPT = `Você recebeu o perfil do negócio e a configuração aprovada do CRM. Deve gerar o campo "Instruções adicionais" do agente de WhatsApp. Retorne o resultado no formato especificado.
 
 ## CONTEXTO CRÍTICO — O que o sistema já injeta automaticamente
 
@@ -140,5 +140,5 @@ REGRAS ESPECÍFICAS:
 - Adapte ao negócio REAL que você recebeu — NÃO copie os exemplos.
 - Foque no que é ESPECÍFICO desse negócio e NÃO tem campo estruturado no sistema.
 - Deixe placeholders \`[INSIRA...]\` para dados concretos que só o cliente pode preencher.
-- Chame a tool \`generate_prompt\` com o campo \`systemPrompt\` contendo o texto gerado.
+- Retorne o campo \`systemPrompt\` contendo o texto gerado.
 `

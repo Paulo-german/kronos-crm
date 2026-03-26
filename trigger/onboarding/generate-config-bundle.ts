@@ -1,5 +1,5 @@
 import { task, logger } from '@trigger.dev/sdk/v3'
-import { generateText, tool, stepCountIs } from 'ai'
+import { generateObject } from 'ai'
 import { getModel } from '@/_lib/ai'
 import { CONFIG_AGENT_PROMPT } from '@/_lib/onboarding/prompts/config-agent'
 import { configBundleSchema } from '@/_lib/onboarding/schemas/config-bundle'
@@ -12,14 +12,15 @@ export interface GenerateConfigBundlePayload {
 
 export const generateConfigBundle = task({
   id: 'onboarding-generate-config-bundle',
-  retry: { maxAttempts: 2 },
+  retry: { maxAttempts: 3 },
   run: async (payload: GenerateConfigBundlePayload): Promise<ConfigBundle> => {
     logger.info('Iniciando geração do config bundle', {
       companyName: payload.businessProfile.companyName,
     })
 
-    const result = await generateText({
+    const { object } = await generateObject({
       model: getModel('google/gemini-2.5-pro'),
+      schema: configBundleSchema,
       system: CONFIG_AGENT_PROMPT,
       messages: [
         {
@@ -27,29 +28,13 @@ export const generateConfigBundle = task({
           content: JSON.stringify(payload.businessProfile),
         },
       ],
-      tools: {
-        generate_config: tool({
-          description: 'Gera a configuração base do CRM para o negócio informado',
-          inputSchema: configBundleSchema,
-        }),
-      },
-      toolChoice: 'required',
-      stopWhen: stepCountIs(1),
     })
-
-    const toolCall = result.steps[0]?.staticToolCalls?.[0]
-
-    if (!toolCall) {
-      throw new Error('LLM não chamou a tool generate_config conforme esperado')
-    }
-
-    const parsed = configBundleSchema.parse(toolCall.input)
 
     logger.info('Config bundle gerado com sucesso', {
-      stagesCount: parsed.pipelineStages.length,
-      lostReasonsCount: parsed.lostReasons.length,
+      stagesCount: object.pipelineStages.length,
+      lostReasonsCount: object.lostReasons.length,
     })
 
-    return parsed
+    return object
   },
 })

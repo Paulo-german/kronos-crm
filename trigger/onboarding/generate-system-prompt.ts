@@ -1,5 +1,5 @@
 import { task, logger } from '@trigger.dev/sdk/v3'
-import { generateText, tool, stepCountIs } from 'ai'
+import { generateObject } from 'ai'
 import { getModel } from '@/_lib/ai'
 import { PROMPT_AGENT_PROMPT } from '@/_lib/onboarding/prompts/prompt-agent'
 import { systemPromptOutputSchema } from '@/_lib/onboarding/schemas/agent-output'
@@ -13,7 +13,7 @@ export interface GenerateSystemPromptPayload {
 
 export const generateSystemPrompt = task({
   id: 'onboarding-generate-system-prompt',
-  retry: { maxAttempts: 2 },
+  retry: { maxAttempts: 3 },
   run: async (
     payload: GenerateSystemPromptPayload,
   ): Promise<{ systemPrompt: string }> => {
@@ -22,8 +22,9 @@ export const generateSystemPrompt = task({
       agentRole: payload.businessProfile.agentRole,
     })
 
-    const result = await generateText({
+    const { object } = await generateObject({
       model: getModel('google/gemini-2.5-pro'),
+      schema: systemPromptOutputSchema,
       system: PROMPT_AGENT_PROMPT,
       messages: [
         {
@@ -34,28 +35,12 @@ export const generateSystemPrompt = task({
           }),
         },
       ],
-      tools: {
-        generate_prompt: tool({
-          description: 'Gera o system prompt do agente de WhatsApp',
-          inputSchema: systemPromptOutputSchema,
-        }),
-      },
-      toolChoice: 'required',
-      stopWhen: stepCountIs(1),
     })
-
-    const toolCall = result.steps[0]?.staticToolCalls?.[0]
-
-    if (!toolCall) {
-      throw new Error('LLM não chamou a tool generate_prompt conforme esperado')
-    }
-
-    const parsed = systemPromptOutputSchema.parse(toolCall.input)
 
     logger.info('System prompt gerado com sucesso', {
-      promptLength: parsed.systemPrompt.length,
+      promptLength: object.systemPrompt.length,
     })
 
-    return parsed
+    return object
   },
 })
