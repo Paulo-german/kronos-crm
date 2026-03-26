@@ -336,14 +336,9 @@ export function createHandOffToHumanTool(
         let whatsappNotification: { sent: boolean; recipientPhone?: string; error?: string } = { sent: false }
         let inAppNotification: { sent: boolean; userId?: string } = { sent: false }
 
-        // Bloco de notificacao WhatsApp — best-effort: falha loga warning mas nao bloqueia
-        await safeBestEffort(async () => {
-          if (!config || config.notifyTarget === 'none') return
-          if (!conversationData) return
-
-          await sendHandOffNotification(ctx, config, reason, conversationData)
-          // Se chegou aqui sem throw, a notificação foi enviada
-          // Resolver o phone para incluir no output (mascarado)
+        // Bloco de notificacao WhatsApp — captura erro para incluir no output da tool
+        if (config && config.notifyTarget !== 'none' && conversationData) {
+          // Resolver o phone antecipadamente para incluir no output
           let phone: string | undefined
           if (config.notifyTarget === 'specific_number') {
             phone = config.specificPhone?.trim()
@@ -357,8 +352,21 @@ export function createHandOffToHumanTool(
           const masked = phone && phone.length > 4
             ? `${phone.slice(0, 4)}***${phone.slice(-2)}`
             : phone ?? 'desconhecido'
-          whatsappNotification = { sent: true, recipientPhone: masked }
-        }, 'whatsapp.notification')
+
+          try {
+            await sendHandOffNotification(ctx, config, reason, conversationData)
+            whatsappNotification = { sent: true, recipientPhone: masked }
+          } catch (whatsappError) {
+            const errorMsg = whatsappError instanceof Error
+              ? whatsappError.message
+              : String(whatsappError)
+            whatsappNotification = { sent: false, recipientPhone: masked, error: errorMsg }
+            logger.warn('whatsapp.notification: best-effort operation failed, skipping', {
+              error: errorMsg,
+              recipientPhone: masked,
+            })
+          }
+        }
 
         // Bloco de notificacao in-app — best-effort: falha nao bloqueia o hand-off
         let notifiedUserId: string | null = null
