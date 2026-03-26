@@ -8,7 +8,7 @@ import { withRetry, safeBestEffort } from './lib/with-retry'
 import {
   notificationPreferencesSchema,
 } from '@/_data-access/notification/types'
-import type { NotificationType, ConnectionType } from '@prisma/client'
+import type { NotificationType, ConnectionType, Prisma } from '@prisma/client'
 import type { ToolContext } from './types'
 
 export interface HandOffNotificationConfig {
@@ -33,10 +33,17 @@ interface ConversationDataForNotification {
   }
   contact: {
     name: string | null
+    phone: string | null
+  } | null
+  deal: {
+    title: string
+    value: Prisma.Decimal | null
+    stage: { name: string } | null
   } | null
   organization: {
     slug: string
   } | null
+  remoteJid: string | null
 }
 
 // Mapeamento de tipo de notificacao para chave de preferencia (replica create-notification.ts sem server-only)
@@ -50,22 +57,66 @@ const TYPE_TO_PREFERENCE_KEY: Record<NotificationType, 'system' | 'userAction' |
  * Monta a mensagem de notificação para o atendente.
  * Se `notificationMessage` configurado, usa como base; senão, monta mensagem padrão.
  */
+interface NotificationMessageContext {
+  agentName: string
+  contactName: string
+  contactPhone: string | null
+  reason: string
+  dealTitle: string | null
+  dealStage: string | null
+  dealValue: number | null
+  inboxUrl: string | null
+}
+
+function formatCurrency(value: number): string {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(value)
+}
+
 function buildNotificationMessage(
   config: HandOffNotificationConfig,
-  agentName: string,
-  contactName: string,
-  reason: string,
+  context: NotificationMessageContext,
 ): string {
   if (config.notificationMessage?.trim()) {
     return config.notificationMessage.trim()
   }
 
-  return (
-    `[Kronos CRM] Transferência de atendimento\n\n` +
-    `O agente ${agentName} transferiu a conversa com ${contactName} para atendimento humano.\n\n` +
-    `Motivo: ${reason}\n\n` +
-    `Acesse a plataforma para continuar o atendimento.`
-  )
+  const lines: string[] = [
+    '🔔 *Transferência de atendimento*',
+    '',
+    `O agente *${context.agentName}* transferiu a conversa com *${context.contactName}* para você.`,
+    '',
+    `📋 *Motivo:* ${context.reason}`,
+  ]
+
+  // Dados do deal (se disponíveis)
+  if (context.dealTitle) {
+    lines.push('')
+    lines.push(`💼 *Negócio:* ${context.dealTitle}`)
+    if (context.dealStage) {
+      lines.push(`📍 *Etapa:* ${context.dealStage}`)
+    }
+    if (context.dealValue !== null && context.dealValue > 0) {
+      lines.push(`💰 *Valor:* ${formatCurrency(context.dealValue)}`)
+    }
+  }
+
+  // Telefone do contato
+  if (context.contactPhone) {
+    lines.push('')
+    lines.push(`📱 *Contato:* ${context.contactPhone}`)
+  }
+
+  // Link direto para a conversa
+  if (context.inboxUrl) {
+    lines.push('')
+    lines.push(`🔗 Acesse a conversa:`)
+    lines.push(context.inboxUrl)
+  }
+
+  return lines.join('\n')
 }
 
 /**
@@ -234,7 +285,28 @@ async function sendHandOffNotification(
     conversationId: ctx.conversationId,
   })
 
-  const message = buildNotificationMessage(config, ctx.agentName, contactName, reason)
+  // Montar URL da conversa no inbox
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL
+  const orgSlug = conversationData.organization?.slug
+  const inboxUrl = appUrl && orgSlug
+    ? `${appUrl.startsWith('http') ? appUrl : `https://${appUrl}`}/org/${orgSlug}/inbox?conversationId=${ctx.conversationId}`
+    : null
+
+  // Resolver telefone do contato para exibição (remoteJid ou contact.phone)
+  const contactPhone = conversationData.contact?.phone
+    ?? conversationData.remoteJid?.replace('@s.whatsapp.net', '')
+    ?? null
+
+  const message = buildNotificationMessage(config, {
+    agentName: ctx.agentName,
+    contactName,
+    contactPhone,
+    reason,
+    dealTitle: conversationData.deal?.title ?? null,
+    dealStage: conversationData.deal?.stage?.name ?? null,
+    dealValue: conversationData.deal?.value ? Number(conversationData.deal.value) : null,
+    inboxUrl,
+  })
 
   try {
     const sentIds = await provider.sendText(recipientPhone, message)
@@ -316,6 +388,7 @@ export function createHandOffToHumanTool(
           conversationData = await db.conversation.findUnique({
             where: { id: ctx.conversationId },
             select: {
+              remoteJid: true,
               inbox: {
                 select: {
                   connectionType: true,
@@ -327,7 +400,14 @@ export function createHandOffToHumanTool(
                   zapiClientToken: true,
                 },
               },
-              contact: { select: { name: true } },
+              contact: { select: { name: true, phone: true } },
+              deal: {
+                select: {
+                  title: true,
+                  value: true,
+                  stage: { select: { name: true } },
+                },
+              },
               organization: { select: { slug: true } },
             },
           })
