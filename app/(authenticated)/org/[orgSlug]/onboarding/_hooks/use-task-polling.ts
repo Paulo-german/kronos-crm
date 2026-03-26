@@ -5,7 +5,7 @@ import { useAction } from 'next-safe-action/hooks'
 import { getTaskResult } from '@/_actions/onboarding/get-task-result'
 
 const POLLING_INTERVAL_MS = 2000
-const POLLING_TIMEOUT_MS = 180_000 // 3 minutos
+const POLLING_TIMEOUT_MS = 300_000 // 5 minutos
 
 const TERMINAL_STATUSES = new Set(['COMPLETED', 'FAILED', 'CANCELED', 'CRASHED', 'SYSTEM_FAILURE', 'INTERRUPTED', 'TIMED_OUT'])
 
