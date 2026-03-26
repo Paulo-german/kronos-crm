@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Building2, Check, ChevronsUpDown } from 'lucide-react'
+import { Building2, Check, ChevronsUpDown, Plus } from 'lucide-react'
 import { useOrganization } from '@/_providers/organization-provider'
 import { useSidebar } from '@/_providers/sidebar-provider'
 import { cn } from '@/_lib/utils'
@@ -9,6 +9,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/_components/ui/dropdown-menu'
 import {
@@ -46,14 +47,12 @@ export function OrgSwitcher({ organizations }: OrgSwitcherProps) {
     router.push(`/org/${slug}/dashboard`)
   }
 
-  const hasMultipleOrgs = organizations.length > 1
-
   const content = (
     <div
-      role={hasMultipleOrgs ? 'button' : undefined}
+      role="button"
       className={cn(
         'ease-[cubic-bezier(0.25,0.76,0.35,1)] group flex items-center rounded-md py-2 text-sm font-medium text-muted-foreground transition-all duration-500',
-        hasMultipleOrgs && 'cursor-pointer hover:bg-primary/10 hover:text-primary',
+        'cursor-pointer hover:bg-primary/10 hover:text-primary',
         isCollapsed ? 'ml-2 mr-2 pl-3 pr-0' : 'px-3',
       )}
     >
@@ -67,31 +66,11 @@ export function OrgSwitcher({ organizations }: OrgSwitcherProps) {
         )}
       >
         <span className="truncate">{organization.name}</span>
-        {hasMultipleOrgs && (
-          <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-        )}
+        <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
       </span>
     </div>
   )
 
-  // Collapsed: sempre mostra tooltip
-  if (isCollapsed && !hasMultipleOrgs) {
-    return (
-      <Tooltip delayDuration={0}>
-        <TooltipTrigger asChild>{content}</TooltipTrigger>
-        <TooltipContent side="right" sideOffset={10}>
-          {organization.name}
-        </TooltipContent>
-      </Tooltip>
-    )
-  }
-
-  // Sem dropdown se só 1 org
-  if (!hasMultipleOrgs) {
-    return content
-  }
-
-  // Multi-org: dropdown
   const trigger = isCollapsed ? (
     <Tooltip delayDuration={0}>
       <TooltipTrigger asChild>{content}</TooltipTrigger>
@@ -133,6 +112,14 @@ export function OrgSwitcher({ organizations }: OrgSwitcherProps) {
             </DropdownMenuItem>
           )
         })}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onClick={() => router.push('/org?show=true')}
+          className="flex items-center gap-2"
+        >
+          <Plus className="h-4 w-4 shrink-0" />
+          <span>Criar organização</span>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   )
