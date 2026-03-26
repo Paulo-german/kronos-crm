@@ -66,13 +66,13 @@ export const TrialBannerClient = ({
 
   const countdownText = countdown ? (
     <span className="inline-flex gap-1.5 text-white">
-      <span className="rounded bg-background/80 px-1.5 py-0.5">
+      <span className="rounded bg-white/20 px-1.5 py-0.5">
         {pad(countdown.days)}d
       </span>
-      <span className="rounded bg-background/80 px-1.5 py-0.5">
+      <span className="rounded bg-white/20 px-1.5 py-0.5">
         {pad(countdown.hours)}h
       </span>
-      <span className="rounded bg-background/80 px-1.5 py-0.5">
+      <span className="rounded bg-white/20 px-1.5 py-0.5">
         {pad(countdown.minutes)}m
       </span>
     </span>
