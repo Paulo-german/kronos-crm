@@ -8,6 +8,7 @@ async function main() {
   await seedFeaturesAndPlans()
   await seedModules()
   await seedPipelines()
+  await seedNotifications()
 
   console.log('✅ Seed concluído!')
 }
@@ -278,6 +279,222 @@ async function seedPipelines() {
     })
     console.log(`  ✅ Pipeline criado para organização: ${org.name}`)
   }
+}
+
+async function seedNotifications() {
+  console.log('🔔 Seed: Notificações de teste (todas as variantes)...')
+
+  // Buscar a primeira org com um OWNER que tenha userId
+  const ownerMember = await db.member.findFirst({
+    where: { role: 'OWNER', status: 'ACCEPTED', userId: { not: null } },
+    include: {
+      organization: { select: { id: true, slug: true, name: true } },
+    },
+  })
+
+  if (!ownerMember || !ownerMember.userId) {
+    console.warn('  ⚠️ Nenhuma org com OWNER encontrada. Pulando seed de notificações.')
+    return
+  }
+
+  const orgId = ownerMember.organization.id
+  const orgSlug = ownerMember.organization.slug
+  const userId = ownerMember.userId
+
+  // Limpar notificações anteriores do seed para evitar duplicatas
+  await db.notification.deleteMany({
+    where: {
+      organizationId: orgId,
+      userId,
+      title: { startsWith: '[Seed]' },
+    },
+  })
+
+  // Criar um membro PENDING fake para o convite actionable
+  const fakePendingMember = await db.member.upsert({
+    where: {
+      organizationId_email: {
+        organizationId: orgId,
+        email: 'seed-invite@example.com',
+      },
+    },
+    create: {
+      organizationId: orgId,
+      email: 'seed-invite@example.com',
+      role: 'MEMBER',
+      status: 'PENDING',
+      invitationToken: 'a0000000-0000-0000-0000-000000000001',
+    },
+    update: {
+      status: 'PENDING',
+      invitationToken: 'a0000000-0000-0000-0000-000000000001',
+    },
+  })
+
+  // Todas as notificações possíveis, cobrindo cada variante
+  const notifications = [
+    // ── ACTIONABLE (convite com aceite/recusa) ──
+    {
+      type: 'USER_ACTION' as const,
+      title: '[Seed] Convite para organização',
+      body: `Você foi convidado para participar de ${ownerMember.organization.name}.`,
+      actionUrl: `/invite/${fakePendingMember.invitationToken}`,
+      resourceType: 'member',
+      resourceId: fakePendingMember.id,
+      readAt: null,
+    },
+
+    // ── ASSIGNMENT (atribuições e transferências) ──
+    {
+      type: 'USER_ACTION' as const,
+      title: '[Seed] Novo deal atribuído a você',
+      body: 'O deal "Proposta Comercial ACME" foi atribuído a você.',
+      actionUrl: `/org/${orgSlug}/crm/deals/seed-deal-id`,
+      resourceType: 'deal',
+      resourceId: 'seed-deal-id',
+      readAt: null,
+    },
+    {
+      type: 'USER_ACTION' as const,
+      title: '[Seed] Deal transferido para você',
+      body: 'O deal "Renovação Contrato XYZ" foi transferido para você (incluindo 3 contato(s) vinculado(s)).',
+      actionUrl: `/org/${orgSlug}/crm/deals/seed-deal-transfer`,
+      resourceType: 'deal',
+      resourceId: 'seed-deal-transfer',
+      readAt: null,
+    },
+    {
+      type: 'USER_ACTION' as const,
+      title: '[Seed] Nova tarefa atribuída a você',
+      body: 'A tarefa "Ligar para cliente ACME" foi atribuída a você.',
+      actionUrl: `/org/${orgSlug}/crm/tasks`,
+      resourceType: 'task',
+      resourceId: 'seed-task-id',
+      readAt: null,
+    },
+    {
+      type: 'USER_ACTION' as const,
+      title: '[Seed] Tarefa transferida para você',
+      body: 'A tarefa "Follow-up reunião" foi transferida para você.',
+      actionUrl: `/org/${orgSlug}/crm/tasks`,
+      resourceType: 'task',
+      resourceId: 'seed-task-transfer',
+      readAt: new Date(), // Lida
+    },
+    {
+      type: 'USER_ACTION' as const,
+      title: '[Seed] Contato transferido para você',
+      body: 'O contato "Maria Silva" foi transferido para você (incluindo 2 negócio(s) vinculado(s)).',
+      actionUrl: `/org/${orgSlug}/contacts/seed-contact-id`,
+      resourceType: 'contact',
+      resourceId: 'seed-contact-id',
+      readAt: null,
+    },
+    {
+      type: 'USER_ACTION' as const,
+      title: '[Seed] Novo agendamento atribuído a você',
+      body: 'O agendamento "Reunião de discovery" foi atribuído a você.',
+      actionUrl: `/org/${orgSlug}/crm/appointments`,
+      resourceType: 'appointment',
+      resourceId: 'seed-appointment-id',
+      readAt: null,
+    },
+    {
+      type: 'USER_ACTION' as const,
+      title: '[Seed] Agendamento transferido para você',
+      body: 'O agendamento "Demo do produto" foi transferido para você.',
+      actionUrl: `/org/${orgSlug}/crm/appointments`,
+      resourceType: 'appointment',
+      resourceId: 'seed-appointment-transfer',
+      readAt: new Date(), // Lida
+    },
+    {
+      type: 'USER_ACTION' as const,
+      title: '[Seed] Transferência de atendimento',
+      body: 'O agente Sales Bot transferiu a conversa com João Souza. Motivo: Cliente pediu para falar com humano.',
+      actionUrl: `/org/${orgSlug}/inbox?conversationId=seed-conversation-id`,
+      resourceType: 'conversation',
+      resourceId: 'seed-conversation-id',
+      readAt: null,
+    },
+
+    // ── ALERT (alertas do sistema) ──
+    {
+      type: 'SYSTEM' as const,
+      title: '[Seed] WhatsApp desconectado',
+      body: 'A conexão WhatsApp "+55 11 99999-0000" está desativada. Mensagens não estão sendo processadas.',
+      actionUrl: `/org/${orgSlug}/settings/inboxes`,
+      resourceType: 'inbox',
+      resourceId: 'seed-inbox-id',
+      readAt: null,
+    },
+    {
+      type: 'SYSTEM' as const,
+      title: '[Seed] Falha no pagamento',
+      body: 'Houve um problema com o pagamento da sua assinatura. Verifique seu método de pagamento.',
+      actionUrl: `/org/${orgSlug}/settings/billing`,
+      resourceType: 'subscription',
+      resourceId: 'seed-subscription-id',
+      readAt: null,
+    },
+    {
+      type: 'SYSTEM' as const,
+      title: '[Seed] Créditos de IA esgotados',
+      body: 'Seus créditos de IA acabaram. Recarregue para continuar usando o agente.',
+      actionUrl: `/org/${orgSlug}/settings/billing`,
+      resourceType: 'credit',
+      resourceId: null,
+      readAt: new Date(), // Lida
+    },
+
+    // ── INFO (informativos) ──
+    {
+      type: 'USER_ACTION' as const,
+      title: '[Seed] Novo membro na equipe',
+      body: 'joao@example.com aceitou o convite e entrou na equipe.',
+      actionUrl: `/org/${orgSlug}/settings/members`,
+      resourceType: 'member',
+      resourceId: 'seed-member-id',
+      readAt: null,
+    },
+    {
+      type: 'PLATFORM_ANNOUNCEMENT' as const,
+      title: '[Seed] Nova funcionalidade disponível',
+      body: 'Agora você pode configurar follow-ups automáticos via IA diretamente no pipeline.',
+      actionUrl: null,
+      resourceType: null,
+      resourceId: null,
+      readAt: null,
+    },
+    {
+      type: 'PLATFORM_ANNOUNCEMENT' as const,
+      title: '[Seed] Manutenção programada',
+      body: 'O sistema passará por manutenção no dia 30/03 das 02h às 04h. Nenhuma ação necessária.',
+      actionUrl: null,
+      resourceType: null,
+      resourceId: null,
+      readAt: new Date(), // Lida
+    },
+  ]
+
+  for (const notification of notifications) {
+    await db.notification.create({
+      data: {
+        organizationId: orgId,
+        userId,
+        type: notification.type,
+        title: notification.title,
+        body: notification.body,
+        actionUrl: notification.actionUrl,
+        resourceType: notification.resourceType,
+        resourceId: notification.resourceId,
+        readAt: notification.readAt,
+      },
+    })
+  }
+
+  console.log(`  ✅ ${notifications.length} notificações criadas para ${ownerMember.organization.name} (user: ${userId})`)
+  console.log(`  ✅ Membro PENDING fake criado (seed-invite@example.com) para testar variante actionable`)
 }
 
 main()

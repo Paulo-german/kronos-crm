@@ -7,7 +7,6 @@ import type { NotificationDto } from '@/_data-access/notification/types'
 
 interface NotificationListProps {
   notifications: NotificationDto[]
-  orgSlug: string
 }
 
 export const NotificationList = ({ notifications }: NotificationListProps) => {

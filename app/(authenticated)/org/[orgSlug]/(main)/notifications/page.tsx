@@ -35,7 +35,7 @@ const NotificationsPage = async ({ params }: NotificationsPageProps) => {
         </HeaderRight>
       </Header>
 
-      <NotificationList notifications={notifications} orgSlug={orgSlug} />
+      <NotificationList notifications={notifications} />
     </div>
   )
 }

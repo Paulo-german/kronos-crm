@@ -16,7 +16,8 @@ import {
 import { Button } from '@/_components/ui/button'
 import { ScrollArea } from '@/_components/ui/scroll-area'
 import { Separator } from '@/_components/ui/separator'
-import { NotificationTypeIcon } from '@/_components/layout/notification-type-icon'
+import { NotificationVariantIcon } from '@/_components/layout/notification-variant-icon'
+import { resolveNotificationVariant } from '@/_lib/notifications/notification-variant'
 import { markNotificationAsRead } from '@/_actions/notification/mark-as-read'
 import { markAllNotificationsAsRead } from '@/_actions/notification/mark-all-as-read'
 import type { NotificationDto } from '@/_data-access/notification/types'
@@ -101,7 +102,7 @@ export const NotificationBell = ({
     {
       onSuccess: () => {
         setUnreadCount(0)
-        setNotifications((prev) => prev.map((n) => ({ ...n, readAt: new Date() })))
+        setNotifications((prev) => prev.map((notification) => ({ ...notification, readAt: new Date() })))
         toast.success('Todas as notificações foram marcadas como lidas.')
       },
       onError: ({ error }) => {
@@ -115,7 +116,7 @@ export const NotificationBell = ({
       if (!notification.readAt) {
         executeMarkAsRead({ notificationId: notification.id })
         setNotifications((prev) =>
-          prev.map((n) => (n.id === notification.id ? { ...n, readAt: new Date() } : n)),
+          prev.map((item) => (item.id === notification.id ? { ...item, readAt: new Date() } : item)),
         )
       }
 
@@ -175,35 +176,50 @@ export const NotificationBell = ({
             </div>
           ) : (
             <div className="divide-y">
-              {notifications.map((notification) => (
-                <button
-                  key={notification.id}
-                  type="button"
-                  className="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50"
-                  onClick={() => handleNotificationClick(notification)}
-                >
-                  <div className="mt-0.5 flex-shrink-0">
-                    <NotificationTypeIcon type={notification.type} />
-                  </div>
+              {notifications.map((notification) => {
+                const variant = resolveNotificationVariant(notification)
+                const isAlert = variant === 'alert'
 
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium leading-none">{notification.title}</p>
-                    <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
-                      {notification.body}
-                    </p>
-                    <p className="mt-1 text-[10px] text-muted-foreground">
-                      {formatDistanceToNow(new Date(notification.createdAt), {
-                        addSuffix: true,
-                        locale: ptBR,
-                      })}
-                    </p>
-                  </div>
+                return (
+                  <button
+                    key={notification.id}
+                    type="button"
+                    className={[
+                      'flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50',
+                      isAlert ? 'bg-amber-50/40 hover:bg-amber-50/60 dark:bg-amber-950/10 dark:hover:bg-amber-950/20' : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                    onClick={() => handleNotificationClick(notification)}
+                  >
+                    <div className="mt-0.5 flex-shrink-0">
+                      <NotificationVariantIcon notification={notification} />
+                    </div>
 
-                  {!notification.readAt && (
-                    <div className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-blue-500" />
-                  )}
-                </button>
-              ))}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium leading-none">{notification.title}</p>
+                      <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+                        {notification.body}
+                      </p>
+                      <p className="mt-1 text-[10px] text-muted-foreground">
+                        {formatDistanceToNow(new Date(notification.createdAt), {
+                          addSuffix: true,
+                          locale: ptBR,
+                        })}
+                      </p>
+                    </div>
+
+                    {!notification.readAt && (
+                      <div
+                        className={[
+                          'mt-1.5 h-2 w-2 flex-shrink-0 rounded-full',
+                          isAlert ? 'bg-amber-500' : 'bg-blue-500',
+                        ].join(' ')}
+                      />
+                    )}
+                  </button>
+                )
+              })}
             </div>
           )}
         </ScrollArea>
