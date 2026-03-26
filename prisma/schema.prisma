@@ -63,6 +63,7 @@ model Organization {
   planOverrideId         String?                 @map("plan_override_id")
   niche                  String?                 @map("niche")
   onboardingCompleted    Boolean                 @default(false) @map("onboarding_completed")
+  agentExecutions        AgentExecution[]
   agentTestConversations AgentTestConversation[]
   agents                 Agent[]
   aiUsage                AiUsage[]
@@ -530,6 +531,7 @@ model Agent {
   promptConfig                     Json?                   @map("prompt_config")
   followUpExhaustedAction          String                  @default("NONE") @map("follow_up_exhausted_action")
   followUpExhaustedConfig          Json?                   @map("follow_up_exhausted_config")
+  executions            AgentExecution[]
   knowledgeChunks       AgentKnowledgeChunk[]
   knowledgeFiles        AgentKnowledgeFile[]
   steps                 AgentStep[]
@@ -686,6 +688,7 @@ model Conversation {
   updatedAt              DateTime            @updatedAt @map("updated_at")
   nextFollowUpAt         DateTime?           @map("next_follow_up_at")
   followUpCount          Int                 @default(0) @map("follow_up_count")
+  agentExecutions        AgentExecution[]
   events                 ConversationEvent[]
   assignee               User?               @relation("ConversationAssignee", fields: [assignedTo], references: [id])
   contact                Contact             @relation(fields: [contactId], references: [id], onDelete: Cascade)
@@ -769,6 +772,53 @@ model AgentTestMessage {
 
   @@index([testConversationId, createdAt(sort: Desc)])
   @@map("agent_test_messages")
+}
+
+model AgentExecution {
+  id               String                @id @default(uuid())
+  agentId          String                @map("agent_id")
+  organizationId   String                @map("organization_id")
+  conversationId   String                @map("conversation_id")
+  triggerMessageId String?               @map("trigger_message_id")
+  status           AgentExecutionStatus
+  startedAt        DateTime              @map("started_at")
+  completedAt      DateTime?             @map("completed_at")
+  durationMs       Int?                  @map("duration_ms")
+  modelId          String?               @map("model_id")
+  inputTokens      Int?                  @map("input_tokens")
+  outputTokens     Int?                  @map("output_tokens")
+  creditsCost      Int?                  @map("credits_cost")
+  errorMessage     String?               @map("error_message")
+  createdAt        DateTime              @default(now()) @map("created_at")
+  updatedAt        DateTime              @updatedAt @map("updated_at")
+
+  agent        Agent              @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  conversation Conversation       @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  steps        AgentExecutionStep[]
+
+  @@index([agentId, createdAt(sort: Desc)])
+  @@index([organizationId, agentId, status])
+  @@index([conversationId])
+  @@map("agent_executions")
+}
+
+model AgentExecutionStep {
+  id          String                   @id @default(uuid())
+  executionId String                   @map("execution_id")
+  order       Int
+  type        AgentExecutionStepType
+  status      AgentExecutionStepStatus
+  toolName    String?                  @map("tool_name")
+  input       Json?
+  output      Json?
+  durationMs  Int?                     @map("duration_ms")
+  createdAt   DateTime                 @default(now()) @map("created_at")
+
+  execution AgentExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+
+  @@index([executionId, order])
+  @@map("agent_execution_steps")
 }
 
 model UserIntegration {
@@ -1026,4 +1076,32 @@ enum NotificationType {
   SYSTEM
   USER_ACTION
   PLATFORM_ANNOUNCEMENT
+}
+
+enum AgentExecutionStatus {
+  COMPLETED
+  FAILED
+  SKIPPED
+}
+
+enum AgentExecutionStepType {
+  DEBOUNCE_CHECK
+  AUDIO_TRANSCRIPTION
+  IMAGE_TRANSCRIPTION
+  MEDIA_DOWNLOAD
+  CONTEXT_LOADING
+  CREDIT_CHECK
+  LLM_CALL
+  TOOL_CALL
+  SEND_MESSAGE
+  FOLLOW_UP_SCHEDULE
+  MEMORY_COMPRESSION
+  FALLBACK_LLM_CALL
+  PAUSE_CHECK
+}
+
+enum AgentExecutionStepStatus {
+  PASSED
+  SKIPPED
+  FAILED
 }
