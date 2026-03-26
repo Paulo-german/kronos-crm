@@ -4,36 +4,9 @@ import { authActionClient } from '@/_lib/safe-action'
 import { createOrganizationSchema } from './schema'
 import { db } from '@/_lib/prisma'
 import { revalidateTag } from 'next/cache'
+import { generateSlug, ensureUniqueSlug } from '@/_lib/slug'
 
-function generateSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // Remove acentos
-    .replace(/[^a-z0-9\s-]/g, '') // Remove caracteres especiais
-    .replace(/\s+/g, '-') // Espaços viram hífens
-    .replace(/-+/g, '-') // Remove hífens duplicados
-    .substring(0, 50) // Limita tamanho
-}
-
-async function ensureUniqueSlug(baseSlug: string): Promise<string> {
-  let slug = baseSlug
-  let counter = 1
-
-  while (true) {
-    const existing = await db.organization.findUnique({
-      where: { slug },
-      select: { id: true },
-    })
-
-    if (!existing) {
-      return slug
-    }
-
-    slug = `${baseSlug}-${counter}`
-    counter++
-  }
-}
+const TRIAL_DURATION_DAYS = 7
 
 export const createOrganization = authActionClient
   .schema(createOrganizationSchema)
@@ -59,7 +32,7 @@ export const createOrganization = authActionClient
         data: {
           name: data.name,
           slug,
-          trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          trialEndsAt: new Date(Date.now() + TRIAL_DURATION_DAYS * 24 * 60 * 60 * 1000),
         },
       })
 
