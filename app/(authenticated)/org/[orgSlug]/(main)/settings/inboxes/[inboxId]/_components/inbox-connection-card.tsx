@@ -43,6 +43,7 @@ interface InboxConnectionCardProps {
   instanceInfo: EvolutionInstanceInfo | null
   hasInstance: boolean
   instanceName: string | null
+  onConnectionStateChange?: (connected: boolean) => void
 }
 
 type ConnectionState = 'disconnected' | 'checking' | 'connecting' | 'connected'
@@ -57,6 +58,7 @@ const InboxConnectionCard = ({
   instanceInfo,
   hasInstance,
   instanceName,
+  onConnectionStateChange,
 }: InboxConnectionCardProps) => {
   const [connectionState, setConnectionState] = useState<ConnectionState>(
     hasInstance ? 'checking' : 'disconnected',
@@ -95,6 +97,7 @@ const InboxConnectionCard = ({
         setQrCode(null)
         setPairingCode(null)
         stopPolling()
+        onConnectionStateChange?.(true)
         return
       }
 
@@ -134,6 +137,7 @@ const InboxConnectionCard = ({
         setPairingCode(null)
         setIsDisconnectOpen(false)
         stopPolling()
+        onConnectionStateChange?.(false)
       },
       onError: ({ error }) => {
         toast.error(error.serverError || 'Erro ao desconectar.')

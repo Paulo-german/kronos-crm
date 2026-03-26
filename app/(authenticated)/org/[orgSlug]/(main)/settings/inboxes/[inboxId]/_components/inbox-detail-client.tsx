@@ -94,6 +94,7 @@ const InboxDetailClient = ({
 }: InboxDetailClientProps) => {
   const canManage = userRole === 'OWNER' || userRole === 'ADMIN'
   const [isEditOpen, setIsEditOpen] = useState(false)
+  const [evolutionConnectedOverride, setEvolutionConnectedOverride] = useState<boolean | null>(null)
   const [localDistributionUserIds, setLocalDistributionUserIds] = useState(inbox.distributionUserIds)
 
   const { execute: executeUpdate, isPending: isUpdating } = useAction(
@@ -200,6 +201,7 @@ const InboxDetailClient = ({
           instanceInfo={instanceInfo}
           hasInstance
           instanceName={inbox.evolutionInstanceName}
+          onConnectionStateChange={setEvolutionConnectedOverride}
         />
       )
     }
@@ -214,6 +216,7 @@ const InboxDetailClient = ({
           instanceInfo={instanceInfo}
           hasInstance={false}
           instanceName={null}
+          onConnectionStateChange={setEvolutionConnectedOverride}
         />
       )
     }
@@ -242,7 +245,7 @@ const InboxDetailClient = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold tracking-tight">{inbox.name}</h1>
-            {inbox.evolutionInstanceName ||
+            {(evolutionConnectedOverride ?? (!!inbox.evolutionInstanceName && inbox.evolutionConnected)) ||
             (inbox.connectionType === 'META_CLOUD' && inbox.metaPhoneNumberId) ||
             (inbox.connectionType === 'Z_API' && inbox.zapiInstanceId) ? (
               <>

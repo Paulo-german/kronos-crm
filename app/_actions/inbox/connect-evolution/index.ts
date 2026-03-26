@@ -55,6 +55,7 @@ export const connectEvolution = orgActionClient
         connectionType: 'EVOLUTION',
         evolutionInstanceName: result.instanceName,
         evolutionInstanceId: result.instanceId,
+        evolutionConnected: false,
       },
     })
 

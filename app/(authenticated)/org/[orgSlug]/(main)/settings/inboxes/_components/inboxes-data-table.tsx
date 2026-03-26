@@ -150,7 +150,7 @@ export function InboxesDataTable({
       cell: ({ row }) => {
         const inbox = row.original
         const isConnected =
-          !!inbox.evolutionInstanceName ||
+          (!!inbox.evolutionInstanceName && inbox.evolutionConnected) ||
           (inbox.connectionType === 'META_CLOUD' && !!inbox.metaPhoneNumberId) ||
           (inbox.connectionType === 'Z_API' && !!inbox.zapiInstanceId)
 

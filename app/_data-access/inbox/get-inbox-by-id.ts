@@ -11,6 +11,7 @@ export interface InboxDetailDto {
   connectionType: string
   evolutionInstanceName: string | null
   evolutionInstanceId: string | null
+  evolutionConnected: boolean
   metaWabaId: string | null
   metaPhoneNumberId: string | null
   metaPhoneDisplay: string | null
@@ -48,6 +49,7 @@ const fetchInboxByIdFromDb = async (
     connectionType: inbox.connectionType,
     evolutionInstanceName: inbox.evolutionInstanceName,
     evolutionInstanceId: inbox.evolutionInstanceId,
+    evolutionConnected: inbox.evolutionConnected,
     metaWabaId: inbox.metaWabaId,
     metaPhoneNumberId: inbox.metaPhoneNumberId,
     metaPhoneDisplay: inbox.metaPhoneDisplay,

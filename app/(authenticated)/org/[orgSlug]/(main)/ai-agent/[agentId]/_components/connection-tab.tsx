@@ -401,7 +401,7 @@ const InboxRow = ({
   function renderInboxConnectionCard() {
     const isMetaConnected =
       inbox.connectionType === 'META_CLOUD' && !!inbox.metaPhoneNumberId
-    const isEvolutionConnected = !!inbox.evolutionInstanceName
+    const isEvolutionConnected = !!inbox.evolutionInstanceName && inbox.evolutionConnected
 
     if (isMetaConnected) {
       return (

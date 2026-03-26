@@ -640,6 +640,7 @@ model Inbox {
   isActive              Boolean        @default(true) @map("is_active")
   evolutionInstanceName String?        @unique @map("evolution_instance_name")
   evolutionInstanceId   String?        @map("evolution_instance_id")
+  evolutionConnected    Boolean        @default(false) @map("evolution_connected")
   agentId               String?        @map("agent_id")
   createdAt             DateTime       @default(now()) @map("created_at")
   updatedAt             DateTime       @updatedAt @map("updated_at")

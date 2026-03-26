@@ -48,6 +48,15 @@ export interface EvolutionWebhookPayload {
 }
 
 // -----------------------------------------------------------------------------
+// Evolution API Connection Update Types
+// -----------------------------------------------------------------------------
+
+export interface EvolutionConnectionUpdateData {
+  state: 'open' | 'close' | 'connecting'
+  statusReason?: number
+}
+
+// -----------------------------------------------------------------------------
 // Normalized Message (provider-agnostic, sent to Trigger.dev)
 // -----------------------------------------------------------------------------
 

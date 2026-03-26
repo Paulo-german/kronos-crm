@@ -42,6 +42,7 @@ export const disconnectEvolution = orgActionClient
       data: {
         evolutionInstanceName: null,
         evolutionInstanceId: null,
+        evolutionConnected: false,
       },
     })
 

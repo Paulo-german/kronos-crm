@@ -42,6 +42,7 @@ export interface AgentInboxDto {
   connectionType: string
   evolutionInstanceName: string | null
   evolutionInstanceId: string | null
+  evolutionConnected: boolean
   metaPhoneNumberId: string | null
   metaPhoneDisplay: string | null
   // NAO incluir metaAccessToken (seguranca — nunca expor ao cliente via DTO)
@@ -119,6 +120,7 @@ const fetchAgentByIdFromDb = async (
       connectionType: inbox.connectionType,
       evolutionInstanceName: inbox.evolutionInstanceName,
       evolutionInstanceId: inbox.evolutionInstanceId,
+      evolutionConnected: inbox.evolutionConnected,
       metaPhoneNumberId: inbox.metaPhoneNumberId,
       metaPhoneDisplay: inbox.metaPhoneDisplay,
     })),

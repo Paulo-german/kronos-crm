@@ -10,7 +10,7 @@ import { checkBusinessHours } from '@/_lib/agent/check-business-hours'
 import { notifyOrgAdmins } from '@/_lib/notifications/notify-org-admins'
 import { tasks } from '@trigger.dev/sdk/v3'
 import type { processAgentMessage } from '@/../../trigger/process-agent-message'
-import type { EvolutionWebhookPayload, NormalizedWhatsAppMessage } from '@/_lib/evolution/types'
+import type { EvolutionWebhookPayload, EvolutionConnectionUpdateData, NormalizedWhatsAppMessage } from '@/_lib/evolution/types'
 import type { BusinessHoursConfig } from '@/_actions/agent/update-agent/schema'
 
 export async function POST(req: Request) {
@@ -23,14 +23,80 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const payload: EvolutionWebhookPayload = await req.json()
+  const payload = await req.json()
 
-  // 2. Filtro de evento — só processar messages.upsert
+  // 2. CONNECTION_UPDATE — atualizar status de conexao no banco
+  if (payload.event === 'connection.update') {
+    const instanceName = payload.instance as string
+    const connectionData = payload.data as EvolutionConnectionUpdateData
+    const state = connectionData?.state
+
+    // Ignorar estados intermediarios (ex: 'connecting')
+    if (state !== 'open' && state !== 'close') {
+      return NextResponse.json({ ignored: true, reason: 'connection_state_ignored' })
+    }
+
+    const isConnected = state === 'open'
+
+    const inbox = await db.inbox.findFirst({
+      where: { evolutionInstanceName: instanceName },
+      select: { id: true, organizationId: true, agentId: true, evolutionConnected: true },
+    })
+
+    if (!inbox) {
+      return NextResponse.json({ ignored: true, reason: 'no_inbox_found' })
+    }
+
+    // Evitar update desnecessario se o estado ja esta correto
+    if (inbox.evolutionConnected !== isConnected) {
+      await db.inbox.update({
+        where: { id: inbox.id },
+        data: { evolutionConnected: isConnected },
+      })
+
+      revalidateTag(`inbox:${inbox.id}`)
+      revalidateTag(`inboxes:${inbox.organizationId}`)
+      if (inbox.agentId) {
+        revalidateTag(`agent:${inbox.agentId}`)
+        revalidateTag(`agents:${inbox.organizationId}`)
+      }
+    }
+
+    // Notificar admins quando desconectar (com anti-spam 24h)
+    if (!isConnected) {
+      const recent = await db.notification.findFirst({
+        where: {
+          organizationId: inbox.organizationId,
+          type: 'SYSTEM',
+          title: 'Conexao WhatsApp perdida',
+          readAt: null,
+          createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+        },
+      })
+
+      if (!recent) {
+        void notifyOrgAdmins({
+          orgId: inbox.organizationId,
+          type: 'SYSTEM',
+          title: 'Conexao WhatsApp perdida',
+          body: `A conexao WhatsApp "${instanceName}" foi perdida. Acesse as configuracoes para reconectar.`,
+          actionPath: '/settings/inboxes',
+          resourceType: 'inbox',
+          resourceId: inbox.id,
+        })
+      }
+    }
+
+    return NextResponse.json({ success: true, state })
+  }
+
+  // 3. Filtro de evento — so processar messages.upsert a partir daqui
   if (payload.event !== 'messages.upsert') {
     return NextResponse.json({ ignored: true, reason: 'event_not_handled' })
   }
 
-  const { data, instance: instanceName } = payload
+  const typedPayload = payload as EvolutionWebhookPayload
+  const { data, instance: instanceName } = typedPayload
   const { key } = data
   const { fromMe, id: messageId } = key
 

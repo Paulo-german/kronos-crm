@@ -10,6 +10,7 @@ export interface InboxListDto {
   isActive: boolean
   connectionType: string
   evolutionInstanceName: string | null
+  evolutionConnected: boolean
   metaWabaId: string | null
   metaPhoneNumberId: string | null
   metaPhoneDisplay: string | null
@@ -38,6 +39,7 @@ const fetchInboxesFromDb = async (orgId: string): Promise<InboxListDto[]> => {
     isActive: inbox.isActive,
     connectionType: inbox.connectionType,
     evolutionInstanceName: inbox.evolutionInstanceName,
+    evolutionConnected: inbox.evolutionConnected,
     metaWabaId: inbox.metaWabaId,
     metaPhoneNumberId: inbox.metaPhoneNumberId,
     metaPhoneDisplay: inbox.metaPhoneDisplay,
