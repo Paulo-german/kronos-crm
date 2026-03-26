@@ -34,6 +34,7 @@ const SignUpForm = () => {
     resolver: zodResolver(signUpFormSchema),
     defaultValues: {
       fullName: '',
+      companyName: '',
       phone: '',
       email: '',
       password: '',
@@ -72,6 +73,19 @@ const SignUpForm = () => {
               <FormLabel>Nome completo</FormLabel>
               <FormControl>
                 <Input placeholder="Seu nome completo" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="companyName"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Nome da empresa</FormLabel>
+              <FormControl>
+                <Input placeholder="Ex: Minha Empresa" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

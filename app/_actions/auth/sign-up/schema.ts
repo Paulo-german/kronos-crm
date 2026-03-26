@@ -10,6 +10,7 @@ export const passwordRules = [
 
 export const signUpSchema = z.object({
   fullName: z.string().min(4, 'Você precisa preencher seu nome completo'),
+  companyName: z.string().trim().min(1, 'Nome da empresa é obrigatório').max(100, 'Nome muito longo'),
   phone: z.string().min(10, 'Telefone inválido').max(20, 'Telefone muito longo'),
   email: z.string().email('Por favor, insira um e-mail válido'),
   password: passwordRules.reduce(
