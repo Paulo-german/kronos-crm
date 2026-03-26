@@ -144,12 +144,12 @@ export function CelebrationStep({ onStart }: CelebrationStepProps) {
           size="lg"
           onClick={() => execute()}
           disabled={isPending}
-          className="gap-2 px-8 text-base shadow-lg shadow-primary/20"
+          className="gap-2 px-8"
         >
           {isPending ? (
-            <Loader2 className="size-5 animate-spin" />
+            <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
-            <Rocket className="size-5" />
+            <Rocket className="h-4 w-4" />
           )}
           {isPending ? 'Finalizando...' : 'Começar a usar o Kronos'}
         </Button>
