@@ -935,11 +935,21 @@ export const processAgentMessage = task({
 
           // -----------------------------------------------------------------------
           // 7. Double-check anti-atropelamento — re-query aiPaused
+          //    Pula se o próprio agente disparou hand_off_to_human nesta execução,
+          //    caso contrário a resposta final nunca seria enviada ao lead.
           // -----------------------------------------------------------------------
-          const freshConversation = await db.conversation.findUnique({
-            where: { id: conversationId },
-            select: { aiPaused: true },
-          })
+          const agentTriggeredHandOff = result.steps?.some((aiStep) =>
+            aiStep.toolCalls?.some(
+              (toolCall) => toolCall.toolName === 'hand_off_to_human',
+            ),
+          )
+
+          const freshConversation = agentTriggeredHandOff
+            ? null
+            : await db.conversation.findUnique({
+                where: { id: conversationId },
+                select: { aiPaused: true },
+              })
 
           if (freshConversation?.aiPaused) {
             // Salva resposta no banco mas NÃO envia no WhatsApp
