@@ -22,12 +22,14 @@ import { markTourPending } from '@/_lib/onboarding/tours/tour-utils'
 import { saveMainTourContext } from '@/_lib/onboarding/tours/main-tour'
 
 // localStorage keys para dados grandes (estado transiente do wizard)
+const LS_ORG_SLUG = 'kronos_onb_org_slug'
 const LS_BUSINESS_PROFILE = 'kronos_onb_business_profile'
 const LS_CONFIG_BUNDLE = 'kronos_onb_config_bundle'
 const LS_SYSTEM_PROMPT = 'kronos_onb_system_prompt'
 const LS_AGENT_STEPS = 'kronos_onb_agent_steps'
 
 const ALL_LS_KEYS = [
+  LS_ORG_SLUG,
   LS_BUSINESS_PROFILE,
   LS_CONFIG_BUNDLE,
   LS_SYSTEM_PROMPT,
@@ -36,6 +38,24 @@ const ALL_LS_KEYS = [
   'kronos_onb_prompt_task_id',
   'kronos_onb_steps_task_id',
 ]
+
+/**
+ * Limpa dados de onboarding se pertencerem a outra org.
+ * Garante isolamento entre orgs no mesmo browser.
+ */
+function ensureOrgIsolation(currentSlug: string) {
+  if (typeof window === 'undefined') return
+
+  const storedSlug = localStorage.getItem(LS_ORG_SLUG)
+
+  if (storedSlug && storedSlug !== currentSlug) {
+    for (const key of ALL_LS_KEYS) {
+      localStorage.removeItem(key)
+    }
+  }
+
+  localStorage.setItem(LS_ORG_SLUG, currentSlug)
+}
 
 type AgentStepBlueprint = AgentStepsOutput['steps'][number]
 
@@ -73,6 +93,9 @@ export function OnboardingWizardClient({
 }: OnboardingWizardClientProps) {
   const router = useRouter()
   const [direction, setDirection] = useState(1)
+
+  // Limpa localStorage se os dados forem de outra org
+  ensureOrgIsolation(orgSlug)
 
   // Estado persistido em localStorage (dados grandes)
   const [businessProfile, setBusinessProfile] = useState<BusinessProfile | null>(
