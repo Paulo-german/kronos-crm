@@ -9,6 +9,9 @@ interface RecaptchaResponse {
 }
 
 export async function verifyRecaptchaToken(token: string): Promise<void> {
+  // Em desenvolvimento, pula a verificação do reCAPTCHA (não funciona em localhost)
+  if (process.env.NODE_ENV === 'development') return
+
   if (!RECAPTCHA_SECRET_KEY) {
     throw new Error('RECAPTCHA_SECRET_KEY não configurada')
   }
