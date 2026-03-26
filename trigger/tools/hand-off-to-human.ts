@@ -216,14 +216,42 @@ async function sendHandOffNotification(
     return
   }
 
-  const message = buildNotificationMessage(config, ctx.agentName, contactName, reason)
+  const maskedPhone = recipientPhone.length > 4
+    ? `${recipientPhone.slice(0, 4)}***${recipientPhone.slice(-2)}`
+    : '***'
 
-  await provider.sendText(recipientPhone, message)
-
-  logger.info('hand_off_to_human: notificacao WhatsApp enviada', {
+  logger.info('hand_off_to_human: enviando notificacao WhatsApp', {
     notifyTarget: config.notifyTarget,
+    recipientPhone: maskedPhone,
+    connectionType: inbox.connectionType,
     conversationId: ctx.conversationId,
   })
+
+  const message = buildNotificationMessage(config, ctx.agentName, contactName, reason)
+
+  try {
+    const sentIds = await provider.sendText(recipientPhone, message)
+
+    logger.info('hand_off_to_human: notificacao WhatsApp enviada com sucesso', {
+      notifyTarget: config.notifyTarget,
+      recipientPhone: maskedPhone,
+      connectionType: inbox.connectionType,
+      sentMessageIds: sentIds,
+      conversationId: ctx.conversationId,
+    })
+  } catch (sendError) {
+    // Logar erro detalhado para facilitar debug — o safeBestEffort do caller
+    // também vai capturar, mas aqui temos mais contexto
+    logger.error('hand_off_to_human: falha ao enviar notificacao WhatsApp', {
+      notifyTarget: config.notifyTarget,
+      recipientPhone: maskedPhone,
+      connectionType: inbox.connectionType,
+      conversationId: ctx.conversationId,
+      error: sendError instanceof Error ? sendError.message : String(sendError),
+      stack: sendError instanceof Error ? sendError.stack : undefined,
+    })
+    throw sendError // re-throw para o safeBestEffort capturar
+  }
 }
 
 export function createHandOffToHumanTool(
@@ -303,12 +331,33 @@ export function createHandOffToHumanTool(
           })
         }
 
+        // Rastrear resultado das notificações para incluir no output da tool
+        const notifyTarget = config?.notifyTarget ?? 'none'
+        let whatsappNotification: { sent: boolean; recipientPhone?: string; error?: string } = { sent: false }
+        let inAppNotification: { sent: boolean; userId?: string } = { sent: false }
+
         // Bloco de notificacao WhatsApp — best-effort: falha loga warning mas nao bloqueia
         await safeBestEffort(async () => {
           if (!config || config.notifyTarget === 'none') return
           if (!conversationData) return
 
           await sendHandOffNotification(ctx, config, reason, conversationData)
+          // Se chegou aqui sem throw, a notificação foi enviada
+          // Resolver o phone para incluir no output (mascarado)
+          let phone: string | undefined
+          if (config.notifyTarget === 'specific_number') {
+            phone = config.specificPhone?.trim()
+          } else if (config.notifyTarget === 'deal_assignee' && ctx.dealId) {
+            const deal = await db.deal.findUnique({
+              where: { id: ctx.dealId },
+              select: { assignee: { select: { phone: true } } },
+            })
+            phone = deal?.assignee?.phone?.trim() ?? undefined
+          }
+          const masked = phone && phone.length > 4
+            ? `${phone.slice(0, 4)}***${phone.slice(-2)}`
+            : phone ?? 'desconhecido'
+          whatsappNotification = { sent: true, recipientPhone: masked }
         }, 'whatsapp.notification')
 
         // Bloco de notificacao in-app — best-effort: falha nao bloqueia o hand-off
@@ -341,8 +390,8 @@ export function createHandOffToHumanTool(
             },
           })
 
-          // Setar apenas apos create ter sucesso — evita revalidacao se create falhou
           notifiedUserId = targetUserId
+          inAppNotification = { sent: true, userId: targetUserId }
 
           logger.info('hand_off_to_human: notificacao in-app criada', {
             userId: targetUserId,
@@ -369,12 +418,17 @@ export function createHandOffToHumanTool(
           reason,
           conversationId: ctx.conversationId,
           agentId: ctx.agentId,
-          notifyTarget: config?.notifyTarget ?? 'none',
+          notifyTarget,
+          whatsappNotification,
+          inAppNotification,
         })
 
         return {
           success: true,
           message: 'Conversa transferida para atendimento humano.',
+          notifyTarget,
+          whatsappNotification,
+          inAppNotification,
         }
       } catch (error) {
         logger.error('Tool hand_off_to_human failed', { error })
