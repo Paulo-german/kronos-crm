@@ -1,7 +1,10 @@
+import Link from 'next/link'
+import { ArrowLeft } from 'lucide-react'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getInboxes } from '@/_data-access/inbox/get-inboxes'
 import { getAgents } from '@/_data-access/agent/get-agents'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
+import { Button } from '@/_components/ui/button'
 import { InboxesDataTable } from './_components/inboxes-data-table'
 import CreateInboxButton from './_components/create-inbox-button'
 import DiscoverInstancesButton from './_components/discover-instances-button'
@@ -34,6 +37,14 @@ const InboxesPage = async ({ params }: InboxesPageProps) => {
 
   return (
     <div className="space-y-6">
+      <div className="mb-6">
+        <Button variant="ghost" size="sm" asChild>
+          <Link href={`/org/${orgSlug}/settings`}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Voltar
+          </Link>
+        </Button>
+      </div>
       <Header>
         <HeaderLeft>
           <HeaderTitle>Caixas de Entrada</HeaderTitle>
