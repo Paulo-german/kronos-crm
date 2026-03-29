@@ -50,6 +50,7 @@ export const PLANS: PlanInfo[] = [
       { name: 'Até 2.000 empresas', included: true },
       { name: 'Agendamentos ilimitados', included: true },
       { name: '1 follow-up (Beta)', included: true },
+      { name: '3 automações (Beta)', included: true },
     ],
   },
   {
@@ -66,13 +67,14 @@ export const PLANS: PlanInfo[] = [
     features: [
       { name: '4 usuários', included: true },
       { name: '4 agentes IA + 18.000 créditos IA', included: true },
+      { name: 'Equipes de Agentes (até 3 workers)', included: true },
       { name: '1 canal Inbox', included: true },
       { name: 'Até 25.000 contatos', included: true },
       { name: 'Até 25.000 negócios', included: true },
       { name: 'Até 10.000 empresas', included: true },
       { name: 'Agendamentos ilimitados', included: true },
       { name: '3 follow-ups (Beta)', included: true },
-      { name: 'Automações (Em breve)', included: true },
+      { name: '10 automações (Beta)', included: true },
     ],
   },
   {
@@ -89,13 +91,14 @@ export const PLANS: PlanInfo[] = [
     features: [
       { name: '10 usuários', included: true },
       { name: '10 agentes IA + 45.000 créditos IA', included: true },
+      { name: 'Equipes de Agentes (até 5 workers)', included: true },
       { name: '3 canais Inbox', included: true },
       { name: 'Até 50.000 contatos', included: true },
       { name: 'Até 50.000 negócios', included: true },
       { name: 'Até 20.000 empresas', included: true },
       { name: 'Agendamentos ilimitados', included: true },
       { name: '8 follow-ups (Beta)', included: true },
-      { name: 'Automações (Em breve)', included: true },
+      { name: '25 automações (Beta)', included: true },
     ],
   },
   {
@@ -112,13 +115,14 @@ export const PLANS: PlanInfo[] = [
     features: [
       { name: '20 usuários', included: true },
       { name: '20 agentes IA + 72.000 créditos IA', included: true },
+      { name: 'Equipes de Agentes (até 10 workers)', included: true },
       { name: '10 canais Inbox', included: true },
       { name: 'Até 50.000 contatos', included: true },
       { name: 'Até 50.000 negócios', included: true },
       { name: 'Até 20.000 empresas', included: true },
       { name: 'Agendamentos ilimitados', included: true },
       { name: '20 follow-ups (Beta)', included: true },
-      { name: 'Automações (Em breve)', included: true },
+      { name: '50 automações (Beta)', included: true },
       { name: 'API de integração (Em breve)', included: true },
       { name: 'SSO / SAML (Em breve)', included: true },
     ],
@@ -170,6 +174,13 @@ export const COMPARISON_DATA: ComparisonRow[] = [
     enterprise: '20',
   },
   {
+    feature: 'Equipes de Agentes',
+    light: false,
+    essential: '3 workers/equipe',
+    scale: '5 workers/equipe',
+    enterprise: '10 workers/equipe',
+  },
+  {
     feature: 'Créditos IA',
     light: '10.000',
     essential: '18.000',
@@ -196,6 +207,13 @@ export const COMPARISON_DATA: ComparisonRow[] = [
     essential: '3',
     scale: '8',
     enterprise: '20',
+  },
+  {
+    feature: 'Automações (Beta)',
+    light: '3',
+    essential: '10',
+    scale: '25',
+    enterprise: '50',
   },
   {
     feature: 'Pipeline de vendas',
