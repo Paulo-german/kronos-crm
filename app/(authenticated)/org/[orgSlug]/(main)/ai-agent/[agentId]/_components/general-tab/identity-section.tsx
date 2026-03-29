@@ -1,5 +1,4 @@
 import { Input } from '@/_components/ui/input'
-import { Switch } from '@/_components/ui/switch'
 import {
   Card,
   CardContent,
@@ -105,22 +104,6 @@ export const IdentitySection = ({ form, canManage }: SectionProps) => {
           />
         )}
 
-        <FormField
-          control={form.control}
-          name="isActive"
-          render={({ field }) => (
-            <FormItem className="flex items-center space-x-3 space-y-0">
-              <FormControl>
-                <Switch
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                  disabled={!canManage}
-                />
-              </FormControl>
-              <FormLabel>Agente ativo</FormLabel>
-            </FormItem>
-          )}
-        />
       </CardContent>
     </Card>
   )

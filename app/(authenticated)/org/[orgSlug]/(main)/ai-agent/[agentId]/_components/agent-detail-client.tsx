@@ -2,10 +2,14 @@
 
 import { useState, useCallback } from 'react'
 import Link from 'next/link'
+import { useAction } from 'next-safe-action/hooks'
+import { toast } from 'sonner'
 import { ArrowLeft, CircleIcon, MessageSquare } from 'lucide-react'
 import { Badge } from '@/_components/ui/badge'
 import { Button } from '@/_components/ui/button'
+import { Switch } from '@/_components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/_components/ui/tabs'
+import { updateAgent } from '@/_actions/agent/update-agent'
 import {
   Tooltip,
   TooltipContent,
@@ -73,6 +77,23 @@ const AgentDetailClient = ({
 }: AgentDetailClientProps) => {
   const canManage = userRole === 'OWNER' || userRole === 'ADMIN'
 
+  const [isActive, setIsActive] = useState(agent.isActive)
+
+  const updateAgentAction = useAction(updateAgent, {
+    onSuccess: () => {
+      toast.success(isActive ? 'Agente ativado' : 'Agente desativado')
+    },
+    onError: () => {
+      setIsActive((prev) => !prev)
+      toast.error('Erro ao alterar status do agente')
+    },
+  })
+
+  const handleToggleActive = (checked: boolean) => {
+    setIsActive(checked)
+    updateAgentAction.execute({ id: agent.id, isActive: checked })
+  }
+
   // Contador de versão da configuração — incrementado toda vez que qualquer
   // tab salva dados. O TestChatPanel observa esse valor para auto-reset.
   const [configVersion, setConfigVersion] = useState(0)
@@ -101,7 +122,7 @@ const AgentDetailClient = ({
               <h1 className="text-2xl font-bold tracking-tight">
                 {agent.name}
               </h1>
-              {agent.isActive ? (
+              {isActive ? (
                 <Badge
                   variant="outline"
                   className="h-6 gap-1.5 border-kronos-green/20 bg-kronos-green/10 px-2 text-xs font-semibold text-kronos-green hover:bg-kronos-green/20"
@@ -117,6 +138,13 @@ const AgentDetailClient = ({
                   <CircleIcon className="h-1.5 w-1.5 fill-current" />
                   Inativo
                 </Badge>
+              )}
+              {canManage && (
+                <Switch
+                  checked={isActive}
+                  onCheckedChange={handleToggleActive}
+                  disabled={updateAgentAction.isPending}
+                />
               )}
             </div>
           </div>
