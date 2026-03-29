@@ -9,6 +9,7 @@ import { sendMetaTextMessage } from '@/_lib/meta/send-meta-message'
 import { resolveConversation } from '@/_lib/evolution/resolve-conversation'
 import { checkBusinessHours } from '@/_lib/agent/check-business-hours'
 import { notifyOrgAdmins } from '@/_lib/notifications/notify-org-admins'
+import { resolveAgentForConversation } from '@/../trigger/lib/resolve-agent'
 import { tasks } from '@trigger.dev/sdk/v3'
 import type { processAgentMessage } from '@/../../trigger/process-agent-message'
 import type { MetaWebhookPayload, MetaWebhookValue } from '@/_lib/meta/types'
@@ -94,6 +95,8 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
       pipelineId: true,
       distributionUserIds: true,
       metaAccessToken: true,
+      agentId: true,
+      agentGroupId: true,
       agent: {
         select: {
           id: true,
@@ -105,6 +108,27 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
           outOfHoursMessage: true,
         },
       },
+      agentGroup: {
+        select: {
+          id: true,
+          isActive: true,
+          members: {
+            select: {
+              agent: {
+                select: {
+                  id: true,
+                  isActive: true,
+                  debounceSeconds: true,
+                  businessHoursEnabled: true,
+                  businessHoursTimezone: true,
+                  businessHoursConfig: true,
+                  outOfHoursMessage: true,
+                },
+              },
+            },
+          },
+        },
+      },
     },
   })
 
@@ -113,7 +137,6 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
     return
   }
 
-  const agent = inbox.agent
   const orgId = inbox.organizationId
 
   const contactAssignContext = {
@@ -129,7 +152,7 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
       }
     : undefined
 
-  log('step:3 inbox_lookup', 'PASS', { inboxId: inbox.id, orgId, inboxActive: inbox.isActive, hasAgent: !!agent })
+  log('step:3 inbox_lookup', 'PASS', { inboxId: inbox.id, orgId, inboxActive: inbox.isActive, hasAgentId: !!inbox.agentId, hasGroupId: !!inbox.agentGroupId })
 
   // Processar cada mensagem do change (normalmente 1)
   for (const message of value.messages) {
@@ -142,9 +165,10 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
     const logMsg = (step: string, outcome: 'PASS' | 'EXIT' | 'SKIP', extra?: Record<string, unknown>) =>
       console.log(`[meta-webhook] ${step} → ${outcome}`, { msgId: messageId, phoneNumberId, ...extra })
 
-    // 6. Inbox desativada, agente ausente ou desativado
-    if (!inbox.isActive || !agent || !agent.isActive) {
-      logMsg('step:5 agent_active_check', 'EXIT', { reason: !inbox.isActive ? 'inbox_inactive' : 'agent_inactive' })
+    // 6. Inbox desativada ou sem agente/grupo configurado
+    const hasAiConfiguredMeta = !!(inbox.agentId || inbox.agentGroupId)
+    if (!inbox.isActive || !hasAiConfiguredMeta) {
+      logMsg('step:5 agent_active_check', 'EXIT', { reason: !inbox.isActive ? 'inbox_inactive' : 'no_ai_configured' })
 
       // Notificar OWNER/ADMIN quando inbox esta desativada (WhatsApp desconectado)
       // Anti-spam: verifica se ja existe notificacao nao lida com mesmo titulo nas ultimas 24h
@@ -236,11 +260,29 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
       continue
     }
 
-    // 7. Business hours check
-    if (agent.businessHoursEnabled && agent.businessHoursConfig) {
+    // Resolver agente standalone OU grupo
+    const metaRemoteJid = `${message.from}@s.whatsapp.net`
+    const preResolveConvMeta = inbox.agentGroupId
+      ? await db.conversation.findFirst({
+          where: { inboxId: inbox.id, remoteJid: metaRemoteJid },
+          select: { id: true, activeAgentId: true },
+        })
+      : null
+
+    const resolvedAgent = await resolveAgentForConversation(inbox, preResolveConvMeta)
+
+    if (!resolvedAgent || !resolvedAgent.isActive) {
+      logMsg('step:5 agent_active_check', 'EXIT', { reason: 'agent_inactive_or_unresolved' })
+      continue
+    }
+
+    logMsg('step:5 agent_active_check', 'PASS', { agentId: resolvedAgent.agentId, requiresRouting: resolvedAgent.requiresRouting })
+
+    // 7. Business hours check — apenas quando não requer routing (router opera 24h)
+    if (!resolvedAgent.requiresRouting && resolvedAgent.businessHoursEnabled && resolvedAgent.businessHoursConfig) {
       const isOpen = checkBusinessHours(
-        agent.businessHoursTimezone,
-        agent.businessHoursConfig as BusinessHoursConfig,
+        resolvedAgent.businessHoursTimezone,
+        resolvedAgent.businessHoursConfig as BusinessHoursConfig,
       )
 
       if (!isOpen) {
@@ -249,7 +291,7 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
         const normalizedMsg = parseMetaMessage(message, contact, phoneNumberId)
 
         // Usar remoteJid (com @s.whatsapp.net) para consistencia com chave OOH do webhook Evolution
-        const oohKey = `ooh-reply:${agent.id}:${normalizedMsg.remoteJid}`
+        const oohKey = `ooh-reply:${resolvedAgent.agentId}:${normalizedMsg.remoteJid}`
         const alreadyReplied = await redis.set(oohKey, '1', 'EX', 3600, 'NX').catch(() => null)
         const resolveResult = await resolveConversation(
           inbox.id,
@@ -306,14 +348,14 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
         }
 
         // Enviar auto-reply apenas se tem mensagem configurada e nao enviou recentemente
-        const shouldSendAutoReply = !!(agent.outOfHoursMessage && alreadyReplied !== null && inbox.metaAccessToken)
+        const shouldSendAutoReply = !!(resolvedAgent.outOfHoursMessage && alreadyReplied !== null && inbox.metaAccessToken)
         if (shouldSendAutoReply) {
           try {
             const oohIds = await sendMetaTextMessage(
               phoneNumberId,
               inbox.metaAccessToken!,
               message.from,
-              agent.outOfHoursMessage!,
+              resolvedAgent.outOfHoursMessage!,
             )
             await Promise.all(
               oohIds.map((sentId) => redis.set(`dedup:${sentId}`, '1', 'EX', 300).catch(() => {})),
@@ -472,7 +514,7 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
           `debounce:${conversationId}`,
           String(debounceTimestamp),
           'EX',
-          agent.debounceSeconds + 1,
+          resolvedAgent.debounceSeconds + 1,
         )
         .catch((error) => {
           console.warn('[meta-webhook] Redis debounce set failed:', { msgId: messageId, error })
@@ -481,12 +523,14 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
         'process-agent-message',
         {
           message: normalizedMessage,
-          agentId: agent.id,
+          agentId: resolvedAgent.agentId,
           conversationId,
           organizationId: orgId,
           debounceTimestamp,
+          requiresRouting: resolvedAgent.requiresRouting,
+          groupId: resolvedAgent.groupId,
         },
-        { delay: `${agent.debounceSeconds}s` },
+        { delay: `${resolvedAgent.debounceSeconds}s` },
       ),
       // Meta Cloud API nao suporta typing presence para business — pulado intencionalmente
     ])
@@ -497,8 +541,9 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
     logMsg('step:11 dispatched', 'PASS', {
       conversationId,
       inboxId: inbox.id,
-      agentId: agent.id,
-      debounceSeconds: agent.debounceSeconds,
+      agentId: resolvedAgent.agentId,
+      requiresRouting: resolvedAgent.requiresRouting,
+      debounceSeconds: resolvedAgent.debounceSeconds,
       totalMs: Date.now() - t0,
     })
   }

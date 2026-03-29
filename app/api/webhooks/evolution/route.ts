@@ -8,6 +8,7 @@ import { resolveConversation } from '@/_lib/evolution/resolve-conversation'
 import { sendWhatsAppMessage, sendPresence } from '@/_lib/evolution/send-message'
 import { checkBusinessHours } from '@/_lib/agent/check-business-hours'
 import { notifyOrgAdmins } from '@/_lib/notifications/notify-org-admins'
+import { resolveAgentForConversation } from '@/../trigger/lib/resolve-agent'
 import { tasks } from '@trigger.dev/sdk/v3'
 import type { processAgentMessage } from '@/../../trigger/process-agent-message'
 import type { EvolutionWebhookPayload, EvolutionConnectionUpdateData, NormalizedWhatsAppMessage } from '@/_lib/evolution/types'
@@ -128,6 +129,8 @@ export async function POST(req: Request) {
       autoCreateDeal: true,
       pipelineId: true,
       distributionUserIds: true,
+      agentId: true,
+      agentGroupId: true,
       agent: {
         select: {
           id: true,
@@ -139,6 +142,27 @@ export async function POST(req: Request) {
           outOfHoursMessage: true,
         },
       },
+      agentGroup: {
+        select: {
+          id: true,
+          isActive: true,
+          members: {
+            select: {
+              agent: {
+                select: {
+                  id: true,
+                  isActive: true,
+                  debounceSeconds: true,
+                  businessHoursEnabled: true,
+                  businessHoursTimezone: true,
+                  businessHoursConfig: true,
+                  outOfHoursMessage: true,
+                },
+              },
+            },
+          },
+        },
+      },
     },
   })
 
@@ -147,7 +171,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ignored: true, reason: 'no_inbox_found' })
   }
 
-  const agent = inbox.agent
   const orgId = inbox.organizationId
 
   const contactAssignContext = {
@@ -162,7 +185,7 @@ export async function POST(req: Request) {
         inboxId: inbox.id,
       }
     : undefined
-  log('step:3 inbox_lookup', 'PASS', { inboxId: inbox.id, orgId, inboxActive: inbox.isActive, hasAgent: !!agent, agentActive: agent?.isActive })
+  log('step:3 inbox_lookup', 'PASS', { inboxId: inbox.id, orgId, inboxActive: inbox.isActive, hasAgentId: !!inbox.agentId, hasGroupId: !!inbox.agentGroupId })
 
   // 5. Tratamento fromMe — checar dedup ANTES de qualquer DB call
   if (fromMe) {
@@ -239,9 +262,13 @@ export async function POST(req: Request) {
   }
   log('step:4 from_me_check', 'PASS')
 
-  // 6. Inbox desativada, agente ausente ou desativado — salvar mensagem mas não processar com IA
-  if (!inbox.isActive || !agent || !agent.isActive) {
-    log('step:5 agent_active_check', 'EXIT', { reason: !inbox.isActive ? 'inbox_inactive' : 'agent_inactive', inboxActive: inbox.isActive, hasAgent: !!agent, agentActive: agent?.isActive })
+  // 6. Inbox desativada, sem agente/grupo ou grupo/agente inativo — salvar mensagem mas não processar com IA
+  // Para inboxes com grupo, a verificação é lazy (resolveAgentForConversation é chamado depois).
+  // Aqui fazemos apenas o check rápido de inbox ativa e presença de agente/grupo configurado.
+  const hasAiConfigured = !!(inbox.agentId || inbox.agentGroupId)
+
+  if (!inbox.isActive || !hasAiConfigured) {
+    log('step:5 agent_active_check', 'EXIT', { reason: !inbox.isActive ? 'inbox_inactive' : 'no_ai_configured', inboxActive: inbox.isActive, hasAgentId: !!inbox.agentId, hasGroupId: !!inbox.agentGroupId })
 
     // Notificar OWNER/ADMIN quando inbox esta desativada (WhatsApp desconectado)
     // Anti-spam: verifica se ja existe notificacao nao lida com mesmo titulo nas ultimas 24h
@@ -335,20 +362,70 @@ export async function POST(req: Request) {
     log('step:5b inactive_done', 'EXIT', { conversationId: resolveResult.conversationId, saved: dedupResult !== null, ms: Date.now() - t0 })
     return NextResponse.json({ success: true, reason: 'agent_inactive_message_saved' })
   }
-  log('step:5 agent_active_check', 'PASS', { agentId: agent.id })
 
-  // 7. Business hours check — se fora do horário, salva mensagem mas não processa com IA
-  if (agent.businessHoursEnabled && agent.businessHoursConfig) {
+  // Resolver agente standalone OU grupo — suporta ambos os modos de operação
+  // Para grupos, precisamos da conversa para verificar o activeAgentId
+  const preResolveConv = inbox.agentGroupId
+    ? await db.conversation.findFirst({
+        where: { inboxId: inbox.id, remoteJid },
+        select: { id: true, activeAgentId: true },
+      })
+    : null
+
+  const resolvedAgent = await resolveAgentForConversation(inbox, preResolveConv)
+
+  if (!resolvedAgent || !resolvedAgent.isActive) {
+    log('step:5 agent_active_check', 'EXIT', { reason: 'agent_inactive_or_unresolved' })
+    // Salvar mensagem sem processar com IA (agente inativo ou sem workers no grupo)
+    const normalizedMsgInactive = parseEvolutionMessage(data, instanceName)
+    if (normalizedMsgInactive.type === 'text' && !normalizedMsgInactive.text) {
+      return NextResponse.json({ ignored: true, reason: 'inactive_empty' })
+    }
+    const resolveInactiveResult = await resolveConversation(
+      inbox.id, orgId, remoteJid,
+      normalizedMsgInactive.phoneNumber, normalizedMsgInactive.pushName,
+      dealContext, contactAssignContext, false,
+    )
+    if (resolveInactiveResult.isNew) {
+      revalidateTag(`pipeline:${orgId}`); revalidateTag(`deals:${orgId}`)
+      revalidateTag(`contacts:${orgId}`); revalidateTag(`dashboard:${orgId}`)
+    }
+    const dedupInactive = await redis.set(`dedup:${messageId}`, '1', 'EX', 300, 'NX').catch(() => 'redis_error' as const)
+    if (dedupInactive !== null) {
+      await db.message.create({
+        data: {
+          conversationId: resolveInactiveResult.conversationId,
+          role: 'user',
+          content: resolveMessageContent(normalizedMsgInactive) || '[mensagem não suportada]',
+          providerMessageId: messageId,
+          metadata: normalizedMsgInactive.media ? ({ media: normalizedMsgInactive.media } as unknown as Prisma.InputJsonValue) : undefined,
+        },
+      })
+      await db.conversation.update({
+        where: { id: resolveInactiveResult.conversationId },
+        data: { unreadCount: { increment: 1 }, lastMessageRole: 'user', nextFollowUpAt: null, followUpCount: 0 },
+      })
+      revalidateTag(`conversations:${orgId}`)
+      revalidateTag(`conversation-messages:${resolveInactiveResult.conversationId}`)
+    }
+    return NextResponse.json({ success: true, reason: 'agent_inactive_message_saved' })
+  }
+
+  log('step:5 agent_active_check', 'PASS', { agentId: resolvedAgent.agentId, requiresRouting: resolvedAgent.requiresRouting })
+
+  // 7. Business hours check — apenas para modo standalone ou worker já ativo
+  // Quando requiresRouting = true, o business hours check é feito pelo processAgentMessage após o routing
+  if (!resolvedAgent.requiresRouting && resolvedAgent.businessHoursEnabled && resolvedAgent.businessHoursConfig) {
     const isOpen = checkBusinessHours(
-      agent.businessHoursTimezone,
-      agent.businessHoursConfig as BusinessHoursConfig,
+      resolvedAgent.businessHoursTimezone,
+      resolvedAgent.businessHoursConfig as BusinessHoursConfig,
     )
 
     if (!isOpen) {
-      log('step:6 business_hours', 'EXIT', { reason: 'outside_business_hours', timezone: agent.businessHoursTimezone })
+      log('step:6 business_hours', 'EXIT', { reason: 'outside_business_hours', timezone: resolvedAgent.businessHoursTimezone })
 
       // Dedup para auto-reply: máximo 1 resposta por hora por contato
-      const oohKey = `ooh-reply:${agent.id}:${remoteJid}`
+      const oohKey = `ooh-reply:${resolvedAgent.agentId}:${remoteJid}`
       const alreadyReplied = await redis
         .set(oohKey, '1', 'EX', 3600, 'NX')
         .catch(() => null)
@@ -411,10 +488,10 @@ export async function POST(req: Request) {
       }
 
       // Enviar auto-reply apenas se tem mensagem configurada e não enviou recentemente
-      const sentAutoReply = !!(agent.outOfHoursMessage && alreadyReplied !== null)
+      const sentAutoReply = !!(resolvedAgent.outOfHoursMessage && alreadyReplied !== null)
       if (sentAutoReply) {
         try {
-          const oohIds = await sendWhatsAppMessage(instanceName, remoteJid, agent.outOfHoursMessage!)
+          const oohIds = await sendWhatsAppMessage(instanceName, remoteJid, resolvedAgent.outOfHoursMessage!)
           await Promise.all(
             oohIds.map((sentId) =>
               redis.set(`dedup:${sentId}`, '1', 'EX', 300).catch(() => {}),
@@ -429,9 +506,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ ignored: true, reason: 'outside_business_hours' })
     }
 
-    log('step:6 business_hours', 'PASS', { timezone: agent.businessHoursTimezone })
+    log('step:6 business_hours', 'PASS', { timezone: resolvedAgent.businessHoursTimezone })
   } else {
-    log('step:6 business_hours', 'PASS', { reason: 'not_configured' })
+    log('step:6 business_hours', 'PASS', { reason: resolvedAgent.requiresRouting ? 'deferred_to_router' : 'not_configured' })
   }
 
   // 8. Normalizar mensagem (sync — antes do paralelo pois precisamos do resultado)
@@ -579,7 +656,7 @@ export async function POST(req: Request) {
         `debounce:${conversationId}`,
         String(debounceTimestamp),
         'EX',
-        agent.debounceSeconds + 1,
+        resolvedAgent.debounceSeconds + 1,
       )
       .catch((error) => {
         console.warn('[webhook] Redis debounce set failed:', { msgId: messageId, error })
@@ -588,12 +665,14 @@ export async function POST(req: Request) {
       'process-agent-message',
       {
         message: normalizedMessage,
-        agentId: agent.id,
+        agentId: resolvedAgent.agentId,
         conversationId,
         organizationId: orgId,
         debounceTimestamp,
+        requiresRouting: resolvedAgent.requiresRouting,
+        groupId: resolvedAgent.groupId,
       },
-      { delay: `${agent.debounceSeconds}s` },
+      { delay: `${resolvedAgent.debounceSeconds}s` },
     ),
     // "Digitando..." imediato — usuário vê feedback antes do debounce expirar
     sendPresence(instanceName, remoteJid, 'composing'),
@@ -606,8 +685,9 @@ export async function POST(req: Request) {
   log('step:10 dispatched', 'PASS', {
     conversationId,
     inboxId: inbox.id,
-    agentId: agent.id,
-    debounceSeconds: agent.debounceSeconds,
+    agentId: resolvedAgent.agentId,
+    requiresRouting: resolvedAgent.requiresRouting,
+    debounceSeconds: resolvedAgent.debounceSeconds,
     totalMs: Date.now() - t0,
   })
 

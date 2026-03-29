@@ -8,6 +8,7 @@ import { sendZApiTextMessage } from '@/_lib/zapi/send-message'
 import { resolveConversation } from '@/_lib/evolution/resolve-conversation'
 import { checkBusinessHours } from '@/_lib/agent/check-business-hours'
 import { notifyOrgAdmins } from '@/_lib/notifications/notify-org-admins'
+import { resolveAgentForConversation } from '@/../trigger/lib/resolve-agent'
 import { tasks } from '@trigger.dev/sdk/v3'
 import type { processAgentMessage } from '@/../../trigger/process-agent-message'
 import type { ZApiWebhookPayload, ZApiConfig } from '@/_lib/zapi/types'
@@ -64,6 +65,8 @@ export async function POST(req: Request) {
       zapiInstanceId: true,
       zapiToken: true,
       zapiClientToken: true,
+      agentId: true,
+      agentGroupId: true,
       agent: {
         select: {
           id: true,
@@ -75,6 +78,27 @@ export async function POST(req: Request) {
           outOfHoursMessage: true,
         },
       },
+      agentGroup: {
+        select: {
+          id: true,
+          isActive: true,
+          members: {
+            select: {
+              agent: {
+                select: {
+                  id: true,
+                  isActive: true,
+                  debounceSeconds: true,
+                  businessHoursEnabled: true,
+                  businessHoursTimezone: true,
+                  businessHoursConfig: true,
+                  outOfHoursMessage: true,
+                },
+              },
+            },
+          },
+        },
+      },
     },
   })
 
@@ -83,7 +107,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ignored: true, reason: 'no_inbox_found' })
   }
 
-  const agent = inbox.agent
   const orgId = inbox.organizationId
 
   // Montar config Z-API para envio de auto-reply (OOH)
@@ -104,7 +127,7 @@ export async function POST(req: Request) {
         inboxId: inbox.id,
       }
     : undefined
-  log('step:3 inbox_lookup', 'PASS', { inboxId: inbox.id, orgId, inboxActive: inbox.isActive, hasAgent: !!agent, agentActive: agent?.isActive })
+  log('step:3 inbox_lookup', 'PASS', { inboxId: inbox.id, orgId, inboxActive: inbox.isActive, hasAgentId: !!inbox.agentId, hasGroupId: !!inbox.agentGroupId })
 
   // remoteJid normalizado para consistencia com Evolution/Meta
   const remoteJid = `${payload.phone}@s.whatsapp.net`
@@ -181,9 +204,13 @@ export async function POST(req: Request) {
   }
   log('step:4 from_me_check', 'PASS')
 
-  // 6. Inbox desativada, agente ausente ou desativado — salvar mensagem mas nao processar com IA
-  if (!inbox.isActive || !agent || !agent.isActive) {
-    log('step:5 agent_active_check', 'EXIT', { reason: !inbox.isActive ? 'inbox_inactive' : 'agent_inactive' })
+  // 6. Inbox desativada ou sem agente/grupo configurado — salvar mensagem mas nao processar com IA
+  // Para inboxes com grupo, a verificacao lazy e feita via resolveAgentForConversation mais adiante.
+  // Aqui fazemos apenas o check rapido de inbox ativa e presenca de agente/grupo configurado.
+  const hasAiConfigured = !!(inbox.agentId || inbox.agentGroupId)
+
+  if (!inbox.isActive || !hasAiConfigured) {
+    log('step:5 agent_active_check', 'EXIT', { reason: !inbox.isActive ? 'inbox_inactive' : 'no_ai_configured', inboxActive: inbox.isActive, hasAgentId: !!inbox.agentId, hasGroupId: !!inbox.agentGroupId })
 
     if (!inbox.isActive) {
       const recentDisconnectedNotification = await db.notification.findFirst({
@@ -274,19 +301,69 @@ export async function POST(req: Request) {
     log('step:5b inactive_done', 'EXIT', { conversationId: resolveResult.conversationId, saved: dedupResult !== null, ms: Date.now() - t0 })
     return NextResponse.json({ success: true, reason: 'agent_inactive_message_saved' })
   }
-  log('step:5 agent_active_check', 'PASS', { agentId: agent.id })
 
-  // 7. Business hours check
-  if (agent.businessHoursEnabled && agent.businessHoursConfig) {
+  // Resolver agente standalone OU grupo — suporta ambos os modos de operacao
+  // Para grupos, precisamos da conversa para verificar o activeAgentId
+  const preResolveConv = inbox.agentGroupId
+    ? await db.conversation.findFirst({
+        where: { inboxId: inbox.id, remoteJid },
+        select: { id: true, activeAgentId: true },
+      })
+    : null
+
+  const resolvedAgent = await resolveAgentForConversation(inbox, preResolveConv)
+
+  if (!resolvedAgent || !resolvedAgent.isActive) {
+    log('step:5 agent_active_check', 'EXIT', { reason: 'agent_inactive_or_unresolved' })
+    // Salvar mensagem sem processar com IA (agente inativo ou sem workers no grupo)
+    const normalizedMsgInactive = parseZApiMessage(payload)
+    if (normalizedMsgInactive.type === 'text' && !normalizedMsgInactive.text) {
+      return NextResponse.json({ ignored: true, reason: 'inactive_empty' })
+    }
+    const resolveInactiveResult = await resolveConversation(
+      inbox.id, orgId, remoteJid,
+      normalizedMsgInactive.phoneNumber, normalizedMsgInactive.pushName,
+      dealContext, contactAssignContext, false,
+    )
+    if (resolveInactiveResult.isNew) {
+      revalidateTag(`pipeline:${orgId}`); revalidateTag(`deals:${orgId}`)
+      revalidateTag(`contacts:${orgId}`); revalidateTag(`dashboard:${orgId}`)
+    }
+    const dedupInactive = await redis.set(`dedup:${messageId}`, '1', 'EX', 300, 'NX').catch(() => 'redis_error' as const)
+    if (dedupInactive !== null) {
+      await db.message.create({
+        data: {
+          conversationId: resolveInactiveResult.conversationId,
+          role: 'user',
+          content: resolveMessageContent(normalizedMsgInactive) || '[mensagem nao suportada]',
+          providerMessageId: messageId,
+          metadata: normalizedMsgInactive.media ? ({ media: normalizedMsgInactive.media } as unknown as Prisma.InputJsonValue) : undefined,
+        },
+      })
+      await db.conversation.update({
+        where: { id: resolveInactiveResult.conversationId },
+        data: { unreadCount: { increment: 1 }, lastMessageRole: 'user', nextFollowUpAt: null, followUpCount: 0 },
+      })
+      revalidateTag(`conversations:${orgId}`)
+      revalidateTag(`conversation-messages:${resolveInactiveResult.conversationId}`)
+    }
+    return NextResponse.json({ success: true, reason: 'agent_inactive_message_saved' })
+  }
+
+  log('step:5 agent_active_check', 'PASS', { agentId: resolvedAgent.agentId, requiresRouting: resolvedAgent.requiresRouting })
+
+  // 7. Business hours check — apenas para modo standalone ou worker ja ativo
+  // Quando requiresRouting = true, o business hours check e feito pelo processAgentMessage apos o routing
+  if (!resolvedAgent.requiresRouting && resolvedAgent.businessHoursEnabled && resolvedAgent.businessHoursConfig) {
     const isOpen = checkBusinessHours(
-      agent.businessHoursTimezone,
-      agent.businessHoursConfig as BusinessHoursConfig,
+      resolvedAgent.businessHoursTimezone,
+      resolvedAgent.businessHoursConfig as BusinessHoursConfig,
     )
 
     if (!isOpen) {
-      log('step:6 business_hours', 'EXIT', { reason: 'outside_business_hours', timezone: agent.businessHoursTimezone })
+      log('step:6 business_hours', 'EXIT', { reason: 'outside_business_hours', timezone: resolvedAgent.businessHoursTimezone })
 
-      const oohKey = `ooh-reply:${agent.id}:${remoteJid}`
+      const oohKey = `ooh-reply:${resolvedAgent.agentId}:${remoteJid}`
       const alreadyReplied = await redis
         .set(oohKey, '1', 'EX', 3600, 'NX')
         .catch(() => null)
@@ -341,15 +418,16 @@ export async function POST(req: Request) {
             lastMessageRole: 'user',
             nextFollowUpAt: null,
             followUpCount: 0,
-            },
+          },
         })
       }
 
-      // Enviar auto-reply via Z-API
-      const sentAutoReply = !!(agent.outOfHoursMessage && alreadyReplied !== null && zapiConfig)
-      if (sentAutoReply) {
+      // Enviar auto-reply via Z-API (apenas se tem mensagem, nao enviou recentemente e tem config)
+      const shouldSendZApiAutoReply = !!(resolvedAgent.outOfHoursMessage && alreadyReplied !== null && zapiConfig)
+      const sentAutoReply = shouldSendZApiAutoReply
+      if (shouldSendZApiAutoReply && zapiConfig && resolvedAgent.outOfHoursMessage) {
         try {
-          const oohIds = await sendZApiTextMessage(zapiConfig!, payload.phone, agent.outOfHoursMessage!)
+          const oohIds = await sendZApiTextMessage(zapiConfig, payload.phone, resolvedAgent.outOfHoursMessage)
           await Promise.all(
             oohIds.map((sentId) =>
               redis.set(`dedup:${sentId}`, '1', 'EX', 300).catch(() => {}),
@@ -364,9 +442,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ ignored: true, reason: 'outside_business_hours' })
     }
 
-    log('step:6 business_hours', 'PASS', { timezone: agent.businessHoursTimezone })
+    log('step:6 business_hours', 'PASS', { timezone: resolvedAgent.businessHoursTimezone })
   } else {
-    log('step:6 business_hours', 'PASS', { reason: 'not_configured' })
+    log('step:6 business_hours', 'PASS', { reason: resolvedAgent.requiresRouting ? 'deferred_to_router' : 'not_configured' })
   }
 
   // 8. Normalizar mensagem
@@ -510,7 +588,7 @@ export async function POST(req: Request) {
         `debounce:${conversationId}`,
         String(debounceTimestamp),
         'EX',
-        agent.debounceSeconds + 1,
+        resolvedAgent.debounceSeconds + 1,
       )
       .catch((error) => {
         console.warn('[webhook:zapi] Redis debounce set failed:', { msgId: messageId, error })
@@ -519,12 +597,14 @@ export async function POST(req: Request) {
       'process-agent-message',
       {
         message: normalizedMessage,
-        agentId: agent.id,
+        agentId: resolvedAgent.agentId,
         conversationId,
         organizationId: orgId,
         debounceTimestamp,
+        requiresRouting: resolvedAgent.requiresRouting,
+        groupId: resolvedAgent.groupId,
       },
-      { delay: `${agent.debounceSeconds}s` },
+      { delay: `${resolvedAgent.debounceSeconds}s` },
     ),
     // Z-API nao tem API documentada de typing presence — skip
   ])
@@ -535,8 +615,9 @@ export async function POST(req: Request) {
   log('step:10 dispatched', 'PASS', {
     conversationId,
     inboxId: inbox.id,
-    agentId: agent.id,
-    debounceSeconds: agent.debounceSeconds,
+    agentId: resolvedAgent.agentId,
+    requiresRouting: resolvedAgent.requiresRouting,
+    debounceSeconds: resolvedAgent.debounceSeconds,
     totalMs: Date.now() - t0,
   })
 

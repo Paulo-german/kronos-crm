@@ -12,6 +12,11 @@ import { createUpdateEventTool } from './update-event'
 import { createSearchProductsTool } from './search-products'
 import { createSendProductMediaTool } from './send-product-media'
 import { createSendMediaTool } from './send-media'
+import { createTransferToAgentTool } from './transfer-to-agent'
+import type { GroupToolConfig } from './transfer-to-agent'
+
+// Re-export para uso no processAgentMessage
+export type { GroupToolConfig }
 
 // Flags globais para ativar tools que não vêm de step actions
 export interface GlobalToolFlags {
@@ -37,6 +42,7 @@ export function buildToolSet(
   ctx: ToolContext,
   stepActions: StepAction[],
   globalFlags?: GlobalToolFlags,
+  groupConfig?: GroupToolConfig,
 ) {
   const tools: Record<
     string,
@@ -48,6 +54,7 @@ export function buildToolSet(
     | ReturnType<typeof createSearchProductsTool>
     | ReturnType<typeof createSendProductMediaTool>
     | ReturnType<typeof createSendMediaTool>
+    | ReturnType<typeof createTransferToAgentTool>
   > = {}
 
   for (const toolName of toolsEnabled) {
@@ -116,6 +123,12 @@ export function buildToolSet(
   // Tool condicional — ativada quando o agente tem knowledge base com arquivos processados
   if (globalFlags?.hasKnowledgeBase) {
     tools['send_media'] = createSendMediaTool(ctx)
+  }
+
+  // Tool de transferência entre agentes — injetada quando o worker faz parte de um grupo
+  // com mais de 1 worker ativo (transferir para si mesmo seria inútil)
+  if (groupConfig && groupConfig.workers.length > 1) {
+    tools['transfer_to_agent'] = createTransferToAgentTool(ctx, groupConfig)
   }
 
   return Object.keys(tools).length > 0 ? tools : undefined

@@ -226,6 +226,12 @@ export const TOOL_PROMPT_DESCRIPTIONS: Record<string, { label: string; descripti
       'Para imagens (.jpg, .png, .webp), videos (.mp4) e documentos (.pdf), informe a URL. ' +
       'Para links de redes sociais (Instagram, YouTube, etc.), inclua o link na mensagem de texto — nao use send_media.',
   },
+  transfer_to_agent: {
+    label: 'Transferir para Agente',
+    description:
+      'Transfere a conversa para outro agente especializado da equipe. ' +
+      'Use quando perceber que o assunto esta fora do seu escopo de atuacao ou quando o cliente solicitar outro tipo de atendimento.',
+  },
 }
 
 export function compileToolsSection(toolsEnabled: string[]): string | null {
@@ -244,6 +250,18 @@ export function compileToolsSection(toolsEnabled: string[]): string | null {
   return `## Ferramentas Disponíveis\n\n${lines.join('\n').trimEnd()}`
 }
 
+// Contexto do grupo para injetar seção de transferência no prompt
+export interface GroupPromptContext {
+  groupId: string
+  workers: Array<{
+    agentId: string
+    name: string
+    scopeLabel: string
+  }>
+  // ID do agente atual — para filtrar a si mesmo da lista de destinos
+  currentAgentId: string
+}
+
 export interface BuildSystemPromptResult {
   systemPrompt: string
   modelId: string
@@ -259,11 +277,43 @@ export interface BuildSystemPromptResult {
 }
 
 /**
+ * Monta a seção de transferência entre agentes quando o worker faz parte de um grupo.
+ * A seção lista apenas os outros workers (exclui o agente atual).
+ */
+function buildGroupTransferSection(groupCtx: GroupPromptContext): string | null {
+  const otherWorkers = groupCtx.workers.filter(
+    (worker) => worker.agentId !== groupCtx.currentAgentId,
+  )
+
+  if (otherWorkers.length === 0) return null
+
+  const workerLines = otherWorkers
+    .map((worker) => `- "${worker.name}" — ${worker.scopeLabel}`)
+    .join('\n')
+
+  return [
+    '## Transferência entre Agentes',
+    '',
+    'Você faz parte de uma equipe de agentes especializados. Se a conversa sair do seu escopo, use `transfer_to_agent` para direcionar ao agente correto.',
+    '',
+    'Agentes disponíveis na equipe:',
+    workerLines,
+    '',
+    'Use `transfer_to_agent` quando:',
+    '- O cliente desejar resolver um assunto fora da sua área de especialização',
+    '- O cliente solicitar explicitamente outro tipo de atendimento',
+    '',
+    'IMPORTANTE: Ao transferir, informe ao cliente que ele será direcionado para o especialista adequado.',
+  ].join('\n')
+}
+
+/**
  * Constrói o system prompt dinâmico concatenando:
  * 0. Contexto temporal (data/hora atual em SP)
  * 1. Persona base (agent.systemPrompt)
  * 1b. Regras críticas de comportamento
  * 2. Ferramentas disponíveis
+ * 2b. Seção de transferência entre agentes (apenas quando worker faz parte de grupo)
  * 3. Processo de atendimento (etapas com ações imperativas)
  * 4. Dados do contato (nome, telefone, email, cargo)
  * 5. Dados do negócio (deal vinculado, se houver)
@@ -274,6 +324,7 @@ export async function buildSystemPrompt(
   agentId: string,
   conversationId: string,
   organizationId: string,
+  groupContext?: GroupPromptContext,
 ): Promise<BuildSystemPromptResult> {
   const now = new Date()
 
@@ -504,6 +555,14 @@ export async function buildSystemPrompt(
   const toolsSection = compileToolsSection(effectiveTools)
   if (toolsSection) {
     parts.push(`\n${toolsSection}`)
+  }
+
+  // 2b. Seção de transferência entre agentes (apenas quando worker faz parte de grupo com mais workers)
+  if (groupContext) {
+    const transferSection = buildGroupTransferSection(groupContext)
+    if (transferSection) {
+      parts.push(`\n${transferSection}`)
+    }
   }
 
   // 3. Processo de atendimento (etapas com ações imperativas)

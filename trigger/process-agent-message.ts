@@ -16,6 +16,11 @@ import {
 import { sendMetaTextMessage } from '@/_lib/meta/send-meta-message'
 import { buildSystemPrompt } from './build-system-prompt'
 import { buildToolSet } from './tools'
+import { routeConversation } from './lib/route-conversation'
+import { checkBusinessHours } from '@/_lib/agent/check-business-hours'
+import type { BusinessHoursConfig } from '@/_actions/agent/update-agent/schema'
+import type { GroupPromptContext } from './build-system-prompt'
+import type { GroupToolConfig } from './tools'
 import { langfuseTracer, flushLangfuse } from './lib/langfuse'
 import {
   createConversationEvent,
@@ -91,6 +96,9 @@ export interface ProcessAgentMessagePayload {
   conversationId: string
   organizationId: string
   debounceTimestamp: number
+  // Campos adicionais para modo de grupo (optional para manter backward compatibility)
+  requiresRouting?: boolean // true = precisa rodar o router antes de processar
+  groupId?: string | null // ID do grupo (para buscar config do router + workers)
 }
 
 export const processAgentMessage = task({
@@ -107,6 +115,8 @@ export const processAgentMessage = task({
           conversationId,
           organizationId,
           debounceTimestamp,
+          requiresRouting,
+          groupId,
         } = payload
 
         // Helper de log — sempre inclui msgId + conversationId para rastreio
@@ -123,13 +133,10 @@ export const processAgentMessage = task({
           organizationId,
         })
 
-        // Rastreador de execução — acumula steps em memória, persiste batch no final
-        const tracker = createExecutionTracker({
-          agentId,
-          organizationId,
-          conversationId,
-          triggerMessageId: message.messageId,
-        })
+        // effectiveAgentId começa como o agentId do payload.
+        // No modo de grupo com requiresRouting = true, é sobrescrito pelo worker resolvido.
+        // O tracker do worker é criado APÓS o routing para usar o ID correto.
+        let effectiveAgentId = agentId
 
         updateActiveTrace({
           sessionId: conversationId,
@@ -139,6 +146,11 @@ export const processAgentMessage = task({
         })
 
         const taskStartMs = Date.now()
+
+        // Flags de steps pré-routing para injetar no tracker após sua criação
+        // O tracker precisa ser criado com effectiveAgentId (resolvido pelo router)
+        let debounceCheckPassed = false
+        let debounceCheckWarning: string | undefined
 
         try {
           // -----------------------------------------------------------------------
@@ -157,25 +169,17 @@ export const processAgentMessage = task({
                 myTimestamp: debounceTimestamp,
                 currentTimestamp,
               })
-              tracker.addStep({
-                type: 'DEBOUNCE_CHECK',
-                status: 'SKIPPED',
-                output: { reason: 'newer_message_exists' },
-              })
-              await tracker.skip('debounce')
+              // Tracker ainda não existe — skip direto sem registrar
               return { skipped: true, reason: 'debounce' }
             }
             log('step:1 debounce_check', 'PASS')
-            tracker.addStep({ type: 'DEBOUNCE_CHECK', status: 'PASSED' })
+            debounceCheckPassed = true
           } catch (error) {
             log('step:1 debounce_check', 'PASS', {
               warning: 'redis_failed_continuing',
             })
-            tracker.addStep({
-              type: 'DEBOUNCE_CHECK',
-              status: 'PASSED',
-              output: { warning: 'redis_failed_continuing' },
-            })
+            debounceCheckPassed = true
+            debounceCheckWarning = 'redis_failed_continuing'
             logger.warn('Redis debounce check failed, continuing', {
               ...ctx,
               error,
@@ -185,6 +189,132 @@ export const processAgentMessage = task({
           // -----------------------------------------------------------------------
           // 2. (Credit check movido para após context loading — precisa do modelId)
           // -----------------------------------------------------------------------
+
+          // -----------------------------------------------------------------------
+          // 1b. Router Classification — resolve worker quando inbox usa AgentGroup
+          // Executa apenas quando requiresRouting = true (conversa nova ou sem worker ativo)
+          // -----------------------------------------------------------------------
+          if (requiresRouting && groupId) {
+            log('step:1b router_classification', 'PASS', { groupId })
+
+            // Carregar histórico da conversa para o router classificar o contexto completo
+            const routerMessageHistory = await db.message.findMany({
+              where: { conversationId, isArchived: false },
+              orderBy: { createdAt: 'asc' },
+              take: 50,
+              select: { role: true, content: true },
+            })
+
+            let routerResult: Awaited<ReturnType<typeof routeConversation>>
+
+            try {
+              routerResult = await routeConversation({
+                groupId,
+                conversationId,
+                organizationId,
+                messageHistory: routerMessageHistory,
+              })
+            } catch (routerError) {
+              const isNoCredits =
+                routerError instanceof Error && routerError.message === 'NO_CREDITS'
+
+              log('step:1b router_classification', 'EXIT', {
+                reason: isNoCredits ? 'no_credits_for_router' : 'router_error',
+                error: routerError instanceof Error ? routerError.message : String(routerError),
+              })
+              // Tracker ainda não criado — retornar direto
+              return { skipped: true, reason: 'router_failed' }
+            }
+
+            if (!routerResult) {
+              log('step:1b router_classification', 'EXIT', {
+                reason: 'no_suitable_worker',
+              })
+              // Tracker ainda não criado — retornar direto
+              return { skipped: true, reason: 'no_suitable_worker' }
+            }
+
+            effectiveAgentId = routerResult.targetAgentId
+
+            // Persistir worker ativo na conversa para próximas mensagens
+            await db.conversation.update({
+              where: { id: conversationId },
+              data: { activeAgentId: effectiveAgentId },
+            })
+
+            // Registrar evento informativo visível ao usuário
+            await createConversationEvent({
+              conversationId,
+              type: 'INFO',
+              content: `Agente "${routerResult.workerName}" atribuído à conversa`,
+              metadata: {
+                subtype: 'ROUTER_ASSIGNED',
+                targetAgentId: routerResult.targetAgentId,
+                confidence: routerResult.confidence,
+                reasoning: routerResult.reasoning,
+              },
+            })
+
+            log('step:1b router_classified', 'PASS', {
+              targetAgentId: routerResult.targetAgentId,
+              workerName: routerResult.workerName,
+              confidence: routerResult.confidence,
+            })
+
+            // Business hours check DO WORKER resolvido pelo router
+            // O router opera 24h, mas o worker individual pode ter restrições de horário
+            const resolvedWorker = await db.agent.findUnique({
+              where: { id: effectiveAgentId },
+              select: {
+                businessHoursEnabled: true,
+                businessHoursTimezone: true,
+                businessHoursConfig: true,
+                outOfHoursMessage: true,
+              },
+            })
+
+            if (resolvedWorker?.businessHoursEnabled && resolvedWorker.businessHoursConfig) {
+              const isWithinHours = checkBusinessHours(
+                resolvedWorker.businessHoursTimezone,
+                resolvedWorker.businessHoursConfig as BusinessHoursConfig,
+              )
+
+              if (!isWithinHours) {
+                log('step:1b router_worker_ooh', 'EXIT', {
+                  reason: 'outside_business_hours',
+                  workerId: effectiveAgentId,
+                })
+                // Tracker ainda não criado — retornar direto
+                return { skipped: true, reason: 'outside_business_hours' }
+              }
+            }
+          }
+
+          // Criar tracker com effectiveAgentId (já resolvido pelo router se necessário)
+          // e injetar os steps pré-routing acumulados até aqui
+          const tracker = createExecutionTracker({
+            agentId: effectiveAgentId,
+            organizationId,
+            conversationId,
+            triggerMessageId: message.messageId,
+          })
+
+          if (debounceCheckPassed) {
+            tracker.addStep({
+              type: 'DEBOUNCE_CHECK',
+              status: 'PASSED',
+              output: debounceCheckWarning ? { warning: debounceCheckWarning } : undefined,
+            })
+          }
+
+          // Se houve routing, registrar o resultado no tracker do worker
+          if (requiresRouting && groupId && effectiveAgentId !== agentId) {
+            tracker.addStep({
+              type: 'ROUTER_CLASSIFICATION',
+              status: 'PASSED',
+              output: { resolvedWorkerId: effectiveAgentId },
+            })
+          }
 
           // -----------------------------------------------------------------------
           // 2b. Se áudio, transcrever com Whisper
@@ -455,9 +585,42 @@ export const processAgentMessage = task({
           // -----------------------------------------------------------------------
           log('step:4 context_loading', 'PASS')
 
+          // Montar contexto do grupo para injetar seção de transferência no prompt
+          // Só relevante quando o agente faz parte de um grupo com múltiplos workers
+          let groupPromptContext: GroupPromptContext | undefined
+          if (groupId) {
+            const groupData = await db.agentGroup.findUnique({
+              where: { id: groupId },
+              select: {
+                members: {
+                  include: {
+                    agent: { select: { id: true, name: true, isActive: true } },
+                  },
+                },
+              },
+            })
+
+            if (groupData) {
+              // Dentro de grupo, apenas member.isActive controla participação (agent.isActive é isolado)
+              const activeGroupWorkers = groupData.members
+                .filter((member) => member.isActive)
+                .map((member) => ({
+                  agentId: member.agentId,
+                  name: member.agent.name,
+                  scopeLabel: member.scopeLabel,
+                }))
+
+              groupPromptContext = {
+                groupId,
+                workers: activeGroupWorkers,
+                currentAgentId: effectiveAgentId,
+              }
+            }
+          }
+
           const [promptContext, messageHistory, conversation] =
             await Promise.all([
-              buildSystemPrompt(agentId, conversationId, organizationId),
+              buildSystemPrompt(effectiveAgentId, conversationId, organizationId, groupPromptContext),
               db.message.findMany({
                 where: {
                   conversationId,
@@ -510,7 +673,7 @@ export const processAgentMessage = task({
 
           updateActiveTrace({
             metadata: {
-              agentId,
+              agentId: effectiveAgentId,
               contactName: promptContext.contactName,
               model: promptContext.modelId,
               messageType: message.type,
@@ -566,7 +729,7 @@ export const processAgentMessage = task({
             estimatedCost,
             'Débito otimista — agente IA',
             {
-              agentId,
+              agentId: effectiveAgentId,
               conversationId,
               model: promptContext.modelId,
               estimatedInputTokens,
@@ -663,7 +826,7 @@ export const processAgentMessage = task({
           // -----------------------------------------------------------------------
           const toolContext: ToolContext = {
             organizationId,
-            agentId,
+            agentId: effectiveAgentId,
             agentName: promptContext.agentName,
             conversationId,
             contactId: conversation.contactId,
@@ -675,6 +838,15 @@ export const processAgentMessage = task({
 
           const effectiveToolsEnabled = promptContext.toolsEnabled
 
+          // Montar config do grupo para a tool transfer_to_agent
+          const groupToolConfig: GroupToolConfig | undefined =
+            groupPromptContext && groupPromptContext.workers.length > 1
+              ? {
+                  groupId: groupPromptContext.groupId,
+                  workers: groupPromptContext.workers,
+                }
+              : undefined
+
           const tools = buildToolSet(
             effectiveToolsEnabled,
             toolContext,
@@ -683,6 +855,7 @@ export const processAgentMessage = task({
               hasActiveProductsWithMedia: promptContext.hasActiveProductsWithMedia,
               hasKnowledgeBase: promptContext.hasKnowledgeBase,
             },
+            groupToolConfig,
           )
 
           // -----------------------------------------------------------------------
@@ -752,7 +925,7 @@ export const processAgentMessage = task({
               estimatedCost,
               'Refund — erro na chamada LLM',
               {
-                agentId,
+                agentId: effectiveAgentId,
                 conversationId,
                 model: promptContext.modelId,
                 estimatedCost,
@@ -855,7 +1028,7 @@ export const processAgentMessage = task({
                 emptyRefund,
                 'Refund — LLM empty response',
                 {
-                  agentId,
+                  agentId: effectiveAgentId,
                   conversationId,
                   model: promptContext.modelId,
                   estimatedCost,
@@ -983,7 +1156,7 @@ export const processAgentMessage = task({
                 pausedRefund,
                 'Refund — IA pausada durante geração',
                 {
-                  agentId,
+                  agentId: effectiveAgentId,
                   conversationId,
                   model: promptContext.modelId,
                   estimatedCost,
@@ -1059,7 +1232,7 @@ export const processAgentMessage = task({
               creditDiff,
               'Ajuste pós-LLM — custo real menor que estimado',
               {
-                agentId,
+                agentId: effectiveAgentId,
                 conversationId,
                 model: promptContext.modelId,
                 estimatedCost,
@@ -1081,7 +1254,7 @@ export const processAgentMessage = task({
               -creditDiff,
               'Ajuste pós-LLM — custo real maior que estimado',
               {
-                agentId,
+                agentId: effectiveAgentId,
                 conversationId,
                 model: promptContext.modelId,
                 estimatedCost,
@@ -1212,7 +1385,7 @@ export const processAgentMessage = task({
               )
             } else {
               const followUps = await getFollowUpsForStep(
-                agentId,
+                effectiveAgentId,
                 conversationForFup.currentStepOrder,
               )
 
@@ -1332,11 +1505,16 @@ tasks.onFailure(async ({ payload, error }) => {
   })
 
   // Criar execution FAILED standalone — sem steps (tracker em memória se perdeu nos retries)
+  // agentId pode ser '' no modo de grupo com requiresRouting=true — usar null nesses casos
+  const failureAgentId = agentId || null
+  const failureGroupId = (payload as ProcessAgentMessagePayload).groupId ?? null
+
   try {
     await db.agentExecution.create({
       data: {
         id: crypto.randomUUID(),
-        agentId,
+        agentId: failureAgentId,
+        agentGroupId: failureGroupId,
         organizationId,
         conversationId,
         triggerMessageId: message.messageId,

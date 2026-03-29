@@ -44,6 +44,7 @@ interface ConvInbox {
   zapiToken: string | null
   zapiClientToken: string | null
   agentId: string | null
+  agentGroupId: string | null
   agent: ConvInboxAgent | null
 }
 
@@ -54,6 +55,8 @@ interface ConvForCron {
   dealId: string | null
   followUpCount: number
   currentStepOrder: number
+  // Necessário para resolver o worker ativo quando inbox usa agentGroupId
+  activeAgentId: string | null
   inbox: ConvInbox
 }
 
@@ -199,12 +202,13 @@ interface ExhaustedConfig {
   specificPhone?: string
 }
 
-// Executar ação configurada quando todos os follow-ups de um agente são esgotados
-// No modelo flat, exhaustedAction/Config ficam no Agent (não mais no grupo)
-async function executeExhaustedAction(conv: ConvForCron, now: Date): Promise<void> {
-  const agent = conv.inbox.agent
-  if (!agent) return
-
+// Executar ação configurada quando todos os follow-ups de um agente são esgotados.
+// Recebe o agent resolvido explicitamente para suportar tanto modo standalone quanto grupo.
+async function executeExhaustedAction(
+  conv: ConvForCron,
+  now: Date,
+  agent: ConvInboxAgent,
+): Promise<void> {
   const exhaustedAction = agent.followUpExhaustedAction
   const config = agent.followUpExhaustedConfig as ExhaustedConfig | null
 
@@ -279,6 +283,10 @@ export const followUpCron = schedules.task({
       where: {
         nextFollowUpAt: { lte: now },
         aiPaused: false,
+        OR: [
+          { inbox: { agentId: { not: null }, agent: { isActive: true } } },
+          { inbox: { agentGroupId: { not: null }, agentGroup: { isActive: true } } },
+        ],
       },
       select: {
         id: true,
@@ -287,6 +295,8 @@ export const followUpCron = schedules.task({
         dealId: true,
         followUpCount: true,
         currentStepOrder: true,
+        // Necessário para resolver o worker ativo em conversas que usam agentGroupId
+        activeAgentId: true,
         inbox: {
           select: {
             id: true,
@@ -299,6 +309,7 @@ export const followUpCron = schedules.task({
             zapiToken: true,
             zapiClientToken: true,
             agentId: true,
+            agentGroupId: true,
             agent: {
               select: {
                 id: true,
@@ -328,9 +339,9 @@ export const followUpCron = schedules.task({
 
     for (const conv of conversations) {
       try {
-        // Validar: inbox ativa, remoteJid disponível e agente existe
-        if (!conv.inbox.isActive || !conv.remoteJid || !conv.inbox.agentId || !conv.inbox.agent) {
-          // Limpar estado completo — inbox inativa ou sem agente não pode processar FUPs
+        // Validar: inbox ativa e remoteJid disponível
+        if (!conv.inbox.isActive || !conv.remoteJid) {
+          // Limpar estado completo — inbox inativa não pode processar FUPs
           await db.conversation.update({
             where: { id: conv.id },
             data: { nextFollowUpAt: null, followUpCount: 0 },
@@ -339,7 +350,53 @@ export const followUpCron = schedules.task({
           continue
         }
 
-        const agentId = conv.inbox.agentId
+        // Resolver agentId:
+        // - Modo standalone: inbox.agentId
+        // - Modo grupo: conversation.activeAgentId (worker classificado pelo router)
+        // - Se nenhum dos dois estiver preenchido, a conversa ainda não foi classificada → skip
+        const agentId = conv.inbox.agentId ?? conv.activeAgentId
+        if (!agentId) {
+          logger.info(`[follow-up-cron] Conversation ${conv.id} has no active agent (group inbox, not yet routed), skipping`)
+          skipped++
+          continue
+        }
+
+        // Para o modo grupo, o agent config vem de um lookup separado
+        // (inbox.agent só é populado quando inbox tem agentId direto)
+        let resolvedAgent = conv.inbox.agent
+
+        if (!resolvedAgent && conv.activeAgentId) {
+          // Conversa usa agentGroupId → buscar config do worker ativo
+          const workerFromGroup = await db.agent.findUnique({
+            where: { id: conv.activeAgentId },
+            select: {
+              id: true,
+              followUpBusinessHoursEnabled: true,
+              followUpBusinessHoursConfig: true,
+              followUpBusinessHoursTimezone: true,
+              followUpExhaustedAction: true,
+              followUpExhaustedConfig: true,
+            },
+          })
+
+          if (!workerFromGroup) {
+            logger.info(`[follow-up-cron] Active worker ${conv.activeAgentId} not found for conversation ${conv.id}, skipping`)
+            skipped++
+            continue
+          }
+
+          resolvedAgent = workerFromGroup
+        }
+
+        if (!resolvedAgent) {
+          // inbox tem agentId mas agent foi deletado — limpar estado
+          await db.conversation.update({
+            where: { id: conv.id },
+            data: { nextFollowUpAt: null, followUpCount: 0 },
+          })
+          skipped++
+          continue
+        }
 
         // 2. Resolver follow-ups ativos para o step atual da conversa (modelo flat)
         // getFollowUpsForStep acessa o banco diretamente (sem cache) — seguro para Trigger.dev
@@ -359,8 +416,8 @@ export const followUpCron = schedules.task({
         const currentFollowUp = followUps[conv.followUpCount]
 
         if (!currentFollowUp) {
-          // Todos os follow-ups esgotados — executar ação configurada no Agent
-          await executeExhaustedAction(conv, now)
+          // Todos os follow-ups esgotados — executar ação configurada no Agent resolvido
+          await executeExhaustedAction(conv, now, resolvedAgent)
 
           // Limpar estado de FUP (independente da ação executada)
           await db.conversation.update({
@@ -390,20 +447,19 @@ export const followUpCron = schedules.task({
           continue
         }
 
-        // Business hours check para follow-up (config separada da do agente)
-        // Se habilitado e o momento atual estiver fora do horário, adiar para próxima abertura
-        const agent = conv.inbox.agent
-        if (agent.followUpBusinessHoursEnabled && agent.followUpBusinessHoursConfig) {
+        // Business hours check para follow-up — usa config do agent resolvido
+        // (pode ser o agente direto do inbox ou o worker ativo do grupo)
+        if (resolvedAgent.followUpBusinessHoursEnabled && resolvedAgent.followUpBusinessHoursConfig) {
           // Validar que o config é um objeto válido antes de fazer cast — JSON pode ser malformado
           if (
-            typeof agent.followUpBusinessHoursConfig !== 'object' ||
-            agent.followUpBusinessHoursConfig === null ||
-            Array.isArray(agent.followUpBusinessHoursConfig)
+            typeof resolvedAgent.followUpBusinessHoursConfig !== 'object' ||
+            resolvedAgent.followUpBusinessHoursConfig === null ||
+            Array.isArray(resolvedAgent.followUpBusinessHoursConfig)
           ) {
             logger.warn(`[follow-up-cron] Invalid FUP business hours config for conversation ${conv.id}, skipping check`)
           } else {
-            const bhConfig = agent.followUpBusinessHoursConfig as BusinessHoursConfig
-            const timezone = agent.followUpBusinessHoursTimezone
+            const bhConfig = resolvedAgent.followUpBusinessHoursConfig as BusinessHoursConfig
+            const timezone = resolvedAgent.followUpBusinessHoursTimezone
 
             // Reutiliza checkBusinessHours do helper do agente (elimina duplicação)
             const isOpen = checkBusinessHours(timezone, bhConfig)
