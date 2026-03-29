@@ -34,9 +34,10 @@ interface ChatViewProps {
   members: AcceptedMemberDto[]
   isElevated: boolean
   currentUserId: string
+  onToggleAiPause?: (conversationId: string, aiPaused: boolean) => void
 }
 
-export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, members, isElevated }: ChatViewProps) {
+export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, members, isElevated, onToggleAiPause }: ChatViewProps) {
   const [text, setText] = useState('')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -223,6 +224,7 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
     const newPaused = !checked
     setAiPaused(newPaused)
     togglePendingRef.current = newPaused
+    onToggleAiPause?.(conversation.id, newPaused)
     toggleAction.execute({
       conversationId: conversation.id,
       aiPaused: newPaused,
@@ -282,6 +284,8 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
           contactName={conversation.contactName}
           contactPhone={conversation.contactPhone}
           agentName={conversation.agentName}
+          agentGroupName={conversation.agentGroupName}
+          activeAgentName={conversation.activeAgentName}
           aiPaused={aiPaused}
           isTogglePending={toggleAction.isPending}
           onToggleAi={handleToggleAi}

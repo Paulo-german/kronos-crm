@@ -68,6 +68,12 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
     contactId,
   })
 
+  // Optimistic update + refetch para atualizar badge da IA na conversation list
+  const handleToggleAiPause = (conversationId: string, aiPaused: boolean) => {
+    updateConversationLocally(conversationId, { aiPaused })
+    refetch()
+  }
+
   // Optimistic update + refetch para atualizar contadores (totalUnread, etc.)
   // O lock no hook protege o update otimista de ser sobrescrito pelo merge do polling
   const handleToggleRead = (conversationId: string) => {
@@ -168,6 +174,7 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
             members={members}
             isElevated={elevated}
             currentUserId={currentUserId}
+            onToggleAiPause={handleToggleAiPause}
           />
         ) : deepLinkContact && !selectedConversation ? (
           <StartConversationPanel

@@ -25,12 +25,16 @@ export const toggleAiPause = orgActionClient
     // RBAC: MEMBER so pode alterar pausa de IA em conversas atribuidas a ele
     requirePermission(canAccessRecord(ctx, { assignedTo: conversation.assignedTo }))
 
-    // 3. Atualizar estado
+    // 3. Atualizar estado.
+    // Quando a IA é retomada (aiPaused = false), limpar activeAgentId para forçar
+    // reclassificação pelo router — a conversa pode ter mudado de rumo durante o
+    // atendimento humano e o worker anterior pode não ser mais o adequado.
     await db.conversation.update({
       where: { id: data.conversationId },
       data: {
         aiPaused: data.aiPaused,
         pausedAt: data.aiPaused ? new Date() : null,
+        ...(data.aiPaused ? {} : { activeAgentId: null }),
       },
     })
 
