@@ -37,7 +37,7 @@ export function EmptyContacts({ companyOptions, withinQuota }: EmptyContactsProp
       {withinQuota ? (
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
           <SheetTrigger asChild>
-            <Button className="gap-2 shadow-lg shadow-primary/20">
+            <Button className="gap-2">
               <PlusIcon className="h-4 w-4" />
               Novo Contato
             </Button>
