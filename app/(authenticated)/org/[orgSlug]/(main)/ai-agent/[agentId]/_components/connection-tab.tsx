@@ -15,6 +15,8 @@ import {
   Link2,
   Loader2,
   Unlink,
+  Users,
+  ArrowRight,
 } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import {
@@ -46,7 +48,7 @@ import { createInbox } from '@/_actions/inbox/create-inbox'
 import InboxConnectionCard from '@/(authenticated)/org/[orgSlug]/(main)/settings/inboxes/[inboxId]/_components/inbox-connection-card'
 import MetaConnectionCard from '@/(authenticated)/org/[orgSlug]/(main)/settings/inboxes/[inboxId]/_components/meta-connection-card'
 import ConnectionProviderSelector from '@/(authenticated)/org/[orgSlug]/(main)/settings/inboxes/[inboxId]/_components/connection-provider-selector'
-import type { AgentDetailDto, AgentInboxDto } from '@/_data-access/agent/get-agent-by-id'
+import type { AgentDetailDto, AgentInboxDto, AgentGroupMembershipDto } from '@/_data-access/agent/get-agent-by-id'
 import type { InboxConnectionDataMap } from './agent-detail-client'
 
 interface InboxOptionDto {
@@ -145,6 +147,7 @@ const ConnectionTab = ({ agent, canManage, availableInboxes, inboxConnectionData
   )
 
   const hasInboxes = agent.inboxes.length > 0
+  const hasGroupMemberships = agent.groupMemberships.length > 0
 
   return (
     <div className="space-y-4">
@@ -192,6 +195,32 @@ const ConnectionTab = ({ agent, canManage, availableInboxes, inboxConnectionData
           </CardHeader>
         </Card>
       )}
+
+      {/* Seção de Equipes */}
+      <Card className="border-border/50 bg-secondary/20">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold">
+            <Users className="h-5 w-5" />
+            Equipes
+          </CardTitle>
+          <CardDescription>
+            {hasGroupMemberships
+              ? 'Este agente é worker nas equipes abaixo.'
+              : 'Este agente não pertence a nenhuma equipe. Para incluí-lo, acesse a página da equipe.'}
+          </CardDescription>
+        </CardHeader>
+        {hasGroupMemberships && (
+          <CardContent className="space-y-2">
+            {agent.groupMemberships.map((membership) => (
+              <GroupMembershipRow
+                key={membership.memberId}
+                membership={membership}
+                orgSlug={orgSlug}
+              />
+            ))}
+          </CardContent>
+        )}
+      </Card>
 
       {/* Ações de vincular/criar */}
       {canManage && (
@@ -454,6 +483,41 @@ const InboxRow = ({
       />
     )
   }
+}
+
+// Componente para cada linha de equipe onde o agente é membro
+interface GroupMembershipRowProps {
+  membership: AgentGroupMembershipDto
+  orgSlug: string
+}
+
+const GroupMembershipRow = ({ membership, orgSlug }: GroupMembershipRowProps) => {
+  return (
+    <div className="flex items-center justify-between rounded-md border border-border/50 bg-background/70 p-3">
+      <div className="flex items-center gap-3">
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10">
+          <Users className="h-3.5 w-3.5 text-primary" />
+        </div>
+        <div className="min-w-0">
+          <span className="text-sm font-medium">{membership.groupName}</span>
+          <p className="text-xs text-muted-foreground">{membership.scopeLabel}</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <Badge
+          variant="outline"
+          className="border-primary/20 bg-primary/5 px-2 text-xs font-medium text-primary"
+        >
+          Worker
+        </Badge>
+        <Button variant="ghost" size="sm" asChild aria-label={`Ver equipe ${membership.groupName}`}>
+          <Link href={`/org/${orgSlug}/ai-agent/groups/${membership.groupId}`}>
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </Button>
+      </div>
+    </div>
+  )
 }
 
 export default ConnectionTab

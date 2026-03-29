@@ -2,19 +2,21 @@ import { Skeleton } from '@/_components/ui/skeleton'
 
 const AgentDetailLoading = () => {
   return (
-    <div className="flex flex-1 min-h-0 bg-background">
-      <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-6">
-        {/* Back button + Title */}
+    <div className="w-full p-6">
+      <div className="flex flex-col gap-6">
+        {/* Back button + Title + Badge + Switch */}
         <div className="flex flex-col gap-4">
           <Skeleton className="h-8 w-20" />
           <div className="flex items-center gap-3">
             <Skeleton className="h-8 w-48" />
             <Skeleton className="h-6 w-16 rounded-full" />
+            <Skeleton className="h-5 w-9 rounded-full" />
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="grid h-12 w-full grid-cols-4 gap-1 rounded-md border border-border/50 bg-tab/30 p-1">
+        {/* Tabs — 5 colunas */}
+        <div className="grid h-12 w-full grid-cols-5 gap-1 rounded-md border border-border/50 bg-tab/30 p-1">
+          <Skeleton className="h-full rounded-md" />
           <Skeleton className="h-full rounded-md" />
           <Skeleton className="h-full rounded-md" />
           <Skeleton className="h-full rounded-md" />

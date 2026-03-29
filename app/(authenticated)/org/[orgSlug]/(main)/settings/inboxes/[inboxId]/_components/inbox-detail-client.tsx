@@ -39,6 +39,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/_components/ui/popover'
+import { RadioGroup, RadioGroupItem } from '@/_components/ui/radio-group'
 import type { InboxDetailDto } from '@/_data-access/inbox/get-inbox-by-id'
 import type { AgentConnectionStats } from '@/_data-access/agent/get-agent-connection-stats'
 import type { EvolutionInstanceInfo } from '@/_lib/evolution/types-instance'
@@ -47,20 +48,32 @@ import type { AcceptedMemberDto } from '@/_data-access/organization/get-organiza
 import type { OrgPipelineDto } from '@/_data-access/pipeline/get-org-pipelines'
 import { updateInbox } from '@/_actions/inbox/update-inbox'
 import { linkInboxToAgent } from '@/_actions/inbox/link-inbox-to-agent'
+import { linkInboxToGroup } from '@/_actions/agent-group/link-inbox-to-group'
 import UpsertInboxSheetContent from '../../_components/upsert-inbox-sheet-content'
 import InboxConnectionCard from './inbox-connection-card'
 import MetaConnectionCard from './meta-connection-card'
 import ZApiConnectionCard from './zapi-connection-card'
 import ConnectionProviderSelector from './connection-provider-selector'
 
+// Modo de vinculação da IA neste inbox
+type AiLinkMode = 'agent' | 'group'
+
 interface AgentOption {
   id: string
   name: string
 }
 
+interface AgentGroupOption {
+  id: string
+  name: string
+  memberCount: number
+  isActive: boolean
+}
+
 interface InboxDetailClientProps {
   inbox: InboxDetailDto
   agentOptions: AgentOption[]
+  agentGroupOptions: AgentGroupOption[]
   userRole: MemberRole
   orgSlug: string
   connectionStats: AgentConnectionStats | null
@@ -84,6 +97,7 @@ const connectionTypeLabels: Record<string, string> = {
 const InboxDetailClient = ({
   inbox,
   agentOptions,
+  agentGroupOptions,
   userRole,
   orgSlug,
   connectionStats,
@@ -96,6 +110,11 @@ const InboxDetailClient = ({
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [evolutionConnectedOverride, setEvolutionConnectedOverride] = useState<boolean | null>(null)
   const [localDistributionUserIds, setLocalDistributionUserIds] = useState(inbox.distributionUserIds)
+
+  // Modo de vinculação: "group" se inbox já tiver agentGroupId, senão "agent"
+  const [aiLinkMode, setAiLinkMode] = useState<AiLinkMode>(
+    inbox.agentGroupId ? 'group' : 'agent',
+  )
 
   const { execute: executeUpdate, isPending: isUpdating } = useAction(
     updateInbox,
@@ -122,7 +141,7 @@ const InboxDetailClient = ({
     },
   )
 
-  const { execute: executeLinkAgent, isPending: isLinking } = useAction(
+  const { execute: executeLinkAgent, isPending: isLinkingAgent } = useAction(
     linkInboxToAgent,
     {
       onSuccess: () => {
@@ -133,6 +152,37 @@ const InboxDetailClient = ({
       },
     },
   )
+
+  const { execute: executeLinkGroup, isPending: isLinkingGroup } = useAction(
+    linkInboxToGroup,
+    {
+      onSuccess: () => {
+        toast.success('Equipe vinculada com sucesso!')
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError || 'Erro ao vincular equipe.')
+      },
+    },
+  )
+
+  const isLinking = isLinkingAgent || isLinkingGroup
+
+  // Muda o modo de vinculação e limpa a seleção anterior
+  const handleAiLinkModeChange = (mode: AiLinkMode) => {
+    setAiLinkMode(mode)
+
+    if (mode === 'agent') {
+      // Ao trocar para agente individual, desvincula o grupo atual (se houver)
+      if (inbox.agentGroupId) {
+        executeLinkAgent({ inboxId: inbox.id, agentId: null })
+      }
+    } else {
+      // Ao trocar para equipe, desvincula o agente atual (se houver)
+      if (inbox.agentId) {
+        executeLinkGroup({ inboxId: inbox.id, agentGroupId: null })
+      }
+    }
+  }
 
   const formattedDate = new Intl.DateTimeFormat('pt-BR', {
     day: '2-digit',
@@ -308,36 +358,109 @@ const InboxDetailClient = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-3 rounded-md border border-border/50 bg-background/70 p-3">
-              <Bot className="h-4 w-4 text-muted-foreground" />
-              <div>
+            <div className="flex items-start gap-3 rounded-md border border-border/50 bg-background/70 p-3">
+              <Bot className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              <div className="min-w-0 flex-1 space-y-2.5">
                 <p className="text-xs text-muted-foreground">Agente IA</p>
                 {canManage ? (
-                  <Select
-                    defaultValue={inbox.agentId ?? 'none'}
-                    onValueChange={(value) => {
-                      executeLinkAgent({
-                        inboxId: inbox.id,
-                        agentId: value === 'none' ? null : value,
-                      })
-                    }}
-                    disabled={isLinking}
-                  >
-                    <SelectTrigger className="h-7 w-auto min-w-[120px] border-none bg-transparent p-0 text-sm font-medium shadow-none">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Nenhum</SelectItem>
-                      {agentOptions.map((agent) => (
-                        <SelectItem key={agent.id} value={agent.id}>
-                          {agent.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <>
+                    {/* RadioGroup: agente individual ou equipe */}
+                    <RadioGroup
+                      value={aiLinkMode}
+                      onValueChange={(value) =>
+                        handleAiLinkModeChange(value as AiLinkMode)
+                      }
+                      disabled={isLinking}
+                      className="gap-2"
+                    >
+                      <div className="flex items-center gap-2">
+                        <RadioGroupItem value="agent" id={`ai-mode-agent-${inbox.id}`} />
+                        <Label
+                          htmlFor={`ai-mode-agent-${inbox.id}`}
+                          className="cursor-pointer text-xs font-normal"
+                        >
+                          Agente individual
+                        </Label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <RadioGroupItem value="group" id={`ai-mode-group-${inbox.id}`} />
+                        <Label
+                          htmlFor={`ai-mode-group-${inbox.id}`}
+                          className="cursor-pointer text-xs font-normal"
+                        >
+                          Equipe de agentes
+                        </Label>
+                      </div>
+                    </RadioGroup>
+
+                    {/* Select condicional por modo */}
+                    {aiLinkMode === 'agent' ? (
+                      <Select
+                        value={inbox.agentId ?? 'none'}
+                        onValueChange={(value) => {
+                          executeLinkAgent({
+                            inboxId: inbox.id,
+                            agentId: value === 'none' ? null : value,
+                          })
+                        }}
+                        disabled={isLinking}
+                      >
+                        <SelectTrigger className="h-7 text-xs">
+                          <SelectValue placeholder="Selecionar agente..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Nenhum</SelectItem>
+                          {agentOptions.map((agent) => (
+                            <SelectItem key={agent.id} value={agent.id}>
+                              {agent.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Select
+                        value={inbox.agentGroupId ?? 'none'}
+                        onValueChange={(value) => {
+                          if (value === 'none') {
+                            executeLinkGroup({ inboxId: inbox.id, agentGroupId: null })
+                            return
+                          }
+                          // Valida grupo com workers antes de vincular
+                          const group = agentGroupOptions.find((g) => g.id === value)
+                          if (group && group.memberCount === 0) {
+                            toast.error('Equipe precisa de pelo menos 1 agente worker ativo.')
+                            return
+                          }
+                          executeLinkGroup({ inboxId: inbox.id, agentGroupId: value })
+                        }}
+                        disabled={isLinking}
+                      >
+                        <SelectTrigger className="h-7 text-xs">
+                          <SelectValue placeholder="Selecionar equipe..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Nenhuma</SelectItem>
+                          {agentGroupOptions.map((group) => (
+                            <SelectItem
+                              key={group.id}
+                              value={group.id}
+                              disabled={group.memberCount === 0}
+                            >
+                              {group.name}
+                              {group.memberCount === 0 && (
+                                <span className="ml-1 text-muted-foreground">(sem workers)</span>
+                              )}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </>
                 ) : (
                   <p className="text-sm font-medium">
-                    {inbox.agentName ?? 'Nenhum'}
+                    {inbox.agentGroupId
+                      ? (inbox.agentGroupName ?? 'Equipe')
+                      : (inbox.agentName ?? 'Nenhum')}
                   </p>
                 )}
               </div>

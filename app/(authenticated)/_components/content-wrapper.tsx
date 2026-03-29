@@ -19,7 +19,7 @@ export const ContentWrapper = ({ children }: ContentWrapperProps) => {
   // Inbox e detalhe do agente precisam de layout full-height sem padding
   const isInboxPage = /\/inbox(\/|$)/.test(pathname)
   const isAgentDetailPage =
-    /\/ai-agent\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(
+    /\/ai-agent\/(groups\/)?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(
       pathname,
     )
 

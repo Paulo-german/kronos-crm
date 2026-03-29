@@ -8,7 +8,6 @@ import {
   ListOrderedIcon,
   MessageSquareIcon,
   PlusIcon,
-  TrashIcon,
 } from 'lucide-react'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
@@ -22,12 +21,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/_components/ui/tooltip'
-import ConfirmationDialog from '@/_components/confirmation-dialog'
 import { updateAgent } from '@/_actions/agent/update-agent'
-import { deleteAgent } from '@/_actions/agent/delete-agent'
 import { MODEL_OPTIONS } from '../[agentId]/_components/constants'
 import AgentTableDropdownMenu from './table-dropdown-menu'
 import UpsertAgentSheetContent from './upsert-agent-sheet-content'
+import DeleteAgentDialog from './delete-agent-dialog'
 import type { AgentDto } from '@/_data-access/agent/get-agents'
 import type { MemberRole } from '@prisma/client'
 
@@ -44,6 +42,7 @@ interface AgentsCardGridProps {
   orgSlug: string
   userRole: MemberRole
   withinQuota: boolean
+  allAgents: AgentDto[]
 }
 
 export function AgentsCardGrid({
@@ -51,6 +50,7 @@ export function AgentsCardGrid({
   orgSlug,
   userRole,
   withinQuota,
+  allAgents,
 }: AgentsCardGridProps) {
   const [editingAgent, setEditingAgent] = useState<AgentDto | null>(null)
   const [isEditOpen, setIsEditOpen] = useState(false)
@@ -84,20 +84,6 @@ export function AgentsCardGrid({
       },
       onError: ({ error }) => {
         toast.error(error.serverError || 'Erro ao atualizar agente.')
-      },
-    },
-  )
-
-  const { execute: executeDelete, isPending: isDeleting } = useAction(
-    deleteAgent,
-    {
-      onSuccess: () => {
-        toast.success('Agente excluído com sucesso.')
-        setIsDeleteOpen(false)
-        setDeletingAgent(null)
-      },
-      onError: ({ error }) => {
-        toast.error(error.serverError || 'Erro ao excluir agente.')
       },
     },
   )
@@ -175,9 +161,7 @@ export function AgentsCardGrid({
                           isActive: !agent.isActive,
                         })
                       }}
-                      disabled={
-                        togglingAgentId === agent.id || !canManage
-                      }
+                      disabled={togglingAgentId === agent.id || !canManage}
                       className="scale-75"
                     />
                     <span className="text-xs text-muted-foreground">
@@ -205,7 +189,9 @@ export function AgentsCardGrid({
                   <h3 className="text-base font-semibold leading-tight">
                     {agent.name}
                   </h3>
-                  <Badge variant="secondary">{getModelLabel(agent.modelId)}</Badge>
+                  <Badge variant="secondary">
+                    {getModelLabel(agent.modelId)}
+                  </Badge>
                 </div>
 
                 {/* Stats footer */}
@@ -293,31 +279,15 @@ export function AgentsCardGrid({
         <UpsertAgentSheetContent setIsOpen={setIsCreateOpen} />
       </Sheet>
 
-      {/* Delete confirmation */}
-      <ConfirmationDialog
+      {/* Delete dialog — suporta fluxo de grupo (requiresGroupDecision) */}
+      <DeleteAgentDialog
+        agent={deletingAgent}
         open={isDeleteOpen}
         onOpenChange={(open) => {
           setIsDeleteOpen(open)
           if (!open) setDeletingAgent(null)
         }}
-        title="Você tem certeza absoluta?"
-        description={
-          <p>
-            Esta ação não pode ser desfeita. Você está prestes a remover
-            permanentemente o agente{' '}
-            <span className="font-bold text-foreground">
-              {deletingAgent?.name}
-            </span>{' '}
-            e todos os seus dados (etapas, arquivos, conversas).
-          </p>
-        }
-        icon={<TrashIcon />}
-        variant="destructive"
-        onConfirm={() => {
-          if (deletingAgent) executeDelete({ id: deletingAgent.id })
-        }}
-        isLoading={isDeleting}
-        confirmLabel="Confirmar Exclusão"
+        allAgents={allAgents}
       />
     </>
   )

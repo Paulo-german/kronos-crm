@@ -15,6 +15,8 @@ import {
   ClockIcon,
   ArchiveIcon,
   PauseIcon,
+  GitBranchIcon,
+  ArrowRightLeftIcon,
   ChevronDownIcon,
   ChevronRightIcon,
 } from 'lucide-react'
@@ -37,6 +39,8 @@ const STEP_TYPE_ICON: Record<AgentExecutionStepType, ComponentType<{ size?: numb
   MEMORY_COMPRESSION: ArchiveIcon,
   FALLBACK_LLM_CALL: BrainIcon,
   PAUSE_CHECK: PauseIcon,
+  ROUTER_CLASSIFICATION: GitBranchIcon,
+  AGENT_TRANSFER: ArrowRightLeftIcon,
 }
 
 // Rótulos legíveis por tipo de step
@@ -54,6 +58,8 @@ const STEP_TYPE_LABEL: Record<AgentExecutionStepType, string> = {
   MEMORY_COMPRESSION: 'Compressão de Memória',
   FALLBACK_LLM_CALL: 'Chamada ao Modelo (Fallback)',
   PAUSE_CHECK: 'Verificação de Pausa',
+  ROUTER_CLASSIFICATION: 'Classificação pelo Router',
+  AGENT_TRANSFER: 'Transferência de Agente',
 }
 
 // Configuração visual por status de step

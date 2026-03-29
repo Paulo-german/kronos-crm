@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { hasModuleAccess } from '@/_data-access/module/check-module-access'
+import { getPlanLimits } from '@/_lib/rbac/plan-limits'
+import { AgentTabsNav } from './_components/agent-tabs-nav'
 
 interface AiAgentLayoutProps {
   children: React.ReactNode
@@ -16,7 +18,16 @@ const AiAgentLayout = async ({ children, params }: AiAgentLayoutProps) => {
     redirect(`/org/${orgSlug}/settings/billing`)
   }
 
-  return <>{children}</>
+  // Verifica se o plano suporta equipes (Light não suporta — ai.max_agents = 1)
+  const { plan } = await getPlanLimits(orgId)
+  const canAccessGroups = plan !== 'light' && plan !== null
+
+  return (
+    <>
+      <AgentTabsNav orgSlug={orgSlug} canAccessGroups={canAccessGroups} />
+      {children}
+    </>
+  )
 }
 
 export default AiAgentLayout

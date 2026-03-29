@@ -39,6 +39,7 @@ const AiAgentPage = async ({ params }: AiAgentPageProps) => {
         orgSlug={orgSlug}
         userRole={ctx.userRole}
         withinQuota={quota.withinQuota}
+        allAgents={agents}
       />
     </div>
   )

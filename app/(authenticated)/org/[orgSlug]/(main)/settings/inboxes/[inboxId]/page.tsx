@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getInboxById } from '@/_data-access/inbox/get-inbox-by-id'
 import { getAgents } from '@/_data-access/agent/get-agents'
+import { getAgentGroups } from '@/_data-access/agent-group/get-agent-groups'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
 import { getOrgPipelines } from '@/_data-access/pipeline/get-org-pipelines'
 import { getAgentConnectionStats } from '@/_data-access/agent/get-agent-connection-stats'
@@ -16,9 +17,10 @@ const InboxDetailPage = async ({ params }: InboxDetailPageProps) => {
   const { orgSlug, inboxId } = await params
   const ctx = await getOrgContext(orgSlug)
 
-  const [inbox, agents, membersData, pipelines] = await Promise.all([
+  const [inbox, agents, agentGroups, membersData, pipelines] = await Promise.all([
     getInboxById(inboxId, ctx.orgId),
     getAgents(ctx.orgId),
+    getAgentGroups(ctx.orgId),
     getOrganizationMembers(ctx.orgId),
     getOrgPipelines(ctx.orgId),
   ])
@@ -37,6 +39,13 @@ const InboxDetailPage = async ({ params }: InboxDetailPageProps) => {
     name: agent.name,
   }))
 
+  const agentGroupOptions = agentGroups.map((group) => ({
+    id: group.id,
+    name: group.name,
+    memberCount: group.memberCount,
+    isActive: group.isActive,
+  }))
+
   const metaBetaOrgIds = (process.env.NEXT_PUBLIC_META_BETA_ORG_IDS ?? '').split(',').filter(Boolean)
   const metaCloudEnabled = metaBetaOrgIds.length === 0 || metaBetaOrgIds.includes(ctx.orgId)
 
@@ -44,6 +53,7 @@ const InboxDetailPage = async ({ params }: InboxDetailPageProps) => {
     <InboxDetailClient
       inbox={inbox}
       agentOptions={agentOptions}
+      agentGroupOptions={agentGroupOptions}
       userRole={ctx.userRole}
       orgSlug={orgSlug}
       connectionStats={connectionStats}

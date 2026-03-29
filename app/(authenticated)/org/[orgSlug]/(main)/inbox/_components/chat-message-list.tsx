@@ -86,6 +86,8 @@ export function ChatMessageList({
               type={item.data.type}
               content={item.data.content}
               createdAt={item.data.createdAt}
+              toolName={item.data.toolName}
+              metadata={item.data.metadata}
             />
           ) : (
             <MessageBubble

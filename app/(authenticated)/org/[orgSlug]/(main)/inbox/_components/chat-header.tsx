@@ -1,6 +1,6 @@
 'use client'
 
-import { Bot, Info, UserCog } from 'lucide-react'
+import { Bot, Info, UserCog, Users } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/_components/ui/avatar'
 import { Badge } from '@/_components/ui/badge'
 import { Button } from '@/_components/ui/button'
@@ -17,6 +17,9 @@ interface ChatHeaderProps {
   contactName: string
   contactPhone: string | null
   agentName: string | null
+  // Campos de grupo (Multi-Agent Routing)
+  agentGroupName: string | null
+  activeAgentName: string | null
   aiPaused: boolean
   isTogglePending: boolean
   onToggleAi: (checked: boolean) => void
@@ -28,6 +31,8 @@ export function ChatHeader({
   contactName,
   contactPhone,
   agentName,
+  agentGroupName,
+  activeAgentName,
   aiPaused,
   isTogglePending,
   onToggleAi,
@@ -40,6 +45,10 @@ export function ChatHeader({
     .map((word) => word[0])
     .join('')
     .toUpperCase()
+
+  // Modo grupo: usa worker ativo; modo standalone: usa agente direto
+  const isGroupMode = !!agentGroupName
+  const displayAgentName = isGroupMode ? activeAgentName : agentName
 
   return (
     <div className="flex items-center justify-between border-b border-border/50 px-4 py-3">
@@ -59,13 +68,51 @@ export function ChatHeader({
             <span className="text-base font-semibold tracking-tight">
               {contactName}
             </span>
-            {agentName && (
+
+            {/* Modo grupo: badge com worker ativo + tooltip com equipe/agente */}
+            {isGroupMode && displayAgentName && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge
+                    variant="outline"
+                    className="h-5 gap-1 border-kronos-purple/20 bg-kronos-purple/10 text-[10px] text-kronos-purple"
+                  >
+                    <Users className="h-3 w-3" />
+                    {displayAgentName}
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">
+                  Equipe: {agentGroupName} | Agente: {displayAgentName}
+                </TooltipContent>
+              </Tooltip>
+            )}
+
+            {/* Modo grupo sem worker ativo ainda */}
+            {isGroupMode && !displayAgentName && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge
+                    variant="outline"
+                    className="h-5 gap-1 border-kronos-purple/20 bg-kronos-purple/10 text-[10px] text-kronos-purple"
+                  >
+                    <Users className="h-3 w-3" />
+                    {agentGroupName}
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">
+                  Equipe: {agentGroupName} — aguardando roteamento
+                </TooltipContent>
+              </Tooltip>
+            )}
+
+            {/* Modo standalone (agente individual) */}
+            {!isGroupMode && displayAgentName && (
               <Badge
                 variant="outline"
                 className="h-5 gap-1 border-kronos-purple/20 bg-kronos-purple/10 text-[10px] text-kronos-purple"
               >
                 <Bot className="h-3 w-3" />
-                {agentName}
+                {displayAgentName}
               </Badge>
             )}
           </div>
