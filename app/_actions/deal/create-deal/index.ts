@@ -12,6 +12,7 @@ import {
 } from '@/_lib/rbac'
 import { createNotification } from '@/_lib/notifications/create-notification'
 import { getOrgSlug } from '@/_lib/notifications/get-org-slug'
+import { evaluateAutomations } from '@/_lib/automations/evaluate-automations'
 
 export const createDeal = orgActionClient
   .schema(createDealSchema)
@@ -106,6 +107,18 @@ export const createDeal = orgActionClient
         })
       })
     }
+
+    // Fire-and-forget: automações não bloqueiam a resposta da action
+    void evaluateAutomations({
+      orgId: ctx.orgId,
+      triggerType: 'DEAL_CREATED',
+      dealId: deal.id,
+      payload: {
+        stageId: data.stageId,
+        pipelineId: stage.pipelineId,
+        assignedTo,
+      },
+    })
 
     return { success: true, dealId: deal.id }
   })

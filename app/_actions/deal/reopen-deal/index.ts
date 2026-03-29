@@ -10,6 +10,7 @@ import {
   canPerformAction,
   requirePermission,
 } from '@/_lib/rbac'
+import { evaluateAutomations } from '@/_lib/automations/evaluate-automations'
 
 export const reopenDeal = orgActionClient
   .schema(reopenDealSchema)
@@ -44,6 +45,14 @@ export const reopenDeal = orgActionClient
     revalidateTag(`deal:${data.dealId}`)
     revalidateTag(`dashboard:${ctx.orgId}`)
     revalidateTag(`dashboard-charts:${ctx.orgId}`)
+
+    // Fire-and-forget: automações não bloqueiam a resposta da action
+    void evaluateAutomations({
+      orgId: ctx.orgId,
+      triggerType: 'DEAL_STATUS_CHANGED',
+      dealId: data.dealId,
+      payload: { status: 'OPEN' },
+    })
 
     return { success: true }
   })

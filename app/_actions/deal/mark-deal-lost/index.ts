@@ -10,6 +10,7 @@ import {
   canPerformAction,
   requirePermission,
 } from '@/_lib/rbac'
+import { evaluateAutomations } from '@/_lib/automations/evaluate-automations'
 
 export const markDealLost = orgActionClient
   .schema(markDealLostSchema)
@@ -70,6 +71,14 @@ export const markDealLost = orgActionClient
     revalidateTag(`deal-lost-reasons:${ctx.orgId}`)
     revalidateTag(`dashboard:${ctx.orgId}`)
     revalidateTag(`dashboard-charts:${ctx.orgId}`)
+
+    // Fire-and-forget: automações não bloqueiam a resposta da action
+    void evaluateAutomations({
+      orgId: ctx.orgId,
+      triggerType: 'DEAL_STATUS_CHANGED',
+      dealId: data.dealId,
+      payload: { status: 'LOST' },
+    })
 
     return { success: true }
   })

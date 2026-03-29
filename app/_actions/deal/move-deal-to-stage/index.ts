@@ -9,6 +9,7 @@ import {
   canPerformAction,
   requirePermission,
 } from '@/_lib/rbac'
+import { evaluateAutomations } from '@/_lib/automations/evaluate-automations'
 
 export const moveDealToStage = orgActionClient
   .schema(moveDealToStageSchema)
@@ -75,6 +76,18 @@ export const moveDealToStage = orgActionClient
     revalidateTag(`pipeline:${ctx.orgId}`)
     revalidateTag(`deals:${ctx.orgId}`)
     revalidateTag(`deal:${data.dealId}`)
+
+    // Fire-and-forget: automações não bloqueiam a resposta da action
+    void evaluateAutomations({
+      orgId: ctx.orgId,
+      triggerType: 'DEAL_MOVED',
+      dealId: data.dealId,
+      payload: {
+        fromStageId: deal.pipelineStageId,
+        toStageId: data.stageId,
+        pipelineId: deal.stage.pipelineId,
+      },
+    })
 
     return { success: true, moved: true }
   })
