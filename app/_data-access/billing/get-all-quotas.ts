@@ -14,9 +14,10 @@ export interface QuotaSummary {
   product: QuotaInfo
   member: QuotaInfo
   follow_up: QuotaInfo
+  automation: QuotaInfo
 }
 
-const ENTITIES: QuotaEntity[] = ['contact', 'deal', 'product', 'member', 'follow_up']
+const ENTITIES: QuotaEntity[] = ['contact', 'deal', 'product', 'member', 'follow_up', 'automation']
 
 export const getAllQuotas = cache(async (orgId: string): Promise<QuotaSummary> => {
   const results = await Promise.all(
@@ -29,5 +30,6 @@ export const getAllQuotas = cache(async (orgId: string): Promise<QuotaSummary> =
     product: results[2],
     member: results[3],
     follow_up: results[4],
+    automation: results[5],
   }
 })
