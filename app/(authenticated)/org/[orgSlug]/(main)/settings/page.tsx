@@ -7,6 +7,8 @@ import {
   Users,
   Ban,
   Mail,
+  Zap,
+  Sparkles,
 } from 'lucide-react'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 
@@ -94,6 +96,22 @@ const SettingsPage = async ({ params }: SettingsPageProps) => {
               orgSlug={orgSlug}
             >
               <Ban size={20} />
+            </CardSettings>
+            <CardSettings
+              title="Automações (Beta)"
+              description="Crie regras para automatizar ações no seu funil."
+              href="settings/automations"
+              orgSlug={orgSlug}
+            >
+              <Zap size={20} />
+            </CardSettings>
+            <CardSettings
+              title="Créditos IA"
+              description="Acompanhe o uso e saldo de créditos de inteligência artificial."
+              href="settings/credits"
+              orgSlug={orgSlug}
+            >
+              <Sparkles size={20} />
             </CardSettings>
           </>
         )}
