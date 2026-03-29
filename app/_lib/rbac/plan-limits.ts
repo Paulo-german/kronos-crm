@@ -4,7 +4,7 @@ import type { Plan } from '@prisma/client'
 import { db } from '@/_lib/prisma'
 
 // Mapeamento de entidade RBAC para feature key no catálogo
-export type QuotaEntity = 'contact' | 'deal' | 'product' | 'member' | 'agent' | 'inbox' | 'follow_up_monthly' | 'follow_up'
+export type QuotaEntity = 'contact' | 'deal' | 'product' | 'member' | 'agent' | 'inbox' | 'follow_up_monthly' | 'follow_up' | 'automation' | 'agent_group'
 
 // Slug do plano efetivo (usado pela UI)
 export type PlanType = 'light' | 'essential' | 'scale' | 'enterprise'
@@ -18,6 +18,9 @@ const ENTITY_FEATURE_MAP: Record<QuotaEntity, string> = {
   inbox: 'inbox.max_inboxes',
   follow_up_monthly: 'ai.max_follow_up_monthly',
   follow_up: 'ai.max_follow_ups',
+  automation: 'crm.max_automations',
+  // Reutiliza o mesmo limite de agentes — na prática Light (max_agents=1) não consegue criar grupos
+  agent_group: 'ai.max_agents',
 }
 
 /**
@@ -107,6 +110,8 @@ const ENTITY_COUNT_TAGS: Record<QuotaEntity, (orgId: string) => string[]> = {
   inbox: (orgId) => [`inboxes:${orgId}`],
   follow_up_monthly: (orgId) => [`follow-up-monthly:${orgId}`],
   follow_up: (orgId) => [`follow-ups-org:${orgId}`],
+  automation: (orgId) => [`automations:${orgId}`],
+  agent_group: (orgId) => [`agentGroups:${orgId}`],
 }
 
 /**
@@ -146,6 +151,10 @@ async function countRecords(orgId: string, entity: QuotaEntity): Promise<number>
         }
         case 'follow_up':
           return db.followUp.count({ where: { organizationId: orgId } })
+        case 'automation':
+          return db.automation.count({ where: { organizationId: orgId } })
+        case 'agent_group':
+          return db.agentGroup.count({ where: { organizationId: orgId } })
         default:
           return 0
       }
@@ -182,6 +191,18 @@ export async function checkPlanQuota(
     current,
     limit,
   }
+}
+
+/**
+ * Retorna o limite numérico de uma feature key arbitrária para a org.
+ * Útil para limites que não se encaixam no padrão de quota por entidade
+ * (ex: ai.max_workers_per_group — limite por grupo, não por org).
+ * Retorna 0 se a org não tem plano ou a feature key não existe.
+ */
+export async function getFeatureLimit(orgId: string, featureKey: string): Promise<number> {
+  const plan = await getEffectivePlan(orgId)
+  if (!plan) return 0
+  return getPlanLimit(plan.id, featureKey)
 }
 
 /**
@@ -223,6 +244,8 @@ export async function requireQuota(orgId: string, entity: QuotaEntity): Promise<
       inbox: 'caixas de entrada',
       follow_up_monthly: 'follow-ups mensais',
       follow_up: 'follow-ups',
+      automation: 'automações',
+      agent_group: 'equipes de agentes',
     }
 
     throw new Error(

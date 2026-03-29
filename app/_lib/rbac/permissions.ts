@@ -116,6 +116,21 @@ const PERMISSION_MATRIX: Record<RBACEntity, Record<RBACAction, MemberRole[]>> = 
     // Nao se aplica a notificacoes
     transfer: [],
   },
+  automation: {
+    // Apenas ADMIN+ pode gerenciar automacoes (recurso estratégico da org)
+    create: ['OWNER', 'ADMIN'],
+    read: ['OWNER', 'ADMIN'],
+    update: ['OWNER', 'ADMIN'],
+    delete: ['OWNER', 'ADMIN'],
+    transfer: [],
+  },
+  agentGroup: {
+    create: ['OWNER', 'ADMIN'],
+    read: ['OWNER', 'ADMIN', 'MEMBER'],
+    update: ['OWNER', 'ADMIN'],
+    delete: ['OWNER', 'ADMIN'],
+    transfer: [],
+  },
 }
 
 /**

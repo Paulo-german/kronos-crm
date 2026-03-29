@@ -23,11 +23,13 @@ async function seedFeaturesAndPlans() {
     { key: 'crm.max_products', name: 'Produtos', type: 'STATIC' as const, valueType: 'NUMBER' as const },
     { key: 'crm.max_members', name: 'Membros', type: 'STATIC' as const, valueType: 'NUMBER' as const },
     { key: 'ai.max_agents', name: 'Agentes IA', type: 'STATIC' as const, valueType: 'NUMBER' as const },
+    { key: 'ai.max_workers_per_group', name: 'Workers por Equipe de Agentes', type: 'STATIC' as const, valueType: 'NUMBER' as const },
     { key: 'ai.max_knowledge_files', name: 'Arquivos de Conhecimento', type: 'STATIC' as const, valueType: 'NUMBER' as const },
     { key: 'ai.monthly_credits', name: 'Créditos IA mensais', type: 'STATIC' as const, valueType: 'NUMBER' as const },
     { key: 'inbox.max_inboxes', name: 'Caixas de Entrada', type: 'STATIC' as const, valueType: 'NUMBER' as const },
     { key: 'ai.max_follow_up_monthly', name: 'Follow-ups mensais', type: 'STATIC' as const, valueType: 'NUMBER' as const },
     { key: 'ai.max_follow_ups', name: 'Follow-ups por agente (total)', type: 'STATIC' as const, valueType: 'NUMBER' as const },
+    { key: 'crm.max_automations', name: 'Automações', type: 'STATIC' as const, valueType: 'NUMBER' as const },
   ]
 
   const featureRecords: Record<string, { id: string }> = {}
@@ -115,6 +117,12 @@ async function seedFeaturesAndPlans() {
     { planSlug: 'scale', featureKey: 'ai.max_agents', valueNumber: 10 },
     { planSlug: 'enterprise', featureKey: 'ai.max_agents', valueNumber: 20 },
 
+    // Workers por Equipe de Agentes (Light = 0, sem acesso a equipes)
+    { planSlug: 'light', featureKey: 'ai.max_workers_per_group', valueNumber: 0 },
+    { planSlug: 'essential', featureKey: 'ai.max_workers_per_group', valueNumber: 3 },
+    { planSlug: 'scale', featureKey: 'ai.max_workers_per_group', valueNumber: 5 },
+    { planSlug: 'enterprise', featureKey: 'ai.max_workers_per_group', valueNumber: 10 },
+
     // Arquivos de Conhecimento (RAG)
     { planSlug: 'light', featureKey: 'ai.max_knowledge_files', valueNumber: 3 },
     { planSlug: 'essential', featureKey: 'ai.max_knowledge_files', valueNumber: 10 },
@@ -144,6 +152,12 @@ async function seedFeaturesAndPlans() {
     { planSlug: 'essential', featureKey: 'ai.max_follow_ups', valueNumber: 3 },
     { planSlug: 'scale', featureKey: 'ai.max_follow_ups', valueNumber: 8 },
     { planSlug: 'enterprise', featureKey: 'ai.max_follow_ups', valueNumber: 20 },
+
+    // Automações (motor de regras CRM)
+    { planSlug: 'light', featureKey: 'crm.max_automations', valueNumber: 3 },
+    { planSlug: 'essential', featureKey: 'crm.max_automations', valueNumber: 10 },
+    { planSlug: 'scale', featureKey: 'crm.max_automations', valueNumber: 25 },
+    { planSlug: 'enterprise', featureKey: 'crm.max_automations', valueNumber: 50 },
   ]
 
   // Resolver IDs do DB para os limites

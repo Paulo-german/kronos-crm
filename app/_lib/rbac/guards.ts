@@ -142,6 +142,8 @@ function getEntityLabel(entity: RBACEntity): string {
     conversation: 'conversas',
     integration: 'integrações',
     notification: 'notificações',
+    automation: 'automações',
+    agentGroup: 'equipes de agentes',
   }
   return labels[entity]
 }

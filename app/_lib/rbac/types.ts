@@ -28,6 +28,8 @@ export type RBACEntity =
   | 'conversation'
   | 'integration'
   | 'notification'
+  | 'automation'
+  | 'agentGroup'
 
 /**
  * Ações possíveis em cada entidade

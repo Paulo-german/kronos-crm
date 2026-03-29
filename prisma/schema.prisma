@@ -30,6 +30,7 @@ model User {
   tasksAssigned           Task[]            @relation("TaskAssignee")
   tasksCreated            Task[]            @relation("TaskCreator")
   integrations            UserIntegration[]
+  automationsCreated      Automation[]      @relation("AutomationCreator")
 
   @@map("users")
 }
@@ -64,6 +65,7 @@ model Organization {
   niche                  String?                 @map("niche")
   onboardingCompleted    Boolean                 @default(false) @map("onboarding_completed")
   agentExecutions        AgentExecution[]
+  agentGroups            AgentGroup[]
   agentTestConversations AgentTestConversation[]
   agents                 Agent[]
   aiUsage                AiUsage[]
@@ -85,6 +87,8 @@ model Organization {
   tasks                  Task[]
   userIntegrations       UserIntegration[]
   followUps              FollowUp[]
+  automations            Automation[]
+  automationExecutions   AutomationExecution[]
 
   @@map("organizations")
 }
@@ -214,17 +218,18 @@ model Deal {
   organizationId    String          @map("organization_id")
   lossReasonId      String?         @map("loss_reason_id")
   value             Decimal         @default(0) @db.Decimal(15, 2)
-  activities        Activity[]
-  appointments      Appointment[]
-  conversations     Conversation[]
-  contacts          DealContact[]
-  dealProducts      DealProduct[]
-  assignee          User            @relation("DealAssignee", fields: [assignedTo], references: [id])
-  company           Company?        @relation(fields: [companyId], references: [id])
-  lossReason        DealLostReason? @relation(fields: [lossReasonId], references: [id])
-  organization      Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  stage             PipelineStage   @relation(fields: [pipelineStageId], references: [id])
-  tasks             Task[]
+  activities           Activity[]
+  appointments         Appointment[]
+  conversations        Conversation[]
+  contacts             DealContact[]
+  dealProducts         DealProduct[]
+  assignee             User            @relation("DealAssignee", fields: [assignedTo], references: [id])
+  company              Company?        @relation(fields: [companyId], references: [id])
+  lossReason           DealLostReason? @relation(fields: [lossReasonId], references: [id])
+  organization         Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  stage                PipelineStage   @relation(fields: [pipelineStageId], references: [id])
+  tasks                Task[]
+  automationExecutions AutomationExecution[]
 
   @@index([organizationId, pipelineStageId, assignedTo])
   @@index([organizationId, pipelineStageId, createdAt(sort: Desc)])
@@ -532,6 +537,7 @@ model Agent {
   followUpExhaustedAction          String                  @default("NONE") @map("follow_up_exhausted_action")
   followUpExhaustedConfig          Json?                   @map("follow_up_exhausted_config")
   executions            AgentExecution[]
+  groupMemberships      AgentGroupMember[]
   knowledgeChunks       AgentKnowledgeChunk[]
   knowledgeFiles        AgentKnowledgeFile[]
   steps                 AgentStep[]
@@ -542,6 +548,48 @@ model Agent {
 
   @@index([organizationId, isActive])
   @@map("agents")
+}
+
+model AgentGroup {
+  id             String             @id @default(uuid())
+  organizationId String             @map("organization_id")
+  name           String
+  description    String?
+  isActive       Boolean            @default(true) @map("is_active")
+
+  // Router embutido — não é um Agent separado
+  routerModelId  String             @default("google/gemini-2.0-flash") @map("router_model_id")
+  routerPrompt   String?            @map("router_prompt")
+  routerConfig   Json?              @map("router_config")
+
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+
+  organization     Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members          AgentGroupMember[]
+  inboxes          Inbox[]
+  agentExecutions  AgentExecution[]
+
+  @@index([organizationId, isActive])
+  @@map("agent_groups")
+}
+
+model AgentGroupMember {
+  id         String     @id @default(uuid())
+  groupId    String     @map("group_id")
+  agentId    String     @map("agent_id")
+  // Descrição curta do escopo deste agente — injetada no prompt do router para classificação
+  scopeLabel String     @map("scope_label")
+  isActive   Boolean    @default(true) @map("is_active")
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
+
+  group  AgentGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  agent  Agent      @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, agentId])
+  @@index([agentId])
+  @@map("agent_group_members")
 }
 
 model AgentStep {
@@ -655,12 +703,16 @@ model Inbox {
   zapiInstanceId        String?        @unique @map("zapi_instance_id")
   zapiToken             String?        @map("zapi_token")
   zapiClientToken       String?        @map("zapi_client_token")
+  // Modo grupo (mutuamente exclusivo com agentId — validado na action)
+  agentGroupId          String?        @map("agent_group_id")
   conversations         Conversation[]
   agent                 Agent?         @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  agentGroup            AgentGroup?    @relation(fields: [agentGroupId], references: [id], onDelete: SetNull)
   organization          Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
   @@index([agentId])
+  @@index([agentGroupId])
   @@index([metaPhoneNumberId])
   @@index([zapiInstanceId])
   @@map("inboxes")
@@ -689,6 +741,8 @@ model Conversation {
   updatedAt              DateTime            @updatedAt @map("updated_at")
   nextFollowUpAt         DateTime?           @map("next_follow_up_at")
   followUpCount          Int                 @default(0) @map("follow_up_count")
+  // Worker ativo nesta conversa — campo de tracking leve sem FK (agente pode sair do grupo)
+  activeAgentId          String?             @map("active_agent_id")
   agentExecutions        AgentExecution[]
   events                 ConversationEvent[]
   assignee               User?               @relation("ConversationAssignee", fields: [assignedTo], references: [id])
@@ -777,7 +831,10 @@ model AgentTestMessage {
 
 model AgentExecution {
   id               String                @id @default(uuid())
-  agentId          String                @map("agent_id")
+  // Nullable: null quando a execução é do router embutido (não de um agent worker)
+  agentId          String?               @map("agent_id")
+  // Preenchido quando a execução é do router do AgentGroup
+  agentGroupId     String?               @map("agent_group_id")
   organizationId   String                @map("organization_id")
   conversationId   String                @map("conversation_id")
   triggerMessageId String?               @map("trigger_message_id")
@@ -793,12 +850,14 @@ model AgentExecution {
   createdAt        DateTime              @default(now()) @map("created_at")
   updatedAt        DateTime              @updatedAt @map("updated_at")
 
-  agent        Agent              @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  agent        Agent?             @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  agentGroup   AgentGroup?        @relation(fields: [agentGroupId], references: [id], onDelete: Cascade)
   organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   conversation Conversation       @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   steps        AgentExecutionStep[]
 
   @@index([agentId, createdAt(sort: Desc)])
+  @@index([agentGroupId, createdAt(sort: Desc)])
   @@index([organizationId, agentId, status])
   @@index([conversationId])
   @@map("agent_executions")
@@ -1099,10 +1158,94 @@ enum AgentExecutionStepType {
   MEMORY_COMPRESSION
   FALLBACK_LLM_CALL
   PAUSE_CHECK
+  ROUTER_CLASSIFICATION
+  AGENT_TRANSFER
 }
 
 enum AgentExecutionStepStatus {
   PASSED
   SKIPPED
   FAILED
+}
+
+// ─────────────────────────────────────────────────────────────
+// Automações
+// ─────────────────────────────────────────────────────────────
+
+enum AutomationTrigger {
+  DEAL_CREATED
+  DEAL_MOVED
+  // Nenhuma atividade por N minutos/horas/dias
+  DEAL_STALE
+  // Parado em um estágio específico por N tempo
+  DEAL_IDLE_IN_STAGE
+  // Qualquer atividade (nota, call, email, meeting, etc)
+  ACTIVITY_CREATED
+  // WON, LOST, PAUSED, OPEN (reaberto), etc
+  DEAL_STATUS_CHANGED
+}
+
+enum AutomationAction {
+  // Transfere deal para outro membro (round-robin ou específico)
+  REASSIGN_DEAL
+  MOVE_DEAL_TO_STAGE
+  MARK_DEAL_LOST
+  // Envia notificação in-app
+  NOTIFY_USER
+  UPDATE_DEAL_PRIORITY
+}
+
+enum AutomationExecutionStatus {
+  SUCCESS
+  FAILED
+  // Condições não atendidas
+  SKIPPED
+}
+
+model Automation {
+  id              String              @id @default(uuid())
+  organizationId  String              @map("organization_id")
+  name            String
+  description     String?
+  isActive        Boolean             @default(true) @map("is_active")
+  triggerType     AutomationTrigger   @map("trigger_type")
+  triggerConfig   Json                @map("trigger_config")
+  conditions      Json                @default("[]")
+  actionType      AutomationAction    @map("action_type")
+  actionConfig    Json                @map("action_config")
+  createdBy       String              @map("created_by")
+  lastTriggeredAt DateTime?           @map("last_triggered_at")
+  executionCount  Int                 @default(0) @map("execution_count")
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+
+  organization    Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  creator         User                @relation("AutomationCreator", fields: [createdBy], references: [id])
+  executions      AutomationExecution[]
+
+  @@index([organizationId, isActive, triggerType])
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@map("automations")
+}
+
+model AutomationExecution {
+  id             String                    @id @default(uuid())
+  automationId   String                    @map("automation_id")
+  organizationId String                    @map("organization_id")
+  dealId         String?                   @map("deal_id")
+  status         AutomationExecutionStatus
+  triggerPayload Json?                     @map("trigger_payload")
+  actionResult   Json?                     @map("action_result")
+  errorMessage   String?                   @map("error_message")
+  executedAt     DateTime                  @default(now()) @map("executed_at")
+  durationMs     Int?                      @map("duration_ms")
+
+  automation     Automation                @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  organization   Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  deal           Deal?                     @relation(fields: [dealId], references: [id], onDelete: SetNull)
+
+  @@index([automationId, executedAt(sort: Desc)])
+  @@index([organizationId, executedAt(sort: Desc)])
+  @@index([automationId, dealId, executedAt(sort: Desc)])
+  @@map("automation_executions")
 }
