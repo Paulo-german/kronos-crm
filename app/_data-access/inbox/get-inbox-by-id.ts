@@ -20,6 +20,9 @@ export interface InboxDetailDto {
   zapiClientToken: string | null
   agentId: string | null
   agentName: string | null
+  // Modo grupo (mutuamente exclusivo com agentId)
+  agentGroupId: string | null
+  agentGroupName: string | null
   autoCreateDeal: boolean
   pipelineId: string | null
   distributionUserIds: string[]
@@ -36,6 +39,7 @@ const fetchInboxByIdFromDb = async (
     where: { id: inboxId, organizationId: orgId },
     include: {
       agent: { select: { name: true } },
+      agentGroup: { select: { name: true } },
     },
   })
 
@@ -58,6 +62,8 @@ const fetchInboxByIdFromDb = async (
     zapiClientToken: inbox.zapiClientToken,
     agentId: inbox.agentId,
     agentName: inbox.agent?.name ?? null,
+    agentGroupId: inbox.agentGroupId,
+    agentGroupName: inbox.agentGroup?.name ?? null,
     autoCreateDeal: inbox.autoCreateDeal ?? true,
     pipelineId: inbox.pipelineId ?? null,
     distributionUserIds: inbox.distributionUserIds ?? [],

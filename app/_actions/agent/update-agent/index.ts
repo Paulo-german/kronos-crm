@@ -37,6 +37,7 @@ export const updateAgent = orgActionClient
 
     revalidateTag(`agents:${ctx.orgId}`)
     revalidateTag(`agent:${data.id}`)
+    revalidateTag(`agentGroups:${ctx.orgId}`)
 
     return { success: true }
   })

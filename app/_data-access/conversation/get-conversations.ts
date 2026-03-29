@@ -10,6 +10,10 @@ export interface ConversationListDto {
   contactName: string
   contactPhone: string | null
   agentName: string | null
+  // Campos para modo grupo (Multi-Agent Routing)
+  agentGroupName: string | null
+  activeAgentId: string | null
+  activeAgentName: string | null
   inboxId: string
   inboxName: string
   inboxConnectionType: string
@@ -57,6 +61,19 @@ const conversationListInclude = {
       name: true,
       connectionType: true,
       agent: { select: { name: true } },
+      // Grupo vinculado ao inbox (modo multi-agent)
+      agentGroup: {
+        select: {
+          name: true,
+          // Membros para resolver nome do worker ativo via activeAgentId
+          members: {
+            select: {
+              agentId: true,
+              agent: { select: { name: true } },
+            },
+          },
+        },
+      },
     },
   },
   deal: { select: { id: true, title: true } },
@@ -75,12 +92,22 @@ type ConversationWithIncludes = Prisma.ConversationGetPayload<{
 }>
 
 function mapConversationToDto(conversation: ConversationWithIncludes): ConversationListDto {
+  // Resolve nome do worker ativo via membros do grupo (sem FK explícita)
+  const groupMembers = conversation.inbox.agentGroup?.members ?? []
+  const activeAgentName =
+    conversation.activeAgentId
+      ? (groupMembers.find((member) => member.agentId === conversation.activeAgentId)?.agent.name ?? null)
+      : null
+
   return {
     id: conversation.id,
     contactId: conversation.contactId,
     contactName: conversation.contact.name,
     contactPhone: conversation.contact.phone,
     agentName: conversation.inbox.agent?.name ?? null,
+    agentGroupName: conversation.inbox.agentGroup?.name ?? null,
+    activeAgentId: conversation.activeAgentId,
+    activeAgentName,
     inboxId: conversation.inbox.id,
     inboxName: conversation.inbox.name,
     inboxConnectionType: conversation.inbox.connectionType,

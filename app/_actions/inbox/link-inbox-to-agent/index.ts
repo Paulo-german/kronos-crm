@@ -20,7 +20,7 @@ export const linkInboxToAgent = orgActionClient
     // 2. Verificar inbox pertence à org (inclui evolutionInstanceName para saber se está conectado)
     const inbox = await db.inbox.findFirst({
       where: { id: inboxId, organizationId: ctx.orgId },
-      select: { id: true, agentId: true, evolutionInstanceName: true },
+      select: { id: true, agentId: true, agentGroupId: true, evolutionInstanceName: true },
     })
 
     if (!inbox) {
@@ -39,11 +39,28 @@ export const linkInboxToAgent = orgActionClient
       }
     }
 
-    // 4. Vincular/desvincular
-    await db.inbox.update({
-      where: { id: inboxId },
-      data: { agentId },
-    })
+    // 4. Vincular/desvincular — ao setar agentId, limpar agentGroupId (exclusão mútua)
+    if (agentId && inbox.agentGroupId) {
+      // Migrando de grupo para agente standalone: limpar activeAgentId das conversas
+      await db.$transaction(async (tx) => {
+        await tx.inbox.update({
+          where: { id: inboxId },
+          data: { agentId, agentGroupId: null },
+        })
+        await tx.conversation.updateMany({
+          where: { inboxId },
+          data: { activeAgentId: null },
+        })
+      })
+    } else {
+      await db.inbox.update({
+        where: { id: inboxId },
+        data: {
+          agentId,
+          ...(agentId ? { agentGroupId: null } : {}),
+        },
+      })
+    }
 
     // 5. Invalidar cache
     revalidateTag(`inbox:${inboxId}`)
@@ -55,6 +72,11 @@ export const linkInboxToAgent = orgActionClient
       revalidateTag(`agent:${agentId}`)
     }
     revalidateTag(`agents:${ctx.orgId}`)
+    // Invalidar grupo anterior quando o inbox migra para agente standalone
+    if (inbox.agentGroupId) {
+      revalidateTag(`agentGroup:${inbox.agentGroupId}`)
+      revalidateTag(`agentGroups:${ctx.orgId}`)
+    }
 
     // Se inbox conectado, invalidar conversas (webhook roteia para novo agent)
     if (inbox.evolutionInstanceName) {

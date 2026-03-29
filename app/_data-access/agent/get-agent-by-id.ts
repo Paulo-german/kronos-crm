@@ -48,6 +48,13 @@ export interface AgentInboxDto {
   // NAO incluir metaAccessToken (seguranca — nunca expor ao cliente via DTO)
 }
 
+export interface AgentGroupMembershipDto {
+  memberId: string
+  groupId: string
+  groupName: string
+  scopeLabel: string
+}
+
 export interface AgentDetailDto {
   id: string
   name: string
@@ -69,6 +76,7 @@ export interface AgentDetailDto {
   inboxes: AgentInboxDto[]
   steps: AgentStepDto[]
   knowledgeFiles: AgentKnowledgeFileDto[]
+  groupMemberships: AgentGroupMembershipDto[]
   createdAt: Date
   updatedAt: Date
 }
@@ -83,6 +91,12 @@ const fetchAgentByIdFromDb = async (
       steps: { orderBy: { order: 'asc' } },
       knowledgeFiles: { orderBy: { createdAt: 'desc' } },
       inboxes: { orderBy: { createdAt: 'desc' } },
+      groupMemberships: {
+        include: {
+          group: { select: { id: true, name: true } },
+        },
+        orderBy: { createdAt: 'asc' },
+      },
     },
   })
 
@@ -144,6 +158,12 @@ const fetchAgentByIdFromDb = async (
       status: file.status,
       chunkCount: file.chunkCount,
       createdAt: file.createdAt,
+    })),
+    groupMemberships: agent.groupMemberships.map((membership) => ({
+      memberId: membership.id,
+      groupId: membership.group.id,
+      groupName: membership.group.name,
+      scopeLabel: membership.scopeLabel,
     })),
     createdAt: agent.createdAt,
     updatedAt: agent.updatedAt,
