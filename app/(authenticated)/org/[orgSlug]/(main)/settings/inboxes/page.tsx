@@ -5,8 +5,7 @@ import { getInboxes } from '@/_data-access/inbox/get-inboxes'
 import { getAgents } from '@/_data-access/agent/get-agents'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 import { Button } from '@/_components/ui/button'
-import { InboxesDataTable } from './_components/inboxes-data-table'
-import CreateInboxButton from './_components/create-inbox-button'
+import { InboxesCardGrid } from './_components/inboxes-card-grid'
 import DiscoverInstancesButton from './_components/discover-instances-button'
 import { QuotaHint } from '@/_components/trial/quota-hint'
 import Header, {
@@ -55,16 +54,13 @@ const InboxesPage = async ({ params }: InboxesPageProps) => {
         </HeaderLeft>
         <HeaderRight>
           <DiscoverInstancesButton />
-          <CreateInboxButton
-            agentOptions={agentOptions}
-            withinQuota={quota.withinQuota}
-          />
         </HeaderRight>
       </Header>
-      <InboxesDataTable
+      <InboxesCardGrid
         inboxes={inboxes}
         agentOptions={agentOptions}
         orgSlug={orgSlug}
+        withinQuota={quota.withinQuota}
       />
     </div>
   )

@@ -24,6 +24,7 @@ import {
   CardTitle,
 } from '@/_components/ui/card'
 import { Sheet } from '@/_components/ui/sheet'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/_components/ui/tabs'
 import { Switch } from '@/_components/ui/switch'
 import { Label } from '@/_components/ui/label'
 import { Checkbox } from '@/_components/ui/checkbox'
@@ -314,7 +315,7 @@ const InboxDetailClient = ({
   }
 
   return (
-    <div className="flex h-fit flex-col gap-6 bg-background p-6">
+    <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-6">
       {/* Back + Title */}
       <div className="flex flex-col gap-4">
         <Button variant="ghost" size="sm" className="w-fit" asChild>
@@ -352,7 +353,6 @@ const InboxDetailClient = ({
               </Badge>
             )}
           </div>
-
           {canManage && (
             <Button
               variant="outline"
@@ -366,274 +366,307 @@ const InboxDetailClient = ({
         </div>
       </div>
 
-      {/* Info Card */}
-      <Card className="border-border/50 bg-secondary/20">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">Informações</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="flex items-center gap-3 rounded-md border border-border/50 bg-background/70 p-3">
-              <MessageSquare className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="text-xs text-muted-foreground">Canal</p>
-                <p className="text-sm font-medium">
-                  {channelLabels[inbox.channel] ?? inbox.channel}
-                </p>
-                {inbox.channel === 'WHATSAPP' && (inbox.evolutionInstanceName || inbox.metaPhoneNumberId || inbox.zapiInstanceId) && (
-                  <p className="text-xs text-muted-foreground">
-                    {resolveConnectionLabel(inbox.connectionType, isSelfHosted)}
-                  </p>
-                )}
-              </div>
-            </div>
+      {/* Tabs */}
+      <Tabs defaultValue="general">
+        <TabsList className="grid h-12 w-full grid-cols-2 rounded-md border border-border/50 bg-tab/30">
+          <TabsTrigger
+            value="general"
+            className="rounded-md py-2 data-[state=active]:bg-card/80"
+          >
+            Geral
+          </TabsTrigger>
+          <TabsTrigger
+            value="connection"
+            className="rounded-md py-2 data-[state=active]:bg-card/80"
+          >
+            Conexão
+          </TabsTrigger>
+        </TabsList>
 
-            <div className="flex items-start gap-3 rounded-md border border-border/50 bg-background/70 p-3">
-              <Bot className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-              <div className="min-w-0 flex-1 space-y-2.5">
-                <p className="text-xs text-muted-foreground">Agente IA</p>
-                {canManage ? (
-                  <>
-                    {/* RadioGroup: agente individual ou equipe */}
-                    <RadioGroup
-                      value={aiLinkMode}
-                      onValueChange={(value) =>
-                        handleAiLinkModeChange(value as AiLinkMode)
-                      }
-                      disabled={isLinking}
-                      className="gap-2"
-                    >
-                      <div className="flex items-center gap-2">
-                        <RadioGroupItem value="agent" id={`ai-mode-agent-${inbox.id}`} />
-                        <Label
-                          htmlFor={`ai-mode-agent-${inbox.id}`}
-                          className="cursor-pointer text-xs font-normal"
-                        >
-                          Agente individual
-                        </Label>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <RadioGroupItem value="group" id={`ai-mode-group-${inbox.id}`} />
-                        <Label
-                          htmlFor={`ai-mode-group-${inbox.id}`}
-                          className="cursor-pointer text-xs font-normal"
-                        >
-                          Equipe de agentes
-                        </Label>
-                      </div>
-                    </RadioGroup>
-
-                    {/* Select condicional por modo */}
-                    {aiLinkMode === 'agent' ? (
-                      <Select
-                        value={inbox.agentId ?? 'none'}
-                        onValueChange={(value) => {
-                          executeLinkAgent({
-                            inboxId: inbox.id,
-                            agentId: value === 'none' ? null : value,
-                          })
-                        }}
-                        disabled={isLinking}
-                      >
-                        <SelectTrigger className="h-7 text-xs">
-                          <SelectValue placeholder="Selecionar agente..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Nenhum</SelectItem>
-                          {agentOptions.map((agent) => (
-                            <SelectItem key={agent.id} value={agent.id}>
-                              {agent.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <Select
-                        value={inbox.agentGroupId ?? 'none'}
-                        onValueChange={(value) => {
-                          if (value === 'none') {
-                            executeLinkGroup({ inboxId: inbox.id, agentGroupId: null })
-                            return
-                          }
-                          // Valida grupo com workers antes de vincular
-                          const group = agentGroupOptions.find((g) => g.id === value)
-                          if (group && group.memberCount === 0) {
-                            toast.error('Equipe precisa de pelo menos 1 agente worker ativo.')
-                            return
-                          }
-                          executeLinkGroup({ inboxId: inbox.id, agentGroupId: value })
-                        }}
-                        disabled={isLinking}
-                      >
-                        <SelectTrigger className="h-7 text-xs">
-                          <SelectValue placeholder="Selecionar equipe..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Nenhuma</SelectItem>
-                          {agentGroupOptions.map((group) => (
-                            <SelectItem
-                              key={group.id}
-                              value={group.id}
-                              disabled={group.memberCount === 0}
-                            >
-                              {group.name}
-                              {group.memberCount === 0 && (
-                                <span className="ml-1 text-muted-foreground">(sem workers)</span>
-                              )}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+        <TabsContent value="general" className="mt-6 space-y-6">
+          {/* Info Card */}
+          <Card className="border-border/50 bg-secondary/20">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold">Informações</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="flex items-center gap-3 rounded-md border border-border/50 bg-background/70 p-3">
+                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Canal</p>
+                    <p className="text-sm font-medium">
+                      {channelLabels[inbox.channel] ?? inbox.channel}
+                    </p>
+                    {inbox.channel === 'WHATSAPP' && (inbox.evolutionInstanceName || inbox.metaPhoneNumberId || inbox.zapiInstanceId) && (
+                      <p className="text-xs text-muted-foreground">
+                        {resolveConnectionLabel(inbox.connectionType, isSelfHosted)}
+                      </p>
                     )}
-                  </>
-                ) : (
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 rounded-md border border-border/50 bg-background/70 p-3">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Criada em</p>
+                    <p className="text-sm font-medium">{formattedDate}</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Agente IA Card */}
+          <Card className="border-border/50 bg-secondary/20">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                <Bot className="h-4 w-4" />
+                Agente IA
+              </CardTitle>
+              <CardDescription>
+                Configure qual agente ou equipe responde às conversas desta caixa de entrada.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {canManage ? (
+                <div className="space-y-4">
+                  {/* RadioGroup: agente individual ou equipe */}
+                  <RadioGroup
+                    value={aiLinkMode}
+                    onValueChange={(value) =>
+                      handleAiLinkModeChange(value as AiLinkMode)
+                    }
+                    disabled={isLinking}
+                    className="flex gap-4"
+                  >
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="agent" id={`ai-mode-agent-${inbox.id}`} />
+                      <Label
+                        htmlFor={`ai-mode-agent-${inbox.id}`}
+                        className="cursor-pointer text-sm font-normal"
+                      >
+                        Agente individual
+                      </Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="group" id={`ai-mode-group-${inbox.id}`} />
+                      <Label
+                        htmlFor={`ai-mode-group-${inbox.id}`}
+                        className="cursor-pointer text-sm font-normal"
+                      >
+                        Equipe de agentes
+                      </Label>
+                    </div>
+                  </RadioGroup>
+
+                  {/* Select condicional por modo */}
+                  {aiLinkMode === 'agent' ? (
+                    <Select
+                      value={inbox.agentId ?? 'none'}
+                      onValueChange={(value) => {
+                        executeLinkAgent({
+                          inboxId: inbox.id,
+                          agentId: value === 'none' ? null : value,
+                        })
+                      }}
+                      disabled={isLinking}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecionar agente..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhum</SelectItem>
+                        {agentOptions.map((agent) => (
+                          <SelectItem key={agent.id} value={agent.id}>
+                            {agent.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Select
+                      value={inbox.agentGroupId ?? 'none'}
+                      onValueChange={(value) => {
+                        if (value === 'none') {
+                          executeLinkGroup({ inboxId: inbox.id, agentGroupId: null })
+                          return
+                        }
+                        // Valida grupo com workers antes de vincular
+                        const group = agentGroupOptions.find((g) => g.id === value)
+                        if (group && group.memberCount === 0) {
+                          toast.error('Equipe precisa de pelo menos 1 agente worker ativo.')
+                          return
+                        }
+                        executeLinkGroup({ inboxId: inbox.id, agentGroupId: value })
+                      }}
+                      disabled={isLinking}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecionar equipe..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhuma</SelectItem>
+                        {agentGroupOptions.map((group) => (
+                          <SelectItem
+                            key={group.id}
+                            value={group.id}
+                            disabled={group.memberCount === 0}
+                          >
+                            {group.name}
+                            {group.memberCount === 0 && (
+                              <span className="ml-1 text-muted-foreground">(sem workers)</span>
+                            )}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 rounded-md border border-border/50 bg-background/70 p-3">
+                  <Bot className="h-4 w-4 text-muted-foreground" />
                   <p className="text-sm font-medium">
                     {inbox.agentGroupId
                       ? (inbox.agentGroupName ?? 'Equipe')
                       : (inbox.agentName ?? 'Nenhum')}
                   </p>
-                )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Lead Capture Card */}
+          <Card className="border-border/50 bg-secondary/20">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                <Users className="h-4 w-4" />
+                Captação de Leads
+              </CardTitle>
+              <CardDescription>
+                Configure como novos contatos e negócios são criados a partir desta caixa de entrada.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {/* Auto Create Deal Toggle */}
+              <div className="flex items-center justify-between rounded-md border border-border/50 bg-background/70 p-3">
+                <div className="space-y-0.5">
+                  <Label className="text-sm font-medium">Criar negócio automaticamente</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Cria um negócio para cada nova conversa iniciada nesta caixa.
+                  </p>
+                </div>
+                <Switch
+                  checked={inbox.autoCreateDeal}
+                  onCheckedChange={(checked) => {
+                    executeInlineUpdate({ id: inbox.id, autoCreateDeal: checked })
+                  }}
+                  disabled={!canManage}
+                />
               </div>
-            </div>
 
-            <div className="flex items-center gap-3 rounded-md border border-border/50 bg-background/70 p-3">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="text-xs text-muted-foreground">Criada em</p>
-                <p className="text-sm font-medium">{formattedDate}</p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Lead Capture Card */}
-      <Card className="border-border/50 bg-secondary/20">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base font-semibold">
-            <Users className="h-4 w-4" />
-            Captação de Leads
-          </CardTitle>
-          <CardDescription>
-            Configure como novos contatos e negócios são criados a partir desta caixa de entrada.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          {/* Auto Create Deal Toggle */}
-          <div className="flex items-center justify-between rounded-md border border-border/50 bg-background/70 p-3">
-            <div className="space-y-0.5">
-              <Label className="text-sm font-medium">Criar negócio automaticamente</Label>
-              <p className="text-xs text-muted-foreground">
-                Cria um negócio para cada nova conversa iniciada nesta caixa.
-              </p>
-            </div>
-            <Switch
-              checked={inbox.autoCreateDeal}
-              onCheckedChange={(checked) => {
-                executeInlineUpdate({ id: inbox.id, autoCreateDeal: checked })
-              }}
-              disabled={!canManage}
-            />
-          </div>
-
-          {/* Pipeline Select */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">Pipeline de destino</Label>
-            <Select
-              value={inbox.pipelineId ?? 'auto'}
-              onValueChange={(value) => {
-                executeInlineUpdate({
-                  id: inbox.id,
-                  pipelineId: value === 'auto' ? null : value,
-                })
-              }}
-              disabled={!canManage}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="auto">Automático (primeiro pipeline)</SelectItem>
-                {pipelines.map((pipeline) => (
-                  <SelectItem key={pipeline.id} value={pipeline.id}>
-                    {pipeline.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-              Pipeline onde novos negócios serão criados.
-            </p>
-          </div>
-
-          {/* Distribution Users Multi-select */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">Distribuição de leads</Label>
-            {assignableMembers.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nenhum membro disponível.</p>
-            ) : (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start"
-                    type="button"
-                    disabled={!canManage}
-                  >
-                    {localDistributionUserIds.length === 0
-                      ? 'Selecionar membros...'
-                      : `${localDistributionUserIds.length} membro(s) selecionado(s)`}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80">
-                  <div className="space-y-2">
-                    {assignableMembers.map((member) => (
-                      <div key={member.userId} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`dist-inbox-${member.userId}`}
-                          checked={localDistributionUserIds.includes(member.userId!)}
-                          onCheckedChange={() => handleToggleDistributionUser(member.userId!)}
-                          disabled={!canManage}
-                        />
-                        <Label htmlFor={`dist-inbox-${member.userId}`} className="cursor-pointer">
-                          {member.user?.fullName ?? member.email}
-                        </Label>
-                      </div>
+              {/* Pipeline Select */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Pipeline de destino</Label>
+                <Select
+                  value={inbox.pipelineId ?? 'auto'}
+                  onValueChange={(value) => {
+                    executeInlineUpdate({
+                      id: inbox.id,
+                      pipelineId: value === 'auto' ? null : value,
+                    })
+                  }}
+                  disabled={!canManage}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="auto">Automático (primeiro pipeline)</SelectItem>
+                    {pipelines.map((pipeline) => (
+                      <SelectItem key={pipeline.id} value={pipeline.id}>
+                        {pipeline.name}
+                      </SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Pipeline onde novos negócios serão criados.
+                </p>
+              </div>
+
+              {/* Distribution Users Multi-select */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Distribuição de leads</Label>
+                {assignableMembers.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Nenhum membro disponível.</p>
+                ) : (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start"
+                        type="button"
+                        disabled={!canManage}
+                      >
+                        {localDistributionUserIds.length === 0
+                          ? 'Selecionar membros...'
+                          : `${localDistributionUserIds.length} membro(s) selecionado(s)`}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80">
+                      <div className="space-y-2">
+                        {assignableMembers.map((member) => (
+                          <div key={member.userId} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`dist-inbox-${member.userId}`}
+                              checked={localDistributionUserIds.includes(member.userId!)}
+                              onCheckedChange={() => handleToggleDistributionUser(member.userId!)}
+                              disabled={!canManage}
+                            />
+                            <Label htmlFor={`dist-inbox-${member.userId}`} className="cursor-pointer">
+                              {member.user?.fullName ?? member.email}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                )}
+
+                {localDistributionUserIds.length === 0 && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <AlertTriangleIcon className="h-4 w-4" />
+                    <span>Leads serão atribuídos ao dono da organização.</span>
                   </div>
-                </PopoverContent>
-              </Popover>
-            )}
+                )}
 
-            {localDistributionUserIds.length === 0 && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <AlertTriangleIcon className="h-4 w-4" />
-                <span>Leads serão atribuídos ao dono da organização.</span>
+                {localDistributionUserIds.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {localDistributionUserIds.map((userId) => {
+                      const member = members.find((m) => m.userId === userId)
+                      return member ? (
+                        <Badge key={userId} variant="secondary">
+                          {member.user?.fullName ?? member.email}
+                        </Badge>
+                      ) : null
+                    })}
+                  </div>
+                )}
+
+                <p className="text-xs text-muted-foreground">
+                  Leads serão distribuídos em round-robin entre os membros selecionados.
+                </p>
               </div>
-            )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-            {localDistributionUserIds.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {localDistributionUserIds.map((userId) => {
-                  const member = members.find((m) => m.userId === userId)
-                  return member ? (
-                    <Badge key={userId} variant="secondary">
-                      {member.user?.fullName ?? member.email}
-                    </Badge>
-                  ) : null
-                })}
-              </div>
-            )}
-
-            <p className="text-xs text-muted-foreground">
-              Leads serão distribuídos em round-robin entre os membros selecionados.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Connection Card — roteado por provider */}
-      {inbox.channel === 'WHATSAPP' && renderConnectionSection()}
+        <TabsContent value="connection" className="mt-6">
+          {/* Connection Card — roteado por provider */}
+          {inbox.channel === 'WHATSAPP' && renderConnectionSection()}
+        </TabsContent>
+      </Tabs>
 
       {/* Edit Sheet */}
       <Sheet

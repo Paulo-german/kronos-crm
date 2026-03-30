@@ -164,12 +164,12 @@ const ZApiConnectionCard = ({
   // Estado conectado
   if (connectionState === 'connected') {
     return (
-      <Card className="border-green-600/30 bg-green-600/5">
+      <Card className="border-border/50 bg-secondary/20">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base font-semibold">
-            <Wifi className="h-5 w-5 text-green-600" />
+            <Wifi className="h-5 w-5 text-kronos-green" />
             Z-API Conectada
-            <Badge variant="outline" className="border-green-600/50 text-green-600">
+            <Badge variant="outline" className="border-kronos-green/20 bg-kronos-green/10 text-kronos-green hover:bg-kronos-green/20">
               Online
             </Badge>
           </CardTitle>
@@ -185,27 +185,33 @@ const ZApiConnectionCard = ({
           )}
 
           {connectionStats && (
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex items-center gap-2 text-sm">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="flex items-center gap-3 rounded-md border border-border/50 bg-background/70 p-3">
                 <MessagesSquare className="h-4 w-4 text-muted-foreground" />
-                <span className="text-muted-foreground">Conversas:</span>
-                <span className="font-medium">{connectionStats.conversationsCount}</span>
+                <div>
+                  <p className="text-xs text-muted-foreground">Conversas</p>
+                  <p className="text-sm font-medium">{connectionStats.conversationsCount}</p>
+                </div>
               </div>
-              <div className="flex items-center gap-2 text-sm">
+              <div className="flex items-center gap-3 rounded-md border border-border/50 bg-background/70 p-3">
                 <Activity className="h-4 w-4 text-muted-foreground" />
-                <span className="text-muted-foreground">Msgs hoje:</span>
-                <span className="font-medium">{connectionStats.messagesToday}</span>
+                <div>
+                  <p className="text-xs text-muted-foreground">Mensagens hoje</p>
+                  <p className="text-sm font-medium">{connectionStats.messagesToday}</p>
+                </div>
               </div>
               {connectionStats.lastMessageAt && (
-                <div className="col-span-2 flex items-center gap-2 text-sm">
+                <div className="flex items-center gap-3 rounded-md border border-border/50 bg-background/70 p-3">
                   <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">Ultima atividade:</span>
-                  <span className="font-medium">
-                    {formatDistanceToNow(connectionStats.lastMessageAt, {
-                      addSuffix: true,
-                      locale: ptBR,
-                    })}
-                  </span>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Ultima atividade</p>
+                    <p className="text-sm font-medium">
+                      {formatDistanceToNow(connectionStats.lastMessageAt, {
+                        addSuffix: true,
+                        locale: ptBR,
+                      })}
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
@@ -215,15 +221,15 @@ const ZApiConnectionCard = ({
 
           {canManage && (
             <>
-              <Button
-                variant="destructive"
-                size="sm"
-                className="w-full"
-                onClick={() => setIsDisconnectOpen(true)}
-              >
-                <WifiOff className="mr-2 h-4 w-4" />
-                Desconectar Z-API
-              </Button>
+              <div className="flex justify-center pt-2">
+                <Button
+                  variant="destructive"
+                  onClick={() => setIsDisconnectOpen(true)}
+                >
+                  <WifiOff className="mr-2 h-4 w-4" />
+                  Desconectar Z-API
+                </Button>
+              </div>
 
               <ConfirmationDialog
                 open={isDisconnectOpen}
@@ -251,7 +257,7 @@ const ZApiConnectionCard = ({
   // Estado conectando (QR code polling)
   if (connectionState === 'connecting') {
     return (
-      <Card>
+      <Card className="border-border/50 bg-secondary/20">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base font-semibold">
             <Loader2 className="h-5 w-5 animate-spin" />
@@ -296,7 +302,7 @@ const ZApiConnectionCard = ({
 
   // Estado formulario (desconectado)
   return (
-    <Card>
+    <Card className="border-border/50 bg-secondary/20">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base font-semibold">
           <WifiOff className="h-5 w-5 text-muted-foreground" />
