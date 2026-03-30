@@ -302,29 +302,13 @@ const InboxDetailClient = ({
       )
     }
 
-    // Se Meta Cloud nao esta habilitado para esta org, ir direto para Evolution
-    if (!metaCloudEnabled) {
-      return (
-        <InboxConnectionCard
-          inboxId={inbox.id}
-          canManage={canManage}
-          connectionStats={connectionStats}
-          instanceInfo={instanceInfo}
-          hasInstance={false}
-          instanceName={null}
-          initialConnected={false}
-          onConnectionStateChange={setEvolutionConnectedOverride}
-          isSelfHosted={false}
-        />
-      )
-    }
-
     return (
       <ConnectionProviderSelector
         inboxId={inbox.id}
         canManage={canManage}
         connectionStats={connectionStats}
         instanceInfo={instanceInfo}
+        metaCloudEnabled={metaCloudEnabled}
       />
     )
   }

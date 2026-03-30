@@ -29,6 +29,7 @@ interface ConnectionProviderSelectorProps {
   canManage: boolean
   connectionStats: AgentConnectionStats | null
   instanceInfo: EvolutionInstanceInfo | null
+  metaCloudEnabled?: boolean
 }
 
 /**
@@ -47,6 +48,7 @@ const ConnectionProviderSelector = ({
   canManage,
   connectionStats,
   instanceInfo,
+  metaCloudEnabled = true,
 }: ConnectionProviderSelectorProps) => {
   const [selectedProvider, setSelectedProvider] =
     useState<ProviderSelection>(null)
@@ -202,44 +204,46 @@ const ConnectionProviderSelector = ({
           </CardContent>
         </Card>
 
-        {/* Card Meta Cloud API — API Oficial */}
-        <Card className="cursor-pointer border-border/50 bg-secondary/20 transition-colors hover:border-border hover:bg-secondary/40">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base font-semibold">
-              <Phone className="h-5 w-5" />
-              WhatsApp Oficial (Meta)
-            </CardTitle>
-            <CardDescription>
-              Conecte via API Oficial do WhatsApp Business (Meta Cloud API).
-              Requer número verificado pela Meta.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ul className="mb-4 space-y-1.5 text-xs text-muted-foreground">
-              <li className="flex items-center gap-2">
-                <span className="h-1 w-1 rounded-full bg-muted-foreground" />
-                Número verificado pelo Meta
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="h-1 w-1 rounded-full bg-muted-foreground" />
-                API oficial e estável
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="h-1 w-1 rounded-full bg-muted-foreground" />
-                Sem risco de bloqueio de conta
-              </li>
-            </ul>
-            {canManage && (
-              <Button
-                className="w-full"
-                variant="outline"
-                onClick={() => setSelectedProvider('meta_cloud')}
-              >
-                Conectar via Meta
-              </Button>
-            )}
-          </CardContent>
-        </Card>
+        {/* Card Meta Cloud API — API Oficial (apenas para orgs habilitadas) */}
+        {metaCloudEnabled && (
+          <Card className="cursor-pointer border-border/50 bg-secondary/20 transition-colors hover:border-border hover:bg-secondary/40">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                <Phone className="h-5 w-5" />
+                WhatsApp Oficial (Meta)
+              </CardTitle>
+              <CardDescription>
+                Conecte via API Oficial do WhatsApp Business (Meta Cloud API).
+                Requer número verificado pela Meta.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="mb-4 space-y-1.5 text-xs text-muted-foreground">
+                <li className="flex items-center gap-2">
+                  <span className="h-1 w-1 rounded-full bg-muted-foreground" />
+                  Número verificado pelo Meta
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="h-1 w-1 rounded-full bg-muted-foreground" />
+                  API oficial e estável
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="h-1 w-1 rounded-full bg-muted-foreground" />
+                  Sem risco de bloqueio de conta
+                </li>
+              </ul>
+              {canManage && (
+                <Button
+                  className="w-full"
+                  variant="outline"
+                  onClick={() => setSelectedProvider('meta_cloud')}
+                >
+                  Conectar via Meta
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Card Z-API */}
         <Card className="cursor-pointer border-border/50 bg-secondary/20 transition-colors hover:border-border hover:bg-secondary/40">
