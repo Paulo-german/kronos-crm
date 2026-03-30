@@ -81,8 +81,8 @@ export const TrialBannerClient = ({
   )
 
   return (
-    <div className="bg-banner-premium flex items-center gap-3 border-b border-primary/50 px-4 py-2.5 text-white">
-      {/* Lado esquerdo: countdown */}
+    <div className="bg-banner-premium flex flex-col items-center gap-2 border-b border-primary/50 px-4 py-2.5 text-white md:flex-row md:gap-3">
+      {/* Countdown */}
       <span className="flex items-center gap-2 text-sm">
         {isExpired
           ? 'Seu periodo de teste encerrou.'
@@ -94,12 +94,12 @@ export const TrialBannerClient = ({
         )}
       </span>
 
-      {/* Centro: CTA text */}
-      <span className="ml-[-10vw] flex-1 text-center text-sm font-bold">
+      {/* CTA text - hidden no mobile para economizar espaço */}
+      <span className="hidden flex-1 text-center text-sm font-bold md:ml-[-10vw] md:block">
         Assine um plano e acelere suas vendas! 🎉
       </span>
 
-      {/* Lado direito: botao */}
+      {/* Botão */}
       <div className="flex items-center gap-2">
         {isAdmin ? (
           <Button
