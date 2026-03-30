@@ -24,6 +24,7 @@ const SidebarContext = createContext<SidebarContextType | null>(null)
 interface SidebarProviderProps {
   children: ReactNode
   defaultCollapsed?: boolean
+  persist?: boolean
 }
 
 function persistSidebarState(collapsed: boolean) {
@@ -34,14 +35,17 @@ function persistSidebarState(collapsed: boolean) {
 export function SidebarProvider({
   children,
   defaultCollapsed = false,
+  persist = true,
 }: SidebarProviderProps) {
   // Estado inicial vem do cookie (lido no servidor), eliminando flicker
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed)
 
-  // Sincroniza localStorage + cookie ao mudar
+  // Sincroniza localStorage + cookie ao mudar (skip para instâncias mobile)
   useEffect(() => {
-    persistSidebarState(isCollapsed)
-  }, [isCollapsed])
+    if (persist) {
+      persistSidebarState(isCollapsed)
+    }
+  }, [isCollapsed, persist])
 
   const toggle = useCallback(() => setIsCollapsed((prev) => !prev), [])
   const collapse = useCallback(() => setIsCollapsed(true), [])

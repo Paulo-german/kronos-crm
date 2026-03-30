@@ -101,6 +101,16 @@ const MainLayout = async ({ children, params }: MainLayoutProps) => {
             orgSlug={orgSlug}
             initialUnreadCount={totalUnreadCount}
             initialNotifications={mergedNotifications}
+            sidebarProps={{
+              activeModules: activeModuleSlugs,
+              organizations: userOrganizations,
+              isSuperAdmin: user?.isSuperAdmin ?? false,
+              credits: {
+                available: creditBalance.available,
+                monthlyLimit: creditBalance.monthlyLimit,
+                orgSlug,
+              },
+            }}
           />
           <TrialGateClient isExpired={trialStatus.isExpired} orgSlug={orgSlug}>
             <ContentWrapper>{children}</ContentWrapper>
