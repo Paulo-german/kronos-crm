@@ -13,18 +13,38 @@ import { tasks } from '@trigger.dev/sdk/v3'
 import type { processAgentMessage } from '@/../../trigger/process-agent-message'
 import type { EvolutionWebhookPayload, EvolutionConnectionUpdateData, NormalizedWhatsAppMessage } from '@/_lib/evolution/types'
 import type { BusinessHoursConfig } from '@/_actions/agent/update-agent/schema'
+import { resolveEvolutionCredentialsByInstanceName, resolveWebhookSecretByInstanceName } from '@/_lib/evolution/resolve-credentials'
 
 export async function POST(req: Request) {
   const t0 = Date.now()
 
   // 1. Validação de assinatura via query param
+  // Aceita tanto o secret global (instâncias Kronos) quanto secrets per-inbox (self-hosted)
   const { searchParams } = new URL(req.url)
   const secret = searchParams.get('secret')
-  if (secret !== process.env.EVOLUTION_WEBHOOK_SECRET) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const globalSecret = process.env.EVOLUTION_WEBHOOK_SECRET
 
-  const payload = await req.json()
+  let payload: Record<string, unknown>
+
+  if (secret === globalSecret) {
+    // Fast path: secret global bate — instância Kronos gerenciada
+    payload = await req.json()
+  } else {
+    // Secret não é global — pode ser per-inbox (self-hosted)
+    // Precisamos ler o payload para extrair o instanceName
+    payload = await req.json()
+    const instanceName = payload.instance as string | undefined
+
+    if (!instanceName) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const inboxSecret = await resolveWebhookSecretByInstanceName(instanceName)
+
+    if (!inboxSecret || secret !== inboxSecret) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+  }
 
   // 2. CONNECTION_UPDATE — atualizar status de conexao no banco
   if (payload.event === 'connection.update') {
@@ -96,7 +116,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ignored: true, reason: 'event_not_handled' })
   }
 
-  const typedPayload = payload as EvolutionWebhookPayload
+  const typedPayload = payload as unknown as EvolutionWebhookPayload
   const { data, instance: instanceName } = typedPayload
   const { key } = data
   const { fromMe, id: messageId } = key
@@ -170,6 +190,9 @@ export async function POST(req: Request) {
     log('step:3 inbox_lookup', 'EXIT', { reason: 'no_inbox_found' })
     return NextResponse.json({ ignored: true, reason: 'no_inbox_found' })
   }
+
+  // Resolver credenciais Evolution para este inbox (self-hosted ou globais)
+  const inboxCredentials = await resolveEvolutionCredentialsByInstanceName(instanceName)
 
   const orgId = inbox.organizationId
 
@@ -491,7 +514,7 @@ export async function POST(req: Request) {
       const sentAutoReply = !!(resolvedAgent.outOfHoursMessage && alreadyReplied !== null)
       if (sentAutoReply) {
         try {
-          const oohIds = await sendWhatsAppMessage(instanceName, remoteJid, resolvedAgent.outOfHoursMessage!)
+          const oohIds = await sendWhatsAppMessage(instanceName, remoteJid, resolvedAgent.outOfHoursMessage!, inboxCredentials)
           await Promise.all(
             oohIds.map((sentId) =>
               redis.set(`dedup:${sentId}`, '1', 'EX', 300).catch(() => {}),
@@ -675,7 +698,7 @@ export async function POST(req: Request) {
       { delay: `${resolvedAgent.debounceSeconds}s` },
     ),
     // "Digitando..." imediato — usuário vê feedback antes do debounce expirar
-    sendPresence(instanceName, remoteJid, 'composing'),
+    sendPresence(instanceName, remoteJid, 'composing', inboxCredentials),
   ])
 
   // Invalidar cache do inbox

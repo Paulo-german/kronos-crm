@@ -7,8 +7,20 @@ import { redis } from '@/_lib/redis'
 import { revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 import { listEvolutionInstances, getEvolutionWebhook, updateEvolutionWebhook, buildWebhookUrl, deleteEvolutionInstance } from '@/_lib/evolution/instance-management'
+import type { EvolutionCredentials } from '@/_lib/evolution/resolve-credentials'
 
 const discoverInstancesSchema = z.object({})
+
+function resolveGlobalCredentials(): EvolutionCredentials {
+  const apiUrl = process.env.EVOLUTION_API_URL
+  const apiKey = process.env.EVOLUTION_API_KEY
+
+  if (!apiUrl || !apiKey) {
+    throw new Error('EVOLUTION_API_URL e EVOLUTION_API_KEY precisam estar configuradas.')
+  }
+
+  return { apiUrl, apiKey, isSelfHosted: false }
+}
 
 export const discoverInstances = orgActionClient
   .schema(discoverInstancesSchema)
@@ -24,8 +36,11 @@ export const discoverInstances = orgActionClient
       throw new Error('Aguarde 1 minuto entre buscas.')
     }
 
+    // Operação sobre a Evolution global (instâncias Kronos gerenciadas)
+    const globalCredentials = resolveGlobalCredentials()
+
     // 3. Buscar todas as instâncias na Evolution
-    const allInstances = await listEvolutionInstances()
+    const allInstances = await listEvolutionInstances(globalCredentials)
 
     // 4. Filtrar por padrão da org: kronos-{orgId.slice(0,8)}-
     const orgPrefix = `kronos-${ctx.orgId.slice(0, 8)}-`
@@ -75,7 +90,7 @@ export const discoverInstances = orgActionClient
       if (wasDisconnected) {
         // Instância de inbox desconectado intencionalmente — deletar da Evolution
         try {
-          await deleteEvolutionInstance(instance.instanceName)
+          await deleteEvolutionInstance(instance.instanceName, globalCredentials)
           orphansCleaned++
         } catch {
           // Best-effort
@@ -105,10 +120,10 @@ export const discoverInstances = orgActionClient
 
     for (const instance of orgInstances) {
       try {
-        const currentUrl = await getEvolutionWebhook(instance.instanceName)
+        const currentUrl = await getEvolutionWebhook(instance.instanceName, globalCredentials)
 
         if (currentUrl !== expectedWebhookUrl) {
-          await updateEvolutionWebhook(instance.instanceName, expectedWebhookUrl)
+          await updateEvolutionWebhook(instance.instanceName, expectedWebhookUrl, globalCredentials)
           webhooksUpdated++
         }
       } catch (error) {
@@ -119,7 +134,7 @@ export const discoverInstances = orgActionClient
       }
     }
 
-    // 9. Invalidar cache
+    // 10. Invalidar cache
     revalidateTag(`inboxes:${ctx.orgId}`)
 
     return {

@@ -1,20 +1,11 @@
 import 'server-only'
+import type { EvolutionCredentials } from './resolve-credentials'
 
 /**
  * Evolution API v2 – Gerenciamento de Instâncias WhatsApp
- * Reutiliza padrão de auth de send-message.ts (env vars + apikey header)
+ * Todas as funções recebem `credentials` explicitamente — nunca leem env vars diretamente.
+ * Uso de env vars globais é feito apenas via `resolveEvolutionCredentials` (resolve-credentials.ts).
  */
-
-function getEvolutionConfig() {
-  const apiUrl = process.env.EVOLUTION_API_URL
-  const apiKey = process.env.EVOLUTION_API_KEY
-
-  if (!apiUrl || !apiKey) {
-    throw new Error('EVOLUTION_API_URL and EVOLUTION_API_KEY must be configured')
-  }
-
-  return { apiUrl, apiKey }
-}
 
 function buildHeaders(apiKey: string) {
   return {
@@ -37,7 +28,7 @@ export function resolveAppUrl(): string {
 }
 
 /**
- * Monta a webhook URL completa com secret.
+ * Monta a webhook URL completa com secret global (instâncias Kronos gerenciadas).
  */
 export function buildWebhookUrl(): string {
   const appUrl = resolveAppUrl()
@@ -45,6 +36,15 @@ export function buildWebhookUrl(): string {
   return secret
     ? `${appUrl}/api/webhooks/evolution?secret=${secret}`
     : `${appUrl}/api/webhooks/evolution`
+}
+
+/**
+ * Monta a webhook URL para instâncias self-hosted.
+ * Cada inbox self-hosted tem seu próprio secret para segmentação.
+ */
+export function buildSelfHostedWebhookUrl(webhookSecret: string): string {
+  const appUrl = resolveAppUrl()
+  return `${appUrl}/api/webhooks/evolution?secret=${webhookSecret}`
 }
 
 export interface CreateInstanceResult {
@@ -55,8 +55,9 @@ export interface CreateInstanceResult {
 
 export async function deleteEvolutionInstance(
   instanceName: string,
+  credentials: EvolutionCredentials,
 ): Promise<void> {
-  const { apiUrl, apiKey } = getEvolutionConfig()
+  const { apiUrl, apiKey } = credentials
 
   const response = await fetch(
     `${apiUrl}/instance/delete/${instanceName}`,
@@ -105,8 +106,9 @@ async function doCreateInstance(
 export async function createEvolutionInstance(
   instanceName: string,
   webhookUrl: string,
+  credentials: EvolutionCredentials,
 ): Promise<CreateInstanceResult> {
-  const { apiUrl, apiKey } = getEvolutionConfig()
+  const { apiUrl, apiKey } = credentials
 
   let createResponse = await doCreateInstance(apiUrl, apiKey, instanceName, webhookUrl)
 
@@ -115,7 +117,7 @@ export async function createEvolutionInstance(
     const errorBody = await createResponse.text().catch(() => '')
     if (errorBody.includes('already in use')) {
       console.log('[evolution] Instance already exists, deleting orphan and retrying:', instanceName)
-      await deleteEvolutionInstance(instanceName)
+      await deleteEvolutionInstance(instanceName, credentials)
       createResponse = await doCreateInstance(apiUrl, apiKey, instanceName, webhookUrl)
     }
   }
@@ -157,8 +159,9 @@ export interface ConnectionState {
 
 export async function getEvolutionConnectionState(
   instanceName: string,
+  credentials: EvolutionCredentials,
 ): Promise<ConnectionState> {
-  const { apiUrl, apiKey } = getEvolutionConfig()
+  const { apiUrl, apiKey } = credentials
 
   const response = await fetch(
     `${apiUrl}/instance/connectionState/${instanceName}`,
@@ -188,11 +191,12 @@ export interface QRCodeResult {
 
 export async function getEvolutionQRCode(
   instanceName: string,
+  credentials: EvolutionCredentials,
 ): Promise<QRCodeResult> {
-  const { apiUrl, apiKey } = getEvolutionConfig()
+  const { apiUrl, apiKey } = credentials
 
   // Primeiro verifica o estado da conexão
-  const stateResult = await getEvolutionConnectionState(instanceName)
+  const stateResult = await getEvolutionConnectionState(instanceName, credentials)
   if (stateResult.state === 'open') {
     return { base64: null, code: null, pairingCode: null, state: 'open' }
   }
@@ -241,8 +245,9 @@ import type { EvolutionInstanceInfo } from './types-instance'
 
 export async function getEvolutionInstanceInfo(
   instanceName: string,
+  credentials: EvolutionCredentials,
 ): Promise<EvolutionInstanceInfo | null> {
-  const { apiUrl, apiKey } = getEvolutionConfig()
+  const { apiUrl, apiKey } = credentials
 
   const response = await fetch(
     `${apiUrl}/instance/fetchInstances?instanceName=${encodeURIComponent(instanceName)}`,
@@ -274,8 +279,10 @@ export interface EvolutionInstanceSummary {
   ownerJid: string | null
 }
 
-export async function listEvolutionInstances(): Promise<EvolutionInstanceSummary[]> {
-  const { apiUrl, apiKey } = getEvolutionConfig()
+export async function listEvolutionInstances(
+  credentials: EvolutionCredentials,
+): Promise<EvolutionInstanceSummary[]> {
+  const { apiUrl, apiKey } = credentials
 
   const response = await fetch(`${apiUrl}/instance/fetchInstances`, {
     method: 'GET',
@@ -316,8 +323,9 @@ export { formatPhoneFromJid } from './format-phone'
  */
 export async function debugEvolutionInstance(
   instanceName: string,
+  credentials: EvolutionCredentials,
 ): Promise<{ instance: unknown; webhook: unknown }> {
-  const { apiUrl, apiKey } = getEvolutionConfig()
+  const { apiUrl, apiKey } = credentials
   const headers = buildHeaders(apiKey)
 
   const [instanceRes, webhookRes] = await Promise.all([
@@ -339,8 +347,9 @@ export async function debugEvolutionInstance(
 
 export async function getEvolutionWebhook(
   instanceName: string,
+  credentials: EvolutionCredentials,
 ): Promise<string | null> {
-  const { apiUrl, apiKey } = getEvolutionConfig()
+  const { apiUrl, apiKey } = credentials
 
   const response = await fetch(
     `${apiUrl}/webhook/find/${instanceName}`,
@@ -359,8 +368,9 @@ export async function getEvolutionWebhook(
 export async function updateEvolutionWebhook(
   instanceName: string,
   webhookUrl: string,
+  credentials: EvolutionCredentials,
 ): Promise<void> {
-  const { apiUrl, apiKey } = getEvolutionConfig()
+  const { apiUrl, apiKey } = credentials
 
   const response = await fetch(
     `${apiUrl}/webhook/set/${instanceName}`,
@@ -386,8 +396,9 @@ export async function updateEvolutionWebhook(
 
 export async function disconnectEvolutionInstance(
   instanceName: string,
+  credentials: EvolutionCredentials,
 ): Promise<void> {
-  const { apiUrl, apiKey } = getEvolutionConfig()
+  const { apiUrl, apiKey } = credentials
 
   const response = await fetch(
     `${apiUrl}/instance/logout/${instanceName}`,

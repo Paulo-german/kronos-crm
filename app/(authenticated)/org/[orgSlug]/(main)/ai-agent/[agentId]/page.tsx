@@ -6,6 +6,7 @@ import { getPipelineStages } from '@/_data-access/pipeline/get-pipeline-stages'
 import { getInboxes } from '@/_data-access/inbox/get-inboxes'
 import { getAgentConnectionStats } from '@/_data-access/agent/get-agent-connection-stats'
 import { getEvolutionInstanceInfo } from '@/_lib/evolution/instance-management'
+import { resolveEvolutionCredentials } from '@/_lib/evolution/resolve-credentials'
 import { getFollowUps } from '@/_data-access/follow-up/get-follow-ups'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 import AgentDetailClient from './_components/agent-detail-client'
@@ -38,7 +39,9 @@ const AgentDetailPage = async ({ params }: AgentDetailPageProps) => {
       }
       const [stats, info] = await Promise.all([
         getAgentConnectionStats(inbox.id),
-        getEvolutionInstanceInfo(inbox.evolutionInstanceName),
+        resolveEvolutionCredentials(inbox.id).then((credentials) =>
+          getEvolutionInstanceInfo(inbox.evolutionInstanceName!, credentials),
+        ),
       ])
       return { inboxId: inbox.id, stats, info }
     }),

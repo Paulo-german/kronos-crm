@@ -6,6 +6,7 @@ import { sendZApiTextMessage } from '@/_lib/zapi/send-message'
 import { sendZApiAudio } from '@/_lib/zapi/send-audio'
 import { sendZApiMedia } from '@/_lib/zapi/send-media'
 import type { ZApiConfig } from '@/_lib/zapi/types'
+import type { EvolutionCredentials } from '@/_lib/evolution/resolve-credentials'
 import { ConnectionType } from '@prisma/client'
 
 /**
@@ -29,6 +30,8 @@ export interface WhatsAppProvider {
 interface InboxProviderContext {
   connectionType: ConnectionType
   evolutionInstanceName: string | null
+  evolutionApiUrl: string | null
+  evolutionApiKey: string | null
   metaPhoneNumberId: string | null
   metaAccessToken: string | null
   zapiInstanceId: string | null
@@ -95,14 +98,25 @@ export function resolveWhatsAppProvider(inbox: InboxProviderContext): WhatsAppPr
 
   const instanceName = inbox.evolutionInstanceName
 
+  // Resolve credenciais: self-hosted tem prioridade sobre env vars globais
+  const credentials: EvolutionCredentials = {
+    apiUrl: inbox.evolutionApiUrl || process.env.EVOLUTION_API_URL || '',
+    apiKey: inbox.evolutionApiKey || process.env.EVOLUTION_API_KEY || '',
+    isSelfHosted: !!(inbox.evolutionApiUrl && inbox.evolutionApiKey),
+  }
+
+  if (!credentials.apiUrl || !credentials.apiKey) {
+    throw new Error('EVOLUTION_API_URL and EVOLUTION_API_KEY must be configured')
+  }
+
   return {
     sendText: (recipientPhone: string, text: string) =>
-      sendWhatsAppMessage(instanceName, recipientPhone, text),
+      sendWhatsAppMessage(instanceName, recipientPhone, text, credentials),
     sendAudio: (recipientPhone: string, audioBase64: string) =>
-      sendWhatsAppAudio(instanceName, recipientPhone, audioBase64),
+      sendWhatsAppAudio(instanceName, recipientPhone, audioBase64, credentials),
     sendMedia: (recipientPhone: string, _mediaBase64: string, mimetype: string, mediatype: 'image' | 'document' | 'video', fileName?: string, caption?: string, mediaUrl?: string) => {
       if (!mediaUrl) throw new Error('Evolution API requer URL pública para envio de mídia. Configure o B2 Storage.')
-      return sendWhatsAppMedia(instanceName, recipientPhone, mediaUrl, mimetype, mediatype, fileName, caption)
+      return sendWhatsAppMedia(instanceName, recipientPhone, mediaUrl, mimetype, mediatype, fileName, caption, credentials)
     },
   }
 }

@@ -6,6 +6,7 @@ import { db } from '@/_lib/prisma'
 import { revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 import { createEvolutionInstance, buildWebhookUrl } from '@/_lib/evolution/instance-management'
+import { resolveEvolutionCredentials } from '@/_lib/evolution/resolve-credentials'
 
 const connectEvolutionSchema = z.object({
   inboxId: z.string().uuid(),
@@ -47,7 +48,8 @@ export const connectEvolution = orgActionClient
     // Gera nome único para a instância
     const instanceName = `kronos-${ctx.orgId.slice(0, 8)}-${inbox.id.slice(0, 8)}`
 
-    const result = await createEvolutionInstance(instanceName, buildWebhookUrl())
+    const credentials = await resolveEvolutionCredentials(inboxId)
+    const result = await createEvolutionInstance(instanceName, buildWebhookUrl(), credentials)
 
     await db.inbox.update({
       where: { id: inbox.id },

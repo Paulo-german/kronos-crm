@@ -23,6 +23,8 @@ export const sendAudio = orgActionClient
           select: {
             connectionType: true,
             evolutionInstanceName: true,
+            evolutionApiUrl: true,
+            evolutionApiKey: true,
             metaPhoneNumberId: true,
             metaAccessToken: true,
             zapiInstanceId: true,

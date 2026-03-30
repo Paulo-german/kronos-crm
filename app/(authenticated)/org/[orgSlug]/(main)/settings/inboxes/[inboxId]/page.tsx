@@ -7,6 +7,7 @@ import { getOrganizationMembers } from '@/_data-access/organization/get-organiza
 import { getOrgPipelines } from '@/_data-access/pipeline/get-org-pipelines'
 import { getAgentConnectionStats } from '@/_data-access/agent/get-agent-connection-stats'
 import { getEvolutionInstanceInfo } from '@/_lib/evolution/instance-management'
+import { resolveEvolutionCredentials } from '@/_lib/evolution/resolve-credentials'
 import InboxDetailClient from './_components/inbox-detail-client'
 
 interface InboxDetailPageProps {
@@ -30,7 +31,9 @@ const InboxDetailPage = async ({ params }: InboxDetailPageProps) => {
   const [connectionStats, instanceInfo] = inbox.evolutionInstanceName
     ? await Promise.all([
         getAgentConnectionStats(inbox.id),
-        getEvolutionInstanceInfo(inbox.evolutionInstanceName),
+        resolveEvolutionCredentials(inbox.id).then((credentials) =>
+          getEvolutionInstanceInfo(inbox.evolutionInstanceName!, credentials),
+        ),
       ])
     : [null, null]
 

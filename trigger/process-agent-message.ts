@@ -13,6 +13,7 @@ import {
   sendWhatsAppMessage,
   sendPresence,
 } from '@/_lib/evolution/send-message'
+import { resolveEvolutionCredentialsByInstanceName } from '@/_lib/evolution/resolve-credentials'
 import { sendMetaTextMessage } from '@/_lib/meta/send-meta-message'
 import { buildSystemPrompt } from './build-system-prompt'
 import { buildToolSet } from './tools'
@@ -643,6 +644,8 @@ export const processAgentMessage = task({
                     select: {
                       connectionType: true,
                       evolutionInstanceName: true,
+                      evolutionApiUrl: true,
+                      evolutionApiKey: true,
                       metaPhoneNumberId: true,
                       metaAccessToken: true,
                       zapiInstanceId: true,
@@ -863,10 +866,14 @@ export const processAgentMessage = task({
           // Meta Cloud API nao suporta composing para business — apenas Evolution
           // -----------------------------------------------------------------------
           if (message.provider === 'evolution') {
+            const presenceCredentials = await resolveEvolutionCredentialsByInstanceName(
+              message.instanceName,
+            )
             await sendPresence(
               message.instanceName,
               message.remoteJid,
               'composing',
+              presenceCredentials,
             )
           }
 
@@ -1339,10 +1346,14 @@ export const processAgentMessage = task({
             )
           } else {
             // Provider Evolution (default)
+            const evolutionCredentials = await resolveEvolutionCredentialsByInstanceName(
+              message.instanceName,
+            )
             sentMessageIds = await sendWhatsAppMessage(
               message.instanceName,
               message.remoteJid,
               responseText,
+              evolutionCredentials,
             )
           }
 

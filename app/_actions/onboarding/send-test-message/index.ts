@@ -5,6 +5,7 @@ import { sendTestMessageSchema } from './schema'
 import { db } from '@/_lib/prisma'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 import { sendWhatsAppMessage } from '@/_lib/evolution/send-message'
+import { resolveEvolutionCredentials } from '@/_lib/evolution/resolve-credentials'
 
 export const sendTestMessage = orgActionClient
   .schema(sendTestMessageSchema)
@@ -19,6 +20,7 @@ export const sendTestMessage = orgActionClient
         evolutionInstanceName: { not: null },
       },
       select: {
+        id: true,
         evolutionInstanceName: true,
       },
     })
@@ -37,10 +39,14 @@ export const sendTestMessage = orgActionClient
       select: { name: true },
     })
 
+    const credentials = await resolveEvolutionCredentials(inbox.id)
+    const instanceName = inbox.evolutionInstanceName
+
     await sendWhatsAppMessage(
-      inbox.evolutionInstanceName,
+      instanceName,
       remoteJid,
-      `Olá! Esta é uma mensagem de teste do *${org.name}* via Kronos Hub. Se você recebeu esta mensagem, sua conexão WhatsApp está funcionando corretamente! ✅`,
+      `Olá! Esta é uma mensagem de teste do *${org.name}* via Kronos Hub. Se você recebeu esta mensagem, sua conexão WhatsApp está funcionando corretamente!`,
+      credentials,
     )
 
     return { success: true }

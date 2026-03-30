@@ -25,6 +25,8 @@ interface ConversationDataForNotification {
   inbox: {
     connectionType: ConnectionType
     evolutionInstanceName: string | null
+    evolutionApiUrl: string | null
+    evolutionApiKey: string | null
     metaPhoneNumberId: string | null
     metaAccessToken: string | null
     zapiInstanceId: string | null
@@ -393,6 +395,8 @@ export function createHandOffToHumanTool(
                 select: {
                   connectionType: true,
                   evolutionInstanceName: true,
+                  evolutionApiUrl: true,
+                  evolutionApiKey: true,
                   metaPhoneNumberId: true,
                   metaAccessToken: true,
                   zapiInstanceId: true,

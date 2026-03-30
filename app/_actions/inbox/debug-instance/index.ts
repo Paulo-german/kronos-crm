@@ -5,6 +5,7 @@ import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 import { debugEvolutionInstance, buildWebhookUrl } from '@/_lib/evolution/instance-management'
+import { resolveEvolutionCredentials } from '@/_lib/evolution/resolve-credentials'
 
 const debugInstanceSchema = z.object({
   inboxId: z.string().uuid(),
@@ -24,7 +25,8 @@ export const debugInstance = orgActionClient
       throw new Error('Inbox sem instância Evolution conectada.')
     }
 
-    const debug = await debugEvolutionInstance(inbox.evolutionInstanceName)
+    const credentials = await resolveEvolutionCredentials(inboxId)
+    const debug = await debugEvolutionInstance(inbox.evolutionInstanceName, credentials)
 
     return {
       instanceName: inbox.evolutionInstanceName,

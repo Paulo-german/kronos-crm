@@ -38,6 +38,8 @@ interface ConvInbox {
   isActive: boolean
   connectionType: ConnectionType
   evolutionInstanceName: string | null
+  evolutionApiUrl: string | null
+  evolutionApiKey: string | null
   metaPhoneNumberId: string | null
   metaAccessToken: string | null
   zapiInstanceId: string | null
@@ -303,6 +305,8 @@ export const followUpCron = schedules.task({
             isActive: true,
             connectionType: true,
             evolutionInstanceName: true,
+            evolutionApiUrl: true,
+            evolutionApiKey: true,
             metaPhoneNumberId: true,
             metaAccessToken: true,
             zapiInstanceId: true,

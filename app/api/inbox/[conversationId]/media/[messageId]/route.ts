@@ -47,7 +47,12 @@ export async function GET(_request: NextRequest, context: RouteContext) {
         conversation: {
           select: {
             inbox: {
-              select: { evolutionInstanceName: true },
+              select: {
+                id: true,
+                evolutionInstanceName: true,
+                evolutionApiUrl: true,
+                evolutionApiKey: true,
+              },
             },
           },
         },
@@ -58,7 +63,8 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    const instanceName = message.conversation.inbox.evolutionInstanceName
+    const { inbox } = message.conversation
+    const instanceName = inbox.evolutionInstanceName
     if (!instanceName) {
       return NextResponse.json(
         { error: 'No instance configured' },
@@ -66,9 +72,9 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       )
     }
 
-    // 3. Chamar Evolution API para obter mídia em base64
-    const apiUrl = process.env.EVOLUTION_API_URL
-    const apiKey = process.env.EVOLUTION_API_KEY
+    // 3. Resolver credenciais (self-hosted ou globais) e chamar Evolution API para obter mídia em base64
+    const apiUrl = inbox.evolutionApiUrl || process.env.EVOLUTION_API_URL
+    const apiKey = inbox.evolutionApiKey || process.env.EVOLUTION_API_KEY
 
     if (!apiUrl || !apiKey) {
       return NextResponse.json(

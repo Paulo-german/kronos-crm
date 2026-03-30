@@ -5,6 +5,8 @@ import type { ConnectionType } from '@prisma/client'
 export interface InboxProviderContext {
   connectionType: ConnectionType
   evolutionInstanceName: string | null
+  evolutionApiUrl: string | null
+  evolutionApiKey: string | null
   metaPhoneNumberId: string | null
   metaAccessToken: string | null
   zapiInstanceId: string | null

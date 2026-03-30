@@ -5,6 +5,7 @@ import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 import { getEvolutionQRCode } from '@/_lib/evolution/instance-management'
+import { resolveEvolutionCredentials } from '@/_lib/evolution/resolve-credentials'
 
 const getEvolutionQRSchema = z.object({
   inboxId: z.string().uuid(),
@@ -28,7 +29,8 @@ export const getEvolutionQR = orgActionClient
       throw new Error('Esta caixa de entrada não possui instância WhatsApp.')
     }
 
-    const result = await getEvolutionQRCode(inbox.evolutionInstanceName)
+    const credentials = await resolveEvolutionCredentials(inboxId)
+    const result = await getEvolutionQRCode(inbox.evolutionInstanceName, credentials)
 
     return {
       base64: result.base64,

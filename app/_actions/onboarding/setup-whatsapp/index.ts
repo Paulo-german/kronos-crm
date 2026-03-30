@@ -6,6 +6,7 @@ import { db } from '@/_lib/prisma'
 import { revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 import { createEvolutionInstance, buildWebhookUrl } from '@/_lib/evolution/instance-management'
+import { resolveEvolutionCredentials } from '@/_lib/evolution/resolve-credentials'
 
 export const setupWhatsapp = orgActionClient
   .schema(setupWhatsappSchema)
@@ -50,7 +51,9 @@ export const setupWhatsapp = orgActionClient
     const instanceName = `kronos-${ctx.orgId.slice(0, 8)}-${inbox.id.slice(0, 8)}`
 
     try {
-      const result = await createEvolutionInstance(instanceName, buildWebhookUrl())
+      // Onboarding cria instâncias na Evolution global (não é self-hosted)
+      const credentials = await resolveEvolutionCredentials(inbox.id)
+      const result = await createEvolutionInstance(instanceName, buildWebhookUrl(), credentials)
 
       await db.inbox.update({
         where: { id: inbox.id },

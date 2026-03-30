@@ -6,6 +6,7 @@ import { db } from '@/_lib/prisma'
 import { revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 import { deleteEvolutionInstance } from '@/_lib/evolution/instance-management'
+import { resolveEvolutionCredentials } from '@/_lib/evolution/resolve-credentials'
 
 const deleteInboxSchema = z.object({
   id: z.string().uuid(),
@@ -23,6 +24,8 @@ export const deleteInbox = orgActionClient
       select: {
         id: true,
         evolutionInstanceName: true,
+        evolutionApiUrl: true,
+        evolutionApiKey: true,
         agentId: true,
       },
     })
@@ -32,9 +35,12 @@ export const deleteInbox = orgActionClient
     }
 
     // 3. Se tem instância Evolution, deletar da API (best-effort)
-    if (inbox.evolutionInstanceName) {
+    // Self-hosted: não deletar a instância do usuário — apenas a referência no banco
+    const isSelfHosted = !!(inbox.evolutionApiUrl && inbox.evolutionApiKey)
+    if (inbox.evolutionInstanceName && !isSelfHosted) {
       try {
-        await deleteEvolutionInstance(inbox.evolutionInstanceName)
+        const credentials = await resolveEvolutionCredentials(id)
+        await deleteEvolutionInstance(inbox.evolutionInstanceName, credentials)
       } catch {
         // Best-effort: instância pode já ter sido removida
       }

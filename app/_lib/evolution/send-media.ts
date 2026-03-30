@@ -1,4 +1,5 @@
 import { assertEvolutionConnected } from './connection-guard'
+import type { EvolutionCredentials } from './resolve-credentials'
 
 /**
  * Envia mídia (imagem, documento ou video) via Evolution API REST.
@@ -14,17 +15,13 @@ export async function sendWhatsAppMedia(
   mediaSource: string,
   mimetype: string,
   mediatype: 'image' | 'document' | 'video',
-  fileName?: string,
-  caption?: string,
+  fileName: string | undefined,
+  caption: string | undefined,
+  credentials: EvolutionCredentials,
 ): Promise<string> {
-  const apiUrl = process.env.EVOLUTION_API_URL
-  const apiKey = process.env.EVOLUTION_API_KEY
+  const { apiUrl, apiKey } = credentials
 
-  if (!apiUrl || !apiKey) {
-    throw new Error('EVOLUTION_API_URL and EVOLUTION_API_KEY must be configured')
-  }
-
-  await assertEvolutionConnected(instanceName)
+  await assertEvolutionConnected(instanceName, credentials)
 
   const response = await fetch(
     `${apiUrl}/message/sendMedia/${instanceName}`,

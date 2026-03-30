@@ -1,5 +1,6 @@
 import { splitIntoParagraphs } from '@/_lib/whatsapp/chunk-text'
 import { assertEvolutionConnected } from './connection-guard'
+import type { EvolutionCredentials } from './resolve-credentials'
 
 const MAX_WHATSAPP_MESSAGE_LENGTH = 4000
 const DELAY_BETWEEN_CHUNKS_MS = 800
@@ -13,15 +14,11 @@ export async function sendWhatsAppMessage(
   instanceName: string,
   remoteJid: string,
   text: string,
+  credentials: EvolutionCredentials,
 ): Promise<string[]> {
-  const apiUrl = process.env.EVOLUTION_API_URL
-  const apiKey = process.env.EVOLUTION_API_KEY
+  const { apiUrl, apiKey } = credentials
 
-  if (!apiUrl || !apiKey) {
-    throw new Error('EVOLUTION_API_URL and EVOLUTION_API_KEY must be configured')
-  }
-
-  await assertEvolutionConnected(instanceName)
+  await assertEvolutionConnected(instanceName, credentials)
 
   const chunks = splitIntoParagraphs(text, MAX_WHATSAPP_MESSAGE_LENGTH)
   const messageIds: string[] = []
@@ -29,7 +26,7 @@ export async function sendWhatsAppMessage(
   for (let index = 0; index < chunks.length; index++) {
     // Entre chunks: "digitando..." + delay para simular conversa natural
     if (index > 0) {
-      await sendPresence(instanceName, remoteJid, 'composing')
+      await sendPresence(instanceName, remoteJid, 'composing', credentials)
       await new Promise((resolve) => setTimeout(resolve, DELAY_BETWEEN_CHUNKS_MS))
     }
 
@@ -87,12 +84,10 @@ export async function sendPresence(
   instanceName: string,
   remoteJid: string,
   presence: 'composing' | 'paused' = 'composing',
+  credentials: EvolutionCredentials,
 ): Promise<void> {
   try {
-    const apiUrl = process.env.EVOLUTION_API_URL
-    const apiKey = process.env.EVOLUTION_API_KEY
-
-    if (!apiUrl || !apiKey) return
+    const { apiUrl, apiKey } = credentials
 
     await fetch(
       `${apiUrl}/chat/updatePresence/${instanceName}`,

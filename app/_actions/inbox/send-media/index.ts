@@ -43,6 +43,8 @@ export const sendMedia = orgActionClient
           select: {
             connectionType: true,
             evolutionInstanceName: true,
+            evolutionApiUrl: true,
+            evolutionApiKey: true,
             metaPhoneNumberId: true,
             metaAccessToken: true,
             zapiInstanceId: true,
