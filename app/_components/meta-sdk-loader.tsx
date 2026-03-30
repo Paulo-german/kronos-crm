@@ -57,7 +57,7 @@ function initFb(): void {
   window.FB.init({
     appId,
     autoLogAppEvents: true,
-    xfbml: true,
+    xfbml: false,
     version: 'v25.0',
   })
   initialized = true
@@ -125,6 +125,14 @@ export function loadMetaSdk(onReady: () => void): void {
     console.log('[MetaSDK] fbAsyncInit fired (path 5)')
     initFb()
     flushCallbacks()
+  }
+
+  // Garante que o fb-root existe — o SDK precisa dele para injetar iframes.
+  // Sem ele, o SDK manipula o DOM diretamente e conflita com o React.
+  if (!document.getElementById('fb-root')) {
+    const fbRoot = document.createElement('div')
+    fbRoot.id = 'fb-root'
+    document.body.appendChild(fbRoot)
   }
 
   const script = document.createElement('script')
