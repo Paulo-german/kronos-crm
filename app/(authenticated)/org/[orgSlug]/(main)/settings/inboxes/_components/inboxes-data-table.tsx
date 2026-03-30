@@ -83,9 +83,17 @@ export function InboxesDataTable({
   }
 
   const connectionTypeLabels: Record<string, string> = {
-    EVOLUTION: 'Evolution',
+    EVOLUTION: 'WhatsApp',
     META_CLOUD: 'API Oficial',
     Z_API: 'Z-API',
+  }
+
+  const resolveProviderLabel = (inbox: InboxListDto): string => {
+    if (inbox.connectionType === 'EVOLUTION' && !!inbox.evolutionApiUrl) {
+      return 'Evolution API'
+    }
+
+    return connectionTypeLabels[inbox.connectionType] ?? inbox.connectionType
   }
 
   const columns: ColumnDef<InboxListDto>[] = [
@@ -164,7 +172,7 @@ export function InboxesDataTable({
               Conectado
             </Badge>
             <span className="text-xs text-muted-foreground">
-              {connectionTypeLabels[inbox.connectionType] ?? inbox.connectionType}
+              {resolveProviderLabel(inbox)}
             </span>
           </div>
         ) : (

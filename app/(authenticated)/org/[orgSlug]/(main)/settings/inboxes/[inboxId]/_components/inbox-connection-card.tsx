@@ -46,6 +46,8 @@ interface InboxConnectionCardProps {
   instanceName: string | null
   initialConnected: boolean
   onConnectionStateChange?: (connected: boolean) => void
+  // Indica se este inbox usa instancia Evolution self-hosted do usuario
+  isSelfHosted?: boolean
 }
 
 type ConnectionState = 'disconnected' | 'checking' | 'connecting' | 'connected'
@@ -62,6 +64,7 @@ const InboxConnectionCard = ({
   instanceName,
   initialConnected,
   onConnectionStateChange,
+  isSelfHosted = false,
 }: InboxConnectionCardProps) => {
   const [connectionState, setConnectionState] = useState<ConnectionState>(
     hasInstance ? 'checking' : 'disconnected',
@@ -225,8 +228,9 @@ const InboxConnectionCard = ({
               <MessageSquare className="h-6 w-6 text-muted-foreground" />
             </div>
             <p className="max-w-md text-center text-sm text-muted-foreground">
-              Ao conectar, uma instância será criada na Evolution API. Você
-              precisará escanear o QR code com o WhatsApp do seu celular.
+              {isSelfHosted
+                ? 'A conexão será feita usando sua instância Evolution API. Selecione a instância e escaneie o QR Code se necessário.'
+                : 'Ao conectar, você precisará escanear o QR Code com o WhatsApp do seu celular.'}
             </p>
             {canManage && (
               <Button onClick={handleConnect} disabled={isConnecting}>

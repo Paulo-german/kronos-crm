@@ -54,6 +54,7 @@ import InboxConnectionCard from './inbox-connection-card'
 import MetaConnectionCard from './meta-connection-card'
 import ZApiConnectionCard from './zapi-connection-card'
 import ConnectionProviderSelector from './connection-provider-selector'
+import EvolutionSelfHostedCard from './evolution-self-hosted-card'
 
 // Modo de vinculação da IA neste inbox
 type AiLinkMode = 'agent' | 'group'
@@ -89,9 +90,18 @@ const channelLabels: Record<string, string> = {
 }
 
 const connectionTypeLabels: Record<string, string> = {
-  EVOLUTION: 'Evolution (QR Code)',
+  EVOLUTION: 'WhatsApp',
   META_CLOUD: 'API Oficial (Meta)',
   Z_API: 'Z-API',
+}
+
+// Retorna o label correto considerando se o inbox e self-hosted
+const resolveConnectionLabel = (
+  connectionType: string,
+  isSelfHosted: boolean,
+): string => {
+  if (connectionType === 'EVOLUTION' && isSelfHosted) return 'Evolution API'
+  return connectionTypeLabels[connectionType] ?? connectionType
 }
 
 const InboxDetailClient = ({
@@ -110,6 +120,11 @@ const InboxDetailClient = ({
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [evolutionConnectedOverride, setEvolutionConnectedOverride] = useState<boolean | null>(null)
   const [localDistributionUserIds, setLocalDistributionUserIds] = useState(inbox.distributionUserIds)
+
+  // Verifica se este inbox usa instancia Evolution self-hosted do usuario
+  const isSelfHosted =
+    inbox.connectionType === 'EVOLUTION' &&
+    !!inbox.evolutionApiUrl
 
   // Modo de vinculação: "group" se inbox já tiver agentGroupId, senão "agent"
   const [aiLinkMode, setAiLinkMode] = useState<AiLinkMode>(
@@ -207,7 +222,8 @@ const InboxDetailClient = ({
    *
    * Logica de decisao:
    * - META_CLOUD com phoneNumberId preenchido -> MetaConnectionCard (conectado)
-   * - EVOLUTION com evolutionInstanceName preenchido -> InboxConnectionCard (Evolution conectado)
+   * - EVOLUTION self-hosted -> EvolutionSelfHostedCard + InboxConnectionCard (se tiver instancia)
+   * - EVOLUTION com evolutionInstanceName preenchido -> InboxConnectionCard (Evolution gerenciado)
    * - Sem conexao ativa -> ConnectionProviderSelector
    */
   const renderConnectionSection = () => {
@@ -242,6 +258,34 @@ const InboxDetailClient = ({
       )
     }
 
+    // Self-hosted: exibir card de credenciais + card de conexao (se ja tiver instancia pareada)
+    if (isSelfHosted) {
+      return (
+        <div className="space-y-4">
+          <EvolutionSelfHostedCard
+            inboxId={inbox.id}
+            canManage={canManage}
+            savedApiUrl={inbox.evolutionApiUrl ?? null}
+            savedApiKeyMasked={inbox.evolutionApiKey ?? null}
+            webhookSecret={inbox.evolutionWebhookSecret ?? null}
+          />
+          {isEvolutionConnected && (
+            <InboxConnectionCard
+              inboxId={inbox.id}
+              canManage={canManage}
+              connectionStats={connectionStats}
+              instanceInfo={instanceInfo}
+              hasInstance
+              instanceName={inbox.evolutionInstanceName}
+              initialConnected={inbox.evolutionConnected}
+              onConnectionStateChange={setEvolutionConnectedOverride}
+              isSelfHosted
+            />
+          )}
+        </div>
+      )
+    }
+
     if (isEvolutionConnected) {
       return (
         <InboxConnectionCard
@@ -253,6 +297,7 @@ const InboxDetailClient = ({
           instanceName={inbox.evolutionInstanceName}
           initialConnected={inbox.evolutionConnected}
           onConnectionStateChange={setEvolutionConnectedOverride}
+          isSelfHosted={false}
         />
       )
     }
@@ -269,6 +314,7 @@ const InboxDetailClient = ({
           instanceName={null}
           initialConnected={false}
           onConnectionStateChange={setEvolutionConnectedOverride}
+          isSelfHosted={false}
         />
       )
     }
@@ -309,7 +355,7 @@ const InboxDetailClient = ({
                   Conectado
                 </Badge>
                 <Badge variant="secondary" className="h-6 px-2 text-xs">
-                  {connectionTypeLabels[inbox.connectionType] ?? inbox.connectionType}
+                  {resolveConnectionLabel(inbox.connectionType, isSelfHosted)}
                 </Badge>
               </>
             ) : (
@@ -352,7 +398,7 @@ const InboxDetailClient = ({
                 </p>
                 {inbox.channel === 'WHATSAPP' && (inbox.evolutionInstanceName || inbox.metaPhoneNumberId || inbox.zapiInstanceId) && (
                   <p className="text-xs text-muted-foreground">
-                    {connectionTypeLabels[inbox.connectionType] ?? inbox.connectionType}
+                    {resolveConnectionLabel(inbox.connectionType, isSelfHosted)}
                   </p>
                 )}
               </div>

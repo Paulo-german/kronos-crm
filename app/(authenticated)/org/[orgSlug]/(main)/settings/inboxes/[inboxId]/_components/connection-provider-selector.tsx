@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { QrCode, Phone, Plug, ArrowLeft } from 'lucide-react'
+import { QrCode, Phone, Plug, Server, ArrowLeft } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import {
   Card,
@@ -13,10 +13,16 @@ import {
 import InboxConnectionCard from './inbox-connection-card'
 import MetaConnectionCard from './meta-connection-card'
 import ZApiConnectionCard from './zapi-connection-card'
+import EvolutionSelfHostedCard from './evolution-self-hosted-card'
 import type { AgentConnectionStats } from '@/_data-access/agent/get-agent-connection-stats'
 import type { EvolutionInstanceInfo } from '@/_lib/evolution/types-instance'
 
-type ProviderSelection = 'evolution' | 'meta_cloud' | 'z_api' | null
+type ProviderSelection =
+  | 'evolution'
+  | 'meta_cloud'
+  | 'z_api'
+  | 'evolution_self_hosted'
+  | null
 
 interface ConnectionProviderSelectorProps {
   inboxId: string
@@ -28,10 +34,11 @@ interface ConnectionProviderSelectorProps {
 /**
  * Seletor de provider de conexao WhatsApp.
  *
- * Quando nenhuma conexao esta ativa, exibe tres cards para o usuario escolher:
- * - Evolution (QR Code) — conexao via instancia Evolution API
- * - Meta Cloud API (API Oficial) — conexao via Embedded Signup da Meta
+ * Quando nenhuma conexao esta ativa, exibe quatro cards para o usuario escolher:
+ * - WhatsApp (QR Code) — conexao via instancia gerenciada pela Kronos
+ * - WhatsApp Oficial (Meta) — conexao via Embedded Signup da Meta
  * - Z-API — conexao via Instance ID e Token
+ * - Evolution API (self-hosted) — conexao via instancia propria do usuario
  *
  * Apos a selecao, renderiza o sub-fluxo correspondente.
  */
@@ -44,7 +51,7 @@ const ConnectionProviderSelector = ({
   const [selectedProvider, setSelectedProvider] =
     useState<ProviderSelection>(null)
 
-  // Sub-fluxo: Evolution (QR Code)
+  // Sub-fluxo: WhatsApp via QR Code (gerenciado pela Kronos)
   if (selectedProvider === 'evolution') {
     return (
       <div className="space-y-4">
@@ -65,6 +72,7 @@ const ConnectionProviderSelector = ({
           hasInstance={false}
           instanceName={null}
           initialConnected={false}
+          isSelfHosted={false}
         />
       </div>
     )
@@ -119,7 +127,32 @@ const ConnectionProviderSelector = ({
     )
   }
 
-  // Seletor inicial — tres cards
+  // Sub-fluxo: Evolution API self-hosted
+  if (selectedProvider === 'evolution_self_hosted') {
+    return (
+      <div className="space-y-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-fit"
+          onClick={() => setSelectedProvider(null)}
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Voltar para selecao
+        </Button>
+        <EvolutionSelfHostedCard
+          inboxId={inboxId}
+          canManage={canManage}
+          savedApiUrl={null}
+          savedApiKeyMasked={null}
+          webhookSecret={null}
+          onRemoved={() => setSelectedProvider(null)}
+        />
+      </div>
+    )
+  }
+
+  // Seletor inicial — quatro cards
   return (
     <div className="space-y-4">
       <div className="mb-2">
@@ -129,32 +162,32 @@ const ConnectionProviderSelector = ({
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        {/* Card Evolution — QR Code */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Card WhatsApp — QR Code gerenciado */}
         <Card className="cursor-pointer border-border/50 bg-secondary/20 transition-colors hover:border-border hover:bg-secondary/40">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base font-semibold">
               <QrCode className="h-5 w-5" />
-              WhatsApp via QR Code
+              WhatsApp
             </CardTitle>
             <CardDescription>
-              Conecte escaneando o QR Code com qualquer numero WhatsApp
-              (Evolution API). Ideal para numeros pessoais ou de negocio.
+              Conecte escaneando o QR Code com qualquer número WhatsApp. Ideal
+              para números pessoais ou de negócio.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <ul className="mb-4 space-y-1.5 text-xs text-muted-foreground">
               <li className="flex items-center gap-2">
                 <span className="h-1 w-1 rounded-full bg-muted-foreground" />
-                Qualquer numero WhatsApp
+                Qualquer número WhatsApp
               </li>
               <li className="flex items-center gap-2">
                 <span className="h-1 w-1 rounded-full bg-muted-foreground" />
-                Conexao via QR Code no celular
+                Conexão via QR Code no celular
               </li>
               <li className="flex items-center gap-2">
                 <span className="h-1 w-1 rounded-full bg-muted-foreground" />
-                Sem aprovacao da Meta necessaria
+                Sem aprovação da Meta necessária
               </li>
             </ul>
             {canManage && (
@@ -178,18 +211,18 @@ const ConnectionProviderSelector = ({
             </CardTitle>
             <CardDescription>
               Conecte via API Oficial do WhatsApp Business (Meta Cloud API).
-              Requer numero verificado pela Meta.
+              Requer número verificado pela Meta.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <ul className="mb-4 space-y-1.5 text-xs text-muted-foreground">
               <li className="flex items-center gap-2">
                 <span className="h-1 w-1 rounded-full bg-muted-foreground" />
-                Numero verificado pelo Meta
+                Número verificado pelo Meta
               </li>
               <li className="flex items-center gap-2">
                 <span className="h-1 w-1 rounded-full bg-muted-foreground" />
-                API oficial e estavel
+                API oficial e estável
               </li>
               <li className="flex items-center gap-2">
                 <span className="h-1 w-1 rounded-full bg-muted-foreground" />
@@ -216,19 +249,19 @@ const ConnectionProviderSelector = ({
               Z-API WhatsApp
             </CardTitle>
             <CardDescription>
-              Conecte via Z-API usando Instance ID e Token.
-              Ideal para quem ja utiliza a plataforma Z-API.
+              Conecte via Z-API usando Instance ID e Token. Ideal para quem já
+              utiliza a plataforma Z-API.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <ul className="mb-4 space-y-1.5 text-xs text-muted-foreground">
               <li className="flex items-center gap-2">
                 <span className="h-1 w-1 rounded-full bg-muted-foreground" />
-                Qualquer numero WhatsApp
+                Qualquer número WhatsApp
               </li>
               <li className="flex items-center gap-2">
                 <span className="h-1 w-1 rounded-full bg-muted-foreground" />
-                Conexao via QR Code ou codigo
+                Conexão via QR Code ou código
               </li>
               <li className="flex items-center gap-2">
                 <span className="h-1 w-1 rounded-full bg-muted-foreground" />
@@ -242,6 +275,45 @@ const ConnectionProviderSelector = ({
                 onClick={() => setSelectedProvider('z_api')}
               >
                 Conectar via Z-API
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Card Evolution API — self-hosted */}
+        <Card className="cursor-pointer border-border/50 bg-secondary/20 transition-colors hover:border-border hover:bg-secondary/40">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base font-semibold">
+              <Server className="h-5 w-5" />
+              Evolution API
+            </CardTitle>
+            <CardDescription>
+              Conecte usando sua própria instância Evolution API (self-hosted).
+              Para usuários avançados.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="mb-4 space-y-1.5 text-xs text-muted-foreground">
+              <li className="flex items-center gap-2">
+                <span className="h-1 w-1 rounded-full bg-muted-foreground" />
+                Instância própria self-hosted
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="h-1 w-1 rounded-full bg-muted-foreground" />
+                Controle total sobre a infraestrutura
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="h-1 w-1 rounded-full bg-muted-foreground" />
+                Requer servidor Evolution API ativo
+              </li>
+            </ul>
+            {canManage && (
+              <Button
+                className="w-full"
+                variant="outline"
+                onClick={() => setSelectedProvider('evolution_self_hosted')}
+              >
+                Configurar Evolution API
               </Button>
             )}
           </CardContent>
