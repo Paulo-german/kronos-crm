@@ -11,6 +11,8 @@ export interface InboxListDto {
   connectionType: string
   evolutionInstanceName: string | null
   evolutionConnected: boolean
+  // Expõe apenas a URL (não a key) para label condicional na data-table
+  evolutionApiUrl: string | null
   metaWabaId: string | null
   metaPhoneNumberId: string | null
   metaPhoneDisplay: string | null
@@ -40,6 +42,7 @@ const fetchInboxesFromDb = async (orgId: string): Promise<InboxListDto[]> => {
     connectionType: inbox.connectionType,
     evolutionInstanceName: inbox.evolutionInstanceName,
     evolutionConnected: inbox.evolutionConnected,
+    evolutionApiUrl: inbox.evolutionApiUrl,
     metaWabaId: inbox.metaWabaId,
     metaPhoneNumberId: inbox.metaPhoneNumberId,
     metaPhoneDisplay: inbox.metaPhoneDisplay,

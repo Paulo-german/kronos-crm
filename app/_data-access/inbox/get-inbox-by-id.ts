@@ -12,6 +12,10 @@ export interface InboxDetailDto {
   evolutionInstanceName: string | null
   evolutionInstanceId: string | null
   evolutionConnected: boolean
+  // Credenciais self-hosted (BYOI)
+  evolutionApiUrl: string | null
+  evolutionApiKey: string | null
+  evolutionWebhookSecret: string | null
   metaWabaId: string | null
   metaPhoneNumberId: string | null
   metaPhoneDisplay: string | null
@@ -54,6 +58,9 @@ const fetchInboxByIdFromDb = async (
     evolutionInstanceName: inbox.evolutionInstanceName,
     evolutionInstanceId: inbox.evolutionInstanceId,
     evolutionConnected: inbox.evolutionConnected,
+    evolutionApiUrl: inbox.evolutionApiUrl,
+    evolutionApiKey: inbox.evolutionApiKey,
+    evolutionWebhookSecret: inbox.evolutionWebhookSecret,
     metaWabaId: inbox.metaWabaId,
     metaPhoneNumberId: inbox.metaPhoneNumberId,
     metaPhoneDisplay: inbox.metaPhoneDisplay,
