@@ -1,6 +1,6 @@
 'use client'
 
-import { CheckCircle2, XCircle, AlertTriangle, Info, ArrowRightLeft, UserCheck, ShieldAlert } from 'lucide-react'
+import { CheckCircle2, XCircle, AlertTriangle, Info, ArrowRightLeft, UserCheck, ShieldAlert, MessageSquareOff } from 'lucide-react'
 import type { ConversationEventType, ToolSuccessSubtype, InfoSubtype } from '@/_lib/conversation-events/types'
 
 interface ConversationEventBubbleProps {
@@ -60,6 +60,11 @@ const ROUTING_SUBTYPE_CONFIG: Partial<
     colorClass: 'text-orange-500',
     bgClass: 'bg-orange-50 dark:bg-orange-950/20',
   },
+  EMPTY_RESPONSE: {
+    icon: MessageSquareOff,
+    colorClass: 'text-muted-foreground',
+    bgClass: 'bg-muted/50',
+  },
 }
 
 // Resolve o subtype a partir dos dados do evento (toolName para TOOL_SUCCESS, content para INFO)
@@ -74,6 +79,7 @@ function resolveSubtype(
   const subtype = metadata?.subtype as string | undefined
   if (type === 'INFO' && subtype === 'ROUTER_ASSIGNED') return 'ROUTER_ASSIGNED'
   if (type === 'INFO' && subtype === 'AGENT_TRANSFER_LOOP') return 'AGENT_TRANSFER_LOOP'
+  if (type === 'INFO' && subtype === 'EMPTY_RESPONSE') return 'EMPTY_RESPONSE'
 
   return null
 }

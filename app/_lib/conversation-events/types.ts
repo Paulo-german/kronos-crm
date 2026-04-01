@@ -45,7 +45,6 @@ export type ToolFailureSubtype =
 export type ProcessingErrorSubtype =
   | 'NO_CREDITS'
   | 'LLM_ERROR'
-  | 'EMPTY_RESPONSE'
 
 export type InfoSubtype =
   | 'AI_PAUSED_DURING_GENERATION'
@@ -56,6 +55,7 @@ export type InfoSubtype =
   | 'FOLLOW_UP_QUOTA_EXCEEDED'
   | 'ROUTER_ASSIGNED' // Router classificou e atribuiu worker a conversa nova
   | 'AGENT_TRANSFER_LOOP' // Loop de transfer detectado — conversa direcionada para humano
+  | 'EMPTY_RESPONSE' // LLM retornou resposta vazia (não é erro — benigno)
 
 // ---------------------------------------------------------------------------
 // Tool → Subtype mapping (apenas tools com failure real)
