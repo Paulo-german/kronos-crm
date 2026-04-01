@@ -40,6 +40,7 @@ const ConnectedToast = () => {
       router.replace(cleanSearchParams(searchParams, ['connected']), {
         scroll: false,
       })
+      router.refresh()
       return
     }
 
