@@ -179,10 +179,13 @@ export const processAgentMessage = task({
         // O tracker do worker é criado APÓS o routing para usar o ID correto.
         let effectiveAgentId = agentId
 
+        // Tags acumulativas para o trace Langfuse (updateActiveTrace faz replace, não merge)
+        const traceTags: string[] = ['whatsapp', 'agent']
+
         updateActiveTrace({
           sessionId: conversationId,
           userId: organizationId,
-          tags: ['whatsapp', 'agent'],
+          tags: traceTags,
           metadata: { agentId, messageType: message.type },
         })
 
@@ -317,6 +320,7 @@ export const processAgentMessage = task({
             })
 
             triggerMetadata.set('effectiveAgentId', effectiveAgentId)
+            traceTags.push('routed')
 
             // Business hours check DO WORKER resolvido pelo router
             // O router opera 24h, mas o worker individual pode ter restrições de horário
@@ -874,6 +878,11 @@ export const processAgentMessage = task({
               output: { reason: 'no_credits', estimatedCost },
             })
             await revalidateConversationCache(conversationId, organizationId)
+            updateActiveTrace({
+              output: { outcome: 'no_credits' },
+              tags: traceTags,
+              metadata: { outcome: 'no_credits', estimatedCost },
+            })
             await tracker.skip('no_credits')
             return { skipped: true, reason: 'no_credits' }
           }
@@ -1022,6 +1031,7 @@ export const processAgentMessage = task({
             )
 
             if (hasToolCalls) {
+              traceTags.push('fallback')
               log('step:5b tool_only_fallback', 'PASS', {
                 steps: result.steps?.length,
                 toolCalls: result.steps?.flatMap(
@@ -1116,8 +1126,19 @@ export const processAgentMessage = task({
               metadata: { subtype: 'EMPTY_RESPONSE' },
             })
             await revalidateConversationCache(conversationId, organizationId)
+            traceTags.push('empty_response')
             triggerMetadata.set('outcome', 'empty_response')
             triggerMetadata.set('model', promptContext.modelId)
+            updateActiveTrace({
+              output: { outcome: 'empty_response' },
+              tags: traceTags,
+              metadata: {
+                outcome: 'empty_response',
+                finishReason: result.finishReason,
+                creditsCost: emptyActualCost,
+                resultTextLength: result.text?.length ?? 0,
+              },
+            })
             log('step:5 llm_call', 'EXIT', {
               reason: 'empty_response',
               llmDurationMs,
@@ -1207,6 +1228,12 @@ export const processAgentMessage = task({
           // Create tool events from LLM steps
           if (result.steps?.length) {
             await createToolEvents(conversationId, result.steps)
+            const usedToolNames = result.steps.flatMap(
+              (step) => step.toolCalls?.map((tc) => tc.toolName) ?? [],
+            )
+            if (usedToolNames.length > 0) {
+              traceTags.push('tool_calls')
+            }
           }
 
           // -----------------------------------------------------------------------
@@ -1284,6 +1311,14 @@ export const processAgentMessage = task({
               type: 'PAUSE_CHECK',
               status: 'SKIPPED',
               output: { reason: 'ai_paused_during_generation' },
+            })
+            updateActiveTrace({
+              output: { outcome: 'ai_paused_during_generation' },
+              tags: traceTags,
+              metadata: {
+                outcome: 'ai_paused_during_generation',
+                creditsCost: pausedActualCost,
+              },
             })
             await tracker.skip({
               reason: 'ai_paused_during_generation',
@@ -1578,6 +1613,18 @@ export const processAgentMessage = task({
 
           triggerMetadata.set('outcome', 'completed')
           triggerMetadata.set('model', promptContext.modelId)
+          updateActiveTrace({
+            output: { outcome: 'completed', responseLength: responseText.length },
+            tags: traceTags,
+            metadata: {
+              outcome: 'completed',
+              finishReason: result.finishReason,
+              creditsCost: actualCost,
+              totalDurationMs,
+              inputTokens: result.usage?.inputTokens,
+              outputTokens: result.usage?.outputTokens,
+            },
+          })
 
           log('step:10 completed', 'PASS', {
             inputTokens: result.usage?.inputTokens,

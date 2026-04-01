@@ -5,6 +5,7 @@ import { db } from '@/_lib/prisma'
 import { getModel } from '@/_lib/ai'
 import { debitCredits, refundCredits } from '@/_lib/billing/credit-utils'
 import { estimateMaxCost, calculateCreditCost } from '@/_lib/billing/model-pricing'
+import { langfuseTracer } from './langfuse'
 
 // ---------------------------------------------------------------------------
 // Schema de resposta do router LLM
@@ -191,6 +192,18 @@ export async function routeConversation(
       system: systemPrompt,
       prompt: userContent,
       maxOutputTokens: ROUTER_MAX_OUTPUT_TOKENS,
+      experimental_telemetry: {
+        isEnabled: true,
+        tracer: langfuseTracer,
+        functionId: 'router-classification',
+        metadata: {
+          groupId: input.groupId,
+          conversationId: input.conversationId,
+          organizationId: input.organizationId,
+          model: group.routerModelId,
+          workerCount: activeWorkers.length,
+        },
+      },
     })
   } catch (llmError) {
     // Devolver créditos em caso de falha do LLM
