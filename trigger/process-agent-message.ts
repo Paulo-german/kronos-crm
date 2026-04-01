@@ -1,4 +1,4 @@
-import { task, tasks, logger } from '@trigger.dev/sdk/v3'
+import { task, tasks, logger, metadata as triggerMetadata } from '@trigger.dev/sdk/v3'
 import { generateText, stepCountIs } from 'ai'
 import { observe, updateActiveTrace } from '@langfuse/tracing'
 import { getModel } from '@/_lib/ai'
@@ -102,6 +102,40 @@ export interface ProcessAgentMessagePayload {
   groupId?: string | null // ID do grupo (para buscar config do router + workers)
 }
 
+// Helper — registra execução mínima para early exits que ocorrem antes do tracker ser criado
+async function createMinimalExecution(params: {
+  agentId: string | null
+  agentGroupId?: string | null
+  organizationId: string
+  conversationId: string
+  triggerMessageId: string
+  reason: string
+}): Promise<void> {
+  try {
+    const now = new Date()
+    await db.agentExecution.create({
+      data: {
+        id: crypto.randomUUID(),
+        agentId: params.agentId,
+        agentGroupId: params.agentGroupId ?? null,
+        organizationId: params.organizationId,
+        conversationId: params.conversationId,
+        triggerMessageId: params.triggerMessageId,
+        status: 'SKIPPED',
+        startedAt: now,
+        completedAt: now,
+        durationMs: 0,
+        errorMessage: params.reason,
+      },
+    })
+  } catch (error) {
+    logger.warn('Failed to persist minimal execution', {
+      reason: params.reason,
+      error: error instanceof Error ? error.message : String(error),
+    })
+  }
+}
+
 export const processAgentMessage = task({
   id: 'process-agent-message',
   retry: {
@@ -133,6 +167,12 @@ export const processAgentMessage = task({
           remoteJid: message.remoteJid,
           organizationId,
         })
+
+        // Trigger.dev metadata — visível no dashboard para filtragem/debug
+        triggerMetadata.set('conversationId', conversationId)
+        triggerMetadata.set('agentId', agentId)
+        triggerMetadata.set('organizationId', organizationId)
+        triggerMetadata.set('messageType', message.type)
 
         // effectiveAgentId começa como o agentId do payload.
         // No modo de grupo com requiresRouting = true, é sobrescrito pelo worker resolvido.
@@ -223,7 +263,14 @@ export const processAgentMessage = task({
                 reason: isNoCredits ? 'no_credits_for_router' : 'router_error',
                 error: routerError instanceof Error ? routerError.message : String(routerError),
               })
-              // Tracker ainda não criado — retornar direto
+              await createMinimalExecution({
+                agentId: null,
+                agentGroupId: groupId,
+                organizationId,
+                conversationId,
+                triggerMessageId: message.messageId,
+                reason: isNoCredits ? 'router_no_credits' : 'router_failed',
+              })
               return { skipped: true, reason: 'router_failed' }
             }
 
@@ -231,7 +278,14 @@ export const processAgentMessage = task({
               log('step:1b router_classification', 'EXIT', {
                 reason: 'no_suitable_worker',
               })
-              // Tracker ainda não criado — retornar direto
+              await createMinimalExecution({
+                agentId: null,
+                agentGroupId: groupId,
+                organizationId,
+                conversationId,
+                triggerMessageId: message.messageId,
+                reason: 'no_suitable_worker',
+              })
               return { skipped: true, reason: 'no_suitable_worker' }
             }
 
@@ -262,6 +316,8 @@ export const processAgentMessage = task({
               confidence: routerResult.confidence,
             })
 
+            triggerMetadata.set('effectiveAgentId', effectiveAgentId)
+
             // Business hours check DO WORKER resolvido pelo router
             // O router opera 24h, mas o worker individual pode ter restrições de horário
             const resolvedWorker = await db.agent.findUnique({
@@ -285,7 +341,14 @@ export const processAgentMessage = task({
                   reason: 'outside_business_hours',
                   workerId: effectiveAgentId,
                 })
-                // Tracker ainda não criado — retornar direto
+                await createMinimalExecution({
+                  agentId: effectiveAgentId,
+                  agentGroupId: groupId,
+                  organizationId,
+                  conversationId,
+                  triggerMessageId: message.messageId,
+                  reason: 'outside_business_hours',
+                })
                 return { skipped: true, reason: 'outside_business_hours' }
               }
             }
@@ -1021,6 +1084,9 @@ export const processAgentMessage = task({
 
           if (!responseText) {
             // Genuinamente sem resposta (sem tool calls ou fallback falhou)
+            const hadToolCalls = result.steps?.some(
+              (step) => step.toolCalls && step.toolCalls.length > 0,
+            ) ?? false
             const emptyTotalTokens =
               (result.usage?.inputTokens ?? 0) +
               (result.usage?.outputTokens ?? 0)
@@ -1045,23 +1111,53 @@ export const processAgentMessage = task({
             }
             await createConversationEvent({
               conversationId,
-              type: 'PROCESSING_ERROR',
+              type: 'INFO',
               content: 'A IA não gerou uma resposta para esta mensagem.',
               metadata: { subtype: 'EMPTY_RESPONSE' },
             })
             await revalidateConversationCache(conversationId, organizationId)
+            triggerMetadata.set('outcome', 'empty_response')
+            triggerMetadata.set('model', promptContext.modelId)
             log('step:5 llm_call', 'EXIT', {
               reason: 'empty_response',
               llmDurationMs,
               actualCost: emptyActualCost,
+              finishReason: result.finishReason,
+              outputTokens: result.usage?.outputTokens ?? 0,
+              stepsCount: result.steps?.length ?? 0,
+              resultTextLength: result.text?.length ?? 0,
             })
             tracker.addStep({
               type: 'LLM_CALL',
               status: 'FAILED',
               durationMs: llmDurationMs,
-              output: { reason: 'empty_response' },
+              output: {
+                reason: 'empty_response',
+                resultText: result.text ?? null,
+                resultTextLength: result.text?.length ?? 0,
+                finishReason: result.finishReason,
+                outputTokens: result.usage?.outputTokens ?? 0,
+                inputTokens: result.usage?.inputTokens ?? 0,
+                stepsCount: result.steps?.length ?? 0,
+                toolCalls: result.steps?.flatMap(
+                  (step) => step.toolCalls?.map((tc) => tc.toolName) ?? [],
+                ) ?? [],
+                fallbackAttempted: hadToolCalls,
+              },
             })
-            await tracker.skip('empty_response')
+            await tracker.skip({
+              reason: 'empty_response',
+              modelId: promptContext.modelId,
+              inputTokens: result.usage?.inputTokens ?? 0,
+              outputTokens: result.usage?.outputTokens ?? 0,
+              creditsCost: emptyActualCost,
+              finishReason: result.finishReason,
+              metadata: {
+                resultText: result.text ?? null,
+                stepsCount: result.steps?.length ?? 0,
+                fallbackAttempted: hadToolCalls,
+              },
+            })
             return { skipped: true, reason: 'empty_response' }
           }
 
@@ -1189,7 +1285,14 @@ export const processAgentMessage = task({
               status: 'SKIPPED',
               output: { reason: 'ai_paused_during_generation' },
             })
-            await tracker.skip('ai_paused_during_generation')
+            await tracker.skip({
+              reason: 'ai_paused_during_generation',
+              modelId: promptContext.modelId,
+              inputTokens: result.usage?.inputTokens ?? 0,
+              outputTokens: result.usage?.outputTokens ?? 0,
+              creditsCost: pausedActualCost,
+              finishReason: result.finishReason,
+            })
             return { skipped: true, reason: 'ai_paused_during_generation' }
           }
           log('step:6 pause_recheck', 'PASS')
@@ -1473,6 +1576,9 @@ export const processAgentMessage = task({
           // -----------------------------------------------------------------------
           const totalDurationMs = Date.now() - taskStartMs
 
+          triggerMetadata.set('outcome', 'completed')
+          triggerMetadata.set('model', promptContext.modelId)
+
           log('step:10 completed', 'PASS', {
             inputTokens: result.usage?.inputTokens,
             outputTokens: result.usage?.outputTokens,
@@ -1486,6 +1592,7 @@ export const processAgentMessage = task({
             inputTokens: result.usage?.inputTokens ?? 0,
             outputTokens: result.usage?.outputTokens ?? 0,
             creditsCost: actualCost,
+            finishReason: result.finishReason,
           })
 
           return { success: true }
