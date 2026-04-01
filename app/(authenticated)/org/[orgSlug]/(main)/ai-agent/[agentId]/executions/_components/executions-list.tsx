@@ -123,7 +123,10 @@ function ExecutionCard({ execution, orgSlug }: ExecutionCardProps) {
 
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <CpuIcon size={12} />
-                    <span>{getModelLabel(execution.modelId)}</span>
+                    <span>
+                      {getModelLabel(execution.modelId)}
+                      {execution.finishReason && ` · ${execution.finishReason}`}
+                    </span>
                   </div>
 
                   {totalTokens > 0 && (

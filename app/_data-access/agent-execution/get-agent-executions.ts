@@ -18,6 +18,7 @@ export interface AgentExecutionDto {
   outputTokens: number | null
   creditsCost: number | null
   errorMessage: string | null
+  finishReason: string | null
   conversationId: string
   contactName: string | null
   stepsCount: number
@@ -99,6 +100,7 @@ const fetchExecutionsFromDb = async (
       outputTokens: execution.outputTokens,
       creditsCost: execution.creditsCost,
       errorMessage: execution.errorMessage,
+      finishReason: execution.finishReason,
       conversationId: execution.conversationId,
       contactName: execution.conversation?.contact?.name ?? null,
       stepsCount: execution._count.steps,

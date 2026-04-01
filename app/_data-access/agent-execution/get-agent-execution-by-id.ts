@@ -60,6 +60,7 @@ const fetchExecutionDetailFromDb = async (
     outputTokens: execution.outputTokens,
     creditsCost: execution.creditsCost,
     errorMessage: execution.errorMessage,
+    finishReason: execution.finishReason,
     conversationId: execution.conversationId,
     contactName: execution.conversation?.contact?.name ?? null,
     stepsCount: execution._count.steps,
