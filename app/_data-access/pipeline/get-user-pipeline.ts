@@ -14,6 +14,7 @@ export interface StageDto {
 export interface PipelineWithStagesDto {
   id: string
   name: string
+  showIdleDays: boolean
   stages: StageDto[]
 }
 
@@ -41,6 +42,7 @@ const fetchOrgPipelineFromDb = async (orgId: string) => {
   return {
     id: pipeline.id,
     name: pipeline.name,
+    showIdleDays: pipeline.showIdleDays,
     stages: pipeline.stages.map((stage) => ({
       id: stage.id,
       name: stage.name,

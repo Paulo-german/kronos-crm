@@ -27,6 +27,10 @@ import { DeleteStageDialog } from './delete-stage-dialog'
 import ConfirmationDialog from '@/_components/confirmation-dialog'
 import { reorderStages } from '@/_actions/pipeline/reorder-stages'
 import { deleteStage } from '@/_actions/pipeline/delete-stage'
+import { toggleIdleDays } from '@/_actions/pipeline/toggle-idle-days'
+import { Switch } from '@/_components/ui/switch'
+import { Label } from '@/_components/ui/label'
+import { Clock } from 'lucide-react'
 import type {
   PipelineWithStagesDto,
   StageDto,
@@ -76,6 +80,18 @@ export function SettingsClient({ pipeline }: SettingsClientProps) {
     },
   })
 
+  const [idleDaysEnabled, setIdleDaysEnabled] = useState(pipeline.showIdleDays)
+
+  const { execute: executeToggleIdleDays } = useAction(toggleIdleDays, {
+    onSuccess: () => {
+      toast.success('Configuração atualizada!')
+    },
+    onError: ({ error }) => {
+      setIdleDaysEnabled((prev) => !prev)
+      toast.error(error.serverError || 'Erro ao atualizar configuração.')
+    },
+  })
+
   const { execute: executeDelete, isPending: isDeleting } = useAction(
     deleteStage,
     {
@@ -112,6 +128,32 @@ export function SettingsClient({ pipeline }: SettingsClientProps) {
 
   return (
     <div className="space-y-6">
+      {/* Exibição de inatividade */}
+      <div className="space-y-2">
+        <h3 className="text-lg font-medium">Exibição</h3>
+        <div className="flex items-center justify-between rounded-lg border p-3">
+          <div className="flex items-center gap-3">
+            <Clock className="h-4 w-4 text-muted-foreground" />
+            <div>
+              <Label htmlFor="idle-days-toggle" className="text-sm font-medium">
+                Dias sem atividade
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Mostra nos cards quantos dias a negociação está parada
+              </p>
+            </div>
+          </div>
+          <Switch
+            id="idle-days-toggle"
+            checked={idleDaysEnabled}
+            onCheckedChange={(checked) => {
+              setIdleDaysEnabled(checked)
+              executeToggleIdleDays({ pipelineId: pipeline.id, showIdleDays: checked })
+            }}
+          />
+        </div>
+      </div>
+
       {/* Stages list with drag and drop */}
       <div className="space-y-2">
         <h3 className="text-lg font-medium">Etapas do Pipeline</h3>

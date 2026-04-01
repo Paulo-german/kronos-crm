@@ -181,6 +181,7 @@ model Pipeline {
   id             String          @id @default(uuid())
   name           String
   organizationId String          @map("organization_id")
+  showIdleDays   Boolean         @default(true) @map("show_idle_days")
   stages         PipelineStage[]
   organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 

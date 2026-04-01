@@ -43,6 +43,7 @@ export async function createDefaultPipeline({
     return {
       id: existingPipeline.id,
       name: existingPipeline.name,
+      showIdleDays: existingPipeline.showIdleDays,
       stages: existingPipeline.stages.map((stage) => ({
         id: stage.id,
         name: stage.name,
@@ -73,6 +74,7 @@ export async function createDefaultPipeline({
   return {
     id: pipeline.id,
     name: pipeline.name,
+    showIdleDays: pipeline.showIdleDays,
     stages: pipeline.stages.map((stage) => ({
       id: stage.id,
       name: stage.name,
