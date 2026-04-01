@@ -495,6 +495,7 @@ export function KanbanBoard({
               onDealClick={onDealClick}
               onPriorityClick={handlePriorityClick}
               priorityOverrides={priorityOverrides}
+              showIdleDays={pipeline.showIdleDays}
             />
           ))}
         </div>
@@ -505,6 +506,7 @@ export function KanbanBoard({
               <KanbanCard
                 deal={activeDeal}
                 priorityOverride={priorityOverrides[activeDeal.id]}
+                showIdleDays={pipeline.showIdleDays}
               />
             </div>
           )}

@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/_components/ui/card'
 import { formatCurrency } from '@/_utils/format-currency'
 import type { DealDto } from '@/_data-access/deal/get-deals-by-pipeline'
 import { Badge } from '@/_components/ui/badge'
-import { ChevronDown, CircleIcon } from 'lucide-react'
+import { ChevronDown, CircleIcon, Clock } from 'lucide-react'
 import { Label } from '@/_components/ui/label'
 import {
   Tooltip,
@@ -19,6 +19,7 @@ interface KanbanCardProps {
   onClick?: () => void
   onPriorityClick?: (dealId: string, anchorEl: HTMLElement) => void
   priorityOverride?: string
+  showIdleDays?: boolean
 }
 
 export const priorityConfig = {
@@ -64,6 +65,9 @@ const statusConfig = {
   },
 }
 
+const IDLE_WARNING_DAYS = 12
+const IDLE_DANGER_DAYS = 30
+
 const getInitials = (name: string) => {
   const parts = name.trim().split(' ')
   if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase()
@@ -75,6 +79,7 @@ const KanbanCard = ({
   onClick,
   onPriorityClick,
   priorityOverride,
+  showIdleDays = true,
 }: KanbanCardProps) => {
   const priority = (priorityOverride ?? deal.priority) as keyof typeof priorityConfig
 
@@ -96,6 +101,19 @@ const KanbanCard = ({
   }
 
   const formattedValue = formatCurrency(deal.totalValue)
+
+  // Derivação pura: dias desde a última atividade (ou criação do deal)
+  const idleDays = Math.floor(
+    (Date.now() - new Date(deal.lastActivityAt ?? deal.createdAt).getTime()) /
+      86_400_000,
+  )
+
+  const idleStyle =
+    idleDays >= IDLE_DANGER_DAYS
+      ? 'text-red-500 bg-red-500/10'
+      : idleDays >= IDLE_WARNING_DAYS
+        ? 'text-amber-500 bg-amber-500/10'
+        : 'text-muted-foreground bg-muted'
 
   const handleCardClick = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('[data-priority-select]')) {
@@ -199,6 +217,33 @@ const KanbanCard = ({
             </button>
           </div>
         </div>
+
+        {/* 3.5 Indicador de Inatividade */}
+        {showIdleDays && deal.status !== 'WON' && deal.status !== 'LOST' && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div
+                className={`flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-medium ${idleStyle}`}
+              >
+                <Clock className="h-3 w-3" />
+                <span>
+                  {idleDays === 0
+                    ? 'Ativo hoje'
+                    : idleDays === 1
+                      ? '1 dia sem atividade'
+                      : `${idleDays} dias sem atividade`}
+                </span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>
+                {deal.lastActivityAt
+                  ? `Última atividade: ${new Date(deal.lastActivityAt).toLocaleDateString('pt-BR')}`
+                  : `Criado em: ${new Date(deal.createdAt).toLocaleDateString('pt-BR')}`}
+              </p>
+            </TooltipContent>
+          </Tooltip>
+        )}
 
         {/* 4. Base: Observações */}
         {deal.notes && (
