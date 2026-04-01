@@ -120,10 +120,8 @@ export function buildToolSet(
     tools['send_product_media'] = createSendProductMediaTool(ctx)
   }
 
-  // Tool condicional — ativada quando o agente tem knowledge base com arquivos processados
-  if (globalFlags?.hasKnowledgeBase) {
-    tools['send_media'] = createSendMediaTool(ctx)
-  }
+  // Tool de envio de mídia — sempre disponível para todos os agentes
+  tools['send_media'] = createSendMediaTool(ctx)
 
   // Tool de transferência entre agentes — injetada quando o worker faz parte de um grupo
   // com mais de 1 worker ativo (transferir para si mesmo seria inútil)

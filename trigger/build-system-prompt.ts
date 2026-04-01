@@ -457,7 +457,7 @@ export async function buildSystemPrompt(
     activeProductMediaCount > 0
       ? ['search_products', 'send_product_media']
       : []
-  const mediaUrlTools = completedFileCount > 0 ? ['send_media'] : []
+  const mediaUrlTools = ['send_media']
   const effectiveTools = [...baseEffectiveTools, ...schedulingTools, ...knowledgeTools, ...productMediaTools, ...mediaUrlTools]
 
   const parts: string[] = []
@@ -537,17 +537,15 @@ export async function buildSystemPrompt(
     )
   }
 
-  // Regras de envio de mídia via URL — só quando o agente tem knowledge base processada
-  if (completedFileCount > 0) {
-    criticalRules.push(
-      '',
-      '**Envio de Midia (URLs):**',
-      '- Quando o texto de uma resposta ou da base de conhecimento contiver URLs de imagens (.jpg, .png, .webp), videos (.mp4) ou documentos (.pdf), use `send_media` para enviar o arquivo diretamente ao cliente via WhatsApp.',
-      '- Para links de redes sociais (Instagram, YouTube, TikTok, etc.), inclua o link na mensagem de texto — NAO use send_media.',
-      '- Se nao tiver certeza do tipo do arquivo, informe a URL e deixe o sistema inferir pelo tipo.',
-      '- Envie no maximo 3 midias por resposta para nao sobrecarregar o cliente.',
-    )
-  }
+  // Regras de envio de mídia via URL — sempre ativas
+  criticalRules.push(
+    '',
+    '**Envio de Midia (URLs):**',
+    '- Quando o texto de uma resposta, das suas instruções ou da base de conhecimento contiver URLs de imagens (.jpg, .png, .webp), videos (.mp4) ou documentos (.pdf), use `send_media` para enviar o arquivo diretamente ao cliente via WhatsApp.',
+    '- Para links de redes sociais (Instagram, YouTube, TikTok, etc.), inclua o link na mensagem de texto — NAO use send_media.',
+    '- Se nao tiver certeza do tipo do arquivo, informe a URL e deixe o sistema inferir pelo tipo.',
+    '- Envie no maximo 3 midias por resposta para nao sobrecarregar o cliente.',
+  )
 
   parts.push(criticalRules.join('\n'))
 
