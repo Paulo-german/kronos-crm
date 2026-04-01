@@ -20,8 +20,11 @@ const IntegrationsPage = async ({ params }: IntegrationsPageProps) => {
   const { orgSlug } = await params
   const ctx = await getOrgContext(orgSlug)
 
-  // Verifica se o Google Calendar está configurado no servidor
-  const googleCalendarEnabled = !!process.env.GOOGLE_CLIENT_ID
+  // Verifica se o Google Calendar está configurado e se a org tem acesso (beta gate)
+  const googleBetaOrgIds = (process.env.NEXT_PUBLIC_GOOGLE_BETA_ORG_IDS ?? '').split(',').filter(Boolean)
+  const googleCalendarEnabled =
+    !!process.env.GOOGLE_CLIENT_ID &&
+    (googleBetaOrgIds.length === 0 || googleBetaOrgIds.includes(ctx.orgId))
 
   const integrations = googleCalendarEnabled
     ? await getUserIntegrations(ctx)
