@@ -31,6 +31,18 @@ interface CompleteParams {
   inputTokens: number
   outputTokens: number
   creditsCost: number
+  finishReason?: string
+  metadata?: Record<string, unknown>
+}
+
+interface SkipParams {
+  reason: string
+  modelId?: string
+  inputTokens?: number
+  outputTokens?: number
+  creditsCost?: number
+  finishReason?: string
+  metadata?: Record<string, unknown>
 }
 
 // ---------------------------------------------------------------------------
@@ -40,7 +52,7 @@ interface CompleteParams {
 export interface ExecutionTracker {
   addStep(step: TrackedStep): void
   complete(params: CompleteParams): Promise<void>
-  skip(reason: string): Promise<void>
+  skip(params: string | SkipParams): Promise<void>
 }
 
 export function createExecutionTracker(
@@ -99,6 +111,10 @@ export function createExecutionTracker(
             inputTokens: completeParams.inputTokens,
             outputTokens: completeParams.outputTokens,
             creditsCost: completeParams.creditsCost,
+            finishReason: completeParams.finishReason ?? null,
+            metadata: completeParams.metadata != null
+              ? (completeParams.metadata as Prisma.InputJsonValue)
+              : Prisma.DbNull,
           },
         }),
         db.agentExecutionStep.createMany({
@@ -118,7 +134,11 @@ export function createExecutionTracker(
     }
   }
 
-  async function skip(reason: string): Promise<void> {
+  async function skip(paramsOrReason: string | SkipParams): Promise<void> {
+    const p = typeof paramsOrReason === 'string'
+      ? { reason: paramsOrReason }
+      : paramsOrReason
+
     const completedAt = new Date()
     const durationMs = completedAt.getTime() - startedAt.getTime()
 
@@ -135,7 +155,15 @@ export function createExecutionTracker(
             startedAt,
             completedAt,
             durationMs,
-            errorMessage: reason,
+            errorMessage: p.reason,
+            modelId: p.modelId ?? null,
+            inputTokens: p.inputTokens ?? null,
+            outputTokens: p.outputTokens ?? null,
+            creditsCost: p.creditsCost ?? null,
+            finishReason: p.finishReason ?? null,
+            metadata: p.metadata != null
+              ? (p.metadata as Prisma.InputJsonValue)
+              : Prisma.DbNull,
           },
         }),
         db.agentExecutionStep.createMany({
@@ -149,7 +177,7 @@ export function createExecutionTracker(
           executionId,
           agentId,
           conversationId,
-          reason,
+          reason: p.reason,
           error: error instanceof Error ? error.message : String(error),
         },
       )

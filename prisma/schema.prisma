@@ -851,6 +851,8 @@ model AgentExecution {
   outputTokens     Int?                  @map("output_tokens")
   creditsCost      Int?                  @map("credits_cost")
   errorMessage     String?               @map("error_message")
+  finishReason     String?               @map("finish_reason")
+  metadata         Json?
   createdAt        DateTime              @default(now()) @map("created_at")
   updatedAt        DateTime              @updatedAt @map("updated_at")
 
