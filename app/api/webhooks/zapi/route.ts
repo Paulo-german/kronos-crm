@@ -14,6 +14,7 @@ import type { processAgentMessage } from '@/../../trigger/process-agent-message'
 import type { ZApiWebhookPayload, ZApiConfig } from '@/_lib/zapi/types'
 import type { BusinessHoursConfig } from '@/_actions/agent/update-agent/schema'
 import type { NormalizedWhatsAppMessage } from '@/_lib/evolution/types'
+import { AUTO_REOPEN_FIELDS } from '@/_lib/conversation/auto-reopen'
 
 export async function POST(req: Request) {
   const t0 = Date.now()
@@ -193,7 +194,7 @@ export async function POST(req: Request) {
 
     await db.conversation.updateMany({
       where: { inboxId: inbox.id, remoteJid },
-      data: { aiPaused: true, pausedAt: new Date(), lastMessageRole: 'assistant' },
+      data: { aiPaused: true, pausedAt: new Date(), lastMessageRole: 'assistant', ...AUTO_REOPEN_FIELDS },
     })
 
     revalidateTag(`conversations:${orgId}`)
@@ -291,6 +292,7 @@ export async function POST(req: Request) {
           lastMessageRole: 'user',
           nextFollowUpAt: null,
           followUpCount: 0,
+          ...AUTO_REOPEN_FIELDS,
         },
       })
 
@@ -342,7 +344,7 @@ export async function POST(req: Request) {
       })
       await db.conversation.update({
         where: { id: resolveInactiveResult.conversationId },
-        data: { unreadCount: { increment: 1 }, lastMessageRole: 'user', nextFollowUpAt: null, followUpCount: 0 },
+        data: { unreadCount: { increment: 1 }, lastMessageRole: 'user', nextFollowUpAt: null, followUpCount: 0, ...AUTO_REOPEN_FIELDS },
       })
       revalidateTag(`conversations:${orgId}`)
       revalidateTag(`conversation-messages:${resolveInactiveResult.conversationId}`)
@@ -418,6 +420,7 @@ export async function POST(req: Request) {
             lastMessageRole: 'user',
             nextFollowUpAt: null,
             followUpCount: 0,
+            ...AUTO_REOPEN_FIELDS,
           },
         })
       }
@@ -527,7 +530,8 @@ export async function POST(req: Request) {
           lastMessageRole: 'user',
           nextFollowUpAt: null,
           followUpCount: 0,
-          },
+          ...AUTO_REOPEN_FIELDS,
+        },
       })
 
       revalidateTag(`conversations:${orgId}`)
@@ -581,7 +585,7 @@ export async function POST(req: Request) {
   await Promise.all([
     db.conversation.update({
       where: { id: conversationId },
-      data: { unreadCount: { increment: 1 }, lastMessageRole: 'user', nextFollowUpAt: null, followUpCount: 0 },
+      data: { unreadCount: { increment: 1 }, lastMessageRole: 'user', nextFollowUpAt: null, followUpCount: 0, ...AUTO_REOPEN_FIELDS },
     }),
     redis
       .set(
