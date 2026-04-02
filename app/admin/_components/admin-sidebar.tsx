@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Shield,
+  ClipboardList,
 } from 'lucide-react'
 import { cn } from '@/_lib/utils'
 import { useSidebar } from '@/_providers/sidebar-provider'
@@ -161,6 +162,11 @@ export const AdminSidebar = () => {
             href="/admin/announcements"
             label="Comunicados"
             icon={<Megaphone className="h-4 w-4" />}
+          />
+          <AdminNavItem
+            href="/admin/surveys"
+            label="Surveys"
+            icon={<ClipboardList className="h-4 w-4" />}
           />
         </div>
       </nav>
