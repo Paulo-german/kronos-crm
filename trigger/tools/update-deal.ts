@@ -85,52 +85,38 @@ export function createUpdateDealTool(ctx: ToolContext) {
         }
       }
 
-      // Agregar constraints de allowedFields/allowedStatuses/fixedPriority de todos os steps
+      // Deny-by-default: agregar apenas os campos/statuses explicitamente permitidos
       const agentSteps = await db.agentStep.findMany({
         where: { agentId: ctx.agentId },
         select: { actions: true },
       })
 
-      let aggregatedAllowedFields: string[] | null = null
-      let aggregatedAllowedStatuses: ('WON' | 'LOST')[] | null = null
-      let aggregatedFixedPriority: string | undefined
+      const allowedFields = new Set<string>()
+      const allowedStatuses = new Set<'WON' | 'LOST'>()
+      let fixedPriority: 'low' | 'medium' | 'high' | 'urgent' | undefined
 
       for (const step of agentSteps) {
         const parsed = z.array(stepActionSchema).safeParse(step.actions)
         if (!parsed.success) continue
         for (const act of parsed.data) {
           if (act.type !== 'update_deal') continue
-          if (act.allowedFields.length > 0) {
-            aggregatedAllowedFields = [
-              ...(aggregatedAllowedFields ?? []),
-              ...act.allowedFields,
-            ]
-          }
-          if (act.allowedStatuses.length > 0) {
-            aggregatedAllowedStatuses = [
-              ...(aggregatedAllowedStatuses ?? []),
-              ...act.allowedStatuses,
-            ]
-          }
-          if (act.fixedPriority) {
-            aggregatedFixedPriority = act.fixedPriority
-          }
+          for (const field of act.allowedFields) allowedFields.add(field)
+          for (const status of act.allowedStatuses) allowedStatuses.add(status)
+          if (act.fixedPriority) fixedPriority = act.fixedPriority
         }
       }
 
       // Aplicar fixedPriority (sobrescreve o que a IA enviou)
       const effectiveInput = { ...input }
-      if (aggregatedFixedPriority) {
-        effectiveInput.priority = aggregatedFixedPriority as 'low' | 'medium' | 'high' | 'urgent'
+      if (fixedPriority) {
+        effectiveInput.priority = fixedPriority
       }
 
       // Bloquear status não permitido
-      if (aggregatedAllowedStatuses !== null && effectiveInput.status) {
-        if (!aggregatedAllowedStatuses.includes(effectiveInput.status)) {
-          return {
-            success: false,
-            message: `Não é permitido marcar o negócio como ${effectiveInput.status} nesta etapa.`,
-          }
+      if (effectiveInput.status && !allowedStatuses.has(effectiveInput.status)) {
+        return {
+          success: false,
+          message: `Não é permitido marcar o negócio como ${effectiveInput.status} nesta etapa.`,
         }
       }
 
@@ -138,33 +124,30 @@ export function createUpdateDealTool(ctx: ToolContext) {
       const data: Record<string, unknown> = {}
       const updatedFields: string[] = []
 
-      const isFieldAllowed = (field: string) =>
-        aggregatedAllowedFields === null || aggregatedAllowedFields.includes(field)
-
-      if (effectiveInput.title !== undefined && isFieldAllowed('title')) {
+      if (effectiveInput.title !== undefined && allowedFields.has('title')) {
         data.title = effectiveInput.title
         updatedFields.push(`título: "${effectiveInput.title}"`)
       }
 
-      if (effectiveInput.value !== undefined && isFieldAllowed('value')) {
+      if (effectiveInput.value !== undefined && allowedFields.has('value')) {
         data.value = effectiveInput.value
         updatedFields.push(
           `valor: R$ ${effectiveInput.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
         )
       }
 
-      if (effectiveInput.priority !== undefined && isFieldAllowed('priority')) {
+      if (effectiveInput.priority !== undefined && allowedFields.has('priority')) {
         data.priority = effectiveInput.priority
         updatedFields.push(`prioridade: ${effectiveInput.priority}`)
       }
 
       // Notes append em vez de overwrite
-      if (effectiveInput.notes !== undefined && isFieldAllowed('notes')) {
+      if (effectiveInput.notes !== undefined && allowedFields.has('notes')) {
         data.notes = deal.notes ? `${deal.notes}\n\n---\n${effectiveInput.notes}` : effectiveInput.notes
         updatedFields.push('notas atualizadas')
       }
 
-      if (effectiveInput.expectedCloseDate !== undefined && isFieldAllowed('expectedCloseDate')) {
+      if (effectiveInput.expectedCloseDate !== undefined && allowedFields.has('expectedCloseDate')) {
         const parsedDate = new Date(effectiveInput.expectedCloseDate)
         if (isNaN(parsedDate.getTime())) {
           return { success: false, message: 'Data de previsão inválida.' }

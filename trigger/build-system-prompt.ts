@@ -98,16 +98,18 @@ export function compileStepActions(actions: StepAction[]): string[] {
         if (action.allowedFields.length > 0) {
           const fieldList = action.allowedFields.map((field) => FIELD_LABELS[field]).join(', ')
           instruction += ` atualizando apenas: ${fieldList}`
+        } else {
+          instruction += ` — NÃO altere nenhum campo diretamente (apenas status, se permitido abaixo)`
         }
         lines.push(instruction + '.')
 
-        if (action.fixedPriority) {
+        if (action.fixedPriority && action.allowedFields.includes('priority')) {
           lines.push(
             `  → Prioridade OBRIGATÓRIA: "${PRIORITY_LABELS[action.fixedPriority]}" — não use outro valor.`,
           )
         }
 
-        if (action.notesTemplate) {
+        if (action.notesTemplate && action.allowedFields.includes('notes')) {
           lines.push(`  → Para as notas, registre: ${action.notesTemplate}`)
         }
 
