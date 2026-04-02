@@ -10,11 +10,12 @@ interface KpiGridProps {
   ctx: { userId: string; orgId: string; userRole: MemberRole }
   dateRange: DateRange
   orgSlug: string
+  pipelineId?: string
 }
 
-export async function KpiGrid({ ctx, dateRange, orgSlug }: KpiGridProps) {
+export async function KpiGrid({ ctx, dateRange, orgSlug, pipelineId }: KpiGridProps) {
   const prevRange = getPreviousPeriod(dateRange)
-  const kpi = await getKpiMetrics(ctx, dateRange, prevRange)
+  const kpi = await getKpiMetrics(ctx, dateRange, prevRange, pipelineId)
 
   return (
     <div className="grid h-full w-full grid-cols-2 gap-4">

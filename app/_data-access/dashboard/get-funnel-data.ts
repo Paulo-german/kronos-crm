@@ -12,6 +12,7 @@ async function fetchFunnelData(
   userId: string,
   elevated: boolean,
   dateRange: DateRange,
+  pipelineId?: string,
 ): Promise<FunnelStage[]> {
   const [groups, stages] = await Promise.all([
     db.deal.groupBy({
@@ -21,11 +22,17 @@ async function fetchFunnelData(
       where: {
         organizationId: orgId,
         ...(elevated ? {} : { assignedTo: userId }),
+        ...(pipelineId ? { stage: { pipelineId } } : {}),
         createdAt: { gte: dateRange.start, lte: dateRange.end },
       },
     }),
     db.pipelineStage.findMany({
-      where: { pipeline: { organizationId: orgId } },
+      where: {
+        pipeline: {
+          organizationId: orgId,
+          ...(pipelineId ? { id: pipelineId } : {}),
+        },
+      },
       select: { id: true, name: true, color: true, position: true },
       orderBy: { position: 'asc' },
     }),
@@ -45,16 +52,20 @@ async function fetchFunnelData(
 }
 
 export const getFunnelData = cache(
-  async (ctx: RBACContext, dateRange: DateRange): Promise<FunnelStage[]> => {
+  async (
+    ctx: RBACContext,
+    dateRange: DateRange,
+    pipelineId?: string,
+  ): Promise<FunnelStage[]> => {
     const elevated = isElevated(ctx.userRole)
     const startISO = dateRange.start.toISOString()
     const endISO = dateRange.end.toISOString()
 
     const getCached = unstable_cache(
       async () =>
-        fetchFunnelData(ctx.orgId, ctx.userId, elevated, dateRange),
+        fetchFunnelData(ctx.orgId, ctx.userId, elevated, dateRange, pipelineId),
       [
-        `dashboard-funnel-${ctx.orgId}-${ctx.userId}-${elevated}-${startISO}-${endISO}`,
+        `dashboard-funnel-${ctx.orgId}-${ctx.userId}-${elevated}-${startISO}-${endISO}-${pipelineId ?? 'all'}`,
       ],
       {
         tags: [`dashboard-charts:${ctx.orgId}`, `deals:${ctx.orgId}`],

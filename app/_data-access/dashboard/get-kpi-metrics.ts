@@ -20,8 +20,10 @@ async function fetchKpiMetrics(
   elevated: boolean,
   dateRange: DateRange,
   prevRange: DateRange,
+  pipelineId?: string,
 ): Promise<KpiMetrics> {
   const rbac = buildRbacWhere(orgId, userId, elevated)
+  const pipelineFilter = pipelineId ? { stage: { pipelineId } } : {}
 
   const [
     pipelineAgg,
@@ -36,13 +38,14 @@ async function fetchKpiMetrics(
     // Valor total do pipeline (OPEN + IN_PROGRESS) — snapshot ALL TIME
     db.deal.aggregate({
       _sum: { value: true },
-      where: { ...rbac, status: { in: ['OPEN', 'IN_PROGRESS'] } },
+      where: { ...rbac, ...pipelineFilter, status: { in: ['OPEN', 'IN_PROGRESS'] } },
     }),
     // Receita (WON no período)
     db.deal.aggregate({
       _sum: { value: true },
       where: {
         ...rbac,
+        ...pipelineFilter,
         status: 'WON',
         updatedAt: { gte: dateRange.start, lte: dateRange.end },
       },
@@ -52,6 +55,7 @@ async function fetchKpiMetrics(
       _avg: { value: true },
       where: {
         ...rbac,
+        ...pipelineFilter,
         status: 'WON',
         updatedAt: { gte: dateRange.start, lte: dateRange.end },
       },
@@ -60,18 +64,20 @@ async function fetchKpiMetrics(
     db.deal.count({
       where: {
         ...rbac,
+        ...pipelineFilter,
         createdAt: { gte: dateRange.start, lte: dateRange.end },
       },
     }),
     // Pipeline não tem período anterior (é snapshot ALL TIME)
     db.deal.aggregate({
       _sum: { value: true },
-      where: { ...rbac, status: { in: ['OPEN', 'IN_PROGRESS'] } },
+      where: { ...rbac, ...pipelineFilter, status: { in: ['OPEN', 'IN_PROGRESS'] } },
     }),
     db.deal.aggregate({
       _sum: { value: true },
       where: {
         ...rbac,
+        ...pipelineFilter,
         status: 'WON',
         updatedAt: { gte: prevRange.start, lte: prevRange.end },
       },
@@ -80,6 +86,7 @@ async function fetchKpiMetrics(
       _avg: { value: true },
       where: {
         ...rbac,
+        ...pipelineFilter,
         status: 'WON',
         updatedAt: { gte: prevRange.start, lte: prevRange.end },
       },
@@ -87,6 +94,7 @@ async function fetchKpiMetrics(
     db.deal.count({
       where: {
         ...rbac,
+        ...pipelineFilter,
         createdAt: { gte: prevRange.start, lte: prevRange.end },
       },
     }),
@@ -109,16 +117,18 @@ export const getKpiMetrics = cache(
     ctx: RBACContext,
     dateRange: DateRange,
     prevRange: DateRange,
+    pipelineId?: string,
   ): Promise<KpiMetrics> => {
     const elevated = isElevated(ctx.userRole)
 
     const getCached = unstable_cache(
       async () =>
-        fetchKpiMetrics(ctx.orgId, ctx.userId, elevated, dateRange, prevRange),
+        fetchKpiMetrics(ctx.orgId, ctx.userId, elevated, dateRange, prevRange, pipelineId),
       [
         `dashboard-kpi-${ctx.orgId}-${ctx.userId}-${elevated}`,
         dateRange.start.toISOString(),
         dateRange.end.toISOString(),
+        pipelineId ?? 'all',
       ],
       {
         tags: [`dashboard:${ctx.orgId}`, `deals:${ctx.orgId}`],

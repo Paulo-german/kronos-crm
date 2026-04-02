@@ -1,5 +1,6 @@
 import { Suspense } from 'react'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
+import { getOrgPipelines } from '@/_data-access/pipeline/get-org-pipelines'
 import { parseDateRange } from '@/_utils/date-range'
 import { KpiGrid } from './_components/kpi-grid'
 import { PipelineStatusSection } from './_components/pipeline-status-section'
@@ -7,6 +8,7 @@ import { ChartsSection } from './_components/charts-section'
 import { FunnelSection } from './_components/funnel-section'
 import { DateRangePicker } from './_components/date-range-picker'
 import { DashboardTabs } from './_components/dashboard-tabs'
+import { DashboardPipelineFilter } from './_components/dashboard-pipeline-filter'
 import { TaskListSection } from './_components/task-list-section'
 import { RecentActivitySection } from './_components/recent-activity-section'
 import { AiDashboardSection } from './_components/ai-dashboard-section'
@@ -23,7 +25,7 @@ import {
 
 interface DashboardPageProps {
   params: Promise<{ orgSlug: string }>
-  searchParams: Promise<{ start?: string; end?: string; tab?: string }>
+  searchParams: Promise<{ start?: string; end?: string; tab?: string; pipelineId?: string }>
 }
 
 export default async function DashboardPage({
@@ -31,17 +33,24 @@ export default async function DashboardPage({
   searchParams,
 }: DashboardPageProps) {
   const { orgSlug } = await params
-  const { start, end, tab } = await searchParams
+  const { start, end, tab, pipelineId } = await searchParams
   const ctx = await getOrgContext(orgSlug)
   const dateRange = parseDateRange(start, end)
   const activeTab = tab === 'ai' ? 'ai' : 'reports'
 
+  const pipelines = await getOrgPipelines(ctx.orgId)
+
   return (
     <div className="flex h-full flex-col gap-6">
-      {/* Row 0: Tabs + DateRange */}
+      {/* Row 0: Tabs + Filtros */}
       <div className="flex items-center justify-between">
         <DashboardTabs activeTab={activeTab} />
-        <DateRangePicker />
+        <div className="flex items-center gap-2">
+          {activeTab === 'reports' && (
+            <DashboardPipelineFilter pipelines={pipelines} />
+          )}
+          <DateRangePicker />
+        </div>
       </div>
 
       {activeTab === 'reports' ? (
@@ -53,23 +62,25 @@ export default async function DashboardPage({
           >
             <div className="flex lg:col-span-2">
               <Suspense fallback={<KpiGridSkeleton />}>
-                <KpiGrid ctx={ctx} dateRange={dateRange} orgSlug={orgSlug} />
+                <KpiGrid ctx={ctx} dateRange={dateRange} orgSlug={orgSlug} pipelineId={pipelineId} />
               </Suspense>
             </div>
             <Suspense fallback={<PipelineStatusSkeleton />}>
-              <PipelineStatusSection ctx={ctx} dateRange={dateRange} />
+              <PipelineStatusSection ctx={ctx} dateRange={dateRange} pipelineId={pipelineId} />
             </Suspense>
           </div>
 
-          {/* Row 2: Funil de Conversão horizontal (full width, compacto) */}
-          <Suspense fallback={<FunnelSkeleton />}>
-            <FunnelSection ctx={ctx} dateRange={dateRange} />
-          </Suspense>
+          {/* Row 2: Funil de Conversão — visível apenas quando um pipeline específico está selecionado */}
+          {pipelineId && (
+            <Suspense fallback={<FunnelSkeleton />}>
+              <FunnelSection ctx={ctx} dateRange={dateRange} pipelineId={pipelineId} />
+            </Suspense>
+          )}
 
           {/* Row 3: Revenue Chart (full width) */}
           <div data-tour="dashboard-charts">
             <Suspense fallback={<ChartsSkeleton />}>
-              <ChartsSection ctx={ctx} dateRange={dateRange} />
+              <ChartsSection ctx={ctx} dateRange={dateRange} pipelineId={pipelineId} />
             </Suspense>
           </div>
 

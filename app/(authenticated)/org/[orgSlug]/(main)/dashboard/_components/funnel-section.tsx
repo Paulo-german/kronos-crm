@@ -7,10 +7,11 @@ import { PipelineFunnel } from './pipeline-funnel'
 interface FunnelSectionProps {
   ctx: { userId: string; orgId: string; userRole: MemberRole }
   dateRange: DateRange
+  pipelineId?: string
 }
 
-export async function FunnelSection({ ctx, dateRange }: FunnelSectionProps) {
-  const funnelData = await getFunnelData(ctx, dateRange)
+export async function FunnelSection({ ctx, dateRange, pipelineId }: FunnelSectionProps) {
+  const funnelData = await getFunnelData(ctx, dateRange, pipelineId)
 
   return (
     <Card>

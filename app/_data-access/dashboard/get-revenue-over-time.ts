@@ -14,11 +14,13 @@ async function fetchRevenueOverTime(
   userId: string,
   elevated: boolean,
   dateRange: DateRange,
+  pipelineId?: string,
 ): Promise<RevenueByMonth[]> {
   const deals = await db.deal.findMany({
     where: {
       organizationId: orgId,
       ...(elevated ? {} : { assignedTo: userId }),
+      ...(pipelineId ? { stage: { pipelineId } } : {}),
       status: 'WON',
       updatedAt: { gte: dateRange.start, lte: dateRange.end },
     },
@@ -61,6 +63,7 @@ export const getRevenueOverTime = cache(
   async (
     ctx: RBACContext,
     dateRange: DateRange,
+    pipelineId?: string,
   ): Promise<RevenueByMonth[]> => {
     const elevated = isElevated(ctx.userRole)
     const startISO = dateRange.start.toISOString()
@@ -68,9 +71,9 @@ export const getRevenueOverTime = cache(
 
     const getCached = unstable_cache(
       async () =>
-        fetchRevenueOverTime(ctx.orgId, ctx.userId, elevated, dateRange),
+        fetchRevenueOverTime(ctx.orgId, ctx.userId, elevated, dateRange, pipelineId),
       [
-        `dashboard-revenue-${ctx.orgId}-${ctx.userId}-${elevated}-${startISO}-${endISO}`,
+        `dashboard-revenue-${ctx.orgId}-${ctx.userId}-${elevated}-${startISO}-${endISO}-${pipelineId ?? 'all'}`,
       ],
       {
         tags: [`dashboard-charts:${ctx.orgId}`, `deals:${ctx.orgId}`],

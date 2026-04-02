@@ -12,6 +12,7 @@ async function fetchDealsByStatus(
   userId: string,
   elevated: boolean,
   dateRange: DateRange,
+  pipelineId?: string,
 ): Promise<DealsByStatus[]> {
   const groups = await db.deal.groupBy({
     by: ['status'],
@@ -19,6 +20,7 @@ async function fetchDealsByStatus(
     where: {
       organizationId: orgId,
       ...(elevated ? {} : { assignedTo: userId }),
+      ...(pipelineId ? { stage: { pipelineId } } : {}),
       createdAt: { gte: dateRange.start, lte: dateRange.end },
     },
   })
@@ -30,16 +32,20 @@ async function fetchDealsByStatus(
 }
 
 export const getDealsByStatus = cache(
-  async (ctx: RBACContext, dateRange: DateRange): Promise<DealsByStatus[]> => {
+  async (
+    ctx: RBACContext,
+    dateRange: DateRange,
+    pipelineId?: string,
+  ): Promise<DealsByStatus[]> => {
     const elevated = isElevated(ctx.userRole)
     const startISO = dateRange.start.toISOString()
     const endISO = dateRange.end.toISOString()
 
     const getCached = unstable_cache(
       async () =>
-        fetchDealsByStatus(ctx.orgId, ctx.userId, elevated, dateRange),
+        fetchDealsByStatus(ctx.orgId, ctx.userId, elevated, dateRange, pipelineId),
       [
-        `dashboard-status-${ctx.orgId}-${ctx.userId}-${elevated}-${startISO}-${endISO}`,
+        `dashboard-status-${ctx.orgId}-${ctx.userId}-${elevated}-${startISO}-${endISO}-${pipelineId ?? 'all'}`,
       ],
       {
         tags: [`dashboard:${ctx.orgId}`, `deals:${ctx.orgId}`],

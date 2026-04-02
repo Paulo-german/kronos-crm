@@ -8,13 +8,15 @@ import { DEAL_STATUS_CONFIG, DEAL_STATUS_ORDER } from './deal-status-config'
 interface PipelineStatusSectionProps {
   ctx: { userId: string; orgId: string; userRole: MemberRole }
   dateRange: DateRange
+  pipelineId?: string
 }
 
 export async function PipelineStatusSection({
   ctx,
   dateRange,
+  pipelineId,
 }: PipelineStatusSectionProps) {
-  const data = await getDealsByStatus(ctx, dateRange)
+  const data = await getDealsByStatus(ctx, dateRange, pipelineId)
 
   const filteredData = data.filter((d) => d.status !== 'PAUSED')
   const countMap = new Map(data.map((d) => [d.status, d.count]))
