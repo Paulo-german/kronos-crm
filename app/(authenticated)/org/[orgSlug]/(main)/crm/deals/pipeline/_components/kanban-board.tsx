@@ -66,6 +66,7 @@ interface KanbanBoardProps {
   assignees: string[]
   onAssigneesChange: (values: string[]) => void
   viewToggle: React.ReactNode
+  pipelineSelector?: React.ReactNode
   settingsButton: React.ReactNode
   createButton: React.ReactNode
   filtersSheet: React.ReactNode
@@ -100,6 +101,7 @@ export function KanbanBoard({
   assignees,
   onAssigneesChange,
   viewToggle,
+  pipelineSelector,
   settingsButton,
   createButton,
   filtersSheet,
@@ -402,9 +404,10 @@ export function KanbanBoard({
         {createButton}
       </div>
 
-      {/* Toolbar row 2: Sort + Assignee + Filters */}
+      {/* Toolbar row 2: Pipeline + Sort + Assignee + Filters */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
+          {pipelineSelector}
           <Select
             value={sortBy}
             onValueChange={(v) => onSortChange(v as SortOption)}

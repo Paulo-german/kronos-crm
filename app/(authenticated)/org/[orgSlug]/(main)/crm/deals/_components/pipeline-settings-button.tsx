@@ -1,16 +1,9 @@
 'use client'
 
-import { useState } from 'react'
-import { Button } from '@/_components/ui/button'
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '@/_components/ui/sheet'
+import Link from 'next/link'
+import { useParams } from 'next/navigation'
 import { Settings2Icon } from 'lucide-react'
-import { SettingsClient } from '../pipeline/_components/settings-client'
+import { Button } from '@/_components/ui/button'
 import type { PipelineWithStagesDto } from '@/_data-access/pipeline/get-user-pipeline'
 
 interface PipelineSettingsButtonProps {
@@ -20,32 +13,16 @@ interface PipelineSettingsButtonProps {
 export function PipelineSettingsButton({
   pipeline,
 }: PipelineSettingsButtonProps) {
-  const [settingsOpen, setSettingsOpen] = useState(false)
+  const params = useParams<{ orgSlug: string }>()
 
   return (
-    <>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8"
-        onClick={() => setSettingsOpen(true)}
+    <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+      <Link
+        href={`/org/${params.orgSlug}/settings/pipelines/${pipeline.id}`}
       >
         <Settings2Icon className="h-4 w-4" />
-      </Button>
-
-      <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
-        <SheetContent className="flex w-full flex-col sm:max-w-lg">
-          <SheetHeader>
-            <SheetTitle>Configurações do Pipeline</SheetTitle>
-            <SheetDescription>
-              Gerencie as etapas do seu funil de vendas.
-            </SheetDescription>
-          </SheetHeader>
-          <div className="flex-1 overflow-y-auto">
-            <SettingsClient pipeline={pipeline} />
-          </div>
-        </SheetContent>
-      </Sheet>
-    </>
+        <span className="sr-only">Configurações do pipeline</span>
+      </Link>
+    </Button>
   )
 }

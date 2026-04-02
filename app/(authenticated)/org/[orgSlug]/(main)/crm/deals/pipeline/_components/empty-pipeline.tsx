@@ -1,11 +1,12 @@
+import Link from 'next/link'
 import { Kanban, Sparkles } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 
 interface EmptyPipelineProps {
-  onOpenSettings?: () => void
+  settingsHref?: string
 }
 
-export const EmptyPipeline = ({ onOpenSettings }: EmptyPipelineProps) => {
+export const EmptyPipeline = ({ settingsHref }: EmptyPipelineProps) => {
   return (
     <div className="flex h-[60vh] flex-col items-center justify-center gap-6 px-4">
       <div className="relative">
@@ -23,13 +24,12 @@ export const EmptyPipeline = ({ onOpenSettings }: EmptyPipelineProps) => {
           suas negociações de perto.
         </p>
       </div>
-      {onOpenSettings && (
-        <Button
-          onClick={onOpenSettings}
-          className="gap-2 shadow-lg shadow-primary/20"
-        >
-          <Sparkles className="h-4 w-4" />
-          Configurar Pipeline
+      {settingsHref && (
+        <Button asChild className="gap-2 shadow-lg shadow-primary/20">
+          <Link href={settingsHref}>
+            <Sparkles className="h-4 w-4" />
+            Configurar Pipeline
+          </Link>
         </Button>
       )}
     </div>

@@ -1,21 +1,16 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { Button } from '@/_components/ui/button'
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '@/_components/ui/sheet'
+import { Sheet } from '@/_components/ui/sheet'
 import { KanbanBoard } from './kanban-board'
 import CreateDealButton from '../../_components/create-deal-button'
 import { DealDialogContent } from '../../_components/deal-dialog-content'
 import { ViewToggle } from '../../_components/view-toggle'
 import { EmptyPipeline } from './empty-pipeline'
-import { SettingsClient } from './settings-client'
 import { PipelineFiltersSheet } from './pipeline-filters-sheet'
 import { PipelineFilterBadges } from './pipeline-filter-badges'
 import { usePipelineFilters } from '../_lib/use-pipeline-filters'
@@ -25,10 +20,12 @@ import type {
   DealsByStageDto,
 } from '@/_data-access/deal/get-deals-by-pipeline'
 import type { ContactDto } from '@/_data-access/contact/get-contacts'
+import type { OrgPipelineDto } from '@/_data-access/pipeline/get-org-pipelines'
 import type { MemberRole } from '@prisma/client'
 import { Settings2Icon } from 'lucide-react'
 import { PageTourTrigger } from '@/_components/onboarding/page-tour-trigger'
 import { DEALS_TOUR_STEPS } from '@/_lib/onboarding/tours/deals-tour'
+import { PipelineSelector } from './pipeline-selector'
 
 export interface MemberOption {
   userId: string
@@ -37,6 +34,8 @@ export interface MemberOption {
 
 interface PipelineClientProps {
   pipeline: PipelineWithStagesDto | null
+  pipelines: OrgPipelineDto[]
+  activePipelineId: string
   dealsByStage: DealsByStageDto
   contacts: ContactDto[]
   members: MemberOption[]
@@ -51,6 +50,8 @@ interface DealDialogState {
 
 export const PipelineClient = ({
   pipeline,
+  pipelines,
+  activePipelineId,
   dealsByStage,
   contacts,
   members,
@@ -58,11 +59,11 @@ export const PipelineClient = ({
   userRole,
 }: PipelineClientProps) => {
   const router = useRouter()
+  const params = useParams<{ orgSlug: string }>()
   const [dialogState, setDialogState] = useState<DealDialogState>({
     isOpen: false,
     stageId: '',
   })
-  const [settingsOpen, setSettingsOpen] = useState(false)
   const {
     filters,
     setFilters,
@@ -80,8 +81,10 @@ export const PipelineClient = ({
   if (!pipeline) {
     return (
       <EmptyPipeline
-        onOpenSettings={
-          canManagePipeline ? () => setSettingsOpen(true) : undefined
+        settingsHref={
+          canManagePipeline
+            ? `/org/${params.orgSlug}/settings/pipelines`
+            : undefined
         }
       />
     )
@@ -122,15 +125,25 @@ export const PipelineClient = ({
         assignees={assignees}
         onAssigneesChange={setAssignees}
         viewToggle={<ViewToggle activeView="pipeline" />}
+        pipelineSelector={
+          <PipelineSelector
+            pipelines={pipelines}
+            activePipelineId={activePipelineId}
+          />
+        }
         settingsButton={
           canManagePipeline ? (
             <Button
               variant="ghost"
               size="icon"
               className="h-8 w-8"
-              onClick={() => setSettingsOpen(true)}
+              asChild
             >
-              <Settings2Icon className="h-4 w-4" />
+              <Link
+                href={`/org/${params.orgSlug}/settings/pipelines/${pipeline.id}`}
+              >
+                <Settings2Icon className="h-4 w-4" />
+              </Link>
             </Button>
           ) : null
         }
@@ -175,20 +188,6 @@ export const PipelineClient = ({
             }
           }}
         />
-      </Sheet>
-
-      <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
-        <SheetContent className="flex w-full flex-col sm:max-w-lg">
-          <SheetHeader>
-            <SheetTitle>Configurações do Pipeline</SheetTitle>
-            <SheetDescription>
-              Gerencie as etapas do seu funil de vendas.
-            </SheetDescription>
-          </SheetHeader>
-          <div className="flex-1 overflow-y-auto">
-            <SettingsClient pipeline={pipeline} />
-          </div>
-        </SheetContent>
       </Sheet>
 
       <PageTourTrigger tourId="deals" steps={DEALS_TOUR_STEPS} />

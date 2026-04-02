@@ -1,5 +1,6 @@
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getOrgPipeline } from '@/_data-access/pipeline/get-user-pipeline'
+import { getOrgPipelines } from '@/_data-access/pipeline/get-org-pipelines'
 import { getDealsByPipeline } from '@/_data-access/deal/get-deals-by-pipeline'
 import { getContacts } from '@/_data-access/contact/get-contacts'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
@@ -8,16 +9,21 @@ import { createDefaultPipeline } from '@/_data-access/pipeline/create-default-pi
 
 interface PipelinePageProps {
   params: Promise<{ orgSlug: string }>
+  searchParams: Promise<{ pipelineId?: string }>
 }
 
-const PipelinePage = async ({ params }: PipelinePageProps) => {
+const PipelinePage = async ({ params, searchParams }: PipelinePageProps) => {
   const { orgSlug } = await params
+  const { pipelineId: selectedPipelineId } = await searchParams
   const ctx = await getOrgContext(orgSlug)
 
-  // Busca pipeline da organização (ou cria se não existir)
-  const pipeline = await getOrgPipeline(ctx.orgId)
+  // Busca lista de pipelines (para seletor) + pipeline ativo em paralelo
+  const [pipelines, pipeline] = await Promise.all([
+    getOrgPipelines(ctx.orgId),
+    getOrgPipeline(ctx.orgId, selectedPipelineId || undefined),
+  ])
 
-  // Se não existir, cria o pipeline padrão
+  // Se não existir pipeline ativo, cria o default
   const finalPipeline =
     pipeline || (await createDefaultPipeline({ orgId: ctx.orgId }))
 
@@ -25,7 +31,7 @@ const PipelinePage = async ({ params }: PipelinePageProps) => {
   const [dealsByStage, contacts, orgMembers] = await Promise.all([
     finalPipeline
       ? getDealsByPipeline(
-          finalPipeline.stages.map((s) => s.id),
+          finalPipeline.stages.map((stage) => stage.id),
           ctx,
         )
       : {},
@@ -41,6 +47,8 @@ const PipelinePage = async ({ params }: PipelinePageProps) => {
     <div className="flex h-full flex-col space-y-6 overflow-hidden">
       <PipelineClient
         pipeline={finalPipeline}
+        pipelines={pipelines}
+        activePipelineId={finalPipeline?.id ?? ''}
         dealsByStage={dealsByStage}
         contacts={contacts}
         members={members}
