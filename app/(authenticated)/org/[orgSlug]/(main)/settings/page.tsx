@@ -1,6 +1,7 @@
 import {
   Building2,
   CreditCard,
+  GitBranch,
   Package,
   Plug,
   UserIcon,
@@ -9,6 +10,7 @@ import {
   Mail,
   Zap,
   Sparkles,
+  Tag,
 } from 'lucide-react'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 
@@ -47,6 +49,14 @@ const SettingsPage = async ({ params }: SettingsPageProps) => {
         >
           <Plug size={20} />
         </CardSettings>
+        <CardSettings
+          title="Etiquetas"
+          description="Crie etiquetas para organizar conversas do inbox."
+          href="settings/labels"
+          orgSlug={orgSlug}
+        >
+          <Tag size={20} />
+        </CardSettings>
         {userRole !== 'MEMBER' && (
           <>
             <CardSettings
@@ -80,6 +90,14 @@ const SettingsPage = async ({ params }: SettingsPageProps) => {
               orgSlug={orgSlug}
             >
               <Package size={20} />
+            </CardSettings>
+            <CardSettings
+              title="Funis de Vendas"
+              description="Gerencie seus funis e etapas de vendas."
+              href="settings/pipelines"
+              orgSlug={orgSlug}
+            >
+              <GitBranch size={20} />
             </CardSettings>
             <CardSettings
               title="Caixas de Entrada"
