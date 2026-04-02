@@ -91,3 +91,37 @@ export interface AdminUserDto {
     role: string
   }[]
 }
+
+export interface UserProfileDto {
+  id: string
+  role: string
+  teamSize: string
+  crmExperience: string
+  mainChallenge: string
+  referralSource: string
+  profileCompletedAt: Date | null
+  user: {
+    fullName: string | null
+    email: string
+  }
+  organization: {
+    name: string
+    slug: string
+  }
+}
+
+export interface SurveyDistributionItem {
+  value: string
+  label: string
+  count: number
+  percentage: number
+}
+
+export interface SurveyAnalyticsDto {
+  totalResponses: number
+  byRole: SurveyDistributionItem[]
+  byTeamSize: SurveyDistributionItem[]
+  byCrmExperience: SurveyDistributionItem[]
+  byMainChallenge: SurveyDistributionItem[]
+  byReferralSource: SurveyDistributionItem[]
+}

@@ -31,6 +31,7 @@ model User {
   tasksCreated            Task[]            @relation("TaskCreator")
   integrations            UserIntegration[]
   automationsCreated      Automation[]      @relation("AutomationCreator")
+  userProfile             UserProfile?
 
   @@map("users")
 }
@@ -90,6 +91,7 @@ model Organization {
   automations            Automation[]
   automationExecutions   AutomationExecution[]
   conversationLabels     ConversationLabel[]
+  userProfiles           UserProfile[]
 
   @@map("organizations")
 }
@@ -1306,4 +1308,24 @@ model AutomationExecution {
   @@index([organizationId, executedAt(sort: Desc)])
   @@index([automationId, dealId, executedAt(sort: Desc)])
   @@map("automation_executions")
+}
+
+model UserProfile {
+  id                 String       @id @default(uuid())
+  userId             String       @unique @map("user_id")
+  organizationId     String       @map("organization_id")
+  role               String
+  teamSize           String       @map("team_size")
+  crmExperience      String       @map("crm_experience")
+  mainChallenge      String       @map("main_challenge")
+  referralSource     String       @map("referral_source")
+  profileCompletedAt DateTime?    @map("profile_completed_at")
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
+
+  user               User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("user_profiles")
 }
