@@ -571,9 +571,13 @@ export async function buildSystemPrompt(
 
     lines.push('## Processo de Atendimento')
     lines.push('')
+    lines.push('**Regras obrigatórias:**')
+    lines.push('- Siga as etapas abaixo na ordem.')
     lines.push(
-      'Siga as etapas abaixo na ordem. Identifique em que ponto da conversa ' +
-      'você está pelo contexto do histórico e conduza o lead para a próxima etapa naturalmente.',
+      '- Identifique em que ponto da conversa você está pelo contexto do histórico e conduza o lead para a próxima etapa naturalmente.',
+    )
+    lines.push(
+      '- Quando uma etapa tiver um template de mensagem, você DEVE usá-lo como base da sua resposta, adaptando com os dados reais do cliente. Não ignore os templates.',
     )
 
     for (const step of agent.steps) {
@@ -592,7 +596,7 @@ export async function buildSystemPrompt(
 
       if (step.messageTemplate) {
         lines.push('')
-        lines.push('**Exemplo de fechamento:**')
+        lines.push('**Template de mensagem (use como base):**')
         lines.push(`"${step.messageTemplate}"`)
       }
     }
