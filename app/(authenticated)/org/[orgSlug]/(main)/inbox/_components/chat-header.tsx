@@ -1,6 +1,7 @@
 'use client'
 
-import { ArrowLeft, Bot, Info, UserCog, Users } from 'lucide-react'
+import { ArrowLeft, Bot, CheckCircle2, Info, Loader2, RotateCcw, UserCog, Users } from 'lucide-react'
+import { cn } from '@/_lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@/_components/ui/avatar'
 import { Badge } from '@/_components/ui/badge'
 import { Button } from '@/_components/ui/button'
@@ -26,6 +27,10 @@ interface ChatHeaderProps {
   onOpenSettings: () => void
   assigneeName: string | null
   onBack?: () => void
+  conversationStatus: 'OPEN' | 'RESOLVED'
+  isStatusPending: boolean
+  onResolve: () => void
+  onReopen: () => void
 }
 
 export function ChatHeader({
@@ -40,6 +45,10 @@ export function ChatHeader({
   onOpenSettings,
   assigneeName,
   onBack,
+  conversationStatus,
+  isStatusPending,
+  onResolve,
+  onReopen,
 }: ChatHeaderProps) {
   const initials = contactName
     .split(' ')
@@ -180,6 +189,42 @@ export function ChatHeader({
           </TooltipTrigger>
           <TooltipContent side="bottom">
             <p>Detalhes da conversa</p>
+          </TooltipContent>
+        </Tooltip>
+
+        <Separator orientation="vertical" className="h-6" />
+
+        {/* Botão Resolver / Reabrir */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant={conversationStatus === 'RESOLVED' ? 'outline' : 'default'}
+              size="sm"
+              className={cn(
+                'h-8 gap-1.5 text-xs',
+                conversationStatus === 'OPEN' && 'bg-green-600 text-white hover:bg-green-700',
+              )}
+              onClick={conversationStatus === 'RESOLVED' ? onReopen : onResolve}
+              disabled={isStatusPending}
+            >
+              {isStatusPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : conversationStatus === 'RESOLVED' ? (
+                <RotateCcw className="h-3.5 w-3.5" />
+              ) : (
+                <CheckCircle2 className="h-3.5 w-3.5" />
+              )}
+              <span className="hidden sm:inline">
+                {conversationStatus === 'RESOLVED' ? 'Reabrir' : 'Resolver'}
+              </span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            <p>
+              {conversationStatus === 'RESOLVED'
+                ? 'Reabrir esta conversa'
+                : 'Marcar conversa como resolvida'}
+            </p>
           </TooltipContent>
         </Tooltip>
 

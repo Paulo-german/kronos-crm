@@ -3,6 +3,7 @@ import { getInboxes } from '@/_data-access/inbox/get-inboxes'
 import { getDealsOptions } from '@/_data-access/deal/get-deals-options'
 import { getContactsOptions } from '@/_data-access/contact/get-contacts-options'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
+import { getConversationLabels } from '@/_data-access/conversation-label/get-conversation-labels'
 import { InboxClient } from './_components/inbox-client'
 
 interface InboxPageProps {
@@ -13,11 +14,12 @@ const InboxPage = async ({ params }: InboxPageProps) => {
   const { orgSlug } = await params
   const ctx = await getOrgContext(orgSlug)
 
-  const [inboxes, dealOptions, contactOptions, orgMembers] = await Promise.all([
+  const [inboxes, dealOptions, contactOptions, orgMembers, labels] = await Promise.all([
     getInboxes(ctx.orgId),
     getDealsOptions(ctx),
     getContactsOptions(ctx),
     getOrganizationMembers(ctx.orgId),
+    getConversationLabels(ctx.orgId),
   ])
 
   const inboxOptions = inboxes.map((inbox) => ({
@@ -38,6 +40,7 @@ const InboxPage = async ({ params }: InboxPageProps) => {
           members={orgMembers.accepted}
           userRole={ctx.userRole}
           currentUserId={ctx.userId}
+          availableLabels={labels}
         />
       </div>
     </div>

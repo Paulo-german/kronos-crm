@@ -16,6 +16,8 @@ interface UseConversationsOptions {
   unansweredOnly: boolean
   search: string
   contactId: string | null
+  status: 'OPEN' | 'RESOLVED'
+  labelIds: string[]
 }
 
 interface DeepLinkContact {
@@ -39,6 +41,7 @@ interface UseConversationsReturn {
   loadMore: () => void
   sentinelRef: (node: HTMLElement | null) => void
   updateConversationLocally: (id: string, partial: Partial<ConversationListDto>) => void
+  removeConversationLocally: (id: string) => void
   refetch: () => void
 }
 
@@ -62,11 +65,13 @@ function buildUrl(options: UseConversationsOptions, cursor?: string): string {
   if (options.unansweredOnly) params.set('unanswered', 'true')
   if (options.search) params.set('search', options.search)
   if (options.contactId) params.set('contactId', options.contactId)
+  if (options.status) params.set('status', options.status)
+  if (options.labelIds.length > 0) params.set('labelIds', options.labelIds.join(','))
   return `/api/inbox/conversations?${params.toString()}`
 }
 
 export function useConversations(options: UseConversationsOptions): UseConversationsReturn {
-  const { inboxId, unreadOnly, unansweredOnly, search, contactId } = options
+  const { inboxId, unreadOnly, unansweredOnly, search, contactId, status, labelIds } = options
 
   const [conversations, setConversations] = useState<ConversationListDto[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -104,7 +109,7 @@ export function useConversations(options: UseConversationsOptions): UseConversat
   const fetchFirstPage = useCallback(async (signal?: AbortSignal) => {
     const fetchContactId = !didDeepLink.current ? contactId : null
     const url = buildUrl(
-      { inboxId, unreadOnly, unansweredOnly, search: debouncedSearch, contactId: fetchContactId },
+      { inboxId, unreadOnly, unansweredOnly, search: debouncedSearch, contactId: fetchContactId, status, labelIds },
     )
 
     try {
@@ -127,7 +132,7 @@ export function useConversations(options: UseConversationsOptions): UseConversat
     } catch {
       return null
     }
-  }, [inboxId, unreadOnly, unansweredOnly, debouncedSearch, contactId])
+  }, [inboxId, unreadOnly, unansweredOnly, debouncedSearch, contactId, status, labelIds])
 
   // Initial fetch + reset on filter change
   useEffect(() => {
@@ -164,7 +169,7 @@ export function useConversations(options: UseConversationsOptions): UseConversat
 
   // Função de polling reutilizável (chamada pelo timer e pelo refetch)
   const pollConversations = useCallback(async () => {
-    const url = buildUrl({ inboxId, unreadOnly, unansweredOnly, search: debouncedSearch, contactId: null })
+    const url = buildUrl({ inboxId, unreadOnly, unansweredOnly, search: debouncedSearch, contactId: null, status, labelIds })
     try {
       const response = await fetch(url)
       if (!response.ok) return
@@ -217,7 +222,7 @@ export function useConversations(options: UseConversationsOptions): UseConversat
         setConnectionError(true)
       }
     }
-  }, [inboxId, unreadOnly, unansweredOnly, debouncedSearch])
+  }, [inboxId, unreadOnly, unansweredOnly, debouncedSearch, status, labelIds])
 
   // Polling adaptativo com setTimeout recursivo (permite mudar o intervalo dinamicamente)
   useEffect(() => {
@@ -273,7 +278,7 @@ export function useConversations(options: UseConversationsOptions): UseConversat
 
     setIsLoadingMore(true)
     const url = buildUrl(
-      { inboxId, unreadOnly, unansweredOnly, search: debouncedSearch, contactId: null },
+      { inboxId, unreadOnly, unansweredOnly, search: debouncedSearch, contactId: null, status, labelIds },
       cursorRef.current,
     )
 
@@ -298,7 +303,7 @@ export function useConversations(options: UseConversationsOptions): UseConversat
     } finally {
       setIsLoadingMore(false)
     }
-  }, [isLoadingMore, hasMore, inboxId, unreadOnly, unansweredOnly, debouncedSearch])
+  }, [isLoadingMore, hasMore, inboxId, unreadOnly, unansweredOnly, debouncedSearch, status, labelIds])
 
   // Optimistic update: atualiza uma conversa localmente e registra lock
   // para proteger do merge do polling por OPTIMISTIC_LOCK_MS
@@ -308,6 +313,15 @@ export function useConversations(options: UseConversationsOptions): UseConversat
       setConversations((prev) =>
         prev.map((conv) => (conv.id === id ? { ...conv, ...partial } : conv)),
       )
+    },
+    [],
+  )
+
+  // Remove uma conversa da lista local (ex: ao resolver estando no filtro de abertas)
+  const removeConversationLocally = useCallback(
+    (id: string) => {
+      optimisticLockRef.current.delete(id)
+      setConversations((prev) => prev.filter((conv) => conv.id !== id))
     },
     [],
   )
@@ -348,6 +362,7 @@ export function useConversations(options: UseConversationsOptions): UseConversat
     loadMore,
     sentinelRef,
     updateConversationLocally,
+    removeConversationLocally,
     refetch,
   }
 }

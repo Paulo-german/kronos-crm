@@ -14,6 +14,7 @@ import {
   Loader2,
   Phone,
   Save,
+  Tag,
   Unlink,
   User,
   UserCog,
@@ -55,10 +56,13 @@ import {
 } from '@/_components/ui/sheet'
 import { updateContact } from '@/_actions/contact/update-contact'
 import { updateConversation } from '@/_actions/inbox/update-conversation'
-import type { ConversationListDto } from '@/_data-access/conversation/get-conversations'
+import { toggleConversationLabel } from '@/_actions/inbox/toggle-conversation-label'
+import type { ConversationListDto, ConversationLabelDto } from '@/_data-access/conversation/get-conversations'
 import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
 import type { ContactOptionDto } from '@/_data-access/contact/get-contacts-options'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
+import { getLabelColor } from '@/_lib/constants/label-colors'
+import { Checkbox } from '@/_components/ui/checkbox'
 
 interface ChatSettingsSheetProps {
   open: boolean
@@ -69,6 +73,7 @@ interface ChatSettingsSheetProps {
   orgSlug: string
   members: AcceptedMemberDto[]
   isElevated: boolean
+  availableLabels: ConversationLabelDto[]
 }
 
 function getMemberInitials(name: string | null): string {
@@ -90,6 +95,7 @@ export function ChatSettingsSheet({
   orgSlug,
   members,
   isElevated,
+  availableLabels,
 }: ChatSettingsSheetProps) {
   // Inline name edit
   const [editName, setEditName] = useState(conversation.contactName)
@@ -171,6 +177,19 @@ export function ChatSettingsSheet({
       setPendingTransferName(null)
     },
   })
+
+  const toggleLabelAction = useAction(toggleConversationLabel, {
+    onError: (error) => {
+      toast.error(error.error?.serverError ?? 'Erro ao atualizar etiqueta.')
+    },
+  })
+
+  const handleToggleLabel = (labelId: string) => {
+    toggleLabelAction.execute({
+      conversationId: conversation.id,
+      labelId,
+    })
+  }
 
   const handleTransferAssignee = (assignedTo: string) => {
     const targetMember = members.find((member) => member.userId === assignedTo)
@@ -489,7 +508,52 @@ export function ChatSettingsSheet({
 
           <Separator />
 
-          {/* Seção 4 - Info */}
+          {/* Seção 4 - Etiquetas */}
+          {availableLabels.length > 0 && (
+            <section className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Tag className="h-4 w-4 text-muted-foreground" />
+                <h3 className="text-sm font-semibold">Etiquetas</h3>
+                <span className="text-xs text-muted-foreground">
+                  {conversation.labels.length}/5
+                </span>
+              </div>
+
+              <div className="space-y-0.5">
+                {availableLabels.map((label) => {
+                  const isAssigned = conversation.labels.some((assigned) => assigned.id === label.id)
+                  const isAtLimit = conversation.labels.length >= 5
+                  const colorConfig = getLabelColor(label.color)
+
+                  const isDisabled = toggleLabelAction.isPending || (isAtLimit && !isAssigned)
+
+                  return (
+                    <label
+                      key={label.id}
+                      className={cn(
+                        'flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent/50',
+                        isAssigned && 'bg-accent/30',
+                        isDisabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
+                      )}
+                    >
+                      <Checkbox
+                        checked={isAssigned}
+                        onCheckedChange={() => handleToggleLabel(label.id)}
+                        disabled={isDisabled}
+                        className="h-4 w-4 shrink-0"
+                      />
+                      <span className={cn('h-2.5 w-2.5 shrink-0 rounded-full', colorConfig.dot)} />
+                      <span className="flex-1 text-left">{label.name}</span>
+                    </label>
+                  )
+                })}
+              </div>
+            </section>
+          )}
+
+          {availableLabels.length > 0 && <Separator />}
+
+          {/* Seção 5 - Info */}
           <section className="space-y-4">
             <div className="flex items-center gap-2">
               <Info className="h-4 w-4 text-muted-foreground" />
