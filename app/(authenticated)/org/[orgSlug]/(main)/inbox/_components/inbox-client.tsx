@@ -120,6 +120,16 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
     refetch()
   }
 
+  // Optimistic update de atribuição + refetch
+  const handleAssign = (conversationId: string, userId: string) => {
+    const targetMember = members.find((member) => member.userId === userId)
+    updateConversationLocally(conversationId, {
+      assignedTo: userId,
+      assigneeName: targetMember?.user?.fullName ?? null,
+    })
+    refetch()
+  }
+
   // Optimistic update de labels na conversa + refetch
   const handleToggleLabel = (conversationId: string, labelId: string) => {
     const target = conversations.find((conv) => conv.id === conversationId)
@@ -220,6 +230,8 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
           onResolve={handleResolveFromList}
           onReopen={handleReopenFromList}
           onToggleLabel={handleToggleLabel}
+          onAssign={handleAssign}
+          members={members}
         />
       </div>
 

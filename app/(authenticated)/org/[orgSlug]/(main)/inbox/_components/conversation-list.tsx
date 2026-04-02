@@ -42,9 +42,12 @@ import {
 } from '@/_components/ui/dropdown-menu'
 import { toast } from 'sonner'
 import type { ConversationListDto, ConversationLabelDto } from '@/_data-access/conversation/get-conversations'
+import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import { getLabelColor } from '@/_lib/constants/label-colors'
 import { resolveConversation } from '@/_actions/inbox/resolve-conversation'
 import { reopenConversation } from '@/_actions/inbox/reopen-conversation'
+import { toggleConversationLabel } from '@/_actions/inbox/toggle-conversation-label'
+import { updateConversation } from '@/_actions/inbox/update-conversation'
 import {
   ConversationContextMenu,
   ConversationMenuItems,
@@ -92,6 +95,8 @@ interface ConversationListProps {
   onResolve: (conversationId: string) => void
   onReopen: (conversationId: string) => void
   onToggleLabel: (conversationId: string, labelId: string) => void
+  onAssign: (conversationId: string, userId: string) => void
+  members: AcceptedMemberDto[]
 }
 
 // ---------------------------------------------------------------------------
@@ -182,6 +187,8 @@ export function ConversationList({
   onResolve,
   onReopen,
   onToggleLabel,
+  onAssign,
+  members,
 }: ConversationListProps) {
   const [isStatusPending, startStatusTransition] = useTransition()
 
@@ -206,6 +213,35 @@ export function ConversationList({
       }
       toast.success('Conversa reaberta.')
       onReopen(conversationId)
+    })
+  }
+
+  const handleDropdownToggleLabel = (conversationId: string, labelId: string) => {
+    startStatusTransition(async () => {
+      const result = await toggleConversationLabel({ conversationId, labelId })
+      if (result?.serverError) {
+        toast.error(result.serverError)
+        return
+      }
+      onToggleLabel(conversationId, labelId)
+    })
+  }
+
+  const handleDropdownAssign = (conversationId: string, userId: string) => {
+    const targetMember = members.find((member) => member.userId === userId)
+    const targetName = targetMember?.user?.fullName ?? null
+    startStatusTransition(async () => {
+      const result = await updateConversation({ conversationId, assignedTo: userId })
+      if (result?.serverError) {
+        toast.error(result.serverError ?? 'Erro ao atribuir conversa.')
+        return
+      }
+      toast.success(
+        targetName
+          ? `Conversa atribuída para ${targetName}`
+          : 'Conversa atribuída com sucesso.',
+      )
+      onAssign(conversationId, userId)
     })
   }
 
@@ -352,7 +388,10 @@ export function ConversationList({
                   onResolve={onResolve}
                   onReopen={onReopen}
                   onToggleLabel={onToggleLabel}
+                  onAssign={onAssign}
                   availableLabels={availableLabels}
+                  members={members}
+                  isElevated={isElevated}
                   orgSlug={orgSlug}
                 >
                   {/* group/item para revelar botão 3 pontinhos no hover */}
@@ -504,8 +543,11 @@ export function ConversationList({
                             onToggleRead={onToggleRead}
                             onResolve={handleDropdownResolve}
                             onReopen={handleDropdownReopen}
-                            onToggleLabel={onToggleLabel}
+                            onToggleLabel={handleDropdownToggleLabel}
+                            onAssign={handleDropdownAssign}
                             availableLabels={availableLabels}
+                            members={members}
+                            isElevated={isElevated}
                             orgSlug={orgSlug}
                             isPending={isStatusPending}
                             variant="dropdown"

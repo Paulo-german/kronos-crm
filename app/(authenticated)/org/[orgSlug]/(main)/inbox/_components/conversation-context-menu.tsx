@@ -2,7 +2,7 @@
 
 import { useTransition } from 'react'
 import Link from 'next/link'
-import { Check, CheckCircle2, Mail, MailOpen, Pin, RotateCcw, Settings2, Tag } from 'lucide-react'
+import { Check, CheckCircle2, Mail, MailOpen, Pin, RotateCcw, Settings2, Tag, UserCog } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/_lib/utils'
 import { getLabelColor } from '@/_lib/constants/label-colors'
@@ -24,10 +24,22 @@ import {
   DropdownMenuSubTrigger,
 } from '@/_components/ui/dropdown-menu'
 import type { ConversationListDto, ConversationLabelDto } from '@/_data-access/conversation/get-conversations'
+import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import { toggleReadStatus } from '@/_actions/inbox/toggle-read-status'
 import { resolveConversation } from '@/_actions/inbox/resolve-conversation'
 import { reopenConversation } from '@/_actions/inbox/reopen-conversation'
 import { toggleConversationLabel } from '@/_actions/inbox/toggle-conversation-label'
+import { updateConversation } from '@/_actions/inbox/update-conversation'
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+type MemberWithUserId = AcceptedMemberDto & { userId: string }
+
+function hasUserId(member: AcceptedMemberDto): member is MemberWithUserId {
+  return member.userId !== null
+}
 
 // ---------------------------------------------------------------------------
 // Tipos
@@ -39,7 +51,10 @@ interface ConversationMenuItemsProps {
   onResolve: (id: string) => void
   onReopen: (id: string) => void
   onToggleLabel: (conversationId: string, labelId: string) => void
+  onAssign: (conversationId: string, userId: string) => void
   availableLabels: ConversationLabelDto[]
+  members: AcceptedMemberDto[]
+  isElevated: boolean
   orgSlug: string
   isPending: boolean
   variant: 'context' | 'dropdown'
@@ -56,7 +71,10 @@ export function ConversationMenuItems({
   onResolve,
   onReopen,
   onToggleLabel,
+  onAssign,
   availableLabels,
+  members,
+  isElevated,
   orgSlug,
   isPending,
   variant,
@@ -135,6 +153,37 @@ export function ConversationMenuItems({
             )}
           </ContextMenuSubContent>
         </ContextMenuSub>
+        {isElevated && (
+          <>
+            <ContextMenuSeparator />
+            <ContextMenuSub>
+              <ContextMenuSubTrigger className="gap-2">
+                <UserCog className="h-3.5 w-3.5" />
+                Atribuir para
+              </ContextMenuSubTrigger>
+              <ContextMenuSubContent className="w-48">
+                {members.filter(hasUserId).map((member) => {
+                  const isActive = conversation.assignedTo === member.userId
+                  return (
+                    <ContextMenuItem
+                      key={member.id}
+                      onClick={() => onAssign(conversation.id, member.userId)}
+                      className="gap-2"
+                    >
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-medium text-primary">
+                        {member.user?.fullName
+                          ? member.user.fullName.split(' ').slice(0, 2).map((word) => word[0]).join('').toUpperCase()
+                          : '?'}
+                      </span>
+                      <span className="flex-1 truncate">{member.user?.fullName ?? member.email}</span>
+                      {isActive && <Check className="h-3.5 w-3.5 text-primary" />}
+                    </ContextMenuItem>
+                  )
+                })}
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+          </>
+        )}
         <ContextMenuSeparator />
         <ContextMenuItem disabled className="gap-2 text-muted-foreground">
           <Pin className="h-3.5 w-3.5" />
@@ -229,6 +278,43 @@ export function ConversationMenuItems({
           )}
         </DropdownMenuSubContent>
       </DropdownMenuSub>
+      {isElevated && (
+        <>
+          <DropdownMenuSeparator />
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger
+              className="gap-2"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <UserCog className="h-3.5 w-3.5" />
+              Atribuir para
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className="w-48">
+              {members.filter(hasUserId).map((member) => {
+                const isActive = conversation.assignedTo === member.userId
+                return (
+                  <DropdownMenuItem
+                    key={member.id}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      onAssign(conversation.id, member.userId)
+                    }}
+                    className="gap-2"
+                  >
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-medium text-primary">
+                      {member.user?.fullName
+                        ? member.user.fullName.split(' ').slice(0, 2).map((word) => word[0]).join('').toUpperCase()
+                        : '?'}
+                    </span>
+                    <span className="flex-1 truncate">{member.user?.fullName ?? member.email}</span>
+                    {isActive && <Check className="h-3.5 w-3.5 text-primary" />}
+                  </DropdownMenuItem>
+                )
+              })}
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        </>
+      )}
       <DropdownMenuSeparator />
       <DropdownMenuItem
         disabled
@@ -255,7 +341,10 @@ interface ConversationContextMenuProps {
   onResolve: (id: string) => void
   onReopen: (id: string) => void
   onToggleLabel: (conversationId: string, labelId: string) => void
+  onAssign: (conversationId: string, userId: string) => void
   availableLabels: ConversationLabelDto[]
+  members: AcceptedMemberDto[]
+  isElevated: boolean
   orgSlug: string
   children: React.ReactNode
 }
@@ -266,7 +355,10 @@ export function ConversationContextMenu({
   onResolve,
   onReopen,
   onToggleLabel,
+  onAssign,
   availableLabels,
+  members,
+  isElevated,
   orgSlug,
   children,
 }: ConversationContextMenuProps) {
@@ -318,6 +410,24 @@ export function ConversationContextMenu({
     })
   }
 
+  const handleAssign = (conversationId: string, userId: string) => {
+    const targetMember = members.find((member) => member.userId === userId)
+    const targetName = targetMember?.user?.fullName ?? null
+    startTransition(async () => {
+      const result = await updateConversation({ conversationId, assignedTo: userId })
+      if (result?.serverError) {
+        toast.error(result.serverError ?? 'Erro ao atribuir conversa.')
+        return
+      }
+      toast.success(
+        targetName
+          ? `Conversa atribuída para ${targetName}`
+          : 'Conversa atribuída com sucesso.',
+      )
+      onAssign(conversationId, userId)
+    })
+  }
+
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
@@ -328,7 +438,10 @@ export function ConversationContextMenu({
           onResolve={handleResolve}
           onReopen={handleReopen}
           onToggleLabel={handleToggleLabel}
+          onAssign={handleAssign}
           availableLabels={availableLabels}
+          members={members}
+          isElevated={isElevated}
           orgSlug={orgSlug}
           isPending={isPending}
           variant="context"
