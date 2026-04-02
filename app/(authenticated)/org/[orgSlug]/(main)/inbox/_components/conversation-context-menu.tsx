@@ -1,24 +1,33 @@
 'use client'
 
 import { useTransition } from 'react'
-import { CheckCircle2, Mail, MailOpen, Pin, RotateCcw } from 'lucide-react'
+import Link from 'next/link'
+import { Check, CheckCircle2, Mail, MailOpen, Pin, RotateCcw, Settings2, Tag } from 'lucide-react'
 import { toast } from 'sonner'
+import { cn } from '@/_lib/utils'
+import { getLabelColor } from '@/_lib/constants/label-colors'
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from '@/_components/ui/context-menu'
 import {
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
 } from '@/_components/ui/dropdown-menu'
-import type { ConversationListDto } from '@/_data-access/conversation/get-conversations'
-// Backend worker criará esta action — importamos como se já existisse
+import type { ConversationListDto, ConversationLabelDto } from '@/_data-access/conversation/get-conversations'
 import { toggleReadStatus } from '@/_actions/inbox/toggle-read-status'
 import { resolveConversation } from '@/_actions/inbox/resolve-conversation'
 import { reopenConversation } from '@/_actions/inbox/reopen-conversation'
+import { toggleConversationLabel } from '@/_actions/inbox/toggle-conversation-label'
 
 // ---------------------------------------------------------------------------
 // Tipos
@@ -29,6 +38,9 @@ interface ConversationMenuItemsProps {
   onToggleRead: (id: string) => void
   onResolve: (id: string) => void
   onReopen: (id: string) => void
+  onToggleLabel: (conversationId: string, labelId: string) => void
+  availableLabels: ConversationLabelDto[]
+  orgSlug: string
   isPending: boolean
   variant: 'context' | 'dropdown'
 }
@@ -43,6 +55,9 @@ export function ConversationMenuItems({
   onToggleRead,
   onResolve,
   onReopen,
+  onToggleLabel,
+  availableLabels,
+  orgSlug,
   isPending,
   variant,
 }: ConversationMenuItemsProps) {
@@ -50,6 +65,7 @@ export function ConversationMenuItems({
   const label = isUnread ? 'Marcar como lida' : 'Marcar como não lida'
   const Icon = isUnread ? MailOpen : Mail
   const isOpen = conversation.status === 'OPEN'
+  const conversationLabelIds = new Set(conversation.labels.map((label) => label.id))
 
   if (variant === 'context') {
     return (
@@ -80,6 +96,45 @@ export function ConversationMenuItems({
             Reabrir conversa
           </ContextMenuItem>
         )}
+        <ContextMenuSeparator />
+        <ContextMenuSub>
+          <ContextMenuSubTrigger className="gap-2">
+            <Tag className="h-3.5 w-3.5" />
+            Etiquetas
+          </ContextMenuSubTrigger>
+          <ContextMenuSubContent className="w-48">
+            {availableLabels.length > 0 ? (
+              availableLabels.map((availableLabel) => {
+                const colorConfig = getLabelColor(availableLabel.color)
+                const isActive = conversationLabelIds.has(availableLabel.id)
+                return (
+                  <ContextMenuItem
+                    key={availableLabel.id}
+                    onClick={() => onToggleLabel(conversation.id, availableLabel.id)}
+                    className="gap-2"
+                  >
+                    <span className={cn('h-2.5 w-2.5 shrink-0 rounded-full', colorConfig.dot)} />
+                    <span className="flex-1 truncate">{availableLabel.name}</span>
+                    {isActive && <Check className="h-3.5 w-3.5 text-primary" />}
+                  </ContextMenuItem>
+                )
+              })
+            ) : (
+              <>
+                <div className="px-2 py-3 text-center text-xs text-muted-foreground">
+                  Nenhuma etiqueta criada
+                </div>
+                <ContextMenuSeparator />
+                <ContextMenuItem asChild>
+                  <Link href={`/org/${orgSlug}/settings/labels`} className="gap-2">
+                    <Settings2 className="h-3.5 w-3.5" />
+                    Configurar etiquetas
+                  </Link>
+                </ContextMenuItem>
+              </>
+            )}
+          </ContextMenuSubContent>
+        </ContextMenuSub>
         <ContextMenuSeparator />
         <ContextMenuItem disabled className="gap-2 text-muted-foreground">
           <Pin className="h-3.5 w-3.5" />
@@ -130,6 +185,51 @@ export function ConversationMenuItems({
         </DropdownMenuItem>
       )}
       <DropdownMenuSeparator />
+      <DropdownMenuSub>
+        <DropdownMenuSubTrigger
+          className="gap-2"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <Tag className="h-3.5 w-3.5" />
+          Etiquetas
+        </DropdownMenuSubTrigger>
+        <DropdownMenuSubContent className="w-48">
+          {availableLabels.length > 0 ? (
+            availableLabels.map((availableLabel) => {
+              const colorConfig = getLabelColor(availableLabel.color)
+              const isActive = conversationLabelIds.has(availableLabel.id)
+              return (
+                <DropdownMenuItem
+                  key={availableLabel.id}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    onToggleLabel(conversation.id, availableLabel.id)
+                  }}
+                  className="gap-2"
+                >
+                  <span className={cn('h-2.5 w-2.5 shrink-0 rounded-full', colorConfig.dot)} />
+                  <span className="flex-1 truncate">{availableLabel.name}</span>
+                  {isActive && <Check className="h-3.5 w-3.5 text-primary" />}
+                </DropdownMenuItem>
+              )
+            })
+          ) : (
+            <>
+              <div className="px-2 py-3 text-center text-xs text-muted-foreground">
+                Nenhuma etiqueta criada
+              </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild onClick={(event) => event.stopPropagation()}>
+                <Link href={`/org/${orgSlug}/settings/labels`} className="gap-2">
+                  <Settings2 className="h-3.5 w-3.5" />
+                  Configurar etiquetas
+                </Link>
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenuSubContent>
+      </DropdownMenuSub>
+      <DropdownMenuSeparator />
       <DropdownMenuItem
         disabled
         className="gap-2 text-muted-foreground"
@@ -154,6 +254,9 @@ interface ConversationContextMenuProps {
   onToggleRead: (id: string) => void
   onResolve: (id: string) => void
   onReopen: (id: string) => void
+  onToggleLabel: (conversationId: string, labelId: string) => void
+  availableLabels: ConversationLabelDto[]
+  orgSlug: string
   children: React.ReactNode
 }
 
@@ -162,6 +265,9 @@ export function ConversationContextMenu({
   onToggleRead,
   onResolve,
   onReopen,
+  onToggleLabel,
+  availableLabels,
+  orgSlug,
   children,
 }: ConversationContextMenuProps) {
   const [isPending, startTransition] = useTransition()
@@ -201,6 +307,17 @@ export function ConversationContextMenu({
     })
   }
 
+  const handleToggleLabel = (conversationId: string, labelId: string) => {
+    startTransition(async () => {
+      const result = await toggleConversationLabel({ conversationId, labelId })
+      if (result?.serverError) {
+        toast.error(result.serverError)
+        return
+      }
+      onToggleLabel(conversationId, labelId)
+    })
+  }
+
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
@@ -210,6 +327,9 @@ export function ConversationContextMenu({
           onToggleRead={handleToggleRead}
           onResolve={handleResolve}
           onReopen={handleReopen}
+          onToggleLabel={handleToggleLabel}
+          availableLabels={availableLabels}
+          orgSlug={orgSlug}
           isPending={isPending}
           variant="context"
         />

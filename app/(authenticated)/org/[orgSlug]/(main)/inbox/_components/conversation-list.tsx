@@ -91,6 +91,7 @@ interface ConversationListProps {
   availableLabels: ConversationLabelDto[]
   onResolve: (conversationId: string) => void
   onReopen: (conversationId: string) => void
+  onToggleLabel: (conversationId: string, labelId: string) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -180,6 +181,7 @@ export function ConversationList({
   availableLabels,
   onResolve,
   onReopen,
+  onToggleLabel,
 }: ConversationListProps) {
   const [isStatusPending, startStatusTransition] = useTransition()
 
@@ -349,6 +351,9 @@ export function ConversationList({
                   onToggleRead={onToggleRead}
                   onResolve={onResolve}
                   onReopen={onReopen}
+                  onToggleLabel={onToggleLabel}
+                  availableLabels={availableLabels}
+                  orgSlug={orgSlug}
                 >
                   {/* group/item para revelar botão 3 pontinhos no hover */}
                   <div className="group/item relative">
@@ -499,6 +504,9 @@ export function ConversationList({
                             onToggleRead={onToggleRead}
                             onResolve={handleDropdownResolve}
                             onReopen={handleDropdownReopen}
+                            onToggleLabel={onToggleLabel}
+                            availableLabels={availableLabels}
+                            orgSlug={orgSlug}
                             isPending={isStatusPending}
                             variant="dropdown"
                           />

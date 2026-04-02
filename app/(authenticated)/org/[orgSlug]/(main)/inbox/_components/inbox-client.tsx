@@ -120,6 +120,20 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
     refetch()
   }
 
+  // Optimistic update de labels na conversa + refetch
+  const handleToggleLabel = (conversationId: string, labelId: string) => {
+    const target = conversations.find((conv) => conv.id === conversationId)
+    if (!target) return
+    const hasLabel = target.labels.some((label) => label.id === labelId)
+    const matchingLabel = availableLabels.find((label) => label.id === labelId)
+    if (!matchingLabel) return
+    const newLabels = hasLabel
+      ? target.labels.filter((label) => label.id !== labelId)
+      : [...target.labels, matchingLabel]
+    updateConversationLocally(conversationId, { labels: newLabels })
+    refetch()
+  }
+
   // Seleção automática de conversa com cadeia de prioridade
   useEffect(() => {
     if (isLoading) return
@@ -205,6 +219,7 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
           availableLabels={availableLabels}
           onResolve={handleResolveFromList}
           onReopen={handleReopenFromList}
+          onToggleLabel={handleToggleLabel}
         />
       </div>
 
