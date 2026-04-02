@@ -2,7 +2,6 @@
 
 import {
   Card,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/_components/ui/card'
@@ -14,7 +13,6 @@ interface CardSettingsProps {
   orgSlug: string
   href: string
   title: string
-  description: string
 }
 
 const CardSettings = ({
@@ -22,19 +20,17 @@ const CardSettings = ({
   orgSlug,
   href,
   title,
-  description,
 }: CardSettingsProps) => {
   return (
     <Link key={href} href={`/org/${orgSlug}/${href}`}>
-      <Card className="rounded-md bg-muted/30 transition-colors hover:bg-muted/50">
-        <CardHeader>
-          <div className="flex flex-row items-center gap-4">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-primary/15 text-primary">
-              {children}
-            </div>
-            <div className="flex-1 space-y-1">
-              <CardTitle className="text-">{title}</CardTitle>
-              <CardDescription>{description}</CardDescription>
+      <Card className="rounded-lg bg-muted/30 transition-colors hover:bg-muted/50">
+        <CardHeader className="py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-primary/15 text-primary">
+                {children}
+              </span>
+              <CardTitle className="text-sm">{title}</CardTitle>
             </div>
             <ChevronRight size={20} className="text-muted-foreground" />
           </div>
