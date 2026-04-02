@@ -69,6 +69,10 @@ export const PipelineClient = ({
     clearFilters,
     activeFilterCount,
     hasActiveFilters,
+    sortBy,
+    setSortBy,
+    assignees,
+    setAssignees,
   } = usePipelineFilters()
 
   const canManagePipeline = userRole === 'ADMIN' || userRole === 'OWNER'
@@ -113,6 +117,10 @@ export const PipelineClient = ({
         onAddDeal={handleAddDeal}
         onDealClick={handleDealClick}
         filters={filters}
+        sortBy={sortBy}
+        onSortChange={setSortBy}
+        assignees={assignees}
+        onAssigneesChange={setAssignees}
         viewToggle={<ViewToggle activeView="pipeline" />}
         settingsButton={
           canManagePipeline ? (

@@ -41,11 +41,15 @@ import {
   Popover,
   PopoverAnchor,
   PopoverContent,
+  PopoverTrigger,
 } from '@/_components/ui/popover'
-import { ArrowUpDown, User, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Badge } from '@/_components/ui/badge'
+import { ArrowUpDown, User, Check, ChevronLeft, ChevronRight } from 'lucide-react'
+import { cn } from '@/_lib/utils'
 import { Button } from '@/_components/ui/button'
 import type { MemberRole } from '@prisma/client'
 import type { PipelineFilters } from '../_lib/pipeline-filters'
+import type { SortOption } from '../_lib/use-pipeline-filters'
 import type { MemberOption } from './pipeline-client'
 
 interface KanbanBoardProps {
@@ -57,6 +61,10 @@ interface KanbanBoardProps {
   onAddDeal: (stageId: string) => void
   onDealClick: (deal: DealDto) => void
   filters: PipelineFilters
+  sortBy: SortOption
+  onSortChange: (value: SortOption) => void
+  assignees: string[]
+  onAssigneesChange: (values: string[]) => void
   viewToggle: React.ReactNode
   settingsButton: React.ReactNode
   createButton: React.ReactNode
@@ -70,14 +78,6 @@ type OptimisticAction = {
   fromStageId: string
   toStageId: string
 }
-
-type SortOption =
-  | 'created-desc'
-  | 'created-asc'
-  | 'value-desc'
-  | 'value-asc'
-  | 'priority-desc'
-  | 'title-asc'
 
 const priorityWeight: Record<string, number> = {
   urgent: 4,
@@ -95,6 +95,10 @@ export function KanbanBoard({
   onAddDeal,
   onDealClick,
   filters,
+  sortBy,
+  onSortChange,
+  assignees,
+  onAssigneesChange,
   viewToggle,
   settingsButton,
   createButton,
@@ -102,10 +106,12 @@ export function KanbanBoard({
   filterBadges,
 }: KanbanBoardProps) {
   const [activeId, setActiveId] = useState<string | null>(null)
-  const [sortBy, setSortBy] = useState<SortOption>('created-desc')
   const isMember = userRole === 'MEMBER'
-  const [assigneeFilter, setAssigneeFilter] = useState<string>(
-    isMember ? currentUserId : 'all',
+
+  // MEMBER sempre filtra pelos próprios deals (RBAC)
+  const effectiveAssignees = useMemo(
+    () => (isMember ? [currentUserId] : assignees),
+    [isMember, currentUserId, assignees],
   )
 
   // Singleton priority popover
@@ -198,10 +204,10 @@ export function KanbanBoard({
     for (const [stageId, deals] of Object.entries(optimisticDeals)) {
       let stageDeals = deals
 
-      // Filtro de Responsável
-      if (assigneeFilter !== 'all') {
-        stageDeals = stageDeals.filter(
-          (deal) => deal.assignedTo === assigneeFilter,
+      // Filtro de Responsável (multi-select)
+      if (effectiveAssignees.length > 0) {
+        stageDeals = stageDeals.filter((deal) =>
+          effectiveAssignees.includes(deal.assignedTo),
         )
       }
 
@@ -278,7 +284,7 @@ export function KanbanBoard({
     }
 
     return filtered
-  }, [optimisticDeals, sortBy, filters, assigneeFilter])
+  }, [optimisticDeals, sortBy, filters, effectiveAssignees])
 
   // Valor total do pipeline (filtrado) — usado na barra de progresso por coluna
   const totalPipelineValue = useMemo(() => {
@@ -408,7 +414,7 @@ export function KanbanBoard({
         <div className="flex items-center gap-2">
           <Select
             value={sortBy}
-            onValueChange={(v) => setSortBy(v as SortOption)}
+            onValueChange={(v) => onSortChange(v as SortOption)}
           >
             <SelectTrigger className="w-[300px]">
               <ArrowUpDown className="mr-2 h-4 w-4 text-muted-foreground" />
@@ -423,29 +429,66 @@ export function KanbanBoard({
               <SelectItem value="title-asc">A-Z</SelectItem>
             </SelectContent>
           </Select>
-          <Select
-            value={assigneeFilter}
-            onValueChange={setAssigneeFilter}
-            disabled={isMember}
-          >
-            <SelectTrigger className="w-[300px]">
-              <User className="mr-2 h-4 w-4 text-muted-foreground" />
-              <SelectValue placeholder="Responsável" />
-            </SelectTrigger>
-            <SelectContent>
-              {!isMember && (
-                <SelectItem value="all">Todos os responsáveis</SelectItem>
+          <Popover>
+            <PopoverTrigger asChild disabled={isMember}>
+              <Button
+                variant="outline"
+                className="w-[300px] justify-start font-normal"
+              >
+                <User className="mr-2 h-4 w-4 text-muted-foreground" />
+                {effectiveAssignees.length === 0 ? (
+                  'Todos os responsáveis'
+                ) : effectiveAssignees.length === 1 ? (
+                  members.find((member) => member.userId === effectiveAssignees[0])?.name ?? 'Responsável'
+                ) : (
+                  <span className="flex items-center gap-1.5">
+                    Responsáveis
+                    <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+                      {effectiveAssignees.length}
+                    </Badge>
+                  </span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[300px] p-2" align="start">
+              {members.map((member) => {
+                const isSelected = effectiveAssignees.includes(member.userId)
+                return (
+                  <button
+                    key={member.userId}
+                    type="button"
+                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent"
+                    onClick={() => {
+                      const next = isSelected
+                        ? effectiveAssignees.filter((id) => id !== member.userId)
+                        : [...effectiveAssignees, member.userId]
+                      onAssigneesChange(next)
+                    }}
+                  >
+                    <Check
+                      className={cn(
+                        'h-4 w-4',
+                        isSelected ? 'opacity-100' : 'opacity-0',
+                      )}
+                    />
+                    {member.name}
+                  </button>
+                )
+              })}
+              {effectiveAssignees.length > 0 && (
+                <>
+                  <div className="my-1 border-t" />
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent"
+                    onClick={() => onAssigneesChange([])}
+                  >
+                    Limpar filtro
+                  </button>
+                </>
               )}
-              {(isMember
-                ? members.filter((member) => member.userId === currentUserId)
-                : members
-              ).map((member) => (
-                <SelectItem key={member.userId} value={member.userId}>
-                  {member.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            </PopoverContent>
+          </Popover>
           {filtersSheet}
         </div>
         {filterBadges}

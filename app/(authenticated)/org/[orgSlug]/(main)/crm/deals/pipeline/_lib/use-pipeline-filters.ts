@@ -1,95 +1,101 @@
 'use client'
 
-import { useSearchParams, useRouter, usePathname } from 'next/navigation'
+import { useQueryStates, parseAsString, parseAsFloat, parseAsStringLiteral, parseAsArrayOf } from 'nuqs'
 import { useCallback, useMemo } from 'react'
-import { DealStatus, DealPriority } from '@prisma/client'
-import { PipelineFilters } from './pipeline-filters'
+import type { DealStatus, DealPriority } from '@prisma/client'
+import type { PipelineFilters } from './pipeline-filters'
+
+const SORT_OPTIONS = [
+  'created-desc',
+  'created-asc',
+  'value-desc',
+  'value-asc',
+  'priority-desc',
+  'title-asc',
+] as const
+
+export type SortOption = (typeof SORT_OPTIONS)[number]
+
+// Parsers de filtros avançados
+const filtersParsers = {
+  status: parseAsArrayOf(parseAsString).withDefault([]),
+  priority: parseAsArrayOf(parseAsString).withDefault([]),
+  dateFrom: parseAsString,
+  dateTo: parseAsString,
+  valueMin: parseAsFloat,
+  valueMax: parseAsFloat,
+}
+
+// Parsers de toolbar (sort + assignee)
+const toolbarParsers = {
+  sort: parseAsStringLiteral(SORT_OPTIONS).withDefault('created-desc'),
+  assignee: parseAsArrayOf(parseAsString).withDefault([]),
+}
 
 export function usePipelineFilters() {
-  const searchParams = useSearchParams()
-  const router = useRouter()
-  const pathname = usePathname()
+  const [filterParams, setFilterParams] = useQueryStates(filtersParsers, {
+    history: 'replace',
+  })
 
-  const filters = useMemo<PipelineFilters>(() => {
-    const statusParam = searchParams.get('status')
-    const priorityParam = searchParams.get('priority')
-    const dateFromParam = searchParams.get('dateFrom')
-    const dateToParam = searchParams.get('dateTo')
-    const valueMinParam = searchParams.get('valueMin')
-    const valueMaxParam = searchParams.get('valueMax')
+  const [toolbarParams, setToolbarParams] = useQueryStates(toolbarParsers, {
+    history: 'replace',
+  })
 
-    return {
-      status: statusParam ? (statusParam.split(',') as DealStatus[]) : [],
-      priority: priorityParam
-        ? (priorityParam.split(',') as DealPriority[])
-        : [],
-      expectedCloseDateFrom: dateFromParam ? new Date(dateFromParam) : null,
-      expectedCloseDateTo: dateToParam ? new Date(dateToParam) : null,
-      valueMin: valueMinParam ? Number(valueMinParam) : null,
-      valueMax: valueMaxParam ? Number(valueMaxParam) : null,
-    }
-  }, [searchParams])
+  // Converte para a interface PipelineFilters usada pelos componentes de filtro
+  const filters = useMemo<PipelineFilters>(
+    () => ({
+      status: filterParams.status as DealStatus[],
+      priority: filterParams.priority as DealPriority[],
+      expectedCloseDateFrom: filterParams.dateFrom
+        ? new Date(filterParams.dateFrom)
+        : null,
+      expectedCloseDateTo: filterParams.dateTo
+        ? new Date(filterParams.dateTo)
+        : null,
+      valueMin: filterParams.valueMin,
+      valueMax: filterParams.valueMax,
+    }),
+    [filterParams],
+  )
 
+  // Mantém a mesma assinatura que PipelineFiltersSheet e FilterBadges esperam
   const setFilters = useCallback(
     (newFilters: Partial<PipelineFilters>) => {
-      const params = new URLSearchParams(searchParams.toString())
       const merged = { ...filters, ...newFilters }
 
-      // Atualiza ou remove cada parâmetro
-      if (merged.status.length > 0) {
-        params.set('status', merged.status.join(','))
-      } else {
-        params.delete('status')
-      }
-
-      if (merged.priority.length > 0) {
-        params.set('priority', merged.priority.join(','))
-      } else {
-        params.delete('priority')
-      }
-
-      if (merged.expectedCloseDateFrom) {
-        params.set(
-          'dateFrom',
-          merged.expectedCloseDateFrom.toISOString().split('T')[0],
-        )
-      } else {
-        params.delete('dateFrom')
-      }
-
-      if (merged.expectedCloseDateTo) {
-        params.set(
-          'dateTo',
-          merged.expectedCloseDateTo.toISOString().split('T')[0],
-        )
-      } else {
-        params.delete('dateTo')
-      }
-
-      if (merged.valueMin !== null) {
-        params.set('valueMin', String(merged.valueMin))
-      } else {
-        params.delete('valueMin')
-      }
-
-      if (merged.valueMax !== null) {
-        params.set('valueMax', String(merged.valueMax))
-      } else {
-        params.delete('valueMax')
-      }
-
-      router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+      setFilterParams({
+        status: merged.status.length > 0 ? merged.status : null,
+        priority: merged.priority.length > 0 ? merged.priority : null,
+        dateFrom: merged.expectedCloseDateFrom
+          ? merged.expectedCloseDateFrom.toISOString().split('T')[0]
+          : null,
+        dateTo: merged.expectedCloseDateTo
+          ? merged.expectedCloseDateTo.toISOString().split('T')[0]
+          : null,
+        valueMin: merged.valueMin,
+        valueMax: merged.valueMax,
+      })
     },
-    [searchParams, filters, router, pathname],
+    [filters, setFilterParams],
   )
 
   const clearFilters = useCallback(() => {
-    const params = new URLSearchParams(searchParams.toString())
-    ;['status', 'priority', 'dateFrom', 'dateTo', 'valueMin', 'valueMax'].forEach(
-      (p) => params.delete(p),
-    )
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
-  }, [searchParams, router, pathname])
+    setFilterParams(null)
+  }, [setFilterParams])
+
+  const setSortBy = useCallback(
+    (value: SortOption) => {
+      setToolbarParams({ sort: value })
+    },
+    [setToolbarParams],
+  )
+
+  const setAssignees = useCallback(
+    (values: string[]) => {
+      setToolbarParams({ assignee: values.length > 0 ? values : null })
+    },
+    [setToolbarParams],
+  )
 
   const activeFilterCount = useMemo(() => {
     let count = 0
@@ -106,5 +112,9 @@ export function usePipelineFilters() {
     clearFilters,
     activeFilterCount,
     hasActiveFilters: activeFilterCount > 0,
+    sortBy: toolbarParams.sort,
+    setSortBy,
+    assignees: toolbarParams.assignee,
+    setAssignees,
   }
 }
