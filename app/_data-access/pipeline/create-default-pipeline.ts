@@ -43,6 +43,7 @@ export async function createDefaultPipeline({
     return {
       id: existingPipeline.id,
       name: existingPipeline.name,
+      isDefault: existingPipeline.isDefault,
       showIdleDays: existingPipeline.showIdleDays,
       stages: existingPipeline.stages.map((stage) => ({
         id: stage.id,
@@ -54,11 +55,12 @@ export async function createDefaultPipeline({
     }
   }
 
-  // Cria pipeline com etapas
+  // Cria pipeline com etapas; isDefault=true pois é o primeiro da org
   const pipeline = await db.pipeline.create({
     data: {
       name: pipelineName,
       organizationId: orgId,
+      isDefault: true,
       stages: {
         create: DEFAULT_STAGES,
       },
@@ -74,6 +76,7 @@ export async function createDefaultPipeline({
   return {
     id: pipeline.id,
     name: pipeline.name,
+    isDefault: pipeline.isDefault,
     showIdleDays: pipeline.showIdleDays,
     stages: pipeline.stages.map((stage) => ({
       id: stage.id,

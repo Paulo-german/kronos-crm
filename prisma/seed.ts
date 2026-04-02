@@ -30,6 +30,7 @@ async function seedFeaturesAndPlans() {
     { key: 'ai.max_follow_up_monthly', name: 'Follow-ups mensais', type: 'STATIC' as const, valueType: 'NUMBER' as const },
     { key: 'ai.max_follow_ups', name: 'Follow-ups por agente (total)', type: 'STATIC' as const, valueType: 'NUMBER' as const },
     { key: 'crm.max_automations', name: 'Automações', type: 'STATIC' as const, valueType: 'NUMBER' as const },
+    { key: 'crm.max_pipelines', name: 'Funis de Vendas', type: 'STATIC' as const, valueType: 'NUMBER' as const },
   ]
 
   const featureRecords: Record<string, { id: string }> = {}
@@ -158,6 +159,12 @@ async function seedFeaturesAndPlans() {
     { planSlug: 'essential', featureKey: 'crm.max_automations', valueNumber: 10 },
     { planSlug: 'scale', featureKey: 'crm.max_automations', valueNumber: 25 },
     { planSlug: 'enterprise', featureKey: 'crm.max_automations', valueNumber: 50 },
+
+    // Funis de Vendas (Light = 1, Essential+ = ilimitado representado por 999)
+    { planSlug: 'light', featureKey: 'crm.max_pipelines', valueNumber: 1 },
+    { planSlug: 'essential', featureKey: 'crm.max_pipelines', valueNumber: 999 },
+    { planSlug: 'scale', featureKey: 'crm.max_pipelines', valueNumber: 999 },
+    { planSlug: 'enterprise', featureKey: 'crm.max_pipelines', valueNumber: 999 },
   ]
 
   // Resolver IDs do DB para os limites

@@ -89,6 +89,7 @@ model Organization {
   followUps              FollowUp[]
   automations            Automation[]
   automationExecutions   AutomationExecution[]
+  conversationLabels     ConversationLabel[]
 
   @@map("organizations")
 }
@@ -182,6 +183,9 @@ model Pipeline {
   name           String
   organizationId String          @map("organization_id")
   showIdleDays   Boolean         @default(true) @map("show_idle_days")
+  isDefault      Boolean         @default(false) @map("is_default")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
   stages         PipelineStage[]
   organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
@@ -748,8 +752,14 @@ model Conversation {
   followUpCount          Int                 @default(0) @map("follow_up_count")
   // Worker ativo nesta conversa — campo de tracking leve sem FK (agente pode sair do grupo)
   activeAgentId          String?             @map("active_agent_id")
+  // Status da conversa: OPEN por default, RESOLVED quando marcada manualmente
+  status                 ConversationStatus  @default(OPEN)
+  // Rastreamento de resolução — null quando status é OPEN
+  resolvedAt             DateTime?           @map("resolved_at")
+  resolvedBy             String?             @map("resolved_by")
   agentExecutions        AgentExecution[]
   events                 ConversationEvent[]
+  labels                 ConversationLabelAssignment[]
   assignee               User?               @relation("ConversationAssignee", fields: [assignedTo], references: [id])
   contact                Contact             @relation(fields: [contactId], references: [id], onDelete: Cascade)
   deal                   Deal?               @relation(fields: [dealId], references: [id])
@@ -766,7 +776,41 @@ model Conversation {
   @@index([nextFollowUpAt, aiPaused])
   // Índice composto para a query "não respondidos": WHERE org = X AND last_message_role = 'user' ORDER BY updated_at DESC
   @@index([organizationId, lastMessageRole, updatedAt(sort: Desc)])
+  // Índice composto para filtro por status no inbox: WHERE org = X AND status = Y ORDER BY updated_at DESC
+  @@index([organizationId, status, updatedAt(sort: Desc)])
   @@map("conversations")
+}
+
+model ConversationLabel {
+  id             String       @id @default(uuid())
+  organizationId String       @map("organization_id")
+  name           String
+  // Chave da paleta de cores fixa (ex: "red", "blue", "green")
+  color          String
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  organization   Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assignments    ConversationLabelAssignment[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@map("conversation_labels")
+}
+
+model ConversationLabelAssignment {
+  id             String            @id @default(uuid())
+  conversationId String            @map("conversation_id")
+  labelId        String            @map("label_id")
+  createdAt      DateTime          @default(now()) @map("created_at")
+
+  conversation   Conversation      @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  label          ConversationLabel @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, labelId])
+  @@index([conversationId])
+  @@index([labelId])
+  @@map("conversation_label_assignments")
 }
 
 model Message {
@@ -1121,6 +1165,13 @@ enum ConversationEventType {
   TOOL_FAILURE
   PROCESSING_ERROR
   INFO
+}
+
+enum ConversationStatus {
+  OPEN
+  RESOLVED
+
+  @@map("conversation_status")
 }
 
 enum IntegrationProvider {
