@@ -44,7 +44,7 @@ import {
   PopoverTrigger,
 } from '@/_components/ui/popover'
 import { Badge } from '@/_components/ui/badge'
-import { ArrowUpDown, User, Check, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ArrowUpDown, User, Check, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react'
 import { cn } from '@/_lib/utils'
 import { Button } from '@/_components/ui/button'
 import type { MemberRole } from '@prisma/client'
@@ -433,9 +433,9 @@ export function KanbanBoard({
             <PopoverTrigger asChild disabled={isMember}>
               <Button
                 variant="outline"
-                className="w-[300px] justify-start font-normal"
+                className="relative w-[300px] justify-center font-normal"
               >
-                <User className="mr-2 h-4 w-4 text-muted-foreground" />
+                <User className="absolute left-3 h-4 w-4 text-muted-foreground" />
                 {effectiveAssignees.length === 0 ? (
                   'Todos os responsáveis'
                 ) : effectiveAssignees.length === 1 ? (
@@ -448,6 +448,7 @@ export function KanbanBoard({
                     </Badge>
                   </span>
                 )}
+                <ChevronDown className="absolute right-3 h-4 w-4 shrink-0 opacity-50" />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-[300px] p-2" align="start">
