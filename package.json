@@ -6,7 +6,7 @@
     "clean": "rm -rf node_modules .next && pnpm store prune && pnpm install",
     "trigger": "source .env && npx trigger.dev@4.4.1 dev --project-ref $TRIGGER_PROJECT_ID",
     "check": "pnpm exec tsc --noEmit && pnpm next lint",
-    "dev": "next dev --turbopack",
+    "dev": "rm -rf .next && next dev --turbopack",
     "build": "prisma migrate deploy && prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
