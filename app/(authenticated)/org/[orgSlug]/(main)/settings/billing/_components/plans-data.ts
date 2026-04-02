@@ -51,6 +51,7 @@ export const PLANS: PlanInfo[] = [
       { name: 'Agendamentos ilimitados', included: true },
       { name: '1 follow-up (Beta)', included: true },
       { name: '3 automações (Beta)', included: true },
+      { name: '1 funil de vendas', included: true },
     ],
   },
   {
@@ -75,6 +76,7 @@ export const PLANS: PlanInfo[] = [
       { name: 'Agendamentos ilimitados', included: true },
       { name: '3 follow-ups (Beta)', included: true },
       { name: '10 automações (Beta)', included: true },
+      { name: 'Funis de vendas ilimitados', included: true },
     ],
   },
   {
@@ -99,6 +101,7 @@ export const PLANS: PlanInfo[] = [
       { name: 'Agendamentos ilimitados', included: true },
       { name: '8 follow-ups (Beta)', included: true },
       { name: '25 automações (Beta)', included: true },
+      { name: 'Funis de vendas ilimitados', included: true },
     ],
   },
   {
@@ -123,6 +126,7 @@ export const PLANS: PlanInfo[] = [
       { name: 'Agendamentos ilimitados', included: true },
       { name: '20 follow-ups (Beta)', included: true },
       { name: '50 automações (Beta)', included: true },
+      { name: 'Funis de vendas ilimitados', included: true },
       { name: 'API de integração (Em breve)', included: true },
       { name: 'SSO / SAML (Em breve)', included: true },
     ],
@@ -216,11 +220,11 @@ export const COMPARISON_DATA: ComparisonRow[] = [
     enterprise: '50',
   },
   {
-    feature: 'Pipeline de vendas',
-    light: true,
-    essential: true,
-    scale: true,
-    enterprise: true,
+    feature: 'Funis de vendas',
+    light: '1',
+    essential: 'Ilimitados',
+    scale: 'Ilimitados',
+    enterprise: 'Ilimitados',
   },
   {
     feature: 'Kanban de negócios',
