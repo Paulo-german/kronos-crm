@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { MessageSquare, WifiOff } from 'lucide-react'
+import { cn } from '@/_lib/utils'
 import type { MemberRole } from '@prisma/client'
 import type { ConversationListDto } from '@/_data-access/conversation/get-conversations'
 import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
@@ -137,7 +138,10 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
       )}
       <div className="flex min-h-0 flex-1 border-t border-border/50">
       {/* Sidebar */}
-      <div data-tour="inbox-list" className="w-96 shrink-0">
+      <div data-tour="inbox-list" className={cn(
+        'w-full md:w-96 md:shrink-0',
+        selectedId && 'hidden md:block',
+      )}>
         <ConversationList
           conversations={conversations}
           selectedId={selectedId}
@@ -163,7 +167,10 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
       </div>
 
       {/* Chat panel */}
-      <div data-tour="inbox-chat" className="flex flex-1 flex-col">
+      <div data-tour="inbox-chat" className={cn(
+        'flex-1 flex-col',
+        selectedId ? 'flex' : 'hidden md:flex',
+      )}>
         {selectedConversation ? (
           <ChatView
             key={selectedConversation.id}
@@ -175,6 +182,7 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
             isElevated={elevated}
             currentUserId={currentUserId}
             onToggleAiPause={handleToggleAiPause}
+            onBack={() => setSelectedId(null)}
           />
         ) : deepLinkContact && !selectedConversation ? (
           <StartConversationPanel

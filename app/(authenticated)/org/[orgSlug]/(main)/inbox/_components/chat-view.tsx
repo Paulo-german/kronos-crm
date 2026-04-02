@@ -35,9 +35,10 @@ interface ChatViewProps {
   isElevated: boolean
   currentUserId: string
   onToggleAiPause?: (conversationId: string, aiPaused: boolean) => void
+  onBack?: () => void
 }
 
-export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, members, isElevated, onToggleAiPause }: ChatViewProps) {
+export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, members, isElevated, onToggleAiPause, onBack }: ChatViewProps) {
   const [text, setText] = useState('')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -291,6 +292,7 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
           onToggleAi={handleToggleAi}
           onOpenSettings={() => setSettingsOpen(true)}
           assigneeName={conversation.assigneeName}
+          onBack={onBack}
         />
         <ChatBanners
           connectionError={connectionError}

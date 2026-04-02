@@ -1,6 +1,6 @@
 'use client'
 
-import { Bot, Info, UserCog, Users } from 'lucide-react'
+import { ArrowLeft, Bot, Info, UserCog, Users } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/_components/ui/avatar'
 import { Badge } from '@/_components/ui/badge'
 import { Button } from '@/_components/ui/button'
@@ -25,6 +25,7 @@ interface ChatHeaderProps {
   onToggleAi: (checked: boolean) => void
   onOpenSettings: () => void
   assigneeName: string | null
+  onBack?: () => void
 }
 
 export function ChatHeader({
@@ -38,6 +39,7 @@ export function ChatHeader({
   onToggleAi,
   onOpenSettings,
   assigneeName,
+  onBack,
 }: ChatHeaderProps) {
   const initials = contactName
     .split(' ')
@@ -52,79 +54,91 @@ export function ChatHeader({
 
   return (
     <div className="flex items-center justify-between border-b border-border/50 px-4 py-3">
-      <button
-        type="button"
-        className="flex cursor-pointer items-center gap-3 rounded-md transition-colors"
-        onClick={onOpenSettings}
-      >
-        <Avatar className="h-10 w-10">
-          <AvatarImage />
-          <AvatarFallback className="bg-primary/10 text-xs font-medium text-primary">
-            {initials}
-          </AvatarFallback>
-        </Avatar>
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-base font-semibold tracking-tight">
-              {contactName}
-            </span>
+      <div className="flex min-w-0 items-center gap-1">
+        {onBack && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0 md:hidden"
+            onClick={onBack}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        )}
+        <button
+          type="button"
+          className="flex min-w-0 cursor-pointer items-center gap-3 rounded-md transition-colors"
+          onClick={onOpenSettings}
+        >
+          <Avatar className="h-10 w-10 shrink-0">
+            <AvatarImage />
+            <AvatarFallback className="bg-primary/10 text-xs font-medium text-primary">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="truncate text-base font-semibold tracking-tight">
+                {contactName}
+              </span>
 
-            {/* Modo grupo: badge com worker ativo + tooltip com equipe/agente */}
-            {isGroupMode && displayAgentName && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Badge
-                    variant="outline"
-                    className="h-5 gap-1 border-kronos-purple/20 bg-kronos-purple/10 text-[10px] text-kronos-purple"
-                  >
-                    <Users className="h-3 w-3" />
-                    {displayAgentName}
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">
-                  Equipe: {agentGroupName} | Agente: {displayAgentName}
-                </TooltipContent>
-              </Tooltip>
-            )}
+              {/* Modo grupo: badge com worker ativo + tooltip com equipe/agente */}
+              {isGroupMode && displayAgentName && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge
+                      variant="outline"
+                      className="h-5 shrink-0 gap-1 border-kronos-purple/20 bg-kronos-purple/10 text-[10px] text-kronos-purple"
+                    >
+                      <Users className="h-3 w-3" />
+                      {displayAgentName}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">
+                    Equipe: {agentGroupName} | Agente: {displayAgentName}
+                  </TooltipContent>
+                </Tooltip>
+              )}
 
-            {/* Modo grupo sem worker ativo ainda */}
-            {isGroupMode && !displayAgentName && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Badge
-                    variant="outline"
-                    className="h-5 gap-1 border-kronos-purple/20 bg-kronos-purple/10 text-[10px] text-kronos-purple"
-                  >
-                    <Users className="h-3 w-3" />
-                    {agentGroupName}
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">
-                  Equipe: {agentGroupName} — aguardando roteamento
-                </TooltipContent>
-              </Tooltip>
-            )}
+              {/* Modo grupo sem worker ativo ainda */}
+              {isGroupMode && !displayAgentName && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge
+                      variant="outline"
+                      className="h-5 shrink-0 gap-1 border-kronos-purple/20 bg-kronos-purple/10 text-[10px] text-kronos-purple"
+                    >
+                      <Users className="h-3 w-3" />
+                      {agentGroupName}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">
+                    Equipe: {agentGroupName} — aguardando roteamento
+                  </TooltipContent>
+                </Tooltip>
+              )}
 
-            {/* Modo standalone (agente individual) */}
-            {!isGroupMode && displayAgentName && (
-              <Badge
-                variant="outline"
-                className="h-5 gap-1 border-kronos-purple/20 bg-kronos-purple/10 text-[10px] text-kronos-purple"
-              >
-                <Bot className="h-3 w-3" />
-                {displayAgentName}
-              </Badge>
+              {/* Modo standalone (agente individual) */}
+              {!isGroupMode && displayAgentName && (
+                <Badge
+                  variant="outline"
+                  className="h-5 shrink-0 gap-1 border-kronos-purple/20 bg-kronos-purple/10 text-[10px] text-kronos-purple"
+                >
+                  <Bot className="h-3 w-3" />
+                  {displayAgentName}
+                </Badge>
+              )}
+            </div>
+            {contactPhone && (
+              <p className="truncate text-left text-xs text-muted-foreground">
+                {contactPhone}
+              </p>
             )}
           </div>
-          {contactPhone && (
-            <p className="text-left text-xs text-muted-foreground">
-              {contactPhone}
-            </p>
-          )}
-        </div>
-      </button>
+        </button>
+      </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex shrink-0 items-center gap-3">
         {/* Indicador do responsável — exibido para todos os roles */}
         {assigneeName && (
           <>
@@ -133,7 +147,7 @@ export function ChatHeader({
                 <button
                   type="button"
                   onClick={onOpenSettings}
-                  className="flex cursor-pointer items-center gap-1.5"
+                  className="hidden cursor-pointer items-center gap-1.5 sm:flex"
                 >
                   <Badge
                     variant="outline"
@@ -149,7 +163,7 @@ export function ChatHeader({
               </TooltipContent>
             </Tooltip>
 
-            <Separator orientation="vertical" className="h-6" />
+            <Separator orientation="vertical" className="hidden h-6 sm:block" />
           </>
         )}
 
@@ -176,7 +190,7 @@ export function ChatHeader({
             <div className="flex items-center gap-2">
               <Label
                 htmlFor="ai-toggle"
-                className="cursor-pointer text-xs text-muted-foreground"
+                className="hidden cursor-pointer text-xs text-muted-foreground sm:inline"
               >
                 IA
               </Label>
