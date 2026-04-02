@@ -46,6 +46,7 @@ export const getUserIntegrations = async (ctx: RBACContext): Promise<UserIntegra
     [`user-integrations-${ctx.orgId}-${ctx.userId}`],
     {
       tags: [`integrations:${ctx.orgId}`],
+      revalidate: 120,
     },
   )
 

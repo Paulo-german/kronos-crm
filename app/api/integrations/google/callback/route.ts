@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { type NextRequest } from 'next/server'
 import { cookies } from 'next/headers'
-import { revalidateTag } from 'next/cache'
+import { revalidateTag, revalidatePath } from 'next/cache'
 import { createClient } from '@/_lib/supabase/server'
 import { db } from '@/_lib/prisma'
 import { ORG_SLUG_COOKIE } from '@/_lib/constants'
@@ -146,8 +146,9 @@ export async function GET(request: NextRequest) {
     },
   })
 
-  // Invalidar cache de integrações da org
+  // Invalidar cache de integrações da org + full page cache
   revalidateTag(`integrations:${state.orgId}`)
+  revalidatePath(`/org/${state.orgSlug}/settings/integrations`)
 
   redirect(`/org/${state.orgSlug}/settings/integrations?connected=google`)
 }

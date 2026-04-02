@@ -37,9 +37,7 @@ const ConnectedToast = () => {
 
     if (connected === 'google') {
       toast.success('Google Calendar conectado com sucesso!')
-      router.replace(cleanSearchParams(searchParams, ['connected']), {
-        scroll: false,
-      })
+      window.history.replaceState(null, '', cleanSearchParams(searchParams, ['connected']) || window.location.pathname)
       router.refresh()
       return
     }
@@ -47,9 +45,7 @@ const ConnectedToast = () => {
     if (error) {
       const message = ERROR_MESSAGES[error] ?? 'Erro inesperado ao conectar. Tente novamente.'
       toast.error(message)
-      router.replace(cleanSearchParams(searchParams, ['error']), {
-        scroll: false,
-      })
+      window.history.replaceState(null, '', cleanSearchParams(searchParams, ['error']) || window.location.pathname)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
