@@ -106,8 +106,8 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
     // Prioridade 2: manter seleção atual se ainda existe na lista ou é deep link
     if (selectedId && (conversations.some((conv) => conv.id === selectedId) || selectedId === deepLinkConversationId)) return
 
-    // Prioridade 3: fallback para a primeira conversa
-    setSelectedId(conversations[0]?.id ?? null)
+    // Prioridade 3: limpar seleção se a conversa selecionada saiu da lista
+    if (selectedId) setSelectedId(null)
   }, [conversations, isLoading, deepLinkConversationId, deepLinkContact, selectedId])
 
   const handleConversationCreated = (conversation: ConversationListDto) => {
