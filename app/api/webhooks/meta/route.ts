@@ -15,6 +15,7 @@ import type { processAgentMessage } from '@/../../trigger/process-agent-message'
 import type { MetaWebhookPayload, MetaWebhookValue } from '@/_lib/meta/types'
 import type { BusinessHoursConfig } from '@/_actions/agent/update-agent/schema'
 import type { NormalizedWhatsAppMessage } from '@/_lib/evolution/types'
+import { AUTO_REOPEN_FIELDS } from '@/_lib/conversation/auto-reopen'
 
 // -----------------------------------------------------------------------------
 // GET — Verificacao do webhook (Meta chama ao configurar)
@@ -250,6 +251,7 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
             lastMessageRole: 'user',
             nextFollowUpAt: null,
             followUpCount: 0,
+            ...AUTO_REOPEN_FIELDS,
           },
         })
 
@@ -343,7 +345,8 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
               lastMessageRole: 'user',
               nextFollowUpAt: null,
               followUpCount: 0,
-              },
+              ...AUTO_REOPEN_FIELDS,
+            },
           })
         }
 
@@ -454,7 +457,8 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
             lastMessageRole: 'user',
             nextFollowUpAt: null,
             followUpCount: 0,
-            },
+            ...AUTO_REOPEN_FIELDS,
+          },
         })
 
         revalidateTag(`conversations:${orgId}`)
@@ -507,7 +511,7 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
       // Reset follow-up completo + incrementar unreadCount — qualquer msg do cliente cancela ciclo FUP ativo
       db.conversation.update({
         where: { id: conversationId },
-        data: { unreadCount: { increment: 1 }, lastMessageRole: 'user', nextFollowUpAt: null, followUpCount: 0 },
+        data: { unreadCount: { increment: 1 }, lastMessageRole: 'user', nextFollowUpAt: null, followUpCount: 0, ...AUTO_REOPEN_FIELDS },
       }),
       redis
         .set(

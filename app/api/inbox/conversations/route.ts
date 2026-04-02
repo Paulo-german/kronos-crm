@@ -38,6 +38,10 @@ export async function GET(request: NextRequest) {
     const unansweredOnly = searchParams.get('unanswered') === 'true'
     const search = searchParams.get('search') ?? undefined
     const contactId = searchParams.get('contactId') ?? undefined
+    const statusParam = searchParams.get('status')
+    const status = (statusParam === 'OPEN' || statusParam === 'RESOLVED') ? statusParam : undefined
+    const labelIdsParam = searchParams.get('labelIds')
+    const labelIds = labelIdsParam ? labelIdsParam.split(',').filter(Boolean) : undefined
 
     // Determinar escopo RBAC do usuario para filtrar conversas
     const elevated = isElevated(membership.userRole!)
@@ -48,7 +52,7 @@ export async function GET(request: NextRequest) {
       elevated,
       limit,
       cursor,
-      { inboxId, unreadOnly, unansweredOnly, search },
+      { inboxId, unreadOnly, unansweredOnly, search, status, labelIds },
     )
 
     let deepLinkConversationId: string | undefined

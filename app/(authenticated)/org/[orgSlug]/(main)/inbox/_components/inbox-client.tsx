@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { MessageSquare, WifiOff } from 'lucide-react'
 import { cn } from '@/_lib/utils'
 import type { MemberRole } from '@prisma/client'
-import type { ConversationListDto } from '@/_data-access/conversation/get-conversations'
+import type { ConversationListDto, ConversationLabelDto } from '@/_data-access/conversation/get-conversations'
 import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
 import type { ContactOptionDto } from '@/_data-access/contact/get-contacts-options'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
@@ -33,15 +33,18 @@ interface InboxClientProps {
   members: AcceptedMemberDto[]
   userRole: MemberRole
   currentUserId: string
+  availableLabels: ConversationLabelDto[]
 }
 
-export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug, members, userRole, currentUserId }: InboxClientProps) {
+export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug, members, userRole, currentUserId, availableLabels }: InboxClientProps) {
   const elevated = isElevated(userRole)
   const searchParams = useSearchParams()
   const [selectedInboxId, setSelectedInboxId] = useState<string | null>(null)
   const [filter, setFilter] = useState<FilterTab>('all')
   const [search, setSearch] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [statusFilter, setStatusFilter] = useState<'OPEN' | 'RESOLVED'>('OPEN')
+  const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([])
   const didApplyDeepLink = useRef(false)
 
   const contactId = searchParams.get('contactId')
@@ -60,6 +63,7 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
     connectionError,
     sentinelRef,
     updateConversationLocally,
+    removeConversationLocally,
     refetch,
   } = useConversations({
     inboxId: selectedInboxId,
@@ -67,6 +71,8 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
     unansweredOnly: filter === 'unanswered',
     search,
     contactId,
+    status: statusFilter,
+    labelIds: selectedLabelIds,
   })
 
   // Optimistic update + refetch para atualizar badge da IA na conversation list
@@ -82,6 +88,35 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
     if (!target) return
     const newUnreadCount = target.unreadCount > 0 ? 0 : 1
     updateConversationLocally(conversationId, { unreadCount: newUnreadCount })
+    refetch()
+  }
+
+  // Ao mudar status, remover da lista se não bate com o filtro ativo (ex: resolver no filtro de abertas)
+  const handleStatusChange = (conversationId: string, newStatus: 'OPEN' | 'RESOLVED') => {
+    if (newStatus !== statusFilter) {
+      removeConversationLocally(conversationId)
+      setSelectedId(null)
+    } else {
+      updateConversationLocally(conversationId, { status: newStatus, resolvedAt: newStatus === 'RESOLVED' ? new Date() : null })
+    }
+    refetch()
+  }
+
+  const handleResolveFromList = (conversationId: string) => {
+    if (statusFilter !== 'RESOLVED') {
+      removeConversationLocally(conversationId)
+    } else {
+      updateConversationLocally(conversationId, { status: 'RESOLVED', resolvedAt: new Date() })
+    }
+    refetch()
+  }
+
+  const handleReopenFromList = (conversationId: string) => {
+    if (statusFilter !== 'OPEN') {
+      removeConversationLocally(conversationId)
+    } else {
+      updateConversationLocally(conversationId, { status: 'OPEN', resolvedAt: null })
+    }
     refetch()
   }
 
@@ -120,7 +155,7 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
   }
 
   // Se terminou de carregar e não tem conversas (sem filtros ativos) e não é deep link de contato
-  if (!isLoading && conversations.length === 0 && !search && filter === 'all' && !selectedInboxId && !deepLinkContact) {
+  if (!isLoading && conversations.length === 0 && !search && filter === 'all' && !selectedInboxId && !deepLinkContact && statusFilter === 'OPEN' && selectedLabelIds.length === 0) {
     return <EmptyInbox orgSlug={orgSlug} />
   }
 
@@ -163,6 +198,13 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
           orgSlug={orgSlug}
           onToggleRead={handleToggleRead}
           isElevated={elevated}
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
+          selectedLabelIds={selectedLabelIds}
+          onLabelIdsChange={setSelectedLabelIds}
+          availableLabels={availableLabels}
+          onResolve={handleResolveFromList}
+          onReopen={handleReopenFromList}
         />
       </div>
 
@@ -181,7 +223,9 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
             members={members}
             isElevated={elevated}
             currentUserId={currentUserId}
+            availableLabels={availableLabels}
             onToggleAiPause={handleToggleAiPause}
+            onStatusChange={handleStatusChange}
             onBack={() => setSelectedId(null)}
           />
         ) : deepLinkContact && !selectedConversation ? (

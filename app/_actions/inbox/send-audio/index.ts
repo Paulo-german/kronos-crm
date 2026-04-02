@@ -7,6 +7,7 @@ import { redis } from '@/_lib/redis'
 import { canPerformAction, canAccessRecord, requirePermission } from '@/_lib/rbac'
 import { resolveWhatsAppProvider } from '@/_lib/whatsapp/provider'
 import { withRetry } from '@/_lib/whatsapp/retry'
+import { AUTO_REOPEN_FIELDS } from '@/_lib/conversation/auto-reopen'
 import { sendAudioSchema } from './schema'
 
 export const sendAudio = orgActionClient
@@ -96,6 +97,8 @@ export const sendAudio = orgActionClient
           // Reset follow-up: humano assumiu a conversa — cancelar ciclo pendente
           nextFollowUpAt: null,
           followUpCount: 0,
+          // Reabertura automática: humano enviando áudio reativa conversa resolvida
+          ...AUTO_REOPEN_FIELDS,
         },
       }),
     ])

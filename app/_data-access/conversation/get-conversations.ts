@@ -2,7 +2,13 @@ import 'server-only'
 import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
-import type { Prisma } from '@prisma/client'
+import type { Prisma, ConversationStatus } from '@prisma/client'
+
+export interface ConversationLabelDto {
+  id: string
+  name: string
+  color: string
+}
 
 export interface ConversationListDto {
   id: string
@@ -36,6 +42,9 @@ export interface ConversationListDto {
   assignedTo: string | null
   assigneeName: string | null
   assigneeAvatarUrl: string | null
+  status: 'OPEN' | 'RESOLVED'
+  resolvedAt: Date | null
+  labels: ConversationLabelDto[]
 }
 
 export interface ConversationFilters {
@@ -43,6 +52,8 @@ export interface ConversationFilters {
   unreadOnly?: boolean
   unansweredOnly?: boolean
   search?: string
+  status?: 'OPEN' | 'RESOLVED'
+  labelIds?: string[]
 }
 
 export interface PaginatedConversationsResult {
@@ -85,6 +96,13 @@ const conversationListInclude = {
   },
   _count: { select: { messages: true } },
   assignee: { select: { fullName: true, avatarUrl: true } },
+  labels: {
+    select: {
+      label: {
+        select: { id: true, name: true, color: true },
+      },
+    },
+  },
 } satisfies Prisma.ConversationInclude
 
 type ConversationWithIncludes = Prisma.ConversationGetPayload<{
@@ -132,6 +150,13 @@ function mapConversationToDto(conversation: ConversationWithIncludes): Conversat
     assignedTo: conversation.assignedTo,
     assigneeName: conversation.assignee?.fullName ?? null,
     assigneeAvatarUrl: conversation.assignee?.avatarUrl ?? null,
+    status: conversation.status,
+    resolvedAt: conversation.resolvedAt,
+    labels: conversation.labels.map((assignment) => ({
+      id: assignment.label.id,
+      name: assignment.label.name,
+      color: assignment.label.color,
+    })),
   }
 }
 
@@ -164,13 +189,27 @@ async function fetchConversationsPaginatedFromDb(
     ? searchTerm.replace(/[\s()\-+]/g, '')
     : ''
 
+  // Filtro de status aplicado consistentemente a todas as queries
+  const statusFilter: Prisma.ConversationWhereInput = filters?.status
+    ? { status: filters.status as ConversationStatus }
+    : {}
+
   const where: Prisma.ConversationWhereInput = {
     organizationId: orgId,
     ...rbacFilter,
+    ...statusFilter,
     ...(filters?.inboxId ? { inboxId: filters.inboxId } : {}),
     ...(filters?.unreadOnly ? { unreadCount: { gt: 0 } } : {}),
     // unansweredOnly: última mensagem foi do cliente — candidata a resposta pendente
     ...(filters?.unansweredOnly ? { lastMessageRole: 'user' } : {}),
+    // labelIds: AND — conversa deve ter TODAS as labels selecionadas
+    ...(filters?.labelIds && filters.labelIds.length > 0
+      ? {
+          AND: filters.labelIds.map((labelId) => ({
+            labels: { some: { labelId } },
+          })),
+        }
+      : {}),
     ...(searchTerm
       ? {
           contact: {
@@ -188,10 +227,11 @@ async function fetchConversationsPaginatedFromDb(
       : {}),
   }
 
-  // Contadores de badge respeitam o mesmo filtro RBAC do usuario
+  // Contadores de badge respeitam o mesmo filtro RBAC + status do usuario
   const unreadWhere: Prisma.ConversationWhereInput = {
     organizationId: orgId,
     ...rbacFilter,
+    ...statusFilter,
     unreadCount: { gt: 0 },
     ...(filters?.inboxId ? { inboxId: filters.inboxId } : {}),
   }
@@ -200,6 +240,7 @@ async function fetchConversationsPaginatedFromDb(
   const unansweredWhere: Prisma.ConversationWhereInput = {
     organizationId: orgId,
     ...rbacFilter,
+    ...statusFilter,
     lastMessageRole: 'user',
     ...(filters?.inboxId ? { inboxId: filters.inboxId } : {}),
   }

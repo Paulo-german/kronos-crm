@@ -9,11 +9,13 @@ import { sendMessage } from '@/_actions/inbox/send-message'
 import { sendAudio } from '@/_actions/inbox/send-audio'
 import { sendMedia } from '@/_actions/inbox/send-media'
 import { toggleAiPause } from '@/_actions/inbox/toggle-ai-pause'
+import { resolveConversation } from '@/_actions/inbox/resolve-conversation'
+import { reopenConversation } from '@/_actions/inbox/reopen-conversation'
 import {
   ALL_ACCEPTED_MEDIA_TYPES,
   getMaxSizeForMimetype,
 } from '@/_lib/whatsapp/media-constants'
-import type { ConversationListDto } from '@/_data-access/conversation/get-conversations'
+import type { ConversationListDto, ConversationLabelDto } from '@/_data-access/conversation/get-conversations'
 import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
 import type { ContactOptionDto } from '@/_data-access/contact/get-contacts-options'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
@@ -34,11 +36,13 @@ interface ChatViewProps {
   members: AcceptedMemberDto[]
   isElevated: boolean
   currentUserId: string
+  availableLabels: ConversationLabelDto[]
   onToggleAiPause?: (conversationId: string, aiPaused: boolean) => void
+  onStatusChange?: (conversationId: string, status: 'OPEN' | 'RESOLVED') => void
   onBack?: () => void
 }
 
-export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, members, isElevated, onToggleAiPause, onBack }: ChatViewProps) {
+export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, members, isElevated, availableLabels, onToggleAiPause, onStatusChange, onBack }: ChatViewProps) {
   const [text, setText] = useState('')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -109,6 +113,26 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
       }
       togglePendingRef.current = null
       toast.error(error.error?.serverError ?? 'Erro ao alterar estado da IA')
+    },
+  })
+
+  const resolveAction = useAction(resolveConversation, {
+    onSuccess: () => {
+      toast.success('Conversa resolvida.')
+      onStatusChange?.(conversation.id, 'RESOLVED')
+    },
+    onError: (error) => {
+      toast.error(error.error?.serverError ?? 'Erro ao resolver conversa.')
+    },
+  })
+
+  const reopenAction = useAction(reopenConversation, {
+    onSuccess: () => {
+      toast.success('Conversa reaberta.')
+      onStatusChange?.(conversation.id, 'OPEN')
+    },
+    onError: (error) => {
+      toast.error(error.error?.serverError ?? 'Erro ao reabrir conversa.')
     },
   })
 
@@ -293,6 +317,10 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
           onOpenSettings={() => setSettingsOpen(true)}
           assigneeName={conversation.assigneeName}
           onBack={onBack}
+          conversationStatus={conversation.status}
+          isStatusPending={resolveAction.isPending || reopenAction.isPending}
+          onResolve={() => resolveAction.execute({ conversationId: conversation.id })}
+          onReopen={() => reopenAction.execute({ conversationId: conversation.id })}
         />
         <ChatBanners
           connectionError={connectionError}
@@ -338,6 +366,7 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
           orgSlug={orgSlug}
           members={members}
           isElevated={isElevated}
+          availableLabels={availableLabels}
         />
       </div>
     </TooltipProvider>

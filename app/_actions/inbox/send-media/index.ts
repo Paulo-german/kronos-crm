@@ -14,6 +14,7 @@ import {
   getMaxSizeForMimetype,
 } from '@/_lib/whatsapp/media-constants'
 import { withRetry } from '@/_lib/whatsapp/retry'
+import { AUTO_REOPEN_FIELDS } from '@/_lib/conversation/auto-reopen'
 import { sendMediaSchema } from './schema'
 
 export const sendMedia = orgActionClient
@@ -149,6 +150,8 @@ export const sendMedia = orgActionClient
           // Reset follow-up: humano assumiu a conversa — cancelar ciclo pendente
           nextFollowUpAt: null,
           followUpCount: 0,
+          // Reabertura automática: humano enviando mídia reativa conversa resolvida
+          ...AUTO_REOPEN_FIELDS,
         },
       }),
     ])

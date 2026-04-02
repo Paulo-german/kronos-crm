@@ -28,6 +28,7 @@ import {
   createToolEvents,
 } from './lib/create-conversation-event'
 import { transcribeAudio } from './utils/transcribe-audio'
+import { AUTO_REOPEN_FIELDS } from '@/_lib/conversation/auto-reopen'
 import { transcribeImage } from './utils/transcribe-image'
 import { downloadAndStoreMedia } from './utils/download-and-store-media'
 import { getFollowUpsForStep } from '@/_data-access/follow-up/get-follow-ups-for-step'
@@ -1353,7 +1354,7 @@ export const processAgentMessage = task({
           // Denormalizar role da última mensagem para viabilizar filtro "não respondidos"
           await db.conversation.update({
             where: { id: conversationId },
-            data: { lastMessageRole: 'assistant' },
+            data: { lastMessageRole: 'assistant', ...AUTO_REOPEN_FIELDS },
           })
 
           log('step:7 response_saved', 'PASS')

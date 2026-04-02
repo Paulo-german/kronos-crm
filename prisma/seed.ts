@@ -9,6 +9,7 @@ async function main() {
   await seedModules()
   await seedPipelines()
   await seedNotifications()
+  await seedConversations()
 
   console.log('✅ Seed concluído!')
 }
@@ -516,6 +517,285 @@ async function seedNotifications() {
 
   console.log(`  ✅ ${notifications.length} notificações criadas para ${ownerMember.organization.name} (user: ${userId})`)
   console.log(`  ✅ Membro PENDING fake criado (seed-invite@example.com) para testar variante actionable`)
+}
+
+async function seedConversations() {
+  console.log('💬 Seed: Conversas fictícias para teste de status e labels...')
+
+  // Buscar a primeira org que tenha inbox + owner
+  const inbox = await db.inbox.findFirst({
+    where: { isActive: true },
+    include: {
+      organization: {
+        include: {
+          members: {
+            where: { role: 'OWNER', status: 'ACCEPTED', userId: { not: null } },
+            take: 1,
+          },
+        },
+      },
+    },
+  })
+
+  if (!inbox || inbox.organization.members.length === 0) {
+    console.warn('  ⚠️ Nenhuma inbox ativa com OWNER encontrada. Pulando seed de conversas.')
+    return
+  }
+
+  const orgId = inbox.organizationId
+  const ownerId = inbox.organization.members[0].userId!
+
+  // Limpar conversas anteriores do seed para evitar duplicatas
+  const existingSeedContacts = await db.contact.findMany({
+    where: { organizationId: orgId, email: { startsWith: 'seed-conv-' } },
+    select: { id: true },
+  })
+
+  if (existingSeedContacts.length > 0) {
+    // Cascade delete: deletar contatos remove conversas e mensagens associadas
+    await db.contact.deleteMany({
+      where: { id: { in: existingSeedContacts.map((contact) => contact.id) } },
+    })
+    console.log(`  🧹 ${existingSeedContacts.length} contatos seed anteriores removidos`)
+  }
+
+  // Criar labels para a org (se não existem)
+  const labelData = [
+    { name: 'VIP', color: 'purple' },
+    { name: 'Urgente', color: 'red' },
+    { name: 'Suporte', color: 'blue' },
+    { name: 'Comercial', color: 'green' },
+    { name: 'Pós-venda', color: 'amber' },
+  ]
+
+  const labels: Array<{ id: string; name: string }> = []
+
+  for (const label of labelData) {
+    const record = await db.conversationLabel.upsert({
+      where: { organizationId_name: { organizationId: orgId, name: label.name } },
+      create: { organizationId: orgId, name: label.name, color: label.color },
+      update: { color: label.color },
+      select: { id: true, name: true },
+    })
+    labels.push(record)
+  }
+
+  console.log(`  ✅ ${labels.length} labels sincronizadas`)
+
+  // Dados fictícios de conversas — variando status, mensagens e labels
+  const conversationSeeds = [
+    {
+      contact: { name: 'Ana Oliveira', phone: '+5511999001001', email: 'seed-conv-ana@test.com' },
+      status: 'OPEN' as const,
+      aiPaused: false,
+      unreadCount: 3,
+      lastMessageRole: 'user',
+      labelNames: ['VIP', 'Comercial'],
+      messages: [
+        { role: 'user' as const, content: 'Oi, gostaria de saber mais sobre o plano Enterprise.' },
+        { role: 'assistant' as const, content: 'Olá Ana! O plano Enterprise inclui até 20 membros, agentes IA ilimitados e suporte prioritário. Posso te enviar uma proposta personalizada?' },
+        { role: 'user' as const, content: 'Sim, por favor! Somos uma equipe de 15 pessoas.' },
+        { role: 'user' as const, content: 'Ah, e também preciso saber sobre integração com nosso ERP.' },
+        { role: 'user' as const, content: 'Vocês têm API aberta?' },
+      ],
+    },
+    {
+      contact: { name: 'Carlos Mendes', phone: '+5511999002002', email: 'seed-conv-carlos@test.com' },
+      status: 'OPEN' as const,
+      aiPaused: true,
+      unreadCount: 1,
+      lastMessageRole: 'user',
+      labelNames: ['Urgente'],
+      messages: [
+        { role: 'user' as const, content: 'Meu sistema parou de funcionar!' },
+        { role: 'assistant' as const, content: 'Carlos, entendo a urgência. Vou te direcionar para nosso time de suporte técnico.' },
+        { role: 'user' as const, content: 'Preciso resolver isso hoje, temos um evento amanhã.' },
+      ],
+    },
+    {
+      contact: { name: 'Beatriz Santos', phone: '+5511999003003', email: 'seed-conv-beatriz@test.com' },
+      status: 'RESOLVED' as const,
+      aiPaused: false,
+      unreadCount: 0,
+      lastMessageRole: 'assistant',
+      labelNames: ['Suporte'],
+      messages: [
+        { role: 'user' as const, content: 'Como faço para adicionar mais membros na minha organização?' },
+        { role: 'assistant' as const, content: 'Para adicionar membros, vá em Configurações > Membros > Convidar. Você pode convidar por email.' },
+        { role: 'user' as const, content: 'Consegui, obrigada!' },
+        { role: 'assistant' as const, content: 'Fico feliz! Qualquer dúvida, estamos aqui. 😊' },
+      ],
+    },
+    {
+      contact: { name: 'Diego Ferreira', phone: '+5511999004004', email: 'seed-conv-diego@test.com' },
+      status: 'RESOLVED' as const,
+      aiPaused: false,
+      unreadCount: 0,
+      lastMessageRole: 'assistant',
+      labelNames: ['Comercial', 'Pós-venda'],
+      messages: [
+        { role: 'user' as const, content: 'Quero fazer upgrade do plano Light para o Essential.' },
+        { role: 'assistant' as const, content: 'Ótima escolha Diego! O Essential traz 4 membros, 4 agentes IA e 18.000 créditos mensais. Vou gerar o link de upgrade.' },
+        { role: 'user' as const, content: 'Perfeito, já fiz o upgrade!' },
+        { role: 'assistant' as const, content: 'Confirmado! Seu plano já está ativo. Bom proveito!' },
+      ],
+    },
+    {
+      contact: { name: 'Fernanda Lima', phone: '+5511999005005', email: 'seed-conv-fernanda@test.com' },
+      status: 'OPEN' as const,
+      aiPaused: false,
+      unreadCount: 0,
+      lastMessageRole: 'assistant',
+      labelNames: [],
+      messages: [
+        { role: 'user' as const, content: 'Boa tarde! Gostaria de uma demo do produto.' },
+        { role: 'assistant' as const, content: 'Boa tarde Fernanda! Claro, posso agendar uma demonstração. Qual horário funciona melhor pra você?' },
+      ],
+    },
+    {
+      contact: { name: 'Gabriel Costa', phone: '+5511999006006', email: 'seed-conv-gabriel@test.com' },
+      status: 'OPEN' as const,
+      aiPaused: true,
+      unreadCount: 5,
+      lastMessageRole: 'user',
+      labelNames: ['VIP', 'Urgente'],
+      messages: [
+        { role: 'user' as const, content: 'Oi, preciso de ajuda com a configuração do agente IA.' },
+        { role: 'assistant' as const, content: 'Olá Gabriel! Vou te ajudar. Qual modelo de IA você está usando?' },
+        { role: 'user' as const, content: 'Estou tentando usar o GPT-4.1 Mini mas não está respondendo.' },
+        { role: 'user' as const, content: 'Já verifiquei os créditos e estão ok.' },
+        { role: 'user' as const, content: 'O agente fica como "processando" mas nunca envia a resposta.' },
+        { role: 'user' as const, content: 'Podem verificar se há algum problema no servidor?' },
+        { role: 'user' as const, content: 'Isso está travando meu atendimento inteiro...' },
+      ],
+    },
+    {
+      contact: { name: 'Helena Rocha', phone: '+5511999007007', email: 'seed-conv-helena@test.com' },
+      status: 'RESOLVED' as const,
+      aiPaused: false,
+      unreadCount: 0,
+      lastMessageRole: 'assistant',
+      labelNames: ['Pós-venda'],
+      messages: [
+        { role: 'user' as const, content: 'Preciso de uma segunda via da nota fiscal do mês passado.' },
+        { role: 'assistant' as const, content: 'Helena, já encaminhei sua solicitação ao financeiro. A nota será enviada para seu email em até 24h.' },
+        { role: 'user' as const, content: 'Recebi, obrigada!' },
+        { role: 'assistant' as const, content: 'Disponha! Qualquer outra necessidade, é só chamar.' },
+      ],
+    },
+    {
+      contact: { name: 'Igor Nascimento', phone: '+5511999008008', email: 'seed-conv-igor@test.com' },
+      status: 'OPEN' as const,
+      aiPaused: false,
+      unreadCount: 2,
+      lastMessageRole: 'user',
+      labelNames: ['Suporte', 'Urgente'],
+      messages: [
+        { role: 'user' as const, content: 'As mensagens do WhatsApp não estão chegando desde ontem.' },
+        { role: 'assistant' as const, content: 'Igor, vamos verificar. Pode me informar o nome da sua inbox?' },
+        { role: 'user' as const, content: 'É a "Atendimento Principal".' },
+        { role: 'user' as const, content: 'Status da conexão aparece como "desconectado".' },
+      ],
+    },
+    {
+      contact: { name: 'Julia Almeida', phone: '+5511999009009', email: 'seed-conv-julia@test.com' },
+      status: 'OPEN' as const,
+      aiPaused: false,
+      unreadCount: 0,
+      lastMessageRole: 'assistant',
+      labelNames: ['Comercial'],
+      messages: [
+        { role: 'user' as const, content: 'Qual a diferença entre o plano Scale e o Enterprise?' },
+        { role: 'assistant' as const, content: 'Julia, as principais diferenças são: Scale tem 10 agentes IA e 45.000 créditos, enquanto Enterprise tem 20 agentes e 72.000 créditos. Além disso, Enterprise inclui suporte prioritário e SLA dedicado.' },
+      ],
+    },
+    {
+      contact: { name: 'Lucas Barbosa', phone: '+5511999010010', email: 'seed-conv-lucas@test.com' },
+      status: 'RESOLVED' as const,
+      aiPaused: false,
+      unreadCount: 0,
+      lastMessageRole: 'assistant',
+      labelNames: ['Suporte', 'VIP'],
+      messages: [
+        { role: 'user' as const, content: 'Olá, não consigo importar meus contatos via CSV.' },
+        { role: 'assistant' as const, content: 'Lucas, a importação CSV requer que o arquivo tenha as colunas: nome, email, telefone. O separador deve ser vírgula e a codificação UTF-8.' },
+        { role: 'user' as const, content: 'Era o encoding! Converti para UTF-8 e funcionou.' },
+        { role: 'assistant' as const, content: 'Excelente! Fico feliz que tenha resolvido. Se precisar de algo mais, estamos à disposição.' },
+      ],
+    },
+  ]
+
+  // Criar contatos, conversas, mensagens e label assignments
+  const baseDate = new Date()
+
+  for (let convIndex = 0; convIndex < conversationSeeds.length; convIndex++) {
+    const seed = conversationSeeds[convIndex]
+
+    // Criar contato
+    const contact = await db.contact.create({
+      data: {
+        organizationId: orgId,
+        name: seed.contact.name,
+        phone: seed.contact.phone,
+        email: seed.contact.email,
+        assignedTo: ownerId,
+      },
+    })
+
+    // Criar conversa
+    const conversationDate = new Date(baseDate.getTime() - (conversationSeeds.length - convIndex) * 3600_000)
+
+    const conversation = await db.conversation.create({
+      data: {
+        inboxId: inbox.id,
+        organizationId: orgId,
+        contactId: contact.id,
+        channel: inbox.channel,
+        assignedTo: ownerId,
+        status: seed.status,
+        aiPaused: seed.aiPaused,
+        pausedAt: seed.aiPaused ? conversationDate : null,
+        unreadCount: seed.unreadCount,
+        lastMessageRole: seed.lastMessageRole,
+        resolvedAt: seed.status === 'RESOLVED' ? conversationDate : null,
+        resolvedBy: seed.status === 'RESOLVED' ? ownerId : null,
+        createdAt: conversationDate,
+        updatedAt: conversationDate,
+      },
+    })
+
+    // Criar mensagens com timestamps incrementais
+    for (let msgIndex = 0; msgIndex < seed.messages.length; msgIndex++) {
+      const msg = seed.messages[msgIndex]
+      const msgDate = new Date(conversationDate.getTime() + (msgIndex + 1) * 60_000) // 1 min entre cada
+
+      await db.message.create({
+        data: {
+          conversationId: conversation.id,
+          role: msg.role,
+          content: msg.content,
+          createdAt: msgDate,
+        },
+      })
+    }
+
+    // Criar label assignments
+    for (const labelName of seed.labelNames) {
+      const label = labels.find((l) => l.name === labelName)
+      if (!label) continue
+
+      await db.conversationLabelAssignment.create({
+        data: {
+          conversationId: conversation.id,
+          labelId: label.id,
+        },
+      })
+    }
+
+    console.log(`  ✅ ${seed.contact.name} — ${seed.status} | ${seed.messages.length} msgs | ${seed.labelNames.length} labels`)
+  }
+
+  console.log(`  ✅ ${conversationSeeds.length} conversas seed criadas`)
 }
 
 main()

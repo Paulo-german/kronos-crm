@@ -1,16 +1,18 @@
 'use client'
 
+import { useTransition } from 'react'
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
   Bot,
-  CircleIcon,
   Loader2,
   MoreVertical,
   Pause,
+  Play,
   Search,
   Settings2,
+  Tag,
   UserCog,
 } from 'lucide-react'
 import { cn } from '@/_lib/utils'
@@ -38,11 +40,16 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/_components/ui/dropdown-menu'
-import type { ConversationListDto } from '@/_data-access/conversation/get-conversations'
+import { toast } from 'sonner'
+import type { ConversationListDto, ConversationLabelDto } from '@/_data-access/conversation/get-conversations'
+import { getLabelColor } from '@/_lib/constants/label-colors'
+import { resolveConversation } from '@/_actions/inbox/resolve-conversation'
+import { reopenConversation } from '@/_actions/inbox/reopen-conversation'
 import {
   ConversationContextMenu,
   ConversationMenuItems,
 } from './conversation-context-menu'
+import { ConversationFilterPanel } from './conversation-filter-panel'
 
 // ---------------------------------------------------------------------------
 // Tipos
@@ -77,6 +84,13 @@ interface ConversationListProps {
   orgSlug: string
   onToggleRead: (conversationId: string) => void
   isElevated: boolean
+  statusFilter: 'OPEN' | 'RESOLVED'
+  onStatusFilterChange: (status: 'OPEN' | 'RESOLVED') => void
+  selectedLabelIds: string[]
+  onLabelIdsChange: (ids: string[]) => void
+  availableLabels: ConversationLabelDto[]
+  onResolve: (conversationId: string) => void
+  onReopen: (conversationId: string) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -159,7 +173,40 @@ export function ConversationList({
   orgSlug,
   onToggleRead,
   isElevated,
+  statusFilter,
+  onStatusFilterChange,
+  selectedLabelIds,
+  onLabelIdsChange,
+  availableLabels,
+  onResolve,
+  onReopen,
 }: ConversationListProps) {
+  const [isStatusPending, startStatusTransition] = useTransition()
+
+  const handleDropdownResolve = (conversationId: string) => {
+    startStatusTransition(async () => {
+      const result = await resolveConversation({ conversationId })
+      if (result?.serverError) {
+        toast.error('Erro ao resolver conversa.')
+        return
+      }
+      toast.success('Conversa resolvida.')
+      onResolve(conversationId)
+    })
+  }
+
+  const handleDropdownReopen = (conversationId: string) => {
+    startStatusTransition(async () => {
+      const result = await reopenConversation({ conversationId })
+      if (result?.serverError) {
+        toast.error('Erro ao reabrir conversa.')
+        return
+      }
+      toast.success('Conversa reaberta.')
+      onReopen(conversationId)
+    })
+  }
+
   return (
     <div className="flex h-full flex-col border-r border-border/50">
       {/* Header */}
@@ -196,8 +243,18 @@ export function ConversationList({
           >
             {totalCount}
           </Badge>
+          <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
+            {statusFilter === 'OPEN' ? 'Abertas' : 'Resolvidas'}
+          </Badge>
           <div className="flex-1" />
           <TooltipProvider>
+            <ConversationFilterPanel
+              statusFilter={statusFilter}
+              onStatusFilterChange={onStatusFilterChange}
+              selectedLabelIds={selectedLabelIds}
+              onLabelIdsChange={onLabelIdsChange}
+              availableLabels={availableLabels}
+            />
             <Tooltip>
               <TooltipTrigger asChild>
                 <div data-tour="inbox-manage">
@@ -290,6 +347,8 @@ export function ConversationList({
                   key={conversation.id}
                   conversation={conversation}
                   onToggleRead={onToggleRead}
+                  onResolve={onResolve}
+                  onReopen={onReopen}
                 >
                   {/* group/item para revelar botão 3 pontinhos no hover */}
                   <div className="group/item relative">
@@ -365,18 +424,16 @@ export function ConversationList({
                           {conversation.aiPaused ? (
                             <Badge
                               variant="outline"
-                              className="h-5 gap-1 border-kronos-yellow/20 bg-kronos-yellow/10 px-1.5 text-[10px] text-kronos-yellow"
+                              className="h-5 w-5 items-center justify-center border-kronos-yellow/20 bg-kronos-yellow/10 p-0 text-kronos-yellow"
                             >
-                              <Pause className="h-3 w-3" />
-                              Pausada
+                              <Pause className="h-3 w-3 fill-current" />
                             </Badge>
                           ) : conversation.agentName ? (
                             <Badge
                               variant="outline"
-                              className="h-5 gap-1 border-kronos-green/20 bg-kronos-green/10 px-1.5 text-[10px] text-kronos-green"
+                              className="h-5 w-5 items-center justify-center border-kronos-green/20 bg-kronos-green/10 p-0 text-kronos-green"
                             >
-                              <CircleIcon className="h-2 w-2 fill-current" />
-                              Ativa
+                              <Play className="h-3 w-3 fill-current" />
                             </Badge>
                           ) : null}
 
@@ -399,6 +456,25 @@ export function ConversationList({
                               </Tooltip>
                             </TooltipProvider>
                           )}
+
+                          {/* Labels da conversa */}
+                          {conversation.labels.map((label) => {
+                            const colorConfig = getLabelColor(label.color)
+                            return (
+                              <Badge
+                                key={label.id}
+                                className={cn(
+                                  'h-5 gap-1 border-transparent px-1.5 text-[10px]',
+                                  colorConfig.bg,
+                                  colorConfig.text,
+                                  colorConfig.dark_text,
+                                )}
+                              >
+                                <Tag className={cn('h-3 w-3', colorConfig.text)} />
+                                {label.name}
+                              </Badge>
+                            )
+                          })}
                         </div>
                       </div>
                     </button>
@@ -421,7 +497,9 @@ export function ConversationList({
                           <ConversationMenuItems
                             conversation={conversation}
                             onToggleRead={onToggleRead}
-                            isPending={false}
+                            onResolve={handleDropdownResolve}
+                            onReopen={handleDropdownReopen}
+                            isPending={isStatusPending}
                             variant="dropdown"
                           />
                         </DropdownMenuContent>
