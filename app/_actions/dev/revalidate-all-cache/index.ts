@@ -18,8 +18,14 @@ const CACHE_TAG_PREFIXES = [
   'deal-lost-reasons',
   'organization',
   'agents',
+  'agentGroups',
   'inboxes',
   'conversations',
+  'dashboard',
+  'dashboard-charts',
+  'automations',
+  'follow-ups-org',
+  'onboarding',
 ] as const
 
 export const revalidateAllCache = orgActionClient.action(async ({ ctx }) => {
@@ -39,6 +45,7 @@ export const revalidateAllCache = orgActionClient.action(async ({ ctx }) => {
   // Tags por userId
   revalidateTag(`user:${ctx.userId}`)
   revalidateTag(`user-orgs:${ctx.userId}`)
+  revalidateTag(`notifications:${ctx.userId}`)
 
-  return { revalidated: CACHE_TAG_PREFIXES.length + 2 }
+  return { revalidated: CACHE_TAG_PREFIXES.length + 3 }
 })
