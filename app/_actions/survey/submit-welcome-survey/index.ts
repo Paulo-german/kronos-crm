@@ -13,10 +13,9 @@ export const submitWelcomeSurvey = orgActionClient
       throw new Error('Apenas o proprietário da organização pode responder o survey.')
     }
 
-    // 2. Idempotência: se já respondeu, retorna sucesso sem criar duplicata
-    // (protege contra race conditions e double-submit)
+    // 2. Idempotência: se já respondeu para esta org, retorna sucesso sem duplicar
     const existing = await db.userProfile.findUnique({
-      where: { userId: ctx.userId },
+      where: { userId_organizationId: { userId: ctx.userId, organizationId: ctx.orgId } },
       select: { profileCompletedAt: true },
     })
 
@@ -24,10 +23,9 @@ export const submitWelcomeSurvey = orgActionClient
       return { success: true, alreadyCompleted: true }
     }
 
-    // 3. Upsert — cria o perfil se não existe, ou completa um perfil parcial
-    // userId e organizationId vêm exclusivamente do ctx (nunca do client)
+    // 3. Upsert por par userId+orgId — permite um perfil por organização
     await db.userProfile.upsert({
-      where: { userId: ctx.userId },
+      where: { userId_organizationId: { userId: ctx.userId, organizationId: ctx.orgId } },
       create: {
         userId: ctx.userId,
         organizationId: ctx.orgId,
@@ -48,8 +46,8 @@ export const submitWelcomeSurvey = orgActionClient
       },
     })
 
-    // 4. Invalida o cache do status — faz o layout re-renderizar sem o modal
-    revalidateTag(`user-profile:${ctx.userId}`)
+    // 4. Invalida o cache do status para este par userId+orgId
+    revalidateTag(`user-profile:${ctx.userId}:${ctx.orgId}`)
 
     return { success: true, alreadyCompleted: false }
   })

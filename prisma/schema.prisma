@@ -31,7 +31,7 @@ model User {
   tasksCreated            Task[]            @relation("TaskCreator")
   integrations            UserIntegration[]
   automationsCreated      Automation[]      @relation("AutomationCreator")
-  userProfile             UserProfile?
+  userProfiles            UserProfile[]
 
   @@map("users")
 }
@@ -1312,7 +1312,7 @@ model AutomationExecution {
 
 model UserProfile {
   id                 String       @id @default(uuid())
-  userId             String       @unique @map("user_id")
+  userId             String       @map("user_id")
   organizationId     String       @map("organization_id")
   role               String
   teamSize           String       @map("team_size")
@@ -1326,6 +1326,7 @@ model UserProfile {
   user               User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, organizationId])
   @@index([organizationId])
   @@map("user_profiles")
 }

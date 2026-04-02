@@ -50,7 +50,7 @@ const MainLayout = async ({ children, params }: MainLayoutProps) => {
     getUserOrganizations(userId),
     getUnreadNotificationCount(userId, orgId),
     getRecentNotifications(userId, orgId),
-    getUserProfileStatus(userId),
+    getUserProfileStatus(userId, orgId),
   ])
 
   // Buscar notificações de orgs com convite pendente (cross-org)
