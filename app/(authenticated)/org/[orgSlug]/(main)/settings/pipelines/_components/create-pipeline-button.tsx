@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Plus, Lock, Loader2 } from 'lucide-react'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
@@ -30,15 +31,19 @@ export function CreatePipelineButton({
   withinQuota,
   planType,
 }: CreatePipelineButtonProps) {
+  const router = useRouter()
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false)
   const [name, setName] = useState('')
 
   const { execute, isPending } = useAction(createPipeline, {
-    onSuccess: () => {
-      toast.success('Funil criado com sucesso!')
+    onSuccess: ({ data }) => {
+      toast.success('Funil criado! Configure as etapas.')
       setIsCreateOpen(false)
       setName('')
+      if (data?.pipelineId) {
+        router.push(`/org/${orgSlug}/settings/pipelines/${data.pipelineId}`)
+      }
     },
     onError: ({ error }) => {
       toast.error(error.serverError ?? 'Erro ao criar funil.')
@@ -75,7 +80,7 @@ export function CreatePipelineButton({
           <DialogHeader>
             <DialogTitle>Novo Funil de Vendas</DialogTitle>
             <DialogDescription>
-              Dê um nome ao seu funil. Ele será criado com as etapas padrão.
+              Dê um nome ao seu funil. Você poderá configurar as etapas em seguida.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">

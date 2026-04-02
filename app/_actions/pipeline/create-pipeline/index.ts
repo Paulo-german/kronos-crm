@@ -9,16 +9,6 @@ import { createPipelineSchema } from './schema'
 const PIPELINE_CREATION_WINDOW_MS = 12 * 60 * 60 * 1000 // 12 horas
 const MAX_PIPELINES_PER_WINDOW = 10
 
-// Stages padrão replicadas do createDefaultPipeline para consistência entre pipelines novos
-const DEFAULT_STAGES = [
-  { name: 'Lead', color: '#6b7280', position: 1 },
-  { name: 'Qualificação', color: '#3b82f6', position: 2 },
-  { name: 'Proposta', color: '#f59e0b', position: 3 },
-  { name: 'Negociação', color: '#8b5cf6', position: 4 },
-  { name: 'Ganho', color: '#22c55e', position: 5 },
-  { name: 'Perdido', color: '#ef4444', position: 6 },
-]
-
 export const createPipeline = orgActionClient
   .schema(createPipelineSchema)
   .action(async ({ parsedInput: data, ctx }) => {
@@ -47,15 +37,12 @@ export const createPipeline = orgActionClient
     })
     const isFirstPipeline = existingCount === 0
 
-    // 5. Criar o pipeline junto com as stages padrão em uma única transação
+    // 5. Criar o pipeline vazio — user configura as etapas na página de detalhe
     const pipeline = await db.pipeline.create({
       data: {
         name: data.name,
         organizationId: ctx.orgId,
         isDefault: isFirstPipeline,
-        stages: {
-          create: DEFAULT_STAGES,
-        },
       },
       select: { id: true },
     })
