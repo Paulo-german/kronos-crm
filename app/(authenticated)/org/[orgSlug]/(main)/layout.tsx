@@ -19,6 +19,8 @@ import {
   getPendingInviteNotifications,
   getPendingInviteUnreadCount,
 } from '@/_data-access/notification/get-pending-invite-notifications'
+import { getUserProfileStatus } from '@/_data-access/user-profile/get-user-profile-status'
+import { WelcomeSurveyModal } from '@/_components/welcome-survey/welcome-survey-modal'
 
 interface MainLayoutProps {
   children: React.ReactNode
@@ -38,6 +40,7 @@ const MainLayout = async ({ children, params }: MainLayoutProps) => {
     userOrganizations,
     unreadCount,
     recentNotifications,
+    profileCompleted,
   ] = await Promise.all([
     getOnboardingStatus(orgId),
     getTrialStatus(orgId),
@@ -47,6 +50,7 @@ const MainLayout = async ({ children, params }: MainLayoutProps) => {
     getUserOrganizations(userId),
     getUnreadNotificationCount(userId, orgId),
     getRecentNotifications(userId, orgId),
+    getUserProfileStatus(userId),
   ])
 
   // Buscar notificações de orgs com convite pendente (cross-org)
@@ -124,6 +128,7 @@ const MainLayout = async ({ children, params }: MainLayoutProps) => {
         </div>
       </div>
       <DashboardTourTrigger />
+      {userRole === 'OWNER' && !profileCompleted && <WelcomeSurveyModal />}
     </div>
   )
 }
