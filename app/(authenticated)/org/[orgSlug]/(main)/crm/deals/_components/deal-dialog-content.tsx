@@ -236,32 +236,6 @@ export function DealDialogContent({
               )}
             />
 
-            <FormField
-              control={editForm.control}
-              name="expectedCloseDate"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Previsão de fechamento</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="date"
-                      disabled={isPending}
-                      value={
-                        field.value
-                          ? new Date(field.value).toISOString().split('T')[0]
-                          : ''
-                      }
-                      onChange={(e) =>
-                        field.onChange(
-                          e.target.value ? new Date(e.target.value) : undefined,
-                        )
-                      }
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
             <div className="flex justify-end gap-2 pt-4">
               <Button
