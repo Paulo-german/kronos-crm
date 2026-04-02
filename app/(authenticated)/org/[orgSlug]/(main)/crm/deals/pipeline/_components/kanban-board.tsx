@@ -225,20 +225,13 @@ export function KanbanBoard({
         )
       }
 
-      // Filtro de Range de Datas
-      if (filters.expectedCloseDateFrom || filters.expectedCloseDateTo) {
+      // Filtro de Range de Datas (data de criação)
+      if (filters.createdAtFrom || filters.createdAtTo) {
         stageDeals = stageDeals.filter((deal) => {
-          if (!deal.expectedCloseDate) return false
-          const dealDate = new Date(deal.expectedCloseDate)
-          if (
-            filters.expectedCloseDateFrom &&
-            dealDate < filters.expectedCloseDateFrom
-          )
+          const dealDate = new Date(deal.createdAt)
+          if (filters.createdAtFrom && dealDate < filters.createdAtFrom)
             return false
-          if (
-            filters.expectedCloseDateTo &&
-            dealDate > filters.expectedCloseDateTo
-          )
+          if (filters.createdAtTo && dealDate > filters.createdAtTo)
             return false
           return true
         })

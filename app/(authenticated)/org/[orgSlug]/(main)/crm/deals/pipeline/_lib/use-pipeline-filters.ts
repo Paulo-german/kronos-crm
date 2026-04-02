@@ -46,10 +46,10 @@ export function usePipelineFilters() {
     () => ({
       status: filterParams.status as DealStatus[],
       priority: filterParams.priority as DealPriority[],
-      expectedCloseDateFrom: filterParams.dateFrom
+      createdAtFrom: filterParams.dateFrom
         ? new Date(filterParams.dateFrom)
         : null,
-      expectedCloseDateTo: filterParams.dateTo
+      createdAtTo: filterParams.dateTo
         ? new Date(filterParams.dateTo)
         : null,
       valueMin: filterParams.valueMin,
@@ -66,11 +66,11 @@ export function usePipelineFilters() {
       setFilterParams({
         status: merged.status.length > 0 ? merged.status : null,
         priority: merged.priority.length > 0 ? merged.priority : null,
-        dateFrom: merged.expectedCloseDateFrom
-          ? merged.expectedCloseDateFrom.toISOString().split('T')[0]
+        dateFrom: merged.createdAtFrom
+          ? merged.createdAtFrom.toISOString().split('T')[0]
           : null,
-        dateTo: merged.expectedCloseDateTo
-          ? merged.expectedCloseDateTo.toISOString().split('T')[0]
+        dateTo: merged.createdAtTo
+          ? merged.createdAtTo.toISOString().split('T')[0]
           : null,
         valueMin: merged.valueMin,
         valueMax: merged.valueMax,
@@ -101,7 +101,7 @@ export function usePipelineFilters() {
     let count = 0
     if (filters.status.length > 0) count++
     if (filters.priority.length > 0) count++
-    if (filters.expectedCloseDateFrom || filters.expectedCloseDateTo) count++
+    if (filters.createdAtFrom || filters.createdAtTo) count++
     if (filters.valueMin !== null || filters.valueMax !== null) count++
     return count
   }, [filters])

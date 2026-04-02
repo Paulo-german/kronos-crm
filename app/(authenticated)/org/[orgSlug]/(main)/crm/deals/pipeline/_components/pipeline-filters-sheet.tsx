@@ -78,8 +78,8 @@ export function PipelineFiltersSheet({
     setLocalFilters({
       status: [],
       priority: [],
-      expectedCloseDateFrom: null,
-      expectedCloseDateTo: null,
+      createdAtFrom: null,
+      createdAtTo: null,
       valueMin: null,
       valueMax: null,
     })
@@ -161,7 +161,7 @@ export function PipelineFiltersSheet({
           {/* Date Range Filter */}
           <div className="space-y-3">
             <Label className="text-sm font-semibold">
-              Data Prevista de Fechamento
+              Data de Criação
             </Label>
             <div className="grid gap-2">
               <Popover>
@@ -170,26 +170,26 @@ export function PipelineFiltersSheet({
                     variant="outline"
                     className={cn(
                       'w-full justify-start text-left font-normal',
-                      !localFilters.expectedCloseDateFrom &&
+                      !localFilters.createdAtFrom &&
                         'text-muted-foreground',
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {localFilters.expectedCloseDateFrom ? (
-                      format(localFilters.expectedCloseDateFrom, 'PPP', {
+                    {localFilters.createdAtFrom ? (
+                      format(localFilters.createdAtFrom, 'PPP', {
                         locale: ptBR,
                       })
                     ) : (
                       <span>Data inicial</span>
                     )}
-                    {localFilters.expectedCloseDateFrom && (
+                    {localFilters.createdAtFrom && (
                       <X
                         className="ml-auto h-4 w-4 opacity-50 hover:opacity-100"
                         onClick={(e) => {
                           e.stopPropagation()
                           setLocalFilters({
                             ...localFilters,
-                            expectedCloseDateFrom: null,
+                            createdAtFrom: null,
                           })
                         }}
                       />
@@ -199,11 +199,11 @@ export function PipelineFiltersSheet({
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
-                    selected={localFilters.expectedCloseDateFrom || undefined}
+                    selected={localFilters.createdAtFrom || undefined}
                     onSelect={(date) =>
                       setLocalFilters({
                         ...localFilters,
-                        expectedCloseDateFrom: date || null,
+                        createdAtFrom: date || null,
                       })
                     }
                   />
@@ -216,26 +216,26 @@ export function PipelineFiltersSheet({
                     variant="outline"
                     className={cn(
                       'w-full justify-start text-left font-normal',
-                      !localFilters.expectedCloseDateTo &&
+                      !localFilters.createdAtTo &&
                         'text-muted-foreground',
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {localFilters.expectedCloseDateTo ? (
-                      format(localFilters.expectedCloseDateTo, 'PPP', {
+                    {localFilters.createdAtTo ? (
+                      format(localFilters.createdAtTo, 'PPP', {
                         locale: ptBR,
                       })
                     ) : (
                       <span>Data final</span>
                     )}
-                    {localFilters.expectedCloseDateTo && (
+                    {localFilters.createdAtTo && (
                       <X
                         className="ml-auto h-4 w-4 opacity-50 hover:opacity-100"
                         onClick={(e) => {
                           e.stopPropagation()
                           setLocalFilters({
                             ...localFilters,
-                            expectedCloseDateTo: null,
+                            createdAtTo: null,
                           })
                         }}
                       />
@@ -245,11 +245,11 @@ export function PipelineFiltersSheet({
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
-                    selected={localFilters.expectedCloseDateTo || undefined}
+                    selected={localFilters.createdAtTo || undefined}
                     onSelect={(date) =>
                       setLocalFilters({
                         ...localFilters,
-                        expectedCloseDateTo: date || null,
+                        createdAtTo: date || null,
                       })
                     }
                   />

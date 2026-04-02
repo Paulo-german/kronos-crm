@@ -78,24 +78,24 @@ export function PipelineFilterBadges({
       ))}
 
       {/* Date range badge */}
-      {(filters.expectedCloseDateFrom || filters.expectedCloseDateTo) && (
+      {(filters.createdAtFrom || filters.createdAtTo) && (
         <Badge
           variant="secondary"
           className="gap-1 pr-1 text-xs font-normal"
         >
-          Data:{' '}
-          {filters.expectedCloseDateFrom
-            ? format(filters.expectedCloseDateFrom, 'dd/MM/yy', { locale: ptBR })
+          Criação:{' '}
+          {filters.createdAtFrom
+            ? format(filters.createdAtFrom, 'dd/MM/yy', { locale: ptBR })
             : '...'}
           {' - '}
-          {filters.expectedCloseDateTo
-            ? format(filters.expectedCloseDateTo, 'dd/MM/yy', { locale: ptBR })
+          {filters.createdAtTo
+            ? format(filters.createdAtTo, 'dd/MM/yy', { locale: ptBR })
             : '...'}
           <button
             onClick={() =>
               onFiltersChange({
-                expectedCloseDateFrom: null,
-                expectedCloseDateTo: null,
+                createdAtFrom: null,
+                createdAtTo: null,
               })
             }
             className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20"

@@ -3,8 +3,8 @@ import { DealStatus, DealPriority } from '@prisma/client'
 export interface PipelineFilters {
   status: DealStatus[]
   priority: DealPriority[]
-  expectedCloseDateFrom: Date | null
-  expectedCloseDateTo: Date | null
+  createdAtFrom: Date | null
+  createdAtTo: Date | null
   valueMin: number | null
   valueMax: number | null
 }
@@ -12,8 +12,8 @@ export interface PipelineFilters {
 export const DEFAULT_FILTERS: PipelineFilters = {
   status: [],
   priority: [],
-  expectedCloseDateFrom: null,
-  expectedCloseDateTo: null,
+  createdAtFrom: null,
+  createdAtTo: null,
   valueMin: null,
   valueMax: null,
 }
