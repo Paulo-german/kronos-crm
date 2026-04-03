@@ -7,7 +7,7 @@ import { randomUUID } from 'crypto'
 import { revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission, requireQuota } from '@/_lib/rbac'
 import { sendInviteEmail } from '@/_lib/email/send-invite-email'
-import { createNotification } from '@/_lib/notifications/create-notification'
+import { scheduleNotification } from '@/_lib/notifications/create-notification'
 
 export const inviteMember = orgActionClient
   .schema(inviteMemberSchema)
@@ -83,7 +83,7 @@ export const inviteMember = orgActionClient
     })
 
     if (existingUser) {
-      void createNotification({
+      scheduleNotification({
         orgId: ctx.orgId,
         userId: existingUser.id,
         type: 'USER_ACTION',

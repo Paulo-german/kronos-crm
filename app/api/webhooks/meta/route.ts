@@ -8,7 +8,7 @@ import { parseMetaMessage } from '@/_lib/meta/parse-meta-message'
 import { sendMetaTextMessage } from '@/_lib/meta/send-meta-message'
 import { resolveConversation } from '@/_lib/evolution/resolve-conversation'
 import { checkBusinessHours } from '@/_lib/agent/check-business-hours'
-import { notifyOrgAdmins } from '@/_lib/notifications/notify-org-admins'
+import { scheduleNotifyOrgAdmins } from '@/_lib/notifications/notify-org-admins'
 import { resolveAgentForConversation } from '@/../trigger/lib/resolve-agent'
 import { tasks } from '@trigger.dev/sdk/v3'
 import type { processAgentMessage } from '@/../../trigger/process-agent-message'
@@ -185,7 +185,7 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
         })
 
         if (!recentDisconnectedNotification) {
-          void notifyOrgAdmins({
+          scheduleNotifyOrgAdmins({
             orgId,
             type: 'SYSTEM',
             title: 'WhatsApp desconectado',

@@ -1,4 +1,5 @@
 import 'server-only'
+import { after } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import { db } from '@/_lib/prisma'
 import type { NotificationType } from '@prisma/client'
@@ -75,6 +76,16 @@ export async function createNotification(input: CreateNotificationInput) {
   revalidateTag(`notifications:${input.userId}`)
 
   return notification
+}
+
+/**
+ * Agenda criação de notificação para após o response, preservando o contexto do request.
+ * Usar no lugar de `void createNotification(...)` em Server Actions e Route Handlers.
+ */
+export function scheduleNotification(input: CreateNotificationInput) {
+  after(async () => {
+    await createNotification(input)
+  })
 }
 
 /**

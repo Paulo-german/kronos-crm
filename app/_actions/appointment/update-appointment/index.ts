@@ -1,5 +1,6 @@
 'use server'
 
+import { after } from 'next/server'
 import { orgActionClient } from '@/_lib/safe-action'
 import { updateAppointmentSchema } from './schema'
 import { db } from '@/_lib/prisma'
@@ -130,12 +131,15 @@ export const updateAppointment = orgActionClient
     // Notificar novo responsável quando há transferência de ownership para outro usuário
     if (
       isOwnershipChange(data.assignedTo, existing.assignedTo) &&
+      data.assignedTo !== undefined &&
       data.assignedTo !== ctx.userId
     ) {
-      void getOrgSlug(ctx.orgId).then((slug) => {
-        void createNotification({
+      const newAssignedTo = data.assignedTo
+      after(async () => {
+        const slug = await getOrgSlug(ctx.orgId)
+        await createNotification({
           orgId: ctx.orgId,
-          userId: data.assignedTo!,
+          userId: newAssignedTo,
           type: 'USER_ACTION',
           title: 'Agendamento transferido para você',
           body: `O agendamento "${existing.title}" foi transferido para você.`,

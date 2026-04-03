@@ -4,7 +4,7 @@ import { authActionClient } from '@/_lib/safe-action'
 import { acceptInviteSchema } from './schema'
 import { db } from '@/_lib/prisma'
 import { revalidateTag } from 'next/cache'
-import { createNotification } from '@/_lib/notifications/create-notification'
+import { scheduleNotification } from '@/_lib/notifications/create-notification'
 
 export const acceptInvite = authActionClient
   .schema(acceptInviteSchema)
@@ -83,9 +83,11 @@ export const acceptInvite = authActionClient
     })
 
     for (const admin of admins) {
-      void createNotification({
+      const adminUserId = admin.userId
+      if (!adminUserId) continue
+      scheduleNotification({
         orgId: member.organizationId,
-        userId: admin.userId!,
+        userId: adminUserId,
         type: 'USER_ACTION',
         title: 'Novo membro na equipe',
         body: `${member.email} aceitou o convite e entrou na equipe.`,

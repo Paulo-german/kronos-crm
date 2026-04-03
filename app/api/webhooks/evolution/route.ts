@@ -7,7 +7,7 @@ import { parseEvolutionMessage, isGroupMessage, resolveEffectiveJid } from '@/_l
 import { resolveConversation } from '@/_lib/evolution/resolve-conversation'
 import { sendWhatsAppMessage, sendPresence } from '@/_lib/evolution/send-message'
 import { checkBusinessHours } from '@/_lib/agent/check-business-hours'
-import { notifyOrgAdmins } from '@/_lib/notifications/notify-org-admins'
+import { scheduleNotifyOrgAdmins } from '@/_lib/notifications/notify-org-admins'
 import { resolveAgentForConversation } from '@/../trigger/lib/resolve-agent'
 import { tasks } from '@trigger.dev/sdk/v3'
 import type { processAgentMessage } from '@/../../trigger/process-agent-message'
@@ -97,7 +97,7 @@ export async function POST(req: Request) {
       })
 
       if (!recent) {
-        void notifyOrgAdmins({
+        scheduleNotifyOrgAdmins({
           orgId: inbox.organizationId,
           type: 'SYSTEM',
           title: 'Conexao WhatsApp perdida',
@@ -308,7 +308,7 @@ export async function POST(req: Request) {
       })
 
       if (!recentDisconnectedNotification) {
-        void notifyOrgAdmins({
+        scheduleNotifyOrgAdmins({
           orgId,
           type: 'SYSTEM',
           title: 'WhatsApp desconectado',

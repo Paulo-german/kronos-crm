@@ -7,7 +7,7 @@ import { parseZApiMessage } from '@/_lib/zapi/parse-message'
 import { sendZApiTextMessage } from '@/_lib/zapi/send-message'
 import { resolveConversation } from '@/_lib/evolution/resolve-conversation'
 import { checkBusinessHours } from '@/_lib/agent/check-business-hours'
-import { notifyOrgAdmins } from '@/_lib/notifications/notify-org-admins'
+import { scheduleNotifyOrgAdmins } from '@/_lib/notifications/notify-org-admins'
 import { resolveAgentForConversation } from '@/../trigger/lib/resolve-agent'
 import { tasks } from '@trigger.dev/sdk/v3'
 import type { processAgentMessage } from '@/../../trigger/process-agent-message'
@@ -225,7 +225,7 @@ export async function POST(req: Request) {
       })
 
       if (!recentDisconnectedNotification) {
-        void notifyOrgAdmins({
+        scheduleNotifyOrgAdmins({
           orgId,
           type: 'SYSTEM',
           title: 'WhatsApp desconectado',

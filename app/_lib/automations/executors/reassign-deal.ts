@@ -1,5 +1,6 @@
 import 'server-only'
 
+import { after } from 'next/server'
 import { db } from '@/_lib/prisma'
 import { revalidateTag } from 'next/cache'
 import { Prisma } from '@prisma/client'
@@ -170,9 +171,10 @@ export async function executeReassignDeal(ctx: ExecutorContext): Promise<Executo
     },
   })
 
-  // Notifica o novo responsável sem bloquear
-  void getOrgSlug(ctx.orgId).then((slug) => {
-    void createNotification({
+  // Notifica o novo responsável após o response para preservar o contexto do request
+  after(async () => {
+    const slug = await getOrgSlug(ctx.orgId)
+    await createNotification({
       orgId: ctx.orgId,
       userId: targetUserId,
       type: 'USER_ACTION',

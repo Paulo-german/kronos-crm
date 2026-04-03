@@ -1,5 +1,6 @@
 'use server'
 
+import { after } from 'next/server'
 import { orgActionClient } from '@/_lib/safe-action'
 import { transferContactSchema } from './schema'
 import { db } from '@/_lib/prisma'
@@ -132,7 +133,7 @@ export const transferContact = orgActionClient
         revalidatePath('/crm/deals/list')
       }
 
-      // 7. Notificação fire-and-forget para o novo responsável (somente se for diferente do executor)
+      // 7. Notificar novo responsável (somente se for diferente do executor)
       if (data.newAssigneeId !== ctx.userId) {
         const cascadeCount = cascadedDealIds.length
         const notificationBody =
@@ -140,8 +141,9 @@ export const transferContact = orgActionClient
             ? `O contato "${contact.name}" foi transferido para você (incluindo ${cascadeCount} negócio(s) vinculado(s)).`
             : `O contato "${contact.name}" foi transferido para você.`
 
-        void getOrgSlug(ctx.orgId).then((slug) => {
-          void createNotification({
+        after(async () => {
+          const slug = await getOrgSlug(ctx.orgId)
+          await createNotification({
             orgId: ctx.orgId,
             userId: data.newAssigneeId,
             type: 'USER_ACTION',

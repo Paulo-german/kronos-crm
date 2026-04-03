@@ -1,5 +1,6 @@
 'use server'
 
+import { after } from 'next/server'
 import { orgActionClient } from '@/_lib/safe-action'
 import { createDealSchema } from './schema'
 import { db } from '@/_lib/prisma'
@@ -94,8 +95,9 @@ export const createDeal = orgActionClient
 
     // Notificar responsável quando o deal é atribuído a outro usuário
     if (assignedTo !== ctx.userId) {
-      void getOrgSlug(ctx.orgId).then((slug) => {
-        void createNotification({
+      after(async () => {
+        const slug = await getOrgSlug(ctx.orgId)
+        await createNotification({
           orgId: ctx.orgId,
           userId: assignedTo,
           type: 'USER_ACTION',
