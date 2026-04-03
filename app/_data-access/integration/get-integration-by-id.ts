@@ -44,7 +44,7 @@ export const getIntegrationById = async (
 
   const getCached = unstable_cache(
     async () => fetchIntegrationByIdFromDb(integrationId, ctx.orgId, ctx.userId, elevated),
-    [`integration-${integrationId}-${ctx.userId}`],
+    [`integration-${integrationId}-${ctx.userId}-${elevated}`],
     {
       tags: [`integrations:${ctx.orgId}`, `integration:${integrationId}`],
     },

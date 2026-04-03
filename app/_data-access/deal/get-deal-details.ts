@@ -252,7 +252,7 @@ export const getDealDetails = async (
 
   const getCached = unstable_cache(
     async () => fetchDealDetailsFromDb(dealId, ctx.orgId, ctx.userId, elevated),
-    [`deal-details-${dealId}-${ctx.userId}`],
+    [`deal-details-${dealId}-${ctx.userId}-${elevated}`],
     {
       tags: [`deal:${dealId}`, `deals:${ctx.orgId}`],
     },

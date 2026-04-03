@@ -49,7 +49,7 @@ export const getContactsOptions = async (
 
   const getCached = unstable_cache(
     async () => fetchContactsOptionsFromDb(ctx.orgId, ctx.userId, elevated),
-    [`contacts-options-${ctx.orgId}-${ctx.userId}`],
+    [`contacts-options-${ctx.orgId}-${ctx.userId}-${elevated}`],
     {
       tags: [`contacts:${ctx.orgId}`],
     },

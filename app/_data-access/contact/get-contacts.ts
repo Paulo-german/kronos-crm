@@ -117,7 +117,7 @@ export const getContacts = async (ctx: RBACContext): Promise<ContactDto[]> => {
 
   const getCached = unstable_cache(
     async () => fetchContactsFromDb(ctx.orgId, ctx.userId, elevated),
-    [`contacts-${ctx.orgId}-${ctx.userId}`],
+    [`contacts-${ctx.orgId}-${ctx.userId}-${elevated}`],
     {
       tags: [`contacts:${ctx.orgId}`],
     },
@@ -260,7 +260,7 @@ export const getContactsPaginated = async (
   const getCached = unstable_cache(
     async () =>
       fetchContactsPaginatedFromDb(ctx.orgId, ctx.userId, elevated, params),
-    [`contacts-${ctx.orgId}-${ctx.userId}-${paramsKey}`],
+    [`contacts-${ctx.orgId}-${ctx.userId}-${elevated}-${paramsKey}`],
     {
       tags: [`contacts:${ctx.orgId}`],
     },

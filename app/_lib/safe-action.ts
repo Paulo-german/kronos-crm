@@ -87,6 +87,7 @@ export const orgActionClient = createSafeActionClient({
     ctx: {
       userId: user.id,
       orgId: membership.orgId,
+      orgSlug,
       userRole: membership.userRole as MemberRole,
     },
   })

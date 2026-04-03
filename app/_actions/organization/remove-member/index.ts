@@ -42,8 +42,9 @@ export const removeMember = orgActionClient
 
     revalidateTag(`org-members:${ctx.orgId}`)
 
-    // Invalidar cache do seletor de orgs do membro removido
+    // Invalidar cache de membership e seletor de orgs do membro removido
     if (memberToRemove.userId) {
+      revalidateTag(`membership:${memberToRemove.userId}:${ctx.orgSlug}`)
       revalidateTag(`user-orgs:${memberToRemove.userId}`)
     }
 

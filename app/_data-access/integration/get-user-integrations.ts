@@ -43,7 +43,7 @@ export const getUserIntegrations = async (ctx: RBACContext): Promise<UserIntegra
 
   const getCached = unstable_cache(
     async () => fetchUserIntegrationsFromDb(ctx.orgId, ctx.userId, elevated),
-    [`user-integrations-${ctx.orgId}-${ctx.userId}`],
+    [`user-integrations-${ctx.orgId}-${ctx.userId}-${elevated}`],
     {
       tags: [`integrations:${ctx.orgId}`],
       revalidate: 120,

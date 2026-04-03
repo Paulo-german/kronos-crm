@@ -44,7 +44,7 @@ export const validateMembership = cache(
       async () => fetchMembership(userId, orgSlug),
       [`membership-${userId}-${orgSlug}`],
       {
-        tags: [`membership:${userId}:${orgSlug}`, `org-members:${orgSlug}`],
+        tags: [`membership:${userId}:${orgSlug}`],
         revalidate: 60 * 60, // 1 hora
       },
     )

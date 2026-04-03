@@ -90,7 +90,7 @@ export const getContactById = async (
 
   const getCached = unstable_cache(
     async () => fetchContactByIdFromDb(contactId, ctx.orgId, ctx.userId, elevated),
-    [`contact-${contactId}-${ctx.userId}`],
+    [`contact-${contactId}-${ctx.userId}-${elevated}`],
     {
       tags: [`contacts:${ctx.orgId}`, `contact:${contactId}`],
     },

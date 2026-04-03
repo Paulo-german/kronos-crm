@@ -56,6 +56,10 @@ export const updateMemberRole = orgActionClient
       data: { role },
     })
 
+    // Invalidar cache de membership do usuário alvo (role cacheado em validate-membership)
+    if (member.userId) {
+      revalidateTag(`membership:${member.userId}:${ctx.orgSlug}`)
+    }
     revalidateTag(`org-members:${ctx.orgId}`)
 
     return { success: true }

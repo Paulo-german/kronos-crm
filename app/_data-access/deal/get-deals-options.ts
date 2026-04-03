@@ -58,7 +58,7 @@ export const getDealsOptions = async (
 
   const getCached = unstable_cache(
     async () => fetchDealsOptionsFromDb(ctx.orgId, ctx.userId, elevated),
-    [`deals-options-${ctx.orgId}-${ctx.userId}`],
+    [`deals-options-${ctx.orgId}-${ctx.userId}-${elevated}`],
     {
       tags: [`deals-options:${ctx.orgId}`],
     },

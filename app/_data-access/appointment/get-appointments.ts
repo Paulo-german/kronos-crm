@@ -78,7 +78,7 @@ export const getAppointments = async (
 
   const getCached = unstable_cache(
     async () => fetchAppointmentsFromDb(ctx.orgId, ctx.userId, elevated),
-    [`appointments-${ctx.orgId}-${ctx.userId}`],
+    [`appointments-${ctx.orgId}-${ctx.userId}-${elevated}`],
     {
       tags: [`appointments:${ctx.orgId}`],
     },

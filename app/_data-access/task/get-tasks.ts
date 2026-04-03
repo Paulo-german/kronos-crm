@@ -61,7 +61,7 @@ export const getTasks = async (ctx: RBACContext): Promise<TaskDto[]> => {
 
   const getCached = unstable_cache(
     async () => fetchTasksFromDb(ctx.orgId, ctx.userId, elevated),
-    [`tasks-${ctx.orgId}-${ctx.userId}`],
+    [`tasks-${ctx.orgId}-${ctx.userId}-${elevated}`],
     {
       tags: [`tasks:${ctx.orgId}`],
     },

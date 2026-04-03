@@ -116,7 +116,7 @@ export const getDeals = async (ctx: RBACContext): Promise<DealListDto[]> => {
 
   const getCached = unstable_cache(
     async () => fetchDealsFromDb(ctx.orgId, ctx.userId, elevated),
-    [`deals-${ctx.orgId}-${ctx.userId}`],
+    [`deals-${ctx.orgId}-${ctx.userId}-${elevated}`],
     {
       tags: [`deals:${ctx.orgId}`],
     },
