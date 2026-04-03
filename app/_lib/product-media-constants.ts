@@ -1,6 +1,6 @@
 // Limites de tamanho de arquivo
 export const MAX_IMAGE_SIZE = 5 * 1024 * 1024 // 5MB
-export const MAX_VIDEO_SIZE = 20 * 1024 * 1024 // 20MB
+export const MAX_VIDEO_SIZE = 5 * 1024 * 1024 // 5MB
 
 // Limites de quantidade por produto
 export const MAX_IMAGES_PER_PRODUCT = 3
