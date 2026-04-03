@@ -1,10 +1,11 @@
 'use server'
 
 import { orgActionClient } from '@/_lib/safe-action'
-import { uploadProductMediaSchema } from './schema'
+import { createMediaUploadUrlSchema, confirmMediaUploadSchema, isVideoType } from './schema'
 import { db } from '@/_lib/prisma'
 import { getB2Client } from '@/_lib/b2/client'
 import { PutObjectCommand } from '@aws-sdk/client-s3'
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { revalidateTag } from 'next/cache'
 import { randomUUID } from 'crypto'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
@@ -13,8 +14,6 @@ import {
   MAX_VIDEO_SIZE,
   MAX_IMAGES_PER_PRODUCT,
   MAX_VIDEOS_PER_PRODUCT,
-  ACCEPTED_IMAGE_TYPES,
-  ACCEPTED_VIDEO_TYPES,
 } from '@/_lib/product-media-constants'
 
 const BUCKET = process.env.B2_BUCKET_NAME ?? 'kronos-media'
@@ -27,22 +26,17 @@ const MIME_TO_EXT: Record<string, string> = {
   'video/quicktime': 'mov',
 }
 
-export const uploadProductMedia = orgActionClient
-  .schema(uploadProductMediaSchema)
-  .action(async ({ parsedInput: { file, productId }, ctx }) => {
-    console.log('[upload-product-media] Início', {
-      productId,
-      fileName: file?.name,
-      fileSize: file?.size,
-      fileType: file?.type,
-      hasArrayBuffer: typeof file?.arrayBuffer === 'function',
-      fileConstructor: file?.constructor?.name,
-    })
+// ---------------------------------------------------------------------------
+// Step 1: Gerar pre-signed URL para upload direto ao B2
+// ---------------------------------------------------------------------------
 
-    // 1. RBAC — apenas ADMIN/OWNER podem atualizar produtos
+export const createMediaUploadUrl = orgActionClient
+  .schema(createMediaUploadUrlSchema)
+  .action(async ({ parsedInput: { productId, mimeType, fileSize }, ctx }) => {
+    // 1. RBAC
     requirePermission(canPerformAction(ctx, 'product', 'update'))
 
-    // 2. Ownership check — produto pertence à organização
+    // 2. Ownership check
     const product = await db.product.findFirst({
       where: { id: productId, organizationId: ctx.orgId },
     })
@@ -51,24 +45,16 @@ export const uploadProductMedia = orgActionClient
       throw new Error('Produto não encontrado.')
     }
 
-    // 3. Validar tipo MIME
-    const mimeType = file.type || 'application/octet-stream'
-    const isImage = (ACCEPTED_IMAGE_TYPES as readonly string[]).includes(mimeType)
-    const isVideo = (ACCEPTED_VIDEO_TYPES as readonly string[]).includes(mimeType)
-
-    if (!isImage && !isVideo) {
-      throw new Error('Tipo de arquivo não suportado. Use JPEG, PNG, WebP, MP4 ou QuickTime.')
-    }
-
-    // 4. Validar tamanho
+    // 3. Validar tamanho
+    const isVideo = isVideoType(mimeType)
     const maxSize = isVideo ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE
     const maxSizeLabel = isVideo ? '20MB' : '5MB'
 
-    if (file.size > maxSize) {
+    if (fileSize > maxSize) {
       throw new Error(`Arquivo excede o limite de ${maxSizeLabel}.`)
     }
 
-    // 5. Validar contagem de mídias existentes
+    // 4. Validar contagem de mídias existentes
     const mediaType = isVideo ? 'VIDEO' : 'IMAGE'
     const maxCount = isVideo ? MAX_VIDEOS_PER_PRODUCT : MAX_IMAGES_PER_PRODUCT
     const typeLabel = isVideo ? 'vídeo' : 'imagem'
@@ -81,21 +67,56 @@ export const uploadProductMedia = orgActionClient
       throw new Error(`Limite de ${maxCount} ${typeLabel}(s) por produto atingido.`)
     }
 
-    // 6. Upload para B2
+    // 5. Gerar path e pre-signed URL
     const ext = MIME_TO_EXT[mimeType] ?? 'bin'
     const fileId = randomUUID()
     const storagePath = `${ctx.orgId}/products/${productId}/${fileId}.${ext}`
-    const buffer = Buffer.from(await file.arrayBuffer())
 
-    await getB2Client().send(
-      new PutObjectCommand({
-        Bucket: BUCKET,
-        Key: storagePath,
-        Body: buffer,
-        ContentType: mimeType,
-      }),
-    )
+    const command = new PutObjectCommand({
+      Bucket: BUCKET,
+      Key: storagePath,
+      ContentType: mimeType,
+    })
 
+    const uploadUrl = await getSignedUrl(getB2Client(), command, { expiresIn: 300 })
+
+    return { uploadUrl, storagePath }
+  })
+
+// ---------------------------------------------------------------------------
+// Step 3: Confirmar upload e criar registro no banco
+// ---------------------------------------------------------------------------
+
+export const confirmMediaUpload = orgActionClient
+  .schema(confirmMediaUploadSchema)
+  .action(async ({ parsedInput: { productId, storagePath, fileName, mimeType, fileSize }, ctx }) => {
+    // 1. RBAC
+    requirePermission(canPerformAction(ctx, 'product', 'update'))
+
+    // 2. Ownership check
+    const product = await db.product.findFirst({
+      where: { id: productId, organizationId: ctx.orgId },
+    })
+
+    if (!product) {
+      throw new Error('Produto não encontrado.')
+    }
+
+    // 3. Revalidar contagem (proteção contra race condition)
+    const isVideo = isVideoType(mimeType)
+    const mediaType = isVideo ? 'VIDEO' : 'IMAGE'
+    const maxCount = isVideo ? MAX_VIDEOS_PER_PRODUCT : MAX_IMAGES_PER_PRODUCT
+    const typeLabel = isVideo ? 'vídeo' : 'imagem'
+
+    const existingCount = await db.productMedia.count({
+      where: { productId, organizationId: ctx.orgId, type: mediaType },
+    })
+
+    if (existingCount >= maxCount) {
+      throw new Error(`Limite de ${maxCount} ${typeLabel}(s) por produto atingido.`)
+    }
+
+    // 4. Construir URL pública
     const publicBaseUrl = process.env.B2_PUBLIC_URL
     if (!publicBaseUrl) {
       throw new Error('B2_PUBLIC_URL não configurado.')
@@ -103,7 +124,7 @@ export const uploadProductMedia = orgActionClient
 
     const publicUrl = `${publicBaseUrl}/${storagePath}`
 
-    // 7. Criar registro no banco com order = count + 1 (auto-order)
+    // 5. Criar registro no banco
     const media = await db.productMedia.create({
       data: {
         productId,
@@ -111,14 +132,14 @@ export const uploadProductMedia = orgActionClient
         type: mediaType,
         url: publicUrl,
         storagePath,
-        fileName: file.name,
+        fileName,
         mimeType,
-        fileSize: file.size,
+        fileSize,
         order: existingCount + 1,
       },
     })
 
-    // 8. Invalidar cache
+    // 6. Invalidar cache
     revalidateTag(`products:${ctx.orgId}`)
     revalidateTag(`product-media:${productId}`)
 

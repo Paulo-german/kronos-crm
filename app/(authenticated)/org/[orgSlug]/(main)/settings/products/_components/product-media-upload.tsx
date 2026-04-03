@@ -6,7 +6,7 @@ import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 import { UploadCloud, Loader2 } from 'lucide-react'
 import { cn } from '@/_lib/utils'
-import { uploadProductMedia } from '@/_actions/product/upload-product-media'
+import { createMediaUploadUrl, confirmMediaUpload } from '@/_actions/product/upload-product-media'
 
 interface ProductMediaUploadProps {
   productId: string
@@ -30,11 +30,18 @@ export function ProductMediaUpload({
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
   const [isDragOver, setIsDragOver] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
 
   const remaining = maxCount - currentCount
   const isAtLimit = remaining <= 0
 
-  const { execute, isPending } = useAction(uploadProductMedia, {
+  const createUrlAction = useAction(createMediaUploadUrl, {
+    onError: ({ error }) => {
+      toast.error(error.serverError || 'Erro ao preparar upload.')
+    },
+  })
+
+  const confirmAction = useAction(confirmMediaUpload, {
     onSuccess: () => {
       toast.success(
         mediaType === 'IMAGE'
@@ -43,21 +50,16 @@ export function ProductMediaUpload({
       )
       router.refresh()
       onUploadComplete?.()
-      if (inputRef.current) inputRef.current.value = ''
     },
     onError: ({ error }) => {
-      console.error('[upload-product-media] Client error:', JSON.stringify(error, null, 2))
-      const message =
-        error.serverError ||
-        (error.validationErrors?.file?._errors?.[0]) ||
-        'Erro inesperado no upload.'
-      toast.error(message)
-      if (inputRef.current) inputRef.current.value = ''
+      toast.error(error.serverError || 'Erro ao confirmar upload.')
     },
   })
 
+  const isPending = createUrlAction.isPending || confirmAction.isPending || isUploading
+
   const validateAndUpload = useCallback(
-    (file: File) => {
+    async (file: File) => {
       // Validação client-side ANTES do upload
       if (isAtLimit) {
         toast.error(
@@ -80,9 +82,49 @@ export function ProductMediaUpload({
         return
       }
 
-      execute({ file, productId })
+      try {
+        // 1. Pedir URL assinada ao server (leve — só metadata)
+        const urlResult = await createUrlAction.executeAsync({
+          productId,
+          fileName: file.name,
+          mimeType: file.type,
+          fileSize: file.size,
+        })
+
+        if (!urlResult?.data) return
+
+        const { uploadUrl, storagePath } = urlResult.data
+
+        // 2. Upload direto pro B2 (não passa pela Vercel)
+        setIsUploading(true)
+
+        const uploadResponse = await fetch(uploadUrl, {
+          method: 'PUT',
+          body: file,
+          headers: { 'Content-Type': file.type },
+        })
+
+        if (!uploadResponse.ok) {
+          throw new Error('Falha ao enviar arquivo.')
+        }
+
+        // 3. Confirmar no banco (leve — só metadata)
+        await confirmAction.executeAsync({
+          productId,
+          storagePath,
+          fileName: file.name,
+          mimeType: file.type,
+          fileSize: file.size,
+        })
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Erro inesperado no upload.'
+        toast.error(message)
+      } finally {
+        setIsUploading(false)
+        if (inputRef.current) inputRef.current.value = ''
+      }
     },
-    [productId, mediaType, maxSize, acceptedTypes, isAtLimit, maxCount, execute],
+    [productId, mediaType, maxSize, acceptedTypes, isAtLimit, maxCount, createUrlAction, confirmAction],
   )
 
   const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
@@ -97,7 +139,7 @@ export function ProductMediaUpload({
     setIsDragOver(false)
   }
 
-  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+  const handleDrop = async (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault()
     setIsDragOver(false)
 
@@ -107,13 +149,13 @@ export function ProductMediaUpload({
     const file = files[0]
     if (!file) return
 
-    validateAndUpload(file)
+    await validateAndUpload(file)
   }
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
-    validateAndUpload(file)
+    await validateAndUpload(file)
   }
 
   const handleClick = () => {
