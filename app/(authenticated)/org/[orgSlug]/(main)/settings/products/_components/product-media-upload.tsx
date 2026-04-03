@@ -2,9 +2,11 @@
 
 import { useRef, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 import { UploadCloud, Loader2 } from 'lucide-react'
 import { cn } from '@/_lib/utils'
+import { uploadProductMedia } from '@/_actions/product/upload-product-media'
 
 interface ProductMediaUploadProps {
   productId: string
@@ -27,14 +29,30 @@ export function ProductMediaUpload({
 }: ProductMediaUploadProps) {
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
-  const [isUploading, setIsUploading] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
 
   const remaining = maxCount - currentCount
   const isAtLimit = remaining <= 0
 
+  const { execute, isPending } = useAction(uploadProductMedia, {
+    onSuccess: () => {
+      toast.success(
+        mediaType === 'IMAGE'
+          ? 'Imagem adicionada com sucesso.'
+          : 'Vídeo adicionado com sucesso.',
+      )
+      router.refresh()
+      onUploadComplete?.()
+      if (inputRef.current) inputRef.current.value = ''
+    },
+    onError: ({ error }) => {
+      toast.error(error.serverError || 'Erro inesperado no upload.')
+      if (inputRef.current) inputRef.current.value = ''
+    },
+  })
+
   const validateAndUpload = useCallback(
-    async (file: File) => {
+    (file: File) => {
       // Validação client-side ANTES do upload
       if (isAtLimit) {
         toast.error(
@@ -57,50 +75,14 @@ export function ProductMediaUpload({
         return
       }
 
-      setIsUploading(true)
-
-      try {
-        const formData = new FormData()
-        formData.append('file', file)
-        formData.append('productId', productId)
-
-        const response = await fetch('/api/product-media/upload', {
-          method: 'POST',
-          body: formData,
-        })
-
-        const result = await response.json()
-
-        if (!response.ok) {
-          throw new Error(result.error || 'Erro ao fazer upload.')
-        }
-
-        toast.success(
-          mediaType === 'IMAGE'
-            ? 'Imagem adicionada com sucesso.'
-            : 'Vídeo adicionado com sucesso.',
-        )
-
-        router.refresh()
-        onUploadComplete?.()
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : 'Erro inesperado no upload.'
-        toast.error(message)
-      } finally {
-        setIsUploading(false)
-        // Limpa o input para permitir re-upload do mesmo arquivo
-        if (inputRef.current) {
-          inputRef.current.value = ''
-        }
-      }
+      execute({ file, productId })
     },
-    [productId, mediaType, maxSize, acceptedTypes, isAtLimit, maxCount, router, onUploadComplete],
+    [productId, mediaType, maxSize, acceptedTypes, isAtLimit, maxCount, execute],
   )
 
   const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault()
-    if (!isAtLimit && !isUploading) {
+    if (!isAtLimit && !isPending) {
       setIsDragOver(true)
     }
   }
@@ -110,29 +92,27 @@ export function ProductMediaUpload({
     setIsDragOver(false)
   }
 
-  const handleDrop = async (event: React.DragEvent<HTMLDivElement>) => {
+  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault()
     setIsDragOver(false)
 
-    if (isAtLimit || isUploading) return
+    if (isAtLimit || isPending) return
 
     const files = Array.from(event.dataTransfer.files)
     const file = files[0]
     if (!file) return
 
-    await validateAndUpload(file)
+    validateAndUpload(file)
   }
 
-  const handleFileChange = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
-    await validateAndUpload(file)
+    validateAndUpload(file)
   }
 
   const handleClick = () => {
-    if (isAtLimit || isUploading) return
+    if (isAtLimit || isPending) return
     inputRef.current?.click()
   }
 
@@ -155,7 +135,7 @@ export function ProductMediaUpload({
         isDragOver
           ? 'border-primary bg-primary/5'
           : 'border-border/60 bg-muted/20 hover:border-primary/50 hover:bg-muted/40',
-        (isUploading || isAtLimit) &&
+        (isPending || isAtLimit) &&
           'cursor-not-allowed opacity-60 hover:border-border/60 hover:bg-muted/20',
       )}
     >
@@ -165,10 +145,10 @@ export function ProductMediaUpload({
         className="sr-only"
         accept={acceptedTypes.join(',')}
         onChange={handleFileChange}
-        disabled={isUploading || isAtLimit}
+        disabled={isPending || isAtLimit}
       />
 
-      {isUploading ? (
+      {isPending ? (
         <>
           <Loader2 className="h-7 w-7 animate-spin text-primary" />
           <p className="text-sm font-medium text-muted-foreground">
