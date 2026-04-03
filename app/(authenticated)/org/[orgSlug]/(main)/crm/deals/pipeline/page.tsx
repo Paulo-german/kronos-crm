@@ -4,6 +4,7 @@ import { getOrgPipelines } from '@/_data-access/pipeline/get-org-pipelines'
 import { getDealsByPipeline } from '@/_data-access/deal/get-deals-by-pipeline'
 import { getContacts } from '@/_data-access/contact/get-contacts'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
+import { getTutorialCompletions } from '@/_data-access/tutorial/get-tutorial-completions'
 import { PipelineClient } from './_components/pipeline-client'
 import { createDefaultPipeline } from '@/_data-access/pipeline/create-default-pipeline'
 
@@ -27,8 +28,8 @@ const PipelinePage = async ({ params, searchParams }: PipelinePageProps) => {
   const finalPipeline =
     pipeline || (await createDefaultPipeline({ orgId: ctx.orgId }))
 
-  // Busca deals, contatos e membros em paralelo (com contexto RBAC)
-  const [dealsByStage, contacts, orgMembers] = await Promise.all([
+  // Busca deals, contatos, membros e tutoriais em paralelo (com contexto RBAC)
+  const [dealsByStage, contacts, orgMembers, completedTutorialIds] = await Promise.all([
     finalPipeline
       ? getDealsByPipeline(
           finalPipeline.stages.map((stage) => stage.id),
@@ -37,6 +38,7 @@ const PipelinePage = async ({ params, searchParams }: PipelinePageProps) => {
       : {},
     getContacts(ctx),
     getOrganizationMembers(ctx.orgId),
+    getTutorialCompletions(ctx.userId, ctx.orgId),
   ])
 
   const members = orgMembers.accepted
@@ -54,6 +56,7 @@ const PipelinePage = async ({ params, searchParams }: PipelinePageProps) => {
         members={members}
         currentUserId={ctx.userId}
         userRole={ctx.userRole}
+        isPipelineTutorialCompleted={completedTutorialIds.includes('pipeline')}
       />
     </div>
   )
