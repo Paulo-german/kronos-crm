@@ -13,6 +13,7 @@ interface ContactsDataTableProps {
   onDelete: (contact: ContactDto) => void
   onBulkDelete: (ids: string[]) => void
   orgSlug: string
+  isPiiRestricted: boolean
 }
 
 export function ContactsDataTable({
@@ -21,6 +22,7 @@ export function ContactsDataTable({
   onDelete,
   onBulkDelete,
   orgSlug,
+  isPiiRestricted,
 }: ContactsDataTableProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
@@ -115,6 +117,7 @@ export function ContactsDataTable({
             onEdit={() => onEdit(contact)}
             onDelete={() => onDelete(contact)}
             orgSlug={orgSlug}
+            isPiiRestricted={isPiiRestricted}
           />
         ))}
       </div>

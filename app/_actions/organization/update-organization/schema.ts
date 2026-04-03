@@ -55,6 +55,9 @@ export const updateOrganizationSchema = z
     billingCity: z.string().max(100, 'Cidade muito longa').nullable().optional(),
     billingState: z.string().max(2, 'Use a sigla do estado').nullable().optional(),
     billingCountry: z.string().max(2, 'Use a sigla do país').nullable().optional(),
+
+    // Configurações de Privacidade
+    hidePiiFromMembers: z.boolean().optional(),
   })
   .superRefine((data, ctx) => {
     // Validação condicional: CNPJ (14 dígitos) para PJ, CPF (11 dígitos) para PF

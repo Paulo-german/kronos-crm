@@ -46,6 +46,7 @@ interface ContactCardRowProps {
   onEdit: () => void
   onDelete: () => void
   orgSlug: string
+  isPiiRestricted: boolean
 }
 
 export function ContactCardRow({
@@ -55,6 +56,7 @@ export function ContactCardRow({
   onEdit,
   onDelete,
   orgSlug,
+  isPiiRestricted,
 }: ContactCardRowProps) {
   const avatarColor = getAvatarColor(contact.name)
   const initials = getInitials(contact.name)
@@ -113,24 +115,38 @@ export function ContactCardRow({
 
         <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5">
           {contact.email && (
-            <a
-              href={`mailto:${contact.email}`}
-              className="flex items-center gap-1 truncate text-xs text-muted-foreground transition-colors hover:text-foreground"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <MailIcon className="size-3 shrink-0" />
-              {contact.email}
-            </a>
+            isPiiRestricted ? (
+              <span className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+                <MailIcon className="size-3 shrink-0" />
+                {contact.email}
+              </span>
+            ) : (
+              <a
+                href={`mailto:${contact.email}`}
+                className="flex items-center gap-1 truncate text-xs text-muted-foreground transition-colors hover:text-foreground"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <MailIcon className="size-3 shrink-0" />
+                {contact.email}
+              </a>
+            )
           )}
           {formattedPhone && (
-            <a
-              href={`tel:${contact.phone}`}
-              className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <PhoneIcon className="size-3 shrink-0" />
-              {formattedPhone}
-            </a>
+            isPiiRestricted ? (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <PhoneIcon className="size-3 shrink-0" />
+                {formattedPhone}
+              </span>
+            ) : (
+              <a
+                href={`tel:${contact.phone}`}
+                className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <PhoneIcon className="size-3 shrink-0" />
+                {formattedPhone}
+              </a>
+            )
           )}
           {contact.deals.length > 0 && (
             <Badge
@@ -156,7 +172,7 @@ export function ContactCardRow({
 
       {/* Ações rápidas */}
       <div className="flex shrink-0 items-center gap-1">
-        {contact.email && (
+        {contact.email && !isPiiRestricted && (
           <a
             href={`mailto:${contact.email}`}
             className="hidden items-center justify-center rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground md:flex"
@@ -166,7 +182,7 @@ export function ContactCardRow({
             <MailIcon className="size-4" />
           </a>
         )}
-        {contact.phone && (
+        {contact.phone && !isPiiRestricted && (
           <a
             href={`tel:${contact.phone}`}
             className="hidden items-center justify-center rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground md:flex"
@@ -177,8 +193,8 @@ export function ContactCardRow({
           </a>
         )}
 
-        {/* Botão WhatsApp — só exibe se há telefone */}
-        {contact.phone && (
+        {/* Botão WhatsApp — só exibe se há telefone e PII não está restrito */}
+        {contact.phone && !isPiiRestricted && (
           <a
             href={`https://wa.me/${formatPhoneForWhatsApp(contact.phone)}`}
             target="_blank"
@@ -212,6 +228,7 @@ export function ContactCardRow({
           contact={contact}
           onEdit={onEdit}
           onDelete={onDelete}
+          isPiiRestricted={isPiiRestricted}
         />
       </div>
     </div>

@@ -3,6 +3,7 @@ import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 import type { RBACContext } from '@/_lib/rbac'
 import { isElevated } from '@/_lib/rbac'
+import { maskPhone } from '@/_lib/pii-mask'
 
 export type ContactOptionDto = {
   id: string
@@ -14,6 +15,7 @@ const fetchContactsOptionsFromDb = async (
   orgId: string,
   userId: string,
   elevated: boolean,
+  hidePiiFromMembers: boolean,
 ): Promise<ContactOptionDto[]> => {
   const contacts = await db.contact.findMany({
     where: {
@@ -34,7 +36,7 @@ const fetchContactsOptionsFromDb = async (
   return contacts.map((contact) => ({
     id: contact.id,
     name: contact.name,
-    phone: contact.phone,
+    phone: (!elevated && hidePiiFromMembers) ? maskPhone(contact.phone) : contact.phone,
   }))
 }
 
@@ -46,10 +48,11 @@ export const getContactsOptions = async (
   ctx: RBACContext,
 ): Promise<ContactOptionDto[]> => {
   const elevated = isElevated(ctx.userRole)
+  const hidePiiFromMembers = ctx.hidePiiFromMembers ?? false
 
   const getCached = unstable_cache(
-    async () => fetchContactsOptionsFromDb(ctx.orgId, ctx.userId, elevated),
-    [`contacts-options-${ctx.orgId}-${ctx.userId}-${elevated}`],
+    async () => fetchContactsOptionsFromDb(ctx.orgId, ctx.userId, elevated, hidePiiFromMembers),
+    [`contacts-options-${ctx.orgId}-${ctx.userId}-${elevated}-${hidePiiFromMembers}`],
     {
       tags: [`contacts:${ctx.orgId}`],
       revalidate: 3600,

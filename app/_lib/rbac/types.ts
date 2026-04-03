@@ -8,6 +8,7 @@ export interface RBACContext {
   orgId: string
   userId: string
   userRole: MemberRole
+  hidePiiFromMembers?: boolean
 }
 
 /**

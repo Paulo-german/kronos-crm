@@ -11,7 +11,10 @@ interface ContactWidgetServerProps {
 const ContactWidgetServer = async ({ deal, ctx }: ContactWidgetServerProps) => {
   const contacts = await getContacts(ctx)
 
-  return <ContactWidget deal={deal} contacts={contacts} />
+  // PII restrito quando a org ativou o toggle e o usuário é MEMBER
+  const isPiiRestricted = ctx.userRole === 'MEMBER' && (ctx.hidePiiFromMembers ?? false)
+
+  return <ContactWidget deal={deal} contacts={contacts} isPiiRestricted={isPiiRestricted} />
 }
 
 export default ContactWidgetServer

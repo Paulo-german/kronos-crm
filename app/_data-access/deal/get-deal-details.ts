@@ -3,6 +3,7 @@ import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 import type { RBACContext } from '@/_lib/rbac'
 import { isElevated } from '@/_lib/rbac'
+import { maskEmail, maskPhone } from '@/_lib/pii-mask'
 
 export interface DealProductDto {
   id: string
@@ -88,6 +89,7 @@ const fetchDealDetailsFromDb = async (
   orgId: string,
   userId: string,
   elevated: boolean,
+  hidePiiFromMembers: boolean,
 ): Promise<DealDetailsDto | null> => {
   const deal = await db.deal.findFirst({
     where: {
@@ -161,6 +163,8 @@ const fetchDealDetailsFromDb = async (
 
   if (!deal) return null
 
+  const masked = !elevated && hidePiiFromMembers
+
   const products: DealProductDto[] = deal.dealProducts.map((dp) => {
     const subtotal = Number(dp.unitPrice) * dp.quantity
     const discount =
@@ -206,8 +210,8 @@ const fetchDealDetailsFromDb = async (
     contacts: deal.contacts.map((dc) => ({
       contactId: dc.contactId,
       name: dc.contact.name,
-      email: dc.contact.email,
-      phone: dc.contact.phone,
+      email: masked ? maskEmail(dc.contact.email) : dc.contact.email,
+      phone: masked ? maskPhone(dc.contact.phone) : dc.contact.phone,
       role: dc.contact.role,
       isPrimary: dc.isPrimary,
       contactOriginalRole: dc.role,
@@ -249,10 +253,11 @@ export const getDealDetails = async (
   ctx: RBACContext,
 ): Promise<DealDetailsDto | null> => {
   const elevated = isElevated(ctx.userRole)
+  const hidePiiFromMembers = ctx.hidePiiFromMembers ?? false
 
   const getCached = unstable_cache(
-    async () => fetchDealDetailsFromDb(dealId, ctx.orgId, ctx.userId, elevated),
-    [`deal-details-${dealId}-${ctx.userId}-${elevated}`],
+    async () => fetchDealDetailsFromDb(dealId, ctx.orgId, ctx.userId, elevated, hidePiiFromMembers),
+    [`deal-details-${dealId}-${ctx.userId}-${elevated}-${hidePiiFromMembers}`],
     {
       tags: [`deal:${dealId}`, `deals:${ctx.orgId}`],
       revalidate: 3600,

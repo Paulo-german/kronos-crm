@@ -4,6 +4,7 @@ import { db } from '@/_lib/prisma'
 import { getOrgSlug } from '@/_lib/notifications/get-org-slug'
 import type { RBACContext } from '@/_lib/rbac'
 import { isElevated } from '@/_lib/rbac'
+import { maskEmail } from '@/_lib/pii-mask'
 import type { GlobalSearchResult, SearchResultItem, SearchResultGroup } from '@/_data-access/search/types'
 import {
   tokenizeQuery,
@@ -48,13 +49,20 @@ interface RawCountResult {
 /**
  * Constrói as condições WHERE de tokens para a busca de contatos.
  * Cada token gera um bloco OR entre os campos pesquisáveis (AND entre tokens).
+ * Quando masked: busca apenas por nome para não vazar PII via busca.
  */
 function buildContactTokenConditions(
   tokens: string[],
   isDocumentQuery: boolean,
+  masked: boolean,
 ): Prisma.Sql[] {
   return tokens.map((token) => {
     const pattern = `%${token}%`
+
+    // MEMBER com toggle ativo: busca restrita ao nome para não vazar PII
+    if (masked) {
+      return Prisma.sql`(unaccent(c.name) ILIKE unaccent(${pattern}))`
+    }
 
     if (isDocumentQuery) {
       // Busca por documento: inclui o campo cpf normalizado (sem pontos e traços)
@@ -115,8 +123,9 @@ async function searchContacts(
   elevated: boolean,
   tokens: string[],
   isDocumentQuery: boolean,
+  masked: boolean,
 ): Promise<{ items: RawContact[]; totalCount: number }> {
-  const tokenConditions = buildContactTokenConditions(tokens, isDocumentQuery)
+  const tokenConditions = buildContactTokenConditions(tokens, isDocumentQuery, masked)
   const whereTokens = Prisma.join(tokenConditions, ' AND ')
 
   const rbacCondition = elevated
@@ -265,13 +274,14 @@ export async function globalSearch(
   }
 
   const elevated = isElevated(ctx.userRole)
+  const masked = !elevated && (ctx.hidePiiFromMembers ?? false)
   const isDocumentQuery = looksLikeDocument(query)
 
   // Todas as queries (incluindo resolução do slug) rodam em paralelo
   const [orgSlug, contactsResult, companiesResult, dealsResult] =
     await Promise.all([
       getOrgSlug(ctx.orgId),
-      searchContacts(ctx.orgId, ctx.userId, elevated, tokens, isDocumentQuery),
+      searchContacts(ctx.orgId, ctx.userId, elevated, tokens, isDocumentQuery, masked),
       searchCompanies(ctx.orgId, tokens),
       searchDeals(ctx.orgId, ctx.userId, elevated, tokens),
     ])
@@ -281,7 +291,10 @@ export async function globalSearch(
       id: contact.id,
       type: 'contact',
       title: contact.name,
-      subtitle: contact.company_name ?? contact.email ?? null,
+      // Quando masked: exibir empresa ou email parcialmente mascarado — nunca o valor real
+      subtitle: masked
+        ? (contact.company_name ?? maskEmail(contact.email) ?? null)
+        : (contact.company_name ?? contact.email ?? null),
       href: `/org/${orgSlug}/contacts/${contact.id}`,
     }),
   )

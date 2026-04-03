@@ -37,6 +37,7 @@ const ContactsPage = async ({ params, searchParams }: ContactsPageProps) => {
       userRole={ctx.userRole}
       withinQuota={quota.withinQuota}
       orgSlug={orgSlug}
+      hidePiiFromMembers={ctx.hidePiiFromMembers ?? false}
     />
   )
 }

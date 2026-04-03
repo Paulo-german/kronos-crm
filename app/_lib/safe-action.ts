@@ -2,6 +2,7 @@ import { createSafeActionClient } from 'next-safe-action'
 import { cookies } from 'next/headers'
 import { createClient } from '@/_lib/supabase/server'
 import { validateMembership } from '@/_data-access/organization/validate-membership'
+import { getOrgPiiSetting } from '@/_data-access/organization/get-org-pii-setting'
 import { db } from '@/_lib/prisma'
 import type { MemberRole } from '@prisma/client'
 
@@ -83,12 +84,16 @@ export const orgActionClient = createSafeActionClient({
     throw new Error('Você não tem acesso a esta organização.')
   }
 
+  const orgId = membership.orgId
+  const hidePiiFromMembers = await getOrgPiiSetting(orgId)
+
   return next({
     ctx: {
       userId: user.id,
-      orgId: membership.orgId,
+      orgId,
       orgSlug,
       userRole: membership.userRole as MemberRole,
+      hidePiiFromMembers,
     },
   })
 })

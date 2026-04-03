@@ -57,6 +57,7 @@ interface ContactDetailClientProps {
   members: AcceptedMemberDto[]
   currentUserId: string
   userRole: MemberRole
+  hidePiiFromMembers: boolean
 }
 
 const ContactDetailClient = ({
@@ -65,7 +66,10 @@ const ContactDetailClient = ({
   members,
   currentUserId,
   userRole,
+  hidePiiFromMembers,
 }: ContactDetailClientProps) => {
+  // PII restrito: MEMBER + toggle ativo na org
+  const isPiiRestricted = userRole === 'MEMBER' && hidePiiFromMembers
   const router = useRouter()
   const { updateField, isPending } = useContactFieldUpdate({
     contactId: contact.id,
@@ -191,14 +195,20 @@ const ContactDetailClient = ({
                 <Mail className="h-3.5 w-3.5" />
                 Email
               </span>
-              <InlineTextField
-                value={contact.email}
-                onSave={(value) => updateField('email', value)}
-                isPending={isPending}
-                placeholder="Adicionar"
-                displayClassName="font-medium"
-                inputClassName="h-7 w-[180px]"
-              />
+              {isPiiRestricted ? (
+                <span className="text-sm font-medium">
+                  {contact.email ?? '—'}
+                </span>
+              ) : (
+                <InlineTextField
+                  value={contact.email}
+                  onSave={(value) => updateField('email', value)}
+                  isPending={isPending}
+                  placeholder="Adicionar"
+                  displayClassName="font-medium"
+                  inputClassName="h-7 w-[180px]"
+                />
+              )}
             </div>
 
             <div className="flex items-center justify-between text-sm">
@@ -221,14 +231,20 @@ const ContactDetailClient = ({
                 <Phone className="h-3.5 w-3.5" />
                 Telefone
               </span>
-              <InlineTextField
-                value={formatPhone(contact.phone)}
-                onSave={(value) => updateField('phone', value)}
-                isPending={isPending}
-                placeholder="Adicionar"
-                displayClassName="font-medium"
-                inputClassName="h-7 w-[180px]"
-              />
+              {isPiiRestricted ? (
+                <span className="text-sm font-medium">
+                  {contact.phone ?? '—'}
+                </span>
+              ) : (
+                <InlineTextField
+                  value={formatPhone(contact.phone)}
+                  onSave={(value) => updateField('phone', value)}
+                  isPending={isPending}
+                  placeholder="Adicionar"
+                  displayClassName="font-medium"
+                  inputClassName="h-7 w-[180px]"
+                />
+              )}
             </div>
 
             <div className="flex items-center justify-between text-sm">
@@ -236,14 +252,20 @@ const ContactDetailClient = ({
                 <CreditCard className="h-3.5 w-3.5" />
                 CPF
               </span>
-              <InlineTextField
-                value={contact.cpf}
-                onSave={(value) => updateField('cpf', value)}
-                isPending={isPending}
-                placeholder="Adicionar"
-                displayClassName="font-medium"
-                inputClassName="h-7 w-[180px]"
-              />
+              {isPiiRestricted ? (
+                <span className="text-sm font-medium">
+                  {contact.cpf ?? '—'}
+                </span>
+              ) : (
+                <InlineTextField
+                  value={contact.cpf}
+                  onSave={(value) => updateField('cpf', value)}
+                  isPending={isPending}
+                  placeholder="Adicionar"
+                  displayClassName="font-medium"
+                  inputClassName="h-7 w-[180px]"
+                />
+              )}
             </div>
 
             <div className="flex items-center justify-between border-t pt-3 text-sm">

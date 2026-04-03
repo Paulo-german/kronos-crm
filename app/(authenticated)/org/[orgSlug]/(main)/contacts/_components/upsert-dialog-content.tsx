@@ -32,6 +32,7 @@ import type { UpdateContactInput } from '@/_actions/contact/update-contact/schem
 import { CompanyCombobox } from './company-combobox'
 import { PhoneInput } from '@/_components/form-controls/phone-input'
 import { Loader2 } from 'lucide-react'
+import type { MemberRole } from '@prisma/client'
 
 interface UpsertContactDialogContentProps {
   defaultValues?: ContactInput & { id?: string }
@@ -39,6 +40,8 @@ interface UpsertContactDialogContentProps {
   companyOptions?: { id: string; name: string }[]
   onUpdate?: (data: UpdateContactInput) => void
   isUpdating?: boolean
+  userRole?: MemberRole
+  hidePiiFromMembers?: boolean
 }
 
 const UpsertContactDialogContent = ({
@@ -47,8 +50,12 @@ const UpsertContactDialogContent = ({
   companyOptions = [],
   onUpdate,
   isUpdating: isUpdatingProp = false,
+  userRole,
+  hidePiiFromMembers = false,
 }: UpsertContactDialogContentProps) => {
   const isEditing = !!defaultValues?.id
+  // Ocultar campos PII no modo edição quando: MEMBER + toggle ativo na org
+  const isPiiRestricted = userRole === 'MEMBER' && hidePiiFromMembers && isEditing
 
   const form = useForm<ContactInput>({
     resolver: zodResolver(contactSchema),
@@ -130,46 +137,52 @@ const UpsertContactDialogContent = ({
             )}
           />
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="email"
-                      placeholder="email@exemplo.com"
-                      value={field.value || ''}
-                      onChange={field.onChange}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          {isPiiRestricted ? (
+            <p className="col-span-full rounded-md border border-border/50 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+              Informações de contato (email, telefone, CPF) são gerenciadas por administradores.
+            </p>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="email"
+                        placeholder="email@exemplo.com"
+                        value={field.value || ''}
+                        onChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="phone"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Telefone</FormLabel>
-                  <FormControl>
-                    <PhoneInput
-                      placeholder="(11) 99999-9999"
-                      value={field.value || ''}
-                      onValueChange={(values: NumberFormatValues) =>
-                        field.onChange(values.value)
-                      }
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Telefone</FormLabel>
+                    <FormControl>
+                      <PhoneInput
+                        placeholder="(11) 99999-9999"
+                        value={field.value || ''}
+                        onValueChange={(values: NumberFormatValues) =>
+                          field.onChange(values.value)
+                        }
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          )}
 
           <div className="grid gap-4 md:grid-cols-2">
             <FormField
@@ -210,29 +223,31 @@ const UpsertContactDialogContent = ({
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <FormField
-              control={form.control}
-              name="cpf"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>CPF</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="000.000.000-00"
-                      value={field.value || ''}
-                      onChange={field.onChange}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {!isPiiRestricted && (
+              <FormField
+                control={form.control}
+                name="cpf"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>CPF</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="000.000.000-00"
+                        value={field.value || ''}
+                        onChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <FormField
               control={form.control}
               name="isDecisionMaker"
               render={({ field }) => (
-                <FormItem className="mt-8 flex flex-row items-center space-x-3 space-y-0 rounded-md border px-4">
+                <FormItem className={`${isPiiRestricted ? '' : 'mt-8'} flex flex-row items-center space-x-3 space-y-0 rounded-md border px-4`}>
                   <FormControl>
                     <Switch
                       checked={field.value}

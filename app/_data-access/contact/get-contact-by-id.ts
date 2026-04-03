@@ -3,6 +3,7 @@ import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 import type { RBACContext } from '@/_lib/rbac'
 import { isElevated } from '@/_lib/rbac'
+import { maskEmail, maskPhone, maskCpf } from '@/_lib/pii-mask'
 
 export interface ContactDetailDto {
   id: string
@@ -31,6 +32,7 @@ const fetchContactByIdFromDb = async (
   orgId: string,
   userId: string,
   elevated: boolean,
+  hidePiiFromMembers: boolean,
 ): Promise<ContactDetailDto | null> => {
   const contact = await db.contact.findFirst({
     where: {
@@ -61,13 +63,15 @@ const fetchContactByIdFromDb = async (
 
   if (!contact) return null
 
+  const masked = !elevated && hidePiiFromMembers
+
   return {
     id: contact.id,
     name: contact.name,
-    email: contact.email,
-    phone: contact.phone,
+    email: masked ? maskEmail(contact.email) : contact.email,
+    phone: masked ? maskPhone(contact.phone) : contact.phone,
     role: contact.role,
-    cpf: contact.cpf,
+    cpf: masked ? maskCpf(contact.cpf) : contact.cpf,
     isDecisionMaker: contact.isDecisionMaker,
     companyId: contact.companyId,
     assignedTo: contact.assignedTo,
@@ -87,10 +91,11 @@ export const getContactById = async (
   ctx: RBACContext,
 ): Promise<ContactDetailDto | null> => {
   const elevated = isElevated(ctx.userRole)
+  const hidePiiFromMembers = ctx.hidePiiFromMembers ?? false
 
   const getCached = unstable_cache(
-    async () => fetchContactByIdFromDb(contactId, ctx.orgId, ctx.userId, elevated),
-    [`contact-${contactId}-${ctx.userId}-${elevated}`],
+    async () => fetchContactByIdFromDb(contactId, ctx.orgId, ctx.userId, elevated, hidePiiFromMembers),
+    [`contact-${contactId}-${ctx.userId}-${elevated}-${hidePiiFromMembers}`],
     {
       tags: [`contacts:${ctx.orgId}`, `contact:${contactId}`],
       revalidate: 3600,

@@ -4,6 +4,7 @@ import { db } from '@/_lib/prisma'
 import type { Prisma } from '@prisma/client'
 import type { RBACContext } from '@/_lib/rbac'
 import { isElevated } from '@/_lib/rbac'
+import { maskEmail, maskPhone, maskCpf } from '@/_lib/pii-mask'
 
 export interface ContactDto {
   id: string
@@ -60,6 +61,7 @@ const fetchContactsFromDb = async (
   orgId: string,
   userId: string,
   elevated: boolean,
+  hidePiiFromMembers: boolean,
 ): Promise<ContactDto[]> => {
   const contacts = await db.contact.findMany({
     where: {
@@ -88,13 +90,15 @@ const fetchContactsFromDb = async (
     },
   })
 
+  const masked = !elevated && hidePiiFromMembers
+
   return contacts.map((contact) => ({
     id: contact.id,
     name: contact.name,
-    email: contact.email,
-    phone: contact.phone,
+    email: masked ? maskEmail(contact.email) : contact.email,
+    phone: masked ? maskPhone(contact.phone) : contact.phone,
     role: contact.role,
-    cpf: contact.cpf,
+    cpf: masked ? maskCpf(contact.cpf) : contact.cpf,
     isDecisionMaker: contact.isDecisionMaker,
     companyId: contact.companyId,
     companyName: contact.company?.name ?? null,
@@ -114,10 +118,11 @@ const fetchContactsFromDb = async (
  */
 export const getContacts = async (ctx: RBACContext): Promise<ContactDto[]> => {
   const elevated = isElevated(ctx.userRole)
+  const hidePiiFromMembers = ctx.hidePiiFromMembers ?? false
 
   const getCached = unstable_cache(
-    async () => fetchContactsFromDb(ctx.orgId, ctx.userId, elevated),
-    [`contacts-${ctx.orgId}-${ctx.userId}-${elevated}`],
+    async () => fetchContactsFromDb(ctx.orgId, ctx.userId, elevated, hidePiiFromMembers),
+    [`contacts-${ctx.orgId}-${ctx.userId}-${elevated}-${hidePiiFromMembers}`],
     {
       tags: [`contacts:${ctx.orgId}`],
       revalidate: 3600,
@@ -134,9 +139,11 @@ const fetchContactsPaginatedFromDb = async (
   orgId: string,
   userId: string,
   elevated: boolean,
+  hidePiiFromMembers: boolean,
   params: ContactListParams,
 ): Promise<ContactListResult> => {
   const sortConfig = CONTACT_SORT_MAP[params.sort]
+  const masked = !elevated && hidePiiFromMembers
 
   // Constrói cláusula WHERE com todos os filtros
   const where: Prisma.ContactWhereInput = {
@@ -158,6 +165,7 @@ const fetchContactsPaginatedFromDb = async (
         : { deals: { none: {} } }
       : {}),
     // Busca textual: nome, email ou telefone (case-insensitive)
+    // Quando masked: email e phone removidos para não vazar PII por busca
     ...(params.search.trim()
       ? {
           OR: [
@@ -167,18 +175,22 @@ const fetchContactsPaginatedFromDb = async (
                 mode: 'insensitive' as const,
               },
             },
-            {
-              email: {
-                contains: params.search.trim(),
-                mode: 'insensitive' as const,
-              },
-            },
-            {
-              phone: {
-                contains: params.search.trim(),
-                mode: 'insensitive' as const,
-              },
-            },
+            ...(!masked
+              ? [
+                  {
+                    email: {
+                      contains: params.search.trim(),
+                      mode: 'insensitive' as const,
+                    },
+                  },
+                  {
+                    phone: {
+                      contains: params.search.trim(),
+                      mode: 'insensitive' as const,
+                    },
+                  },
+                ]
+              : []),
           ],
         }
       : {}),
@@ -214,10 +226,10 @@ const fetchContactsPaginatedFromDb = async (
     data: contacts.map((contact) => ({
       id: contact.id,
       name: contact.name,
-      email: contact.email,
-      phone: contact.phone,
+      email: masked ? maskEmail(contact.email) : contact.email,
+      phone: masked ? maskPhone(contact.phone) : contact.phone,
       role: contact.role,
-      cpf: contact.cpf,
+      cpf: masked ? maskCpf(contact.cpf) : contact.cpf,
       isDecisionMaker: contact.isDecisionMaker,
       companyId: contact.companyId,
       companyName: contact.company?.name ?? null,
@@ -245,6 +257,7 @@ export const getContactsPaginated = async (
   params: ContactListParams,
 ): Promise<ContactListResult> => {
   const elevated = isElevated(ctx.userRole)
+  const hidePiiFromMembers = ctx.hidePiiFromMembers ?? false
 
   // Serializa params para cache key determinística
   const paramsKey = JSON.stringify({
@@ -260,8 +273,8 @@ export const getContactsPaginated = async (
 
   const getCached = unstable_cache(
     async () =>
-      fetchContactsPaginatedFromDb(ctx.orgId, ctx.userId, elevated, params),
-    [`contacts-${ctx.orgId}-${ctx.userId}-${elevated}-${paramsKey}`],
+      fetchContactsPaginatedFromDb(ctx.orgId, ctx.userId, elevated, hidePiiFromMembers, params),
+    [`contacts-${ctx.orgId}-${ctx.userId}-${elevated}-${hidePiiFromMembers}-${paramsKey}`],
     {
       tags: [`contacts:${ctx.orgId}`],
       revalidate: 3600,

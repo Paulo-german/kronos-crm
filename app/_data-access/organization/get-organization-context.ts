@@ -2,12 +2,14 @@ import { cache } from 'react'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/_lib/supabase/server'
 import { validateMembership } from '@/_data-access/organization/validate-membership'
+import { getOrgPiiSetting } from '@/_data-access/organization/get-org-pii-setting'
 import type { MemberRole } from '@prisma/client'
 
 interface OrgContext {
   userId: string
   orgId: string
   userRole: MemberRole
+  hidePiiFromMembers: boolean
 }
 
 /**
@@ -31,10 +33,14 @@ export const getOrgContext = cache(
       redirect('/org?clear_last_org=true')
     }
 
+    const orgId = membership.orgId
+    const hidePiiFromMembers = await getOrgPiiSetting(orgId)
+
     return {
       userId: user.id,
-      orgId: membership.orgId,
+      orgId,
       userRole: membership.userRole,
+      hidePiiFromMembers,
     }
   },
 )

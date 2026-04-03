@@ -22,12 +22,14 @@ interface ContactTableDropdownMenuProps {
   contact: ContactDto
   onDelete: () => void
   onEdit: () => void
+  isPiiRestricted: boolean
 }
 
 const ContactTableDropdownMenu = ({
   contact,
   onDelete,
   onEdit,
+  isPiiRestricted,
 }: ContactTableDropdownMenuProps) => {
   return (
     <div className="flex items-center justify-end">
@@ -40,17 +42,18 @@ const ContactTableDropdownMenu = ({
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>Ações</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem
-            className="gap-1.5"
-            onClick={() => {
-              navigator.clipboard.writeText(contact.email || '')
-              toast.success('Email copiado para a área de transferência.')
-            }}
-            disabled={!contact.email}
-          >
-            <ClipboardCopyIcon size={16} />
-            Copiar Email
-          </DropdownMenuItem>
+          {contact.email && !isPiiRestricted && (
+            <DropdownMenuItem
+              className="gap-1.5"
+              onClick={() => {
+                navigator.clipboard.writeText(contact.email as string)
+                toast.success('Email copiado para a área de transferência.')
+              }}
+            >
+              <ClipboardCopyIcon size={16} />
+              Copiar Email
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem className="gap-1.5" onSelect={onEdit}>
             <EditIcon size={16} />
             Editar

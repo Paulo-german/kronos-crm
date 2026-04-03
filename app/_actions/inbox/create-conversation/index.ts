@@ -3,7 +3,7 @@
 import { revalidateTag } from 'next/cache'
 import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
-import { canPerformAction, requirePermission } from '@/_lib/rbac'
+import { canPerformAction, requirePermission, isElevated } from '@/_lib/rbac'
 import { getConversationAsDto } from '@/_data-access/conversation/get-conversations'
 import {
   createDealForNewConversation,
@@ -16,6 +16,9 @@ export const createConversation = orgActionClient
   .action(async ({ parsedInput: data, ctx }) => {
     // 1. Verificar permissão
     requirePermission(canPerformAction(ctx, 'conversation', 'create'))
+
+    const elevated = isElevated(ctx.userRole)
+    const hidePii = ctx.hidePiiFromMembers ?? false
 
     // 2. Validar contato pertence à org e tem telefone
     const contact = await db.contact.findFirst({
@@ -92,7 +95,7 @@ export const createConversation = orgActionClient
         })
 
         if (existing) {
-          const dto = await getConversationAsDto(ctx.orgId, existing.id)
+          const dto = await getConversationAsDto(ctx.orgId, existing.id, elevated, hidePii)
           revalidateTag(`conversations:${ctx.orgId}`)
           return { conversation: dto }
         }
@@ -131,6 +134,6 @@ export const createConversation = orgActionClient
     revalidateTag(`dashboard:${ctx.orgId}`)
 
     // 7. Retornar DTO
-    const dto = await getConversationAsDto(ctx.orgId, conversation.id)
+    const dto = await getConversationAsDto(ctx.orgId, conversation.id, elevated, hidePii)
     return { conversation: dto }
   })

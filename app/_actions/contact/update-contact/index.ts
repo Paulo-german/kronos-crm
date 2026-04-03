@@ -10,6 +10,7 @@ import {
   canTransferOwnership,
   requirePermission,
   isOwnershipChange,
+  isElevated,
 } from '@/_lib/rbac'
 
 export const updateContact = orgActionClient
@@ -35,12 +36,21 @@ export const updateContact = orgActionClient
       canAccessRecord(ctx, { assignedTo: existingContact.assignedTo })
     )
 
-    // 4. Se está mudando assignedTo, verificar permissão de transferência
+    // 4. Bloquear edição de campos PII para MEMBER quando o toggle de proteção está ativo
+    if (!isElevated(ctx.userRole) && ctx.hidePiiFromMembers) {
+      const hasPiiUpdate =
+        data.email !== undefined || data.phone !== undefined || data.cpf !== undefined
+      if (hasPiiUpdate) {
+        throw new Error('Apenas administradores podem editar informações de contato sensíveis.')
+      }
+    }
+
+    // 5. Se está mudando assignedTo, verificar permissão de transferência
     if (isOwnershipChange(data.assignedTo, existingContact.assignedTo)) {
       requirePermission(canTransferOwnership(ctx))
     }
 
-    // 5. Se mudou a empresa, verifica se a nova pertence à organização
+    // 6. Se mudou a empresa, verifica se a nova pertence à organização
     if (data.companyId && data.companyId !== existingContact.companyId) {
       const company = await db.company.findFirst({
         where: {

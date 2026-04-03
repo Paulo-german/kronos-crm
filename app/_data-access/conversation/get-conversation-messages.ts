@@ -2,6 +2,7 @@ import 'server-only'
 import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
+import { maskPhone, maskRemoteJid } from '@/_lib/pii-mask'
 
 export interface MessageDto {
   id: string
@@ -103,6 +104,8 @@ export async function getConversationMessagesPaginated(
 const fetchConversationDetailFromDb = async (
   conversationId: string,
   orgId: string,
+  elevated: boolean,
+  hidePiiFromMembers: boolean,
 ): Promise<ConversationDetailDto | null> => {
   const conversation = await db.conversation.findFirst({
     where: { id: conversationId, organizationId: orgId },
@@ -120,15 +123,17 @@ const fetchConversationDetailFromDb = async (
 
   if (!conversation) return null
 
+  const masked = !elevated && hidePiiFromMembers
+
   return {
     id: conversation.id,
     contactName: conversation.contact.name,
-    contactPhone: conversation.contact.phone,
+    contactPhone: masked ? maskPhone(conversation.contact.phone) : conversation.contact.phone,
     agentName: conversation.inbox.agent?.name ?? null,
     inboxId: conversation.inboxId,
     inboxName: conversation.inbox.name,
     aiPaused: conversation.aiPaused,
-    remoteJid: conversation.remoteJid,
+    remoteJid: masked ? maskRemoteJid(conversation.remoteJid) : conversation.remoteJid,
     dealId: conversation.dealId,
     summary: conversation.summary,
     organizationId: conversation.organizationId,
@@ -140,10 +145,12 @@ export const getConversationDetail = cache(
   async (
     conversationId: string,
     orgId: string,
+    elevated: boolean,
+    hidePiiFromMembers: boolean,
   ): Promise<ConversationDetailDto | null> => {
     const getCached = unstable_cache(
-      async () => fetchConversationDetailFromDb(conversationId, orgId),
-      [`conversation-detail-${conversationId}`],
+      async () => fetchConversationDetailFromDb(conversationId, orgId, elevated, hidePiiFromMembers),
+      [`conversation-detail-${conversationId}-${elevated}-${hidePiiFromMembers}`],
       { tags: [`conversation:${conversationId}`, `conversations:${orgId}`] },
     )
     return getCached()

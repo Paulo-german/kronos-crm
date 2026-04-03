@@ -66,6 +66,7 @@ model Organization {
   planOverrideId         String?                 @map("plan_override_id")
   niche                  String?                 @map("niche")
   onboardingCompleted    Boolean                 @default(false) @map("onboarding_completed")
+  hidePiiFromMembers     Boolean                 @default(false) @map("hide_pii_from_members")
   agentExecutions        AgentExecution[]
   agentGroups            AgentGroup[]
   agentTestConversations AgentTestConversation[]

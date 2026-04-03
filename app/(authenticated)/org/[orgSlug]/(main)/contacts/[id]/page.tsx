@@ -30,6 +30,7 @@ const ContactDetailPage = async ({ params }: ContactDetailPageProps) => {
       members={members.accepted}
       currentUserId={ctx.userId}
       userRole={ctx.userRole}
+      hidePiiFromMembers={ctx.hidePiiFromMembers ?? false}
     />
   )
 }

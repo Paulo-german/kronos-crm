@@ -35,6 +35,7 @@ interface ContactsListClientProps {
   userRole: MemberRole
   withinQuota: boolean
   orgSlug: string
+  hidePiiFromMembers: boolean
 }
 
 export function ContactsListClient({
@@ -49,6 +50,7 @@ export function ContactsListClient({
   userRole,
   withinQuota,
   orgSlug,
+  hidePiiFromMembers,
 }: ContactsListClientProps) {
   const { filters, setFilters, clearFilters, activeFilterCount, hasActiveFilters } =
     useContactFilters()
@@ -165,6 +167,7 @@ export function ContactsListClient({
           onDelete={handleDelete}
           onBulkDelete={handleBulkDelete}
           orgSlug={orgSlug}
+          isPiiRestricted={userRole === 'MEMBER' && (hidePiiFromMembers ?? false)}
         />
 
         <ContactsPagination
@@ -200,6 +203,8 @@ export function ContactsListClient({
             companyOptions={companyOptions}
             onUpdate={(data) => executeUpdate(data)}
             isUpdating={isUpdating}
+            userRole={userRole}
+            hidePiiFromMembers={hidePiiFromMembers}
           />
         )}
       </Sheet>

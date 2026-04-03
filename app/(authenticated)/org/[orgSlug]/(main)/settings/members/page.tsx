@@ -6,6 +6,7 @@ import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 import { QuotaHint } from '@/_components/trial/quota-hint'
 import { MemberList } from './_components/member-list'
 import InviteMemberDialog from './_components/invite-member-dialog'
+import { PiiToggleCard } from './_components/pii-toggle-card'
 import { redirect } from 'next/navigation'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 
@@ -16,7 +17,7 @@ interface MembersPageProps {
 export default async function MembersPage({ params }: MembersPageProps) {
   const { orgSlug } = await params
 
-  const { orgId, userRole } = await getOrgContext(orgSlug)
+  const { orgId, userRole, hidePiiFromMembers } = await getOrgContext(orgSlug)
 
   // RBAC: Apenas ADMIN/OWNER podem acessar esta página
   if (userRole !== 'ADMIN' && userRole !== 'OWNER') {
@@ -51,6 +52,9 @@ export default async function MembersPage({ params }: MembersPageProps) {
           <InviteMemberDialog withinQuota={quota.withinQuota} />
         )}
       </div>
+
+      {/* Toggle de proteção de dados PII — visível apenas para ADMIN/OWNER (já garantido pelo redirect acima) */}
+      <PiiToggleCard defaultValue={hidePiiFromMembers} />
 
       <div className="space-y-8">
         <MemberList

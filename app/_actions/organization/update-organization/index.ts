@@ -31,6 +31,7 @@ export const updateOrganization = orgActionClient
       billingCity,
       billingState,
       billingCountry,
+      hidePiiFromMembers,
     } = parsedInput
 
     // 2. Buscar org atual para obter o slug (para invalidação de cache)
@@ -68,12 +69,23 @@ export const updateOrganization = orgActionClient
         billingCity: billingCity || null,
         billingState: billingState || null,
         billingCountry: billingCountry || null,
+        ...(hidePiiFromMembers !== undefined && { hidePiiFromMembers }),
       },
     })
 
     // 5. Invalidar caches relevantes
     revalidateTag(`organization:${org.slug}`)
     revalidateTag(`user-orgs:${ctx.userId}`)
+
+    // Quando hidePiiFromMembers muda, invalidar a config cacheada e todos os dados
+    // que dependem dela — garante que membros vejam o estado correto imediatamente
+    if (hidePiiFromMembers !== undefined) {
+      revalidateTag(`org-settings:${ctx.orgId}`)
+      revalidateTag(`contacts:${ctx.orgId}`)
+      revalidateTag(`deals:${ctx.orgId}`)
+      revalidateTag(`conversations:${ctx.orgId}`)
+      revalidateTag(`dashboard:${ctx.orgId}`)
+    }
 
     return { success: true }
   })

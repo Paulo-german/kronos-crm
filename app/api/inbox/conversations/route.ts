@@ -6,6 +6,8 @@ import { getConversationsPaginated, getConversationAsDto } from '@/_data-access/
 import { ORG_SLUG_COOKIE } from '@/_lib/constants'
 import { db } from '@/_lib/prisma'
 import { isElevated } from '@/_lib/rbac'
+import { getOrgPiiSetting } from '@/_data-access/organization/get-org-pii-setting'
+import { maskPhone } from '@/_lib/pii-mask'
 
 export async function GET(request: NextRequest) {
   try {
@@ -43,13 +45,15 @@ export async function GET(request: NextRequest) {
     const labelIdsParam = searchParams.get('labelIds')
     const labelIds = labelIdsParam ? labelIdsParam.split(',').filter(Boolean) : undefined
 
-    // Determinar escopo RBAC do usuario para filtrar conversas
+    // Determinar escopo RBAC do usuario e config de PII para filtrar conversas
     const elevated = isElevated(membership.userRole!)
+    const hidePiiFromMembers = await getOrgPiiSetting(membership.orgId)
 
     const result = await getConversationsPaginated(
       membership.orgId,
       user.id,
       elevated,
+      hidePiiFromMembers,
       limit,
       cursor,
       { inboxId, unreadOnly, unansweredOnly, search, status, labelIds },
@@ -71,14 +75,19 @@ export async function GET(request: NextRequest) {
       })
       if (match) {
         deepLinkConversationId = match.id
-        deepLinkConversation = await getConversationAsDto(membership.orgId, match.id)
+        deepLinkConversation = await getConversationAsDto(membership.orgId, match.id, elevated, hidePiiFromMembers)
       } else {
         const contact = await db.contact.findFirst({
           where: { id: contactId, organizationId: membership.orgId },
           select: { id: true, name: true, phone: true },
         })
         if (contact) {
-          deepLinkContact = { id: contact.id, name: contact.name, phone: contact.phone }
+          const masked = !elevated && hidePiiFromMembers
+          deepLinkContact = {
+            id: contact.id,
+            name: contact.name,
+            phone: masked ? maskPhone(contact.phone) : contact.phone,
+          }
         }
       }
     }

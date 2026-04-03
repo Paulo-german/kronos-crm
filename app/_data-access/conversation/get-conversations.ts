@@ -3,6 +3,7 @@ import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 import type { Prisma, ConversationStatus } from '@prisma/client'
+import { maskPhone, maskRemoteJid } from '@/_lib/pii-mask'
 
 export interface ConversationLabelDto {
   id: string
@@ -109,7 +110,10 @@ type ConversationWithIncludes = Prisma.ConversationGetPayload<{
   include: typeof conversationListInclude
 }>
 
-function mapConversationToDto(conversation: ConversationWithIncludes): ConversationListDto {
+function mapConversationToDto(
+  conversation: ConversationWithIncludes,
+  masked: boolean,
+): ConversationListDto {
   // Resolve nome do worker ativo via membros do grupo (sem FK explícita)
   const groupMembers = conversation.inbox.agentGroup?.members ?? []
   const activeAgentName =
@@ -121,7 +125,7 @@ function mapConversationToDto(conversation: ConversationWithIncludes): Conversat
     id: conversation.id,
     contactId: conversation.contactId,
     contactName: conversation.contact.name,
-    contactPhone: conversation.contact.phone,
+    contactPhone: masked ? maskPhone(conversation.contact.phone) : conversation.contact.phone,
     agentName: conversation.inbox.agent?.name ?? null,
     agentGroupName: conversation.inbox.agentGroup?.name ?? null,
     activeAgentId: conversation.activeAgentId,
@@ -132,7 +136,7 @@ function mapConversationToDto(conversation: ConversationWithIncludes): Conversat
     channel: conversation.channel,
     aiPaused: conversation.aiPaused,
     pausedAt: conversation.pausedAt,
-    remoteJid: conversation.remoteJid,
+    remoteJid: masked ? maskRemoteJid(conversation.remoteJid) : conversation.remoteJid,
     dealId: conversation.deal?.id ?? null,
     dealTitle: conversation.deal?.title ?? null,
     unreadCount: conversation.unreadCount,
@@ -163,25 +167,29 @@ function mapConversationToDto(conversation: ConversationWithIncludes): Conversat
 export async function getConversationAsDto(
   orgId: string,
   conversationId: string,
+  elevated: boolean,
+  hidePiiFromMembers: boolean,
 ): Promise<ConversationListDto | null> {
   const conversation = await db.conversation.findFirst({
     where: { id: conversationId, organizationId: orgId },
     include: conversationListInclude,
   })
   if (!conversation) return null
-  return mapConversationToDto(conversation)
+  return mapConversationToDto(conversation, !elevated && hidePiiFromMembers)
 }
 
 async function fetchConversationsPaginatedFromDb(
   orgId: string,
   userId: string,
   elevated: boolean,
+  hidePiiFromMembers: boolean,
   limit: number,
   cursor?: string,
   filters?: ConversationFilters,
 ): Promise<PaginatedConversationsResult> {
   // Filtro RBAC: MEMBER ve apenas conversas atribuidas a ele; ADMIN/OWNER ve tudo
   const rbacFilter: Prisma.ConversationWhereInput = elevated ? {} : { assignedTo: userId }
+  const masked = !elevated && hidePiiFromMembers
 
   // Normaliza busca: remove espaços, parênteses, traços e '+' para comparar telefones
   const searchTerm = filters?.search?.trim() ?? ''
@@ -210,17 +218,22 @@ async function fetchConversationsPaginatedFromDb(
           })),
         }
       : {}),
+    // Quando masked: email e phone removidos da busca para não vazar PII
     ...(searchTerm
       ? {
           contact: {
             OR: [
-              { name: { contains: searchTerm, mode: 'insensitive' } },
-              { email: { contains: searchTerm, mode: 'insensitive' } },
-              // Busca telefone com termo normalizado (sem formatação)
-              ...(normalizedPhone.length >= 3
-                ? [{ phone: { contains: normalizedPhone, mode: 'insensitive' as const } }]
+              { name: { contains: searchTerm, mode: 'insensitive' as const } },
+              ...(!masked
+                ? [
+                    { email: { contains: searchTerm, mode: 'insensitive' as const } },
+                    // Busca telefone com termo normalizado (sem formatação)
+                    ...(normalizedPhone.length >= 3
+                      ? [{ phone: { contains: normalizedPhone, mode: 'insensitive' as const } }]
+                      : []),
+                  ]
                 : []),
-              { company: { name: { contains: searchTerm, mode: 'insensitive' } } },
+              { company: { name: { contains: searchTerm, mode: 'insensitive' as const } } },
             ],
           },
         }
@@ -260,7 +273,7 @@ async function fetchConversationsPaginatedFromDb(
 
   const hasMore = conversations.length > limit
   const sliced = hasMore ? conversations.slice(0, limit) : conversations
-  const mapped = sliced.map(mapConversationToDto)
+  const mapped = sliced.map((conv) => mapConversationToDto(conv, masked))
 
   return { conversations: mapped, hasMore, totalCount, totalUnread, totalUnanswered }
 }
@@ -270,15 +283,16 @@ export const getConversationsPaginated = cache(
     orgId: string,
     userId: string,
     elevated: boolean,
+    hidePiiFromMembers: boolean,
     limit = 20,
     cursor?: string,
     filters?: ConversationFilters,
   ): Promise<PaginatedConversationsResult> => {
     const filterKey = JSON.stringify(filters ?? {})
     const getCached = unstable_cache(
-      async () => fetchConversationsPaginatedFromDb(orgId, userId, elevated, limit, cursor, filters),
-      // Cache key inclui userId para isolar entradas MEMBER vs ADMIN/OWNER
-      [`conversations-${orgId}-${userId}-${elevated}-${limit}-${cursor ?? 'none'}-${filterKey}`],
+      async () => fetchConversationsPaginatedFromDb(orgId, userId, elevated, hidePiiFromMembers, limit, cursor, filters),
+      // Cache key inclui userId para isolar entradas MEMBER vs ADMIN/OWNER, e hidePiiFromMembers para reagir a mudanças no toggle
+      [`conversations-${orgId}-${userId}-${elevated}-${hidePiiFromMembers}-${limit}-${cursor ?? 'none'}-${filterKey}`],
       { tags: [`conversations:${orgId}`], revalidate: 3600 },
     )
     return getCached()
