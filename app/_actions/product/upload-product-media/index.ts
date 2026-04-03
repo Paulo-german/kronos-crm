@@ -30,6 +30,15 @@ const MIME_TO_EXT: Record<string, string> = {
 export const uploadProductMedia = orgActionClient
   .schema(uploadProductMediaSchema)
   .action(async ({ parsedInput: { file, productId }, ctx }) => {
+    console.log('[upload-product-media] Início', {
+      productId,
+      fileName: file?.name,
+      fileSize: file?.size,
+      fileType: file?.type,
+      hasArrayBuffer: typeof file?.arrayBuffer === 'function',
+      fileConstructor: file?.constructor?.name,
+    })
+
     // 1. RBAC — apenas ADMIN/OWNER podem atualizar produtos
     requirePermission(canPerformAction(ctx, 'product', 'update'))
 

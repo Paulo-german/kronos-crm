@@ -46,6 +46,7 @@ export function ProductMediaUpload({
       if (inputRef.current) inputRef.current.value = ''
     },
     onError: ({ error }) => {
+      console.error('[upload-product-media] Client error:', JSON.stringify(error, null, 2))
       const message =
         error.serverError ||
         (error.validationErrors?.file?._errors?.[0]) ||
