@@ -32,6 +32,7 @@ model User {
   integrations            UserIntegration[]
   automationsCreated      Automation[]      @relation("AutomationCreator")
   userProfiles            UserProfile[]
+  tutorialCompletions     TutorialCompletion[]
 
   @@map("users")
 }
@@ -92,6 +93,7 @@ model Organization {
   automationExecutions   AutomationExecution[]
   conversationLabels     ConversationLabel[]
   userProfiles           UserProfile[]
+  tutorialCompletions    TutorialCompletion[]
 
   @@map("organizations")
 }
@@ -1329,4 +1331,21 @@ model UserProfile {
   @@unique([userId, organizationId])
   @@index([organizationId])
   @@map("user_profiles")
+}
+
+model TutorialCompletion {
+  id             String       @id @default(uuid())
+  userId         String       @map("user_id")
+  organizationId String       @map("organization_id")
+  tutorialId     String       @map("tutorial_id")
+  completedAt    DateTime     @default(now()) @map("completed_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId, tutorialId])
+  @@index([organizationId])
+  @@map("tutorial_completions")
 }
