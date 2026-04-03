@@ -46,7 +46,11 @@ export function ProductMediaUpload({
       if (inputRef.current) inputRef.current.value = ''
     },
     onError: ({ error }) => {
-      toast.error(error.serverError || 'Erro inesperado no upload.')
+      const message =
+        error.serverError ||
+        (error.validationErrors?.file?._errors?.[0]) ||
+        'Erro inesperado no upload.'
+      toast.error(message)
       if (inputRef.current) inputRef.current.value = ''
     },
   })
