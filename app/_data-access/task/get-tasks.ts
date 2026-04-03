@@ -64,6 +64,7 @@ export const getTasks = async (ctx: RBACContext): Promise<TaskDto[]> => {
     [`tasks-${ctx.orgId}-${ctx.userId}-${elevated}`],
     {
       tags: [`tasks:${ctx.orgId}`],
+      revalidate: 3600,
     },
   )
 

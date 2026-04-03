@@ -120,6 +120,7 @@ export const getContacts = async (ctx: RBACContext): Promise<ContactDto[]> => {
     [`contacts-${ctx.orgId}-${ctx.userId}-${elevated}`],
     {
       tags: [`contacts:${ctx.orgId}`],
+      revalidate: 3600,
     },
   )
 
@@ -263,6 +264,7 @@ export const getContactsPaginated = async (
     [`contacts-${ctx.orgId}-${ctx.userId}-${elevated}-${paramsKey}`],
     {
       tags: [`contacts:${ctx.orgId}`],
+      revalidate: 3600,
     },
   )
 

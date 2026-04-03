@@ -279,7 +279,7 @@ export const getConversationsPaginated = cache(
       async () => fetchConversationsPaginatedFromDb(orgId, userId, elevated, limit, cursor, filters),
       // Cache key inclui userId para isolar entradas MEMBER vs ADMIN/OWNER
       [`conversations-${orgId}-${userId}-${elevated}-${limit}-${cursor ?? 'none'}-${filterKey}`],
-      { tags: [`conversations:${orgId}`] },
+      { tags: [`conversations:${orgId}`], revalidate: 3600 },
     )
     return getCached()
   },

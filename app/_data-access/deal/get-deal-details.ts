@@ -255,6 +255,7 @@ export const getDealDetails = async (
     [`deal-details-${dealId}-${ctx.userId}-${elevated}`],
     {
       tags: [`deal:${dealId}`, `deals:${ctx.orgId}`],
+      revalidate: 3600,
     },
   )
 

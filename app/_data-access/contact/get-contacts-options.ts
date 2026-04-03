@@ -52,6 +52,7 @@ export const getContactsOptions = async (
     [`contacts-options-${ctx.orgId}-${ctx.userId}-${elevated}`],
     {
       tags: [`contacts:${ctx.orgId}`],
+      revalidate: 3600,
     },
   )
 

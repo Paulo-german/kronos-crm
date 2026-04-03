@@ -119,6 +119,7 @@ export const getDeals = async (ctx: RBACContext): Promise<DealListDto[]> => {
     [`deals-${ctx.orgId}-${ctx.userId}-${elevated}`],
     {
       tags: [`deals:${ctx.orgId}`],
+      revalidate: 3600,
     },
   )
 

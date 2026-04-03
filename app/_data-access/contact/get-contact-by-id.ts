@@ -93,6 +93,7 @@ export const getContactById = async (
     [`contact-${contactId}-${ctx.userId}-${elevated}`],
     {
       tags: [`contacts:${ctx.orgId}`, `contact:${contactId}`],
+      revalidate: 3600,
     },
   )
 

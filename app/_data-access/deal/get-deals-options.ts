@@ -61,6 +61,7 @@ export const getDealsOptions = async (
     [`deals-options-${ctx.orgId}-${ctx.userId}-${elevated}`],
     {
       tags: [`deals-options:${ctx.orgId}`],
+      revalidate: 3600,
     },
   )
 

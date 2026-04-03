@@ -81,6 +81,7 @@ export const getAppointments = async (
     [`appointments-${ctx.orgId}-${ctx.userId}-${elevated}`],
     {
       tags: [`appointments:${ctx.orgId}`],
+      revalidate: 3600,
     },
   )
 

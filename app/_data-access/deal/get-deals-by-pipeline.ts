@@ -137,6 +137,7 @@ export const getDealsByPipeline = async (
     [`deals-by-pipeline-${ctx.orgId}-${ctx.userId}-${elevated}`],
     {
       tags: [`deals:${ctx.orgId}`],
+      revalidate: 3600,
     },
   )
 
