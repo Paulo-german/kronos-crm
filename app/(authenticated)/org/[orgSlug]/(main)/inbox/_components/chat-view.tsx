@@ -374,6 +374,7 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
             onOpenChange={setTemplateDialogOpen}
             conversationId={conversation.id}
             inboxId={conversation.inboxId}
+            orgSlug={orgSlug}
             onSent={() => {
               fetchMessages()
               chatInputRef.current?.focus()

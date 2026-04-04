@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useMemo, useCallback } from 'react'
+import Link from 'next/link'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
-import { ArrowLeft, CheckCircle2, Loader2, Search, Send } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, FileText, Loader2, Search, Send } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -60,6 +61,7 @@ interface TemplateMessageDialogProps {
   onOpenChange: (open: boolean) => void
   conversationId: string
   inboxId: string
+  orgSlug: string
   onSent: () => void
 }
 
@@ -72,6 +74,7 @@ export function TemplateMessageDialog({
   onOpenChange,
   conversationId,
   inboxId,
+  orgSlug,
   onSent,
 }: TemplateMessageDialogProps) {
   const [step, setStep] = useState<1 | 2>(1)
@@ -244,12 +247,32 @@ export function TemplateMessageDialog({
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
               ) : filteredTemplates.length === 0 ? (
-                <div className="py-8 text-center">
-                  <p className="text-sm text-muted-foreground">
-                    {templates.length === 0
-                      ? 'Nenhum template aprovado encontrado para este inbox.'
-                      : 'Nenhum template corresponde à busca.'}
-                  </p>
+                <div className="flex flex-col items-center gap-2 py-10 text-center">
+                  {templates.length === 0 ? (
+                    <>
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                        <FileText className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                      <p className="mt-1 text-sm font-medium">Nenhum template disponível</p>
+                      <p className="max-w-[280px] text-xs text-muted-foreground">
+                        Crie e aprove templates no Meta para enviar mensagens fora da janela de 24h.
+                      </p>
+                      <Button variant="outline" size="sm" className="mt-2" asChild>
+                        <Link
+                          href={`/org/${orgSlug}/settings/inboxes/${inboxId}/templates`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <FileText className="mr-2 h-3.5 w-3.5" />
+                          Gerenciar templates
+                        </Link>
+                      </Button>
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Nenhum template corresponde à busca.
+                    </p>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-2">
