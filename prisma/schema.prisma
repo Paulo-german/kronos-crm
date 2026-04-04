@@ -649,6 +649,7 @@ model Conversation {
   updatedAt              DateTime            @updatedAt @map("updated_at")
   nextFollowUpAt         DateTime?           @map("next_follow_up_at")
   followUpCount          Int                 @default(0) @map("follow_up_count")
+  lastCustomerMessageAt  DateTime?           @map("last_customer_message_at")
   events                 ConversationEvent[]
   contact                Contact             @relation(fields: [contactId], references: [id], onDelete: Cascade)
   deal                   Deal?               @relation(fields: [dealId], references: [id])

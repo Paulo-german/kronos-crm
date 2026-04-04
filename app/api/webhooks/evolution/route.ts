@@ -258,6 +258,7 @@ export async function POST(req: Request) {
           unreadCount: { increment: 1 },
           nextFollowUpAt: null,
           followUpCount: 0,
+          lastCustomerMessageAt: new Date(),
         },
       })
 
@@ -338,7 +339,8 @@ export async function POST(req: Request) {
             unreadCount: { increment: 1 },
             nextFollowUpAt: null,
             followUpCount: 0,
-            },
+            lastCustomerMessageAt: new Date(),
+          },
         })
       }
 
@@ -459,7 +461,8 @@ export async function POST(req: Request) {
             unreadCount: { increment: 1 },
             nextFollowUpAt: null,
             followUpCount: 0,
-            },
+            lastCustomerMessageAt: new Date(),
+          },
         })
 
         revalidateTag(`conversations:${orgId}`)
@@ -515,7 +518,12 @@ export async function POST(req: Request) {
     // Reset follow-up completo + incrementar unreadCount — qualquer msg do cliente cancela ciclo FUP ativo
     db.conversation.update({
       where: { id: conversationId },
-      data: { unreadCount: { increment: 1 }, nextFollowUpAt: null, followUpCount: 0 },
+      data: {
+        unreadCount: { increment: 1 },
+        nextFollowUpAt: null,
+        followUpCount: 0,
+        lastCustomerMessageAt: new Date(),
+      },
     }),
     redis
       .set(

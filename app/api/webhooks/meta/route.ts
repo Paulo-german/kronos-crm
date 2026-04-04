@@ -11,7 +11,11 @@ import { checkBusinessHours } from '@/_lib/agent/check-business-hours'
 import { notifyOrgAdmins } from '@/_lib/notifications/notify-org-admins'
 import { tasks } from '@trigger.dev/sdk/v3'
 import type { processAgentMessage } from '@/../../trigger/process-agent-message'
-import type { MetaWebhookPayload, MetaWebhookValue } from '@/_lib/meta/types'
+import type {
+  MetaWebhookPayload,
+  MetaWebhookValue,
+  MetaTemplateStatusUpdate,
+} from '@/_lib/meta/types'
 import type { BusinessHoursConfig } from '@/_actions/agent/update-agent/schema'
 import type { NormalizedWhatsAppMessage } from '@/_lib/evolution/types'
 
@@ -57,7 +61,16 @@ export async function POST(req: Request) {
   // Promise.allSettled para isolamento de erros — falha em um change nao derruba o webhook inteiro
   const results = await Promise.allSettled(
     payload.entry.flatMap((entry) =>
-      entry.changes.map((change) => processChange(change.value, t0)),
+      entry.changes.map((change) => {
+        // Rotear para handler correto pelo field do change
+        if (change.field === 'message_template_status_update') {
+          return processTemplateStatusUpdate(
+            entry.id,
+            change.value as unknown as MetaTemplateStatusUpdate,
+          )
+        }
+        return processChange(change.value, t0)
+      }),
     ),
   )
 
@@ -68,6 +81,32 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json({ success: true })
+}
+
+// -----------------------------------------------------------------------------
+// Processa atualizacao de status de template (field = "message_template_status_update")
+// Invalida o cache de templates do inbox quando o Meta muda o status de um template.
+// -----------------------------------------------------------------------------
+async function processTemplateStatusUpdate(
+  wabaId: string,
+  update: MetaTemplateStatusUpdate,
+): Promise<void> {
+  console.log('[meta-webhook] template_status_update', {
+    wabaId,
+    templateId: update.message_template_id,
+    templateName: update.message_template_name,
+    event: update.event,
+  })
+
+  // Buscar todos os inboxes vinculados ao WABA para invalidar o cache de templates
+  const inboxes = await db.inbox.findMany({
+    where: { metaWabaId: wabaId },
+    select: { id: true },
+  })
+
+  for (const inbox of inboxes) {
+    revalidateTag(`whatsapp-templates:${inbox.id}`)
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -225,6 +264,7 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
             unreadCount: { increment: 1 },
             nextFollowUpAt: null,
             followUpCount: 0,
+            lastCustomerMessageAt: new Date(),
           },
         })
 
@@ -299,7 +339,8 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
               unreadCount: { increment: 1 },
               nextFollowUpAt: null,
               followUpCount: 0,
-              },
+              lastCustomerMessageAt: new Date(),
+            },
           })
         }
 
@@ -419,7 +460,8 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
               unreadCount: { increment: 1 },
               nextFollowUpAt: null,
               followUpCount: 0,
-              },
+              lastCustomerMessageAt: new Date(),
+            },
           })
 
           revalidateTag(`conversations:${orgId}`)
@@ -473,7 +515,12 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
       // Reset follow-up completo + incrementar unreadCount — qualquer msg do cliente cancela ciclo FUP ativo
       db.conversation.update({
         where: { id: conversationId },
-        data: { unreadCount: { increment: 1 }, nextFollowUpAt: null, followUpCount: 0 },
+        data: {
+          unreadCount: { increment: 1 },
+          nextFollowUpAt: null,
+          followUpCount: 0,
+          lastCustomerMessageAt: new Date(),
+        },
       }),
       redis
         .set(
