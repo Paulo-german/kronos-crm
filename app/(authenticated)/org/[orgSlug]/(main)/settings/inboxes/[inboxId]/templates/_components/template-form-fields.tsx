@@ -21,10 +21,17 @@ import {
   SelectValue,
 } from '@/_components/ui/select'
 import { Badge } from '@/_components/ui/badge'
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/_components/ui/command'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/_components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/_components/ui/popover'
 import { Button } from '@/_components/ui/button'
-import { Check, ChevronsUpDown } from 'lucide-react'
+import { Check, ChevronsUpDown, Info, CheckCircle2, AlertTriangle } from 'lucide-react'
 import { cn } from '@/_lib/utils'
 import { WHATSAPP_LANGUAGES } from '@/_lib/meta/constants'
 import type { CreateWhatsAppTemplateInput } from '@/_actions/inbox/create-whatsapp-template/schema'
@@ -44,19 +51,40 @@ function extractVariables(text: string): number[] {
   return Array.from(indices).sort((a, b) => a - b)
 }
 
+/** Formata número com separador de milhar: 1024 → "1.024" */
+function formatCount(value: number): string {
+  return value.toLocaleString('pt-BR')
+}
+
 export function TemplateFormFields({ form, isEditing = false }: TemplateFormFieldsProps) {
   const bodyText = form.watch('components.body.text') ?? ''
   const headerFormat = form.watch('components.header.format')
   const hasHeader = form.watch('components.header') !== undefined
   const hasFooter = form.watch('components.footer') !== undefined
+  const nameValue = form.watch('name') ?? ''
+  const watchedBodyExamples = form.watch('components.body.examples')
 
-  // Derivação inline das variáveis do body — ZERO useEffect
+  // Derivação inline das variáveis — ZERO useEffect
   const bodyVariables = useMemo(() => extractVariables(bodyText), [bodyText])
   const headerText = form.watch('components.header.text') ?? ''
   const headerVariables = useMemo(() => extractVariables(headerText), [headerText])
 
   const charCount = bodyText.length
   const MAX_BODY = 1024
+
+  // Validação visual inline do nome
+  const isNameValid = nameValue.length > 0 && /^[a-z0-9_]+$/.test(nameValue)
+  const isNameInvalid = nameValue.length > 0 && !/^[a-z0-9_]+$/.test(nameValue)
+
+  // Estado dos exemplos para o banner de variáveis
+  const allExamplesFilled = useMemo(() => {
+    if (bodyVariables.length === 0) return false
+    const examples = watchedBodyExamples ?? []
+    return bodyVariables.every((varIndex) => {
+      const example = examples[varIndex - 1]
+      return example && example.trim().length > 0
+    })
+  }, [bodyVariables, watchedBodyExamples])
 
   const toggleHeader = (enabled: boolean) => {
     if (enabled) {
@@ -82,16 +110,34 @@ export function TemplateFormFields({ form, isEditing = false }: TemplateFormFiel
         name="name"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Nome do template</FormLabel>
+            <div className="flex items-center justify-between">
+              <FormLabel>Nome do template</FormLabel>
+              {isNameValid && (
+                <span className="flex items-center gap-1 text-xs font-medium text-emerald-600">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Válido
+                </span>
+              )}
+            </div>
             <FormControl>
-              <Input
-                {...field}
-                placeholder="meu_template_promocional"
-                disabled={isEditing}
-              />
+              <div className="relative">
+                <Input
+                  {...field}
+                  placeholder="meu_template_promocional"
+                  disabled={isEditing}
+                  className={cn(
+                    isNameValid && 'border-emerald-500/50 focus-visible:ring-emerald-500/30',
+                    isNameInvalid && 'border-destructive/50 focus-visible:ring-destructive/30',
+                  )}
+                />
+              </div>
             </FormControl>
-            <FormDescription>
-              Somente letras minúsculas, números e underscore (ex: ordem_confirmada)
+            <FormDescription className="flex items-center gap-1.5">
+              <span className="font-mono text-[11px] tracking-tight text-muted-foreground/70">
+                a-z, 0-9 e _ apenas
+              </span>
+              <span className="text-muted-foreground/40">·</span>
+              <span>ex: ordem_confirmada</span>
             </FormDescription>
             <FormMessage />
           </FormItem>
@@ -189,17 +235,19 @@ export function TemplateFormFields({ form, isEditing = false }: TemplateFormFiel
         />
       </div>
 
-      {/* Header (opcional) */}
+      {/* Cabeçalho (opcional) */}
       <div className="space-y-3 rounded-lg border border-border/50 bg-secondary/10 p-4">
         <div className="flex items-center justify-between">
-          <div>
+          <div className="flex items-center gap-2">
             <p className="text-sm font-medium">Cabeçalho</p>
-            <p className="text-xs text-muted-foreground">Opcional — aparece acima do corpo</p>
+            <Badge
+              variant="outline"
+              className="border-border/40 text-[10px] font-normal text-muted-foreground"
+            >
+              Opcional
+            </Badge>
           </div>
-          <Switch
-            checked={hasHeader}
-            onCheckedChange={toggleHeader}
-          />
+          <Switch checked={hasHeader} onCheckedChange={toggleHeader} />
         </div>
 
         {hasHeader && (
@@ -255,23 +303,25 @@ export function TemplateFormFields({ form, isEditing = false }: TemplateFormFiel
               />
             )}
 
-            {/* Nota sobre variáveis no header TEXT */}
             {headerFormat === 'TEXT' && headerVariables.length > 0 && (
-              <p className="text-xs text-muted-foreground">
-                Variáveis no cabeçalho serão substituídas durante o envio.
-              </p>
+              <div className="flex items-center gap-2 rounded-md bg-muted/50 px-3 py-2">
+                <Info className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                <p className="text-xs text-muted-foreground">
+                  Variáveis no cabeçalho serão substituídas durante o envio.
+                </p>
+              </div>
             )}
           </div>
         )}
       </div>
 
-      {/* Body (obrigatório) */}
+      {/* Corpo (obrigatório) */}
       <div className="space-y-3 rounded-lg border border-border/50 bg-secondary/10 p-4">
-        <div>
+        <div className="flex items-center gap-2">
           <p className="text-sm font-medium">Corpo</p>
-          <p className="text-xs text-muted-foreground">
-            Obrigatório — texto principal da mensagem
-          </p>
+          <Badge className="border-0 bg-amber-500/15 text-[10px] font-normal text-amber-700 dark:bg-amber-500/20 dark:text-amber-400">
+            Obrigatório
+          </Badge>
         </div>
 
         <FormField
@@ -288,21 +338,21 @@ export function TemplateFormFields({ form, isEditing = false }: TemplateFormFiel
                   maxLength={MAX_BODY}
                 />
               </FormControl>
-              <div className="flex items-center justify-between">
+              <div className="flex items-start justify-between gap-2">
                 <FormDescription>
                   Use {`{{1}}`}, {`{{2}}`}... para inserir variáveis dinâmicas
                 </FormDescription>
                 <span
                   className={cn(
-                    'text-xs tabular-nums',
-                    charCount > MAX_BODY * 0.9
-                      ? charCount >= MAX_BODY
-                        ? 'text-destructive'
-                        : 'text-amber-600'
-                      : 'text-muted-foreground',
+                    'shrink-0 text-xs tabular-nums',
+                    charCount >= MAX_BODY
+                      ? 'font-medium text-destructive'
+                      : charCount > MAX_BODY * 0.9
+                        ? 'font-medium text-amber-600'
+                        : 'text-muted-foreground',
                   )}
                 >
-                  {charCount}/{MAX_BODY}
+                  {formatCount(charCount)} / {formatCount(MAX_BODY)}
                 </span>
               </div>
               <FormMessage />
@@ -310,11 +360,36 @@ export function TemplateFormFields({ form, isEditing = false }: TemplateFormFiel
           )}
         />
 
-        {/* Exemplos para variáveis do body — derivados inline via useMemo */}
+        {/* Banner de variáveis detectadas */}
+        {bodyVariables.length > 0 && (
+          <div
+            className={cn(
+              'flex items-center gap-2 rounded-md px-3 py-2 text-xs',
+              allExamplesFilled
+                ? 'bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400'
+                : 'bg-amber-500/10 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400',
+            )}
+          >
+            {allExamplesFilled ? (
+              <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+            ) : (
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+            )}
+            <span>
+              {bodyVariables.length}{' '}
+              {bodyVariables.length === 1 ? 'variável detectada' : 'variáveis detectadas'}
+              {allExamplesFilled
+                ? ' — Exemplos completos'
+                : ' — Preencha os exemplos para aprovação'}
+            </span>
+          </div>
+        )}
+
+        {/* Exemplos para variáveis do body */}
         {bodyVariables.length > 0 && (
           <div className="space-y-2">
             <p className="text-xs font-medium text-muted-foreground">
-              Exemplos para variáveis (obrigatório para aprovação):
+              Exemplos de valores (obrigatório para aprovação):
             </p>
             {bodyVariables.map((varIndex) => (
               <FormField
@@ -323,7 +398,7 @@ export function TemplateFormFields({ form, isEditing = false }: TemplateFormFiel
                 name={`components.body.examples.${varIndex - 1}` as `components.body.examples.${number}`}
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs">{`{{${varIndex}}}`}</FormLabel>
+                    <FormLabel className="text-xs font-mono text-muted-foreground">{`{{${varIndex}}}`}</FormLabel>
                     <FormControl>
                       <Input
                         {...field}
@@ -341,17 +416,19 @@ export function TemplateFormFields({ form, isEditing = false }: TemplateFormFiel
         )}
       </div>
 
-      {/* Footer (opcional) */}
+      {/* Rodapé (opcional) */}
       <div className="space-y-3 rounded-lg border border-border/50 bg-secondary/10 p-4">
         <div className="flex items-center justify-between">
-          <div>
+          <div className="flex items-center gap-2">
             <p className="text-sm font-medium">Rodapé</p>
-            <p className="text-xs text-muted-foreground">Opcional — aparece abaixo do corpo</p>
+            <Badge
+              variant="outline"
+              className="border-border/40 text-[10px] font-normal text-muted-foreground"
+            >
+              Opcional
+            </Badge>
           </div>
-          <Switch
-            checked={hasFooter}
-            onCheckedChange={toggleFooter}
-          />
+          <Switch checked={hasFooter} onCheckedChange={toggleFooter} />
         </div>
 
         {hasFooter && (

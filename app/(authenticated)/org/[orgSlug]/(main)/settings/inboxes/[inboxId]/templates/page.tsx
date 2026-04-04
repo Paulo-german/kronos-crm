@@ -31,11 +31,13 @@ export default async function TemplatesPage({ params }: TemplatesPageProps) {
   const initialTemplates = await getWhatsAppTemplates(inboxId, ctx.orgId)
 
   return (
-    <TemplatesList
-      inboxId={inboxId}
-      inboxName={inbox.name}
-      orgSlug={orgSlug}
-      initialTemplates={initialTemplates}
-    />
+    <div className="space-y-6 p-6">
+      <TemplatesList
+        inboxId={inboxId}
+        inboxName={inbox.name}
+        orgSlug={orgSlug}
+        initialTemplates={initialTemplates}
+      />
+    </div>
   )
 }

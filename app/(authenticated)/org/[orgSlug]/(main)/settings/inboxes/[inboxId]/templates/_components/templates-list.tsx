@@ -6,23 +6,18 @@ import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 import {
   ArrowLeft,
+  CalendarIcon,
+  Eye,
   MoreHorizontal,
   Plus,
   RefreshCw,
   Search,
   Trash2,
-  Eye,
 } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import { Badge } from '@/_components/ui/badge'
 import { Input } from '@/_components/ui/input'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/_components/ui/card'
+import { Card, CardContent } from '@/_components/ui/card'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,12 +25,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/_components/ui/dropdown-menu'
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-} from '@/_components/ui/tabs'
-import { Skeleton } from '@/_components/ui/skeleton'
+import { Tabs, TabsList, TabsTrigger } from '@/_components/ui/tabs'
 import {
   Dialog,
   DialogContent,
@@ -43,46 +33,79 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/_components/ui/dialog'
+import Header, {
+  HeaderLeft,
+  HeaderTitle,
+  HeaderSubTitle,
+  HeaderRight,
+} from '@/_components/header'
 import { listWhatsAppTemplates } from '@/_actions/inbox/list-whatsapp-templates'
-import type { MetaTemplate, MetaTemplateStatus } from '@/_lib/meta/types'
+import type {
+  MetaTemplate,
+  MetaTemplateStatus,
+  MetaQualityScore,
+} from '@/_lib/meta/types'
 import { CreateTemplateDialog } from './create-template-dialog'
 import { DeleteTemplateDialog } from './delete-template-dialog'
 import { TemplatePreview } from './template-preview'
 
 // ---------------------------------------------------------------------------
-// Helpers de badge
+// Configurações de status
 // ---------------------------------------------------------------------------
 
 type StatusConfig = {
   label: string
   className: string
+  dotColor: string
 }
 
 const STATUS_CONFIG: Record<MetaTemplateStatus, StatusConfig> = {
   APPROVED: {
     label: 'Aprovado',
     className: 'bg-kronos-green/10 text-kronos-green border-kronos-green/20',
+    dotColor: 'bg-kronos-green',
   },
   PENDING: {
     label: 'Pendente',
     className: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
+    dotColor: 'bg-amber-500',
   },
   REJECTED: {
     label: 'Rejeitado',
     className: 'bg-destructive/10 text-destructive border-destructive/20',
+    dotColor: 'bg-destructive',
   },
   PAUSED: {
     label: 'Pausado',
     className: 'bg-muted text-muted-foreground border-border',
+    dotColor: 'bg-muted-foreground',
   },
   DISABLED: {
     label: 'Desabilitado',
     className: 'bg-muted text-muted-foreground border-border',
+    dotColor: 'bg-muted-foreground',
   },
   IN_APPEAL: {
     label: 'Em apelação',
     className: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
+    dotColor: 'bg-blue-500',
   },
+}
+
+// ---------------------------------------------------------------------------
+// Configurações de quality score
+// ---------------------------------------------------------------------------
+
+type QualityConfig = {
+  label: string
+  dotColor: string
+}
+
+const QUALITY_CONFIG: Record<MetaQualityScore, QualityConfig> = {
+  GREEN: { label: 'GREEN', dotColor: 'bg-kronos-green' },
+  YELLOW: { label: 'YELLOW', dotColor: 'bg-amber-500' },
+  RED: { label: 'RED', dotColor: 'bg-destructive' },
+  UNKNOWN: { label: 'UNKNOWN', dotColor: 'bg-muted-foreground' },
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -92,6 +115,10 @@ const CATEGORY_LABELS: Record<string, string> = {
 }
 
 type FilterTab = 'all' | 'approved' | 'pending' | 'rejected'
+
+// ---------------------------------------------------------------------------
+// Props
+// ---------------------------------------------------------------------------
 
 interface TemplatesListProps {
   inboxId: string
@@ -134,14 +161,18 @@ export function TemplatesList({
     executeRefresh({ inboxId })
   }
 
-  // Filtro inline por aba e busca — derivação sem useEffect
+  // Filtro derivado por aba e busca — sem useEffect
   const filteredTemplates = useMemo(() => {
     const byTab = templates.filter((template) => {
       if (activeTab === 'all') return true
       if (activeTab === 'approved') return template.status === 'APPROVED'
       if (activeTab === 'pending') return template.status === 'PENDING'
       if (activeTab === 'rejected')
-        return template.status === 'REJECTED' || template.status === 'PAUSED' || template.status === 'DISABLED'
+        return (
+          template.status === 'REJECTED' ||
+          template.status === 'PAUSED' ||
+          template.status === 'DISABLED'
+        )
       return true
     })
 
@@ -155,51 +186,62 @@ export function TemplatesList({
     )
   }, [templates, activeTab, search])
 
-  const counts = useMemo(() => ({
-    all: templates.length,
-    approved: templates.filter((template) => template.status === 'APPROVED').length,
-    pending: templates.filter((template) => template.status === 'PENDING').length,
-    rejected: templates.filter((template) => template.status === 'REJECTED' || template.status === 'PAUSED' || template.status === 'DISABLED').length,
-  }), [templates])
+  const counts = useMemo(
+    () => ({
+      all: templates.length,
+      approved: templates.filter((template) => template.status === 'APPROVED').length,
+      pending: templates.filter((template) => template.status === 'PENDING').length,
+      rejected: templates.filter(
+        (template) =>
+          template.status === 'REJECTED' ||
+          template.status === 'PAUSED' ||
+          template.status === 'DISABLED',
+      ).length,
+    }),
+    [templates],
+  )
+
+  const isEmptyList = templates.length === 0
+  const isEmptyFiltered = filteredTemplates.length === 0 && !isEmptyList
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      {/* Cabeçalho */}
-      <div className="flex flex-col gap-4">
-        <Button variant="ghost" size="sm" className="w-fit" asChild>
+    <div className="space-y-6">
+      {/* Botão voltar */}
+      <div>
+        <Button variant="ghost" size="sm" asChild>
           <Link href={`/org/${orgSlug}/settings/inboxes/${inboxId}`}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Voltar para {inboxName}
           </Link>
         </Button>
-
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Templates</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Gerencie os templates de mensagem do WhatsApp para este inbox.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-            >
-              <RefreshCw
-                className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`}
-              />
-              Atualizar
-            </Button>
-            <Button size="sm" onClick={() => setIsCreateOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Criar template
-            </Button>
-          </div>
-        </div>
       </div>
+
+      {/* Header */}
+      <Header>
+        <HeaderLeft>
+          <HeaderTitle>Templates</HeaderTitle>
+          <HeaderSubTitle>
+            Gerencie os templates de mensagem do WhatsApp para este inbox.
+          </HeaderSubTitle>
+        </HeaderLeft>
+        <HeaderRight>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+          >
+            <RefreshCw
+              className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`}
+            />
+            Atualizar
+          </Button>
+          <Button size="sm" onClick={() => setIsCreateOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Criar template
+          </Button>
+        </HeaderRight>
+      </Header>
 
       {/* Filtros */}
       <div className="flex items-center gap-4">
@@ -212,7 +254,10 @@ export function TemplatesList({
             <TabsTrigger value="all">
               Todos
               {counts.all > 0 && (
-                <Badge variant="secondary" className="ml-1.5 h-4 min-w-4 px-1 text-[10px]">
+                <Badge
+                  variant="secondary"
+                  className="ml-1.5 h-4 min-w-4 px-1 text-[10px]"
+                >
                   {counts.all}
                 </Badge>
               )}
@@ -220,7 +265,10 @@ export function TemplatesList({
             <TabsTrigger value="approved">
               Aprovados
               {counts.approved > 0 && (
-                <Badge variant="secondary" className="ml-1.5 h-4 min-w-4 px-1 text-[10px]">
+                <Badge
+                  variant="secondary"
+                  className="ml-1.5 h-4 min-w-4 px-1 text-[10px]"
+                >
                   {counts.approved}
                 </Badge>
               )}
@@ -228,7 +276,10 @@ export function TemplatesList({
             <TabsTrigger value="pending">
               Pendentes
               {counts.pending > 0 && (
-                <Badge variant="secondary" className="ml-1.5 h-4 min-w-4 px-1 text-[10px]">
+                <Badge
+                  variant="secondary"
+                  className="ml-1.5 h-4 min-w-4 px-1 text-[10px]"
+                >
                   {counts.pending}
                 </Badge>
               )}
@@ -236,7 +287,10 @@ export function TemplatesList({
             <TabsTrigger value="rejected">
               Rejeitados
               {counts.rejected > 0 && (
-                <Badge variant="secondary" className="ml-1.5 h-4 min-w-4 px-1 text-[10px]">
+                <Badge
+                  variant="secondary"
+                  className="ml-1.5 h-4 min-w-4 px-1 text-[10px]"
+                >
                   {counts.rejected}
                 </Badge>
               )}
@@ -255,46 +309,43 @@ export function TemplatesList({
         </div>
       </div>
 
-      {/* Lista de templates */}
-      {isRefreshing && templates.length === 0 ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, index) => (
-            <Card key={index} className="border-border/50">
-              <CardHeader className="pb-3">
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="mt-1 h-3 w-1/2" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-16 w-full" />
-              </CardContent>
-            </Card>
-          ))}
+      {/* Empty state: sem nenhum template */}
+      {isEmptyList && (
+        <div className="flex flex-col items-center justify-center gap-4 py-16">
+          <div className="rounded-full bg-muted p-4">
+            <Plus className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <div className="text-center">
+            <h3 className="text-lg font-semibold">
+              Nenhum template encontrado
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Crie seu primeiro template para enviar mensagens proativas pelo
+              WhatsApp.
+            </p>
+          </div>
+          <Button onClick={() => setIsCreateOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Criar template
+          </Button>
         </div>
-      ) : filteredTemplates.length === 0 ? (
+      )}
+
+      {/* Empty state: filtros sem resultado */}
+      {isEmptyFiltered && (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/50 bg-muted/10 py-16">
           <p className="text-base font-medium">
-            {templates.length === 0
-              ? 'Nenhum template encontrado'
-              : 'Nenhum template corresponde aos filtros'}
+            Nenhum template corresponde aos filtros
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            {templates.length === 0
-              ? 'Clique em "Criar template" para adicionar seu primeiro template.'
-              : 'Tente mudar os filtros ou o termo de busca.'}
+            Tente mudar os filtros ou o termo de busca.
           </p>
-          {templates.length === 0 && (
-            <Button
-              className="mt-4"
-              size="sm"
-              onClick={() => setIsCreateOpen(true)}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Criar template
-            </Button>
-          )}
         </div>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      )}
+
+      {/* Grid de cards */}
+      {!isEmptyList && !isEmptyFiltered && (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredTemplates.map((template) => (
             <TemplateCard
               key={`${template.name}-${template.language}`}
@@ -303,6 +354,22 @@ export function TemplatesList({
               onPreview={() => setPreviewTarget(template)}
             />
           ))}
+
+          {/* Card "+" para criar novo template */}
+          <button
+            type="button"
+            onClick={() => setIsCreateOpen(true)}
+            className="min-h-[180px] cursor-pointer rounded-xl border-2 border-dashed bg-muted/30 transition-colors hover:bg-muted/50"
+          >
+            <div className="flex h-full flex-col items-center justify-center gap-2">
+              <div className="rounded-full border-2 border-dashed p-2">
+                <Plus className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <span className="text-sm font-medium text-muted-foreground">
+                Novo template
+              </span>
+            </div>
+          </button>
         </div>
       )}
 
@@ -327,7 +394,7 @@ export function TemplatesList({
         }}
       />
 
-      {/* Dialog de preview completo */}
+      {/* Dialog de preview */}
       <Dialog
         open={!!previewTarget}
         onOpenChange={(open) => {
@@ -361,59 +428,101 @@ interface TemplateCardProps {
 function TemplateCard({ template, onDelete, onPreview }: TemplateCardProps) {
   const statusConfig = STATUS_CONFIG[template.status] ?? STATUS_CONFIG.DISABLED
   const bodyComponent = template.components.find((c) => c.type === 'BODY')
-  const bodyPreview = bodyComponent?.text?.slice(0, 120)
+  const bodyPreview = bodyComponent?.text
+
+  const qualityScore = template.quality_score?.score
+  const qualityConfig = qualityScore ? QUALITY_CONFIG[qualityScore] : null
+
+  const formattedDate = template.quality_score?.date
+    ? new Intl.DateTimeFormat('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: '2-digit',
+      }).format(new Date(template.quality_score.date))
+    : null
 
   return (
-    <Card className="border-border/50 bg-secondary/10 transition-colors hover:bg-secondary/20">
-      <CardHeader className="pb-2">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <CardTitle className="truncate font-mono text-sm">{template.name}</CardTitle>
-            <CardDescription className="mt-0.5 flex items-center gap-1.5 text-xs">
-              <span>{template.language}</span>
-              <span className="text-border">·</span>
-              <span>{CATEGORY_LABELS[template.category] ?? template.category}</span>
-            </CardDescription>
-          </div>
-
-          <div className="flex shrink-0 items-center gap-2">
+    <div className="group cursor-pointer" onClick={onPreview}>
+      <Card className="flex min-h-[180px] flex-col transition-colors hover:border-primary/50">
+        <CardContent className="flex flex-1 flex-col gap-3 p-5">
+          {/* Topo: status badge + dropdown */}
+          <div className="flex items-center justify-between">
             <Badge
               variant="outline"
-              className={`h-5 px-1.5 text-[10px] font-semibold ${statusConfig.className}`}
+              className={`gap-1.5 ${statusConfig.className}`}
             >
+              <span className={`h-1.5 w-1.5 rounded-full ${statusConfig.dotColor}`} />
               {statusConfig.label}
             </Badge>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={onPreview}>
-                  <Eye className="mr-2 h-4 w-4" />
-                  Ver preview
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="text-destructive focus:text-destructive"
-                  onClick={onDelete}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Deletar
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {/* stopPropagation para o dropdown não disparar o onClick do card */}
+            <div onClick={(event) => event.stopPropagation()}>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-7 w-7">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={onPreview}>
+                    <Eye className="mr-2 h-4 w-4" />
+                    Ver preview
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive"
+                    onClick={onDelete}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Deletar
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
-        </div>
-      </CardHeader>
 
-      {bodyPreview && (
-        <CardContent className="pt-0">
-          <p className="line-clamp-3 text-xs text-muted-foreground">{bodyPreview}</p>
+          {/* Nome + badges de idioma e categoria */}
+          <div className="space-y-1.5">
+            <h3 className="text-base font-semibold leading-tight">
+              {template.name}
+            </h3>
+            <div className="flex flex-wrap gap-1.5">
+              <Badge variant="secondary">{template.language}</Badge>
+              <Badge variant="secondary">
+                {CATEGORY_LABELS[template.category] ?? template.category}
+              </Badge>
+            </div>
+          </div>
+
+          {/* Preview do body */}
+          {bodyPreview && (
+            <p className="line-clamp-3 text-sm text-muted-foreground">
+              {bodyPreview}
+            </p>
+          )}
+
+          {/* Footer: quality score + data */}
+          <div className="mt-auto flex items-center justify-between border-t pt-3">
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              {qualityConfig ? (
+                <>
+                  <span
+                    className={`h-2 w-2 rounded-full ${qualityConfig.dotColor}`}
+                  />
+                  <span>{qualityConfig.label}</span>
+                </>
+              ) : (
+                <span>—</span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <CalendarIcon className="h-3.5 w-3.5" />
+              <span>{formattedDate ?? '—'}</span>
+            </div>
+          </div>
         </CardContent>
-      )}
-    </Card>
+      </Card>
+    </div>
   )
 }

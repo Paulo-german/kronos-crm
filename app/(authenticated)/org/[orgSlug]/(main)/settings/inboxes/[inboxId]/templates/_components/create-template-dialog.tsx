@@ -33,6 +33,11 @@ interface CreateTemplateDialogProps {
   onCreated: () => void
 }
 
+const CATEGORY_LABELS: Record<string, string> = {
+  MARKETING: 'Marketing',
+  UTILITY: 'Utilidade',
+}
+
 export function CreateTemplateDialog({
   open,
   onOpenChange,
@@ -79,15 +84,21 @@ export function CreateTemplateDialog({
   const watchedBodyText = form.watch('components.body.text')
   const watchedFooterText = form.watch('components.footer.text')
   const watchedBodyExamples = form.watch('components.body.examples')
+  const watchedName = form.watch('name')
+  const watchedCategory = form.watch('category')
+  const watchedLanguage = form.watch('language')
 
   const previewBodyValues = useMemo(
     () => watchedBodyExamples ?? [],
     [watchedBodyExamples],
   )
 
+  // O card de detalhes só aparece quando o nome foi preenchido
+  const showDetailsCard = watchedName && watchedName.length > 0
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-3xl gap-0 p-0">
+      <DialogContent className="max-w-4xl gap-0 p-0">
         <DialogHeader className="px-6 pt-6">
           <DialogTitle>Criar template</DialogTitle>
           <DialogDescription>
@@ -110,11 +121,12 @@ export function CreateTemplateDialog({
 
           <Separator orientation="vertical" />
 
-          {/* Preview ao vivo */}
-          <div className="w-72 shrink-0 px-4 py-4">
+          {/* Painel de preview — sticky, não scrolla com o form */}
+          <div className="flex w-80 shrink-0 flex-col px-5 py-4" style={{ maxHeight: '65vh', overflowY: 'auto' }}>
             <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Preview
             </p>
+
             <TemplatePreview
               headerFormat={watchedHeaderFormat}
               headerText={watchedHeaderText ?? undefined}
@@ -122,6 +134,37 @@ export function CreateTemplateDialog({
               footerText={watchedFooterText ?? undefined}
               bodyVariableValues={previewBodyValues}
             />
+
+            {/* Card de detalhes — visível apenas quando o nome está preenchido */}
+            {showDetailsCard && (
+              <div className="mt-4 rounded-lg bg-muted/50 p-3">
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Detalhes
+                </p>
+                <div className="space-y-1.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-xs text-muted-foreground">Nome</span>
+                    <span className="max-w-[60%] break-all text-right font-mono text-xs text-foreground">
+                      {watchedName}
+                    </span>
+                  </div>
+                  {watchedCategory && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Categoria</span>
+                      <span className="text-xs text-foreground">
+                        {CATEGORY_LABELS[watchedCategory] ?? watchedCategory}
+                      </span>
+                    </div>
+                  )}
+                  {watchedLanguage && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Idioma</span>
+                      <span className="font-mono text-xs text-foreground">{watchedLanguage}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
