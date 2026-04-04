@@ -30,6 +30,7 @@ export interface ConversationListDto {
   remoteJid: string | null
   dealId: string | null
   dealTitle: string | null
+  lastCustomerMessageAt: Date | null
   unreadCount: number
   lastMessageRole: string | null
   lastMessage: {
@@ -139,6 +140,7 @@ function mapConversationToDto(
     remoteJid: masked ? maskRemoteJid(conversation.remoteJid) : conversation.remoteJid,
     dealId: conversation.deal?.id ?? null,
     dealTitle: conversation.deal?.title ?? null,
+    lastCustomerMessageAt: conversation.lastCustomerMessageAt,
     unreadCount: conversation.unreadCount,
     lastMessageRole: conversation.lastMessageRole,
     lastMessage: conversation.messages[0]

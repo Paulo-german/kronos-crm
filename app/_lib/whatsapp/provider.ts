@@ -5,8 +5,10 @@ import { sendMetaTextMessage, sendMetaAudioMessage, sendMetaMediaMessage } from 
 import { sendZApiTextMessage } from '@/_lib/zapi/send-message'
 import { sendZApiAudio } from '@/_lib/zapi/send-audio'
 import { sendZApiMedia } from '@/_lib/zapi/send-media'
+import { sendMetaTemplateMessage } from '@/_lib/meta/template-api'
 import type { ZApiConfig } from '@/_lib/zapi/types'
 import type { EvolutionCredentials } from '@/_lib/evolution/resolve-credentials'
+import type { MetaTemplateSendComponent } from '@/_lib/meta/types'
 import { ConnectionType } from '@prisma/client'
 
 /**
@@ -24,6 +26,16 @@ export interface WhatsAppProvider {
     fileName?: string,
     caption?: string,
     mediaUrl?: string,
+  ): Promise<string>
+  /**
+   * Envia uma template message aprovada pelo Meta.
+   * Apenas disponivel para inboxes META_CLOUD — os demais providers lancam erro.
+   */
+  sendTemplate(
+    recipientPhone: string,
+    templateName: string,
+    language: string,
+    components?: MetaTemplateSendComponent[],
   ): Promise<string>
 }
 
@@ -61,6 +73,8 @@ export function resolveWhatsAppProvider(inbox: InboxProviderContext): WhatsAppPr
         sendMetaAudioMessage(phoneNumberId, accessToken, recipientPhone.replace('@s.whatsapp.net', ''), audioBase64),
       sendMedia: (recipientPhone: string, mediaBase64: string, mimetype: string, mediatype: 'image' | 'document' | 'video', fileName?: string, caption?: string) =>
         sendMetaMediaMessage(phoneNumberId, accessToken, recipientPhone.replace('@s.whatsapp.net', ''), mediaBase64, mimetype, mediatype, fileName, caption),
+      sendTemplate: (recipientPhone: string, templateName: string, language: string, components?: MetaTemplateSendComponent[]) =>
+        sendMetaTemplateMessage(phoneNumberId, accessToken, recipientPhone.replace('@s.whatsapp.net', ''), templateName, language, components),
     }
   }
 
@@ -85,6 +99,9 @@ export function resolveWhatsAppProvider(inbox: InboxProviderContext): WhatsAppPr
       sendMedia: (recipientPhone: string, _mediaBase64: string, mimetype: string, mediatype: 'image' | 'document' | 'video', fileName?: string, caption?: string, mediaUrl?: string) => {
         if (!mediaUrl) throw new Error('Z-API requer URL publica para envio de midia. Configure o B2 Storage.')
         return sendZApiMedia(config, recipientPhone.replace('@s.whatsapp.net', ''), mediaUrl, mimetype, mediatype, fileName, caption)
+      },
+      sendTemplate: () => {
+        return Promise.reject(new Error('Templates não suportados pelo provedor Z-API.'))
       },
     }
   }
@@ -117,6 +134,9 @@ export function resolveWhatsAppProvider(inbox: InboxProviderContext): WhatsAppPr
     sendMedia: (recipientPhone: string, _mediaBase64: string, mimetype: string, mediatype: 'image' | 'document' | 'video', fileName?: string, caption?: string, mediaUrl?: string) => {
       if (!mediaUrl) throw new Error('Evolution API requer URL pública para envio de mídia. Configure o B2 Storage.')
       return sendWhatsAppMedia(instanceName, recipientPhone, mediaUrl, mimetype, mediatype, fileName, caption, credentials)
+    },
+    sendTemplate: () => {
+      return Promise.reject(new Error('Templates não suportados pelo provedor Evolution API.'))
     },
   }
 }

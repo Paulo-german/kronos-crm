@@ -292,6 +292,7 @@ export async function POST(req: Request) {
           lastMessageRole: 'user',
           nextFollowUpAt: null,
           followUpCount: 0,
+          lastCustomerMessageAt: new Date(),
           ...AUTO_REOPEN_FIELDS,
         },
       })
@@ -344,7 +345,7 @@ export async function POST(req: Request) {
       })
       await db.conversation.update({
         where: { id: resolveInactiveResult.conversationId },
-        data: { unreadCount: { increment: 1 }, lastMessageRole: 'user', nextFollowUpAt: null, followUpCount: 0, ...AUTO_REOPEN_FIELDS },
+        data: { unreadCount: { increment: 1 }, lastMessageRole: 'user', nextFollowUpAt: null, followUpCount: 0, lastCustomerMessageAt: new Date(), ...AUTO_REOPEN_FIELDS },
       })
       revalidateTag(`conversations:${orgId}`)
       revalidateTag(`conversation-messages:${resolveInactiveResult.conversationId}`)
@@ -530,6 +531,7 @@ export async function POST(req: Request) {
           lastMessageRole: 'user',
           nextFollowUpAt: null,
           followUpCount: 0,
+          lastCustomerMessageAt: new Date(),
           ...AUTO_REOPEN_FIELDS,
         },
       })
@@ -585,7 +587,7 @@ export async function POST(req: Request) {
   await Promise.all([
     db.conversation.update({
       where: { id: conversationId },
-      data: { unreadCount: { increment: 1 }, lastMessageRole: 'user', nextFollowUpAt: null, followUpCount: 0, ...AUTO_REOPEN_FIELDS },
+      data: { unreadCount: { increment: 1 }, lastMessageRole: 'user', nextFollowUpAt: null, followUpCount: 0, lastCustomerMessageAt: new Date(), ...AUTO_REOPEN_FIELDS },
     }),
     redis
       .set(

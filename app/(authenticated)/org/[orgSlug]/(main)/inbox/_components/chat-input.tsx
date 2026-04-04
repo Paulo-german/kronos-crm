@@ -11,6 +11,7 @@ import {
 } from '@/_components/ui/tooltip'
 import { ACCEPTED_FILE_INPUT } from '@/_lib/whatsapp/media-constants'
 import { MediaPreview } from './media-preview'
+import { TemplateMessageTrigger } from './template-message-trigger'
 
 export interface ChatInputHandle {
   focus(): void
@@ -33,6 +34,8 @@ interface ChatInputProps {
   onFileRemove: () => void
   onSendMedia: () => void
   isMediaPending: boolean
+  /** Somente presente quando o inbox é META_CLOUD */
+  onOpenTemplateDialog?: () => void
 }
 
 function formatDuration(seconds: number) {
@@ -60,6 +63,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
       onFileRemove,
       onSendMedia,
       isMediaPending,
+      onOpenTemplateDialog,
     },
     ref,
   ) {
@@ -145,6 +149,12 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
                     <p>Anexar arquivo</p>
                   </TooltipContent>
                 </Tooltip>
+                {onOpenTemplateDialog && (
+                  <TemplateMessageTrigger
+                    onClick={onOpenTemplateDialog}
+                    disabled={anyPending}
+                  />
+                )}
                 <Textarea
                   ref={textareaRef}
                   value={text}
