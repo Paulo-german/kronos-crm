@@ -6,7 +6,11 @@ import { Card, CardContent } from '@/_components/ui/card'
 import { formatCurrency } from '@/_utils/format-currency'
 import type { DealDto } from '@/_data-access/deal/get-deals-by-pipeline'
 import { Badge } from '@/_components/ui/badge'
-import { ChevronDown, CircleIcon, Clock } from 'lucide-react'
+import {
+  ChevronDown,
+  Clock,
+  SquareIcon,
+} from 'lucide-react'
 import { Label } from '@/_components/ui/label'
 import {
   Tooltip,
@@ -35,32 +39,27 @@ export const priorityConfig = {
 const statusConfig = {
   OPEN: {
     label: 'NOVO',
-    color:
-      'bg-kronos-blue/10 text-kronos-blue border border-kronos-blue/20 hover:bg-kronos-blue/20',
+    color: ' text-kronos-blue border-none bg-transparent',
     variant: 'secondary' as const,
   },
   IN_PROGRESS: {
     label: 'EM ANDAMENTO',
-    color:
-      'bg-kronos-purple/10 text-kronos-purple border-kronos-purple/20 hover:bg-kronos-purple/20',
+    color: ' text-kronos-purple border-none bg-transparent',
     variant: 'secondary' as const,
   },
   WON: {
     label: 'VENDIDO',
-    color:
-      'bg-kronos-green/10 text-kronos-green border-kronos-green/20 hover:bg-kronos-green/20',
+    color: ' text-kronos-green border-none bg-transparent',
     variant: 'secondary' as const,
   },
   LOST: {
     label: 'PERDIDO',
-    color:
-      'bg-kronos-red/10 text-kronos-red border-kronos-red/20 hover:bg-kronos-red/20',
+    color: ' text-kronos-red border-none bg-transparent',
     variant: 'secondary' as const,
   },
   PAUSED: {
     label: 'PAUSADO',
-    color:
-      'bg-kronos-yellow/10 text-kronos-yellow border-kronos-yellow/20 hover:bg-kronos-yellow/20',
+    color: ' text-kronos-yellow border-none bg-transparent',
     variant: 'secondary' as const,
   },
 }
@@ -81,7 +80,8 @@ const KanbanCard = ({
   priorityOverride,
   showIdleDays = true,
 }: KanbanCardProps) => {
-  const priority = (priorityOverride ?? deal.priority) as keyof typeof priorityConfig
+  const priority = (priorityOverride ??
+    deal.priority) as keyof typeof priorityConfig
 
   const {
     attributes,
@@ -110,9 +110,9 @@ const KanbanCard = ({
 
   const idleStyle =
     idleDays >= IDLE_DANGER_DAYS
-      ? 'text-red-500 bg-red-500/10'
+      ? 'text-kronos-red bg-kronos-red/10'
       : idleDays >= IDLE_WARNING_DAYS
-        ? 'text-amber-500 bg-amber-500/10'
+        ? 'text-kronos-yellow bg-kronos-yellow/10'
         : 'text-muted-foreground bg-muted'
 
   const handleCardClick = (e: React.MouseEvent) => {
@@ -130,31 +130,47 @@ const KanbanCard = ({
       style={style}
       {...attributes}
       {...listeners}
-      className={`relative cursor-grab border-border bg-card shadow-none transition-all hover:bg-card/80 ${draggingClass}`}
+      className={`bg-kanban-card relative cursor-grab border-border shadow-none transition-all hover:bg-card/50 ${draggingClass}`}
       onClick={handleCardClick}
     >
       <CardContent className="flex flex-col gap-4 p-3.5">
         {/* 1. Topo: Badge de Status + Prioridade */}
-        <div>
+        <div className="flex justify-between">
           {/* Badge de Status */}
           {statusConfig[deal.status] && (
             <Badge
               variant="outline"
               className={`h-6 gap-1.5 px-2 text-[10px] font-semibold transition-colors ${statusConfig[deal.status].color}`}
             >
-              <CircleIcon className="h-1.5 w-1.5 fill-current" />
+              <SquareIcon size={10} className="fill-current" />
               {statusConfig[deal.status].label}
             </Badge>
           )}
+
+          {/* Prioridade (Botão leve — abre Popover singleton no Board) */}
+          <div
+            className="flex flex-col gap-0.5"
+            data-priority-select
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className={`flex h-6 items-center gap-1 rounded-md border bg-transparent px-2 text-[9px] font-medium transition-colors hover:bg-accent ${priorityConfig[priority].color}`}
+              onClick={(e) => onPriorityClick?.(deal.id, e.currentTarget)}
+            >
+              {priorityConfig[priority].label}
+              <ChevronDown className="h-3 w-3 opacity-50" />
+            </button>
+          </div>
         </div>
         {/* 2. Sub-topo: Título do Deal */}
-        <p className="line-clamp-2 cursor-pointer text-base font-semibold leading-tight text-foreground hover:text-primary">
+        <p className="line-clamp-2 cursor-pointer text-sm font-semibold leading-tight text-foreground hover:text-primary">
           {deal.title}
         </p>
         {/* 3. Meio: Grid de Contato + Valor */}
-        <div className="flex gap-4">
+        <div className="flex justify-between">
           {/* Coluna Contato */}
-          <div className="flex flex-col gap-1">
+          <div className="flex gap-4">
             <div className="flex h-6 cursor-default items-center truncate text-xs font-medium text-foreground">
               {deal.contactName ? (
                 <Tooltip>
@@ -182,39 +198,22 @@ const KanbanCard = ({
                 </Tooltip>
               )}
             </div>
-          </div>
 
-          {/* Coluna Valor */}
-          <div className="flex flex-col gap-1">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="flex h-6 items-center">
-                  <span className="inline-flex items-center rounded-md text-xs font-bold text-foreground">
-                    {formattedValue}
-                  </span>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p className="space-x-5">Valor único {formattedValue}</p>
-              </TooltipContent>
-            </Tooltip>
-          </div>
-          {/* Prioridade (Botão leve — abre Popover singleton no Board) */}
-          <div
-            className="flex flex-col gap-0.5"
-            data-priority-select
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              className={`flex h-6 items-center gap-1 rounded-md border bg-transparent px-2 text-[9px] font-medium transition-colors hover:bg-accent ${priorityConfig[priority].color}`}
-              onClick={(e) =>
-                onPriorityClick?.(deal.id, e.currentTarget)
-              }
-            >
-              {priorityConfig[priority].label}
-              <ChevronDown className="h-3 w-3 opacity-50" />
-            </button>
+            {/* Coluna Valor */}
+            <div className="flex flex-col gap-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex h-6 items-center">
+                    <span className="inline-flex items-center rounded-md text-xs font-bold text-foreground">
+                      {formattedValue}
+                    </span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="space-x-5">Valor único {formattedValue}</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
           </div>
         </div>
 
@@ -223,7 +222,7 @@ const KanbanCard = ({
           <Tooltip>
             <TooltipTrigger asChild>
               <div
-                className={`flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-medium ${idleStyle}`}
+                className={`flex items-center justify-center gap-1.5 rounded-md px-1.5 py-1.5 text-xs font-medium ${idleStyle}`}
               >
                 <Clock className="h-3 w-3" />
                 <span>
