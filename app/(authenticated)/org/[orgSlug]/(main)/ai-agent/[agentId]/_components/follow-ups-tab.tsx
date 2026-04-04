@@ -137,7 +137,7 @@ const FollowUpCard = ({
       : followUp.messageContent
 
   return (
-    <Card className="border-border/50 bg-secondary/20 transition-all hover:bg-secondary/30">
+    <Card className="border-border/50 bg-card transition-all hover:bg-card/80">
       <CardContent className="p-4">
         <div className="flex items-start gap-3">
           {/* Badge de ordem */}
@@ -312,7 +312,7 @@ const ExhaustedActionSection = ({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)}>
-        <Card className="border-border/50 bg-secondary/20">
+        <Card className="border-border/50 bg-card">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <div className="flex size-8 items-center justify-center rounded-md bg-amber-500/10">

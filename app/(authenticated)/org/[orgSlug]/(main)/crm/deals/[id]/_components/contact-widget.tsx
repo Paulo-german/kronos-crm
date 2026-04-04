@@ -160,7 +160,7 @@ const ContactWidget = ({ deal, contacts, isPiiRestricted }: ContactWidgetProps) 
 
   return (
     <>
-      <Card className="border-border/50 bg-secondary/20">
+      <Card className="border-border/50 bg-card">
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <div className="flex items-center gap-2">
             <CardTitle className="text-base font-semibold">Contatos</CardTitle>

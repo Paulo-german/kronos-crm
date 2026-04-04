@@ -32,7 +32,7 @@ export default function DealDetailLoading() {
       </div>
 
       {/* Tabs bar */}
-      <div className="grid h-12 w-full grid-cols-4 rounded-md border border-border/50 bg-tab/30 p-1">
+      <div className="grid h-12 w-full grid-cols-4 rounded-md border border-border/50 bg-tab p-1">
         <Skeleton className="h-full rounded-md" />
         <Skeleton className="mx-1 h-full rounded-md opacity-50" />
         <Skeleton className="mx-1 h-full rounded-md opacity-50" />

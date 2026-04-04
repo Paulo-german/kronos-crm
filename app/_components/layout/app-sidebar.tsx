@@ -26,7 +26,7 @@ export const AppSidebar = ({
   return (
     <aside
       className={cn(
-        'relative hidden h-full flex-col border-r border-border/50 bg-secondary/20 text-card-foreground transition-all duration-500 ease-in-out md:flex',
+        'relative hidden h-full flex-col border-r border-border/50 bg-sidebar text-sidebar-foreground transition-all duration-500 ease-in-out md:flex',
         isCollapsed ? 'w-[72px]' : 'w-64',
       )}
     >

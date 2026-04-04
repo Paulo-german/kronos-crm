@@ -88,7 +88,7 @@ export function StartConversationPanel({
 
   return (
     <div className="flex h-full items-center justify-center p-6">
-      <Card className="w-full max-w-md border-border/50 bg-secondary/20">
+      <Card className="w-full max-w-md border-border/50 bg-card">
         <CardHeader className="items-center pb-3 text-center">
           <Avatar className="h-16 w-16">
             <AvatarFallback className="bg-primary/10 text-lg text-primary">

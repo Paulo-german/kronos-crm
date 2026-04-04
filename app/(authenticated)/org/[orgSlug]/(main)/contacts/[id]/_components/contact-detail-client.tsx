@@ -183,7 +183,7 @@ const ContactDetailClient = ({
       {/* Grid: Info + Empresa */}
       <div className="grid gap-4 md:grid-cols-2">
         {/* Card Informações de Contato */}
-        <Card className="border-border/50 bg-secondary/20">
+        <Card className="border-border/50 bg-card">
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold">
               Informações de Contato
@@ -289,7 +289,7 @@ const ContactDetailClient = ({
         </Card>
 
         {/* Card Empresa */}
-        <Card className="border-border/50 bg-secondary/20">
+        <Card className="border-border/50 bg-card">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base font-semibold">
               <Building2 className="h-4 w-4" />
@@ -314,7 +314,7 @@ const ContactDetailClient = ({
 
       {/* Deals vinculados */}
       {contact.deals?.length > 0 && (
-        <Card className="border-border/50 bg-secondary/20">
+        <Card className="border-border/50 bg-card">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base font-semibold">
               <Briefcase className="h-4 w-4" />

@@ -24,22 +24,22 @@ const PlansPage = async () => {
       </Header>
 
       <Tabs defaultValue="plans">
-        <TabsList className="grid h-12 w-full grid-cols-3 rounded-md border border-border/50 bg-tab/30">
+        <TabsList className="grid h-12 w-full grid-cols-3 rounded-md border border-border/50">
           <TabsTrigger
             value="plans"
-            className="rounded-md py-2 data-[state=active]:bg-card/80"
+            className="rounded-md py-2"
           >
             Planos
           </TabsTrigger>
           <TabsTrigger
             value="modules"
-            className="rounded-md py-2 data-[state=active]:bg-card/80"
+            className="rounded-md py-2"
           >
             Módulos
           </TabsTrigger>
           <TabsTrigger
             value="features"
-            className="rounded-md py-2 data-[state=active]:bg-card/80"
+            className="rounded-md py-2"
           >
             Features
           </TabsTrigger>

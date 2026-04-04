@@ -72,7 +72,7 @@ const DealInfoCard = ({ deal, onTabChange }: DealInfoCardProps) => {
   }
 
   return (
-    <Card className="border-border/50 bg-secondary/20">
+    <Card className="border-border/50 bg-card">
       <CardHeader className="pb-3">
         <CardTitle className="text-base font-semibold">
           Informações da Negociação

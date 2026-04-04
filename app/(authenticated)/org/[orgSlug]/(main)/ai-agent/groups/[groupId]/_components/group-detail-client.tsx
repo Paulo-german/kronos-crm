@@ -129,7 +129,7 @@ function ConfigCard({ group }: ConfigCardProps) {
   }
 
   return (
-    <Card className="border-border/50 bg-secondary/20">
+    <Card className="border-border/50 bg-card">
       <CardHeader>
         <CardTitle className="text-base">Configuração</CardTitle>
         <CardDescription>Nome e descrição da equipe.</CardDescription>

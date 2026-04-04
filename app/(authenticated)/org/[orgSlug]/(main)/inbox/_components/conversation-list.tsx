@@ -321,16 +321,16 @@ export function ConversationList({
           onValueChange={(value) => onFilterChange(value as FilterTab)}
           className="mb-3"
         >
-          <TabsList className="grid h-10 w-full grid-cols-3 rounded-md border border-border/50 bg-tab/30">
+          <TabsList className="grid h-10 w-full grid-cols-3 rounded-md border border-border/50">
             <TabsTrigger
               value="all"
-              className="rounded-md py-1.5 data-[state=active]:bg-card/80"
+              className="rounded-md py-1.5"
             >
               Todas
             </TabsTrigger>
             <TabsTrigger
               value="unread"
-              className="gap-1.5 rounded-md py-1.5 data-[state=active]:bg-card/80"
+              className="gap-1.5 rounded-md py-1.5"
             >
               Não lidas
               {totalUnread > 0 && (
@@ -341,7 +341,7 @@ export function ConversationList({
             </TabsTrigger>
             <TabsTrigger
               value="unanswered"
-              className="gap-1.5 rounded-md py-1.5 data-[state=active]:bg-card/80"
+              className="gap-1.5 rounded-md py-1.5"
             >
               Sem resp.
               {totalUnanswered > 0 && (

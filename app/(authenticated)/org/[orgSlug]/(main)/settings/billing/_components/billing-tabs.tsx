@@ -39,16 +39,16 @@ export function BillingTabs({ plan, quotas, isOnTrial, orgSlug, invoices }: Bill
 
   return (
     <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabValue)}>
-      <TabsList className="grid h-12 w-full grid-cols-2 rounded-md border border-border/50 bg-tab/30">
+      <TabsList className="grid h-12 w-full grid-cols-2 rounded-md border border-border/50">
         <TabsTrigger
           value="plans"
-          className="rounded-md py-2 data-[state=active]:bg-card/80"
+          className="rounded-md py-2"
         >
           Planos
         </TabsTrigger>
         <TabsTrigger
           value="invoices"
-          className="rounded-md py-2 data-[state=active]:bg-card/80"
+          className="rounded-md py-2"
         >
           Faturas
         </TabsTrigger>

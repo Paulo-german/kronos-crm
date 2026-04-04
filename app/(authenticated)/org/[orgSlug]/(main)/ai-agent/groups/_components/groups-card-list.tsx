@@ -204,7 +204,7 @@ export function GroupsCardList({
               router.push(`/org/${orgSlug}/ai-agent/groups/${group.id}`)
             }
           >
-            <Card className="border-border/50 bg-secondary/20 transition-colors hover:border-primary/50">
+            <Card className="border-border/50 bg-card transition-colors hover:border-primary/50">
               <CardContent className="flex flex-col gap-4 p-5">
                 {/* Header: switch + nome + status + modelo + dropdown */}
                 <div className="flex items-start justify-between">

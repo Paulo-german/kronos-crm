@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader } from '@/_components/ui/card'
 
 export function InfoCardSkeleton() {
   return (
-    <Card className="border-border/50 bg-secondary/20">
+    <Card className="border-border/50 bg-card">
       <CardHeader className="pb-3">
         <Skeleton className="h-5 w-48" />
       </CardHeader>
@@ -43,7 +43,7 @@ export function InfoCardSkeleton() {
 
 export function ContactWidgetSkeleton() {
   return (
-    <Card className="border-border/50 bg-secondary/20">
+    <Card className="border-border/50 bg-card">
       <CardHeader className="pb-3">
         <Skeleton className="h-5 w-32" />
       </CardHeader>
@@ -64,7 +64,7 @@ export function ContactWidgetSkeleton() {
 
 export function CompanyOwnerSkeleton() {
   return (
-    <Card className="border-border/50 bg-secondary/20">
+    <Card className="border-border/50 bg-card">
       <CardHeader className="pb-3">
         <Skeleton className="h-5 w-36" />
       </CardHeader>
@@ -84,7 +84,7 @@ export function CompanyOwnerSkeleton() {
 
 export function NotesSkeleton() {
   return (
-    <Card className="border-border/50 bg-secondary/20">
+    <Card className="border-border/50 bg-card">
       <CardHeader className="pb-3">
         <Skeleton className="h-5 w-28" />
       </CardHeader>
@@ -125,7 +125,7 @@ export function ActivityTimelineSkeleton() {
 
 export function TabProductsSkeleton() {
   return (
-    <Card className="border-border/50 bg-secondary/20">
+    <Card className="border-border/50 bg-card">
       <CardHeader className="flex flex-row items-center justify-between">
         <Skeleton className="h-6 w-24" />
         <Skeleton className="h-9 w-40 rounded-md" />
@@ -145,7 +145,7 @@ export function TabProductsSkeleton() {
 
 export function TabTasksSkeleton() {
   return (
-    <Card className="border-border/50 bg-secondary/20">
+    <Card className="border-border/50 bg-card">
       <CardHeader className="flex flex-row items-center justify-between">
         <Skeleton className="h-6 w-20" />
         <Skeleton className="h-9 w-36 rounded-md" />
@@ -170,7 +170,7 @@ export function TabTasksSkeleton() {
 
 export function TabAppointmentsSkeleton() {
   return (
-    <Card className="border-border/50 bg-secondary/20">
+    <Card className="border-border/50 bg-card">
       <CardHeader className="flex flex-row items-center justify-between">
         <Skeleton className="h-6 w-32" />
         <Skeleton className="h-9 w-44 rounded-md" />

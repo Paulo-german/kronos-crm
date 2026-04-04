@@ -153,7 +153,7 @@ const ConnectionTab = ({ agent, canManage, availableInboxes, inboxConnectionData
     <div className="space-y-4">
       {/* Lista de inboxes vinculadas */}
       {hasInboxes ? (
-        <Card className="border-border/50 bg-secondary/20">
+        <Card className="border-border/50 bg-card">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base font-semibold">
               <Inbox className="h-5 w-5" />
@@ -181,7 +181,7 @@ const ConnectionTab = ({ agent, canManage, availableInboxes, inboxConnectionData
           </CardContent>
         </Card>
       ) : (
-        <Card className="border-border/50 bg-secondary/20">
+        <Card className="border-border/50 bg-card">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base font-semibold">
               <Inbox className="h-5 w-5" />
@@ -197,7 +197,7 @@ const ConnectionTab = ({ agent, canManage, availableInboxes, inboxConnectionData
       )}
 
       {/* Seção de Equipes */}
-      <Card className="border-border/50 bg-secondary/20">
+      <Card className="border-border/50 bg-card">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base font-semibold">
             <Users className="h-5 w-5" />
@@ -253,7 +253,7 @@ const ConnectionTab = ({ agent, canManage, availableInboxes, inboxConnectionData
 
           {/* Form vincular existente */}
           {showLinkForm && (
-            <Card className="border-border/50 bg-secondary/20">
+            <Card className="border-border/50 bg-card">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base font-semibold">
                   Vincular Caixa de Entrada Existente
@@ -305,7 +305,7 @@ const ConnectionTab = ({ agent, canManage, availableInboxes, inboxConnectionData
 
           {/* Form criar nova */}
           {showCreateForm && (
-            <Card className="border-border/50 bg-secondary/20">
+            <Card className="border-border/50 bg-card">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base font-semibold">
                   Criar Nova Caixa de Entrada

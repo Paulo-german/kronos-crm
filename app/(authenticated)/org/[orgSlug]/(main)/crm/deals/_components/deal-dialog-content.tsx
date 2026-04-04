@@ -338,17 +338,17 @@ export function DealDialogContent({
                   }
                 }}
               >
-                <TabsList className="grid h-12 w-full grid-cols-2 rounded-md border border-border/50 bg-tab/30">
+                <TabsList className="grid h-12 w-full grid-cols-2 rounded-md border border-border/50">
                   <TabsTrigger
                     value="existing"
-                    className="rounded-md py-2 data-[state=active]:bg-card/80"
+                    className="rounded-md py-2"
                     disabled={isPending}
                   >
                     Buscar existente
                   </TabsTrigger>
                   <TabsTrigger
                     value="new"
-                    className="rounded-md py-2 data-[state=active]:bg-card/80"
+                    className="rounded-md py-2"
                     disabled={isPending}
                   >
                     Criar novo

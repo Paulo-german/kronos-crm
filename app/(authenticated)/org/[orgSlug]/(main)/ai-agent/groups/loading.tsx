@@ -30,7 +30,7 @@ const GroupsLoading = () => {
         {Array.from({ length: 3 }).map((_, index) => (
           <div
             key={index}
-            className="rounded-xl border border-border/50 bg-secondary/20 p-5"
+            className="rounded-xl border border-border/50 bg-card p-5"
           >
             {/* Header: badge + name + dropdown */}
             <div className="flex items-start justify-between">

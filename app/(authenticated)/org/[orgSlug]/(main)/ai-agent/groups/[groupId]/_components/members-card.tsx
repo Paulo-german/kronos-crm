@@ -80,7 +80,7 @@ export function MembersCard({ group, allOrgAgents }: MembersCardProps) {
 
   return (
     <>
-      <Card className="border-border/50 bg-secondary/20">
+      <Card className="border-border/50 bg-card">
         <CardHeader>
           <div className="flex items-start justify-between">
             <div>

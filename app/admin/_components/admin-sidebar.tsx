@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Shield,
   ClipboardList,
+  Palette,
 } from 'lucide-react'
 import { cn } from '@/_lib/utils'
 import { useSidebar } from '@/_providers/sidebar-provider'
@@ -78,7 +79,7 @@ export const AdminSidebar = () => {
   return (
     <aside
       className={cn(
-        'relative hidden h-full flex-col border-r border-border/50 bg-secondary/20 text-card-foreground transition-all duration-500 ease-in-out md:flex',
+        'relative hidden h-full flex-col border-r border-border/50 bg-sidebar text-sidebar-foreground transition-all duration-500 ease-in-out md:flex',
         isCollapsed ? 'w-[72px]' : 'w-64',
       )}
     >
@@ -167,6 +168,11 @@ export const AdminSidebar = () => {
             href="/admin/surveys"
             label="Surveys"
             icon={<ClipboardList className="h-4 w-4" />}
+          />
+          <AdminNavItem
+            href="/admin/design-system"
+            label="Design System"
+            icon={<Palette className="h-4 w-4" />}
           />
         </div>
       </nav>

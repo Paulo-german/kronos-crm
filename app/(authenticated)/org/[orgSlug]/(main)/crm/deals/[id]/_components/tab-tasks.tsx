@@ -115,7 +115,7 @@ const TabTasks = ({ deal, dealOptions }: TabTasksProps) => {
         if (!open) setEditingTask(null)
       }}
     >
-      <Card className="bg-secondary/20">
+      <Card className="bg-card">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-lg">Tarefas</CardTitle>
           <SheetTrigger asChild>

@@ -343,28 +343,28 @@ const DealDetailClient = ({
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="h-fit">
-        <TabsList className="grid h-12 w-full grid-cols-4 rounded-md border border-border/50 bg-tab/30">
+        <TabsList className="grid h-12 w-full grid-cols-4 rounded-md border border-border/50">
           <TabsTrigger
             value="summary"
-            className="rounded-md py-2 data-[state=active]:bg-card/80"
+            className="rounded-md py-2"
           >
             Resumo
           </TabsTrigger>
           <TabsTrigger
             value="products"
-            className="rounded-md py-2 data-[state=active]:bg-card/80"
+            className="rounded-md py-2"
           >
             Produtos
           </TabsTrigger>
           <TabsTrigger
             value="tasks"
-            className="rounded-md py-2 data-[state=active]:bg-card/80"
+            className="rounded-md py-2"
           >
             Tarefas
           </TabsTrigger>
           <TabsTrigger
             value="appointments"
-            className="rounded-md py-2 data-[state=active]:bg-card/80"
+            className="rounded-md py-2"
           >
             Agendamentos
           </TabsTrigger>

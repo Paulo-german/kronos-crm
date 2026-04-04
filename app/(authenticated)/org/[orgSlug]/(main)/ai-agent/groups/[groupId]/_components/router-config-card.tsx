@@ -84,7 +84,7 @@ export function RouterConfigCard({ group }: RouterConfigCardProps) {
   const activeWorkers = group.members.filter((member) => member.isActive && member.agentIsActive)
 
   return (
-    <Card className="border-border/50 bg-secondary/20">
+    <Card className="border-border/50 bg-card">
       <CardHeader>
         <CardTitle className="text-base">Router</CardTitle>
         <CardDescription>

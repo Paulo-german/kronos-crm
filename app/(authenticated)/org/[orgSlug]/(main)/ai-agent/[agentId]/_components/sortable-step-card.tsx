@@ -65,7 +65,7 @@ const SortableStepCard = ({
       <div
         ref={setNodeRef}
         style={style}
-        className={`flex items-start gap-3 rounded-md border border-border/50 bg-secondary/20 p-4 ${
+        className={`flex items-start gap-3 rounded-md border border-border/50 bg-card p-4 ${
           isDragging ? 'shadow-lg ring-2 ring-primary' : ''
         }`}
       >

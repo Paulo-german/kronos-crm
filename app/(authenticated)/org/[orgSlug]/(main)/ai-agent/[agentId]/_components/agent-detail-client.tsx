@@ -151,35 +151,35 @@ const AgentDetailClient = ({
 
           {/* Tabs — grid-cols-5 com a nova tab Follow-ups */}
           <Tabs defaultValue="general">
-            <TabsList data-tour="agent-tabs" className="grid h-12 w-full grid-cols-5 rounded-md border border-border/50 bg-tab/30">
+            <TabsList data-tour="agent-tabs" className="grid h-12 w-full grid-cols-5 rounded-md border border-border/50">
               <TabsTrigger
                 value="general"
-                className="rounded-md py-2 data-[state=active]:bg-card/80"
+                className="rounded-md py-2"
               >
                 Geral
               </TabsTrigger>
               <TabsTrigger
                 value="process"
-                className="rounded-md py-2 data-[state=active]:bg-card/80"
+                className="rounded-md py-2"
               >
                 Processo
               </TabsTrigger>
               <TabsTrigger
                 value="knowledge"
                 data-tour="agent-knowledge"
-                className="rounded-md py-2 data-[state=active]:bg-card/80"
+                className="rounded-md py-2"
               >
                 Conhecimento
               </TabsTrigger>
               <TabsTrigger
                 value="connection"
-                className="rounded-md py-2 data-[state=active]:bg-card/80"
+                className="rounded-md py-2"
               >
                 Conexão
               </TabsTrigger>
               <TabsTrigger
                 value="follow-ups"
-                className="rounded-md py-2 data-[state=active]:bg-card/80"
+                className="rounded-md py-2"
               >
                 Follow-ups
                 <Badge variant="outline" className="ml-1.5 border-amber-500/30 bg-amber-500/10 px-1.5 py-0 text-[10px] font-medium text-amber-600 dark:text-amber-400">

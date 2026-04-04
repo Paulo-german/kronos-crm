@@ -27,7 +27,7 @@ export const IdentitySection = ({ form, canManage }: SectionProps) => {
   const watchRole = form.watch('promptConfig.role')
 
   return (
-    <Card className="border-border/50 bg-secondary/20">
+    <Card className="border-border/50 bg-card">
       <CardHeader className="pb-3">
         <CardTitle className="text-base font-semibold">Identidade do Agente</CardTitle>
         <CardDescription>

@@ -250,7 +250,7 @@ export function TemplatesList({
           onValueChange={(value) => setActiveTab(value as FilterTab)}
           className="flex-1"
         >
-          <TabsList className="grid h-12 w-full max-w-md grid-cols-4 border border-border/50 bg-tab/30">
+          <TabsList className="grid h-12 w-full max-w-md grid-cols-4 border border-border/50">
             <TabsTrigger value="all">
               Todos
               {counts.all > 0 && (

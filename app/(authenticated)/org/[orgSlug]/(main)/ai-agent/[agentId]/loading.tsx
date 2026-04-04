@@ -15,7 +15,7 @@ const AgentDetailLoading = () => {
         </div>
 
         {/* Tabs — 5 colunas */}
-        <div className="grid h-12 w-full grid-cols-5 gap-1 rounded-md border border-border/50 bg-tab/30 p-1">
+        <div className="grid h-12 w-full grid-cols-5 gap-1 rounded-md border border-border/50 bg-tab p-1">
           <Skeleton className="h-full rounded-md" />
           <Skeleton className="h-full rounded-md" />
           <Skeleton className="h-full rounded-md" />
@@ -26,7 +26,7 @@ const AgentDetailLoading = () => {
         {/* General tab content sections */}
         <div className="space-y-6">
           {/* Identity section */}
-          <div className="rounded-xl border border-border/50 bg-secondary/20">
+          <div className="rounded-xl border border-border/50 bg-card">
             <div className="space-y-1.5 p-6 pb-3">
               <Skeleton className="h-5 w-40" />
               <Skeleton className="h-4 w-56" />
@@ -48,7 +48,7 @@ const AgentDetailLoading = () => {
           </div>
 
           {/* Company section */}
-          <div className="rounded-xl border border-border/50 bg-secondary/20">
+          <div className="rounded-xl border border-border/50 bg-card">
             <div className="space-y-1.5 p-6 pb-3">
               <Skeleton className="h-5 w-48" />
               <Skeleton className="h-4 w-72" />
@@ -66,7 +66,7 @@ const AgentDetailLoading = () => {
           </div>
 
           {/* Communication section */}
-          <div className="rounded-xl border border-border/50 bg-secondary/20">
+          <div className="rounded-xl border border-border/50 bg-card">
             <div className="space-y-1.5 p-6 pb-3">
               <Skeleton className="h-5 w-36" />
               <Skeleton className="h-4 w-64" />
@@ -84,7 +84,7 @@ const AgentDetailLoading = () => {
           </div>
 
           {/* Model behavior section */}
-          <div className="rounded-xl border border-border/50 bg-secondary/20">
+          <div className="rounded-xl border border-border/50 bg-card">
             <div className="space-y-1.5 p-6 pb-3">
               <Skeleton className="h-5 w-44" />
               <Skeleton className="h-4 w-60" />

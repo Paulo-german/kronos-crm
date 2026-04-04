@@ -24,7 +24,7 @@ function getChannelLabel(channel: string): string {
 
 export function LinkedInboxesCard({ inboxes, orgSlug }: LinkedInboxesCardProps) {
   return (
-    <Card className="border-border/50 bg-secondary/20">
+    <Card className="border-border/50 bg-card">
       <CardHeader>
         <CardTitle className="text-base">Inboxes vinculados</CardTitle>
         <CardDescription>

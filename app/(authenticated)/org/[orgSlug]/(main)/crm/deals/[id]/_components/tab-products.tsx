@@ -141,7 +141,7 @@ const TabProducts = ({ deal, products }: TabProductsProps) => {
     : undefined
 
   return (
-    <Card className="border-border/50 bg-secondary/20">
+    <Card className="border-border/50 bg-card">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-lg">Produtos</CardTitle>
 

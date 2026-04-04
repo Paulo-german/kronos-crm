@@ -32,7 +32,7 @@ export const BusinessHoursSection = ({ form, canManage }: SectionProps) => {
   const watchBusinessHoursEnabled = form.watch('businessHoursEnabled')
 
   return (
-    <Card className="border-border/50 bg-secondary/20">
+    <Card className="border-border/50 bg-card">
       <CardHeader className={watchBusinessHoursEnabled ? 'pb-3' : 'pb-5'}>
         <div className="flex items-center justify-between">
           <div className="space-y-1">

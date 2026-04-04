@@ -18,7 +18,7 @@ const ContactDetailLoading = () => {
 
       {/* Grid 2 cols */}
       <div className="grid gap-4 md:grid-cols-2">
-        <Card className="border-border/50 bg-secondary/20">
+        <Card className="border-border/50 bg-card">
           <CardHeader className="pb-3">
             <Skeleton className="h-5 w-48" />
           </CardHeader>
@@ -36,7 +36,7 @@ const ContactDetailLoading = () => {
           </CardContent>
         </Card>
 
-        <Card className="border-border/50 bg-secondary/20">
+        <Card className="border-border/50 bg-card">
           <CardHeader className="pb-3">
             <Skeleton className="h-5 w-24" />
           </CardHeader>
@@ -47,7 +47,7 @@ const ContactDetailLoading = () => {
       </div>
 
       {/* Deals card */}
-      <Card className="border-border/50 bg-secondary/20">
+      <Card className="border-border/50 bg-card">
         <CardHeader className="pb-3">
           <Skeleton className="h-5 w-48" />
         </CardHeader>

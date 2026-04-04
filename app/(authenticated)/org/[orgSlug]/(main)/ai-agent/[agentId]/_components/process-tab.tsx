@@ -201,7 +201,7 @@ const ProcessTab = ({ agent, canManage, pipelineStages, onSaveSuccess }: Process
     <div className="grid grid-cols-[320px_1fr] items-start gap-6">
       {/* Coluna esquerda: lista de etapas */}
       <div className="sticky top-1 flex flex-col gap-3">
-        <Card className="border-border/50 bg-secondary/20">
+        <Card className="border-border/50 bg-card">
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold">
               Etapas do Processo
@@ -246,7 +246,7 @@ const ProcessTab = ({ agent, canManage, pipelineStages, onSaveSuccess }: Process
       </div>
 
       {/* Coluna direita: painel de detalhes */}
-      <Card className="border-border/50 bg-secondary/20">
+      <Card className="border-border/50 bg-card">
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-semibold">
             Configuração da Etapa

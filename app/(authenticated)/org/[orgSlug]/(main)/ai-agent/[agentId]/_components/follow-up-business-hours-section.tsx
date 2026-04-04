@@ -117,7 +117,7 @@ const FollowUpBusinessHoursSection = ({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)}>
-        <Card className="border-border/50 bg-secondary/20">
+        <Card className="border-border/50 bg-card">
           <CardHeader className={watchEnabled ? 'pb-3' : 'pb-5'}>
             <div className="flex items-center justify-between">
               <div className="space-y-1">

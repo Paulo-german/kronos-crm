@@ -34,7 +34,7 @@ export const PipelinesSection = ({ form, canManage, pipelines }: PipelinesSectio
   }
 
   return (
-    <Card className="border-border/50 bg-secondary/20">
+    <Card className="border-border/50 bg-card">
       <CardHeader className="pb-3">
         <CardTitle className="text-base font-semibold">Pipelines Vinculados</CardTitle>
         <CardDescription>

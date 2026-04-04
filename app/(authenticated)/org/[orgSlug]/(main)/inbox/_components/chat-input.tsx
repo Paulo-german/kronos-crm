@@ -98,7 +98,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
 
     return (
       <div className="p-4">
-        <div className="flex flex-col gap-1 rounded-xl border border-border/50 bg-secondary/20 p-2">
+        <div className="flex flex-col gap-1 rounded-xl border border-border/50 bg-card p-2">
           {selectedFile && (
             <MediaPreview
               file={selectedFile}

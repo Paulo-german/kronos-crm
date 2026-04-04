@@ -39,14 +39,14 @@ export function AgentTabsNav({ orgSlug, canAccessGroups }: AgentTabsNavProps) {
 
   return (
     <div className="px-4 pt-4 md:px-0 md:pt-6">
-      <div className="grid h-12 w-full grid-cols-2 rounded-md border border-border/50 bg-tab/30 p-1">
+      <div className="grid h-12 w-full grid-cols-2 rounded-md border border-border/50 bg-tab p-1">
         <Link
           href={agentsPath}
           className={cn(
             'inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-all',
             isAgentsActive
-              ? 'bg-card/80 text-foreground shadow'
-              : 'text-muted-foreground hover:text-foreground',
+              ? 'bg-tab-active text-foreground shadow-sm'
+              : 'text-tab-foreground hover:text-foreground',
           )}
         >
           <BotIcon className="h-4 w-4" />
@@ -59,7 +59,7 @@ export function AgentTabsNav({ orgSlug, canAccessGroups }: AgentTabsNavProps) {
             className={cn(
               'inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-all',
               isGroupsActive
-                ? 'bg-card/80 text-foreground shadow'
+                ? 'bg-background text-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground',
             )}
           >
@@ -73,7 +73,7 @@ export function AgentTabsNav({ orgSlug, canAccessGroups }: AgentTabsNavProps) {
           <Tooltip delayDuration={0}>
             <TooltipTrigger asChild>
               <span
-                className="inline-flex cursor-not-allowed items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground opacity-50"
+                className="inline-flex cursor-not-allowed items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-tab-foreground opacity-50"
                 aria-disabled="true"
               >
                 <UsersIcon className="h-4 w-4" />

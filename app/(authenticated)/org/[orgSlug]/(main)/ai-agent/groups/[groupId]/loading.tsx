@@ -26,7 +26,7 @@ const GroupDetailLoading = () => {
       {/* Grid de 4 cards */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Card Configuracao */}
-        <div className="rounded-xl border border-border/50 bg-secondary/20">
+        <div className="rounded-xl border border-border/50 bg-card">
           <div className="space-y-1.5 p-6 pb-3">
             <Skeleton className="h-5 w-32" />
             <Skeleton className="h-4 w-48" />
@@ -47,7 +47,7 @@ const GroupDetailLoading = () => {
         </div>
 
         {/* Card Router */}
-        <div className="rounded-xl border border-border/50 bg-secondary/20">
+        <div className="rounded-xl border border-border/50 bg-card">
           <div className="space-y-1.5 p-6 pb-3">
             <Skeleton className="h-5 w-40" />
             <Skeleton className="h-4 w-64" />
@@ -69,7 +69,7 @@ const GroupDetailLoading = () => {
         </div>
 
         {/* Card Membros */}
-        <div className="rounded-xl border border-border/50 bg-secondary/20">
+        <div className="rounded-xl border border-border/50 bg-card">
           <div className="flex items-center justify-between p-6 pb-3">
             <div className="space-y-1.5">
               <Skeleton className="h-5 w-24" />
@@ -97,7 +97,7 @@ const GroupDetailLoading = () => {
         </div>
 
         {/* Card Inboxes */}
-        <div className="rounded-xl border border-border/50 bg-secondary/20">
+        <div className="rounded-xl border border-border/50 bg-card">
           <div className="space-y-1.5 p-6 pb-3">
             <Skeleton className="h-5 w-36" />
             <Skeleton className="h-4 w-52" />
