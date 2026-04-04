@@ -20,8 +20,21 @@ export default {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
+        sidebar: {
+          DEFAULT: 'hsl(var(--sidebar))',
+          foreground: 'hsl(var(--sidebar-foreground))',
+        },
+        'kanban-column': {
+          DEFAULT: 'hsl(var(--kanban-column))',
+          foreground: 'hsl(var(--kanban-column-foreground))',
+        },
+        'kanban-card': {
+          DEFAULT: 'hsl(var(--kanban-card))',
+          foreground: 'hsl(var(--kanban-card-foreground))',
+        },
         tab: {
           DEFAULT: 'hsl(var(--tab))',
+          active: 'hsl(var(--tab-active))',
           foreground: 'hsl(var(--tab-foreground))',
         },
         popover: {

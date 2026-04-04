@@ -18,10 +18,20 @@
     --background: 0 0% 100%; /* hsl(0 0% 100%) */
     --foreground: 240 10% 3.9%; /* hsl(240 10% 3.9%) */
 
-    --card: 0 0% 100%; /* hsl(0 0% 100%) = #FFFFFF */
+    --card: 240 5% 94%; /* hsl(240 5% 94%) */
     --card-foreground: 240 10% 3.9%; /* hsl(240 10% 3.9%) */
 
-    --tab: 0 0% 90%; /* hsl(0 0% 90%) */
+    --sidebar: 240 5% 94%; /* hsl(240 5% 94%) */
+    --sidebar-foreground: 240 10% 3.9%; /* hsl(240 10% 3.9%) */
+
+    --kanban-column: 240 5% 98%; /* hsl(240 5% 90%) */
+    --kanban-column-foreground: 240 10% 3.9%; /* hsl(240 10% 3.9%) */
+
+    --kanban-card: 240 5% 100%; /* hsl(240 5% 100%) */
+    --kanban-card-foreground: 240 10% 3.9%; /* hsl(240 10% 3.9%) */
+
+    --tab: 240 5% 94%; /* hsl(240 5% 96%) */
+    --tab-active: 240 5% 100%; /* hsl(240 5% 98%) */
     --tab-foreground: 240 10% 3.9%; /* hsl(240 10% 3.9%) */
 
     --popover: 0 0% 100%; /* hsl(0 0% 100%) */
@@ -78,12 +88,23 @@
     --background: 240 10% 3.9%; /* hsl(240 10% 3.9%) */
     --foreground: 0 0% 98%; /* hsl(0 0% 98%) */
 
-    /* Surface: #18181b (Zinc 900) - For Cards, Sidebars, Modals */
-    --card: 240 5.9% 10%; /* hsl(240 5.9% 10%) */
+    /* Surface: Cards, Modals */
+    --card: 240 6% 9%; /* hsl(240 6% 6%) */
     --card-foreground: 0 0% 98%; /* hsl(0 0% 98%) */
 
+    /* Surface: Sidebars */
+    --sidebar: 240 6% 6%; /* hsl(240 6% 6%) */
+    --sidebar-foreground: 0 0% 98%; /* hsl(0 0% 98%) */
+
+    --kanban-column: 240 6% 6%; /* hsl(240 6% 6%) */
+    --kanban-column-foreground: 0 0% 98%; /* hsl(0 0% 98%) */
+
+    --kanban-card: 240 6% 10%; /* hsl(240 6% 10%) */
+    --kanban-card-foreground: 0 0% 98%; /* hsl(0 0% 98%) */
+
     /* Tab: #18181b (Zinc 900) - For Cards, Sidebars, Modals */
-    --tab: 240 5.9% 10%; /* hsl(240 5.9% 10%) */
+    --tab: 240 6% 9%; /* hsl(240 6% 9%) */
+    --tab-active: 240 6% 15%; /* hsl(240 6%  15%) */
     --tab-foreground: 0 0% 98%; /* hsl(0 0% 98%) */
 
     --popover: 240 5.9% 10%; /* hsl(240 5.9% 10%) */
