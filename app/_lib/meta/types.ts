@@ -73,3 +73,91 @@ export interface MetaPhoneNumberResponse {
   display_phone_number: string
   id: string
 }
+
+// -----------------------------------------------------------------------------
+// Meta WhatsApp Message Templates
+// -----------------------------------------------------------------------------
+
+export interface MetaTemplateButton {
+  type: 'PHONE_NUMBER' | 'URL' | 'QUICK_REPLY'
+  text: string
+  phoneNumber?: string
+  url?: string
+}
+
+export interface MetaTemplateComponent {
+  type: 'HEADER' | 'BODY' | 'FOOTER' | 'BUTTONS'
+  /** Somente para HEADER */
+  format?: 'TEXT' | 'IMAGE' | 'VIDEO' | 'DOCUMENT'
+  text?: string
+  example?: {
+    header_text?: string[]
+    body_text?: string[][]
+    header_handle?: string[]
+  }
+  buttons?: MetaTemplateButton[]
+}
+
+export interface MetaTemplate {
+  id: string
+  name: string
+  language: string
+  status: 'APPROVED' | 'PENDING' | 'REJECTED' | 'PAUSED' | 'DISABLED' | 'IN_APPEAL'
+  category: 'MARKETING' | 'UTILITY' | 'AUTHENTICATION'
+  quality_score?: {
+    score: 'GREEN' | 'YELLOW' | 'RED' | 'UNKNOWN'
+    date?: string
+  }
+  components: MetaTemplateComponent[]
+}
+
+export interface MetaTemplateListResponse {
+  data: MetaTemplate[]
+  paging?: {
+    cursors: { before: string; after: string }
+    next?: string
+  }
+}
+
+/** Payload de criação de template para a Graph API */
+export interface CreateMetaTemplatePayload {
+  name: string
+  language: string
+  category: 'MARKETING' | 'UTILITY' | 'AUTHENTICATION'
+  components: MetaTemplateComponent[]
+}
+
+/** Componente para envio de template message */
+export interface MetaTemplateSendComponent {
+  type: 'header' | 'body'
+  parameters: Array<{ type: 'text'; text: string }>
+}
+
+export type MetaTemplateStatus = MetaTemplate['status']
+export type MetaTemplateCategory = MetaTemplate['category']
+export type MetaTemplateHeaderFormat = NonNullable<MetaTemplateComponent['format']>
+export type MetaQualityScore = NonNullable<MetaTemplate['quality_score']>['score']
+
+/** Credenciais Meta de um inbox — nunca expor ao client */
+export interface InboxMetaCredentials {
+  wabaId: string
+  accessToken: string
+  phoneNumberId: string
+}
+
+/** Webhook de atualizacao de status de template */
+export interface MetaTemplateStatusUpdate {
+  event: string
+  message_template_id: number
+  message_template_name: string
+  message_template_language: string
+  reason?: string
+}
+
+export interface MetaTemplateStatusWebhookEntry {
+  id: string // WABA ID
+  changes: Array<{
+    value: MetaTemplateStatusUpdate
+    field: string // "message_template_status_update"
+  }>
+}
