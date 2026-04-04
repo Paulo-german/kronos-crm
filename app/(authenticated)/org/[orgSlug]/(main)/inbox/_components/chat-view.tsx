@@ -23,6 +23,7 @@ import { ChatBanners } from './chat-banners'
 import { ChatMessageList } from './chat-message-list'
 import { ChatInput, type ChatInputHandle } from './chat-input'
 import { ChatSettingsSheet } from './chat-settings-sheet'
+import { TemplateMessageDialog } from './template-message-dialog'
 import type { MessageDto, TimelineItem } from './chat-types'
 
 interface ChatViewProps {
@@ -37,6 +38,10 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug }:
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [mediaPreviewUrl, setMediaPreviewUrl] = useState<string | null>(null)
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false)
+
+  // Verifica se o inbox usa Meta Cloud API (templates disponíveis)
+  const isMetaCloud = conversation.inboxConnectionType === 'META_CLOUD'
   const mediaPreviewUrlRef = useRef<string | null>(null)
   const chatInputRef = useRef<ChatInputHandle>(null)
 
@@ -50,7 +55,6 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug }:
     setSelectedFile(null)
     setMediaPreviewUrl(null)
     mediaPreviewUrlRef.current = null
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversation.id])
 
   // Cleanup no unmount
@@ -320,7 +324,20 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug }:
           onFileRemove={handleFileRemove}
           onSendMedia={handleSendMedia}
           isMediaPending={sendMediaAction.isPending}
+          onOpenTemplateDialog={isMetaCloud ? () => setTemplateDialogOpen(true) : undefined}
         />
+        {isMetaCloud && (
+          <TemplateMessageDialog
+            open={templateDialogOpen}
+            onOpenChange={setTemplateDialogOpen}
+            conversationId={conversation.id}
+            inboxId={conversation.inboxId}
+            onSent={() => {
+              fetchMessages()
+              chatInputRef.current?.focus()
+            }}
+          />
+        )}
         <ChatSettingsSheet
           open={settingsOpen}
           onOpenChange={setSettingsOpen}

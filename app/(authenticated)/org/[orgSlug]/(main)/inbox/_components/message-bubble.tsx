@@ -3,8 +3,9 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { format } from 'date-fns'
 import { cn } from '@/_lib/utils'
-import { Bot, FileDown, Pause, Play, UserRound } from 'lucide-react'
+import { Bot, FileDown, FileText, Pause, Play, UserRound } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
+import { Badge } from '@/_components/ui/badge'
 
 function formatAudioDuration(seconds: number): string {
   const mins = Math.floor(seconds / 60)
@@ -139,11 +140,19 @@ interface MediaMetadata {
   storedExternally?: boolean
 }
 
+interface TemplateMetadata {
+  name: string
+  language: string
+  headerParameters?: Array<{ type: string; text: string }>
+  bodyParameters?: Array<{ type: string; text: string }>
+}
+
 interface MessageMetadata {
   media?: MediaMetadata
   sentBy?: string
   sentByName?: string
   sentFrom?: string
+  template?: TemplateMetadata
   [key: string]: unknown
 }
 
@@ -176,6 +185,7 @@ export function MessageBubble({ id, conversationId, role, content, metadata, cre
   const timestamp = format(new Date(createdAt), 'HH:mm')
   const isFromInbox = meta?.sentFrom === 'inbox'
   const isAiMessage = role === 'assistant' && !!meta?.model
+  const isTemplateMessage = !!meta?.template
 
   return (
     <div
@@ -232,6 +242,24 @@ export function MessageBubble({ id, conversationId, role, content, metadata, cre
               <span className="truncate">{media?.fileName ?? 'Documento'}</span>
             </a>
           </Button>
+        )}
+
+        {/* Badge de template message */}
+        {isTemplateMessage && (
+          <div className="mb-1.5 flex items-center gap-1">
+            <Badge
+              variant="outline"
+              className={cn(
+                'h-4 gap-1 px-1.5 text-[10px] font-semibold',
+                isUser
+                  ? 'border-border/50 text-muted-foreground'
+                  : 'border-white/30 text-white/70',
+              )}
+            >
+              <FileText className="h-2.5 w-2.5" />
+              Template
+            </Badge>
+          </div>
         )}
 
         {/* Texto — esconde placeholder de áudio quando o player está visível */}

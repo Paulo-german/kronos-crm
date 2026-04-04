@@ -11,6 +11,7 @@ import {
   Calendar,
   MessageSquare,
   Edit,
+  FileText,
   Users,
   AlertTriangleIcon,
 } from 'lucide-react'
@@ -476,6 +477,29 @@ const InboxDetailClient = ({
 
       {/* Connection Card — roteado por provider */}
       {inbox.channel === 'WHATSAPP' && renderConnectionSection()}
+
+      {/* Templates Card — somente para inboxes Meta Cloud conectados */}
+      {inbox.connectionType === 'META_CLOUD' && !!inbox.metaWabaId && (
+        <Card className="border-border/50 bg-secondary/20">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base font-semibold">
+              <FileText className="h-4 w-4" />
+              Templates de mensagem
+            </CardTitle>
+            <CardDescription>
+              Gerencie os templates aprovados pelo Meta para envio proativo no WhatsApp.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/org/${orgSlug}/settings/inboxes/${inbox.id}/templates`}>
+                <FileText className="mr-2 h-4 w-4" />
+                Gerenciar templates
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Edit Sheet */}
       <Sheet
