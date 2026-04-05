@@ -49,11 +49,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ templates: [] })
     }
 
-    const response = await fetchMetaTemplates(credentials.wabaId, credentials.accessToken, {
-      status: 'APPROVED',
-    })
+    // Buscar todos os templates e filtrar APPROVED no servidor
+    // (a Meta API nem sempre retorna resultados com o filtro status=APPROVED via query param)
+    const response = await fetchMetaTemplates(credentials.wabaId, credentials.accessToken)
+    const approvedTemplates = response.data.filter((template) => template.status === 'APPROVED')
 
-    return NextResponse.json({ templates: response.data })
+    return NextResponse.json({ templates: approvedTemplates })
   } catch (error) {
     console.error('[api/inbox/templates] Error:', error)
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 })
