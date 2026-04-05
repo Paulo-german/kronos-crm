@@ -24,15 +24,21 @@ export default async function PlansLayout({ children, params }: PlansLayoutProps
             <span className="text-xl font-bold tracking-tight">KRONOS</span>
           </div>
 
-          {/* Botão voltar só aparece para quem já tem plano ativo — sem plano o usuário deve escolher */}
-          {!trialStatus.isExpired && (
+          <div className="flex items-center gap-2">
+            {!trialStatus.isExpired && (
+              <Button variant="ghost" size="sm" asChild>
+                <Link href={`/org/${orgSlug}/dashboard`}>
+                  <ArrowLeft className="mr-2 size-4" />
+                  Voltar ao painel
+                </Link>
+              </Button>
+            )}
             <Button variant="ghost" size="sm" asChild>
-              <Link href={`/org/${orgSlug}/dashboard`}>
-                <ArrowLeft className="mr-2 size-4" />
-                Voltar ao painel
+              <Link href="/org?show=true">
+                Minhas organizações
               </Link>
             </Button>
-          )}
+          </div>
         </div>
       </header>
 
