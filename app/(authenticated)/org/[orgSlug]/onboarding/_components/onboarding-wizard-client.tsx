@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, SkipForward } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
+import { completeOnboarding } from '@/_actions/onboarding/complete-onboarding'
 import { KronosLogo } from '@/_components/icons/kronos-logo'
 import type { OnboardingStatus } from '@/_data-access/organization/get-onboarding-status'
 import { useOnboardingParams } from '../_lib/use-onboarding-params'
@@ -93,6 +94,14 @@ export function OnboardingWizardClient({
 }: OnboardingWizardClientProps) {
   const router = useRouter()
   const [direction, setDirection] = useState(1)
+  const [isSkipping, startSkipTransition] = useTransition()
+
+  function handleSkipOnboarding() {
+    startSkipTransition(async () => {
+      await completeOnboarding()
+      router.push(`/org/${orgSlug}/dashboard`)
+    })
+  }
 
   // Limpa localStorage se os dados forem de outra org
   ensureOrgIsolation(orgSlug)
@@ -223,7 +232,7 @@ export function OnboardingWizardClient({
 
   return (
     <div className="flex h-screen flex-col">
-      <header className="flex h-14 shrink-0 items-center border-b px-6">
+      <header className="flex h-14 shrink-0 items-center justify-between border-b px-6">
         <Link
           href={`/org/${orgSlug}`}
           className="flex items-center gap-2 font-bold text-foreground"
@@ -231,6 +240,24 @@ export function OnboardingWizardClient({
           <KronosLogo />
           <span className="text-xl font-bold tracking-tight">KRONOS</span>
         </Link>
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleSkipOnboarding}
+            disabled={isSkipping}
+          >
+            <SkipForward className="mr-2 size-4" />
+            {isSkipping ? 'Pulando...' : 'Pular configuração'}
+          </Button>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/org?show=true">
+              <ArrowLeft className="mr-2 size-4" />
+              Minhas organizações
+            </Link>
+          </Button>
+        </div>
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col items-center px-4 pt-6">
