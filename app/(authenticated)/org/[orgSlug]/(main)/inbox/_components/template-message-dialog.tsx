@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
@@ -84,16 +84,22 @@ export function TemplateMessageDialog({
   const [headerValues, setHeaderValues] = useState<string[]>([])
   const [templates, setTemplates] = useState<MetaTemplate[]>([])
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false)
+  const lastFetchedAtRef = useRef<number>(0)
 
-  // Carregar templates aprovados quando o dialog abre
+  // Re-busca templates se dados estão stale (> 60s) ou se nunca buscou
+  const STALE_AFTER_MS = 60_000
+
   const loadTemplates = useCallback(async () => {
-    if (templates.length > 0) return
+    const isStale = Date.now() - lastFetchedAtRef.current > STALE_AFTER_MS
+    if (templates.length > 0 && !isStale) return
+
     setIsLoadingTemplates(true)
     try {
       const response = await fetch(`/api/inbox/templates?inboxId=${inboxId}`)
       if (!response.ok) throw new Error('Falha ao carregar templates')
       const data = (await response.json()) as { templates: MetaTemplate[] }
       setTemplates(data.templates)
+      lastFetchedAtRef.current = Date.now()
     } catch {
       toast.error('Erro ao carregar templates. Tente novamente.')
     } finally {

@@ -2,7 +2,8 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { cookies } from 'next/headers'
 import { createClient } from '@/_lib/supabase/server'
 import { validateMembership } from '@/_data-access/organization/validate-membership'
-import { getApprovedTemplates } from '@/_data-access/inbox/get-approved-templates'
+import { getInboxMetaCredentials } from '@/_data-access/inbox/get-inbox-meta-credentials'
+import { fetchMetaTemplates } from '@/_lib/meta/template-api'
 import { ORG_SLUG_COOKIE } from '@/_lib/constants'
 
 /**
@@ -10,7 +11,7 @@ import { ORG_SLUG_COOKIE } from '@/_lib/constants'
  *
  * Retorna templates APPROVED de um inbox META_CLOUD.
  * Usado pelo template-message-dialog.tsx no chat (lazy load sob demanda).
- * Auth: Supabase + validateMembership (mesmo padrão das outras API routes do inbox).
+ * Busca direto da Meta API (sem unstable_cache) — o controle de staleness fica no client.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -42,9 +43,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'inboxId é obrigatório' }, { status: 400 })
     }
 
-    const templates = await getApprovedTemplates(inboxId, membership.orgId)
+    const credentials = await getInboxMetaCredentials(inboxId, membership.orgId)
 
-    return NextResponse.json({ templates })
+    if (!credentials) {
+      return NextResponse.json({ templates: [] })
+    }
+
+    const response = await fetchMetaTemplates(credentials.wabaId, credentials.accessToken, {
+      status: 'APPROVED',
+    })
+
+    return NextResponse.json({ templates: response.data })
   } catch (error) {
     console.error('[api/inbox/templates] Error:', error)
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 })
