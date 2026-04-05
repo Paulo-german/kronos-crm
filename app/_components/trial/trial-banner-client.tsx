@@ -11,6 +11,7 @@ interface TrialBannerClientProps {
   daysRemaining: number
   trialEndsAt: string | null
   isExpired: boolean
+  neverHadTrial: boolean
   orgSlug: string
   userRole: MemberRole
 }
@@ -41,6 +42,7 @@ export const TrialBannerClient = ({
   daysRemaining,
   trialEndsAt,
   isExpired,
+  neverHadTrial,
   orgSlug,
   userRole,
 }: TrialBannerClientProps) => {
@@ -64,6 +66,9 @@ export const TrialBannerClient = ({
 
   const isAdmin = userRole === 'OWNER' || userRole === 'ADMIN'
 
+  // Quando nunca teve trial: não há countdown, apenas mensagem direta
+  const showCountdown = !neverHadTrial
+
   const countdownText = countdown ? (
     <span className="inline-flex gap-1.5 text-white">
       <span className="rounded bg-white/20 px-1.5 py-0.5">
@@ -80,14 +85,18 @@ export const TrialBannerClient = ({
     `${pad(daysRemaining)}d 00h 00m`
   )
 
+  const leftText = neverHadTrial
+    ? 'Assine um plano para começar a usar o Kronos'
+    : isExpired
+      ? 'Seu período de teste encerrou.'
+      : 'Seu período de teste encerra em'
+
   return (
     <div className="bg-banner-premium flex flex-col items-center gap-2 border-b border-primary/50 px-4 py-2.5 text-white md:flex-row md:gap-3">
-      {/* Countdown */}
+      {/* Countdown / mensagem de status */}
       <span className="flex items-center gap-2 text-sm">
-        {isExpired
-          ? 'Seu periodo de teste encerrou.'
-          : 'Seu periodo de teste encerra em'}
-        {!isExpired && (
+        {leftText}
+        {showCountdown && !isExpired && (
           <span className="font-mono text-sm font-semibold tabular-nums">
             {countdownText}
           </span>
@@ -108,7 +117,7 @@ export const TrialBannerClient = ({
             className="bg-background text-foreground"
             asChild
           >
-            <Link href={`/org/${orgSlug}/settings/billing`}>
+            <Link href={`/org/${orgSlug}/plans`}>
               {isExpired ? 'Assinar agora' : 'Ver planos'}
             </Link>
           </Button>

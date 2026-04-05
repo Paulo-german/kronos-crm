@@ -8,7 +8,7 @@ import { cn } from '@/_lib/utils'
 import {
   getAnnualDetails,
   type PlanInfo,
-} from '@/(authenticated)/org/[orgSlug]/(main)/settings/billing/_components/plans-data'
+} from '@/_lib/billing/plans-data'
 import type { PlanInterval } from '../../_components/checkout-types'
 
 interface ConfigureFormProps {

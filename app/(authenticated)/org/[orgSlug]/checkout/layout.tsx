@@ -26,7 +26,7 @@ export default async function CheckoutLayout({
           </div>
 
           <Button variant="ghost" size="sm" asChild>
-            <Link href={`/org/${orgSlug}/settings/billing`}>
+            <Link href={`/org/${orgSlug}/plans`}>
               <ArrowLeft className="mr-2 size-4" />
               Voltar
             </Link>

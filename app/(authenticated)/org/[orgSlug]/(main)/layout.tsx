@@ -6,7 +6,6 @@ import { getOrgContext } from '@/_data-access/organization/get-organization-cont
 import { getOnboardingStatus } from '@/_data-access/organization/get-onboarding-status'
 import { getTrialStatus } from '@/_data-access/billing/get-trial-status'
 import { TrialBanner } from '@/_components/trial/trial-banner'
-import { TrialGateClient } from '@/_components/trial/trial-gate-client'
 import { TrialReminderDialog } from '@/_components/trial/trial-reminder-dialog'
 import { getUserById } from '@/_data-access/user/get-user-by-id'
 import { getOrgModules } from '@/_data-access/module/get-org-modules'
@@ -70,8 +69,15 @@ const MainLayout = async ({ children, params }: MainLayoutProps) => {
 
   const totalUnreadCount = unreadCount + pendingInviteUnreadCount
 
-  if (!onboardingStatus.onboardingCompleted) {
+  // Só redireciona pro onboarding se tem plano ativo (subscription ou trial legado)
+  // Sem plano → gate modal cuida do bloqueio, usuário paga primeiro
+  if (!onboardingStatus.onboardingCompleted && !trialStatus.isExpired) {
     redirect(`/org/${orgSlug}/onboarding`)
+  }
+
+  // Sem plano ativo → redirecionar para página de planos (bloqueio server-side)
+  if (trialStatus.isExpired) {
+    redirect(`/org/${orgSlug}/plans`)
   }
 
   const activeModuleSlugs = activeModules.map((mod) => mod.slug) as Array<
@@ -116,9 +122,7 @@ const MainLayout = async ({ children, params }: MainLayoutProps) => {
               },
             }}
           />
-          <TrialGateClient isExpired={trialStatus.isExpired} orgSlug={orgSlug}>
-            <ContentWrapper>{children}</ContentWrapper>
-          </TrialGateClient>
+          <ContentWrapper>{children}</ContentWrapper>
           {trialStatus.isOnTrial && trialStatus.daysRemaining <= 5 && (
             <TrialReminderDialog
               daysRemaining={trialStatus.daysRemaining}

@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { revalidateTag } from 'next/cache'
 import { stripe } from '@/_lib/stripe'
-import { PLANS } from '@/(authenticated)/org/[orgSlug]/(main)/settings/billing/_components/plans-data'
+import { PLANS } from '@/_lib/billing/plans-data'
 import { createSubscription } from '@/_actions/billing/create-subscription'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 

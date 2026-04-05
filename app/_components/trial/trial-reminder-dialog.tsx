@@ -67,7 +67,7 @@ export const TrialReminderDialog = ({
             </DialogHeader>
             <div className="flex flex-col gap-2 pt-4">
               <Button asChild>
-                <Link href={`/org/${orgSlug}/settings/billing`}>
+                <Link href={`/org/${orgSlug}/plans`}>
                   Ver planos
                 </Link>
               </Button>

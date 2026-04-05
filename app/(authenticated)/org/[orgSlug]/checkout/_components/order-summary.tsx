@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import {
   PLANS,
   getAnnualDetails,
-} from '@/(authenticated)/org/[orgSlug]/(main)/settings/billing/_components/plans-data'
+} from '@/_lib/billing/plans-data'
 import type { PlanInterval } from './checkout-types'
 
 export function OrderSummary() {

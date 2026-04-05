@@ -19,6 +19,7 @@ export const TrialBanner = async ({ orgId, orgSlug, userRole }: TrialBannerProps
       daysRemaining={trialStatus.daysRemaining}
       trialEndsAt={trialStatus.trialEndsAt ? String(trialStatus.trialEndsAt) : null}
       isExpired={trialStatus.isExpired}
+      neverHadTrial={trialStatus.neverHadTrial}
       orgSlug={orgSlug}
       userRole={userRole}
     />
