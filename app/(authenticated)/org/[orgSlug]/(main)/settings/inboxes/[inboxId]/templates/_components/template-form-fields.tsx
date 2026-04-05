@@ -76,6 +76,32 @@ export function TemplateFormFields({ form, isEditing = false }: TemplateFormFiel
   const isNameValid = nameValue.length > 0 && /^[a-z0-9_]+$/.test(nameValue)
   const isNameInvalid = nameValue.length > 0 && !/^[a-z0-9_]+$/.test(nameValue)
 
+  // Validações inline do corpo (regras do Meta)
+  const bodyWarnings = useMemo(() => {
+    const warnings: string[] = []
+    if (!bodyText.trim()) return warnings
+
+    // Variável no início do texto
+    if (/^\s*\{\{\d+\}\}/.test(bodyText)) {
+      warnings.push('Variáveis não podem estar no início do texto.')
+    }
+
+    // Variável no final do texto
+    if (/\{\{\d+\}\}\s*$/.test(bodyText)) {
+      warnings.push('Variáveis não podem estar no final do texto.')
+    }
+
+    // Ratio variáveis/texto (heurística: texto fixo deve ter pelo menos 3x mais caracteres que variáveis)
+    if (bodyVariables.length > 0) {
+      const textWithoutVars = bodyText.replace(/\{\{\d+\}\}/g, '').trim()
+      if (textWithoutVars.length < bodyVariables.length * 10) {
+        warnings.push('Texto muito curto para a quantidade de variáveis. O Meta pode rejeitar.')
+      }
+    }
+
+    return warnings
+  }, [bodyText, bodyVariables])
+
   // Estado dos exemplos para o banner de variáveis
   const allExamplesFilled = useMemo(() => {
     if (bodyVariables.length === 0) return false
@@ -382,6 +408,21 @@ export function TemplateFormFields({ form, isEditing = false }: TemplateFormFiel
                 ? ' — Exemplos completos'
                 : ' — Preencha os exemplos para aprovação'}
             </span>
+          </div>
+        )}
+
+        {/* Avisos de validação do Meta */}
+        {bodyWarnings.length > 0 && (
+          <div className="space-y-1.5">
+            {bodyWarnings.map((warning) => (
+              <div
+                key={warning}
+                className="flex items-center gap-2 rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive dark:bg-destructive/15"
+              >
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                <span>{warning}</span>
+              </div>
+            ))}
           </div>
         )}
 

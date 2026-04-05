@@ -6,6 +6,43 @@ import type {
   MetaTemplateSendComponent,
 } from './types'
 
+// Mapeamento de error_subcode do Meta para mensagens legíveis em português
+const META_TEMPLATE_ERROR_MESSAGES: Record<number, string> = {
+  2388293: 'O texto tem muitas variáveis para o seu tamanho. Reduza o número de variáveis ou aumente o texto.',
+  2388299: 'Variáveis não podem estar no início ou no final do texto. Adicione texto antes e depois de cada variável.',
+  2388030: 'Já existe um template com esse nome. Escolha um nome diferente.',
+  2388049: 'O texto contém caracteres não permitidos. Use apenas texto e variáveis {{N}}.',
+  2388047: 'O nome do template é inválido. Use apenas letras minúsculas, números e underscore.',
+  2388066: 'Limite de templates atingido para esta conta. Delete templates não utilizados.',
+}
+
+/** Extrai mensagem legível de um erro da Graph API de templates */
+function parseMetaTemplateError(responseBody: string, statusCode: number): string {
+  try {
+    const parsed = JSON.parse(responseBody) as {
+      error?: {
+        error_subcode?: number
+        error_user_msg?: string
+        message?: string
+      }
+    }
+
+    const subcode = parsed.error?.error_subcode
+    if (subcode && META_TEMPLATE_ERROR_MESSAGES[subcode]) {
+      return META_TEMPLATE_ERROR_MESSAGES[subcode]
+    }
+
+    // Fallback: usar error_user_msg do Meta (em inglês, mas melhor que o código cru)
+    if (parsed.error?.error_user_msg) {
+      return parsed.error.error_user_msg
+    }
+
+    return parsed.error?.message ?? `Erro ao processar template (${statusCode})`
+  } catch {
+    return `Erro inesperado ao processar template (${statusCode})`
+  }
+}
+
 function getGraphApiBaseUrl(): string {
   const version = process.env.META_API_VERSION ?? 'v25.0'
   return `https://graph.facebook.com/${version}`
@@ -73,7 +110,7 @@ export async function createMetaTemplate(
 
   if (!response.ok) {
     const errorBody = await response.text().catch(() => 'unknown')
-    throw new Error(`Meta Graph API createTemplate failed (${response.status}): ${errorBody}`)
+    throw new Error(parseMetaTemplateError(errorBody, response.status))
   }
 
   const data = (await response.json()) as { id: string; status: string; category: string }
@@ -104,7 +141,7 @@ export async function editMetaTemplate(
 
   if (!response.ok) {
     const errorBody = await response.text().catch(() => 'unknown')
-    throw new Error(`Meta Graph API editTemplate failed (${response.status}): ${errorBody}`)
+    throw new Error(parseMetaTemplateError(errorBody, response.status))
   }
 
   return { success: true }
