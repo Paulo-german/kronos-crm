@@ -16,6 +16,7 @@ import type { MetaWebhookPayload, MetaWebhookValue, MetaTemplateStatusUpdate } f
 import type { BusinessHoursConfig } from '@/_actions/agent/update-agent/schema'
 import type { NormalizedWhatsAppMessage } from '@/_lib/evolution/types'
 import { AUTO_REOPEN_FIELDS } from '@/_lib/conversation/auto-reopen'
+import { hasActivePlan } from '@/_lib/billing/has-active-plan'
 
 // -----------------------------------------------------------------------------
 // GET — Verificacao do webhook (Meta chama ao configurar)
@@ -172,6 +173,14 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
   }
 
   const orgId = inbox.organizationId
+
+  // Plan guard: rejeitar mensagens de orgs sem plano ativo
+  // processChange() não retorna Response — o early return aqui é silenciosamente ignorado pelo Promise.allSettled
+  const orgHasPlan = await hasActivePlan(orgId)
+  if (!orgHasPlan) {
+    log('step:3b plan_guard', 'EXIT', { reason: 'no_active_plan', orgId })
+    return
+  }
 
   const contactAssignContext = {
     distributionUserIds: inbox.distributionUserIds,

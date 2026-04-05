@@ -15,6 +15,7 @@ import type { EvolutionWebhookPayload, EvolutionConnectionUpdateData, Normalized
 import type { BusinessHoursConfig } from '@/_actions/agent/update-agent/schema'
 import { resolveEvolutionCredentialsByInstanceName, resolveWebhookSecretByInstanceName } from '@/_lib/evolution/resolve-credentials'
 import { AUTO_REOPEN_FIELDS } from '@/_lib/conversation/auto-reopen'
+import { hasActivePlan } from '@/_lib/billing/has-active-plan'
 
 export async function POST(req: Request) {
   const t0 = Date.now()
@@ -192,10 +193,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ ignored: true, reason: 'no_inbox_found' })
   }
 
+  const orgId = inbox.organizationId
+
+  // Plan guard: rejeitar mensagens de orgs sem plano ativo (retorna 200 para o provider não reenviar)
+  const orgHasPlan = await hasActivePlan(orgId)
+  if (!orgHasPlan) {
+    log('step:3b plan_guard', 'EXIT', { reason: 'no_active_plan', orgId })
+    return NextResponse.json({ ignored: true, reason: 'no_active_plan' })
+  }
+
   // Resolver credenciais Evolution para este inbox (self-hosted ou globais)
   const inboxCredentials = await resolveEvolutionCredentialsByInstanceName(instanceName)
-
-  const orgId = inbox.organizationId
 
   const contactAssignContext = {
     distributionUserIds: inbox.distributionUserIds,

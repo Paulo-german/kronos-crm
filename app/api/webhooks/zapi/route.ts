@@ -15,6 +15,7 @@ import type { ZApiWebhookPayload, ZApiConfig } from '@/_lib/zapi/types'
 import type { BusinessHoursConfig } from '@/_actions/agent/update-agent/schema'
 import type { NormalizedWhatsAppMessage } from '@/_lib/evolution/types'
 import { AUTO_REOPEN_FIELDS } from '@/_lib/conversation/auto-reopen'
+import { hasActivePlan } from '@/_lib/billing/has-active-plan'
 
 export async function POST(req: Request) {
   const t0 = Date.now()
@@ -109,6 +110,13 @@ export async function POST(req: Request) {
   }
 
   const orgId = inbox.organizationId
+
+  // Plan guard: rejeitar mensagens de orgs sem plano ativo (retorna 200 para o provider não reenviar)
+  const orgHasPlan = await hasActivePlan(orgId)
+  if (!orgHasPlan) {
+    log('step:3b plan_guard', 'EXIT', { reason: 'no_active_plan', orgId })
+    return NextResponse.json({ ignored: true, reason: 'no_active_plan' })
+  }
 
   // Montar config Z-API para envio de auto-reply (OOH)
   const zapiConfig: ZApiConfig | null =
