@@ -1,6 +1,6 @@
 'use server'
 
-import { orgActionClient } from '@/_lib/safe-action'
+import { freeOrgActionClient } from '@/_lib/safe-action'
 import { createSetupIntentSchema } from './schema'
 import { stripe } from '@/_lib/stripe'
 import { db } from '@/_lib/prisma'
@@ -14,7 +14,7 @@ import { canPerformAction, requirePermission } from '@/_lib/rbac'
  *
  * @returns { setupSecret: string, customerId: string }
  */
-export const createSetupIntent = orgActionClient
+export const createSetupIntent = freeOrgActionClient
   .schema(createSetupIntentSchema)
   .action(async ({ ctx }) => {
     requirePermission(canPerformAction(ctx, 'billing', 'create'))

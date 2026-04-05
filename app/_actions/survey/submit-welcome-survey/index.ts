@@ -1,11 +1,11 @@
 'use server'
 
-import { orgActionClient } from '@/_lib/safe-action'
+import { freeOrgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { revalidateTag } from 'next/cache'
 import { submitWelcomeSurveySchema } from './schema'
 
-export const submitWelcomeSurvey = orgActionClient
+export const submitWelcomeSurvey = freeOrgActionClient
   .schema(submitWelcomeSurveySchema)
   .action(async ({ parsedInput: data, ctx }) => {
     // 1. RBAC: apenas o OWNER da organização pode responder o survey

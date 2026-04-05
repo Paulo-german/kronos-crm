@@ -1,7 +1,7 @@
 'use server'
 
 import Stripe from 'stripe'
-import { orgActionClient } from '@/_lib/safe-action'
+import { freeOrgActionClient } from '@/_lib/safe-action'
 import { createSubscriptionSchema } from './schema'
 import { stripe } from '@/_lib/stripe'
 import { db } from '@/_lib/prisma'
@@ -17,7 +17,7 @@ import { revalidateTag } from 'next/cache'
  * `default_payment_method` na criação da subscription. Isso evita PaymentMethods
  * órfãos caso a criação da subscription falhe.
  */
-export const createSubscription = orgActionClient
+export const createSubscription = freeOrgActionClient
   .schema(createSubscriptionSchema)
   .action(async ({ parsedInput: data, ctx }) => {
     requirePermission(canPerformAction(ctx, 'billing', 'create'))

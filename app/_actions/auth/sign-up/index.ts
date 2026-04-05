@@ -8,9 +8,6 @@ import { redirect } from 'next/navigation'
 import { verifyRecaptchaToken } from '@/_lib/recaptcha'
 import { generateSlug, ensureUniqueSlug } from '@/_lib/slug'
 
-// Trial de 7 dias concedido automaticamente na criação da conta
-const TRIAL_DURATION_DAYS = 7
-
 export const signUp = actionClient
   .schema(signUpSchema)
   .action(
@@ -70,9 +67,6 @@ export const signUp = actionClient
           data: {
             name: companyName,
             slug,
-            trialEndsAt: new Date(
-              Date.now() + TRIAL_DURATION_DAYS * 24 * 60 * 60 * 1000,
-            ),
           },
         })
 

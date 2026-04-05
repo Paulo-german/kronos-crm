@@ -9,6 +9,7 @@ export interface TrialStatus {
   trialEndsAt: Date | null
   daysRemaining: number
   isExpired: boolean
+  neverHadTrial: boolean
   phase: 'info' | 'warning' | 'danger' | 'expired' | 'none'
 }
 
@@ -37,10 +38,12 @@ export const getTrialStatus = cache(async (orgId: string): Promise<TrialStatus> 
           trialEndsAt,
           daysRemaining: 0,
           isExpired: false,
+          neverHadTrial: false,
           phase: 'none' as const,
         }
       }
 
+      // Org sem subscription, sem override e sem trialEndsAt = nunca teve trial
       if (!trialEndsAt) {
         return {
           isOnTrial: false,
@@ -48,6 +51,7 @@ export const getTrialStatus = cache(async (orgId: string): Promise<TrialStatus> 
           trialEndsAt: null,
           daysRemaining: 0,
           isExpired: true,
+          neverHadTrial: true,
           phase: 'expired' as const,
         }
       }
@@ -63,6 +67,7 @@ export const getTrialStatus = cache(async (orgId: string): Promise<TrialStatus> 
           trialEndsAt,
           daysRemaining: 0,
           isExpired: true,
+          neverHadTrial: false,
           phase: 'expired' as const,
         }
       }
@@ -77,6 +82,7 @@ export const getTrialStatus = cache(async (orgId: string): Promise<TrialStatus> 
         trialEndsAt,
         daysRemaining,
         isExpired: false,
+        neverHadTrial: false,
         phase,
       }
     },

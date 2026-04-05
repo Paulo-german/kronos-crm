@@ -30,7 +30,7 @@ const ENTITY_FEATURE_MAP: Record<QuotaEntity, string> = {
  * 2. trialEndsAt no futuro → retorna o plano 'essential' do DB
  * 3. Nenhum → null (bloqueia quota)
  */
-const getEffectivePlan = cache(async (orgId: string): Promise<Plan | null> => {
+export const getEffectivePlan = cache(async (orgId: string): Promise<Plan | null> => {
   const getCachedPlan = unstable_cache(
     async () => {
       // 1. Checar plan override (equipe interna / parceiros)

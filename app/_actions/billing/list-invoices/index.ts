@@ -1,12 +1,12 @@
 'use server'
 
-import { orgActionClient } from '@/_lib/safe-action'
+import { freeOrgActionClient } from '@/_lib/safe-action'
 import { listInvoicesSchema } from './schema'
 import { stripe } from '@/_lib/stripe'
 import { db } from '@/_lib/prisma'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 
-export const listInvoices = orgActionClient
+export const listInvoices = freeOrgActionClient
   .schema(listInvoicesSchema)
   .action(async ({ ctx }) => {
     requirePermission(canPerformAction(ctx, 'billing', 'read'))

@@ -1,11 +1,11 @@
 'use server'
 
-import { orgActionClient } from '@/_lib/safe-action'
+import { freeOrgActionClient } from '@/_lib/safe-action'
 import { revalidateTag } from 'next/cache'
 import { db } from '@/_lib/prisma'
 import { notificationPreferencesSchema } from './schema'
 
-export const updateNotificationPreferences = orgActionClient
+export const updateNotificationPreferences = freeOrgActionClient
   .schema(notificationPreferencesSchema)
   .action(async ({ parsedInput: data, ctx }) => {
     // Preferencias sao sempre do proprio usuario autenticado (ctx.userId)

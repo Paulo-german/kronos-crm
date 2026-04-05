@@ -1,14 +1,14 @@
 'use server'
 
 import { cookies, headers } from 'next/headers'
-import { orgActionClient, ORG_SLUG_COOKIE } from '@/_lib/safe-action'
+import { freeOrgActionClient, ORG_SLUG_COOKIE } from '@/_lib/safe-action'
 import { createCheckoutSessionSchema } from './schema'
 import { stripe } from '@/_lib/stripe'
 import { db } from '@/_lib/prisma'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 import { resolveProductKeyFromPriceId } from '@/_lib/stripe-utils'
 
-export const createCheckoutSession = orgActionClient
+export const createCheckoutSession = freeOrgActionClient
   .schema(createCheckoutSessionSchema)
   .action(async ({ parsedInput: data, ctx }) => {
     // 1. Verificar permissão: apenas OWNER/ADMIN podem criar checkout

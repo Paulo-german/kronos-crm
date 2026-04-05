@@ -1,13 +1,13 @@
 'use server'
 
 import { cookies, headers } from 'next/headers'
-import { orgActionClient, ORG_SLUG_COOKIE } from '@/_lib/safe-action'
+import { freeOrgActionClient, ORG_SLUG_COOKIE } from '@/_lib/safe-action'
 import { createPortalSessionSchema } from './schema'
 import { stripe } from '@/_lib/stripe'
 import { db } from '@/_lib/prisma'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 
-export const createPortalSession = orgActionClient
+export const createPortalSession = freeOrgActionClient
   .schema(createPortalSessionSchema)
   .action(async ({ ctx }) => {
     // 1. Verificar permissão: apenas OWNER/ADMIN podem gerenciar billing

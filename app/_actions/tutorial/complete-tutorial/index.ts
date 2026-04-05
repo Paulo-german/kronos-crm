@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidateTag } from 'next/cache'
-import { orgActionClient } from '@/_lib/safe-action'
+import { freeOrgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { completeTutorialSchema } from './schema'
 
@@ -11,7 +11,7 @@ import { completeTutorialSchema } from './schema'
  * Sem RBAC de permissão: qualquer membro pode completar um tutorial para si próprio.
  * O userId vem sempre de ctx.userId (middleware) — nunca do cliente.
  */
-export const completeTutorial = orgActionClient
+export const completeTutorial = freeOrgActionClient
   .schema(completeTutorialSchema)
   .action(async ({ parsedInput: data, ctx }) => {
     const existing = await db.tutorialCompletion.findUnique({

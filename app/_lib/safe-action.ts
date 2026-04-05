@@ -3,21 +3,24 @@ import { cookies } from 'next/headers'
 import { createClient } from '@/_lib/supabase/server'
 import { validateMembership } from '@/_data-access/organization/validate-membership'
 import { getOrgPiiSetting } from '@/_data-access/organization/get-org-pii-setting'
+import { getEffectivePlan } from '@/_lib/rbac/plan-limits'
 import { db } from '@/_lib/prisma'
 import type { MemberRole } from '@prisma/client'
 
 import { ORG_SLUG_COOKIE } from '@/_lib/constants'
 export { ORG_SLUG_COOKIE }
 
+const handleServerError = (e: Error) => {
+  console.error('Action error:', e.message)
+  return e.message || 'Ocorreu um erro no servidor. Tente novamente.'
+}
+
 /**
  * Base action client - SEM autenticação
  * Use apenas para: login, signup, actions públicas
  */
 export const actionClient = createSafeActionClient({
-  handleServerError(e) {
-    console.error('Action error:', e.message)
-    return e.message || 'Ocorreu um erro no servidor. Tente novamente.'
-  },
+  handleServerError,
 })
 
 /**
@@ -28,10 +31,7 @@ export const actionClient = createSafeActionClient({
  * O ctx.userId estará disponível em todas as actions
  */
 export const authActionClient = createSafeActionClient({
-  handleServerError(e) {
-    console.error('Action error:', e.message)
-    return e.message || 'Ocorreu um erro no servidor. Tente novamente.'
-  },
+  handleServerError,
 }).use(async ({ next }) => {
   const supabase = await createClient()
   const {
@@ -46,19 +46,15 @@ export const authActionClient = createSafeActionClient({
 })
 
 /**
- * Action client com autenticação + contexto de organização
- * Use para: TODAS as actions que manipulam dados dentro de uma organização
+ * Base org client — auth + contexto de organização, SEM exigir plano ativo.
+ * Use para: actions de billing/checkout que precisam funcionar sem plano
+ * (ex: create-subscription, save-billing-data, create-setup-intent)
  *
  * Disponibiliza no contexto:
- * - ctx.userId: ID do usuário autenticado
- * - ctx.orgId: ID da organização atual
- * - ctx.userRole: Papel do usuário na org (OWNER, ADMIN, MEMBER)
+ * - ctx.userId, ctx.orgId, ctx.orgSlug, ctx.userRole, ctx.hidePiiFromMembers
  */
-export const orgActionClient = createSafeActionClient({
-  handleServerError(e) {
-    console.error('Action error:', e.message)
-    return e.message || 'Ocorreu um erro no servidor. Tente novamente.'
-  },
+export const freeOrgActionClient = createSafeActionClient({
+  handleServerError,
 }).use(async ({ next }) => {
   const supabase = await createClient()
   const {
@@ -96,6 +92,23 @@ export const orgActionClient = createSafeActionClient({
       hidePiiFromMembers,
     },
   })
+})
+
+/**
+ * Action client com autenticação + contexto de organização + plano ativo obrigatório.
+ * Use para: TODAS as actions que manipulam dados dentro de uma organização.
+ *
+ * Bloqueia chamadas de orgs sem plano ativo (trial, subscription ou override).
+ * Para actions de billing/checkout, use `freeOrgActionClient` ao invés.
+ */
+export const orgActionClient = freeOrgActionClient.use(async ({ ctx, next }) => {
+  const plan = await getEffectivePlan(ctx.orgId)
+
+  if (!plan) {
+    throw new Error('Assine um plano para realizar esta ação.')
+  }
+
+  return next({ ctx })
 })
 
 /**

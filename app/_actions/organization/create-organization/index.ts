@@ -6,8 +6,6 @@ import { db } from '@/_lib/prisma'
 import { revalidateTag } from 'next/cache'
 import { generateSlug, ensureUniqueSlug } from '@/_lib/slug'
 
-const TRIAL_DURATION_DAYS = 7
-
 export const createOrganization = authActionClient
   .schema(createOrganizationSchema)
   .action(async ({ parsedInput: data, ctx }) => {
@@ -27,12 +25,11 @@ export const createOrganization = authActionClient
 
     // Criar organização e membro em uma transação
     const organization = await db.$transaction(async (tx) => {
-      // Criar organização com trial de 7 dias no plano Essential
+      // Criar organização (sem trial — usuário precisa assinar um plano)
       const org = await tx.organization.create({
         data: {
           name: data.name,
           slug,
-          trialEndsAt: new Date(Date.now() + TRIAL_DURATION_DAYS * 24 * 60 * 60 * 1000),
         },
       })
 
