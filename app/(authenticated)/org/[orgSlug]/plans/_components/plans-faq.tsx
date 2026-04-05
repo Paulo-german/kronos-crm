@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { cn } from '@/_lib/utils'
-import { FAQ_DATA } from './plans-data'
+import { FAQ_DATA } from '@/_lib/billing/plans-data'
 
 interface FaqItemProps {
   question: string

@@ -303,7 +303,7 @@ export const FAQ_DATA: FaqItem[] = [
   {
     question: 'Existe período de teste?',
     answer:
-      'Sim! Toda nova organização tem 7 dias de trial gratuito no plano Essential. Você pode experimentar os recursos sem compromisso. Não é necessário cartão de crédito para iniciar o trial.',
+      'Atualmente não oferecemos período de teste. Porém, todos os planos podem ser cancelados a qualquer momento, sem compromisso. Escolha o plano que melhor se encaixa na sua operação e comece a usar o Kronos imediatamente.',
   },
   {
     question: 'Quais formas de pagamento são aceitas?',

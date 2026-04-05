@@ -7,7 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/_components/ui/table'
-import { COMPARISON_DATA } from './plans-data'
+import { COMPARISON_DATA } from '@/_lib/billing/plans-data'
 
 function CellValue({ value }: { value: string | boolean }) {
   if (typeof value === 'boolean') {
