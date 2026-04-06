@@ -105,10 +105,15 @@ export function useConversationWindow(
     computeWindowState(lastCustomerMessageAt, connectionType),
   )
 
+  // Usar timestamp primitivo como dependency para evitar loop infinito
+  // (new Date() cria referência nova a cada render, mas getTime() retorna number estável)
+  const lastMessageTimestamp = lastCustomerMessageAt?.getTime() ?? null
+
   // Recalcula imediatamente quando lastCustomerMessageAt muda (nova msg do cliente via polling)
   useEffect(() => {
     setWindowState(computeWindowState(lastCustomerMessageAt, connectionType))
-  }, [lastCustomerMessageAt, connectionType])
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- usa timestamp primitivo para comparação estável
+  }, [lastMessageTimestamp, connectionType])
 
   // Atualiza a cada minuto para countdown reativo (sync com relógio — sistema externo)
   useEffect(() => {
@@ -119,7 +124,8 @@ export function useConversationWindow(
     }, MINUTE_MS)
 
     return () => clearInterval(interval)
-  }, [lastCustomerMessageAt, connectionType])
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- usa timestamp primitivo para comparação estável
+  }, [lastMessageTimestamp, connectionType])
 
   return windowState
 }
