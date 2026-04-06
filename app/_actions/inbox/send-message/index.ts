@@ -7,6 +7,7 @@ import { redis } from '@/_lib/redis'
 import { canPerformAction, canAccessRecord, requirePermission } from '@/_lib/rbac'
 import { resolveWhatsAppProvider } from '@/_lib/whatsapp/provider'
 import { withRetry } from '@/_lib/whatsapp/retry'
+import { parseProviderError } from '@/_lib/whatsapp/parse-provider-error'
 import { AUTO_REOPEN_FIELDS } from '@/_lib/conversation/auto-reopen'
 import { sendMessageSchema } from './schema'
 
@@ -58,54 +59,71 @@ export const sendMessage = orgActionClient
 
     // 4. Enviar via provider correto (Evolution ou Meta Cloud)
     const provider = resolveWhatsAppProvider(conversation.inbox)
-    const sentMessageIds = await withRetry(() =>
-      provider.sendText(remoteJid, data.text),
-    )
+    let sendFailed = false
 
-    // Pré-registrar dedup keys para que o webhook fromMe ignore estas mensagens
-    await Promise.all(
-      sentMessageIds.map((sentId) =>
-        redis.set(`dedup:${sentId}`, '1', 'EX', 300).catch(() => {}),
-      ),
-    )
+    try {
+      const sentMessageIds = await withRetry(() =>
+        provider.sendText(remoteJid, data.text),
+      )
 
-    // 5. Salvar mensagem no banco + pausar IA + resetar unreadCount + cancelar FUP ativo
-    // O humano assumiu a conversa — FUP nao faz mais sentido
-    const lastSentId = sentMessageIds[sentMessageIds.length - 1]
+      await Promise.all(
+        sentMessageIds.map((sentId) =>
+          redis.set(`dedup:${sentId}`, '1', 'EX', 300).catch(() => {}),
+        ),
+      )
 
-    await Promise.all([
-      db.message.create({
+      const lastSentId = sentMessageIds[sentMessageIds.length - 1]
+
+      await Promise.all([
+        db.message.create({
+          data: {
+            conversationId: data.conversationId,
+            role: 'assistant',
+            content: data.text,
+            providerMessageId: lastSentId,
+            deliveryStatus: 'sent',
+            metadata: {
+              sentBy: ctx.userId,
+              sentByName: senderName,
+              sentFrom: 'inbox',
+            },
+          },
+        }),
+        db.conversation.update({
+          where: { id: data.conversationId },
+          data: {
+            aiPaused: true,
+            pausedAt: new Date(),
+            unreadCount: 0,
+            lastMessageRole: 'assistant',
+            nextFollowUpAt: null,
+            followUpCount: 0,
+            ...AUTO_REOPEN_FIELDS,
+          },
+        }),
+      ])
+    } catch (providerError) {
+      sendFailed = true
+
+      await db.message.create({
         data: {
           conversationId: data.conversationId,
           role: 'assistant',
           content: data.text,
-          providerMessageId: lastSentId,
+          deliveryStatus: 'failed',
           metadata: {
             sentBy: ctx.userId,
             sentByName: senderName,
             sentFrom: 'inbox',
+            deliveryError: parseProviderError(providerError),
           },
         },
-      }),
-      db.conversation.update({
-        where: { id: data.conversationId },
-        data: {
-          aiPaused: true,
-          pausedAt: new Date(),
-          unreadCount: 0,
-          lastMessageRole: 'assistant',
-          // Reset follow-up: humano assumiu a conversa — cancelar ciclo pendente
-          nextFollowUpAt: null,
-          followUpCount: 0,
-          // Reabertura automática: humano enviando mensagem reativa conversa resolvida
-          ...AUTO_REOPEN_FIELDS,
-        },
-      }),
-    ])
+      })
+    }
 
-    // 6. Invalidar cache
+    // 5. Invalidar cache
     revalidateTag(`conversations:${ctx.orgId}`)
     revalidateTag(`conversation-messages:${data.conversationId}`)
 
-    return { success: true }
+    return { success: true, sendFailed }
   })

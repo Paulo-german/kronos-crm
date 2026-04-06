@@ -7,6 +7,7 @@ import { redis } from '@/_lib/redis'
 import { canPerformAction, canAccessRecord, requirePermission } from '@/_lib/rbac'
 import { resolveWhatsAppProvider } from '@/_lib/whatsapp/provider'
 import { withRetry } from '@/_lib/whatsapp/retry'
+import { parseProviderError } from '@/_lib/whatsapp/parse-provider-error'
 import { AUTO_REOPEN_FIELDS } from '@/_lib/conversation/auto-reopen'
 import { sendAudioSchema } from './schema'
 
@@ -56,26 +57,59 @@ export const sendAudio = orgActionClient
     })
     const senderName = sender?.fullName || sender?.email || 'Membro'
 
-    // 4. Enviar via provider correto (Evolution ou Meta Cloud)
+    // 4. Enviar via provider correto
     const provider = resolveWhatsAppProvider(conversation.inbox)
-    const messageId = await withRetry(() =>
-      provider.sendAudio(remoteJid, data.audioBase64),
-    )
-
-    // Pré-registrar dedup key para que o webhook fromMe ignore esta mensagem
-    await redis.set(`dedup:${messageId}`, '1', 'EX', 300).catch(() => {})
-
-    // 5. Salvar mensagem no banco + pausar IA + resetar unreadCount + cancelar FUP ativo
-    // O humano assumiu a conversa — FUP nao faz mais sentido
     const durationRounded = Math.round(data.duration)
+    let sendFailed = false
 
-    await Promise.all([
-      db.message.create({
+    try {
+      const messageId = await withRetry(() =>
+        provider.sendAudio(remoteJid, data.audioBase64),
+      )
+
+      await redis.set(`dedup:${messageId}`, '1', 'EX', 300).catch(() => {})
+
+      await Promise.all([
+        db.message.create({
+          data: {
+            conversationId: data.conversationId,
+            role: 'assistant',
+            content: `[Áudio ${durationRounded}s]`,
+            providerMessageId: messageId,
+            deliveryStatus: 'sent',
+            metadata: {
+              sentBy: ctx.userId,
+              sentByName: senderName,
+              sentFrom: 'inbox',
+              media: {
+                mimetype: 'audio/ogg',
+                seconds: data.duration,
+              },
+            },
+          },
+        }),
+        db.conversation.update({
+          where: { id: data.conversationId },
+          data: {
+            aiPaused: true,
+            pausedAt: new Date(),
+            unreadCount: 0,
+            lastMessageRole: 'assistant',
+            nextFollowUpAt: null,
+            followUpCount: 0,
+            ...AUTO_REOPEN_FIELDS,
+          },
+        }),
+      ])
+    } catch (providerError) {
+      sendFailed = true
+
+      await db.message.create({
         data: {
           conversationId: data.conversationId,
           role: 'assistant',
           content: `[Áudio ${durationRounded}s]`,
-          providerMessageId: messageId,
+          deliveryStatus: 'failed',
           metadata: {
             sentBy: ctx.userId,
             sentByName: senderName,
@@ -84,28 +118,15 @@ export const sendAudio = orgActionClient
               mimetype: 'audio/ogg',
               seconds: data.duration,
             },
+            deliveryError: parseProviderError(providerError),
           },
         },
-      }),
-      db.conversation.update({
-        where: { id: data.conversationId },
-        data: {
-          aiPaused: true,
-          pausedAt: new Date(),
-          unreadCount: 0,
-          lastMessageRole: 'assistant',
-          // Reset follow-up: humano assumiu a conversa — cancelar ciclo pendente
-          nextFollowUpAt: null,
-          followUpCount: 0,
-          // Reabertura automática: humano enviando áudio reativa conversa resolvida
-          ...AUTO_REOPEN_FIELDS,
-        },
-      }),
-    ])
+      })
+    }
 
-    // 6. Invalidar cache
+    // 5. Invalidar cache
     revalidateTag(`conversations:${ctx.orgId}`)
     revalidateTag(`conversation-messages:${data.conversationId}`)
 
-    return { success: true }
+    return { success: true, sendFailed }
   })

@@ -5,7 +5,10 @@ import type { Prisma } from '@prisma/client'
 import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
-import { canPerformAction, requirePermission } from '@/_lib/rbac/guards'
+import { canPerformAction, canAccessRecord, requirePermission } from '@/_lib/rbac'
+import { withRetry } from '@/_lib/whatsapp/retry'
+import { parseProviderError } from '@/_lib/whatsapp/parse-provider-error'
+import { AUTO_REOPEN_FIELDS } from '@/_lib/conversation/auto-reopen'
 import { getInboxMetaCredentials } from '@/_data-access/inbox/get-inbox-meta-credentials'
 import { sendMetaTemplateMessage } from '@/_lib/meta/template-api'
 import type { MetaTemplateSendComponent } from '@/_lib/meta/types'
@@ -26,6 +29,7 @@ export const sendTemplateMessage = orgActionClient
       where: { id: data.conversationId, organizationId: ctx.orgId },
       select: {
         remoteJid: true,
+        assignedTo: true,
         inbox: {
           select: {
             id: true,
@@ -40,6 +44,8 @@ export const sendTemplateMessage = orgActionClient
     if (!conversation) {
       throw new Error('Conversa não encontrada.')
     }
+
+    requirePermission(canAccessRecord(ctx, { assignedTo: conversation.assignedTo }))
 
     // 3. Validar que possui remoteJid (numero de destino)
     if (!conversation.remoteJid) {
@@ -87,27 +93,13 @@ export const sendTemplateMessage = orgActionClient
     // Normalizar o numero do destinatario (remover @s.whatsapp.net)
     const recipientPhone = remoteJid.replace('@s.whatsapp.net', '')
 
-    // 8. Enviar template via Graph API
-    const wamid = await sendMetaTemplateMessage(
-      credentials.phoneNumberId,
-      credentials.accessToken,
-      recipientPhone,
-      data.templateName,
-      data.language,
-      components.length > 0 ? components : undefined,
-    )
-
-    // 9. Dedup: prevenir que o webhook processe esta mensagem como entrada do cliente
-    await redis.set(`dedup:${wamid}`, '1', 'EX', 300).catch(() => {})
-
-    // 10. Montar conteudo textual para exibicao no chat
+    // 8. Montar conteudo textual e metadata antes do envio
     const bodyParams = data.bodyParameters?.map((param) => param.text) ?? []
     const templateContent =
       bodyParams.length > 0
         ? `[Template: ${data.templateName}] ${bodyParams.join(' | ')}`
         : `[Template: ${data.templateName}]`
 
-    // 11. Salvar mensagem + pausar IA + resetar unreadCount + cancelar FUP
     const templateMetadata = {
       sentBy: ctx.userId,
       sentByName: senderName,
@@ -120,32 +112,66 @@ export const sendTemplateMessage = orgActionClient
       },
     }
 
-    await Promise.all([
-      db.message.create({
+    let sendFailed = false
+
+    try {
+      const wamid = await withRetry(() =>
+        sendMetaTemplateMessage(
+          credentials.phoneNumberId,
+          credentials.accessToken,
+          recipientPhone,
+          data.templateName,
+          data.language,
+          components.length > 0 ? components : undefined,
+        ),
+      )
+
+      await redis.set(`dedup:${wamid}`, '1', 'EX', 300).catch(() => {})
+
+      await Promise.all([
+        db.message.create({
+          data: {
+            conversationId: data.conversationId,
+            role: 'assistant',
+            content: templateContent,
+            providerMessageId: wamid,
+            deliveryStatus: 'sent',
+            metadata: templateMetadata as unknown as Prisma.InputJsonValue,
+          },
+        }),
+        db.conversation.update({
+          where: { id: data.conversationId },
+          data: {
+            aiPaused: true,
+            pausedAt: new Date(),
+            unreadCount: 0,
+            lastMessageRole: 'assistant',
+            nextFollowUpAt: null,
+            followUpCount: 0,
+            ...AUTO_REOPEN_FIELDS,
+          },
+        }),
+      ])
+    } catch (providerError) {
+      sendFailed = true
+
+      await db.message.create({
         data: {
           conversationId: data.conversationId,
           role: 'assistant',
           content: templateContent,
-          providerMessageId: wamid,
-          metadata: templateMetadata as unknown as Prisma.InputJsonValue,
+          deliveryStatus: 'failed',
+          metadata: {
+            ...templateMetadata,
+            deliveryError: parseProviderError(providerError),
+          } as unknown as Prisma.InputJsonValue,
         },
-      }),
-      db.conversation.update({
-        where: { id: data.conversationId },
-        data: {
-          aiPaused: true,
-          pausedAt: new Date(),
-          unreadCount: 0,
-          // Humano assumiu a conversa — cancelar ciclo de follow-up pendente
-          nextFollowUpAt: null,
-          followUpCount: 0,
-        },
-      }),
-    ])
+      })
+    }
 
-    // 12. Invalidar cache
+    // 9. Invalidar cache
     revalidateTag(`conversations:${ctx.orgId}`)
     revalidateTag(`conversation-messages:${data.conversationId}`)
 
-    return { success: true }
+    return { success: true, sendFailed }
   })

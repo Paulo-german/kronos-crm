@@ -14,6 +14,7 @@ import {
   getMaxSizeForMimetype,
 } from '@/_lib/whatsapp/media-constants'
 import { withRetry } from '@/_lib/whatsapp/retry'
+import { parseProviderError } from '@/_lib/whatsapp/parse-provider-error'
 import { AUTO_REOPEN_FIELDS } from '@/_lib/conversation/auto-reopen'
 import { sendMediaSchema } from './schema'
 
@@ -93,40 +94,76 @@ export const sendMedia = orgActionClient
       fileName: data.fileName,
     })
 
-    // 7. Enviar via provider com retry (Evolution usa URL do B2, Meta usa base64)
+    // 7. Enviar via provider com retry
     const provider = resolveWhatsAppProvider(conversation.inbox)
-    const providerMessageId = await withRetry(() =>
-      provider.sendMedia(
-        remoteJid,
-        data.mediaBase64,
-        data.mimetype,
-        mediatype,
-        data.fileName,
-        data.caption,
-        uploadResult.publicUrl,
-      ),
-    )
-
-    // 8. Dedup Redis
-    await redis.set(`dedup:${providerMessageId}`, '1', 'EX', 300).catch(() => {})
-
-    // 9. Definir conteúdo e salvar message + pausar IA + cancelar FUP em paralelo
-    // O humano assumiu a conversa — FUP nao faz mais sentido
     const contentFallback = mediatype === 'image'
       ? '[Imagem]'
       : mediatype === 'video'
         ? '[Vídeo]'
         : `[Documento: ${data.fileName}]`
     const content = data.caption || contentFallback
+    let sendFailed = false
 
-    await Promise.all([
-      db.message.create({
+    try {
+      const providerMessageId = await withRetry(() =>
+        provider.sendMedia(
+          remoteJid,
+          data.mediaBase64,
+          data.mimetype,
+          mediatype,
+          data.fileName,
+          data.caption,
+          uploadResult.publicUrl,
+        ),
+      )
+
+      await redis.set(`dedup:${providerMessageId}`, '1', 'EX', 300).catch(() => {})
+
+      await Promise.all([
+        db.message.create({
+          data: {
+            id: messageId,
+            conversationId: data.conversationId,
+            role: 'assistant',
+            content,
+            providerMessageId,
+            deliveryStatus: 'sent',
+            metadata: {
+              sentBy: ctx.userId,
+              sentByName: senderName,
+              sentFrom: 'inbox',
+              media: {
+                mimetype: data.mimetype,
+                fileName: data.fileName,
+                url: uploadResult.publicUrl,
+                storedExternally: true,
+              },
+            },
+          },
+        }),
+        db.conversation.update({
+          where: { id: data.conversationId },
+          data: {
+            aiPaused: true,
+            pausedAt: new Date(),
+            unreadCount: 0,
+            lastMessageRole: 'assistant',
+            nextFollowUpAt: null,
+            followUpCount: 0,
+            ...AUTO_REOPEN_FIELDS,
+          },
+        }),
+      ])
+    } catch (providerError) {
+      sendFailed = true
+
+      await db.message.create({
         data: {
           id: messageId,
           conversationId: data.conversationId,
           role: 'assistant',
           content,
-          providerMessageId,
+          deliveryStatus: 'failed',
           metadata: {
             sentBy: ctx.userId,
             sentByName: senderName,
@@ -137,28 +174,15 @@ export const sendMedia = orgActionClient
               url: uploadResult.publicUrl,
               storedExternally: true,
             },
+            deliveryError: parseProviderError(providerError),
           },
         },
-      }),
-      db.conversation.update({
-        where: { id: data.conversationId },
-        data: {
-          aiPaused: true,
-          pausedAt: new Date(),
-          unreadCount: 0,
-          lastMessageRole: 'assistant',
-          // Reset follow-up: humano assumiu a conversa — cancelar ciclo pendente
-          nextFollowUpAt: null,
-          followUpCount: 0,
-          // Reabertura automática: humano enviando mídia reativa conversa resolvida
-          ...AUTO_REOPEN_FIELDS,
-        },
-      }),
-    ])
+      })
+    }
 
-    // 10. Invalidar cache
+    // 8. Invalidar cache
     revalidateTag(`conversations:${ctx.orgId}`)
     revalidateTag(`conversation-messages:${data.conversationId}`)
 
-    return { success: true }
+    return { success: true, sendFailed }
   })
