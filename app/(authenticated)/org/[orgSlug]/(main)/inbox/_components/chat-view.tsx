@@ -8,6 +8,7 @@ import { TooltipProvider } from '@/_components/ui/tooltip'
 import { sendMessage } from '@/_actions/inbox/send-message'
 import { sendAudio } from '@/_actions/inbox/send-audio'
 import { sendMedia } from '@/_actions/inbox/send-media'
+import { retryFailedMessage } from '@/_actions/inbox/retry-failed-message'
 import { toggleAiPause } from '@/_actions/inbox/toggle-ai-pause'
 import { resolveConversation } from '@/_actions/inbox/resolve-conversation'
 import { reopenConversation } from '@/_actions/inbox/reopen-conversation'
@@ -50,6 +51,7 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [mediaPreviewUrl, setMediaPreviewUrl] = useState<string | null>(null)
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false)
+  const [retryingMessageId, setRetryingMessageId] = useState<string | null>(null)
 
   const isMetaCloud = conversation.inboxConnectionType === 'META_CLOUD'
   const mediaPreviewUrlRef = useRef<string | null>(null)
@@ -96,10 +98,13 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
 
   // Actions
   const sendAction = useAction(sendMessage, {
-    onSuccess: () => {
+    onSuccess: (result) => {
       setText('')
       chatInputRef.current?.focus()
       fetchMessages()
+      if (result.data?.sendFailed) {
+        toast.error('Falha no envio. Verifique no chat.')
+      }
     },
     onError: (error) => {
       toast.error(error.error?.serverError ?? 'Erro ao enviar mensagem')
@@ -142,8 +147,11 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
   })
 
   const sendAudioAction = useAction(sendAudio, {
-    onSuccess: () => {
+    onSuccess: (result) => {
       fetchMessages()
+      if (result.data?.sendFailed) {
+        toast.error('Falha no envio do áudio. Verifique no chat.')
+      }
     },
     onError: (error) => {
       toast.error(error.error?.serverError ?? 'Erro ao enviar áudio')
@@ -158,16 +166,36 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
   }
 
   const sendMediaAction = useAction(sendMedia, {
-    onSuccess: () => {
+    onSuccess: (result) => {
       handleFileRemove()
       setText('')
       chatInputRef.current?.focus()
       fetchMessages()
+      if (result.data?.sendFailed) {
+        toast.error('Falha no envio do arquivo. Verifique no chat.')
+      }
     },
     onError: (error) => {
       toast.error(error.error?.serverError ?? 'Erro ao enviar arquivo')
     },
   })
+
+  const retryAction = useAction(retryFailedMessage, {
+    onSuccess: () => {
+      setRetryingMessageId(null)
+      fetchMessages()
+      toast.success('Mensagem reenviada.')
+    },
+    onError: (error) => {
+      setRetryingMessageId(null)
+      toast.error(error.error?.serverError ?? 'Erro ao reenviar mensagem.')
+    },
+  })
+
+  const handleRetryMessage = (messageId: string) => {
+    setRetryingMessageId(messageId)
+    retryAction.execute({ messageId })
+  }
 
   const {
     isRecording,
@@ -341,6 +369,8 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
           scrollRef={scrollRef}
           scrollAreaRef={scrollAreaRef}
           onLoadMore={loadOlderMessages}
+          onRetryMessage={handleRetryMessage}
+          retryingMessageId={retryingMessageId}
         />
         <Separator />
         <ChatInput

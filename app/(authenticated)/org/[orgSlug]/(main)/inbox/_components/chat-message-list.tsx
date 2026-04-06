@@ -27,6 +27,8 @@ interface ChatMessageListProps {
   scrollRef: RefObject<HTMLDivElement | null>
   scrollAreaRef: RefObject<HTMLDivElement | null>
   onLoadMore: () => void
+  onRetryMessage?: (messageId: string) => void
+  retryingMessageId?: string | null
 }
 
 export function ChatMessageList({
@@ -39,6 +41,8 @@ export function ChatMessageList({
   scrollRef,
   scrollAreaRef,
   onLoadMore,
+  onRetryMessage,
+  retryingMessageId,
 }: ChatMessageListProps) {
   return (
     <ScrollArea className="flex-1 px-4" ref={scrollAreaRef}>
@@ -98,6 +102,9 @@ export function ChatMessageList({
               content={item.data.content}
               metadata={item.data.metadata}
               createdAt={item.data.createdAt}
+              deliveryStatus={item.data.deliveryStatus}
+              onRetry={onRetryMessage}
+              isRetrying={retryingMessageId === item.data.id}
             />
           ),
         )}

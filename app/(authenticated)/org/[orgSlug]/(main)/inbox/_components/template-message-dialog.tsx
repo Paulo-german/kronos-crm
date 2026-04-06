@@ -146,8 +146,12 @@ export function TemplateMessageDialog({
   }
 
   const { execute: executeSend, isPending: isSending } = useAction(sendTemplateMessage, {
-    onSuccess: () => {
-      toast.success('Template enviado com sucesso!')
+    onSuccess: (result) => {
+      if (result.data?.sendFailed) {
+        toast.error('Falha no envio do template. Verifique no chat.')
+      } else {
+        toast.success('Template enviado com sucesso!')
+      }
       handleOpenChange(false)
       onSent()
     },

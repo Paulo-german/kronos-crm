@@ -6,6 +6,7 @@ export interface MessageDto {
   content: string
   metadata: unknown
   createdAt: Date | string
+  deliveryStatus: string | null
 }
 
 export type TimelineItem =

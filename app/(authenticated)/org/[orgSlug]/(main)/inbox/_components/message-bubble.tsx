@@ -3,9 +3,10 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { format } from 'date-fns'
 import { cn } from '@/_lib/utils'
-import { Bot, FileDown, FileText, Pause, Play, UserRound } from 'lucide-react'
+import { Bot, Check, CheckCheck, FileDown, FileText, Loader2, Pause, Play, RotateCw, UserRound, X } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import { Badge } from '@/_components/ui/badge'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/_components/ui/tooltip'
 
 function formatAudioDuration(seconds: number): string {
   const mins = Math.floor(seconds / 60)
@@ -147,13 +148,98 @@ interface TemplateMetadata {
   bodyParameters?: Array<{ type: string; text: string }>
 }
 
+interface DeliveryError {
+  code?: number
+  title?: string
+  message?: string
+}
+
 interface MessageMetadata {
   media?: MediaMetadata
   sentBy?: string
   sentByName?: string
   sentFrom?: string
   template?: TemplateMetadata
+  deliveryError?: DeliveryError
   [key: string]: unknown
+}
+
+const DELIVERY_ERROR_MESSAGES_PT: Record<number, string> = {
+  131026: 'Número não está no WhatsApp',
+  131047: 'Janela de 24h expirada. Envie um template.',
+  131051: 'Tipo de mensagem não suportado',
+  130429: 'Limite de envio atingido. Tente novamente em breve.',
+  131031: 'Conta do destinatário bloqueada',
+}
+
+interface DeliveryStatusIconProps {
+  status: string | null
+  metadata: MessageMetadata | null
+  onRetry?: () => void
+  isRetrying?: boolean
+}
+
+function DeliveryStatusIcon({ status, metadata, onRetry, isRetrying }: DeliveryStatusIconProps) {
+  if (!status) return null
+
+  switch (status) {
+    case 'sent':
+      return <Check className="h-3 w-3 text-white/50" />
+    case 'delivered':
+      return <CheckCheck className="h-3 w-3 text-white/50" />
+    case 'read':
+      return <CheckCheck className="h-3 w-3 text-blue-400" />
+    case 'failed': {
+      const error = metadata?.deliveryError
+      const errorMessage = error?.code
+        ? (DELIVERY_ERROR_MESSAGES_PT[error.code] ?? error.title ?? 'Falha na entrega')
+        : (error?.message ?? 'Falha na entrega')
+
+      const isAudio = metadata?.media?.mimetype?.startsWith('audio/')
+      const canRetry = !isAudio && !!onRetry
+
+      return (
+        <span className="inline-flex items-center gap-0.5">
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-flex cursor-help">
+                  <X className="h-3 w-3 text-red-400" />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-[240px] text-xs">
+                {errorMessage}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          {canRetry && (
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={onRetry}
+                    disabled={isRetrying}
+                    className="inline-flex cursor-pointer text-white/40 transition-colors hover:text-white/80 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isRetrying
+                      ? <Loader2 className="h-3 w-3 animate-spin" />
+                      : <RotateCw className="h-3 w-3" />
+                    }
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  Reenviar mensagem
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </span>
+      )
+    }
+    default:
+      return null
+  }
 }
 
 interface MessageBubbleProps {
@@ -162,10 +248,13 @@ interface MessageBubbleProps {
   role: string
   content: string
   metadata: unknown
+  deliveryStatus: string | null
   createdAt: Date | string
+  onRetry?: (messageId: string) => void
+  isRetrying?: boolean
 }
 
-export function MessageBubble({ id, conversationId, role, content, metadata, createdAt }: MessageBubbleProps) {
+export function MessageBubble({ id, conversationId, role, content, metadata, deliveryStatus, createdAt, onRetry, isRetrying }: MessageBubbleProps) {
   const isUser = role === 'user'
   const meta = metadata as MessageMetadata | null
   const media = meta?.media
@@ -278,6 +367,14 @@ export function MessageBubble({ id, conversationId, role, content, metadata, cre
           )}
         >
           <span>{timestamp}</span>
+          {!isUser && deliveryStatus && (
+            <DeliveryStatusIcon
+              status={deliveryStatus}
+              metadata={meta}
+              onRetry={onRetry ? () => onRetry(id) : undefined}
+              isRetrying={isRetrying}
+            />
+          )}
           {isAiMessage && (
             <span className="ml-1 flex items-center gap-0.5 text-white/50">
               <Bot className="h-3 w-3" />
