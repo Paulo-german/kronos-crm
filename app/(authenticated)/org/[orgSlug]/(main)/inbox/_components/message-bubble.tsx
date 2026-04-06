@@ -3,10 +3,9 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { format } from 'date-fns'
 import { cn } from '@/_lib/utils'
-import { Bot, Check, CheckCheck, FileDown, FileText, Loader2, Pause, Play, RotateCw, UserRound, X } from 'lucide-react'
+import { AlertTriangle, Bot, Check, CheckCheck, FileDown, FileText, Loader2, Pause, Play, RotateCw, UserRound, X } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import { Badge } from '@/_components/ui/badge'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/_components/ui/tooltip'
 
 function formatAudioDuration(seconds: number): string {
   const mins = Math.floor(seconds / 60)
@@ -172,14 +171,7 @@ const DELIVERY_ERROR_MESSAGES_PT: Record<number, string> = {
   131031: 'Conta do destinatário bloqueada',
 }
 
-interface DeliveryStatusIconProps {
-  status: string | null
-  metadata: MessageMetadata | null
-  onRetry?: () => void
-  isRetrying?: boolean
-}
-
-function DeliveryStatusIcon({ status, metadata, onRetry, isRetrying }: DeliveryStatusIconProps) {
+function DeliveryStatusIcon({ status }: { status: string | null }) {
   if (!status) return null
 
   switch (status) {
@@ -189,57 +181,61 @@ function DeliveryStatusIcon({ status, metadata, onRetry, isRetrying }: DeliveryS
       return <CheckCheck className="h-3 w-3 text-white/50" />
     case 'read':
       return <CheckCheck className="h-3 w-3 text-blue-400" />
-    case 'failed': {
-      const error = metadata?.deliveryError
-      const errorMessage = error?.code
-        ? (DELIVERY_ERROR_MESSAGES_PT[error.code] ?? error.title ?? 'Falha na entrega')
-        : (error?.message ?? 'Falha na entrega')
-
-      const isAudio = metadata?.media?.mimetype?.startsWith('audio/')
-      const canRetry = !isAudio && !!onRetry
-
-      return (
-        <span className="inline-flex items-center gap-0.5">
-          <TooltipProvider delayDuration={200}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="inline-flex cursor-help">
-                  <X className="h-3 w-3 text-red-400" />
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="max-w-[240px] text-xs">
-                {errorMessage}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          {canRetry && (
-            <TooltipProvider delayDuration={200}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={onRetry}
-                    disabled={isRetrying}
-                    className="inline-flex cursor-pointer text-white/40 transition-colors hover:text-white/80 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {isRetrying
-                      ? <Loader2 className="h-3 w-3 animate-spin" />
-                      : <RotateCw className="h-3 w-3" />
-                    }
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="text-xs">
-                  Reenviar mensagem
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
-        </span>
-      )
-    }
+    case 'failed':
+      return <X className="h-3 w-3 text-red-400" />
     default:
       return null
   }
+}
+
+function resolveErrorMessage(metadata: MessageMetadata | null): string {
+  const error = metadata?.deliveryError
+  if (!error) return 'Falha na entrega'
+  if (error.code) {
+    return DELIVERY_ERROR_MESSAGES_PT[error.code] ?? error.title ?? 'Falha na entrega'
+  }
+  return error.message ?? 'Falha na entrega'
+}
+
+interface FailedMessageBannerProps {
+  metadata: MessageMetadata | null
+  onRetry?: () => void
+  isRetrying?: boolean
+}
+
+function FailedMessageBanner({ metadata, onRetry, isRetrying }: FailedMessageBannerProps) {
+  const errorMessage = resolveErrorMessage(metadata)
+  const isAudio = metadata?.media?.mimetype?.startsWith('audio/')
+  const canRetry = !isAudio && !!onRetry
+
+  return (
+    <div className="mt-2 flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-2.5 py-1.5">
+      <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-red-400" />
+      <span className="flex-1 text-[11px] leading-tight text-red-300 line-clamp-1">
+        {errorMessage}
+      </span>
+      {canRetry && (
+        <button
+          type="button"
+          onClick={onRetry}
+          disabled={isRetrying}
+          className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-white/70 transition-colors hover:text-white disabled:cursor-not-allowed disabled:opacity-50 whitespace-nowrap"
+        >
+          {isRetrying ? (
+            <>
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Reenviando...
+            </>
+          ) : (
+            <>
+              <RotateCw className="h-3 w-3" />
+              Reenviar
+            </>
+          )}
+        </button>
+      )}
+    </div>
+  )
 }
 
 interface MessageBubbleProps {
@@ -359,6 +355,15 @@ export function MessageBubble({ id, conversationId, role, content, metadata, del
           )}>{content}</p>
         )}
 
+        {/* Banner de erro para mensagens falhadas */}
+        {!isUser && deliveryStatus === 'failed' && (
+          <FailedMessageBanner
+            metadata={meta}
+            onRetry={onRetry ? () => onRetry(id) : undefined}
+            isRetrying={isRetrying}
+          />
+        )}
+
         {/* Timestamp */}
         <div
           className={cn(
@@ -368,12 +373,7 @@ export function MessageBubble({ id, conversationId, role, content, metadata, del
         >
           <span>{timestamp}</span>
           {!isUser && deliveryStatus && (
-            <DeliveryStatusIcon
-              status={deliveryStatus}
-              metadata={meta}
-              onRetry={onRetry ? () => onRetry(id) : undefined}
-              isRetrying={isRetrying}
-            />
+            <DeliveryStatusIcon status={deliveryStatus} />
           )}
           {isAiMessage && (
             <span className="ml-1 flex items-center gap-0.5 text-white/50">
