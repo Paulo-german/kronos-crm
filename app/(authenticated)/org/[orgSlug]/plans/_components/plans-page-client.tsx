@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import { ShieldCheck, CreditCard, Zap } from 'lucide-react'
 import { Badge } from '@/_components/ui/badge'
 import { Label } from '@/_components/ui/label'
 import { Switch } from '@/_components/ui/switch'
@@ -44,7 +45,7 @@ export function PlansPageClient({
   }, 0)
 
   return (
-    <div className="mx-auto max-w-7xl space-y-12 py-10">
+    <div className="mx-auto space-y-12 py-10">
       {/* Badge de contexto trial — só exibe para usuários ainda em trial ativo */}
       {isOnTrial && daysRemaining > 0 && (
         <div className="flex justify-center">
@@ -88,6 +89,22 @@ export function PlansPageClient({
             </Badge>
           )}
         </Label>
+      </div>
+
+      {/* Garantias */}
+      <div className="flex flex-wrap items-center justify-center gap-8 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="size-5 text-green-500" />
+          <span>Garantia de 7 dias ou seu dinheiro de volta</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <CreditCard className="size-5 text-green-500" />
+          <span>Pagamento seguro via Stripe</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Zap className="size-5 text-green-500" />
+          <span>Cancele quando quiser, sem burocracia</span>
+        </div>
       </div>
 
       {/* Grid de planos */}

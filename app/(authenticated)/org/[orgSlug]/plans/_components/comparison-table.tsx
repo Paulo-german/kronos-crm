@@ -14,7 +14,7 @@ function CellValue({ value }: { value: string | boolean }) {
     return value ? (
       <Check className="mx-auto size-5 text-green-500" />
     ) : (
-      <X className="mx-auto size-5 text-muted-foreground/50" />
+      <X className="mx-auto size-5 text-[hsl(var(--kronos-red))]" />
     )
   }
 
@@ -33,7 +33,7 @@ export function ComparisonTable() {
 
       <div className="rounded-md border">
         <Table>
-          <TableHeader className="bg-secondary/20">
+          <TableHeader className="bg-background">
             <TableRow className="p-4">
               <TableHead className="w-[30%] p-4">Recurso</TableHead>
               <TableHead className="text-center">Light</TableHead>
@@ -44,7 +44,7 @@ export function ComparisonTable() {
           </TableHeader>
           <TableBody>
             {COMPARISON_DATA.map((row) => (
-              <TableRow key={row.feature} className="bg-card/80">
+              <TableRow key={row.feature} className="bg-card">
                 <TableCell className="p-3 font-medium">{row.feature}</TableCell>
                 <TableCell className="text-center">
                   <CellValue value={row.light} />

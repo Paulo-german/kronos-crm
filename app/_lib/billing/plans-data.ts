@@ -3,6 +3,7 @@ import type { PlanType } from '@/_lib/rbac/plan-limits'
 export interface PlanFeature {
   name: string
   included: boolean | string
+  badge?: string
 }
 
 export interface PlanInfo {
@@ -11,6 +12,8 @@ export interface PlanInfo {
   description: string
   price: number
   priceLabel: string
+  /** Texto informativo de usuários exibido abaixo do preço (ex: "Para 1 usuário") */
+  usersLabel: string
   features: PlanFeature[]
   highlighted?: boolean
   cta: string
@@ -37,21 +40,17 @@ export const PLANS: PlanInfo[] = [
     description: 'Para profissionais solo que querem organizar seu pipeline.',
     price: 147,
     priceLabel: 'R$ 147/mês',
+    usersLabel: 'Para 1 usuário',
     cta: 'Assinar Light',
     stripePriceId: process.env.NEXT_PUBLIC_STRIPE_LIGHT_PRICE_ID,
     stripePriceIdAnnual: process.env.NEXT_PUBLIC_STRIPE_LIGHT_ANNUAL_PRICE_ID,
     annualTotalPrice: 1367.9, // TODO: valor total do ano em reais (ex: 1970)
     features: [
-      { name: '1 usuário', included: true },
-      { name: '1 agente IA + 10.000 créditos IA', included: true },
+      { name: '1 agente IA', included: true },
+      { name: '10.000 créditos IA', included: true, badge: 'Até 90 atendimentos/mês' },
       { name: '1 canal Inbox', included: true },
-      { name: 'Até 5.000 contatos', included: true },
-      { name: 'Até 5.000 negócios', included: true },
-      { name: 'Até 2.000 empresas', included: true },
       { name: 'Agendamentos ilimitados', included: true },
-      { name: '1 follow-up (Beta)', included: true },
-      { name: '3 automações (Beta)', included: true },
-      { name: '1 funil de vendas', included: true },
+      { name: 'Follow-ups', included: true, badge: 'Beta' },
     ],
   },
   {
@@ -60,23 +59,21 @@ export const PLANS: PlanInfo[] = [
     description: 'O Início — para equipes pequenas organizarem vendas.',
     price: 397,
     priceLabel: 'R$ 397/mês',
+    usersLabel: 'Para até 4 usuários',
     cta: 'Assinar Essential',
     stripePriceId: process.env.NEXT_PUBLIC_STRIPE_ESSENTIAL_PRICE_ID,
     stripePriceIdAnnual:
       process.env.NEXT_PUBLIC_STRIPE_ESSENTIAL_ANNUAL_PRICE_ID,
     annualTotalPrice: 4287.9, // TODO: valor total do ano em reais (ex: 3970)
     features: [
-      { name: '4 usuários', included: true },
-      { name: '4 agentes IA + 18.000 créditos IA', included: true },
-      { name: 'Equipes de Agentes (até 3 workers)', included: true },
-      { name: '1 canal Inbox', included: true },
-      { name: 'Até 25.000 contatos', included: true },
-      { name: 'Até 25.000 negócios', included: true },
-      { name: 'Até 10.000 empresas', included: true },
+      { name: 'Até 4 agentes IA', included: true },
+      { name: '18.000 créditos IA', included: true, badge: 'Até 240 atendimentos/mês' },
+      { name: 'Equipes de Agentes', included: true },
+      { name: '3 canais Inbox', included: true },
       { name: 'Agendamentos ilimitados', included: true },
-      { name: '3 follow-ups (Beta)', included: true },
-      { name: '10 automações (Beta)', included: true },
-      { name: 'Funis de vendas ilimitados', included: true },
+      { name: 'Follow-ups', included: true, badge: 'Beta' },
+      { name: 'Automações de CRM', included: true, badge: 'Beta' },
+      { name: 'Múltiplos funis de vendas', included: true },
     ],
   },
   {
@@ -85,23 +82,21 @@ export const PLANS: PlanInfo[] = [
     description: 'O Motor — para equipes em crescimento com automação.',
     price: 697,
     priceLabel: 'R$ 697/mês',
+    usersLabel: 'Para até 10 usuários',
     cta: 'Assinar Scale',
     highlighted: true,
     stripePriceId: process.env.NEXT_PUBLIC_STRIPE_SCALE_PRICE_ID,
     stripePriceIdAnnual: process.env.NEXT_PUBLIC_STRIPE_SCALE_ANNUAL_PRICE_ID,
     annualTotalPrice: 7527.9, // TODO: valor total do ano em reais (ex: 6970)
     features: [
-      { name: '10 usuários', included: true },
-      { name: '10 agentes IA + 45.000 créditos IA', included: true },
-      { name: 'Equipes de Agentes (até 5 workers)', included: true },
-      { name: '3 canais Inbox', included: true },
-      { name: 'Até 50.000 contatos', included: true },
-      { name: 'Até 50.000 negócios', included: true },
-      { name: 'Até 20.000 empresas', included: true },
+      { name: 'Até 10 agentes IA', included: true },
+      { name: '45.000 créditos IA', included: true, badge: 'Até 390 atendimentos/mês' },
+      { name: 'Equipes de Agentes', included: true },
+      { name: '5 canais Inbox', included: true },
       { name: 'Agendamentos ilimitados', included: true },
-      { name: '8 follow-ups (Beta)', included: true },
-      { name: '25 automações (Beta)', included: true },
-      { name: 'Funis de vendas ilimitados', included: true },
+      { name: 'Follow-ups', included: true, badge: 'Beta' },
+      { name: 'Automações de CRM', included: true, badge: 'Beta' },
+      { name: 'Múltiplos funis de vendas', included: true },
     ],
   },
   {
@@ -110,25 +105,23 @@ export const PLANS: PlanInfo[] = [
     description: 'A Nave — para grandes operações com recursos avançados.',
     price: 1197,
     priceLabel: 'R$ 1.197/mês',
+    usersLabel: 'Para até 20 usuários',
     cta: 'Assinar Enterprise',
     stripePriceId: process.env.NEXT_PUBLIC_STRIPE_ENTERPRISE_PRICE_ID,
     stripePriceIdAnnual:
       process.env.NEXT_PUBLIC_STRIPE_ENTERPRISE_ANNUAL_PRICE_ID,
     annualTotalPrice: 12927.9, // TODO: valor total do ano em reais (ex: 11970)
     features: [
-      { name: '20 usuários', included: true },
-      { name: '20 agentes IA + 72.000 créditos IA', included: true },
-      { name: 'Equipes de Agentes (até 10 workers)', included: true },
+      { name: 'Até 20 agentes IA', included: true },
+      { name: '72.000 créditos IA', included: true, badge: 'Até 540 atendimentos/mês' },
+      { name: 'Equipes de Agentes', included: true },
       { name: '10 canais Inbox', included: true },
-      { name: 'Até 50.000 contatos', included: true },
-      { name: 'Até 50.000 negócios', included: true },
-      { name: 'Até 20.000 empresas', included: true },
       { name: 'Agendamentos ilimitados', included: true },
-      { name: '20 follow-ups (Beta)', included: true },
-      { name: '50 automações (Beta)', included: true },
-      { name: 'Funis de vendas ilimitados', included: true },
-      { name: 'API de integração (Em breve)', included: true },
-      { name: 'SSO / SAML (Em breve)', included: true },
+      { name: 'Follow-ups', included: true, badge: 'Beta' },
+      { name: 'Automações de CRM', included: true, badge: 'Beta' },
+      { name: 'Múltiplos funis de vendas', included: true },
+      { name: 'API de integração', included: true, badge: 'Em breve' },
+      { name: 'SSO / SAML', included: true, badge: 'Em breve' },
     ],
   },
 ]
@@ -192,10 +185,17 @@ export const COMPARISON_DATA: ComparisonRow[] = [
     enterprise: '72.000',
   },
   {
+    feature: 'Atendimentos IA/mês',
+    light: 'Até 90',
+    essential: 'Até 240',
+    scale: 'Até 390',
+    enterprise: 'Até 540',
+  },
+  {
     feature: 'Canais Inbox',
     light: '1',
-    essential: '1',
-    scale: '3',
+    essential: '3',
+    scale: '5',
     enterprise: '10',
   },
   {
@@ -214,7 +214,7 @@ export const COMPARISON_DATA: ComparisonRow[] = [
   },
   {
     feature: 'Automações (Beta)',
-    light: '3',
+    light: false,
     essential: '10',
     scale: '25',
     enterprise: '50',

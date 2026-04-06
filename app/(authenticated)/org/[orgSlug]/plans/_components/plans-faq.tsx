@@ -58,7 +58,7 @@ export function PlansFaq() {
         </p>
       </div>
 
-      <div className="rounded-lg border bg-secondary/20">
+      <div className="rounded-lg border bg-card">
         <div className="divide-y px-6">
           {FAQ_DATA.map((item, index) => (
             <FaqItem

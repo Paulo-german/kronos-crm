@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Check } from 'lucide-react'
+import { Check, Info } from 'lucide-react'
 import { cn } from '@/_lib/utils'
 import {
   Card,
@@ -13,6 +13,11 @@ import {
 } from '@/_components/ui/card'
 import { Button } from '@/_components/ui/button'
 import { Badge } from '@/_components/ui/badge'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/_components/ui/tooltip'
 import { getAnnualDetails } from '@/_lib/billing/plans-data'
 import type { PlanInfo } from '@/_lib/billing/plans-data'
 import type { PlanType } from '@/_lib/rbac/plan-limits'
@@ -121,13 +126,37 @@ export function PlanCard({
               )}
             </div>
           )}
+          <p className="mt-1 text-sm text-muted-foreground">{plan.usersLabel}</p>
         </div>
 
         <ul className="space-y-3">
           {plan.features.map((feature) => (
-            <li key={feature.name} className="flex items-start gap-2">
-              <Check className="mt-0.5 size-4 shrink-0 text-green-500" />
+            <li key={feature.name} className="flex items-center gap-2">
+              <Check className="size-4 shrink-0 text-green-500" />
               <span className="text-sm">{feature.name}</span>
+              {feature.badge && (
+                feature.badge.length > 10 ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="size-3.5 shrink-0 cursor-help text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{feature.badge}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                ) : (
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      'shrink-0 px-1.5 py-0 text-[10px] font-normal',
+                      feature.badge === 'Beta' && 'border-yellow-400/60 bg-yellow-400/10 text-yellow-600 dark:text-yellow-400',
+                      feature.badge === 'Em breve' && 'border-blue-400/60 bg-blue-400/10 text-blue-600 dark:text-blue-400',
+                    )}
+                  >
+                    {feature.badge}
+                  </Badge>
+                )
+              )}
             </li>
           ))}
         </ul>
