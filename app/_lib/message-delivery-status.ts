@@ -21,18 +21,23 @@ function getAllowedPreviousStatuses(newStatus: MessageDeliveryStatus): MessageDe
     .map(([status]) => status)
 }
 
+interface DeliveryStatusResult {
+  conversationId: string
+  organizationId: string
+}
+
 /**
  * Atualiza o delivery status de uma mensagem com protecao contra downgrade.
- * Usa updateMany para ser idempotente (nao lanca erro se msg nao existe).
  * O WHERE condicional garante que o status so avanca, nunca retrocede.
+ * Retorna conversationId/orgId para invalidacao de cache, ou null se msg nao encontrada ou status nao avancou.
  */
 export async function updateDeliveryStatus(
   providerMessageId: string,
   newStatus: MessageDeliveryStatus,
-): Promise<void> {
+): Promise<DeliveryStatusResult | null> {
   const allowed = getAllowedPreviousStatuses(newStatus)
 
-  await db.message.updateMany({
+  const result = await db.message.updateMany({
     where: {
       providerMessageId,
       OR: [
@@ -42,6 +47,24 @@ export async function updateDeliveryStatus(
     },
     data: { deliveryStatus: newStatus },
   })
+
+  // Nenhuma mensagem atualizada — msg nao existe ou status nao avancou
+  if (result.count === 0) return null
+
+  const message = await db.message.findUnique({
+    where: { providerMessageId },
+    select: {
+      conversationId: true,
+      conversation: { select: { organizationId: true } },
+    },
+  })
+
+  if (!message) return null
+
+  return {
+    conversationId: message.conversationId,
+    organizationId: message.conversation.organizationId,
+  }
 }
 
 interface DeliveryError {
@@ -58,10 +81,15 @@ interface DeliveryError {
 export async function updateDeliveryStatusFailed(
   providerMessageId: string,
   error?: DeliveryError,
-): Promise<{ conversationId: string } | null> {
+): Promise<{ conversationId: string; organizationId: string } | null> {
   const message = await db.message.findUnique({
     where: { providerMessageId },
-    select: { id: true, metadata: true, conversationId: true },
+    select: {
+      id: true,
+      metadata: true,
+      conversationId: true,
+      conversation: { select: { organizationId: true } },
+    },
   })
 
   if (!message) return null
@@ -79,5 +107,8 @@ export async function updateDeliveryStatusFailed(
     },
   })
 
-  return { conversationId: message.conversationId }
+  return {
+    conversationId: message.conversationId,
+    organizationId: message.conversation.organizationId,
+  }
 }

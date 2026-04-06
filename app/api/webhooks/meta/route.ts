@@ -12,7 +12,8 @@ import { scheduleNotifyOrgAdmins } from '@/_lib/notifications/notify-org-admins'
 import { resolveAgentForConversation } from '@/../trigger/lib/resolve-agent'
 import { tasks } from '@trigger.dev/sdk/v3'
 import type { processAgentMessage } from '@/../../trigger/process-agent-message'
-import type { MetaWebhookPayload, MetaWebhookValue, MetaTemplateStatusUpdate } from '@/_lib/meta/types'
+import type { MetaWebhookPayload, MetaWebhookValue, MetaTemplateStatusUpdate, MetaMessageStatus } from '@/_lib/meta/types'
+import { updateDeliveryStatus, updateDeliveryStatusFailed } from '@/_lib/message-delivery-status'
 import type { BusinessHoursConfig } from '@/_actions/agent/update-agent/schema'
 import type { NormalizedWhatsAppMessage } from '@/_lib/evolution/types'
 import { AUTO_REOPEN_FIELDS } from '@/_lib/conversation/auto-reopen'
@@ -107,10 +108,48 @@ async function processTemplateStatusUpdate(
 }
 
 // -----------------------------------------------------------------------------
+// Processa delivery status updates (sent, delivered, read, failed)
+// Meta envia esses eventos quando o status de uma mensagem enviada muda.
+// Ex: mensagem aceita mas nao entregue por falta de pagamento → status 'failed'
+// -----------------------------------------------------------------------------
+async function processDeliveryStatuses(statuses: MetaMessageStatus[]): Promise<void> {
+  for (const status of statuses) {
+    try {
+      let result: { conversationId: string; organizationId: string } | null = null
+
+      if (status.status === 'failed') {
+        const error = status.errors?.[0]
+        result = await updateDeliveryStatusFailed(status.id, error ? {
+          code: error.code,
+          title: error.title,
+          message: error.message,
+        } : undefined)
+      } else {
+        // sent, delivered, read — atualiza status com protecao contra downgrade
+        result = await updateDeliveryStatus(status.id, status.status)
+      }
+
+      if (result) {
+        revalidateTag(`conversations:${result.organizationId}`)
+        revalidateTag(`conversation-messages:${result.conversationId}`)
+      }
+    } catch (error) {
+      // Isolamento: falha em um status nao impede processamento dos demais
+      console.error('[meta-webhook] processDeliveryStatus failed:', { statusId: status.id, status: status.status, error })
+    }
+  }
+}
+
+// -----------------------------------------------------------------------------
 // Processa um change de webhook (field = "messages")
 // -----------------------------------------------------------------------------
 async function processChange(value: MetaWebhookValue, t0: number): Promise<void> {
-  // 4. Ignorar statuses sem mensagens (delivery receipts, read receipts)
+  // 4. Processar delivery status updates (sent, delivered, read, failed)
+  if (value.statuses && value.statuses.length > 0) {
+    await processDeliveryStatuses(value.statuses)
+  }
+
+  // Se nao ha mensagens novas, parar aqui (evento era apenas de status)
   if (!value.messages || value.messages.length === 0) return
 
   const phoneNumberId = value.metadata.phone_number_id

@@ -40,11 +40,18 @@ export interface MetaIncomingMessage {
   video?: { id: string; mime_type: string; caption?: string }
 }
 
+export interface MetaMessageStatusError {
+  code: number
+  title: string
+  message?: string
+}
+
 export interface MetaMessageStatus {
   id: string
   status: 'sent' | 'delivered' | 'read' | 'failed'
   timestamp: string
   recipient_id: string
+  errors?: MetaMessageStatusError[]
 }
 
 export interface MetaWebhookPayload {
