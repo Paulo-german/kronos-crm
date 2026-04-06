@@ -9,6 +9,7 @@ export interface MessageDto {
   role: string
   content: string
   metadata: unknown
+  deliveryStatus: string | null
   createdAt: Date
 }
 
@@ -45,6 +46,7 @@ const fetchMessagesFromDb = async (
       role: true,
       content: true,
       metadata: true,
+      deliveryStatus: true,
       createdAt: true,
     },
   })
@@ -88,6 +90,7 @@ export async function getConversationMessagesPaginated(
       role: true,
       content: true,
       metadata: true,
+      deliveryStatus: true,
       createdAt: true,
     },
   })

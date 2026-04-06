@@ -820,17 +820,18 @@ model ConversationLabelAssignment {
 }
 
 model Message {
-  id                String       @id @default(uuid())
-  conversationId    String       @map("conversation_id")
+  id                String                 @id @default(uuid())
+  conversationId    String                 @map("conversation_id")
   role              MessageRole
   content           String
-  providerMessageId String?      @unique @map("provider_message_id")
-  isArchived        Boolean      @default(false) @map("is_archived")
-  inputTokens       Int?         @map("input_tokens")
-  outputTokens      Int?         @map("output_tokens")
+  providerMessageId String?                @unique @map("provider_message_id")
+  deliveryStatus    MessageDeliveryStatus? @map("delivery_status")
+  isArchived        Boolean                @default(false) @map("is_archived")
+  inputTokens       Int?                   @map("input_tokens")
+  outputTokens      Int?                   @map("output_tokens")
   metadata          Json?
-  createdAt         DateTime     @default(now()) @map("created_at")
-  conversation      Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  createdAt         DateTime               @default(now()) @map("created_at")
+  conversation      Conversation           @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   @@index([conversationId, isArchived, createdAt(sort: Desc)])
   @@map("messages")
@@ -1159,6 +1160,15 @@ enum MessageRole {
   assistant
   system
   tool
+}
+
+enum MessageDeliveryStatus {
+  sent
+  delivered
+  read
+  failed
+
+  @@map("message_delivery_status")
 }
 
 enum InboxChannel {
