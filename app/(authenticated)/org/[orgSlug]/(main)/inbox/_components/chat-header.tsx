@@ -142,29 +142,27 @@ export function ChatHeader({
               )}
             </div>
             {contactPhone && (
-              <p className="truncate text-left text-xs text-muted-foreground">
-                {contactPhone}
-              </p>
-            )}
-            {windowState?.isMetaCloud && (
-              <div className="mt-0.5 flex items-center gap-1">
-                {windowState.isOpen ? (
+              <div className="flex items-center gap-1.5">
+                <p className="truncate text-left text-xs text-muted-foreground">
+                  {contactPhone}
+                </p>
+                {windowState?.isMetaCloud && (
                   <>
-                    <Clock className={cn(
-                      'h-3 w-3 shrink-0',
-                      windowState.isExpiring ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400',
-                    )} />
-                    <span className={cn(
-                      'text-[11px]',
-                      windowState.isExpiring ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400',
-                    )}>
-                      {windowState.formattedTimeRemaining} restantes
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <AlertTriangle className="h-3 w-3 shrink-0 text-red-500 dark:text-red-400" />
-                    <span className="text-[11px] text-red-500 dark:text-red-400">Janela expirada</span>
+                    <span className="text-[10px] text-muted-foreground/40">·</span>
+                    {windowState.isOpen ? (
+                      <span className={cn(
+                        'flex items-center gap-1 text-[11px]',
+                        windowState.isExpiring ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400',
+                      )}>
+                        <Clock className="h-3 w-3 shrink-0" />
+                        {windowState.formattedTimeRemaining}
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-[11px] text-red-500 dark:text-red-400">
+                        <AlertTriangle className="h-3 w-3 shrink-0" />
+                        Expirada
+                      </span>
+                    )}
                   </>
                 )}
               </div>
