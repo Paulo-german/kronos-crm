@@ -24,6 +24,7 @@ export default async function PlansPage({ params }: PlansPageProps) {
       daysRemaining={trialStatus.daysRemaining}
       neverHadTrial={trialStatus.neverHadTrial}
       isExpired={trialStatus.isExpired}
+      hasActiveSubscription={trialStatus.hasActiveSubscription}
     />
   )
 }

@@ -1,14 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { Badge } from '@/_components/ui/badge'
 import { Label } from '@/_components/ui/label'
 import { Switch } from '@/_components/ui/switch'
 import { PLANS, getAnnualDetails } from '@/_lib/billing/plans-data'
+import type { PlanInfo } from '@/_lib/billing/plans-data'
 import type { PlanType } from '@/_lib/rbac/plan-limits'
 import { PlansGrid } from './plans-grid'
 import { ComparisonTable } from './comparison-table'
 import { PlansFaq } from './plans-faq'
+import { PlanChangeDialog } from './plan-change-dialog'
 
 interface PlansPageClientProps {
   currentPlan: PlanType | null
@@ -17,6 +19,7 @@ interface PlansPageClientProps {
   daysRemaining: number
   neverHadTrial: boolean
   isExpired: boolean
+  hasActiveSubscription: boolean
 }
 
 export function PlansPageClient({
@@ -24,8 +27,14 @@ export function PlansPageClient({
   orgSlug,
   isOnTrial,
   daysRemaining,
+  hasActiveSubscription,
 }: PlansPageClientProps) {
   const [interval, setInterval] = useState<'monthly' | 'yearly'>('monthly')
+  const [changePlan, setChangePlan] = useState<PlanInfo | null>(null)
+
+  const handleDialogClose = useCallback((open: boolean) => {
+    if (!open) setChangePlan(null)
+  }, [])
 
   // Calcula o maior desconto disponível entre todos os planos para exibir no badge anual
   const maxDiscount = PLANS.reduce((max, plan) => {
@@ -87,6 +96,8 @@ export function PlansPageClient({
         orgSlug={orgSlug}
         isOnTrial={isOnTrial}
         interval={interval}
+        hasActiveSubscription={hasActiveSubscription}
+        onPlanChange={setChangePlan}
       />
 
       {/* Tabela comparativa de recursos */}
@@ -94,6 +105,16 @@ export function PlansPageClient({
 
       {/* Perguntas frequentes */}
       <PlansFaq />
+
+      {/* Dialog de mudança de plano — só renderiza quando há subscription ativa */}
+      {hasActiveSubscription && (
+        <PlanChangeDialog
+          open={!!changePlan}
+          onOpenChange={handleDialogClose}
+          targetPlan={changePlan}
+          interval={interval}
+        />
+      )}
     </div>
   )
 }

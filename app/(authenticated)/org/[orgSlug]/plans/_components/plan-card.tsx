@@ -1,6 +1,5 @@
 'use client'
 
-import { useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Check } from 'lucide-react'
 import { cn } from '@/_lib/utils'
@@ -14,7 +13,6 @@ import {
 } from '@/_components/ui/card'
 import { Button } from '@/_components/ui/button'
 import { Badge } from '@/_components/ui/badge'
-import { createPortalSession } from '@/_actions/billing/create-portal-session'
 import { getAnnualDetails } from '@/_lib/billing/plans-data'
 import type { PlanInfo } from '@/_lib/billing/plans-data'
 import type { PlanType } from '@/_lib/rbac/plan-limits'
@@ -25,6 +23,8 @@ interface PlanCardProps {
   orgSlug: string
   isOnTrial?: boolean
   interval?: 'monthly' | 'yearly'
+  hasActiveSubscription?: boolean
+  onPlanChange?: (plan: PlanInfo) => void
 }
 
 export function PlanCard({
@@ -33,13 +33,13 @@ export function PlanCard({
   orgSlug,
   isOnTrial,
   interval = 'monthly',
+  hasActiveSubscription,
+  onPlanChange,
 }: PlanCardProps) {
   const router = useRouter()
-  const [isPending, startTransition] = useTransition()
 
   const isCurrentPlan = !isOnTrial && currentPlan !== null && plan.id === currentPlan
   const isHighlighted = plan.highlighted
-  const isPaidPlan = !isOnTrial && currentPlan !== null && currentPlan !== 'light'
   const isUpgrade = Boolean(plan.stripePriceId)
 
   // Calcula detalhes do plano anual quando o intervalo selecionado é anual
@@ -49,18 +49,13 @@ export function PlanCard({
     if (isCurrentPlan) return
     if (plan.id === 'enterprise' && !plan.stripePriceId) return
 
-    // Usuário pagante (não trial) — abrir portal Stripe
-    if (isPaidPlan) {
-      startTransition(async () => {
-        const result = await createPortalSession({})
-        if (result?.data?.url) {
-          window.location.href = result.data.url
-        }
-      })
+    // Usuário com subscription ativa (não em trial) → abre dialog de mudança de plano
+    if (hasActiveSubscription && !isOnTrial && onPlanChange) {
+      onPlanChange(plan)
       return
     }
 
-    // Trial ou sem plano — redirecionar para checkout com intervalo selecionado
+    // Trial ou sem plano → redirecionar para checkout com intervalo selecionado
     if (isUpgrade) {
       const intervalParam = interval === 'yearly' ? '&interval=annual' : ''
       router.push(`/org/${orgSlug}/checkout/configure?plan=${plan.id}${intervalParam}`)
@@ -69,7 +64,7 @@ export function PlanCard({
 
   function getButtonLabel(): string {
     if (isCurrentPlan) return 'Plano atual'
-    if (isPaidPlan) return 'Gerenciar assinatura'
+    if (hasActiveSubscription && !isOnTrial) return 'Alterar plano'
     return plan.cta
   }
 
@@ -142,10 +137,10 @@ export function PlanCard({
         <Button
           className="w-full"
           variant={isCurrentPlan ? 'outline' : isHighlighted ? 'default' : 'secondary'}
-          disabled={isCurrentPlan || isPending}
+          disabled={isCurrentPlan}
           onClick={handleClick}
         >
-          {isPending ? 'Carregando...' : getButtonLabel()}
+          {getButtonLabel()}
         </Button>
       </CardFooter>
     </Card>
