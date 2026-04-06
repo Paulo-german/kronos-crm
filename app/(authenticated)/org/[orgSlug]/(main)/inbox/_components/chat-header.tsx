@@ -1,6 +1,7 @@
 'use client'
 
-import { ArrowLeft, Bot, CheckCircle2, Info, Loader2, RotateCcw, UserCog, Users } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Bot, CheckCircle2, Clock, Info, Loader2, RotateCcw, UserCog, Users } from 'lucide-react'
+import type { ConversationWindowState } from '../_hooks/use-conversation-window'
 import { cn } from '@/_lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@/_components/ui/avatar'
 import { Badge } from '@/_components/ui/badge'
@@ -31,6 +32,7 @@ interface ChatHeaderProps {
   isStatusPending: boolean
   onResolve: () => void
   onReopen: () => void
+  windowState?: ConversationWindowState
 }
 
 export function ChatHeader({
@@ -49,6 +51,7 @@ export function ChatHeader({
   isStatusPending,
   onResolve,
   onReopen,
+  windowState,
 }: ChatHeaderProps) {
   const initials = contactName
     .split(' ')
@@ -142,6 +145,29 @@ export function ChatHeader({
               <p className="truncate text-left text-xs text-muted-foreground">
                 {contactPhone}
               </p>
+            )}
+            {windowState?.isMetaCloud && (
+              <div className="mt-0.5 flex items-center gap-1">
+                {windowState.isOpen ? (
+                  <>
+                    <Clock className={cn(
+                      'h-3 w-3 shrink-0',
+                      windowState.isExpiring ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400',
+                    )} />
+                    <span className={cn(
+                      'text-[11px]',
+                      windowState.isExpiring ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400',
+                    )}>
+                      {windowState.formattedTimeRemaining} restantes
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle className="h-3 w-3 shrink-0 text-red-500 dark:text-red-400" />
+                    <span className="text-[11px] text-red-500 dark:text-red-400">Janela expirada</span>
+                  </>
+                )}
+              </div>
             )}
           </div>
         </button>

@@ -84,7 +84,7 @@ function computeWindowState(
     isOpen: true,
     isExpiring,
     minutesRemaining,
-    formattedTimeRemaining: isExpiring ? formatTimeRemaining(minutesRemaining) : null,
+    formattedTimeRemaining: formatTimeRemaining(minutesRemaining),
     expiresAt,
     isMetaCloud: true,
   }

@@ -361,6 +361,7 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
           isStatusPending={resolveAction.isPending || reopenAction.isPending}
           onResolve={() => resolveAction.execute({ conversationId: conversation.id })}
           onReopen={() => reopenAction.execute({ conversationId: conversation.id })}
+          windowState={windowState}
         />
         <ChatBanners
           connectionError={connectionError}
