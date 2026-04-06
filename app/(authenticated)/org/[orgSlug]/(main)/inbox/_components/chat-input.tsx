@@ -36,6 +36,8 @@ interface ChatInputProps {
   isMediaPending: boolean
   /** Somente presente quando o inbox é META_CLOUD */
   onOpenTemplateDialog?: () => void
+  /** Quando true, desabilita texto livre (janela Meta expirada) */
+  windowClosed?: boolean
 }
 
 function formatDuration(seconds: number) {
@@ -64,6 +66,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
       onSendMedia,
       isMediaPending,
       onOpenTemplateDialog,
+      windowClosed = false,
     },
     ref,
   ) {
@@ -98,7 +101,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
 
     return (
       <div className="p-4">
-        <div className="flex flex-col gap-1 rounded-xl border border-border/50 bg-card p-2">
+        <div className={`flex flex-col gap-1 rounded-xl border border-border/50 bg-card p-2 transition-opacity${windowClosed ? ' opacity-60' : ''}`}>
           {selectedFile && (
             <MediaPreview
               file={selectedFile}
@@ -139,7 +142,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
                       size="icon"
                       variant="ghost"
                       onClick={() => fileInputRef.current?.click()}
-                      disabled={anyPending || isRecording}
+                      disabled={anyPending || isRecording || windowClosed}
                       className="shrink-0 text-muted-foreground"
                     >
                       <Paperclip className="h-4 w-4" />
@@ -160,10 +163,16 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
                   value={text}
                   onChange={(event) => onTextChange(event.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder={selectedFile ? 'Adicione uma legenda...' : 'Digite uma mensagem...'}
+                  placeholder={
+                    windowClosed
+                      ? 'Janela de 24h expirada. Envie um template para retomar.'
+                      : selectedFile
+                        ? 'Adicione uma legenda...'
+                        : 'Digite uma mensagem...'
+                  }
                   className="max-h-[120px] min-h-[44px] resize-none border-0 bg-transparent shadow-none focus-visible:ring-0"
                   rows={1}
-                  disabled={anyPending}
+                  disabled={anyPending || windowClosed}
                 />
               </>
             )}
@@ -189,7 +198,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
                   <Button
                     size="icon"
                     onClick={onSendMedia}
-                    disabled={isMediaPending}
+                    disabled={isMediaPending || windowClosed}
                     className="shrink-0"
                   >
                     {isMediaPending ? (
@@ -209,7 +218,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
                   <Button
                     size="icon"
                     onClick={onSend}
-                    disabled={isSendPending}
+                    disabled={isSendPending || windowClosed}
                     className="shrink-0"
                   >
                     {isSendPending ? (
@@ -229,7 +238,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
                   <Button
                     size="icon"
                     onClick={onStartRecording}
-                    disabled={isAudioPending}
+                    disabled={isAudioPending || windowClosed}
                     className="shrink-0"
                   >
                     {isAudioPending ? (

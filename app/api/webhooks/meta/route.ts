@@ -427,6 +427,7 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
               lastMessageRole: 'user',
               nextFollowUpAt: null,
               followUpCount: 0,
+              lastCustomerMessageAt: new Date(),
               ...AUTO_REOPEN_FIELDS,
             },
           })

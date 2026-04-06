@@ -22,6 +22,7 @@ import type { ContactOptionDto } from '@/_data-access/contact/get-contacts-optio
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import { useChatMessages } from '../_hooks/use-chat-messages'
 import { useAudioRecorder } from '../_hooks/use-audio-recorder'
+import { useConversationWindow } from '../_hooks/use-conversation-window'
 import { ChatHeader } from './chat-header'
 import { ChatBanners } from './chat-banners'
 import { ChatMessageList } from './chat-message-list'
@@ -55,6 +56,12 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
 
   const isMetaCloud = conversation.inboxConnectionType === 'META_CLOUD'
   const mediaPreviewUrlRef = useRef<string | null>(null)
+
+  const windowState = useConversationWindow(
+    conversation.lastCustomerMessageAt ? new Date(conversation.lastCustomerMessageAt) : null,
+    conversation.inboxConnectionType,
+  )
+  const isWindowClosed = windowState.isMetaCloud && !windowState.isOpen
   const chatInputRef = useRef<ChatInputHandle>(null)
 
   useEffect(() => {
@@ -373,6 +380,10 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
           retryingMessageId={retryingMessageId}
         />
         <Separator />
+        <ConversationWindowBanner
+          windowState={windowState}
+          onOpenTemplateDialog={() => setTemplateDialogOpen(true)}
+        />
         <ChatInput
           ref={chatInputRef}
           text={text}
@@ -392,11 +403,7 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
           onSendMedia={handleSendMedia}
           isMediaPending={sendMediaAction.isPending}
           onOpenTemplateDialog={isMetaCloud ? () => setTemplateDialogOpen(true) : undefined}
-        />
-        <ConversationWindowBanner
-          lastCustomerMessageAt={conversation.lastCustomerMessageAt ? new Date(conversation.lastCustomerMessageAt) : null}
-          connectionType={conversation.inboxConnectionType}
-          onOpenTemplateDialog={() => setTemplateDialogOpen(true)}
+          windowClosed={isWindowClosed}
         />
         {isMetaCloud && (
           <TemplateMessageDialog
