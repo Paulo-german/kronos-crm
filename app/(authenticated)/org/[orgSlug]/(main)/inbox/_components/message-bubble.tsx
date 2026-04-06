@@ -164,11 +164,24 @@ interface MessageMetadata {
 }
 
 const DELIVERY_ERROR_MESSAGES_PT: Record<number, string> = {
-  131026: 'Número não está no WhatsApp',
-  131047: 'Janela de 24h expirada. Envie um template.',
-  131051: 'Tipo de mensagem não suportado',
   130429: 'Limite de envio atingido. Tente novamente em breve.',
-  131031: 'Conta do destinatário bloqueada',
+  131009: 'Parâmetro inválido na mensagem.',
+  131021: 'O destinatário não pode ser o próprio remetente.',
+  131026: 'Número não está no WhatsApp.',
+  131031: 'Conta do destinatário bloqueada.',
+  131042: 'Pagamento não configurado na conta Meta. Configure um método de pagamento.',
+  131045: 'Conta Meta sem elegibilidade para envio.',
+  131047: 'Janela de 24h expirada. Envie um template.',
+  131048: 'Limite de spam atingido. Aguarde antes de reenviar.',
+  131051: 'Tipo de mensagem não suportado.',
+  131056: 'Muitas mensagens para o mesmo número. Aguarde.',
+  131057: 'Conta em manutenção. Tente novamente mais tarde.',
+  132000: 'Quantidade de variáveis não corresponde ao template.',
+  132001: 'Template não encontrado.',
+  132005: 'Texto do template excede o limite.',
+  132012: 'Formato de variável inválido.',
+  132015: 'Template pausado pelo Meta.',
+  132016: 'Template desativado pelo Meta.',
 }
 
 function DeliveryStatusIcon({ status }: { status: string | null }) {
@@ -209,9 +222,9 @@ function FailedMessageBanner({ metadata, onRetry, isRetrying }: FailedMessageBan
   const canRetry = !isAudio && !!onRetry
 
   return (
-    <div className="mt-2 flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-2.5 py-1.5">
-      <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-red-400" />
-      <span className="flex-1 text-[11px] leading-tight text-red-300 line-clamp-1">
+    <div className="mt-2 flex items-center gap-2 rounded-lg border border-red-400/30 bg-red-950/50 px-2.5 py-1.5">
+      <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-red-300" />
+      <span className="flex-1 text-[11px] leading-tight text-red-200 line-clamp-1">
         {errorMessage}
       </span>
       {canRetry && (
@@ -219,7 +232,7 @@ function FailedMessageBanner({ metadata, onRetry, isRetrying }: FailedMessageBan
           type="button"
           onClick={onRetry}
           disabled={isRetrying}
-          className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-white/70 transition-colors hover:text-white disabled:cursor-not-allowed disabled:opacity-50 whitespace-nowrap"
+          className="inline-flex shrink-0 items-center gap-1 rounded-md bg-white/10 px-2 py-0.5 text-[11px] font-medium text-white transition-colors hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50 whitespace-nowrap"
         >
           {isRetrying ? (
             <>
