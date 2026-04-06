@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback, useRef } from 'react'
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
@@ -107,10 +107,15 @@ export function TemplateMessageDialog({
     }
   }, [inboxId, templates.length])
 
-  const handleOpenChange = (nextOpen: boolean) => {
-    if (nextOpen) {
+  // Sincronização com sistema externo: carregar templates quando o dialog abre
+  useEffect(() => {
+    if (open) {
       loadTemplates()
-    } else {
+    }
+  }, [open, loadTemplates])
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
       // Reset completo ao fechar
       setStep(1)
       setSearch('')
