@@ -47,6 +47,7 @@ export function createUpdateEventTool(ctx: ToolContext) {
           status: true,
           startDate: true,
           endDate: true,
+          assignedTo: true,
           deal: {
             select: { stage: { select: { pipelineId: true } } },
           },
@@ -81,6 +82,31 @@ export function createUpdateEventTool(ctx: ToolContext) {
       // Preservar a duração original do evento ao reagendar
         const originalDurationMs = appointment.endDate.getTime() - appointment.startDate.getTime()
         const newEndDate = new Date(parsedNewStart.getTime() + originalDurationMs)
+
+        // Verificar conflito de horário no novo período (excluindo o próprio evento)
+        const overlapping = await db.appointment.findFirst({
+          where: {
+            id: { not: appointmentId },
+            assignedTo: appointment.assignedTo,
+            organizationId: ctx.organizationId,
+            status: { notIn: ['CANCELED', 'NO_SHOW'] },
+            startDate: { lt: newEndDate },
+            endDate: { gt: parsedNewStart },
+          },
+          select: { id: true, title: true, startDate: true, endDate: true },
+        })
+
+        if (overlapping) {
+          const fmt = new Intl.DateTimeFormat('pt-BR', {
+            timeZone: 'America/Sao_Paulo',
+            dateStyle: 'short',
+            timeStyle: 'short',
+          })
+          return {
+            success: false,
+            message: `Já existe um compromisso neste horário: "${overlapping.title}" (${fmt.format(overlapping.startDate)} – ${fmt.format(overlapping.endDate)}). Escolha outro horário.`,
+          }
+        }
 
         await withRetry(
           () =>

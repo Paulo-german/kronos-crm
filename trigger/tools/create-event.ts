@@ -127,6 +127,30 @@ export function createCreateEventTool(ctx: ToolContext, config: CreateEventConfi
         // endDate calculado a partir do startDate + duration — o LLM não precisa informar
         const parsedEnd = new Date(parsedStart.getTime() + config.duration * 60_000)
 
+        // Verificar conflito de horário antes de criar o evento
+        const overlapping = await db.appointment.findFirst({
+          where: {
+            assignedTo: deal.assignedTo,
+            organizationId: ctx.organizationId,
+            status: { notIn: ['CANCELED', 'NO_SHOW'] },
+            startDate: { lt: parsedEnd },
+            endDate: { gt: parsedStart },
+          },
+          select: { id: true, title: true, startDate: true, endDate: true },
+        })
+
+        if (overlapping) {
+          const fmt = new Intl.DateTimeFormat('pt-BR', {
+            timeZone: 'America/Sao_Paulo',
+            dateStyle: 'short',
+            timeStyle: 'short',
+          })
+          return {
+            success: false,
+            message: `Já existe um compromisso neste horário: "${overlapping.title}" (${fmt.format(overlapping.startDate)} – ${fmt.format(overlapping.endDate)}). Escolha outro horário.`,
+          }
+        }
+
         await withRetry(
           () =>
             db.appointment.create({
