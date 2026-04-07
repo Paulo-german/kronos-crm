@@ -54,7 +54,7 @@ export const stepActionSchema = z.discriminatedUnion('type', [
   z.object({
     ...baseFields,
     type: z.literal('list_availability'),
-    daysAhead: z.number().int().min(1).max(7).default(5),
+    daysAhead: z.number().int().min(1).max(30).default(5),
     slotDuration: durationSchema.default(60),
     startTime: z
       .string()

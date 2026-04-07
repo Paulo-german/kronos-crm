@@ -69,6 +69,8 @@ export const DAYS_AHEAD_OPTIONS = [
   { value: 5, label: '5 dias' },
   { value: 6, label: '6 dias' },
   { value: 7, label: '7 dias' },
+  { value: 14, label: '14 dias' },
+  { value: 30, label: '30 dias' },
 ] as const
 
 export const TIMEZONE_OPTIONS = [
