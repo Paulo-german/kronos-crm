@@ -127,7 +127,7 @@ export function compileStepActions(actions: StepAction[]): string[] {
       case 'create_task':
         return `* ${trigger} → execute \`create_task\` com título "${action.title}"${action.dueDaysOffset ? ` (vencimento em ${action.dueDaysOffset} dias)` : ''}.`
       case 'list_availability':
-        return `* ${trigger} → execute \`list_availability\` para consultar horários disponíveis.`
+        return `* ${trigger} → execute \`list_availability\` para consultar horários disponíveis. Quando o cliente pedir data/horário específico, passe \`date\` e/ou \`time\`.`
       case 'create_event': {
         const durationMinutes = action.duration
         const durationLabel =
@@ -186,12 +186,15 @@ export const TOOL_PROMPT_DESCRIPTIONS: Record<string, { label: string; descripti
   list_availability: {
     label: 'Consultar Disponibilidade',
     description:
-      'Consulta horários disponíveis na agenda. Use ANTES de sugerir horários ao cliente para garantir que o slot está livre.',
+      'Consulta horários disponíveis na agenda. Use ANTES de sugerir horários ao cliente. ' +
+      'Aceita date (YYYY-MM-DD) e/ou time (HH:MM) para verificar disponibilidade pontual. ' +
+      'Sem parâmetros, lista os próximos dias disponíveis.',
   },
   create_event: {
     label: 'Criar Evento',
     description:
-      'Agenda um evento (reunião, visita, demo) vinculado ao negócio. Use quando confirmar horário com o lead.',
+      'Agenda um evento (reunião, visita, demo) vinculado ao negócio. Use quando confirmar horário com o lead. ' +
+      'Verifique a disponibilidade antes com list_availability. Se houver conflito, o agendamento será recusado.',
   },
   update_event: {
     label: 'Reagendar Evento',

@@ -174,9 +174,28 @@ export function buildMockToolSet(
           : 'Consulta horários disponíveis na agenda. Use ANTES de sugerir horários ao cliente.'
       tools[toolName] = tool({
         description,
-        inputSchema: z.object({}),
-        execute: async () =>
-          mockResult('list_availability', {}, 'Encontrei 5 horário(s) disponível(is) nos próximos dias.'),
+        inputSchema: z.object({
+          date: z
+            .string()
+            .optional()
+            .describe(
+              'Data específica no formato YYYY-MM-DD (ex: 2026-07-19). Se omitido, lista os próximos dias.',
+            ),
+          time: z
+            .string()
+            .optional()
+            .describe(
+              'Horário específico no formato HH:MM (ex: 10:00). Usar junto com date para checar um slot exato.',
+            ),
+        }),
+        execute: async (input) =>
+          mockResult(
+            'list_availability',
+            input,
+            input.date && input.time
+              ? `O horário ${input.time} de ${input.date} está DISPONÍVEL.`
+              : 'Encontrei 5 horário(s) disponível(is) nos próximos dias.',
+          ),
       })
       continue
     }
