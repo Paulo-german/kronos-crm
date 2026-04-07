@@ -928,6 +928,7 @@ export const processAgentMessage = task({
             toolContext,
             promptContext.allStepActions,
             {
+              hasActiveProducts: promptContext.hasActiveProducts,
               hasActiveProductsWithMedia: promptContext.hasActiveProductsWithMedia,
               hasKnowledgeBase: promptContext.hasKnowledgeBase,
             },

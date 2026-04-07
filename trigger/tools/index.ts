@@ -20,6 +20,7 @@ export type { GroupToolConfig }
 
 // Flags globais para ativar tools que não vêm de step actions
 export interface GlobalToolFlags {
+  hasActiveProducts: boolean
   hasActiveProductsWithMedia: boolean
   hasKnowledgeBase: boolean // true quando completedFileCount > 0
 }
@@ -115,8 +116,10 @@ export function buildToolSet(
   }
 
   // Tools globais — ativadas por flags, não por step actions
-  if (globalFlags?.hasActiveProductsWithMedia) {
+  if (globalFlags?.hasActiveProducts) {
     tools['search_products'] = createSearchProductsTool(ctx)
+  }
+  if (globalFlags?.hasActiveProductsWithMedia) {
     tools['send_product_media'] = createSendProductMediaTool(ctx)
   }
 

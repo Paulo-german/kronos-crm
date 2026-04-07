@@ -274,6 +274,7 @@ export interface BuildSystemPromptResult {
   toolsEnabled: string[]
   pipelineIds: string[]
   allStepActions: StepAction[]
+  hasActiveProducts: boolean
   hasActiveProductsWithMedia: boolean
   hasKnowledgeBase: boolean // true quando completedFileCount > 0
 }
@@ -330,7 +331,7 @@ export async function buildSystemPrompt(
 ): Promise<BuildSystemPromptResult> {
   const now = new Date()
 
-  const [agent, conversation, completedFileCount, lossReasons, recentToolEvents, activeProductMediaCount] = await Promise.all([
+  const [agent, conversation, completedFileCount, lossReasons, recentToolEvents, activeProductMediaCount, activeProductCount] = await Promise.all([
     db.agent.findUniqueOrThrow({
       where: { id: agentId },
       select: {
@@ -435,6 +436,12 @@ export async function buildSystemPrompt(
         media: { some: {} },
       },
     }),
+    db.product.count({
+      where: {
+        organizationId,
+        isActive: true,
+      },
+    }),
   ])
 
   // Coletar flat array de todas as actions parseadas (usado pelo buildToolSet config-aware)
@@ -455,12 +462,12 @@ export async function buildSystemPrompt(
     completedFileCount > 0 && !baseEffectiveTools.includes('search_knowledge')
       ? ['search_knowledge']
       : []
+  const productSearchTools =
+    activeProductCount > 0 ? ['search_products'] : []
   const productMediaTools =
-    activeProductMediaCount > 0
-      ? ['search_products', 'send_product_media']
-      : []
+    activeProductMediaCount > 0 ? ['send_product_media'] : []
   const mediaUrlTools = ['send_media']
-  const effectiveTools = [...baseEffectiveTools, ...schedulingTools, ...knowledgeTools, ...productMediaTools, ...mediaUrlTools]
+  const effectiveTools = [...baseEffectiveTools, ...schedulingTools, ...knowledgeTools, ...productSearchTools, ...productMediaTools, ...mediaUrlTools]
 
   const parts: string[] = []
 
@@ -528,15 +535,20 @@ export async function buildSystemPrompt(
     '- NUNCA repita a mesma informação ou pergunta mais de uma vez na conversa — consulte o histórico.',
   )
 
-  // Regras de mídia de produtos — só quando as tools estão ativas
-  if (activeProductMediaCount > 0) {
+  // Regras de produtos — busca sempre que houver produtos ativos, mídia apenas quando disponível
+  if (activeProductCount > 0) {
     criticalRules.push(
       '',
-      '**Mídia de Produtos:**',
-      '- Quando o objetivo da etapa mencionar apresentação de produtos, ENVIE as mídias proativamente usando `search_products` seguido de `send_product_media`.',
-      '- Se o cliente pedir para ver fotos, vídeos ou imagens de um produto, envie imediatamente.',
-      '- Sempre use `search_products` primeiro para encontrar o produto correto e obter o ID, depois `send_product_media` para enviar as mídias.',
+      '**Produtos:**',
+      '- Use `search_products` para buscar produtos no catálogo quando o cliente perguntar sobre produtos, preços ou opções disponíveis.',
     )
+    if (activeProductMediaCount > 0) {
+      criticalRules.push(
+        '- Quando o objetivo da etapa mencionar apresentação de produtos, ENVIE as mídias proativamente usando `search_products` seguido de `send_product_media`.',
+        '- Se o cliente pedir para ver fotos, vídeos ou imagens de um produto, envie imediatamente.',
+        '- Sempre use `search_products` primeiro para encontrar o produto correto e obter o ID, depois `send_product_media` para enviar as mídias.',
+      )
+    }
   }
 
   // Regras de envio de mídia via URL — sempre ativas
@@ -776,6 +788,7 @@ export async function buildSystemPrompt(
     toolsEnabled: effectiveTools,
     pipelineIds: agent.pipelineIds,
     allStepActions,
+    hasActiveProducts: activeProductCount > 0,
     hasActiveProductsWithMedia: activeProductMediaCount > 0,
     hasKnowledgeBase: completedFileCount > 0,
   }
