@@ -109,11 +109,11 @@ export const DAY_KEYS: (keyof BusinessHoursConfig)[] = [
 ]
 
 export const DEFAULT_BUSINESS_HOURS_CONFIG: BusinessHoursConfig = {
-  monday: { enabled: true, start: '09:00', end: '18:00' },
-  tuesday: { enabled: true, start: '09:00', end: '18:00' },
-  wednesday: { enabled: true, start: '09:00', end: '18:00' },
-  thursday: { enabled: true, start: '09:00', end: '18:00' },
-  friday: { enabled: true, start: '09:00', end: '18:00' },
+  monday: { enabled: false, start: '09:00', end: '18:00' },
+  tuesday: { enabled: false, start: '09:00', end: '18:00' },
+  wednesday: { enabled: false, start: '09:00', end: '18:00' },
+  thursday: { enabled: false, start: '09:00', end: '18:00' },
+  friday: { enabled: false, start: '09:00', end: '18:00' },
   saturday: { enabled: false, start: '09:00', end: '13:00' },
   sunday: { enabled: false, start: '09:00', end: '13:00' },
 }
