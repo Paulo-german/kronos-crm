@@ -37,6 +37,12 @@ export interface FunnelStage {
   value: number
 }
 
+export interface FunnelData {
+  stages: FunnelStage[]
+  totalDeals: number
+  wonDeals: number
+}
+
 export interface RecentActivity {
   id: string
   type: ActivityType

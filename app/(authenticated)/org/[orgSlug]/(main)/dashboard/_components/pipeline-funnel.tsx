@@ -6,6 +6,8 @@ import type { FunnelStage } from '@/_data-access/dashboard/types'
 
 interface PipelineFunnelProps {
   stages: FunnelStage[]
+  totalDeals: number
+  wonDeals: number
 }
 
 function formatCurrency(value: number): string {
@@ -31,7 +33,7 @@ function getConversionColor(from: number, to: number): string {
   return 'bg-red-500/10 text-red-600'
 }
 
-export function PipelineFunnel({ stages }: PipelineFunnelProps) {
+export function PipelineFunnel({ stages, totalDeals, wonDeals }: PipelineFunnelProps) {
   const allEmpty = stages.every((stage) => stage.count === 0)
 
   if (stages.length === 0 || allEmpty) {
@@ -49,9 +51,7 @@ export function PipelineFunnel({ stages }: PipelineFunnelProps) {
   }
 
   const maxCount = Math.max(...stages.map((stage) => stage.count))
-  const firstCount = stages[0]?.count ?? 0
-  const lastCount = stages[stages.length - 1]?.count ?? 0
-  const totalConversion = calcConversionRate(firstCount, lastCount)
+  const totalConversion = calcConversionRate(totalDeals, wonDeals)
 
   return (
     <div className="flex flex-col gap-4">
@@ -120,16 +120,19 @@ export function PipelineFunnel({ stages }: PipelineFunnelProps) {
         </div>
       </div>
 
-      {/* Rodapé com conversão total */}
+      {/* Rodapé com taxa de conversão real (WON / total) */}
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <span>Conversão total:</span>
+        <span>Taxa de conversão:</span>
         <span
           className={cn(
             'rounded-full px-2 py-0.5 font-semibold',
-            getConversionColor(firstCount, lastCount),
+            getConversionColor(totalDeals, wonDeals),
           )}
         >
           {totalConversion}
+        </span>
+        <span>
+          ({wonDeals} de {totalDeals} {totalDeals === 1 ? 'deal' : 'deals'})
         </span>
       </div>
     </div>

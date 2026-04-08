@@ -12,6 +12,7 @@ export type {
   DealsByStatus,
   RevenueByMonth,
   FunnelStage,
+  FunnelData,
   RecentActivity,
   PendingTask,
   AiMetrics,

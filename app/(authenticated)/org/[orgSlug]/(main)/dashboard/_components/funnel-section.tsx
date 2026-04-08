@@ -19,7 +19,11 @@ export async function FunnelSection({ ctx, dateRange, filters }: FunnelSectionPr
         <CardTitle className="text-base">Funil de Conversão</CardTitle>
       </CardHeader>
       <CardContent>
-        <PipelineFunnel stages={funnelData} />
+        <PipelineFunnel
+          stages={funnelData.stages}
+          totalDeals={funnelData.totalDeals}
+          wonDeals={funnelData.wonDeals}
+        />
       </CardContent>
     </Card>
   )
