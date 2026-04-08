@@ -1,4 +1,4 @@
-import type { ActivityType, TaskType } from '@prisma/client'
+import type { ActivityType, DealPriority, DealStatus, TaskType } from '@prisma/client'
 
 export interface DateRange {
   start: Date
@@ -62,6 +62,15 @@ export interface AiMonthlyHistory {
   label: string // "mar"
   creditsSpent: number
   messagesUsed: number
+}
+
+export interface DashboardFilters {
+  pipelineId?: string
+  assignee?: string
+  status?: DealStatus[]
+  priority?: DealPriority[]
+  inactiveDays?: number
+  productId?: string
 }
 
 export interface AiMetrics {

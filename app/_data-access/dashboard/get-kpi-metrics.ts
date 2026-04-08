@@ -5,14 +5,8 @@ import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 import type { RBACContext } from '@/_lib/rbac'
 import { isElevated } from '@/_lib/rbac'
-import type { DateRange, KpiMetrics } from './types'
-
-function buildRbacWhere(orgId: string, userId: string, elevated: boolean) {
-  return {
-    organizationId: orgId,
-    ...(elevated ? {} : { assignedTo: userId }),
-  }
-}
+import { buildDashboardWhere } from './build-dashboard-where'
+import type { DashboardFilters, DateRange, KpiMetrics } from './types'
 
 async function fetchKpiMetrics(
   orgId: string,
@@ -20,10 +14,15 @@ async function fetchKpiMetrics(
   elevated: boolean,
   dateRange: DateRange,
   prevRange: DateRange,
-  pipelineId?: string,
+  filters: DashboardFilters,
 ): Promise<KpiMetrics> {
-  const rbac = buildRbacWhere(orgId, userId, elevated)
-  const pipelineFilter = pipelineId ? { stage: { pipelineId } } : {}
+  // Filtros base sem restrição de status — pipelineAgg e newLeads capturam todos os deals ativos/criados
+  const baseWhere = buildDashboardWhere(orgId, userId, elevated, filters)
+
+  // Deals finalizados (WON) não são "inativos"; updatedAt é usado como dateRange, então ignora inactiveDays
+  const wonBaseWhere = buildDashboardWhere(orgId, userId, elevated, filters, {
+    ignoreInactiveDays: true,
+  })
 
   const [
     pipelineAgg,
@@ -38,14 +37,13 @@ async function fetchKpiMetrics(
     // Valor total do pipeline (OPEN + IN_PROGRESS) — snapshot ALL TIME
     db.deal.aggregate({
       _sum: { value: true },
-      where: { ...rbac, ...pipelineFilter, status: { in: ['OPEN', 'IN_PROGRESS'] } },
+      where: { ...baseWhere, status: { in: ['OPEN', 'IN_PROGRESS'] } },
     }),
     // Receita (WON no período)
     db.deal.aggregate({
       _sum: { value: true },
       where: {
-        ...rbac,
-        ...pipelineFilter,
+        ...wonBaseWhere,
         status: 'WON',
         updatedAt: { gte: dateRange.start, lte: dateRange.end },
       },
@@ -54,30 +52,24 @@ async function fetchKpiMetrics(
     db.deal.aggregate({
       _avg: { value: true },
       where: {
-        ...rbac,
-        ...pipelineFilter,
+        ...wonBaseWhere,
         status: 'WON',
         updatedAt: { gte: dateRange.start, lte: dateRange.end },
       },
     }),
     // Novos leads (criados no período)
     db.deal.count({
-      where: {
-        ...rbac,
-        ...pipelineFilter,
-        createdAt: { gte: dateRange.start, lte: dateRange.end },
-      },
+      where: { ...baseWhere, createdAt: { gte: dateRange.start, lte: dateRange.end } },
     }),
     // Pipeline não tem período anterior (é snapshot ALL TIME)
     db.deal.aggregate({
       _sum: { value: true },
-      where: { ...rbac, ...pipelineFilter, status: { in: ['OPEN', 'IN_PROGRESS'] } },
+      where: { ...baseWhere, status: { in: ['OPEN', 'IN_PROGRESS'] } },
     }),
     db.deal.aggregate({
       _sum: { value: true },
       where: {
-        ...rbac,
-        ...pipelineFilter,
+        ...wonBaseWhere,
         status: 'WON',
         updatedAt: { gte: prevRange.start, lte: prevRange.end },
       },
@@ -85,18 +77,13 @@ async function fetchKpiMetrics(
     db.deal.aggregate({
       _avg: { value: true },
       where: {
-        ...rbac,
-        ...pipelineFilter,
+        ...wonBaseWhere,
         status: 'WON',
         updatedAt: { gte: prevRange.start, lte: prevRange.end },
       },
     }),
     db.deal.count({
-      where: {
-        ...rbac,
-        ...pipelineFilter,
-        createdAt: { gte: prevRange.start, lte: prevRange.end },
-      },
+      where: { ...baseWhere, createdAt: { gte: prevRange.start, lte: prevRange.end } },
     }),
   ])
 
@@ -117,18 +104,25 @@ export const getKpiMetrics = cache(
     ctx: RBACContext,
     dateRange: DateRange,
     prevRange: DateRange,
-    pipelineId?: string,
+    filters: DashboardFilters,
   ): Promise<KpiMetrics> => {
     const elevated = isElevated(ctx.userRole)
+    const startISO = dateRange.start.toISOString()
+    const endISO = dateRange.end.toISOString()
+    const filtersKey = JSON.stringify({
+      a: filters.assignee ?? '',
+      s: filters.status ?? [],
+      p: filters.priority ?? [],
+      id: filters.inactiveDays ?? 0,
+      pr: filters.productId ?? '',
+      pi: filters.pipelineId ?? '',
+    })
 
     const getCached = unstable_cache(
       async () =>
-        fetchKpiMetrics(ctx.orgId, ctx.userId, elevated, dateRange, prevRange, pipelineId),
+        fetchKpiMetrics(ctx.orgId, ctx.userId, elevated, dateRange, prevRange, filters),
       [
-        `dashboard-kpi-${ctx.orgId}-${ctx.userId}-${elevated}`,
-        dateRange.start.toISOString(),
-        dateRange.end.toISOString(),
-        pipelineId ?? 'all',
+        `dashboard-kpi-${ctx.orgId}-${ctx.userId}-${elevated}-${startISO}-${endISO}-${filtersKey}`,
       ],
       {
         tags: [`dashboard:${ctx.orgId}`, `deals:${ctx.orgId}`],

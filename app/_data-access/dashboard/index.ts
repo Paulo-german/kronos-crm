@@ -7,6 +7,7 @@ export { getPendingTasks } from './get-pending-tasks'
 export { getAiMetrics } from './get-ai-metrics'
 export type {
   DateRange,
+  DashboardFilters,
   KpiMetrics,
   DealsByStatus,
   RevenueByMonth,

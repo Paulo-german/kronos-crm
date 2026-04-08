@@ -7,20 +7,24 @@ import { format, eachMonthOfInterval } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import type { RBACContext } from '@/_lib/rbac'
 import { isElevated } from '@/_lib/rbac'
-import type { DateRange, RevenueByMonth } from './types'
+import { buildDashboardWhere } from './build-dashboard-where'
+import type { DashboardFilters, DateRange, RevenueByMonth } from './types'
 
 async function fetchRevenueOverTime(
   orgId: string,
   userId: string,
   elevated: boolean,
   dateRange: DateRange,
-  pipelineId?: string,
+  filters: DashboardFilters,
 ): Promise<RevenueByMonth[]> {
+  // Deals WON não são "inativos"; updatedAt é usado como dateRange, então ignora inactiveDays
+  const baseWhere = buildDashboardWhere(orgId, userId, elevated, filters, {
+    ignoreInactiveDays: true,
+  })
+
   const deals = await db.deal.findMany({
     where: {
-      organizationId: orgId,
-      ...(elevated ? {} : { assignedTo: userId }),
-      ...(pipelineId ? { stage: { pipelineId } } : {}),
+      ...baseWhere,
       status: 'WON',
       updatedAt: { gte: dateRange.start, lte: dateRange.end },
     },
@@ -30,10 +34,7 @@ async function fetchRevenueOverTime(
   const grouped = new Map<string, { revenue: number; count: number }>()
 
   // Gerar buckets mensais dinamicamente a partir do range
-  const months = eachMonthOfInterval({
-    start: dateRange.start,
-    end: dateRange.end,
-  })
+  const months = eachMonthOfInterval({ start: dateRange.start, end: dateRange.end })
   for (const month of months) {
     const key = format(month, 'yyyy-MM')
     grouped.set(key, { revenue: 0, count: 0 })
@@ -63,17 +64,25 @@ export const getRevenueOverTime = cache(
   async (
     ctx: RBACContext,
     dateRange: DateRange,
-    pipelineId?: string,
+    filters: DashboardFilters,
   ): Promise<RevenueByMonth[]> => {
     const elevated = isElevated(ctx.userRole)
     const startISO = dateRange.start.toISOString()
     const endISO = dateRange.end.toISOString()
+    const filtersKey = JSON.stringify({
+      a: filters.assignee ?? '',
+      s: filters.status ?? [],
+      p: filters.priority ?? [],
+      id: filters.inactiveDays ?? 0,
+      pr: filters.productId ?? '',
+      pi: filters.pipelineId ?? '',
+    })
 
     const getCached = unstable_cache(
       async () =>
-        fetchRevenueOverTime(ctx.orgId, ctx.userId, elevated, dateRange, pipelineId),
+        fetchRevenueOverTime(ctx.orgId, ctx.userId, elevated, dateRange, filters),
       [
-        `dashboard-revenue-${ctx.orgId}-${ctx.userId}-${elevated}-${startISO}-${endISO}-${pipelineId ?? 'all'}`,
+        `dashboard-revenue-${ctx.orgId}-${ctx.userId}-${elevated}-${startISO}-${endISO}-${filtersKey}`,
       ],
       {
         tags: [`dashboard-charts:${ctx.orgId}`, `deals:${ctx.orgId}`],
