@@ -29,6 +29,7 @@ import {
 } from './lib/create-conversation-event'
 import { transcribeAudio } from './utils/transcribe-audio'
 import { AUTO_REOPEN_FIELDS } from '@/_lib/conversation/auto-reopen'
+import { prefixAttendantName } from '@/_lib/inbox/prefix-attendant-name'
 import { transcribeImage } from './utils/transcribe-image'
 import { downloadAndStoreMedia } from './utils/download-and-store-media'
 import { getFollowUpsForStep } from '@/_data-access/follow-up/get-follow-ups-for-step'
@@ -767,6 +768,7 @@ export const processAgentMessage = task({
                       zapiInstanceId: true,
                       zapiToken: true,
                       zapiClientToken: true,
+                      showAttendantName: true,
                     },
                   },
                 },
@@ -1499,6 +1501,11 @@ export const processAgentMessage = task({
           // 10. Send WhatsApp message + pre-register dedup keys
           // Roteamento pelo provider: Evolution ou Meta Cloud
           // -----------------------------------------------------------------------
+          const textToSend = prefixAttendantName(
+            responseText,
+            promptContext.agentName,
+            conversation.inbox?.showAttendantName ?? false,
+          )
           let sentMessageIds: string[]
 
           if (message.provider === 'meta_cloud') {
@@ -1518,7 +1525,7 @@ export const processAgentMessage = task({
               message.instanceName,
               metaInbox.metaAccessToken,
               message.remoteJid.replace('@s.whatsapp.net', ''),
-              responseText,
+              textToSend,
             )
           } else if (message.provider === 'z_api') {
             // Para Z-API: buscar credenciais do inbox (per-inbox, nunca no payload)
@@ -1550,7 +1557,7 @@ export const processAgentMessage = task({
                 clientToken: zapiInbox.zapiClientToken,
               },
               message.remoteJid.replace('@s.whatsapp.net', ''),
-              responseText,
+              textToSend,
             )
           } else {
             // Provider Evolution (default)
@@ -1560,7 +1567,7 @@ export const processAgentMessage = task({
             sentMessageIds = await sendWhatsAppMessage(
               message.instanceName,
               message.remoteJid,
-              responseText,
+              textToSend,
               evolutionCredentials,
             )
           }

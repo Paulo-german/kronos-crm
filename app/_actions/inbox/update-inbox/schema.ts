@@ -7,6 +7,7 @@ export const updateInboxSchema = z
     agentId: z.string().uuid().optional().nullable(),
     isActive: z.boolean().optional(),
     autoCreateDeal: z.boolean().optional(),
+    showAttendantName: z.boolean().optional(),
     pipelineId: z.string().uuid().nullable().optional(),
     distributionUserIds: z.array(z.string().uuid()).optional(),
   })

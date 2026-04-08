@@ -73,6 +73,7 @@ export const updateInbox = orgActionClient
         ...(data.agentId !== undefined && { agentId: data.agentId }),
         ...(data.isActive !== undefined && { isActive: data.isActive }),
         ...(data.autoCreateDeal !== undefined && { autoCreateDeal: data.autoCreateDeal }),
+        ...(data.showAttendantName !== undefined && { showAttendantName: data.showAttendantName }),
         ...(data.pipelineId !== undefined && { pipelineId: data.pipelineId }),
         ...(data.distributionUserIds !== undefined && { distributionUserIds: data.distributionUserIds }),
       },

@@ -717,6 +717,7 @@ model Inbox {
   zapiInstanceId        String?        @unique @map("zapi_instance_id")
   zapiToken             String?        @map("zapi_token")
   zapiClientToken       String?        @map("zapi_client_token")
+  showAttendantName     Boolean        @default(false) @map("show_attendant_name")
   // Modo grupo (mutuamente exclusivo com agentId — validado na action)
   agentGroupId          String?        @map("agent_group_id")
   conversations         Conversation[]

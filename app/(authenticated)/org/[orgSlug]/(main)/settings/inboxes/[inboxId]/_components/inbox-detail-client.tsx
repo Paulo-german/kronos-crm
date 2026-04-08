@@ -537,6 +537,36 @@ const InboxDetailClient = ({
             </CardContent>
           </Card>
 
+          {/* Message Settings Card */}
+          <Card className="border-border/50 bg-secondary/20">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                <MessageSquare className="h-4 w-4" />
+                Mensagens
+              </CardTitle>
+              <CardDescription>
+                Configure como as mensagens são exibidas para o cliente no WhatsApp.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between rounded-md border border-border/50 bg-background/70 p-3">
+                <div className="space-y-0.5">
+                  <Label className="text-sm font-medium">Exibir nome do atendente</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Prefixa o nome do atendente ou agente IA antes de cada mensagem enviada.
+                  </p>
+                </div>
+                <Switch
+                  checked={inbox.showAttendantName}
+                  onCheckedChange={(checked) => {
+                    executeInlineUpdate({ id: inbox.id, showAttendantName: checked })
+                  }}
+                  disabled={!canManage}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Lead Capture Card */}
           <Card className="border-border/50 bg-secondary/20">
             <CardHeader className="pb-3">

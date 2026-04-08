@@ -16,6 +16,7 @@ import {
 import { withRetry } from '@/_lib/whatsapp/retry'
 import { parseProviderError } from '@/_lib/whatsapp/parse-provider-error'
 import { AUTO_REOPEN_FIELDS } from '@/_lib/conversation/auto-reopen'
+import { prefixAttendantName } from '@/_lib/inbox/prefix-attendant-name'
 import { sendMediaSchema } from './schema'
 
 export const sendMedia = orgActionClient
@@ -52,6 +53,7 @@ export const sendMedia = orgActionClient
             zapiInstanceId: true,
             zapiToken: true,
             zapiClientToken: true,
+            showAttendantName: true,
           },
         },
       },
@@ -104,6 +106,10 @@ export const sendMedia = orgActionClient
     const content = data.caption || contentFallback
     let sendFailed = false
 
+    const captionToSend = data.caption
+      ? prefixAttendantName(data.caption, senderName, conversation.inbox.showAttendantName)
+      : undefined
+
     try {
       const providerMessageId = await withRetry(() =>
         provider.sendMedia(
@@ -112,7 +118,7 @@ export const sendMedia = orgActionClient
           data.mimetype,
           mediatype,
           data.fileName,
-          data.caption,
+          captionToSend,
           uploadResult.publicUrl,
         ),
       )

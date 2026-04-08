@@ -9,6 +9,7 @@ import { resolveWhatsAppProvider } from '@/_lib/whatsapp/provider'
 import { withRetry } from '@/_lib/whatsapp/retry'
 import { parseProviderError } from '@/_lib/whatsapp/parse-provider-error'
 import { AUTO_REOPEN_FIELDS } from '@/_lib/conversation/auto-reopen'
+import { prefixAttendantName } from '@/_lib/inbox/prefix-attendant-name'
 import { sendMessageSchema } from './schema'
 
 export const sendMessage = orgActionClient
@@ -32,6 +33,7 @@ export const sendMessage = orgActionClient
             zapiInstanceId: true,
             zapiToken: true,
             zapiClientToken: true,
+            showAttendantName: true,
           },
         },
       },
@@ -59,11 +61,12 @@ export const sendMessage = orgActionClient
 
     // 4. Enviar via provider correto (Evolution ou Meta Cloud)
     const provider = resolveWhatsAppProvider(conversation.inbox)
+    const textToSend = prefixAttendantName(data.text, senderName, conversation.inbox.showAttendantName)
     let sendFailed = false
 
     try {
       const sentMessageIds = await withRetry(() =>
-        provider.sendText(remoteJid, data.text),
+        provider.sendText(remoteJid, textToSend),
       )
 
       await Promise.all(
