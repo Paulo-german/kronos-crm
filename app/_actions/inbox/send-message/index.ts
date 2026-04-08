@@ -82,7 +82,7 @@ export const sendMessage = orgActionClient
           data: {
             conversationId: data.conversationId,
             role: 'assistant',
-            content: data.text,
+            content: textToSend,
             providerMessageId: lastSentId,
             deliveryStatus: 'sent',
             metadata: {
@@ -112,7 +112,7 @@ export const sendMessage = orgActionClient
         data: {
           conversationId: data.conversationId,
           role: 'assistant',
-          content: data.text,
+          content: textToSend,
           deliveryStatus: 'failed',
           metadata: {
             sentBy: ctx.userId,

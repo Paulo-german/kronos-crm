@@ -103,12 +103,11 @@ export const sendMedia = orgActionClient
       : mediatype === 'video'
         ? '[Vídeo]'
         : `[Documento: ${data.fileName}]`
-    const content = data.caption || contentFallback
-    let sendFailed = false
-
     const captionToSend = data.caption
       ? prefixAttendantName(data.caption, senderName, conversation.inbox.showAttendantName)
       : undefined
+    const content = captionToSend || data.caption || contentFallback
+    let sendFailed = false
 
     try {
       const providerMessageId = await withRetry(() =>

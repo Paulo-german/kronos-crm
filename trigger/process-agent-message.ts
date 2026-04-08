@@ -1408,11 +1408,17 @@ export const processAgentMessage = task({
           // -----------------------------------------------------------------------
           // 8. Salvar resposta no banco + atualizar lastMessageRole na conversa
           // -----------------------------------------------------------------------
+          const textToSend = prefixAttendantName(
+            responseText,
+            promptContext.agentName,
+            conversation.inbox?.showAttendantName ?? false,
+          )
+
           await db.message.create({
             data: {
               conversationId,
               role: 'assistant',
-              content: responseText,
+              content: textToSend,
               inputTokens: result.usage?.inputTokens ?? null,
               outputTokens: result.usage?.outputTokens ?? null,
               metadata: {
@@ -1501,11 +1507,6 @@ export const processAgentMessage = task({
           // 10. Send WhatsApp message + pre-register dedup keys
           // Roteamento pelo provider: Evolution ou Meta Cloud
           // -----------------------------------------------------------------------
-          const textToSend = prefixAttendantName(
-            responseText,
-            promptContext.agentName,
-            conversation.inbox?.showAttendantName ?? false,
-          )
           let sentMessageIds: string[]
 
           if (message.provider === 'meta_cloud') {
