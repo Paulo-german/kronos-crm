@@ -1,13 +1,14 @@
 'use client'
 
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts'
+import { Zap } from 'lucide-react'
+import type { AiMonthlyHistory } from '@/_data-access/dashboard'
 import {
   type ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from '@/_components/ui/chart'
-import type { AiMonthlyHistory } from '@/_data-access/dashboard'
 import { formatNumber } from '@/_utils/format-number'
 
 const chartConfig = {
@@ -15,19 +16,31 @@ const chartConfig = {
     label: 'Créditos',
     color: 'var(--kronos-purple)',
   },
+  messagesUsed: {
+    label: 'Mensagens',
+    color: 'var(--chart-2)',
+  },
 } satisfies ChartConfig
 
-interface AiCreditsChartProps {
+interface AiUsageBarChartProps {
   data: AiMonthlyHistory[]
 }
 
-export function AiCreditsChart({ data }: AiCreditsChartProps) {
-  const hasData = data.some((entry) => entry.creditsSpent > 0)
+export function AiUsageBarChart({ data }: AiUsageBarChartProps) {
+  const hasData = data.some(
+    (entry) => entry.creditsSpent > 0 || entry.messagesUsed > 0,
+  )
 
   if (!hasData) {
     return (
-      <div className="flex h-[160px] items-center justify-center text-sm text-muted-foreground">
-        Nenhum consumo no período
+      <div className="flex h-[300px] flex-col items-center justify-center gap-3">
+        <div className="relative">
+          <div className="absolute inset-0 animate-pulse rounded-full bg-primary/20 blur-2xl" />
+          <div className="relative flex size-14 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/25">
+            <Zap className="size-7 text-primary-foreground" />
+          </div>
+        </div>
+        <p className="text-sm text-muted-foreground">Nenhum consumo no período</p>
       </div>
     )
   }
@@ -37,31 +50,11 @@ export function AiCreditsChart({ data }: AiCreditsChartProps) {
       config={chartConfig}
       className="!aspect-auto h-[38vh] w-full"
     >
-      <AreaChart
+      <BarChart
         data={data}
         accessibilityLayer
         margin={{ top: 5, right: 10, left: 10, bottom: 0 }}
       >
-        <defs>
-          <linearGradient
-            id="creditsGradient"
-            x1="0"
-            y1="0"
-            x2="0"
-            y2="1"
-          >
-            <stop
-              offset="0%"
-              stopColor="var(--color-creditsSpent)"
-              stopOpacity={0.3}
-            />
-            <stop
-              offset="100%"
-              stopColor="var(--color-creditsSpent)"
-              stopOpacity={0}
-            />
-          </linearGradient>
-        </defs>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="label" axisLine={false} tickLine={false} />
         <YAxis
@@ -78,9 +71,11 @@ export function AiCreditsChart({ data }: AiCreditsChartProps) {
           content={
             <ChartTooltipContent
               hideLabel
-              formatter={(value) => (
+              formatter={(value, name) => (
                 <div className="flex items-center justify-between gap-4">
-                  <span className="text-muted-foreground">Créditos</span>
+                  <span className="text-muted-foreground">
+                    {name === 'creditsSpent' ? 'Créditos' : 'Mensagens'}
+                  </span>
                   <span className="font-mono font-medium tabular-nums">
                     {formatNumber(value as number)}
                   </span>
@@ -89,14 +84,17 @@ export function AiCreditsChart({ data }: AiCreditsChartProps) {
             />
           }
         />
-        <Area
-          type="monotone"
+        <Bar
           dataKey="creditsSpent"
-          stroke="var(--color-creditsSpent)"
-          strokeWidth={2}
-          fill="url(#creditsGradient)"
+          fill="var(--color-creditsSpent)"
+          radius={[4, 4, 0, 0]}
         />
-      </AreaChart>
+        <Bar
+          dataKey="messagesUsed"
+          fill="var(--color-messagesUsed)"
+          radius={[4, 4, 0, 0]}
+        />
+      </BarChart>
     </ChartContainer>
   )
 }

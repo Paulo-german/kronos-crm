@@ -117,13 +117,34 @@ export function DashboardTabsSkeleton() {
 export function AiDashboardSkeleton() {
   return (
     <>
+      {/* Row 1 */}
       <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-3">
         <div className="flex lg:col-span-2">
           <KpiGridSkeleton />
         </div>
         <PipelineStatusSkeleton />
       </div>
+      {/* Row 2 */}
       <ChartsSkeleton />
+      {/* Row 3: Breakdown por agente */}
+      <Card>
+        <CardHeader className="pb-2">
+          <Skeleton className="h-5 w-40" />
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <div key={index} className="flex items-center gap-4">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-4 w-16" />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </>
   )
 }

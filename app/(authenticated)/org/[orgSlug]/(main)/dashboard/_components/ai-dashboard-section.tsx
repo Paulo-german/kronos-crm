@@ -2,16 +2,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import { getAiMetrics } from '@/_data-access/dashboard'
 import { AiKpiGrid } from './ai-kpi-grid'
 import { AiPlanUsageCard } from './ai-plan-usage-card'
-import { AiCreditsChart } from './ai-credits-chart'
+import { AiUsageBarChart } from './ai-usage-bar-chart'
+import { AiAgentBreakdownCard } from './ai-agent-breakdown-card'
 
 interface AiDashboardSectionProps {
   orgId: string
   dateRange: { start: Date; end: Date }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function AiDashboardSection({ orgId, dateRange }: AiDashboardSectionProps) {
-  const metrics = await getAiMetrics(orgId)
+  const metrics = await getAiMetrics(orgId, dateRange)
 
   return (
     <>
@@ -23,17 +23,20 @@ export async function AiDashboardSection({ orgId, dateRange }: AiDashboardSectio
         <AiPlanUsageCard metrics={metrics} />
       </div>
 
-      {/* Row 2: Credits Chart */}
+      {/* Row 2: Bar Chart Créditos + Mensagens */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">
-            Consumo de Créditos (6 meses)
-          </CardTitle>
+          <CardTitle className="text-base">Consumo no Período</CardTitle>
         </CardHeader>
         <CardContent>
-          <AiCreditsChart data={metrics.monthlyHistory} />
+          <AiUsageBarChart data={metrics.monthlyHistory} />
         </CardContent>
       </Card>
+
+      {/* Row 3: Breakdown por agente (só renderiza se houver dados) */}
+      {metrics.agentBreakdown.length > 0 && (
+        <AiAgentBreakdownCard data={metrics.agentBreakdown} />
+      )}
     </>
   )
 }
