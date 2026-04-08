@@ -536,6 +536,11 @@ export async function buildSystemPrompt(
     '- Se o cliente fizer perguntas fora do seu escopo ou demonstrar insatisfação, transfira para atendimento humano (`hand_off_to_human`).',
     '- NUNCA finja ser humano se o cliente perguntar diretamente se está falando com uma IA.',
     '- NUNCA repita a mesma informação ou pergunta mais de uma vez na conversa — consulte o histórico.',
+    '',
+    '**Uso de Ferramentas (CRÍTICO):**',
+    '- Para executar qualquer ferramenta, use EXCLUSIVAMENTE o mecanismo de function calling estruturado.',
+    '- Sua resposta de texto deve conter APENAS a mensagem conversacional destinada ao cliente.',
+    '- Nenhum JSON, objeto, parâmetro técnico ou nome de ferramenta deve aparecer no texto enviado ao cliente.',
   )
 
   // Regras de produtos — busca sempre que houver produtos ativos, mídia apenas quando disponível

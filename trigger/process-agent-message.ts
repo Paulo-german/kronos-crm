@@ -92,6 +92,54 @@ const SUMMARIZATION_THRESHOLD = 12
 const KEEP_RECENT_MESSAGES = 3
 const SUMMARIZATION_MODEL = 'openai/gpt-4o-mini'
 
+// Tool names que o LLM pode vazar como texto JSON em vez de usar tool calling estruturado
+const KNOWN_TOOL_NAMES = new Set([
+  'move_deal',
+  'update_contact',
+  'update_deal',
+  'create_task',
+  'search_knowledge',
+  'list_availability',
+  'create_event',
+  'update_event',
+  'hand_off_to_human',
+  'search_products',
+  'send_product_media',
+  'send_media',
+  'transfer_to_agent',
+])
+
+/**
+ * Strip JSON tool calls que o LLM vazou como texto puro.
+ * Alguns modelos (ex: Gemini) geram `{"tool":"update_deal","title":"..."}` inline
+ * em vez de usar o mecanismo de tool calling do SDK.
+ */
+function stripLeakedToolCalls(text: string): string {
+  // Padrão 1: JSON com chave "tool"/"function"/"action"/"name" nomeando tool conhecida
+  let cleaned = text.replace(
+    /\{[^{}]*"(?:tool|function|action)"\s*:\s*"([a-z_]+)"[^{}]*\}/g,
+    (match, toolName: string) => {
+      if (KNOWN_TOOL_NAMES.has(toolName)) {
+        return ''
+      }
+      return match
+    },
+  )
+
+  // Padrão 2: blocos markdown (```) contendo JSON de tool call
+  cleaned = cleaned.replace(
+    /```(?:json)?\s*\n?\{[^`]*"(?:tool|function|action)"\s*:\s*"([a-z_]+)"[^`]*\}[\s\n]*```/g,
+    (match, toolName: string) => {
+      if (KNOWN_TOOL_NAMES.has(toolName)) {
+        return ''
+      }
+      return match
+    },
+  )
+
+  return cleaned
+}
+
 export interface ProcessAgentMessagePayload {
   message: NormalizedWhatsAppMessage
   agentId: string
@@ -1092,6 +1140,26 @@ export const processAgentMessage = task({
                 })
               }
             }
+          }
+
+          // Strip tool calls vazados como texto puro pelo LLM (ex: Gemini)
+          // Deve rodar ANTES da checagem de vazio para que, se tudo era tool JSON,
+          // o fluxo de "sem resposta" seja acionado corretamente.
+          if (responseText) {
+            const sanitized = stripLeakedToolCalls(responseText)
+              .replace(/\n{3,}/g, '\n\n')
+              .trim()
+
+            if (sanitized.length !== responseText.length) {
+              traceTags.push('leaked_tools_stripped')
+              log('step:5c sanitize_leaked_tools', 'PASS', {
+                originalLength: responseText.length,
+                sanitizedLength: sanitized.length,
+                strippedChars: responseText.length - sanitized.length,
+              })
+            }
+
+            responseText = sanitized || ''
           }
 
           if (!responseText) {
