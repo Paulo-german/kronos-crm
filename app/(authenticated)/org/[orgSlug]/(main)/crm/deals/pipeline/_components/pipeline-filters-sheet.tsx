@@ -27,24 +27,24 @@ import {
 import { Badge } from '@/_components/ui/badge'
 import { cn } from '@/_lib/utils'
 import {
-  PipelineFilters,
+  DealFilters,
   STATUS_OPTIONS,
   PRIORITY_OPTIONS,
-} from '../_lib/pipeline-filters'
+} from '../../_lib/deal-filters'
 
-interface PipelineFiltersSheetProps {
-  filters: PipelineFilters
-  onFiltersChange: (filters: Partial<PipelineFilters>) => void
+interface DealFiltersSheetProps {
+  filters: DealFilters
+  onFiltersChange: (filters: Partial<DealFilters>) => void
   activeFilterCount: number
 }
 
-export function PipelineFiltersSheet({
+export function DealFiltersSheet({
   filters,
   onFiltersChange,
   activeFilterCount,
-}: PipelineFiltersSheetProps) {
+}: DealFiltersSheetProps) {
   // Estado local para edição antes de aplicar
-  const [localFilters, setLocalFilters] = useState<PipelineFilters>(filters)
+  const [localFilters, setLocalFilters] = useState<DealFilters>(filters)
   const [isOpen, setIsOpen] = useState(false)
 
   // Sincroniza estado local quando o sheet abre

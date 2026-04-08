@@ -48,7 +48,7 @@ import { ArrowUpDown, User, Check, ChevronLeft, ChevronRight, ChevronDown } from
 import { cn } from '@/_lib/utils'
 import { Button } from '@/_components/ui/button'
 import type { MemberRole } from '@prisma/client'
-import type { PipelineFilters } from '../_lib/pipeline-filters'
+import type { DealFilters } from '../../_lib/deal-filters'
 import type { SortOption } from '../_lib/use-pipeline-filters'
 import type { MemberOption } from './pipeline-client'
 
@@ -60,7 +60,7 @@ interface KanbanBoardProps {
   userRole: MemberRole
   onAddDeal: (stageId: string) => void
   onDealClick: (deal: DealDto) => void
-  filters: PipelineFilters
+  filters: DealFilters
   sortBy: SortOption
   onSortChange: (value: SortOption) => void
   assignees: string[]

@@ -3,7 +3,7 @@
 import { useQueryStates, parseAsString, parseAsFloat, parseAsStringLiteral, parseAsArrayOf } from 'nuqs'
 import { useCallback, useMemo } from 'react'
 import type { DealStatus, DealPriority } from '@prisma/client'
-import type { PipelineFilters } from './pipeline-filters'
+import type { DealFilters } from '../../_lib/deal-filters'
 
 const SORT_OPTIONS = [
   'created-desc',
@@ -42,7 +42,7 @@ export function usePipelineFilters() {
   })
 
   // Converte para a interface PipelineFilters usada pelos componentes de filtro
-  const filters = useMemo<PipelineFilters>(
+  const filters = useMemo<DealFilters>(
     () => ({
       status: filterParams.status as DealStatus[],
       priority: filterParams.priority as DealPriority[],
@@ -60,7 +60,7 @@ export function usePipelineFilters() {
 
   // Mantém a mesma assinatura que PipelineFiltersSheet e FilterBadges esperam
   const setFilters = useCallback(
-    (newFilters: Partial<PipelineFilters>) => {
+    (newFilters: Partial<DealFilters>) => {
       const merged = { ...filters, ...newFilters }
 
       setFilterParams({

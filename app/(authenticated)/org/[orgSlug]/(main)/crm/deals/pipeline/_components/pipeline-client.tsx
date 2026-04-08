@@ -11,7 +11,7 @@ import CreateDealButton from '../../_components/create-deal-button'
 import { DealDialogContent } from '../../_components/deal-dialog-content'
 import { ViewToggle } from '../../_components/view-toggle'
 import { EmptyPipeline } from './empty-pipeline'
-import { PipelineFiltersSheet } from './pipeline-filters-sheet'
+import { DealFiltersSheet } from './pipeline-filters-sheet'
 import { PipelineFilterBadges } from './pipeline-filter-badges'
 import { usePipelineFilters } from '../_lib/use-pipeline-filters'
 import type { PipelineWithStagesDto } from '@/_data-access/pipeline/get-user-pipeline'
@@ -164,7 +164,7 @@ export const PipelineClient = ({
         }
         filtersSheet={
           <div data-tour="deals-filters">
-          <PipelineFiltersSheet
+          <DealFiltersSheet
             filters={filters}
             onFiltersChange={setFilters}
             activeFilterCount={activeFilterCount}

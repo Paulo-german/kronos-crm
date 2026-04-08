@@ -1,6 +1,7 @@
 import { DealStatus, DealPriority } from '@prisma/client'
 
-export interface PipelineFilters {
+// Interface compartilhada entre a visão pipeline (kanban) e a visão list (paginada)
+export interface DealFilters {
   status: DealStatus[]
   priority: DealPriority[]
   createdAtFrom: Date | null
@@ -9,7 +10,7 @@ export interface PipelineFilters {
   valueMax: number | null
 }
 
-export const DEFAULT_FILTERS: PipelineFilters = {
+export const DEFAULT_DEAL_FILTERS: DealFilters = {
   status: [],
   priority: [],
   createdAtFrom: null,

@@ -7,14 +7,14 @@ import { Badge } from '@/_components/ui/badge'
 import { Button } from '@/_components/ui/button'
 import { formatCurrency } from '@/_utils/format-currency'
 import {
-  PipelineFilters,
+  DealFilters,
   STATUS_OPTIONS,
   PRIORITY_OPTIONS,
-} from '../_lib/pipeline-filters'
+} from '../../_lib/deal-filters'
 
 interface PipelineFilterBadgesProps {
-  filters: PipelineFilters
-  onFiltersChange: (filters: Partial<PipelineFilters>) => void
+  filters: DealFilters
+  onFiltersChange: (filters: Partial<DealFilters>) => void
   onClearFilters: () => void
   hasActiveFilters: boolean
 }
