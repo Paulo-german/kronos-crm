@@ -1,472 +1,124 @@
 'use client'
 
-import { useState, useRef } from 'react'
-import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
-import { ColumnDef } from '@tanstack/react-table'
-import {
-  BriefcaseIcon,
-  KanbanIcon,
-  CircleDotIcon,
-  FlagIcon,
-  UserIcon,
-  Building2Icon,
-  DollarSignIcon,
-  CalendarIcon,
-  UserCogIcon,
-  TrashIcon,
-  XIcon,
-} from 'lucide-react'
-import { Badge } from '@/_components/ui/badge'
-import { CircleIcon } from 'lucide-react'
-import { DataTable } from '@/_components/data-table'
+import { useState, useCallback } from 'react'
+import { TrashIcon } from 'lucide-react'
+import { Checkbox } from '@/_components/ui/checkbox'
 import { Button } from '@/_components/ui/button'
-import { Sheet } from '@/_components/ui/sheet'
-import { useAction } from 'next-safe-action/hooks'
-import { toast } from 'sonner'
-import { updateDeal } from '@/_actions/deal/update-deal'
-import { deleteDeal } from '@/_actions/deal/delete-deal'
-import { bulkDeleteDeals } from '@/_actions/deal/bulk-delete-deals'
-import { formatCurrency } from '@/_utils/format-currency'
-import { DealDialogContent } from '../../_components/deal-dialog-content'
-import DealTableDropdownMenu from './deal-table-dropdown-menu'
-import ConfirmationDialog from '@/_components/confirmation-dialog'
+import { DealCardRow } from './deal-card-row'
 import type { DealListDto } from '@/_data-access/deal/get-deals'
-import type { ContactDto } from '@/_data-access/contact/get-contacts'
-import type { StageDto } from '@/_data-access/pipeline/get-user-pipeline'
-import type { DealStatus, DealPriority, MemberRole } from '@prisma/client'
-
-interface MemberDto {
-  id: string
-  userId: string | null
-  email: string
-  user: {
-    fullName: string | null
-    avatarUrl: string | null
-  } | null
-}
 
 interface DealsDataTableProps {
   deals: DealListDto[]
-  stages: StageDto[]
-  contacts: ContactDto[]
-  members: MemberDto[]
-  currentUserId: string
-  userRole: MemberRole
-  initialStatusFilter?: string
-}
-
-const STATUS_CONFIG: Record<DealStatus, { label: string; color: string }> = {
-  OPEN: {
-    label: 'NOVO',
-    color:
-      'bg-kronos-blue/10 text-kronos-blue border border-kronos-blue/20',
-  },
-  IN_PROGRESS: {
-    label: 'EM ANDAMENTO',
-    color:
-      'bg-kronos-purple/10 text-kronos-purple border-kronos-purple/20',
-  },
-  WON: {
-    label: 'VENDIDO',
-    color:
-      'bg-kronos-green/10 text-kronos-green border-kronos-green/20',
-  },
-  LOST: {
-    label: 'PERDIDO',
-    color:
-      'bg-kronos-red/10 text-kronos-red border-kronos-red/20',
-  },
-  PAUSED: {
-    label: 'PAUSADO',
-    color:
-      'bg-kronos-yellow/10 text-kronos-yellow border-kronos-yellow/20',
-  },
-}
-
-const PRIORITY_CONFIG: Record<DealPriority, { label: string; color: string }> = {
-  low: {
-    label: 'BAIXA',
-    color: 'border-muted-foreground/30 text-muted-foreground',
-  },
-  medium: {
-    label: 'MÉDIA',
-    color: 'border-kronos-blue/40 text-kronos-blue',
-  },
-  high: {
-    label: 'ALTA',
-    color: 'border-kronos-yellow/40 text-kronos-yellow',
-  },
-  urgent: {
-    label: 'URGENTE',
-    color: 'border-kronos-red/40 text-kronos-red',
-  },
+  onEdit: (deal: DealListDto) => void
+  onDelete: (deal: DealListDto) => void
+  onBulkDelete: (ids: string[]) => void
+  orgSlug: string
 }
 
 export function DealsDataTable({
   deals,
-  stages,
-  contacts,
-  initialStatusFilter,
+  onEdit,
+  onDelete,
+  onBulkDelete,
+  orgSlug,
 }: DealsDataTableProps) {
-  const router = useRouter()
-  const pathname = usePathname()
-  const [statusFilter, setStatusFilter] = useState<string | undefined>(initialStatusFilter)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
-  function clearStatusFilter() {
-    setStatusFilter(undefined)
-    router.push(pathname)
-  }
+  const isAllSelected =
+    deals.length > 0 && deals.every((deal) => selectedIds.has(deal.id))
 
-  // Estado do Sheet de edição (elevado para sobreviver ao re-render da tabela)
-  const [editingDeal, setEditingDeal] = useState<DealListDto | null>(null)
-  const [isEditSheetOpen, setIsEditSheetOpen] = useState(false)
-  // Estado do dialog de deleção individual
-  const [deletingDeal, setDeletingDeal] = useState<DealListDto | null>(null)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  // Estado do dialog de deleção em massa
-  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false)
-  const [bulkDeleteIds, setBulkDeleteIds] = useState<string[]>([])
-  const resetSelectionRef = useRef<(() => void) | null>(null)
+  const isIndeterminate =
+    !isAllSelected && deals.some((deal) => selectedIds.has(deal.id))
 
-  // Hook para atualizar deal
-  const { execute: executeUpdate, isPending: isUpdating } = useAction(
-    updateDeal,
-    {
-      onSuccess: () => {
-        toast.success('Deal atualizado com sucesso!')
-        setIsEditSheetOpen(false)
-        setEditingDeal(null)
-      },
-      onError: ({ error }) => {
-        toast.error(error.serverError || 'Erro ao atualizar deal.')
-      },
+  const handleSelectAll = useCallback(
+    (checked: boolean) => {
+      if (checked) {
+        setSelectedIds(new Set(deals.map((deal) => deal.id)))
+      } else {
+        setSelectedIds(new Set())
+      }
     },
+    [deals],
   )
 
-  // Hook para deletar individualmente
-  const { execute: executeDelete, isExecuting: isDeletingIndividual } =
-    useAction(deleteDeal, {
-      onSuccess: () => {
-        toast.success('Deal excluído com sucesso.')
-        setIsDeleteDialogOpen(false)
-        setDeletingDeal(null)
-      },
-      onError: ({ error }) => {
-        toast.error(error.serverError || 'Erro ao excluir deal.')
-      },
+  const handleSelectionChange = useCallback((id: string, checked: boolean) => {
+    setSelectedIds((previous) => {
+      const next = new Set(previous)
+      if (checked) {
+        next.add(id)
+      } else {
+        next.delete(id)
+      }
+      return next
     })
+  }, [])
 
-  // Hook para deletar em massa
-  const { execute: executeBulkDelete, isExecuting: isDeleting } = useAction(
-    bulkDeleteDeals,
-    {
-      onSuccess: ({ data }) => {
-        toast.success(
-          `${data?.count || 1} negociação(ões) excluída(s) com sucesso.`,
-        )
-        setIsBulkDeleteOpen(false)
-        resetSelectionRef.current?.()
-      },
-      onError: () => {
-        toast.error('Erro ao excluir negociações.')
-      },
-    },
-  )
-
-  const handleEdit = (deal: DealListDto) => {
-    setEditingDeal(deal)
-    setIsEditSheetOpen(true)
+  const handleBulkDelete = () => {
+    onBulkDelete(Array.from(selectedIds))
+    setSelectedIds(new Set())
   }
 
-  const columns: ColumnDef<DealListDto>[] = [
-    {
-      accessorKey: 'title',
-      header: () => (
-        <div className="flex items-center gap-2">
-          <BriefcaseIcon className="h-4 w-4 text-muted-foreground" />
-          <span>Título</span>
-        </div>
-      ),
-      cell: ({ row }) => {
-        const deal = row.original
-        return (
-          <Link
-            href={`/crm/deals/${deal.id}`}
-            className="ml-2 font-medium hover:underline"
-          >
-            {deal.title}
-          </Link>
-        )
-      },
-    },
-    {
-      accessorKey: 'stageName',
-      header: () => (
-        <div className="flex items-center gap-2">
-          <KanbanIcon className="h-4 w-4 text-muted-foreground" />
-          <span>Etapa</span>
-        </div>
-      ),
-      cell: ({ row }) => row.getValue('stageName') as string,
-    },
-    {
-      accessorKey: 'status',
-      header: () => (
-        <div className="flex items-center gap-2">
-          <CircleDotIcon className="h-4 w-4 text-muted-foreground" />
-          <span>Status</span>
-        </div>
-      ),
-      cell: ({ row }) => {
-        const status = row.getValue('status') as DealStatus
-        const config = STATUS_CONFIG[status]
-        return (
-          <Badge
-            variant="outline"
-            className={`gap-1.5 px-2 text-[10px] font-semibold ${config.color}`}
-          >
-            <CircleIcon className="h-1.5 w-1.5 fill-current" />
-            {config.label}
-          </Badge>
-        )
-      },
-    },
-    {
-      accessorKey: 'priority',
-      header: () => (
-        <div className="flex items-center gap-2">
-          <FlagIcon className="h-4 w-4 text-muted-foreground" />
-          <span>Prioridade</span>
-        </div>
-      ),
-      cell: ({ row }) => {
-        const priority = row.getValue('priority') as DealPriority
-        const config = PRIORITY_CONFIG[priority]
-        return (
-          <Badge
-            variant="outline"
-            className={`bg-transparent px-2 text-[10px] font-semibold ${config.color}`}
-          >
-            {config.label}
-          </Badge>
-        )
-      },
-    },
-    {
-      accessorKey: 'contactName',
-      header: () => (
-        <div className="flex items-center gap-2">
-          <UserIcon className="h-4 w-4 text-muted-foreground" />
-          <span>Contato</span>
-        </div>
-      ),
-      cell: ({ row }) => {
-        const contactName = row.getValue('contactName') as string | null
-        if (!contactName)
-          return <span className="text-muted-foreground">—</span>
-        return contactName
-      },
-    },
-    {
-      accessorKey: 'companyName',
-      header: () => (
-        <div className="flex items-center gap-2">
-          <Building2Icon className="h-4 w-4 text-muted-foreground" />
-          <span>Empresa</span>
-        </div>
-      ),
-      cell: ({ row }) => {
-        const companyName = row.getValue('companyName') as string | null
-        if (!companyName)
-          return <span className="text-muted-foreground">—</span>
-        return companyName
-      },
-    },
-    {
-      accessorKey: 'totalValue',
-      header: () => (
-        <div className="flex items-center gap-2">
-          <DollarSignIcon className="h-4 w-4 text-muted-foreground" />
-          <span>Valor</span>
-        </div>
-      ),
-      cell: ({ row }) => {
-        const value = row.getValue('totalValue') as number
-        return formatCurrency(value)
-      },
-    },
-    {
-      accessorKey: 'expectedCloseDate',
-      header: () => (
-        <div className="flex items-center gap-2">
-          <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-          <span>Fech. Previsto</span>
-        </div>
-      ),
-      cell: ({ row }) => {
-        const date = row.getValue('expectedCloseDate') as Date | null
-        if (!date) return <span className="text-muted-foreground">—</span>
-        return new Date(date).toLocaleDateString('pt-BR')
-      },
-    },
-    {
-      accessorKey: 'assigneeName',
-      header: () => (
-        <div className="flex items-center gap-2">
-          <UserCogIcon className="h-4 w-4 text-muted-foreground" />
-          <span>Responsável</span>
-        </div>
-      ),
-      cell: ({ row }) => {
-        const name = row.getValue('assigneeName') as string | null
-        if (!name) return <span className="text-muted-foreground">—</span>
-        return name
-      },
-    },
-    {
-      id: 'actions',
-      cell: ({ row }) => {
-        const deal = row.original
-        return (
-          <DealTableDropdownMenu
-            onEdit={() => handleEdit(deal)}
-            onDelete={() => {
-              setDeletingDeal(deal)
-              setIsDeleteDialogOpen(true)
-            }}
-          />
-        )
-      },
-    },
-  ]
+  if (deals.length === 0) {
+    return (
+      <div className="flex h-40 items-center justify-center rounded-lg border border-dashed">
+        <p className="text-sm text-muted-foreground">
+          Nenhuma negociação encontrada com os filtros aplicados.
+        </p>
+      </div>
+    )
+  }
 
   return (
-    <>
-      {/* Sheet de edição fora da tabela para sobreviver ao re-render */}
-      <Sheet
-        open={isEditSheetOpen}
-        onOpenChange={(open) => {
-          setIsEditSheetOpen(open)
-          if (!open) setEditingDeal(null)
-        }}
-      >
-        {editingDeal && (
-          <DealDialogContent
-            key={editingDeal.id}
-            defaultValues={{
-              id: editingDeal.id,
-              title: editingDeal.title,
-              stageId: editingDeal.stageId,
-              contactId: editingDeal.contactId || undefined,
-              companyId: editingDeal.companyId || undefined,
-              expectedCloseDate: editingDeal.expectedCloseDate
-                ? new Date(editingDeal.expectedCloseDate)
-                : undefined,
-            }}
-            stages={stages}
-            contacts={contacts}
-            setIsOpen={setIsEditSheetOpen}
-            onUpdate={(data) => executeUpdate(data)}
-            isUpdating={isUpdating}
-          />
-        )}
-      </Sheet>
-
-      {/* Dialog de deleção individual */}
-      <ConfirmationDialog
-        open={isDeleteDialogOpen}
-        onOpenChange={(open) => {
-          setIsDeleteDialogOpen(open)
-          if (!open) setDeletingDeal(null)
-        }}
-        title="Você tem certeza absoluta?"
-        description={
-          <p>
-            Esta ação não pode ser desfeita. Você está prestes a remover
-            permanentemente a negociação{' '}
-            <span className="font-bold text-foreground">
-              {deletingDeal?.title}
+    <div className="flex flex-col gap-1">
+      {/* Cabeçalho com select all e bulk actions */}
+      <div className="flex items-center gap-3 rounded-lg px-4 py-2">
+        <Checkbox
+          checked={isIndeterminate ? 'indeterminate' : isAllSelected}
+          onCheckedChange={(checked) => handleSelectAll(checked === true)}
+          aria-label="Selecionar todas as negociações"
+        />
+        {selectedIds.size > 0 ? (
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">
+              {selectedIds.size}{' '}
+              {selectedIds.size === 1
+                ? 'negociação selecionada'
+                : 'negociações selecionadas'}
             </span>
-          </p>
-        }
-        icon={<TrashIcon />}
-        variant="destructive"
-        onConfirm={() => {
-          if (deletingDeal) executeDelete({ id: deletingDeal.id })
-        }}
-        isLoading={isDeletingIndividual}
-        confirmLabel="Confirmar Exclusão"
-      />
-
-      {/* Dialog de deleção em massa */}
-      <ConfirmationDialog
-        open={isBulkDeleteOpen}
-        onOpenChange={setIsBulkDeleteOpen}
-        title="Excluir negociações selecionadas?"
-        description={
-          <p>
-            Esta ação não pode ser desfeita. Você está prestes a remover
-            <br />
-            <span className="font-semibold text-foreground">
-              {bulkDeleteIds.length} negociações permanentemente do sistema.
-            </span>
-          </p>
-        }
-        icon={<TrashIcon />}
-        variant="destructive"
-        onConfirm={() => executeBulkDelete({ ids: bulkDeleteIds })}
-        isLoading={isDeleting}
-        confirmLabel="Confirmar Exclusão"
-      />
-
-      {statusFilter && (
-        <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-1.5">
-          <span className="text-sm text-muted-foreground">Filtrado por status:</span>
-          <Badge
-            variant="secondary"
-            className="gap-1.5"
-          >
-            {STATUS_CONFIG[statusFilter as DealStatus]?.label || statusFilter}
-            <button
-              type="button"
-              onClick={clearStatusFilter}
-              className="ml-0.5 rounded-sm opacity-70 hover:opacity-100"
-            >
-              <XIcon className="h-3 w-3" />
-            </button>
-          </Badge>
-        </div>
-      )}
-
-      <DataTable
-        key={statusFilter || 'all'}
-        columns={columns}
-        data={deals}
-        enableSelection={true}
-        initialColumnFilters={
-          statusFilter
-            ? [{ id: 'status', value: statusFilter }]
-            : []
-        }
-        bulkActions={({ selectedRows, resetSelection }) => {
-          resetSelectionRef.current = resetSelection
-          return (
             <Button
               variant="destructive"
               size="sm"
-              className="h-8"
-              onClick={() => {
-                setBulkDeleteIds(selectedRows.map((row) => row.id))
-                setIsBulkDeleteOpen(true)
-              }}
+              className="h-7 gap-1.5"
+              onClick={handleBulkDelete}
             >
-              <TrashIcon className="mr-2 h-4 w-4" />
-              Deletar
+              <TrashIcon className="h-3.5 w-3.5" />
+              Excluir selecionadas
             </Button>
-          )
-        }}
-      />
-    </>
+          </div>
+        ) : (
+          <span className="text-xs text-muted-foreground">
+            {deals.length}{' '}
+            {deals.length === 1 ? 'negociação' : 'negociações'}
+          </span>
+        )}
+      </div>
+
+      {/* Lista de cards */}
+      <div className="flex flex-col gap-1.5">
+        {deals.map((deal) => (
+          <DealCardRow
+            key={deal.id}
+            deal={deal}
+            isSelected={selectedIds.has(deal.id)}
+            onSelectionChange={(checked) =>
+              handleSelectionChange(deal.id, checked)
+            }
+            onEdit={() => onEdit(deal)}
+            onDelete={() => onDelete(deal)}
+            orgSlug={orgSlug}
+          />
+        ))}
+      </div>
+    </div>
   )
 }
