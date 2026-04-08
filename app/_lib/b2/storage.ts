@@ -78,7 +78,7 @@ export async function uploadMediaToB2({
     throw new Error('B2_PUBLIC_URL não configurado.')
   }
 
-  const publicUrl = `${publicBaseUrl}/${storagePath}`
+  const publicUrl = `${publicBaseUrl.replace(/\/+$/, '')}/${storagePath}`
 
   return { publicUrl, storagePath }
 }
