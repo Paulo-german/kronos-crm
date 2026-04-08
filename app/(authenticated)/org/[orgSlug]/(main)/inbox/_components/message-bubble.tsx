@@ -151,6 +151,7 @@ interface DeliveryError {
   code?: number
   title?: string
   message?: string
+  userMessage?: string
 }
 
 interface MessageMetadata {
@@ -163,7 +164,9 @@ interface MessageMetadata {
   [key: string]: unknown
 }
 
-const DELIVERY_ERROR_MESSAGES_PT: Record<number, string> = {
+// TODO: remove legacy map after 2026-05-08
+// Fallback para mensagens salvas no banco antes do deploy do parseProviderError expandido
+const LEGACY_META_ERROR_MESSAGES: Record<number, string> = {
   130429: 'Limite de envio atingido. Tente novamente em breve.',
   131009: 'Parâmetro inválido na mensagem.',
   131021: 'O destinatário não pode ser o próprio remetente.',
@@ -204,10 +207,16 @@ function DeliveryStatusIcon({ status }: { status: string | null }) {
 function resolveErrorMessage(metadata: MessageMetadata | null): string {
   const error = metadata?.deliveryError
   if (!error) return 'Falha na entrega'
-  if (error.code) {
-    return DELIVERY_ERROR_MESSAGES_PT[error.code] ?? error.title ?? 'Falha na entrega'
+
+  // userMessage vem preenchido do backend (parseProviderError)
+  if (error.userMessage) return error.userMessage
+
+  // Fallback para mensagens salvas antes do deploy (retrocompatibilidade)
+  if (error.code && LEGACY_META_ERROR_MESSAGES[error.code]) {
+    return LEGACY_META_ERROR_MESSAGES[error.code]
   }
-  return error.message ?? 'Falha na entrega'
+
+  return error.title ?? error.message ?? 'Falha na entrega'
 }
 
 interface FailedMessageBannerProps {

@@ -104,6 +104,8 @@ export const sendAudio = orgActionClient
     } catch (providerError) {
       sendFailed = true
 
+      const parsedError = parseProviderError(providerError)
+
       await db.message.create({
         data: {
           conversationId: data.conversationId,
@@ -118,15 +120,21 @@ export const sendAudio = orgActionClient
               mimetype: 'audio/ogg',
               seconds: data.duration,
             },
-            deliveryError: parseProviderError(providerError),
+            deliveryError: parsedError,
           },
         },
       })
+
+      // 5. Invalidar cache
+      revalidateTag(`conversations:${ctx.orgId}`)
+      revalidateTag(`conversation-messages:${data.conversationId}`)
+
+      return { success: true, sendFailed, errorMessage: parsedError.userMessage }
     }
 
     // 5. Invalidar cache
     revalidateTag(`conversations:${ctx.orgId}`)
     revalidateTag(`conversation-messages:${data.conversationId}`)
 
-    return { success: true, sendFailed }
+    return { success: true, sendFailed, errorMessage: undefined }
   })

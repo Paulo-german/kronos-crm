@@ -103,11 +103,12 @@ export const sendMedia = orgActionClient
       : mediatype === 'video'
         ? '[Vídeo]'
         : `[Documento: ${data.fileName}]`
+    const content = data.caption || contentFallback
+    let sendFailed = false
+
     const captionToSend = data.caption
       ? prefixAttendantName(data.caption, senderName, conversation.inbox.showAttendantName)
       : undefined
-    const content = captionToSend || data.caption || contentFallback
-    let sendFailed = false
 
     try {
       const providerMessageId = await withRetry(() =>
@@ -162,6 +163,8 @@ export const sendMedia = orgActionClient
     } catch (providerError) {
       sendFailed = true
 
+      const parsedError = parseProviderError(providerError)
+
       await db.message.create({
         data: {
           id: messageId,
@@ -179,15 +182,21 @@ export const sendMedia = orgActionClient
               url: uploadResult.publicUrl,
               storedExternally: true,
             },
-            deliveryError: parseProviderError(providerError),
+            deliveryError: parsedError,
           },
         },
       })
+
+      // 8. Invalidar cache
+      revalidateTag(`conversations:${ctx.orgId}`)
+      revalidateTag(`conversation-messages:${data.conversationId}`)
+
+      return { success: true, sendFailed, errorMessage: parsedError.userMessage }
     }
 
     // 8. Invalidar cache
     revalidateTag(`conversations:${ctx.orgId}`)
     revalidateTag(`conversation-messages:${data.conversationId}`)
 
-    return { success: true, sendFailed }
+    return { success: true, sendFailed, errorMessage: undefined }
   })

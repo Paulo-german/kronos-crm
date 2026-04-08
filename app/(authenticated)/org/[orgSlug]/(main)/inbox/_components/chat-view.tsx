@@ -110,7 +110,7 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
       chatInputRef.current?.focus()
       fetchMessages()
       if (result.data?.sendFailed) {
-        toast.error('Falha no envio. Verifique no chat.')
+        toast.error(result.data.errorMessage ?? 'Falha no envio. Verifique no chat.')
       }
     },
     onError: (error) => {
@@ -157,7 +157,7 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
     onSuccess: (result) => {
       fetchMessages()
       if (result.data?.sendFailed) {
-        toast.error('Falha no envio do áudio. Verifique no chat.')
+        toast.error(result.data.errorMessage ?? 'Falha no envio do áudio. Verifique no chat.')
       }
     },
     onError: (error) => {
@@ -179,7 +179,7 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
       chatInputRef.current?.focus()
       fetchMessages()
       if (result.data?.sendFailed) {
-        toast.error('Falha no envio do arquivo. Verifique no chat.')
+        toast.error(result.data.errorMessage ?? 'Falha no envio do arquivo. Verifique no chat.')
       }
     },
     onError: (error) => {
