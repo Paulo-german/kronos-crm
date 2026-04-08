@@ -14,6 +14,7 @@ import {
   Shield,
   ClipboardList,
   Palette,
+  Newspaper,
 } from 'lucide-react'
 import { cn } from '@/_lib/utils'
 import { useSidebar } from '@/_providers/sidebar-provider'
@@ -168,6 +169,11 @@ export const AdminSidebar = () => {
             href="/admin/surveys"
             label="Surveys"
             icon={<ClipboardList className="h-4 w-4" />}
+          />
+          <AdminNavItem
+            href="/admin/changelog"
+            label="Changelog"
+            icon={<Newspaper className="h-4 w-4" />}
           />
           <AdminNavItem
             href="/admin/design-system"
