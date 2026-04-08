@@ -16,4 +16,5 @@ export type {
   PendingTask,
   AiMetrics,
   AiMonthlyHistory,
+  AgentBreakdownEntry,
 } from './types'

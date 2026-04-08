@@ -73,6 +73,18 @@ export interface DashboardFilters {
   productId?: string
 }
 
+export interface AgentBreakdownEntry {
+  agentId: string | null // null = execução do router embutido
+  agentName: string // "Router" quando agentId === null
+  totalExecutions: number
+  completedCount: number
+  failedCount: number
+  skippedCount: number
+  successRate: number // 0-100 (COMPLETED / total * 100)
+  totalCredits: number
+  avgDurationMs: number
+}
+
 export interface AiMetrics {
   creditsUsed: number
   messagesCount: number
@@ -88,4 +100,11 @@ export interface AiMetrics {
     isActive: boolean
   }>
   monthlyHistory: AiMonthlyHistory[]
+
+  // Comparação com o período anterior para exibir variação nos KPI cards
+  prevCreditsUsed: number
+  prevMessagesCount: number
+
+  // Breakdown de execuções por agente no período selecionado
+  agentBreakdown: AgentBreakdownEntry[]
 }
