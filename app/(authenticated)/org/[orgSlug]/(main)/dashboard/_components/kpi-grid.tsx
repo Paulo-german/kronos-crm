@@ -1,7 +1,7 @@
 import { DollarSign, TrendingUp, Target, Users } from 'lucide-react'
 import type { MemberRole } from '@prisma/client'
 import { getKpiMetrics } from '@/_data-access/dashboard'
-import type { DateRange } from '@/_data-access/dashboard'
+import type { DashboardFilters, DateRange } from '@/_data-access/dashboard'
 import { formatCurrency } from '@/_utils/format-currency'
 import { formatVariation, getPreviousPeriod } from '@/_utils/date-range'
 import { KpiCard } from './kpi-card'
@@ -10,12 +10,12 @@ interface KpiGridProps {
   ctx: { userId: string; orgId: string; userRole: MemberRole }
   dateRange: DateRange
   orgSlug: string
-  pipelineId?: string
+  filters: DashboardFilters
 }
 
-export async function KpiGrid({ ctx, dateRange, orgSlug, pipelineId }: KpiGridProps) {
+export async function KpiGrid({ ctx, dateRange, orgSlug, filters }: KpiGridProps) {
   const prevRange = getPreviousPeriod(dateRange)
-  const kpi = await getKpiMetrics(ctx, dateRange, prevRange, pipelineId)
+  const kpi = await getKpiMetrics(ctx, dateRange, prevRange, filters)
 
   return (
     <div className="grid h-full w-full grid-cols-2 gap-4">

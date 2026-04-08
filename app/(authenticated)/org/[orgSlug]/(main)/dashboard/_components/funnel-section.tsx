@@ -1,17 +1,17 @@
 import type { MemberRole } from '@prisma/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import { getFunnelData } from '@/_data-access/dashboard'
-import type { DateRange } from '@/_data-access/dashboard/types'
+import type { DashboardFilters, DateRange } from '@/_data-access/dashboard/types'
 import { PipelineFunnel } from './pipeline-funnel'
 
 interface FunnelSectionProps {
   ctx: { userId: string; orgId: string; userRole: MemberRole }
   dateRange: DateRange
-  pipelineId?: string
+  filters: DashboardFilters
 }
 
-export async function FunnelSection({ ctx, dateRange, pipelineId }: FunnelSectionProps) {
-  const funnelData = await getFunnelData(ctx, dateRange, pipelineId)
+export async function FunnelSection({ ctx, dateRange, filters }: FunnelSectionProps) {
+  const funnelData = await getFunnelData(ctx, dateRange, filters)
 
   return (
     <Card>
