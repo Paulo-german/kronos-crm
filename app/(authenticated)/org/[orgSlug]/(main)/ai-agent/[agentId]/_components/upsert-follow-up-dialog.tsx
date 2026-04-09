@@ -33,7 +33,6 @@ import {
   FormLabel,
   FormMessage,
 } from '@/_components/ui/form'
-import { ScrollArea } from '@/_components/ui/scroll-area'
 import { Separator } from '@/_components/ui/separator'
 import { upsertFollowUp } from '@/_actions/follow-up/upsert-follow-up'
 import { upsertFollowUpSchema } from '@/_actions/follow-up/upsert-follow-up/schema'
@@ -153,7 +152,7 @@ const UpsertFollowUpDialog = ({
             onSubmit={form.handleSubmit(handleSubmit)}
             className="flex min-h-0 flex-1 flex-col"
           >
-            <ScrollArea className="flex-1 px-6">
+            <div className="min-h-0 flex-1 overflow-y-auto px-6">
               <div className="space-y-5 py-4">
                 {/* Delay */}
                 <FormField
@@ -265,7 +264,7 @@ const UpsertFollowUpDialog = ({
                   )}
                 />
               </div>
-            </ScrollArea>
+            </div>
 
             <Separator />
 

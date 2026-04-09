@@ -16,7 +16,6 @@ import {
 } from '@/_components/ui/dialog'
 import { Button } from '@/_components/ui/button'
 import { Form } from '@/_components/ui/form'
-import { ScrollArea } from '@/_components/ui/scroll-area'
 import { Separator } from '@/_components/ui/separator'
 import { createWhatsAppTemplate } from '@/_actions/inbox/create-whatsapp-template'
 import {
@@ -111,13 +110,13 @@ export function CreateTemplateDialog({
 
         <div className="flex min-h-0 flex-1">
           {/* Formulário */}
-          <ScrollArea className="flex-1 px-6 py-4" style={{ maxHeight: '65vh' }}>
+          <div className="flex-1 overflow-y-auto px-6 py-4" style={{ maxHeight: '65vh' }}>
             <Form {...form}>
               <form onSubmit={handleSubmit} id="create-template-form">
                 <TemplateFormFields form={form} />
               </form>
             </Form>
-          </ScrollArea>
+          </div>
 
           <Separator orientation="vertical" />
 

@@ -16,7 +16,6 @@ import {
 import { Button } from '@/_components/ui/button'
 import { Input } from '@/_components/ui/input'
 import { Badge } from '@/_components/ui/badge'
-import { ScrollArea } from '@/_components/ui/scroll-area'
 import { Separator } from '@/_components/ui/separator'
 import { Label } from '@/_components/ui/label'
 import { cn } from '@/_lib/utils'
@@ -256,7 +255,7 @@ export function TemplateMessageDialog({
               </div>
             </div>
 
-            <ScrollArea className="mt-3 px-6 pb-6" style={{ maxHeight: '50vh' }}>
+            <div className="mt-3 overflow-y-auto px-6 pb-6" style={{ maxHeight: '50vh' }}>
               {isLoadingTemplates ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -300,14 +299,14 @@ export function TemplateMessageDialog({
                   ))}
                 </div>
               )}
-            </ScrollArea>
+            </div>
           </>
         )}
 
         {/* Step 2: Preencher variáveis + Preview */}
         {step === 2 && selectedTemplate && (
           <>
-            <ScrollArea className="px-6 py-4" style={{ maxHeight: '60vh' }}>
+            <div className="overflow-y-auto px-6 py-4" style={{ maxHeight: '60vh' }}>
               <div className="space-y-5">
                 {/* Variáveis do header */}
                 {headerVariableIndices.length > 0 && (
@@ -373,7 +372,7 @@ export function TemplateMessageDialog({
                   />
                 </div>
               </div>
-            </ScrollArea>
+            </div>
 
             <Separator />
 
