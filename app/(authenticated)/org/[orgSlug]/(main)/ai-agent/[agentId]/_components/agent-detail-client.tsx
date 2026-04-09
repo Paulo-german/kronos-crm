@@ -257,7 +257,7 @@ const AgentDetailClient = ({
 
       {/* Botão flutuante para abrir o chat — visível apenas quando fechado */}
       {!isChatOpen && (
-        <div className="fixed bottom-6 right-6 z-50">
+        <div className="fixed right-6 top-1/2 -translate-y-1/2 z-50">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button

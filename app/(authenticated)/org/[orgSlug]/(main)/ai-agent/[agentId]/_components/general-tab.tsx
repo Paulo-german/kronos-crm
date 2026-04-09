@@ -10,7 +10,6 @@ import { Button } from '@/_components/ui/button'
 import { Form } from '@/_components/ui/form'
 import { cn } from '@/_lib/utils'
 import { updateAgent } from '@/_actions/agent/update-agent'
-import { useTrainingProgress } from '../_hooks/use-training-progress'
 import { businessHoursConfigSchema } from '@/_actions/agent/update-agent/schema'
 import { promptConfigSchema } from '@/_actions/agent/shared/prompt-config-schema'
 import { DEFAULT_BUSINESS_HOURS_CONFIG, DEFAULT_PROMPT_CONFIG } from './constants'
@@ -64,20 +63,14 @@ const GeneralTab = ({ agent, pipelines, canManage, onSaveSuccess }: GeneralTabPr
     },
   })
 
-  const { progress, visible, isError, start, complete, fail } = useTrainingProgress()
-
   const { execute, isPending } = useAction(updateAgent, {
-    onExecute: () => start(),
     onSuccess: () => {
       toast.success('Agente treinado e pronto para operar!')
       form.reset(form.getValues())
-      complete()
-      // Notifica o painel de chat para auto-reset (configuração foi alterada)
       onSaveSuccess?.()
     },
     onError: ({ error }) => {
       toast.error(error.serverError || 'Falha ao treinar o agente. Tente novamente.')
-      fail()
     },
   })
 
@@ -101,19 +94,7 @@ const GeneralTab = ({ agent, pipelines, canManage, onSaveSuccess }: GeneralTabPr
         <AdvancedSection form={form} canManage={canManage} />
 
         {canManage && (
-          <div className="relative flex justify-end overflow-hidden">
-            {visible && (
-              <div
-                className="absolute inset-x-0 top-0 h-0.5 transition-all ease-out"
-                style={{
-                  width: `${progress}%`,
-                  transitionDuration: progress < 100 ? '1200ms' : '300ms',
-                  background: isError
-                    ? 'hsl(var(--destructive))'
-                    : 'linear-gradient(90deg, var(--kronos-purple), var(--kronos-cyan), var(--kronos-green))',
-                }}
-              />
-            )}
+          <div className="sticky bottom-0 flex justify-end pb-2">
             <Button
               type="submit"
               disabled={isPending || !form.formState.isDirty}
