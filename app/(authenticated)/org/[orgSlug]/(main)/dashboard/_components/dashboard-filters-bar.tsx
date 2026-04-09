@@ -425,7 +425,7 @@ function StatusFilter({ value, onChange }: StatusFilterProps) {
           variant="outline"
           size="sm"
           className={cn(
-            'h-8 gap-1.5 border px-2.5 text-xs font-medium',
+            'h-8 gap-1.5 border border-border bg-input px-2.5 text-xs font-medium hover:bg-input/80',
             value.length > 0 && 'border-primary/40 bg-primary/5 text-primary',
           )}
         >
@@ -503,7 +503,7 @@ function PriorityFilter({ value, onChange }: PriorityFilterProps) {
           variant="outline"
           size="sm"
           className={cn(
-            'h-8 gap-1.5 border px-2.5 text-xs font-medium',
+            'h-8 gap-1.5 border border-border bg-input px-2.5 text-xs font-medium hover:bg-input/80',
             value.length > 0 && 'border-primary/40 bg-primary/5 text-primary',
           )}
         >
