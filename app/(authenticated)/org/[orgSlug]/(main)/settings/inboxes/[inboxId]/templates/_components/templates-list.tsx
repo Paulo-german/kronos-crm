@@ -250,8 +250,8 @@ export function TemplatesList({
           onValueChange={(value) => setActiveTab(value as FilterTab)}
           className="flex-1"
         >
-          <TabsList className="grid h-12 w-full max-w-md grid-cols-4 border border-border/50">
-            <TabsTrigger value="all">
+          <TabsList className="grid h-12 w-full max-w-md grid-cols-4 rounded-md border border-border/50">
+            <TabsTrigger value="all" className="rounded-md py-2">
               Todos
               {counts.all > 0 && (
                 <Badge
@@ -262,7 +262,7 @@ export function TemplatesList({
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="approved">
+            <TabsTrigger value="approved" className="rounded-md py-2">
               Aprovados
               {counts.approved > 0 && (
                 <Badge
@@ -273,7 +273,7 @@ export function TemplatesList({
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="pending">
+            <TabsTrigger value="pending" className="rounded-md py-2">
               Pendentes
               {counts.pending > 0 && (
                 <Badge
@@ -284,7 +284,7 @@ export function TemplatesList({
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="rejected">
+            <TabsTrigger value="rejected" className="rounded-md py-2">
               Rejeitados
               {counts.rejected > 0 && (
                 <Badge
