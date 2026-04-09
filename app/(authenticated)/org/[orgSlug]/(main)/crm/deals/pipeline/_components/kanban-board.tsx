@@ -432,7 +432,7 @@ export function KanbanBoard({
             <PopoverTrigger asChild disabled={isMember}>
               <Button
                 variant="outline"
-                className="relative w-[300px] justify-center font-normal"
+                className="relative w-[300px] justify-center border-border bg-input font-normal hover:bg-input/80"
               >
                 <User className="absolute left-3 h-4 w-4 text-muted-foreground" />
                 {effectiveAssignees.length === 0 ? (

@@ -371,7 +371,7 @@ export function DealDialogContent({
                                 aria-expanded={open}
                                 disabled={isPending}
                                 className={cn(
-                                  'w-full justify-between font-normal',
+                                  'w-full justify-between border-border bg-input font-normal hover:bg-input/80',
                                   !field.value && 'text-muted-foreground',
                                 )}
                               >
