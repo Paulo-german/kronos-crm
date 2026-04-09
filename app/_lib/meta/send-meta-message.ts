@@ -80,6 +80,11 @@ export async function sendMetaAudioMessage(
   const baseUrl = getGraphApiBaseUrl()
   await assertMetaConnected(phoneNumberId, accessToken)
 
+  // Normalizar mimetype: Meta aceita "audio/ogg; codecs=opus" mas para mp4/webm exige sem codec
+  const normalizedMimetype = mimetype.includes('ogg')
+    ? 'audio/ogg; codecs=opus'
+    : mimetype.split(';')[0].trim()
+
   // Primeiro: fazer upload da midia para obter um media_id permanente
   const uploadResponse = await fetch(`${baseUrl}/${phoneNumberId}/media`, {
     method: 'POST',
@@ -94,11 +99,11 @@ export async function sendMetaAudioMessage(
       for (let i = 0; i < binaryString.length; i++) {
         bytes[i] = binaryString.charCodeAt(i)
       }
-      const extension = mimetype.includes('mp4') ? 'mp4' : mimetype.includes('webm') ? 'webm' : 'ogg'
-      const blob = new Blob([bytes], { type: mimetype })
+      const extension = normalizedMimetype.includes('mp4') ? 'mp4' : normalizedMimetype.includes('webm') ? 'webm' : 'ogg'
+      const blob = new Blob([bytes], { type: normalizedMimetype })
       formData.append('file', blob, `audio.${extension}`)
       formData.append('messaging_product', 'whatsapp')
-      formData.append('type', mimetype)
+      formData.append('type', normalizedMimetype)
       return formData
     })(),
   })
