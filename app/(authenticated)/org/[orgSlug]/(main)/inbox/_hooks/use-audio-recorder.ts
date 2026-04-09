@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 
 interface UseAudioRecorderOptions {
   conversationId: string
-  onAudioReady: (base64: string, duration: number) => void
+  onAudioReady: (base64: string, duration: number, mimetype: string) => void
 }
 
 export function useAudioRecorder({
@@ -35,11 +35,15 @@ export function useAudioRecorder({
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
 
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-        ? 'audio/webm;codecs=opus'
+      // Priorizar formatos suportados pelo Meta WhatsApp Cloud API
+      // OGG/Opus (Firefox) > MP4 (Safari) > WebM (Chrome fallback)
+      const mimeType = MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')
+        ? 'audio/ogg;codecs=opus'
         : MediaRecorder.isTypeSupported('audio/mp4')
           ? 'audio/mp4'
-          : undefined
+          : MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+            ? 'audio/webm;codecs=opus'
+            : undefined
 
       const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
       mediaRecorderRef.current = recorder
@@ -67,7 +71,7 @@ export function useAudioRecorder({
         const reader = new FileReader()
         reader.onloadend = () => {
           const base64 = (reader.result as string).split(',')[1]
-          onAudioReadyRef.current(base64, duration)
+          onAudioReadyRef.current(base64, duration, recorder.mimeType)
         }
         reader.readAsDataURL(blob)
       }

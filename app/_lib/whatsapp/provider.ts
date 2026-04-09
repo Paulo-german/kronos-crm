@@ -17,7 +17,7 @@ import { ConnectionType } from '@prisma/client'
  */
 export interface WhatsAppProvider {
   sendText(recipientPhone: string, text: string): Promise<string[]>
-  sendAudio(recipientPhone: string, audioBase64: string): Promise<string>
+  sendAudio(recipientPhone: string, audioBase64: string, mimetype: string): Promise<string>
   sendMedia(
     recipientPhone: string,
     mediaBase64: string,
@@ -69,8 +69,8 @@ export function resolveWhatsAppProvider(inbox: InboxProviderContext): WhatsAppPr
     return {
       sendText: (recipientPhone: string, text: string) =>
         sendMetaTextMessage(phoneNumberId, accessToken, recipientPhone.replace('@s.whatsapp.net', ''), text),
-      sendAudio: (recipientPhone: string, audioBase64: string) =>
-        sendMetaAudioMessage(phoneNumberId, accessToken, recipientPhone.replace('@s.whatsapp.net', ''), audioBase64),
+      sendAudio: (recipientPhone: string, audioBase64: string, mimetype: string) =>
+        sendMetaAudioMessage(phoneNumberId, accessToken, recipientPhone.replace('@s.whatsapp.net', ''), audioBase64, mimetype),
       sendMedia: (recipientPhone: string, mediaBase64: string, mimetype: string, mediatype: 'image' | 'document' | 'video', fileName?: string, caption?: string) =>
         sendMetaMediaMessage(phoneNumberId, accessToken, recipientPhone.replace('@s.whatsapp.net', ''), mediaBase64, mimetype, mediatype, fileName, caption),
       sendTemplate: (recipientPhone: string, templateName: string, language: string, components?: MetaTemplateSendComponent[]) =>
@@ -94,7 +94,8 @@ export function resolveWhatsAppProvider(inbox: InboxProviderContext): WhatsAppPr
     return {
       sendText: (recipientPhone: string, text: string) =>
         sendZApiTextMessage(config, recipientPhone.replace('@s.whatsapp.net', ''), text),
-      sendAudio: (recipientPhone: string, audioBase64: string) =>
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      sendAudio: (recipientPhone: string, audioBase64: string, _mimetype: string) =>
         sendZApiAudio(config, recipientPhone.replace('@s.whatsapp.net', ''), audioBase64),
       sendMedia: (recipientPhone: string, _mediaBase64: string, mimetype: string, mediatype: 'image' | 'document' | 'video', fileName?: string, caption?: string, mediaUrl?: string) => {
         if (!mediaUrl) throw new Error('Z-API requer URL publica para envio de midia. Configure o B2 Storage.')
@@ -129,7 +130,8 @@ export function resolveWhatsAppProvider(inbox: InboxProviderContext): WhatsAppPr
   return {
     sendText: (recipientPhone: string, text: string) =>
       sendWhatsAppMessage(instanceName, recipientPhone, text, credentials),
-    sendAudio: (recipientPhone: string, audioBase64: string) =>
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    sendAudio: (recipientPhone: string, audioBase64: string, _mimetype: string) =>
       sendWhatsAppAudio(instanceName, recipientPhone, audioBase64, credentials),
     sendMedia: (recipientPhone: string, _mediaBase64: string, mimetype: string, mediatype: 'image' | 'document' | 'video', fileName?: string, caption?: string, mediaUrl?: string) => {
       if (!mediaUrl) throw new Error('Evolution API requer URL pública para envio de mídia. Configure o B2 Storage.')

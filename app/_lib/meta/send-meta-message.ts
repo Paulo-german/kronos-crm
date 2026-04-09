@@ -75,6 +75,7 @@ export async function sendMetaAudioMessage(
   accessToken: string,
   recipientPhone: string,
   audioBase64: string,
+  mimetype: string,
 ): Promise<string> {
   const baseUrl = getGraphApiBaseUrl()
   await assertMetaConnected(phoneNumberId, accessToken)
@@ -93,10 +94,11 @@ export async function sendMetaAudioMessage(
       for (let i = 0; i < binaryString.length; i++) {
         bytes[i] = binaryString.charCodeAt(i)
       }
-      const blob = new Blob([bytes], { type: 'audio/ogg; codecs=opus' })
-      formData.append('file', blob, 'audio.ogg')
+      const extension = mimetype.includes('mp4') ? 'mp4' : mimetype.includes('webm') ? 'webm' : 'ogg'
+      const blob = new Blob([bytes], { type: mimetype })
+      formData.append('file', blob, `audio.${extension}`)
       formData.append('messaging_product', 'whatsapp')
-      formData.append('type', 'audio/ogg; codecs=opus')
+      formData.append('type', mimetype)
       return formData
     })(),
   })
