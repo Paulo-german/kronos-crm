@@ -39,10 +39,10 @@ export default function RootLayout({
     <html
       lang="pt-BR"
       suppressHydrationWarning
-      className="min-h-screen w-auto overflow-y-hidden bg-background"
+      className="min-h-dvh w-auto overflow-y-hidden bg-background"
     >
       <body
-        className={`${jakarta.variable} ${martian.variable} min-h-screen font-sans antialiased`}
+        className={`${jakarta.variable} ${martian.variable} min-h-dvh font-sans antialiased`}
       >
         <GoogleTagManagerNoscript />
         <GoogleTagManager />
