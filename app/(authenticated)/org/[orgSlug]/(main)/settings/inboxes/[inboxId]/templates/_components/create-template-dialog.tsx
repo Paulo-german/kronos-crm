@@ -143,7 +143,7 @@ export function CreateTemplateDialog({
                 <div className="space-y-1.5">
                   <div className="flex items-start justify-between gap-2">
                     <span className="text-xs text-muted-foreground">Nome</span>
-                    <span className="max-w-[60%] break-all text-right font-mono text-xs text-foreground">
+                    <span className="max-w-[60%] break-all text-right text-xs text-foreground">
                       {watchedName}
                     </span>
                   </div>
@@ -158,7 +158,7 @@ export function CreateTemplateDialog({
                   {watchedLanguage && (
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-muted-foreground">Idioma</span>
-                      <span className="font-mono text-xs text-foreground">{watchedLanguage}</span>
+                      <span className="text-xs text-foreground">{watchedLanguage}</span>
                     </div>
                   )}
                 </div>

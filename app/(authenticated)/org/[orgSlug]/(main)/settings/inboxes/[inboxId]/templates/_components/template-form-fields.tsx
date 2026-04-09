@@ -159,7 +159,7 @@ export function TemplateFormFields({ form, isEditing = false }: TemplateFormFiel
               </div>
             </FormControl>
             <FormDescription className="flex items-center gap-1.5">
-              <span className="font-mono text-[11px] tracking-tight text-muted-foreground/70">
+              <span className="text-[11px] tracking-tight text-muted-foreground/70">
                 a-z, 0-9 e _ apenas
               </span>
               <span className="text-muted-foreground/40">·</span>
@@ -212,7 +212,7 @@ export function TemplateFormFields({ form, isEditing = false }: TemplateFormFiel
                       variant="outline"
                       role="combobox"
                       className={cn(
-                        'w-full justify-between',
+                        'w-full justify-between border-border bg-input hover:bg-input/80',
                         !field.value && 'text-muted-foreground',
                       )}
                       disabled={isEditing}
@@ -245,7 +245,7 @@ export function TemplateFormFields({ form, isEditing = false }: TemplateFormFiel
                               )}
                             />
                             <span className="flex-1">{lang.label}</span>
-                            <Badge variant="outline" className="ml-2 font-mono text-xs">
+                            <Badge variant="outline" className="ml-2 text-xs">
                               {lang.value}
                             </Badge>
                           </CommandItem>
@@ -439,7 +439,7 @@ export function TemplateFormFields({ form, isEditing = false }: TemplateFormFiel
                 name={`components.body.examples.${varIndex - 1}` as `components.body.examples.${number}`}
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-mono text-muted-foreground">{`{{${varIndex}}}`}</FormLabel>
+                    <FormLabel className="text-xs text-muted-foreground">{`{{${varIndex}}}`}</FormLabel>
                     <FormControl>
                       <Input
                         {...field}
