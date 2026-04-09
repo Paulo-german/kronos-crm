@@ -96,6 +96,7 @@ export async function sendMetaAudioMessage(
       const blob = new Blob([bytes], { type: 'audio/ogg; codecs=opus' })
       formData.append('file', blob, 'audio.ogg')
       formData.append('messaging_product', 'whatsapp')
+      formData.append('type', 'audio/ogg; codecs=opus')
       return formData
     })(),
   })
