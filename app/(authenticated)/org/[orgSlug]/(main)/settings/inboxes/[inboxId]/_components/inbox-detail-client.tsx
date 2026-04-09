@@ -120,13 +120,16 @@ const InboxDetailClient = ({
 }: InboxDetailClientProps) => {
   const canManage = userRole === 'OWNER' || userRole === 'ADMIN'
   const [isEditOpen, setIsEditOpen] = useState(false)
-  const [evolutionConnectedOverride, setEvolutionConnectedOverride] = useState<boolean | null>(null)
-  const [localDistributionUserIds, setLocalDistributionUserIds] = useState(inbox.distributionUserIds)
+  const [evolutionConnectedOverride, setEvolutionConnectedOverride] = useState<
+    boolean | null
+  >(null)
+  const [localDistributionUserIds, setLocalDistributionUserIds] = useState(
+    inbox.distributionUserIds,
+  )
 
   // Verifica se este inbox usa instancia Evolution self-hosted do usuario
   const isSelfHosted =
-    inbox.connectionType === 'EVOLUTION' &&
-    !!inbox.evolutionApiUrl
+    inbox.connectionType === 'EVOLUTION' && !!inbox.evolutionApiUrl
 
   // Modo de vinculação: "group" se inbox já tiver agentGroupId, senão "agent"
   const [aiLinkMode, setAiLinkMode] = useState<AiLinkMode>(
@@ -146,17 +149,14 @@ const InboxDetailClient = ({
     },
   )
 
-  const { execute: executeInlineUpdate } = useAction(
-    updateInbox,
-    {
-      onSuccess: () => {
-        toast.success('Configuração salva!')
-      },
-      onError: ({ error }) => {
-        toast.error(error.serverError || 'Erro ao salvar.')
-      },
+  const { execute: executeInlineUpdate } = useAction(updateInbox, {
+    onSuccess: () => {
+      toast.success('Configuração salva!')
     },
-  )
+    onError: ({ error }) => {
+      toast.error(error.serverError || 'Erro ao salvar.')
+    },
+  })
 
   const { execute: executeLinkAgent, isPending: isLinkingAgent } = useAction(
     linkInboxToAgent,
@@ -329,13 +329,15 @@ const InboxDetailClient = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold tracking-tight">{inbox.name}</h1>
-            {(evolutionConnectedOverride ?? (!!inbox.evolutionInstanceName && inbox.evolutionConnected)) ||
-            (inbox.connectionType === 'META_CLOUD' && inbox.metaPhoneNumberId) ||
+            {(evolutionConnectedOverride ??
+              (!!inbox.evolutionInstanceName && inbox.evolutionConnected)) ||
+            (inbox.connectionType === 'META_CLOUD' &&
+              inbox.metaPhoneNumberId) ||
             (inbox.connectionType === 'Z_API' && inbox.zapiInstanceId) ? (
               <>
                 <Badge
                   variant="outline"
-                  className="h-6 gap-1.5 px-2 text-xs font-semibold bg-kronos-green/10 text-kronos-green border-kronos-green/20 hover:bg-kronos-green/20"
+                  className="h-6 gap-1.5 border-kronos-green/20 bg-kronos-green/10 px-2 text-xs font-semibold text-kronos-green hover:bg-kronos-green/20"
                 >
                   <CircleIcon className="h-1.5 w-1.5 fill-current" />
                   Conectado
@@ -370,16 +372,10 @@ const InboxDetailClient = ({
       {/* Tabs */}
       <Tabs defaultValue="general">
         <TabsList className="grid h-12 w-full grid-cols-2 rounded-md border border-border/50">
-          <TabsTrigger
-            value="general"
-            className="rounded-md py-2"
-          >
+          <TabsTrigger value="general" className="rounded-md py-2">
             Geral
           </TabsTrigger>
-          <TabsTrigger
-            value="connection"
-            className="rounded-md py-2"
-          >
+          <TabsTrigger value="connection" className="rounded-md py-2">
             Conexão
           </TabsTrigger>
         </TabsList>
@@ -388,7 +384,9 @@ const InboxDetailClient = ({
           {/* Info Card */}
           <Card className="border-border/50 bg-secondary/20">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base font-semibold">Informações</CardTitle>
+              <CardTitle className="text-base font-semibold">
+                Informações
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 sm:grid-cols-2">
@@ -399,11 +397,17 @@ const InboxDetailClient = ({
                     <p className="text-sm font-medium">
                       {channelLabels[inbox.channel] ?? inbox.channel}
                     </p>
-                    {inbox.channel === 'WHATSAPP' && (inbox.evolutionInstanceName || inbox.metaPhoneNumberId || inbox.zapiInstanceId) && (
-                      <p className="text-xs text-muted-foreground">
-                        {resolveConnectionLabel(inbox.connectionType, isSelfHosted)}
-                      </p>
-                    )}
+                    {inbox.channel === 'WHATSAPP' &&
+                      (inbox.evolutionInstanceName ||
+                        inbox.metaPhoneNumberId ||
+                        inbox.zapiInstanceId) && (
+                        <p className="text-xs text-muted-foreground">
+                          {resolveConnectionLabel(
+                            inbox.connectionType,
+                            isSelfHosted,
+                          )}
+                        </p>
+                      )}
                   </div>
                 </div>
 
@@ -426,7 +430,8 @@ const InboxDetailClient = ({
                 Agente IA
               </CardTitle>
               <CardDescription>
-                Configure qual agente ou equipe responde às conversas desta caixa de entrada.
+                Configure qual agente ou equipe responde às conversas desta
+                caixa de entrada.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -442,7 +447,10 @@ const InboxDetailClient = ({
                     className="flex gap-4"
                   >
                     <div className="flex items-center gap-2">
-                      <RadioGroupItem value="agent" id={`ai-mode-agent-${inbox.id}`} />
+                      <RadioGroupItem
+                        value="agent"
+                        id={`ai-mode-agent-${inbox.id}`}
+                      />
                       <Label
                         htmlFor={`ai-mode-agent-${inbox.id}`}
                         className="cursor-pointer text-sm font-normal"
@@ -451,7 +459,10 @@ const InboxDetailClient = ({
                       </Label>
                     </div>
                     <div className="flex items-center gap-2">
-                      <RadioGroupItem value="group" id={`ai-mode-group-${inbox.id}`} />
+                      <RadioGroupItem
+                        value="group"
+                        id={`ai-mode-group-${inbox.id}`}
+                      />
                       <Label
                         htmlFor={`ai-mode-group-${inbox.id}`}
                         className="cursor-pointer text-sm font-normal"
@@ -490,16 +501,26 @@ const InboxDetailClient = ({
                       value={inbox.agentGroupId ?? 'none'}
                       onValueChange={(value) => {
                         if (value === 'none') {
-                          executeLinkGroup({ inboxId: inbox.id, agentGroupId: null })
+                          executeLinkGroup({
+                            inboxId: inbox.id,
+                            agentGroupId: null,
+                          })
                           return
                         }
                         // Valida grupo com workers antes de vincular
-                        const group = agentGroupOptions.find((g) => g.id === value)
+                        const group = agentGroupOptions.find(
+                          (g) => g.id === value,
+                        )
                         if (group && group.memberCount === 0) {
-                          toast.error('Equipe precisa de pelo menos 1 agente worker ativo.')
+                          toast.error(
+                            'Equipe precisa de pelo menos 1 agente worker ativo.',
+                          )
                           return
                         }
-                        executeLinkGroup({ inboxId: inbox.id, agentGroupId: value })
+                        executeLinkGroup({
+                          inboxId: inbox.id,
+                          agentGroupId: value,
+                        })
                       }}
                       disabled={isLinking}
                     >
@@ -516,7 +537,9 @@ const InboxDetailClient = ({
                           >
                             {group.name}
                             {group.memberCount === 0 && (
-                              <span className="ml-1 text-muted-foreground">(sem workers)</span>
+                              <span className="ml-1 text-muted-foreground">
+                                (sem workers)
+                              </span>
                             )}
                           </SelectItem>
                         ))}
@@ -545,21 +568,28 @@ const InboxDetailClient = ({
                 Mensagens
               </CardTitle>
               <CardDescription>
-                Configure como as mensagens são exibidas para o cliente no WhatsApp.
+                Configure como as mensagens são exibidas para o cliente no
+                WhatsApp.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between rounded-md border border-border/50 bg-background/70 p-3">
                 <div className="space-y-0.5">
-                  <Label className="text-sm font-medium">Exibir nome do atendente</Label>
+                  <Label className="text-sm font-medium">
+                    Exibir nome do atendente
+                  </Label>
                   <p className="text-xs text-muted-foreground">
-                    Prefixa o nome do atendente ou agente IA antes de cada mensagem enviada.
+                    Prefixa o nome do atendente ou agente IA antes de cada
+                    mensagem enviada.
                   </p>
                 </div>
                 <Switch
                   checked={inbox.showAttendantName}
                   onCheckedChange={(checked) => {
-                    executeInlineUpdate({ id: inbox.id, showAttendantName: checked })
+                    executeInlineUpdate({
+                      id: inbox.id,
+                      showAttendantName: checked,
+                    })
                   }}
                   disabled={!canManage}
                 />
@@ -575,22 +605,29 @@ const InboxDetailClient = ({
                 Captação de Leads
               </CardTitle>
               <CardDescription>
-                Configure como novos contatos e negócios são criados a partir desta caixa de entrada.
+                Configure como novos contatos e negócios são criados a partir
+                desta caixa de entrada.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
               {/* Auto Create Deal Toggle */}
               <div className="flex items-center justify-between rounded-md border border-border/50 bg-background/70 p-3">
                 <div className="space-y-0.5">
-                  <Label className="text-sm font-medium">Criar negócio automaticamente</Label>
+                  <Label className="text-sm font-medium">
+                    Criar negócio automaticamente
+                  </Label>
                   <p className="text-xs text-muted-foreground">
-                    Cria um negócio para cada nova conversa iniciada nesta caixa.
+                    Cria um negócio para cada nova conversa iniciada nesta
+                    caixa.
                   </p>
                 </div>
                 <Switch
                   checked={inbox.autoCreateDeal}
                   onCheckedChange={(checked) => {
-                    executeInlineUpdate({ id: inbox.id, autoCreateDeal: checked })
+                    executeInlineUpdate({
+                      id: inbox.id,
+                      autoCreateDeal: checked,
+                    })
                   }}
                   disabled={!canManage}
                 />
@@ -598,7 +635,9 @@ const InboxDetailClient = ({
 
               {/* Pipeline Select */}
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Pipeline de destino</Label>
+                <Label className="text-sm font-medium">
+                  Pipeline de destino
+                </Label>
                 <Select
                   value={inbox.pipelineId ?? 'auto'}
                   onValueChange={(value) => {
@@ -613,7 +652,9 @@ const InboxDetailClient = ({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="auto">Automático (primeiro pipeline)</SelectItem>
+                    <SelectItem value="auto">
+                      Automático (primeiro pipeline)
+                    </SelectItem>
                     {pipelines.map((pipeline) => (
                       <SelectItem key={pipeline.id} value={pipeline.id}>
                         {pipeline.name}
@@ -628,9 +669,13 @@ const InboxDetailClient = ({
 
               {/* Distribution Users Multi-select */}
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Distribuição de leads</Label>
+                <Label className="text-sm font-medium">
+                  Distribuição de leads
+                </Label>
                 {assignableMembers.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Nenhum membro disponível.</p>
+                  <p className="text-sm text-muted-foreground">
+                    Nenhum membro disponível.
+                  </p>
                 ) : (
                   <Popover>
                     <PopoverTrigger asChild>
@@ -648,14 +693,24 @@ const InboxDetailClient = ({
                     <PopoverContent className="w-80">
                       <div className="space-y-2">
                         {assignableMembers.map((member) => (
-                          <div key={member.userId} className="flex items-center space-x-2">
+                          <div
+                            key={member.userId}
+                            className="flex items-center space-x-2"
+                          >
                             <Checkbox
                               id={`dist-inbox-${member.userId}`}
-                              checked={localDistributionUserIds.includes(member.userId!)}
-                              onCheckedChange={() => handleToggleDistributionUser(member.userId!)}
+                              checked={localDistributionUserIds.includes(
+                                member.userId!,
+                              )}
+                              onCheckedChange={() =>
+                                handleToggleDistributionUser(member.userId!)
+                              }
                               disabled={!canManage}
                             />
-                            <Label htmlFor={`dist-inbox-${member.userId}`} className="cursor-pointer">
+                            <Label
+                              htmlFor={`dist-inbox-${member.userId}`}
+                              className="cursor-pointer"
+                            >
                               {member.user?.fullName ?? member.email}
                             </Label>
                           </div>
@@ -686,7 +741,8 @@ const InboxDetailClient = ({
                 )}
 
                 <p className="text-xs text-muted-foreground">
-                  Leads serão distribuídos em round-robin entre os membros selecionados.
+                  Leads serão distribuídos em round-robin entre os membros
+                  selecionados.
                 </p>
               </div>
             </CardContent>
@@ -694,39 +750,41 @@ const InboxDetailClient = ({
         </TabsContent>
 
         <TabsContent value="connection" className="mt-6">
-          {/* Connection Card — roteado por provider */}
-          {inbox.channel === 'WHATSAPP' && renderConnectionSection()}
+          <div className="flex flex-col gap-6">
+            {/* Connection Card — roteado por provider */}
+            {inbox.channel === 'WHATSAPP' && renderConnectionSection()}
 
-          {/* Templates Card — somente para inboxes Meta Cloud conectados */}
-          {inbox.connectionType === 'META_CLOUD' && !!inbox.metaWabaId && (
-            <Card className="border-border/50 bg-secondary/20">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base font-semibold">
-                  <FileText className="h-4 w-4" />
-                  Templates de mensagem
-                </CardTitle>
-                <CardDescription>
-                  Gerencie os templates aprovados pelo Meta para envio proativo no WhatsApp.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={`/org/${orgSlug}/settings/inboxes/${inbox.id}/templates`}>
-                    <FileText className="mr-2 h-4 w-4" />
-                    Gerenciar templates
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
-          )}
+            {/* Templates Card — somente para inboxes Meta Cloud conectados */}
+            {inbox.connectionType === 'META_CLOUD' && !!inbox.metaWabaId && (
+              <Card className="border-border/50 bg-secondary/20">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                    <FileText className="h-4 w-4" />
+                    Templates de mensagem
+                  </CardTitle>
+                  <CardDescription>
+                    Gerencie os templates aprovados pelo Meta para envio
+                    proativo no WhatsApp.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link
+                      href={`/org/${orgSlug}/settings/inboxes/${inbox.id}/templates`}
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      Gerenciar templates
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </div>
         </TabsContent>
       </Tabs>
 
       {/* Edit Sheet */}
-      <Sheet
-        open={isEditOpen}
-        onOpenChange={(open) => setIsEditOpen(open)}
-      >
+      <Sheet open={isEditOpen} onOpenChange={(open) => setIsEditOpen(open)}>
         <UpsertInboxSheetContent
           key={inbox.id}
           defaultValues={{
