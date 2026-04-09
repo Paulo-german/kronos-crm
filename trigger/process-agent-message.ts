@@ -34,59 +34,9 @@ import { transcribeImage } from './utils/transcribe-image'
 import { downloadAndStoreMedia } from './utils/download-and-store-media'
 import { getFollowUpsForStep } from '@/_data-access/follow-up/get-follow-ups-for-step'
 import { createExecutionTracker } from './lib/execution-tracker'
+import { revalidateConversationCache } from './lib/revalidate-cache'
 import type { ToolContext } from './tools/types'
 import type { NormalizedWhatsAppMessage } from '@/_lib/evolution/types'
-
-async function revalidateConversationCache(
-  conversationId: string,
-  organizationId?: string,
-) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL
-  const secret = process.env.INTERNAL_API_SECRET
-
-  if (!appUrl || !secret) {
-    logger.warn(
-      'Skipping conversation cache revalidation: missing NEXT_PUBLIC_APP_URL or INTERNAL_API_SECRET',
-    )
-    return
-  }
-
-  const baseUrl = appUrl.startsWith('http') ? appUrl : `https://${appUrl}`
-
-  const url = `${baseUrl}/api/inbox/revalidate`
-
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${secret}`,
-      },
-      body: JSON.stringify({ conversationId, organizationId }),
-    })
-
-    if (!response.ok) {
-      const text = await response.text().catch(() => '')
-      logger.warn('Conversation cache revalidation returned error', {
-        conversationId,
-        status: response.status,
-        body: text.slice(0, 200),
-        url,
-      })
-    } else {
-      logger.info('Conversation cache revalidated', {
-        conversationId,
-        status: response.status,
-      })
-    }
-  } catch (error) {
-    logger.warn('Conversation cache revalidation failed (network)', {
-      conversationId,
-      url,
-      error,
-    })
-  }
-}
 
 const MESSAGE_HISTORY_LIMIT = 50
 const SUMMARIZATION_THRESHOLD = 12
@@ -749,6 +699,7 @@ export const processAgentMessage = task({
                 select: {
                   role: true,
                   content: true,
+                  metadata: true,
                 },
               }),
               db.conversation.findUniqueOrThrow({
@@ -823,9 +774,36 @@ export const processAgentMessage = task({
 
           for (const msg of messageHistory) {
             if (msg.role === 'user' || msg.role === 'assistant') {
+              let messageContent = msg.content
+
+              // Enriquecer mensagens outbound com transcrição de mídia
+              if (msg.role === 'assistant' && msg.metadata) {
+                const meta = msg.metadata as Record<string, unknown>
+                if (typeof meta.mediaTranscription === 'string' && meta.mediaTranscription.length > 0) {
+                  const mediaInfo = meta.media as Record<string, unknown> | undefined
+                  const mimetype = mediaInfo?.mimetype as string | undefined
+                  const fileName = mediaInfo?.fileName as string | undefined
+                  const hasCaption = msg.content !== '[Imagem]'
+                    && msg.content !== '[Vídeo]'
+                    && !msg.content.startsWith('[Documento:')
+
+                  const captionPart = hasCaption
+                    ? ` com mensagem: "${msg.content}"`
+                    : ''
+
+                  if (mimetype?.startsWith('image/')) {
+                    messageContent = `[Imagem enviada pelo atendente${captionPart} — conteúdo da imagem: ${meta.mediaTranscription}]`
+                  } else if (fileName) {
+                    messageContent = `[Documento "${fileName}" enviado pelo atendente${captionPart} — conteúdo extraído:\n${meta.mediaTranscription}]`
+                  } else {
+                    messageContent = `[Mídia enviada pelo atendente${captionPart} — conteúdo: ${meta.mediaTranscription}]`
+                  }
+                }
+              }
+
               llmMessages.push({
                 role: msg.role,
-                content: msg.content,
+                content: messageContent,
               })
             }
           }
