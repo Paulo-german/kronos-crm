@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidateTag } from 'next/cache'
+import { tasks } from '@trigger.dev/sdk/v3'
 import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
@@ -17,7 +18,9 @@ import { withRetry } from '@/_lib/whatsapp/retry'
 import { parseProviderError } from '@/_lib/whatsapp/parse-provider-error'
 import { AUTO_REOPEN_FIELDS } from '@/_lib/conversation/auto-reopen'
 import { prefixAttendantName } from '@/_lib/inbox/prefix-attendant-name'
+import { extractPdfText, PDF_NO_TEXT_EXTRACTED } from '@/_lib/media/extract-pdf-text'
 import { sendMediaSchema } from './schema'
+import type { transcribeOutboundMedia } from '@/../../trigger/transcribe-outbound-media'
 
 export const sendMedia = orgActionClient
   .schema(sendMediaSchema)
@@ -96,7 +99,24 @@ export const sendMedia = orgActionClient
       fileName: data.fileName,
     })
 
-    // 7. Enviar via provider com retry
+    // 7. Extrair texto do PDF inline (~50ms)
+    // Se escaneado (sem texto), será enviado para vision AI via Trigger.dev
+    let mediaTranscription: string | undefined
+    let pdfNeedsVision = false
+    if (data.mimetype === 'application/pdf') {
+      try {
+        const extracted = await extractPdfText(data.mediaBase64)
+        if (extracted === PDF_NO_TEXT_EXTRACTED) {
+          pdfNeedsVision = true
+        } else {
+          mediaTranscription = extracted
+        }
+      } catch {
+        // Falha na extração não impede o envio
+      }
+    }
+
+    // 8. Enviar via provider com retry
     const provider = resolveWhatsAppProvider(conversation.inbox)
     const contentFallback = mediatype === 'image'
       ? '[Imagem]'
@@ -144,6 +164,7 @@ export const sendMedia = orgActionClient
                 url: uploadResult.publicUrl,
                 storedExternally: true,
               },
+              ...(mediaTranscription && { mediaTranscription }),
             },
           },
         }),
@@ -182,6 +203,7 @@ export const sendMedia = orgActionClient
               url: uploadResult.publicUrl,
               storedExternally: true,
             },
+            ...(mediaTranscription && { mediaTranscription }),
             deliveryError: parsedError,
           },
         },
@@ -197,6 +219,22 @@ export const sendMedia = orgActionClient
     // 8. Invalidar cache
     revalidateTag(`conversations:${ctx.orgId}`)
     revalidateTag(`conversation-messages:${data.conversationId}`)
+
+    // 10. Disparar transcrição async (fire-and-forget)
+    // Imagem: sempre async | PDF escaneado: fallback para vision AI
+    if (mediatype === 'image' || pdfNeedsVision) {
+      void tasks.trigger<typeof transcribeOutboundMedia>(
+        'transcribe-outbound-media',
+        {
+          messageId,
+          conversationId: data.conversationId,
+          organizationId: ctx.orgId,
+          mediaUrl: uploadResult.publicUrl,
+          mimetype: data.mimetype,
+          caption: data.caption,
+        },
+      )
+    }
 
     return { success: true, sendFailed, errorMessage: undefined }
   })
