@@ -35,15 +35,17 @@ export function useAudioRecorder({
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
 
-      // Priorizar formatos suportados pelo Meta WhatsApp Cloud API
-      // OGG/Opus (Firefox) > MP4 (Safari) > WebM (Chrome fallback)
-      const mimeType = MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')
-        ? 'audio/ogg;codecs=opus'
-        : MediaRecorder.isTypeSupported('audio/mp4')
-          ? 'audio/mp4'
-          : MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-            ? 'audio/webm;codecs=opus'
-            : undefined
+      // Priorizar formatos aceitos pelo Meta WhatsApp Cloud API
+      // 1. OGG/Opus — formato nativo do WhatsApp (Firefox)
+      // 2. MP4/AAC — macOS Chrome/Safari suportam via encoder de sistema
+      // 3. MP4 generico — Safari fallback
+      // 4. WebM/Opus — Chrome fallback (requer conversao server-side)
+      const mimeType = [
+        'audio/ogg;codecs=opus',
+        'audio/mp4;codecs=aac',
+        'audio/mp4',
+        'audio/webm;codecs=opus',
+      ].find((type) => MediaRecorder.isTypeSupported(type))
 
       const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
       mediaRecorderRef.current = recorder
