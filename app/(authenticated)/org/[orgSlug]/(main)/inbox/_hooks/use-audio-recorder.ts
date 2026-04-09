@@ -7,7 +7,7 @@ const OGG_OPUS_MIME = 'audio/ogg;codecs=opus'
 
 interface UseAudioRecorderOptions {
   conversationId: string
-  onAudioReady: (base64: string, duration: number, mimetype: string) => void
+  onAudioReady: (base64: string, duration: number) => void
 }
 
 /**
@@ -88,7 +88,7 @@ export function useAudioRecorder({
         const reader = new FileReader()
         reader.onloadend = () => {
           const base64 = (reader.result as string).split(',')[1]
-          onAudioReadyRef.current(base64, duration, OGG_OPUS_MIME)
+          onAudioReadyRef.current(base64, duration)
         }
         reader.readAsDataURL(blob)
       }

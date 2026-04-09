@@ -212,12 +212,11 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
     cancelRecording,
   } = useAudioRecorder({
     conversationId: conversation.id,
-    onAudioReady: (base64, duration, mimetype) => {
+    onAudioReady: (base64, duration) => {
       sendAudioAction.execute({
         conversationId: conversation.id,
         audioBase64: base64,
         duration,
-        mimetype,
       })
     },
   })

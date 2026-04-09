@@ -64,7 +64,7 @@ export const sendAudio = orgActionClient
 
     try {
       const messageId = await withRetry(() =>
-        provider.sendAudio(remoteJid, data.audioBase64, data.mimetype),
+        provider.sendAudio(remoteJid, data.audioBase64),
       )
 
       await redis.set(`dedup:${messageId}`, '1', 'EX', 300).catch(() => {})
@@ -82,7 +82,7 @@ export const sendAudio = orgActionClient
               sentByName: senderName,
               sentFrom: 'inbox',
               media: {
-                mimetype: data.mimetype,
+                mimetype: 'audio/ogg',
                 seconds: data.duration,
               },
             },
@@ -117,7 +117,7 @@ export const sendAudio = orgActionClient
             sentByName: senderName,
             sentFrom: 'inbox',
             media: {
-              mimetype: data.mimetype,
+              mimetype: 'audio/ogg',
               seconds: data.duration,
             },
             deliveryError: parsedError,
