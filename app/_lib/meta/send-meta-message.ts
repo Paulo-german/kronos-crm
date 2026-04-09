@@ -127,7 +127,7 @@ export async function sendMetaAudioMessage(
       recipient_type: 'individual',
       to: recipientPhone,
       type: 'audio',
-      audio: { id: mediaId },
+      audio: { id: mediaId, ptt: true },
     }),
   })
 
