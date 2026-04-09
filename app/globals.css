@@ -12,6 +12,30 @@
   }
 }
 
+/* Scrollbar global — fino com cor primary */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--primary)) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary));
+  border-radius: 9999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary));
+}
+
 @layer base {
   :root {
     /* Base Colors (Zinc/Natural for Light Mode) */
@@ -56,7 +80,7 @@
     --destructive-foreground: 0 0% 98%; /* hsl(0 0% 98%) */
 
     --border: 240 5.9% 80%; /* hsl(240 5.9% 80%) */
-    --input: 240 5.9% 90%; /* hsl(240 5.9% 90%) */
+    --input: 240 5.9% 97%; /* hsl(240 5.9% 92%) */
     --ring: 261 74% 62%; /* hsl(261 74% 62%) */
 
     --radius: 0.5rem;
@@ -129,7 +153,7 @@
     --destructive-foreground: 0 0% 98%; /* hsl(0 0% 98%) */
 
     --border: 240 3.7% 15.9%; /* hsl(240 3.7% 15.9%) */
-    --input: 240 3.7% 15.9%; /* hsl(240 3.7% 15.9%) */
+    --input: 240 6% 7%; /* hsl(240 3.7% 8%) */
     --ring: 261 74% 62%; /* hsl(261 74% 62%) */
   }
 }
