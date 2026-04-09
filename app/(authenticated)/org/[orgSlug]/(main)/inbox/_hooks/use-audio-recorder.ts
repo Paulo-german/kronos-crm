@@ -3,9 +3,36 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { toast } from 'sonner'
 
+const OGG_OPUS_MIME = 'audio/ogg;codecs=opus'
+
 interface UseAudioRecorderOptions {
   conversationId: string
   onAudioReady: (base64: string, duration: number, mimetype: string) => void
+}
+
+/**
+ * Cria um MediaRecorder que grava em OGG/Opus (formato aceito pelo Meta WhatsApp Cloud API).
+ * Firefox suporta nativamente. Chrome/Safari usam o polyfill opus-media-recorder via WASM.
+ */
+async function createOggRecorder(stream: MediaStream): Promise<MediaRecorder> {
+  // Firefox suporta OGG/Opus nativamente
+  if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(OGG_OPUS_MIME)) {
+    return new MediaRecorder(stream, { mimeType: OGG_OPUS_MIME })
+  }
+
+  // Chrome/Safari: usar polyfill WASM
+  const { default: OpusMediaRecorder } = await import('opus-media-recorder')
+
+  const workerOptions = {
+    encoderWorkerFactory: () => new Worker('/opus-media-recorder/encoderWorker.umd.js'),
+    OggOpusEncoderWasmPath: '/opus-media-recorder/OggOpusEncoder.wasm',
+  }
+
+  return new OpusMediaRecorder(
+    stream,
+    { mimeType: OGG_OPUS_MIME },
+    workerOptions,
+  ) as unknown as MediaRecorder
 }
 
 export function useAudioRecorder({
@@ -34,20 +61,8 @@ export function useAudioRecorder({
   const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = await createOggRecorder(stream)
 
-      // Priorizar formatos aceitos pelo Meta WhatsApp Cloud API
-      // 1. OGG/Opus — formato nativo do WhatsApp (Firefox)
-      // 2. MP4/AAC — macOS Chrome/Safari suportam via encoder de sistema
-      // 3. MP4 generico — Safari fallback
-      // 4. WebM/Opus — Chrome fallback (requer conversao server-side)
-      const mimeType = [
-        'audio/ogg;codecs=opus',
-        'audio/mp4;codecs=aac',
-        'audio/mp4',
-        'audio/webm;codecs=opus',
-      ].find((type) => MediaRecorder.isTypeSupported(type))
-
-      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
       mediaRecorderRef.current = recorder
       chunksRef.current = []
 
@@ -65,7 +80,7 @@ export function useAudioRecorder({
           return
         }
 
-        const blob = new Blob(chunksRef.current, { type: recorder.mimeType })
+        const blob = new Blob(chunksRef.current, { type: OGG_OPUS_MIME })
         const duration = (Date.now() - recordingStartRef.current) / 1000
 
         if (blob.size === 0) return
@@ -73,7 +88,7 @@ export function useAudioRecorder({
         const reader = new FileReader()
         reader.onloadend = () => {
           const base64 = (reader.result as string).split(',')[1]
-          onAudioReadyRef.current(base64, duration, recorder.mimeType)
+          onAudioReadyRef.current(base64, duration, OGG_OPUS_MIME)
         }
         reader.readAsDataURL(blob)
       }
@@ -122,7 +137,7 @@ export function useAudioRecorder({
     stopRecording()
   }, [stopRecording])
 
-  // Cancelar gravação ao trocar de conversa
+  // Cancelar gravacao ao trocar de conversa
   useEffect(() => {
     return () => {
       if (mediaRecorderRef.current?.state === 'recording') {
