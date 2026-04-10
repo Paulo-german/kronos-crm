@@ -44,6 +44,8 @@ export async function GET(request: NextRequest) {
     const status = (statusParam === 'OPEN' || statusParam === 'RESOLVED') ? statusParam : undefined
     const labelIdsParam = searchParams.get('labelIds')
     const labelIds = labelIdsParam ? labelIdsParam.split(',').filter(Boolean) : undefined
+    const assigneeIdsParam = searchParams.get('assigneeIds')
+    const assigneeIds = assigneeIdsParam ? assigneeIdsParam.split(',').filter(Boolean) : undefined
 
     // Determinar escopo RBAC do usuario e config de PII para filtrar conversas
     const elevated = isElevated(membership.userRole!)
@@ -56,7 +58,7 @@ export async function GET(request: NextRequest) {
       hidePiiFromMembers,
       limit,
       cursor,
-      { inboxId, unreadOnly, unansweredOnly, search, status, labelIds },
+      { inboxId, unreadOnly, unansweredOnly, search, status, labelIds, assigneeIds },
     )
 
     let deepLinkConversationId: string | undefined

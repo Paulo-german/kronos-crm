@@ -45,6 +45,7 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<'OPEN' | 'RESOLVED'>('OPEN')
   const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([])
+  const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>([])
   const didApplyDeepLink = useRef(false)
 
   const contactId = searchParams.get('contactId')
@@ -73,6 +74,7 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
     contactId,
     status: statusFilter,
     labelIds: selectedLabelIds,
+    assigneeIds: selectedAssigneeIds,
   })
 
   // Optimistic update + refetch para atualizar badge da IA na conversation list
@@ -179,7 +181,7 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
   }
 
   // Se terminou de carregar e não tem conversas (sem filtros ativos) e não é deep link de contato
-  if (!isLoading && conversations.length === 0 && !search && filter === 'all' && !selectedInboxId && !deepLinkContact && statusFilter === 'OPEN' && selectedLabelIds.length === 0) {
+  if (!isLoading && conversations.length === 0 && !search && filter === 'all' && !selectedInboxId && !deepLinkContact && statusFilter === 'OPEN' && selectedLabelIds.length === 0 && selectedAssigneeIds.length === 0) {
     return <EmptyInbox orgSlug={orgSlug} />
   }
 
@@ -227,6 +229,9 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
           selectedLabelIds={selectedLabelIds}
           onLabelIdsChange={setSelectedLabelIds}
           availableLabels={availableLabels}
+          selectedAssigneeIds={selectedAssigneeIds}
+          onAssigneeIdsChange={setSelectedAssigneeIds}
+          currentUserId={currentUserId}
           onResolve={handleResolveFromList}
           onReopen={handleReopenFromList}
           onToggleLabel={handleToggleLabel}

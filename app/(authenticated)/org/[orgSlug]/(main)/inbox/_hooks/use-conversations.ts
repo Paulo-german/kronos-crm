@@ -18,6 +18,7 @@ interface UseConversationsOptions {
   contactId: string | null
   status: 'OPEN' | 'RESOLVED'
   labelIds: string[]
+  assigneeIds: string[]
 }
 
 interface DeepLinkContact {
@@ -67,11 +68,12 @@ function buildUrl(options: UseConversationsOptions, cursor?: string): string {
   if (options.contactId) params.set('contactId', options.contactId)
   if (options.status) params.set('status', options.status)
   if (options.labelIds.length > 0) params.set('labelIds', options.labelIds.join(','))
+  if (options.assigneeIds.length > 0) params.set('assigneeIds', options.assigneeIds.join(','))
   return `/api/inbox/conversations?${params.toString()}`
 }
 
 export function useConversations(options: UseConversationsOptions): UseConversationsReturn {
-  const { inboxId, unreadOnly, unansweredOnly, search, contactId, status, labelIds } = options
+  const { inboxId, unreadOnly, unansweredOnly, search, contactId, status, labelIds, assigneeIds } = options
 
   const [conversations, setConversations] = useState<ConversationListDto[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -109,7 +111,7 @@ export function useConversations(options: UseConversationsOptions): UseConversat
   const fetchFirstPage = useCallback(async (signal?: AbortSignal) => {
     const fetchContactId = !didDeepLink.current ? contactId : null
     const url = buildUrl(
-      { inboxId, unreadOnly, unansweredOnly, search: debouncedSearch, contactId: fetchContactId, status, labelIds },
+      { inboxId, unreadOnly, unansweredOnly, search: debouncedSearch, contactId: fetchContactId, status, labelIds, assigneeIds },
     )
 
     try {
@@ -132,7 +134,7 @@ export function useConversations(options: UseConversationsOptions): UseConversat
     } catch {
       return null
     }
-  }, [inboxId, unreadOnly, unansweredOnly, debouncedSearch, contactId, status, labelIds])
+  }, [inboxId, unreadOnly, unansweredOnly, debouncedSearch, contactId, status, labelIds, assigneeIds])
 
   // Initial fetch + reset on filter change
   useEffect(() => {
@@ -169,7 +171,7 @@ export function useConversations(options: UseConversationsOptions): UseConversat
 
   // Função de polling reutilizável (chamada pelo timer e pelo refetch)
   const pollConversations = useCallback(async () => {
-    const url = buildUrl({ inboxId, unreadOnly, unansweredOnly, search: debouncedSearch, contactId: null, status, labelIds })
+    const url = buildUrl({ inboxId, unreadOnly, unansweredOnly, search: debouncedSearch, contactId: null, status, labelIds, assigneeIds })
     try {
       const response = await fetch(url)
       if (!response.ok) return
@@ -222,7 +224,7 @@ export function useConversations(options: UseConversationsOptions): UseConversat
         setConnectionError(true)
       }
     }
-  }, [inboxId, unreadOnly, unansweredOnly, debouncedSearch, status, labelIds])
+  }, [inboxId, unreadOnly, unansweredOnly, debouncedSearch, status, labelIds, assigneeIds])
 
   // Polling adaptativo com setTimeout recursivo (permite mudar o intervalo dinamicamente)
   useEffect(() => {
@@ -278,7 +280,7 @@ export function useConversations(options: UseConversationsOptions): UseConversat
 
     setIsLoadingMore(true)
     const url = buildUrl(
-      { inboxId, unreadOnly, unansweredOnly, search: debouncedSearch, contactId: null, status, labelIds },
+      { inboxId, unreadOnly, unansweredOnly, search: debouncedSearch, contactId: null, status, labelIds, assigneeIds },
       cursorRef.current,
     )
 
@@ -303,7 +305,7 @@ export function useConversations(options: UseConversationsOptions): UseConversat
     } finally {
       setIsLoadingMore(false)
     }
-  }, [isLoadingMore, hasMore, inboxId, unreadOnly, unansweredOnly, debouncedSearch, status, labelIds])
+  }, [isLoadingMore, hasMore, inboxId, unreadOnly, unansweredOnly, debouncedSearch, status, labelIds, assigneeIds])
 
   // Optimistic update: atualiza uma conversa localmente e registra lock
   // para proteger do merge do polling por OPTIMISTIC_LOCK_MS

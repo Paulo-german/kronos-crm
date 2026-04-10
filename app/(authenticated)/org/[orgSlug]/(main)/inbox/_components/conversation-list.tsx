@@ -92,6 +92,9 @@ interface ConversationListProps {
   selectedLabelIds: string[]
   onLabelIdsChange: (ids: string[]) => void
   availableLabels: ConversationLabelDto[]
+  selectedAssigneeIds: string[]
+  onAssigneeIdsChange: (ids: string[]) => void
+  currentUserId: string
   onResolve: (conversationId: string) => void
   onReopen: (conversationId: string) => void
   onToggleLabel: (conversationId: string, labelId: string) => void
@@ -184,6 +187,9 @@ export function ConversationList({
   selectedLabelIds,
   onLabelIdsChange,
   availableLabels,
+  selectedAssigneeIds,
+  onAssigneeIdsChange,
+  currentUserId,
   onResolve,
   onReopen,
   onToggleLabel,
@@ -292,6 +298,11 @@ export function ConversationList({
               selectedLabelIds={selectedLabelIds}
               onLabelIdsChange={onLabelIdsChange}
               availableLabels={availableLabels}
+              selectedAssigneeIds={selectedAssigneeIds}
+              onAssigneeIdsChange={onAssigneeIdsChange}
+              availableAssignees={members}
+              currentUserId={currentUserId}
+              showAssigneeFilter={isElevated}
             />
             <Tooltip>
               <TooltipTrigger asChild>

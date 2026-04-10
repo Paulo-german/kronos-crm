@@ -56,6 +56,24 @@ export interface ConversationFilters {
   search?: string
   status?: 'OPEN' | 'RESOLVED'
   labelIds?: string[]
+  // assigneeIds aceita userIds reais + sentinela 'unassigned' para conversas sem dono
+  assigneeIds?: string[]
+}
+
+const UNASSIGNED_SENTINEL = 'unassigned'
+
+function buildAssigneeFilter(
+  assigneeIds: string[] | undefined,
+): Prisma.ConversationWhereInput {
+  if (!assigneeIds || assigneeIds.length === 0) return {}
+  const realIds = assigneeIds.filter((id) => id !== UNASSIGNED_SENTINEL)
+  const includeUnassigned = assigneeIds.includes(UNASSIGNED_SENTINEL)
+
+  if (realIds.length > 0 && includeUnassigned) {
+    return { OR: [{ assignedTo: { in: realIds } }, { assignedTo: null }] }
+  }
+  if (includeUnassigned) return { assignedTo: null }
+  return { assignedTo: { in: realIds } }
 }
 
 export interface PaginatedConversationsResult {
@@ -220,6 +238,8 @@ async function fetchConversationsPaginatedFromDb(
           })),
         }
       : {}),
+    // assigneeIds: OR — qualquer um dos selecionados (sentinela 'unassigned' inclui null)
+    ...buildAssigneeFilter(filters?.assigneeIds),
     // Quando masked: email e phone removidos da busca para não vazar PII
     ...(searchTerm
       ? {
