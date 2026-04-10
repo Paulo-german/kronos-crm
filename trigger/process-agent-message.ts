@@ -27,6 +27,10 @@ import {
   createConversationEvent,
   createToolEvents,
 } from './lib/create-conversation-event'
+import type {
+  InfoSubtype,
+  ProcessingErrorSubtype,
+} from '@/_lib/conversation-events/types'
 import { transcribeAudio } from './utils/transcribe-audio'
 import { AUTO_REOPEN_FIELDS } from '@/_lib/conversation/auto-reopen'
 import { prefixAttendantName } from '@/_lib/inbox/prefix-attendant-name'
@@ -287,7 +291,7 @@ export const processAgentMessage = task({
                   type: 'PROCESSING_ERROR',
                   content: 'Falha ao classificar a conversa pelo agente roteador.',
                   metadata: {
-                    subtype: 'ROUTER_FAILED',
+                    subtype: 'ROUTER_FAILED' satisfies ProcessingErrorSubtype,
                     error: errorMessage,
                   },
                 })
@@ -328,7 +332,7 @@ export const processAgentMessage = task({
               type: 'INFO',
               content: `Agente "${routerResult.workerName}" atribuído à conversa`,
               metadata: {
-                subtype: 'ROUTER_ASSIGNED',
+                subtype: 'ROUTER_ASSIGNED' satisfies InfoSubtype,
                 targetAgentId: routerResult.targetAgentId,
                 confidence: routerResult.confidence,
                 reasoning: routerResult.reasoning,
@@ -870,7 +874,10 @@ export const processAgentMessage = task({
               type: 'PROCESSING_ERROR',
               content:
                 'Créditos de IA insuficientes para processar esta mensagem.',
-              metadata: { subtype: 'NO_CREDITS', estimatedCost },
+              metadata: {
+                subtype: 'NO_CREDITS' satisfies ProcessingErrorSubtype,
+                estimatedCost,
+              },
             })
 
             // Notificar OWNER/ADMIN apenas se nao existe notificacao nao lida com mesmo titulo
@@ -1195,7 +1202,7 @@ export const processAgentMessage = task({
               conversationId,
               type: 'INFO',
               content: 'A IA não gerou uma resposta para esta mensagem.',
-              metadata: { subtype: 'EMPTY_RESPONSE' },
+              metadata: { subtype: 'EMPTY_RESPONSE' satisfies InfoSubtype },
             })
             await revalidateConversationCache(conversationId, organizationId)
             traceTags.push('empty_response')
@@ -1372,7 +1379,9 @@ export const processAgentMessage = task({
               type: 'INFO',
               content:
                 'IA foi pausada durante geração. Resposta salva mas não enviada.',
-              metadata: { subtype: 'AI_PAUSED_DURING_GENERATION' },
+              metadata: {
+                subtype: 'AI_PAUSED_DURING_GENERATION' satisfies InfoSubtype,
+              },
             })
             await revalidateConversationCache(conversationId, organizationId)
             log('step:6 pause_recheck', 'EXIT', {
@@ -1777,7 +1786,7 @@ tasks.onFailure(async ({ payload, error }) => {
     type: 'PROCESSING_ERROR',
     content: 'Erro ao processar mensagem com IA.',
     metadata: {
-      subtype: 'LLM_ERROR',
+      subtype: 'LLM_ERROR' satisfies ProcessingErrorSubtype,
       error: error instanceof Error ? error.message : String(error),
     },
   })

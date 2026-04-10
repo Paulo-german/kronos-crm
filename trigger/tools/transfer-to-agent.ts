@@ -6,6 +6,10 @@ import { redis } from '@/_lib/redis'
 import { createConversationEvent } from '../lib/create-conversation-event'
 import { routeConversation } from '../lib/route-conversation'
 import type { ToolContext } from './types'
+import type {
+  InfoSubtype,
+  ToolSuccessSubtype,
+} from '@/_lib/conversation-events/types'
 
 // ---------------------------------------------------------------------------
 // Config do grupo injetada no buildToolSet
@@ -84,7 +88,7 @@ export function createTransferToAgentTool(
             content:
               'Loop de transferência detectado. Conversa direcionada para atendimento humano.',
             metadata: {
-              subtype: 'AGENT_TRANSFER_LOOP',
+              subtype: 'AGENT_TRANSFER_LOOP' satisfies InfoSubtype,
               transferCount,
               lastAgentId: ctx.agentId,
             },
@@ -146,7 +150,7 @@ export function createTransferToAgentTool(
           toolName: 'transfer_to_agent',
           content: `Conversa transferida para ${routerDecision.workerName}. Motivo: ${reason}`,
           metadata: {
-            subtype: 'AGENT_TRANSFER',
+            subtype: 'AGENT_TRANSFER' satisfies ToolSuccessSubtype,
             fromAgentId: ctx.agentId,
             toAgentId: routerDecision.targetAgentId,
             toAgentName: routerDecision.workerName,

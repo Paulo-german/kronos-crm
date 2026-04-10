@@ -101,6 +101,15 @@ export const ROUTER_MODEL_IDS = [
   'anthropic/claude-sonnet-4',
 ] as const satisfies readonly [string, ...string[]]
 
+// Tipos literais derivados das tuplas — handles para consumers que já têm
+// o ID narrowed (após z.enum parse ou type guard) e querem propagar a garantia.
+// Funções de boundary (getModel, calculateCreditCost) mantêm assinatura `string`
+// porque aceitam IDs legados vindos do banco. Use estes tipos no código novo
+// onde você tem certeza de que o ID é válido.
+export type AgentModelId = (typeof AGENT_MODEL_IDS)[number]
+export type RouterModelId = (typeof ROUTER_MODEL_IDS)[number]
+export type AnyModelId = AgentModelId | RouterModelId
+
 export function getModelById(id: string): AiModel | undefined {
   return AI_MODELS.find((model) => model.id === id)
 }
@@ -115,11 +124,11 @@ export function getModelLabel(id: string | null | undefined): string {
   return getModelById(id)?.label ?? id.split('/').pop() ?? id
 }
 
-export function isValidAgentModel(id: string): id is (typeof AGENT_MODEL_IDS)[number] {
+export function isValidAgentModel(id: string): id is AgentModelId {
   return AGENT_MODELS.some((model) => model.id === id)
 }
 
-export function isValidRouterModel(id: string): id is (typeof ROUTER_MODEL_IDS)[number] {
+export function isValidRouterModel(id: string): id is RouterModelId {
   return ROUTER_MODELS.some((model) => model.id === id)
 }
 

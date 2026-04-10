@@ -6,6 +6,7 @@ import { checkBusinessHours } from '@/_lib/agent/check-business-hours'
 import { getFollowUpsForStep } from '@/_data-access/follow-up/get-follow-ups-for-step'
 import type { ConnectionType, Prisma } from '@prisma/client'
 import type { BusinessHoursConfig } from '@/_actions/agent/update-agent/schema'
+import type { InfoSubtype } from '@/_lib/conversation-events/types'
 
 const BATCH_SIZE = 50
 
@@ -232,7 +233,7 @@ async function executeExhaustedAction(
         content: 'Follow-up esgotado. Conversa transferida para atendimento humano.',
         visibleToUser: true,
         metadata: {
-          subtype: 'FOLLOW_UP_EXHAUSTED_NOTIFY',
+          subtype: 'FOLLOW_UP_EXHAUSTED_NOTIFY' satisfies InfoSubtype,
           notifyTarget: config?.notifyTarget ?? 'deal_assignee',
           specificPhone: config?.specificPhone ?? null,
         } as Prisma.InputJsonValue,
@@ -258,7 +259,7 @@ async function executeExhaustedAction(
         content: 'Follow-up esgotado. Negócio movido para nova etapa.',
         visibleToUser: true,
         metadata: {
-          subtype: 'FOLLOW_UP_EXHAUSTED_MOVE_DEAL',
+          subtype: 'FOLLOW_UP_EXHAUSTED_MOVE_DEAL' satisfies InfoSubtype,
           dealId: conv.dealId,
           targetStageId,
         } as Prisma.InputJsonValue,
@@ -509,7 +510,7 @@ export const followUpCron = schedules.task({
               content: 'Follow-ups pausados: conexão com WhatsApp indisponível.',
               visibleToUser: true,
               metadata: {
-                subtype: 'FOLLOW_UP_PROVIDER_ERROR',
+                subtype: 'FOLLOW_UP_PROVIDER_ERROR' satisfies InfoSubtype,
                 error: providerError instanceof Error ? providerError.message : String(providerError),
               } as Prisma.InputJsonValue,
             },
@@ -557,7 +558,7 @@ export const followUpCron = schedules.task({
             content: `Follow-up #${conv.followUpCount + 1} enviado automaticamente`,
             visibleToUser: true,
             metadata: {
-              subtype: 'FOLLOW_UP_SENT',
+              subtype: 'FOLLOW_UP_SENT' satisfies InfoSubtype,
               followUpId: currentFollowUp.id,
               followUpOrder: currentFollowUp.order,
               delayMinutes: currentFollowUp.delayMinutes,
