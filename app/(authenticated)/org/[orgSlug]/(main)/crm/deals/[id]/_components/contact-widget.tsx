@@ -292,8 +292,8 @@ const ContactWidget = ({ deal, contacts, isPiiRestricted }: ContactWidgetProps) 
               key={contact.contactId}
               className="group flex items-start gap-2"
             >
-              <div className="flex-1 space-y-3">
-                <div className="flex items-center min-w-0">
+              <div className="min-w-0 flex-1 space-y-3">
+                <div className="flex min-w-0 items-center">
                   {/* Avatar e Nome (Bloco Clicável) */}
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -312,21 +312,21 @@ const ContactWidget = ({ deal, contacts, isPiiRestricted }: ContactWidgetProps) 
                           )}
                         </div>
 
-                        <div className="flex-1 overflow-hidden">
-                          <div className="flex items-center gap-2">
-                            <p className="truncate text-sm font-semibold text-primary">
+                        <div className="min-w-0 flex-1 overflow-hidden">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <p className="min-w-0 flex-1 truncate text-sm font-semibold text-primary">
                               {contact.name}
                             </p>
                             {contact.isPrimary && (
-                              <span className="rounded-full bg-yellow-500/10 px-1.5 py-0.5 text-[10px] font-medium text-yellow-600">
+                              <span className="shrink-0 rounded-full bg-yellow-500/10 px-1.5 py-0.5 text-[10px] font-medium text-yellow-600">
                                 Principal
                               </span>
                             )}
                           </div>
                           {contact.role && (
-                            <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                              <Briefcase className="h-3 w-3" />
-                              {contact.role}
+                            <p className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+                              <Briefcase className="h-3 w-3 shrink-0" />
+                              <span className="truncate">{contact.role}</span>
                             </p>
                           )}
                         </div>
