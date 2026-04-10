@@ -569,7 +569,7 @@ model AgentGroup {
   isActive       Boolean            @default(true) @map("is_active")
 
   // Router embutido — não é um Agent separado
-  routerModelId  String             @default("google/gemini-2.0-flash") @map("router_model_id")
+  routerModelId  String             @default("google/gemini-2.5-flash") @map("router_model_id")
   routerPrompt   String?            @map("router_prompt")
   routerConfig   Json?              @map("router_config")
 
