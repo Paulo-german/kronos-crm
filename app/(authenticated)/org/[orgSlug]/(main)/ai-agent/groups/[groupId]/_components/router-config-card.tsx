@@ -30,15 +30,12 @@ import {
   updateAgentGroupSchema,
   type UpdateAgentGroupInput,
 } from '@/_actions/agent-group/update-agent-group/schema'
+import {
+  ROUTER_MODELS,
+  DEFAULT_ROUTER_MODEL_ID,
+  isValidRouterModel,
+} from '@/_lib/ai/models'
 import type { AgentGroupDetailDto } from '@/_data-access/agent-group/get-agent-group-by-id'
-
-// Modelos suportados pelo router (modelos leves, baixo custo)
-const ROUTER_MODEL_OPTIONS = [
-  { value: 'google/gemini-2.0-flash', label: 'Gemini 2.0 Flash (recomendado)' },
-  { value: 'google/gemini-2.5-flash-preview', label: 'Gemini 2.5 Flash Preview' },
-  { value: 'openai/gpt-4o-mini', label: 'GPT-4o Mini' },
-  { value: 'anthropic/claude-3-haiku', label: 'Claude 3 Haiku' },
-] as const
 
 interface RouterConfigCardProps {
   group: AgentGroupDetailDto
@@ -49,7 +46,12 @@ export function RouterConfigCard({ group }: RouterConfigCardProps) {
     resolver: zodResolver(updateAgentGroupSchema),
     defaultValues: {
       groupId: group.id,
-      routerModelId: group.routerModelId,
+      // Guard defensivo: normaliza IDs legados (fora da lista canônica) para o default.
+      // Necessário porque o Zod enum estrito (Fase 4) rejeitaria submit com o valor legado,
+      // e forms de grupos existentes carregam group.routerModelId do banco diretamente.
+      routerModelId: isValidRouterModel(group.routerModelId)
+        ? group.routerModelId
+        : DEFAULT_ROUTER_MODEL_ID,
       routerPrompt: group.routerPrompt ?? '',
       routerConfig: {
         fallbackAgentId: group.routerConfig?.fallbackAgentId ?? null,
@@ -109,9 +111,10 @@ export function RouterConfigCard({ group }: RouterConfigCardProps) {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {ROUTER_MODEL_OPTIONS.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
+                      {ROUTER_MODELS.map((model) => (
+                        <SelectItem key={model.id} value={model.id}>
+                          {model.label}
+                          {model.recommendedFor?.includes('router') && ' (recomendado)'}
                         </SelectItem>
                       ))}
                     </SelectContent>

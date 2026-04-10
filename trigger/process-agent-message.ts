@@ -1,14 +1,14 @@
 import { task, tasks, logger, metadata as triggerMetadata } from '@trigger.dev/sdk/v3'
 import { generateText, stepCountIs } from 'ai'
 import { observe, updateActiveTrace } from '@langfuse/tracing'
-import { getModel } from '@/_lib/ai'
+import { getModel } from '@/_lib/ai/provider'
 import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
 import { debitCredits, refundCredits } from '@/_lib/billing/credit-utils'
 import {
   estimateMaxCost,
   calculateCreditCost,
-} from '@/_lib/billing/model-pricing'
+} from '@/_lib/ai/pricing'
 import {
   sendWhatsAppMessage,
   sendPresence,

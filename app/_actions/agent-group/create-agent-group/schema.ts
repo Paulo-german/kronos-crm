@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { DEFAULT_ROUTER_MODEL_ID } from '@/_lib/ai/models'
 
 export const routerConfigSchema = z.object({
   fallbackAgentId: z.string().uuid().nullable().default(null),
@@ -16,7 +17,7 @@ export const routerConfigSchema = z.object({
 export const createAgentGroupSchema = z.object({
   name: z.string().trim().min(1, 'Nome é obrigatório').max(100),
   description: z.string().trim().max(500).optional(),
-  routerModelId: z.string().default('google/gemini-2.0-flash').optional(),
+  routerModelId: z.string().default(DEFAULT_ROUTER_MODEL_ID).optional(),
   routerPrompt: z.string().trim().max(2000).optional(),
   routerConfig: routerConfigSchema.optional(),
   // Pelo menos 1 worker obrigatório na criação

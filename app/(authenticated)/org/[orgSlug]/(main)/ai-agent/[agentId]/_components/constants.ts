@@ -1,14 +1,6 @@
 import type { BusinessHoursConfig } from '@/_actions/agent/update-agent/schema'
 import type { PromptConfig } from '@/_actions/agent/shared/prompt-config-schema'
 
-export const MODEL_OPTIONS = [
-  { value: 'openai/gpt-5.2', label: 'GPT 5.2', description: 'Mais inteligente da OpenAI. Maior custo por mensagem.' },
-  { value: 'openai/gpt-4.1-mini', label: 'GPT 4.1 Mini', description: 'Rápido e econômico. Bom para tarefas simples.' },
-  { value: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro', description: 'Alta capacidade do Google. Bom equilíbrio custo/qualidade.' },
-  { value: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash', description: 'Mais rápido e econômico do Google.' },
-  { value: 'anthropic/claude-sonnet-4', label: 'Claude Sonnet 4', description: 'Recomendado. Melhor equilíbrio entre inteligência e custo.' },
-] as const
-
 export const TOOL_OPTIONS = [
   {
     value: 'move_deal',

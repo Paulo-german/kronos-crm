@@ -1,7 +1,7 @@
 import { task, logger } from '@trigger.dev/sdk/v3'
 import { db } from '@/_lib/prisma'
 import { checkBalance, debitCredits } from '@/_lib/billing/credit-utils'
-import { calculateCreditCost } from '@/_lib/billing/model-pricing'
+import { calculateCreditCost } from '@/_lib/ai/pricing'
 import { describeImageWithVision, IMAGE_MODEL } from './utils/describe-image'
 import { describePdfWithVision } from './utils/describe-pdf'
 import { revalidateConversationCache } from './lib/revalidate-cache'

@@ -36,6 +36,7 @@ import {
   createAgentGroupSchema,
   type CreateAgentGroupInput,
 } from '@/_actions/agent-group/create-agent-group/schema'
+import { DEFAULT_ROUTER_MODEL_ID } from '@/_lib/ai/models'
 import type { AgentDto } from '@/_data-access/agent/get-agents'
 
 interface UpsertGroupSheetContentProps {
@@ -49,7 +50,7 @@ export function UpsertGroupSheetContent({ setIsOpen, agents }: UpsertGroupSheetC
     defaultValues: {
       name: '',
       description: '',
-      routerModelId: 'google/gemini-2.0-flash',
+      routerModelId: DEFAULT_ROUTER_MODEL_ID,
       routerPrompt: '',
       members: [{ agentId: '', scopeLabel: '' }],
     },

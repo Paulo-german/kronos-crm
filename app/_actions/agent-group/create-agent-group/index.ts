@@ -5,6 +5,7 @@ import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 import { requireQuota, checkPlanQuota } from '@/_lib/rbac/plan-limits'
+import { DEFAULT_ROUTER_MODEL_ID } from '@/_lib/ai/models'
 import { createAgentGroupSchema } from './schema'
 
 export const createAgentGroup = orgActionClient
@@ -31,7 +32,7 @@ export const createAgentGroup = orgActionClient
           organizationId: ctx.orgId,
           name: data.name,
           description: data.description,
-          routerModelId: data.routerModelId ?? 'google/gemini-2.0-flash',
+          routerModelId: data.routerModelId ?? DEFAULT_ROUTER_MODEL_ID,
           routerPrompt: data.routerPrompt,
           routerConfig: data.routerConfig ?? undefined,
         },

@@ -2,9 +2,9 @@ import { generateObject } from 'ai'
 import { z } from 'zod'
 import { logger } from '@trigger.dev/sdk/v3'
 import { db } from '@/_lib/prisma'
-import { getModel } from '@/_lib/ai'
+import { getModel } from '@/_lib/ai/provider'
 import { debitCredits, refundCredits } from '@/_lib/billing/credit-utils'
-import { estimateMaxCost, calculateCreditCost } from '@/_lib/billing/model-pricing'
+import { estimateMaxCost, calculateCreditCost } from '@/_lib/ai/pricing'
 import { langfuseTracer } from './langfuse'
 
 // ---------------------------------------------------------------------------

@@ -1,6 +1,7 @@
 import { task, logger } from '@trigger.dev/sdk/v3'
 import { generateObject } from 'ai'
-import { getModel } from '@/_lib/ai'
+import { getModel } from '@/_lib/ai/provider'
+import { DEFAULT_AGENT_MODEL_ID } from '@/_lib/ai/models'
 import { CONFIG_AGENT_PROMPT } from '@/_lib/onboarding/prompts/config-agent'
 import { configBundleSchema } from '@/_lib/onboarding/schemas/config-bundle'
 import type { BusinessProfile } from '@/_lib/onboarding/schemas/business-profile'
@@ -19,7 +20,7 @@ export const generateConfigBundle = task({
     })
 
     const { object } = await generateObject({
-      model: getModel('google/gemini-2.5-pro'),
+      model: getModel(DEFAULT_AGENT_MODEL_ID),
       schema: configBundleSchema,
       system: CONFIG_AGENT_PROMPT,
       messages: [

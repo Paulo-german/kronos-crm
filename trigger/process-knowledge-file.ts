@@ -1,7 +1,7 @@
 import { task, logger } from '@trigger.dev/sdk/v3'
 import { embedMany } from 'ai'
 import { randomUUID } from 'crypto'
-import { getEmbeddingModel } from '@/_lib/ai'
+import { getEmbeddingModel } from '@/_lib/ai/provider'
 import { db } from '@/_lib/prisma'
 import { chunkText } from './utils/chunk-text'
 

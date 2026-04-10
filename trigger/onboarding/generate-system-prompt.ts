@@ -1,6 +1,7 @@
 import { task, logger } from '@trigger.dev/sdk/v3'
 import { generateObject } from 'ai'
-import { getModel } from '@/_lib/ai'
+import { getModel } from '@/_lib/ai/provider'
+import { DEFAULT_AGENT_MODEL_ID } from '@/_lib/ai/models'
 import { PROMPT_AGENT_PROMPT } from '@/_lib/onboarding/prompts/prompt-agent'
 import { systemPromptOutputSchema } from '@/_lib/onboarding/schemas/agent-output'
 import type { BusinessProfile } from '@/_lib/onboarding/schemas/business-profile'
@@ -23,7 +24,7 @@ export const generateSystemPrompt = task({
     })
 
     const { object } = await generateObject({
-      model: getModel('google/gemini-2.5-pro'),
+      model: getModel(DEFAULT_AGENT_MODEL_ID),
       schema: systemPromptOutputSchema,
       system: PROMPT_AGENT_PROMPT,
       messages: [

@@ -1,6 +1,6 @@
 import { task, logger } from '@trigger.dev/sdk/v3'
 import { embed } from 'ai'
-import { getEmbeddingModel } from '@/_lib/ai'
+import { getEmbeddingModel } from '@/_lib/ai/provider'
 import { db } from '@/_lib/prisma'
 
 export interface ProcessProductEmbeddingPayload {

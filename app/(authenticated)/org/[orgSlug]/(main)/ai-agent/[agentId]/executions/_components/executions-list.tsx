@@ -28,25 +28,12 @@ import {
   ExecutionFilterBadges,
   useExecutionFilters,
 } from './execution-filters'
+import { getModelLabel } from '@/_lib/ai/models'
 import type {
   PaginatedAgentExecutions,
   AgentExecutionDto,
 } from '@/_data-access/agent-execution/get-agent-executions'
 import type { AgentExecutionDetailDto } from '@/_data-access/agent-execution/get-agent-execution-by-id'
-
-// Mapeamento de modelId para label legível (espelhado de constants.ts)
-const MODEL_LABEL_MAP: Record<string, string> = {
-  'openai/gpt-5.2': 'GPT 5.2',
-  'openai/gpt-4.1-mini': 'GPT 4.1 Mini',
-  'google/gemini-2.5-pro': 'Gemini 2.5 Pro',
-  'google/gemini-2.5-flash': 'Gemini 2.5 Flash',
-  'anthropic/claude-sonnet-4': 'Claude Sonnet 4',
-}
-
-function getModelLabel(modelId: string | null): string {
-  if (!modelId) return '—'
-  return MODEL_LABEL_MAP[modelId] ?? modelId.split('/').pop() ?? modelId
-}
 
 function formatDuration(ms: number | null): string {
   if (ms === null) return '—'

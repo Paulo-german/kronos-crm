@@ -22,20 +22,12 @@ import {
   TooltipTrigger,
 } from '@/_components/ui/tooltip'
 import { updateAgent } from '@/_actions/agent/update-agent'
-import { MODEL_OPTIONS } from '../[agentId]/_components/constants'
+import { getModelLabel } from '@/_lib/ai/models'
 import AgentTableDropdownMenu from './table-dropdown-menu'
 import UpsertAgentSheetContent from './upsert-agent-sheet-content'
 import DeleteAgentDialog from './delete-agent-dialog'
 import type { AgentDto } from '@/_data-access/agent/get-agents'
 import type { MemberRole } from '@prisma/client'
-
-const MODEL_LABEL_MAP = new Map<string, string>(
-  MODEL_OPTIONS.map((model) => [model.value, model.label]),
-)
-
-function getModelLabel(modelId: string): string {
-  return MODEL_LABEL_MAP.get(modelId) ?? modelId.split('/').pop() ?? modelId
-}
 
 interface AgentsCardGridProps {
   agents: AgentDto[]

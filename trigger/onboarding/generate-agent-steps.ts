@@ -1,6 +1,7 @@
 import { task, logger } from '@trigger.dev/sdk/v3'
 import { generateObject } from 'ai'
-import { getModel } from '@/_lib/ai'
+import { getModel } from '@/_lib/ai/provider'
+import { DEFAULT_AGENT_MODEL_ID } from '@/_lib/ai/models'
 import { STEPS_AGENT_PROMPT } from '@/_lib/onboarding/prompts/steps-agent'
 import { agentStepsOutputSchema } from '@/_lib/onboarding/schemas/agent-output'
 import type { BusinessProfile } from '@/_lib/onboarding/schemas/business-profile'
@@ -27,7 +28,7 @@ export const generateAgentSteps = task({
     })
 
     const { object } = await generateObject({
-      model: getModel('google/gemini-2.5-pro'),
+      model: getModel(DEFAULT_AGENT_MODEL_ID),
       schema: agentStepsOutputSchema,
       system: STEPS_AGENT_PROMPT,
       messages: [

@@ -1,6 +1,6 @@
 import { generateText } from 'ai'
 import { observe } from '@langfuse/tracing'
-import { getModel } from '@/_lib/ai'
+import { getModel } from '@/_lib/ai/provider'
 import { langfuseTracer } from '../lib/langfuse'
 import type { VisionResult } from './describe-image'
 

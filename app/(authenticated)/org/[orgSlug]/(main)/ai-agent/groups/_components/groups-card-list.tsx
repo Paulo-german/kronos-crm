@@ -60,22 +60,11 @@ import {
   updateAgentGroupSchema,
   type UpdateAgentGroupInput,
 } from '@/_actions/agent-group/update-agent-group/schema'
+import { getModelLabel } from '@/_lib/ai/models'
 import { UpsertGroupSheetContent } from './upsert-group-dialog'
 import { DeleteGroupDialog } from './delete-group-dialog'
 import type { AgentGroupDto } from '@/_data-access/agent-group/get-agent-groups'
 import type { AgentDto } from '@/_data-access/agent/get-agents'
-
-// Mapa de modelo do router → label legível
-const ROUTER_MODEL_LABELS: Record<string, string> = {
-  'google/gemini-2.0-flash': 'Gemini 2.0 Flash',
-  'google/gemini-2.5-flash-preview': 'Gemini 2.5 Flash',
-  'openai/gpt-4o-mini': 'GPT-4o Mini',
-  'anthropic/claude-3-haiku': 'Claude 3 Haiku',
-}
-
-function getRouterModelLabel(modelId: string): string {
-  return ROUTER_MODEL_LABELS[modelId] ?? modelId.split('/').pop() ?? modelId
-}
 
 // Limite de workers visíveis no corpo do card
 const MAX_VISIBLE_WORKERS = 4
@@ -248,7 +237,7 @@ export function GroupsCardList({
                         </Badge>
                       )}
                       <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
-                        {getRouterModelLabel(group.routerModelId)}
+                        {getModelLabel(group.routerModelId)}
                       </Badge>
                     </div>
                     {group.description && (
