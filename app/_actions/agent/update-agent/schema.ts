@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { AGENT_MODEL_IDS } from '@/_lib/ai/models'
 import { promptConfigSchema } from '../shared/prompt-config-schema'
 
 const dayScheduleSchema = z
@@ -30,7 +31,7 @@ export const updateAgentSchema = z.object({
   name: z.string().min(1, 'Nome não pode ser vazio').optional(),
   promptConfig: promptConfigSchema.nullable().optional(),
   systemPrompt: z.string().optional(),
-  modelId: z.string().optional(),
+  modelId: z.enum(AGENT_MODEL_IDS).optional(),
   debounceSeconds: z.number().int().min(0).max(30).optional(),
   pipelineIds: z.array(z.string().uuid()).optional(),
   isActive: z.boolean().optional(),

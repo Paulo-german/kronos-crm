@@ -83,36 +83,6 @@ export const DEFAULT_ROUTER_MODEL_ID = 'google/gemini-2.5-flash'
 // Mantém o mesmo valor (200) do antigo billing/model-pricing.ts para preservar comportamento.
 const DEFAULT_TOKENS_PER_CREDIT = 200
 
-export function getModelById(id: string): AiModel | undefined {
-  return AI_MODELS.find((model) => model.id === id)
-}
-
-/**
- * Retorna label humano para exibição. Funciona para IDs históricos (fora da lista).
- * Fallback: último segmento do ID (ex: 'google/gemini-2.0-flash' → 'gemini-2.0-flash').
- * Retorna '—' para null/undefined (paridade com a versão local antiga do executions-list).
- */
-export function getModelLabel(id: string | null | undefined): string {
-  if (!id) return '—'
-  return getModelById(id)?.label ?? id.split('/').pop() ?? id
-}
-
-export function isValidAgentModel(id: string): boolean {
-  return AGENT_MODELS.some((model) => model.id === id)
-}
-
-export function isValidRouterModel(id: string): boolean {
-  return ROUTER_MODELS.some((model) => model.id === id)
-}
-
-/**
- * Retorna tokensPerCredit do modelo. Fallback conservador para IDs legados:
- * evita subestimar custo de execuções históricas com modelos removidos da lista.
- */
-export function getTokensPerCreditForModel(id: string): number {
-  return getModelById(id)?.tokensPerCredit ?? DEFAULT_TOKENS_PER_CREDIT
-}
-
 // Tuplas literais declaradas à mão para preservar inferência literal do z.enum.
 // ATENÇÃO: se adicionar/remover modelos em AI_MODELS, atualizar AMBAS as tuplas abaixo.
 // O assertTuplesMatch no final deste arquivo detecta drift no boot.
@@ -130,6 +100,36 @@ export const ROUTER_MODEL_IDS = [
   'google/gemini-2.5-flash',
   'anthropic/claude-sonnet-4',
 ] as const satisfies readonly [string, ...string[]]
+
+export function getModelById(id: string): AiModel | undefined {
+  return AI_MODELS.find((model) => model.id === id)
+}
+
+/**
+ * Retorna label humano para exibição. Funciona para IDs históricos (fora da lista).
+ * Fallback: último segmento do ID (ex: 'google/gemini-2.0-flash' → 'gemini-2.0-flash').
+ * Retorna '—' para null/undefined (paridade com a versão local antiga do executions-list).
+ */
+export function getModelLabel(id: string | null | undefined): string {
+  if (!id) return '—'
+  return getModelById(id)?.label ?? id.split('/').pop() ?? id
+}
+
+export function isValidAgentModel(id: string): id is (typeof AGENT_MODEL_IDS)[number] {
+  return AGENT_MODELS.some((model) => model.id === id)
+}
+
+export function isValidRouterModel(id: string): id is (typeof ROUTER_MODEL_IDS)[number] {
+  return ROUTER_MODELS.some((model) => model.id === id)
+}
+
+/**
+ * Retorna tokensPerCredit do modelo. Fallback conservador para IDs legados:
+ * evita subestimar custo de execuções históricas com modelos removidos da lista.
+ */
+export function getTokensPerCreditForModel(id: string): number {
+  return getModelById(id)?.tokensPerCredit ?? DEFAULT_TOKENS_PER_CREDIT
+}
 
 // ---------------------------------------------------------------------------
 // Runtime sanity check — falha imediatamente no boot se AGENT_MODEL_IDS ou
