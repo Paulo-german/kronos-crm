@@ -206,6 +206,15 @@ export async function routeConversation(
       },
     })
   } catch (llmError) {
+    const errorMessage = llmError instanceof Error ? llmError.message : String(llmError)
+
+    logger.error('Router LLM call failed', {
+      groupId: input.groupId,
+      conversationId: input.conversationId,
+      modelId: group.routerModelId,
+      errorMessage,
+    })
+
     // Devolver créditos em caso de falha do LLM
     await refundCredits(
       input.organizationId,
@@ -219,7 +228,11 @@ export async function routeConversation(
         conversationId: input.conversationId,
       })
     })
-    throw llmError
+
+    // Re-throw preservando a mensagem original do LLM — o upstream classifica
+    // via errorMessage === 'NO_CREDITS' (thrown antes deste catch, sem passar aqui).
+    // Prefixos custom poluiriam o AgentExecution.errorMessage exibido na UI.
+    throw llmError instanceof Error ? llmError : new Error(errorMessage)
   }
 
   // 6. Reconciliar créditos (refund do excesso)

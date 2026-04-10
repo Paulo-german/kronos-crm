@@ -110,6 +110,7 @@ async function createMinimalExecution(params: {
   conversationId: string
   triggerMessageId: string
   reason: string
+  errorMessage?: string // Mensagem humana rica; se omitida, usa reason como fallback
 }): Promise<void> {
   try {
     const now = new Date()
@@ -125,7 +126,7 @@ async function createMinimalExecution(params: {
         startedAt: now,
         completedAt: now,
         durationMs: 0,
-        errorMessage: params.reason,
+        errorMessage: params.errorMessage ?? params.reason,
       },
     })
   } catch (error) {
@@ -259,13 +260,15 @@ export const processAgentMessage = task({
                 messageHistory: routerMessageHistory,
               })
             } catch (routerError) {
-              const isNoCredits =
-                routerError instanceof Error && routerError.message === 'NO_CREDITS'
+              const errorMessage =
+                routerError instanceof Error ? routerError.message : String(routerError)
+              const isNoCredits = errorMessage === 'NO_CREDITS'
 
               log('step:1b router_classification', 'EXIT', {
                 reason: isNoCredits ? 'no_credits_for_router' : 'router_error',
-                error: routerError instanceof Error ? routerError.message : String(routerError),
+                error: errorMessage,
               })
+
               await createMinimalExecution({
                 agentId: null,
                 agentGroupId: groupId,
@@ -273,7 +276,26 @@ export const processAgentMessage = task({
                 conversationId,
                 triggerMessageId: message.messageId,
                 reason: isNoCredits ? 'router_no_credits' : 'router_failed',
+                errorMessage, // Grava mensagem humana no AgentExecution.errorMessage
               })
+
+              // Registrar evento na timeline da conversa apenas quando não for falta de
+              // créditos — essa situação já tem seu próprio fluxo de notificação.
+              if (!isNoCredits) {
+                await createConversationEvent({
+                  conversationId,
+                  type: 'PROCESSING_ERROR',
+                  content: 'Falha ao classificar a conversa pelo agente roteador.',
+                  metadata: {
+                    subtype: 'ROUTER_FAILED',
+                    error: errorMessage,
+                  },
+                })
+                // Revalidar cache do inbox para que o evento apareça imediatamente na timeline
+                // (padrão canônico — mesmo comportamento do NO_CREDITS na linha 928).
+                await revalidateConversationCache(conversationId, organizationId)
+              }
+
               return { skipped: true, reason: 'router_failed' }
             }
 
