@@ -53,6 +53,7 @@ import {
   ConversationMenuItems,
 } from './conversation-context-menu'
 import { ConversationFilterPanel } from './conversation-filter-panel'
+import { renderWhatsappText } from './whatsapp-text'
 
 // ---------------------------------------------------------------------------
 // Tipos
@@ -462,7 +463,7 @@ export function ConversationList({
                             {conversation.lastMessage.role === 'assistant' && (
                               <span className="font-medium">Você: </span>
                             )}
-                            {truncateMessage(conversation.lastMessage.content)}
+                            {renderWhatsappText(truncateMessage(conversation.lastMessage.content))}
                           </p>
                         )}
 

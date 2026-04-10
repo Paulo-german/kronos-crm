@@ -6,6 +6,7 @@ import { cn } from '@/_lib/utils'
 import { AlertTriangle, Bot, Check, CheckCheck, FileDown, FileText, Loader2, Pause, Play, RotateCw, UserRound, X } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import { Badge } from '@/_components/ui/badge'
+import { renderWhatsappText } from './whatsapp-text'
 
 function formatAudioDuration(seconds: number): string {
   const mins = Math.floor(seconds / 60)
@@ -374,7 +375,7 @@ export function MessageBubble({ id, conversationId, role, content, metadata, del
           <p className={cn(
             'whitespace-pre-wrap text-sm',
             hasAudio && 'italic opacity-80',
-          )}>{content}</p>
+          )}>{renderWhatsappText(content)}</p>
         )}
 
         {/* Banner de erro para mensagens falhadas */}
