@@ -15,26 +15,33 @@ export const removeEvolutionSelfHosted = orgActionClient
     // 2. Verificar que o inbox pertence à org
     const inbox = await db.inbox.findFirst({
       where: { id: inboxId, organizationId: ctx.orgId },
-      select: { id: true },
+      select: { id: true, agentId: true },
     })
 
     if (!inbox) {
       throw new Error('Caixa de entrada não encontrada.')
     }
 
-    // 3. Limpar credenciais — NÃO tocar na instância do usuário (nenhum delete remoto)
+    // 3. Limpar credenciais e bind — NÃO tocar na instância do usuário (nenhum delete remoto)
     await db.inbox.update({
       where: { id: inbox.id },
       data: {
         evolutionApiUrl: null,
         evolutionApiKey: null,
         evolutionWebhookSecret: null,
+        evolutionInstanceName: null,
+        evolutionInstanceId: null,
+        evolutionConnected: false,
       },
     })
 
     // 4. Invalidar cache
     revalidateTag(`inbox:${inbox.id}`)
     revalidateTag(`inboxes:${ctx.orgId}`)
+    if (inbox.agentId) {
+      revalidateTag(`agent:${inbox.agentId}`)
+      revalidateTag(`agents:${ctx.orgId}`)
+    }
 
     return { success: true }
   })

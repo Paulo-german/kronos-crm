@@ -15,6 +15,14 @@ export const evolutionSelfHostedSchema = z.object({
       (url) => !url.endsWith('/'),
       'URL não deve terminar com barra',
     ),
+  evolutionInstanceName: z
+    .string()
+    .trim()
+    .min(1, 'Nome da instância obrigatório')
+    .regex(
+      /^[a-zA-Z0-9_-]+$/,
+      'Use apenas letras, números, hífens e underscores',
+    ),
   // Pode ser vazio ao editar (mantém a key existente no banco)
   evolutionApiKey: z.string().trim(),
 })

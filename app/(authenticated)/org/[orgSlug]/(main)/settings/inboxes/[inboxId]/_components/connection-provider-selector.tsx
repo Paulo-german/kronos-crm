@@ -146,6 +146,7 @@ const ConnectionProviderSelector = ({
           inboxId={inboxId}
           canManage={canManage}
           savedApiUrl={null}
+          savedInstanceName={null}
           savedApiKeyMasked={null}
           webhookSecret={null}
           onRemoved={() => setSelectedProvider(null)}

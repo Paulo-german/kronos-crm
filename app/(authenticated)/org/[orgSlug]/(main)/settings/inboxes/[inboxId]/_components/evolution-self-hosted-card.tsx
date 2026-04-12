@@ -53,6 +53,14 @@ const selfHostedFormSchema = z.object({
       (url) => !url.endsWith('/'),
       'URL não deve terminar com barra',
     ),
+  evolutionInstanceName: z
+    .string()
+    .trim()
+    .min(1, 'Nome da instância obrigatório')
+    .regex(
+      /^[a-zA-Z0-9_-]+$/,
+      'Use apenas letras, números, hífens e underscores',
+    ),
   // API Key pode ser vazia ao editar (mantém a existente)
   evolutionApiKey: z.string().trim(),
 })
@@ -64,6 +72,7 @@ interface EvolutionSelfHostedCardProps {
   canManage: boolean
   // Campos já salvos (opcionais — null se ainda não configurado)
   savedApiUrl: string | null
+  savedInstanceName: string | null
   savedApiKeyMasked: string | null
   webhookSecret: string | null
   onRemoved?: () => void
@@ -83,11 +92,12 @@ const EvolutionSelfHostedCard = ({
   inboxId,
   canManage,
   savedApiUrl,
+  savedInstanceName,
   savedApiKeyMasked,
   webhookSecret,
   onRemoved,
 }: EvolutionSelfHostedCardProps) => {
-  const isAlreadySaved = !!savedApiUrl
+  const isAlreadySaved = !!savedApiUrl && !!savedInstanceName
   const [showApiKey, setShowApiKey] = useState(false)
   const [webhookCopied, setWebhookCopied] = useState(false)
   const [isRemoveOpen, setIsRemoveOpen] = useState(false)
@@ -100,6 +110,7 @@ const EvolutionSelfHostedCard = ({
     resolver: zodResolver(selfHostedFormSchema),
     defaultValues: {
       evolutionApiUrl: savedApiUrl ?? '',
+      evolutionInstanceName: savedInstanceName ?? '',
       evolutionApiKey: '',
     },
   })
@@ -136,9 +147,13 @@ const EvolutionSelfHostedCard = ({
     {
       onSuccess: ({ data }) => {
         if (data?.success) {
-          toast.success(
-            `Conexão bem-sucedida! ${data.instanceCount !== undefined ? `${data.instanceCount} instância(s) encontrada(s).` : ''}`,
-          )
+          const stateLabel =
+            data.state === 'open'
+              ? 'Conectada ao WhatsApp'
+              : data.state === 'connecting'
+                ? 'Aguardando QR / pareamento'
+                : 'Desconectada'
+          toast.success(`Conexão bem-sucedida! Estado: ${stateLabel}.`)
         } else {
           toast.error(data?.error || 'Falha ao testar conexão.')
         }
@@ -158,6 +173,7 @@ const EvolutionSelfHostedCard = ({
     executeSave({
       inboxId,
       evolutionApiUrl: values.evolutionApiUrl,
+      evolutionInstanceName: values.evolutionInstanceName,
       // Se vazio ao editar, o backend mantém a key existente
       evolutionApiKey: values.evolutionApiKey || '',
     })
@@ -201,13 +217,22 @@ const EvolutionSelfHostedCard = ({
           {/* Modo somente leitura — credenciais já salvas */}
           {isAlreadySaved && !isEditing ? (
             <div className="space-y-4">
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-muted-foreground">
+                  URL da API
+                </p>
+                <p className="rounded-md border border-border/50 bg-background/70 px-3 py-2 text-sm font-mono break-all">
+                  {savedApiUrl}
+                </p>
+              </div>
+
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <p className="text-xs font-medium text-muted-foreground">
-                    URL da API
+                    Instância
                   </p>
                   <p className="rounded-md border border-border/50 bg-background/70 px-3 py-2 text-sm font-mono break-all">
-                    {savedApiUrl}
+                    {savedInstanceName}
                   </p>
                 </div>
 
@@ -257,16 +282,34 @@ const EvolutionSelfHostedCard = ({
                 onSubmit={form.handleSubmit(handleSubmit)}
                 className="space-y-4"
               >
+                <FormField
+                  control={form.control}
+                  name="evolutionApiUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>URL da API</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="https://evolution.exemplo.com"
+                          disabled={!canManage || isSaving}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <div className="grid gap-4 sm:grid-cols-2">
                   <FormField
                     control={form.control}
-                    name="evolutionApiUrl"
+                    name="evolutionInstanceName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>URL da API</FormLabel>
+                        <FormLabel>Nome da instância</FormLabel>
                         <FormControl>
                           <Input
-                            placeholder="https://evolution.exemplo.com"
+                            placeholder="ex: outbound-7"
                             disabled={!canManage || isSaving}
                             {...field}
                           />
@@ -289,7 +332,7 @@ const EvolutionSelfHostedCard = ({
                               placeholder={
                                 isAlreadySaved
                                   ? 'Nova API Key (deixe vazio para manter)'
-                                  : 'Sua API Key da Evolution'
+                                  : 'API Key da instância'
                               }
                               disabled={!canManage || isSaving}
                               {...field}
@@ -337,6 +380,7 @@ const EvolutionSelfHostedCard = ({
                         onClick={() => {
                           form.reset({
                             evolutionApiUrl: savedApiUrl ?? '',
+                            evolutionInstanceName: savedInstanceName ?? '',
                             evolutionApiKey: '',
                           })
                           setIsEditing(false)

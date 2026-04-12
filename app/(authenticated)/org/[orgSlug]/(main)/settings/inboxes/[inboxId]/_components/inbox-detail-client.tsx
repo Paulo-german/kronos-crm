@@ -268,6 +268,7 @@ const InboxDetailClient = ({
             inboxId={inbox.id}
             canManage={canManage}
             savedApiUrl={inbox.evolutionApiUrl ?? null}
+            savedInstanceName={inbox.evolutionInstanceName ?? null}
             savedApiKeyMasked={inbox.evolutionApiKey ?? null}
             webhookSecret={inbox.evolutionWebhookSecret ?? null}
           />
