@@ -67,6 +67,7 @@ interface KanbanBoardProps {
   onAssigneesChange: (values: string[]) => void
   viewToggle: React.ReactNode
   pipelineSelector?: React.ReactNode
+  refreshButton?: React.ReactNode
   tutorialButton?: React.ReactNode
   settingsButton: React.ReactNode
   createButton: React.ReactNode
@@ -103,6 +104,7 @@ export function KanbanBoard({
   onAssigneesChange,
   viewToggle,
   pipelineSelector,
+  refreshButton,
   tutorialButton,
   settingsButton,
   createButton,
@@ -402,6 +404,7 @@ export function KanbanBoard({
       <div className="flex items-center gap-2">
         {viewToggle}
         <div className="flex-1" />
+        {refreshButton}
         {tutorialButton}
         {settingsButton}
         {createButton}
