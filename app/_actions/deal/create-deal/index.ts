@@ -110,8 +110,9 @@ export const createDeal = orgActionClient
       })
     }
 
-    // Fire-and-forget: automações não bloqueiam a resposta da action
-    void evaluateAutomations({
+    // Automações rodam depois da resposta mas dentro do contexto do request,
+    // para que revalidateTag/revalidatePath dos executores funcionem corretamente
+    after(() => evaluateAutomations({
       orgId: ctx.orgId,
       triggerType: 'DEAL_CREATED',
       dealId: deal.id,
@@ -120,7 +121,7 @@ export const createDeal = orgActionClient
         pipelineId: stage.pipelineId,
         assignedTo,
       },
-    })
+    }))
 
     return { success: true, dealId: deal.id }
   })

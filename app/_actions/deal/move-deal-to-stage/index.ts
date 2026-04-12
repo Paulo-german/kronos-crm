@@ -1,5 +1,6 @@
 'use server'
 
+import { after } from 'next/server'
 import { orgActionClient } from '@/_lib/safe-action'
 import { moveDealToStageSchema } from './schema'
 import { db } from '@/_lib/prisma'
@@ -77,8 +78,9 @@ export const moveDealToStage = orgActionClient
     revalidateTag(`deals:${ctx.orgId}`)
     revalidateTag(`deal:${data.dealId}`)
 
-    // Fire-and-forget: automações não bloqueiam a resposta da action
-    void evaluateAutomations({
+    // Automações rodam depois da resposta mas dentro do contexto do request,
+    // para que revalidateTag/revalidatePath dos executores funcionem corretamente
+    after(() => evaluateAutomations({
       orgId: ctx.orgId,
       triggerType: 'DEAL_MOVED',
       dealId: data.dealId,
@@ -87,7 +89,7 @@ export const moveDealToStage = orgActionClient
         toStageId: data.stageId,
         pipelineId: deal.stage.pipelineId,
       },
-    })
+    }))
 
     return { success: true, moved: true }
   })

@@ -1,5 +1,6 @@
 'use server'
 
+import { after } from 'next/server'
 import { orgActionClient } from '@/_lib/safe-action'
 import { markDealLostSchema } from './schema'
 import { db } from '@/_lib/prisma'
@@ -72,13 +73,14 @@ export const markDealLost = orgActionClient
     revalidateTag(`dashboard:${ctx.orgId}`)
     revalidateTag(`dashboard-charts:${ctx.orgId}`)
 
-    // Fire-and-forget: automações não bloqueiam a resposta da action
-    void evaluateAutomations({
+    // Automações rodam depois da resposta mas dentro do contexto do request,
+    // para que revalidateTag/revalidatePath dos executores funcionem corretamente
+    after(() => evaluateAutomations({
       orgId: ctx.orgId,
       triggerType: 'DEAL_STATUS_CHANGED',
       dealId: data.dealId,
       payload: { status: 'LOST' },
-    })
+    }))
 
     return { success: true }
   })

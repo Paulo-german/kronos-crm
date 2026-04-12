@@ -1,5 +1,6 @@
 'use server'
 
+import { after } from 'next/server'
 import { orgActionClient } from '@/_lib/safe-action'
 import { createActivitySchema } from './schema'
 import { db } from '@/_lib/prisma'
@@ -31,14 +32,15 @@ export const createActivity = orgActionClient
     revalidateTag(`pipeline:${ctx.orgId}`)
     revalidateTag(`deal:${data.dealId}`)
 
-    // Fire-and-forget: automações não bloqueiam a resposta da action
+    // Automações rodam depois da resposta mas dentro do contexto do request,
+    // para que revalidateTag/revalidatePath dos executores funcionem corretamente.
     // stageId e pipelineId são resolvidos pelo motor via lazy-load do deal
-    void evaluateAutomations({
+    after(() => evaluateAutomations({
       orgId: ctx.orgId,
       triggerType: 'ACTIVITY_CREATED',
       dealId: data.dealId,
       payload: { activityType: data.type },
-    })
+    }))
 
     return { success: true }
   })
