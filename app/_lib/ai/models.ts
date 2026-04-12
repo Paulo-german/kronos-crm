@@ -110,6 +110,21 @@ export type AgentModelId = (typeof AGENT_MODEL_IDS)[number]
 export type RouterModelId = (typeof ROUTER_MODEL_IDS)[number]
 export type AnyModelId = AgentModelId | RouterModelId
 
+// ---------------------------------------------------------------------------
+// Modelo interno de sumarização
+// ---------------------------------------------------------------------------
+// Usado pelo worker de agente para comprimir histórico longo de conversa em
+// um resumo denso antes de arquivar mensagens antigas (ver SUMMARIZATION_THRESHOLD
+// em trigger/process-agent-message.ts). É uma escolha de infraestrutura — não
+// aparece em nenhum picker de UI e não é cobrado do cliente.
+//
+// O `satisfies AnyModelId` garante que o ID declarado aqui sempre corresponda
+// a um modelo presente em AI_MODELS: se alguém remover 'openai/gpt-4o-mini' da
+// lista canônica, o TypeScript quebra o build neste ponto em vez de falhar
+// silenciosamente em runtime ao tentar resumir uma conversa.
+export const SUMMARIZATION_MODEL_ID =
+  'openai/gpt-4o-mini' satisfies AnyModelId
+
 export function getModelById(id: string): AiModel | undefined {
   return AI_MODELS.find((model) => model.id === id)
 }

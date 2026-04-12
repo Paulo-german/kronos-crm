@@ -2,6 +2,7 @@ import { task, tasks, logger, metadata as triggerMetadata } from '@trigger.dev/s
 import { generateText, stepCountIs } from 'ai'
 import { observe, updateActiveTrace } from '@langfuse/tracing'
 import { getModel } from '@/_lib/ai/provider'
+import { SUMMARIZATION_MODEL_ID } from '@/_lib/ai/models'
 import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
 import { debitCredits, refundCredits } from '@/_lib/billing/credit-utils'
@@ -45,7 +46,6 @@ import type { NormalizedWhatsAppMessage } from '@/_lib/evolution/types'
 const MESSAGE_HISTORY_LIMIT = 50
 const SUMMARIZATION_THRESHOLD = 12
 const KEEP_RECENT_MESSAGES = 3
-const SUMMARIZATION_MODEL = 'openai/gpt-4o-mini'
 
 // Tool names que o LLM pode vazar como texto JSON em vez de usar tool calling estruturado
 const KNOWN_TOOL_NAMES = new Set([
@@ -1830,7 +1830,7 @@ async function compressMemory(conversationId: string): Promise<boolean> {
 
     // Gerar resumo via LLM
     const summaryResult = await generateText({
-      model: getModel(SUMMARIZATION_MODEL),
+      model: getModel(SUMMARIZATION_MODEL_ID),
       messages: [
         {
           role: 'system',
@@ -1850,7 +1850,7 @@ async function compressMemory(conversationId: string): Promise<boolean> {
         isEnabled: true,
         tracer: langfuseTracer,
         functionId: 'memory-compression',
-        metadata: { conversationId, model: SUMMARIZATION_MODEL },
+        metadata: { conversationId, model: SUMMARIZATION_MODEL_ID },
       },
     })
 
