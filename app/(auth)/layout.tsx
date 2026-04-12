@@ -17,8 +17,8 @@ export default function AuthLayout({
         </div>
 
         {/* Painel direito: conteúdo */}
-        <div className="flex flex-1 items-center justify-center overflow-y-auto bg-background px-8 lg:px-16">
-          <div className="w-full max-w-md">{children}</div>
+        <div className="flex flex-1 justify-center overflow-y-auto bg-background px-8 lg:px-16">
+          <div className="my-auto w-full max-w-md py-8">{children}</div>
         </div>
       </div>
     </RecaptchaProvider>
