@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
-import { Loader2, Save, Plus, Box, CircleIcon } from 'lucide-react'
+import { Loader2, Save, Box, CircleIcon, Layers } from 'lucide-react'
 
 import { Badge } from '@/_components/ui/badge'
 import { Input } from '@/_components/ui/input'
@@ -53,6 +53,10 @@ export const PlanForm = ({ plan, modules, features }: PlanFormProps) => {
     return initial
   })
 
+  const [enabledFeatures, setEnabledFeatures] = useState<Set<string>>(
+    () => new Set((plan?.limits ?? []).map((limit) => limit.featureKey)),
+  )
+
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(isEditing)
 
   useEffect(() => {
@@ -63,18 +67,12 @@ export const PlanForm = ({ plan, modules, features }: PlanFormProps) => {
   const featuresByModule = useMemo(() => {
     const grouped = new Map<string, AdminFeatureDto[]>()
     for (const feature of features) {
-      if (!feature.module) continue
-      const moduleSlug = feature.module.slug
+      const moduleSlug = feature.module?.slug ?? '_no_module'
       const existing = grouped.get(moduleSlug) ?? []
       grouped.set(moduleSlug, [...existing, feature])
     }
     return grouped
   }, [features])
-
-  const activeModules = useMemo(
-    () => modules.filter((module) => selectedModuleIds.has(module.id)),
-    [modules, selectedModuleIds],
-  )
 
   const { execute, status } = useAction(upsertPlan, {
     onSuccess: () => {
@@ -92,11 +90,7 @@ export const PlanForm = ({ plan, modules, features }: PlanFormProps) => {
     event.preventDefault()
 
     const activeLimits = features
-      .filter((feature) => {
-        if (!feature.module) return false
-        const moduleForFeature = modules.find((module) => module.slug === feature.module?.slug)
-        return moduleForFeature ? selectedModuleIds.has(moduleForFeature.id) : false
-      })
+      .filter((feature) => enabledFeatures.has(feature.key))
       .map((feature) => ({
         featureKey: feature.key,
         valueNumber: limits[feature.key] ?? 0,
@@ -115,12 +109,45 @@ export const PlanForm = ({ plan, modules, features }: PlanFormProps) => {
   }
 
   const toggleModule = (moduleId: string) => {
+    const targetModule = modules.find((mod) => mod.id === moduleId)
+    const moduleFeatureKeys = targetModule
+      ? (featuresByModule.get(targetModule.slug) ?? []).map((feature) => feature.key)
+      : []
+
     setSelectedModuleIds((prev) => {
       const next = new Set(prev)
-      if (next.has(moduleId)) {
-        next.delete(moduleId)
-      } else {
+      const isActivating = !next.has(moduleId)
+
+      if (isActivating) {
         next.add(moduleId)
+      } else {
+        next.delete(moduleId)
+      }
+
+      // Bulk-toggle das features do modulo
+      setEnabledFeatures((prevEnabled) => {
+        const nextEnabled = new Set(prevEnabled)
+        for (const key of moduleFeatureKeys) {
+          if (isActivating) {
+            nextEnabled.add(key)
+          } else {
+            nextEnabled.delete(key)
+          }
+        }
+        return nextEnabled
+      })
+
+      return next
+    })
+  }
+
+  const toggleFeature = (featureKey: string) => {
+    setEnabledFeatures((prev) => {
+      const next = new Set(prev)
+      if (next.has(featureKey)) {
+        next.delete(featureKey)
+      } else {
+        next.add(featureKey)
       }
       return next
     })
@@ -312,18 +339,18 @@ export const PlanForm = ({ plan, modules, features }: PlanFormProps) => {
         </div>
 
         <div className="p-4">
-          {activeModules.length === 0 ? (
+          {features.length === 0 ? (
             <div className="flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-muted-foreground/20 py-8 text-center">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-                <Plus className="h-5 w-5 text-muted-foreground/40" />
+                <Layers className="h-5 w-5 text-muted-foreground/40" />
               </div>
               <p className="text-xs text-muted-foreground/50">
-                Selecione ao menos um módulo para configurar os limites.
+                Nenhuma feature cadastrada. Crie features na aba Features.
               </p>
             </div>
           ) : (
             <div className="space-y-6">
-              {activeModules.map((module) => {
+              {modules.map((module) => {
                 const moduleFeatures = featuresByModule.get(module.slug) ?? []
 
                 if (moduleFeatures.length === 0) return null
@@ -337,25 +364,104 @@ export const PlanForm = ({ plan, modules, features }: PlanFormProps) => {
                       </div>
                       <p className="text-sm font-semibold">{module.name}</p>
                       <span className="flex h-5 items-center justify-center rounded-full bg-muted px-2 text-[10px] font-bold text-muted-foreground">
-                        {moduleFeatures.length}
+                        {moduleFeatures.filter((feature) => enabledFeatures.has(feature.key)).length}/{moduleFeatures.length}
                       </span>
                       <div className="h-px flex-1 bg-border/50" />
                     </div>
 
                     {/* Feature limit rows */}
                     <div className="space-y-2">
-                      {moduleFeatures.map((feature) => (
+                      {moduleFeatures.map((feature) => {
+                        const isEnabled = enabledFeatures.has(feature.key)
+                        return (
+                          <div
+                            key={feature.key}
+                            className={`flex items-center justify-between rounded-xl border border-border bg-card p-3.5 transition-all ${
+                              isEnabled ? 'hover:bg-card/80' : 'opacity-50'
+                            }`}
+                          >
+                            <div className="flex min-w-0 flex-1 items-center gap-3 pr-4">
+                              <Switch
+                                checked={isEnabled}
+                                onCheckedChange={() => toggleFeature(feature.key)}
+                                disabled={isPending}
+                                aria-label={`Ativar ${feature.name}`}
+                              />
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold leading-tight">
+                                  {feature.name}
+                                </p>
+                                <code className="mt-0.5 block text-[10px] text-muted-foreground">
+                                  {feature.key}
+                                </code>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge
+                                variant="outline"
+                                className="border-kronos-blue/20 bg-kronos-blue/10 px-2 text-[10px] font-semibold text-kronos-blue"
+                              >
+                                {feature.valueType}
+                              </Badge>
+                              <Input
+                                type="number"
+                                min={0}
+                                value={limits[feature.key] ?? 0}
+                                onChange={(event) =>
+                                  handleLimitChange(feature.key, event.target.value)
+                                }
+                                disabled={isPending || !isEnabled}
+                                className="h-8 w-28 text-right tabular-nums"
+                                aria-label={`Limite para ${feature.name}`}
+                              />
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
+
+              {/* Features sem modulo */}
+              {featuresByModule.has('_no_module') && (
+                <div>
+                  <div className="mb-3 flex items-center gap-2.5">
+                    <div className="flex h-6 w-6 items-center justify-center rounded bg-muted">
+                      <Layers className="h-3.5 w-3.5 text-muted-foreground" />
+                    </div>
+                    <p className="text-sm font-semibold text-muted-foreground">Sem modulo</p>
+                    <span className="flex h-5 items-center justify-center rounded-full bg-muted px-2 text-[10px] font-bold text-muted-foreground">
+                      {(featuresByModule.get('_no_module') ?? []).filter((feature) => enabledFeatures.has(feature.key)).length}/{(featuresByModule.get('_no_module') ?? []).length}
+                    </span>
+                    <div className="h-px flex-1 bg-border/50" />
+                  </div>
+
+                  <div className="space-y-2">
+                    {(featuresByModule.get('_no_module') ?? []).map((feature) => {
+                      const isEnabled = enabledFeatures.has(feature.key)
+                      return (
                         <div
                           key={feature.key}
-                          className="flex items-center justify-between rounded-xl border border-border bg-card p-3.5 transition-all hover:bg-card/80"
+                          className={`flex items-center justify-between rounded-xl border border-border bg-card p-3.5 transition-all ${
+                            isEnabled ? 'hover:bg-card/80' : 'opacity-50'
+                          }`}
                         >
-                          <div className="min-w-0 flex-1 pr-4">
-                            <p className="text-sm font-semibold leading-tight">
-                              {feature.name}
-                            </p>
-                            <code className="mt-0.5 block text-[10px] text-muted-foreground">
-                              {feature.key}
-                            </code>
+                          <div className="flex min-w-0 flex-1 items-center gap-3 pr-4">
+                            <Switch
+                              checked={isEnabled}
+                              onCheckedChange={() => toggleFeature(feature.key)}
+                              disabled={isPending}
+                              aria-label={`Ativar ${feature.name}`}
+                            />
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold leading-tight">
+                                {feature.name}
+                              </p>
+                              <code className="mt-0.5 block text-[10px] text-muted-foreground">
+                                {feature.key}
+                              </code>
+                            </div>
                           </div>
                           <div className="flex items-center gap-2">
                             <Badge
@@ -371,17 +477,17 @@ export const PlanForm = ({ plan, modules, features }: PlanFormProps) => {
                               onChange={(event) =>
                                 handleLimitChange(feature.key, event.target.value)
                               }
-                              disabled={isPending}
+                              disabled={isPending || !isEnabled}
                               className="h-8 w-28 text-right tabular-nums"
                               aria-label={`Limite para ${feature.name}`}
                             />
                           </div>
                         </div>
-                      ))}
-                    </div>
+                      )
+                    })}
                   </div>
-                )
-              })}
+                </div>
+              )}
             </div>
           )}
         </div>
