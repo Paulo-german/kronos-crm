@@ -59,13 +59,16 @@ export function AgentTabsNav({ orgSlug, canAccessGroups }: AgentTabsNavProps) {
             className={cn(
               'inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-all',
               isGroupsActive
-                ? 'bg-background text-foreground shadow-sm'
+                ? 'bg-tab-active text-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground',
             )}
           >
             <UsersIcon className="h-4 w-4" />
             Equipes
-            <Badge variant="outline" className="ml-1.5 border-amber-500/30 bg-amber-500/10 px-1.5 py-0 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+            <Badge
+              variant="outline"
+              className="ml-1.5 border-amber-500/30 bg-amber-500/10 px-1.5 py-0 text-[10px] font-medium text-amber-600 dark:text-amber-400"
+            >
               Beta
             </Badge>
           </Link>
@@ -78,7 +81,10 @@ export function AgentTabsNav({ orgSlug, canAccessGroups }: AgentTabsNavProps) {
               >
                 <UsersIcon className="h-4 w-4" />
                 Equipes
-                <Badge variant="outline" className="ml-1.5 border-amber-500/30 bg-amber-500/10 px-1.5 py-0 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                <Badge
+                  variant="outline"
+                  className="ml-1.5 border-amber-500/30 bg-amber-500/10 px-1.5 py-0 text-[10px] font-medium text-amber-600 dark:text-amber-400"
+                >
                   Beta
                 </Badge>
                 <LockIcon className="h-3 w-3" />
