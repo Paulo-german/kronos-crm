@@ -30,7 +30,7 @@ export const generalTabSchema = z.object({
   promptConfig: promptConfigSchema,
   systemPrompt: z.string(),
   modelId: z.enum(AGENT_MODEL_IDS),
-  debounceSeconds: z.number().int().min(0).max(30),
+  debounceSeconds: z.number().int().min(0).max(120),
   pipelineIds: z.array(z.string().uuid()),
   businessHoursEnabled: z.boolean(),
   businessHoursTimezone: z.string(),

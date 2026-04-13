@@ -32,7 +32,7 @@ export const updateAgentSchema = z.object({
   promptConfig: promptConfigSchema.nullable().optional(),
   systemPrompt: z.string().optional(),
   modelId: z.enum(AGENT_MODEL_IDS).optional(),
-  debounceSeconds: z.number().int().min(0).max(30).optional(),
+  debounceSeconds: z.number().int().min(0).max(120).optional(),
   pipelineIds: z.array(z.string().uuid()).optional(),
   isActive: z.boolean().optional(),
   businessHoursEnabled: z.boolean().optional(),

@@ -82,7 +82,7 @@ export const ModelBehaviorSection = ({ form, canManage }: SectionProps) => {
                 <Input
                   type="number"
                   min={0}
-                  max={30}
+                  max={120}
                   value={field.value}
                   onChange={(event) => field.onChange(Number(event.target.value))}
                   disabled={!canManage}
