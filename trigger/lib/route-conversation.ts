@@ -14,7 +14,7 @@ import { langfuseTracer } from './langfuse'
 const routerResponseSchema = z.object({
   targetAgentId: z.string().uuid(),
   confidence: z.number().min(0).max(1),
-  reasoning: z.string().max(200),
+  reasoning: z.string().max(500),
 })
 
 // ---------------------------------------------------------------------------
@@ -43,8 +43,11 @@ interface RouteConversationInput {
   messageHistory: Array<{ role: string; content: string }>
 }
 
-// Máximo de tokens de saída para a classificação do router
-const ROUTER_MAX_OUTPUT_TOKENS = 256
+// Máximo de tokens de saída para a classificação do router.
+// Gemini 2.5 Flash é um modelo de "thinking": consome tokens internos de
+// raciocínio antes de gerar a resposta. Esses tokens saem do mesmo budget de
+// maxOutputTokens — 256 era insuficiente, causando JSON truncado e falhas.
+const ROUTER_MAX_OUTPUT_TOKENS = 1024
 
 // ---------------------------------------------------------------------------
 // Função principal
