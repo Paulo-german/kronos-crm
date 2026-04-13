@@ -28,7 +28,9 @@ export const ModelBehaviorSection = ({ form, canManage }: SectionProps) => {
   return (
     <Card className="border-border/50 bg-card">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base font-semibold">Modelo e Comportamento</CardTitle>
+        <CardTitle className="text-base font-semibold">
+          Modelo e Comportamento
+        </CardTitle>
         <CardDescription>
           Modelo de IA e configurações de processamento.
         </CardDescription>
@@ -77,19 +79,25 @@ export const ModelBehaviorSection = ({ form, canManage }: SectionProps) => {
           name="debounceSeconds"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Debounce (segundos)</FormLabel>
+              <FormLabel>Tempo de Espera (segundos)</FormLabel>
               <FormControl>
                 <Input
                   type="number"
                   min={0}
                   max={120}
                   value={field.value}
-                  onChange={(event) => field.onChange(Number(event.target.value))}
+                  onChange={(event) =>
+                    field.onChange(Number(event.target.value))
+                  }
                   disabled={!canManage}
                 />
               </FormControl>
               <p className="text-xs text-muted-foreground">
                 Segundos de espera antes de processar mensagens agrupadas.
+                <span className="font-semibold text-primary">
+                  Atenção, um tempo de espera muito curto pode gerar respostas
+                  duplicadas.
+                </span>
               </p>
               <FormMessage />
             </FormItem>
