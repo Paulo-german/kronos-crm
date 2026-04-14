@@ -146,7 +146,7 @@ export const processAgentMessage = task({
   retry: {
     maxAttempts: 3,
   },
-  run: async (payload: ProcessAgentMessagePayload) => {
+  run: async (payload: ProcessAgentMessagePayload, { ctx: triggerCtx }) => {
     return observe(
       async () => {
         const {
@@ -159,8 +159,10 @@ export const processAgentMessage = task({
           groupId,
         } = payload
 
-        // Helper de log — sempre inclui msgId + conversationId para rastreio
-        const ctx = { msgId: message.messageId, conversationId, agentId }
+        const attemptNumber = triggerCtx.attempt.number
+
+        // Helper de log — sempre inclui msgId + conversationId + attempt para rastreio
+        const ctx = { msgId: message.messageId, conversationId, agentId, attempt: attemptNumber }
         const log = (
           step: string,
           outcome: 'PASS' | 'EXIT' | 'SKIP',
@@ -178,6 +180,7 @@ export const processAgentMessage = task({
         triggerMetadata.set('agentId', agentId)
         triggerMetadata.set('organizationId', organizationId)
         triggerMetadata.set('messageType', message.type)
+        triggerMetadata.set('attemptNumber', attemptNumber)
 
         // effectiveAgentId começa como o agentId do payload.
         // No modo de grupo com requiresRouting = true, é sobrescrito pelo worker resolvido.
@@ -219,6 +222,7 @@ export const processAgentMessage = task({
                 currentTimestamp,
               })
               // Tracker ainda não existe — skip direto sem registrar
+              triggerMetadata.set('outcome', 'skipped:debounce')
               return { skipped: true, reason: 'debounce' }
             }
             log('step:1 debounce_check', 'PASS')
@@ -300,6 +304,7 @@ export const processAgentMessage = task({
                 await revalidateConversationCache(conversationId, organizationId)
               }
 
+              triggerMetadata.set('outcome', 'skipped:router_failed')
               return { skipped: true, reason: 'router_failed' }
             }
 
@@ -315,6 +320,7 @@ export const processAgentMessage = task({
                 triggerMessageId: message.messageId,
                 reason: 'no_suitable_worker',
               })
+              triggerMetadata.set('outcome', 'skipped:no_suitable_worker')
               return { skipped: true, reason: 'no_suitable_worker' }
             }
 
@@ -379,6 +385,7 @@ export const processAgentMessage = task({
                   triggerMessageId: message.messageId,
                   reason: 'outside_business_hours',
                 })
+                triggerMetadata.set('outcome', 'skipped:outside_business_hours')
                 return { skipped: true, reason: 'outside_business_hours' }
               }
             }
@@ -1518,6 +1525,11 @@ export const processAgentMessage = task({
           // -----------------------------------------------------------------------
           let sentMessageIds: string[]
 
+          log('step:9 whatsapp_sending', 'PASS', {
+            provider: message.provider,
+            textLength: textToSend.length,
+          })
+
           if (message.provider === 'meta_cloud') {
             // Para Meta Cloud: buscar metaAccessToken do inbox (nunca vem no payload por seguranca)
             const metaInbox = await db.inbox.findFirst({
@@ -1751,14 +1763,17 @@ tasks.onFailure(async ({ payload, error }) => {
     agentId,
     message,
   } = payload as ProcessAgentMessagePayload
-  logger.error('process-agent-message failed after all retries', {
-    conversationId,
-    error: error instanceof Error ? error.message : String(error),
-  })
-
   // Criar execution FAILED standalone — sem steps (tracker em memória se perdeu nos retries)
   // agentId pode ser '' no modo de grupo com requiresRouting=true — usar null nesses casos
   const failureAgentId = agentId || null
+
+  logger.error('process-agent-message failed after all retries', {
+    conversationId,
+    messageId: message.messageId,
+    organizationId,
+    agentId: failureAgentId,
+    error: error instanceof Error ? error.message : String(error),
+  })
   const failureGroupId = (payload as ProcessAgentMessagePayload).groupId ?? null
 
   try {
