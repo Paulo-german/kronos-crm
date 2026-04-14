@@ -1,6 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { cookies } from 'next/headers'
-import { revalidateTag } from 'next/cache'
 import { createClient } from '@/_lib/supabase/server'
 import { validateMembership } from '@/_data-access/organization/validate-membership'
 import { getConversationMessagesPaginated } from '@/_data-access/conversation/get-conversation-messages'
@@ -49,23 +48,14 @@ export async function GET(request: NextRequest, context: RouteContext) {
         organizationId: membership.orgId,
         ...(elevated ? {} : { assignedTo: user.id }),
       },
-      select: { id: true, aiPaused: true, pausedAt: true, unreadCount: true },
+      select: { id: true, aiPaused: true, pausedAt: true },
     })
 
     if (!conversation) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    // 3. Reset unreadCount ao visualizar (se > 0)
-    if (conversation.unreadCount > 0) {
-      await db.conversation.update({
-        where: { id: conversationId },
-        data: { unreadCount: 0 },
-      })
-      revalidateTag(`conversations:${membership.orgId}`)
-    }
-
-    // 4. Buscar mensagens com paginação por cursor
+    // 3. Buscar mensagens com paginação por cursor
     const { searchParams } = new URL(request.url)
     const cursor = searchParams.get('cursor') ?? undefined
     const limit = Math.min(Number(searchParams.get('limit')) || 30, 100)

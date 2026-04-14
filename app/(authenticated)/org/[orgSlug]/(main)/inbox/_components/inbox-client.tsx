@@ -14,7 +14,8 @@ import { ConversationList, type FilterTab } from './conversation-list'
 import { ChatView } from './chat-view'
 import { EmptyInbox } from './empty-inbox'
 import { StartConversationPanel } from './start-conversation-panel'
-import { useConversations } from '../_hooks/use-conversations'
+import { useInboxConversations } from '../_hooks/use-inbox-conversations'
+import { useInboxMutations } from '../_hooks/use-inbox-mutations'
 import { PageTourTrigger } from '@/_components/onboarding/page-tour-trigger'
 import { INBOX_TOUR_STEPS } from '@/_lib/onboarding/tours/inbox-tour'
 
@@ -63,10 +64,7 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
     deepLinkContact,
     connectionError,
     sentinelRef,
-    updateConversationLocally,
-    removeConversationLocally,
-    refetch,
-  } = useConversations({
+  } = useInboxConversations({
     inboxId: selectedInboxId,
     unreadOnly: filter === 'unread',
     unansweredOnly: filter === 'unanswered',
@@ -77,73 +75,21 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
     assigneeIds: selectedAssigneeIds,
   })
 
-  // Optimistic update + refetch para atualizar badge da IA na conversation list
-  const handleToggleAiPause = (conversationId: string, aiPaused: boolean) => {
-    updateConversationLocally(conversationId, { aiPaused })
-    refetch()
-  }
+  const mutations = useInboxMutations({
+    availableLabels,
+    members,
+    statusFilter,
+  })
 
-  // Optimistic update + refetch para atualizar contadores (totalUnread, etc.)
-  // O lock no hook protege o update otimista de ser sobrescrito pelo merge do polling
-  const handleToggleRead = (conversationId: string) => {
-    const target = conversations.find((conv) => conv.id === conversationId)
-    if (!target) return
-    const newUnreadCount = target.unreadCount > 0 ? 0 : 1
-    updateConversationLocally(conversationId, { unreadCount: newUnreadCount })
-    refetch()
-  }
+  // Extrair mutate estável para uso no useEffect sem recriar o effect a cada render
+  const markAsReadMutate = mutations.markAsRead.mutate
 
   // Ao mudar status, remover da lista se não bate com o filtro ativo (ex: resolver no filtro de abertas)
   const handleStatusChange = (conversationId: string, newStatus: 'OPEN' | 'RESOLVED') => {
-    if (newStatus !== statusFilter) {
-      removeConversationLocally(conversationId)
-      setSelectedId(null)
-    } else {
-      updateConversationLocally(conversationId, { status: newStatus, resolvedAt: newStatus === 'RESOLVED' ? new Date() : null })
-    }
-    refetch()
-  }
-
-  const handleResolveFromList = (conversationId: string) => {
-    if (statusFilter !== 'RESOLVED') {
-      removeConversationLocally(conversationId)
-    } else {
-      updateConversationLocally(conversationId, { status: 'RESOLVED', resolvedAt: new Date() })
-    }
-    refetch()
-  }
-
-  const handleReopenFromList = (conversationId: string) => {
-    if (statusFilter !== 'OPEN') {
-      removeConversationLocally(conversationId)
-    } else {
-      updateConversationLocally(conversationId, { status: 'OPEN', resolvedAt: null })
-    }
-    refetch()
-  }
-
-  // Optimistic update de atribuição + refetch
-  const handleAssign = (conversationId: string, userId: string) => {
-    const targetMember = members.find((member) => member.userId === userId)
-    updateConversationLocally(conversationId, {
-      assignedTo: userId,
-      assigneeName: targetMember?.user?.fullName ?? null,
-    })
-    refetch()
-  }
-
-  // Optimistic update de labels na conversa + refetch
-  const handleToggleLabel = (conversationId: string, labelId: string) => {
-    const target = conversations.find((conv) => conv.id === conversationId)
-    if (!target) return
-    const hasLabel = target.labels.some((label) => label.id === labelId)
-    const matchingLabel = availableLabels.find((label) => label.id === labelId)
-    if (!matchingLabel) return
-    const newLabels = hasLabel
-      ? target.labels.filter((label) => label.id !== labelId)
-      : [...target.labels, matchingLabel]
-    updateConversationLocally(conversationId, { labels: newLabels })
-    refetch()
+    const statusMutation = newStatus === 'RESOLVED' ? mutations.resolveConversation : mutations.reopenConversation
+    statusMutation.mutate(conversationId)
+    if (newStatus === statusFilter) return
+    setSelectedId(null)
   }
 
   // Seleção automática de conversa com cadeia de prioridade
@@ -153,6 +99,9 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
     // Prioridade 1: deep link com conversa existente
     if (!didApplyDeepLink.current && deepLinkConversationId) {
       setSelectedId(deepLinkConversationId)
+      if (deepLinkConversation && deepLinkConversation.unreadCount > 0) {
+        markAsReadMutate(deepLinkConversationId)
+      }
       didApplyDeepLink.current = true
       return
     }
@@ -169,7 +118,15 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
 
     // Prioridade 3: limpar seleção se a conversa selecionada saiu da lista
     if (selectedId) setSelectedId(null)
-  }, [conversations, isLoading, deepLinkConversationId, deepLinkContact, selectedId])
+  }, [conversations, isLoading, deepLinkConversationId, deepLinkConversation, deepLinkContact, selectedId, markAsReadMutate])
+
+  const handleSelect = (conversationId: string) => {
+    setSelectedId(conversationId)
+    const target = conversations.find((conv) => conv.id === conversationId)
+    if (target && target.unreadCount > 0) {
+      mutations.markAsRead.mutate(conversationId)
+    }
+  }
 
   const handleConversationCreated = (conversation: ConversationListDto) => {
     setSelectedId(conversation.id)
@@ -206,7 +163,7 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
         <ConversationList
           conversations={conversations}
           selectedId={selectedId}
-          onSelect={setSelectedId}
+          onSelect={handleSelect}
           inboxOptions={inboxOptions}
           selectedInboxId={selectedInboxId}
           onInboxSelect={setSelectedInboxId}
@@ -222,7 +179,7 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
           hasMore={hasMore}
           sentinelRef={sentinelRef}
           orgSlug={orgSlug}
-          onToggleRead={handleToggleRead}
+          onToggleRead={(id) => mutations.toggleReadStatus.mutate(id)}
           isElevated={elevated}
           statusFilter={statusFilter}
           onStatusFilterChange={setStatusFilter}
@@ -232,10 +189,10 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
           selectedAssigneeIds={selectedAssigneeIds}
           onAssigneeIdsChange={setSelectedAssigneeIds}
           currentUserId={currentUserId}
-          onResolve={handleResolveFromList}
-          onReopen={handleReopenFromList}
-          onToggleLabel={handleToggleLabel}
-          onAssign={handleAssign}
+          onResolve={(id) => mutations.resolveConversation.mutate(id)}
+          onReopen={(id) => mutations.reopenConversation.mutate(id)}
+          onToggleLabel={(conversationId, labelId) => mutations.toggleLabel.mutate({ conversationId, labelId })}
+          onAssign={(conversationId, assignedTo) => mutations.assignConversation.mutate({ conversationId, assignedTo })}
           members={members}
         />
       </div>
@@ -254,9 +211,8 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
             orgSlug={orgSlug}
             members={members}
             isElevated={elevated}
-            currentUserId={currentUserId}
             availableLabels={availableLabels}
-            onToggleAiPause={handleToggleAiPause}
+            onToggleAiPause={(id, aiPaused) => mutations.toggleAiPause.mutate({ conversationId: id, aiPaused })}
             onStatusChange={handleStatusChange}
             onBack={() => setSelectedId(null)}
           />

@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { hasModuleAccess } from '@/_data-access/module/check-module-access'
+import { InboxQueryProvider } from './_components/inbox-query-provider'
 
 interface InboxLayoutProps {
   children: React.ReactNode
@@ -16,7 +17,7 @@ const InboxLayout = async ({ children, params }: InboxLayoutProps) => {
     redirect(`/org/${orgSlug}/settings/billing`)
   }
 
-  return <>{children}</>
+  return <InboxQueryProvider>{children}</InboxQueryProvider>
 }
 
 export default InboxLayout

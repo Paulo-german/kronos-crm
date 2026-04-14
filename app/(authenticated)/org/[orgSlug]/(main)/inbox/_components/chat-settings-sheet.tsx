@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 import {
@@ -63,6 +64,7 @@ import type { ContactOptionDto } from '@/_data-access/contact/get-contacts-optio
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import { getLabelColor } from '@/_lib/constants/label-colors'
 import { Checkbox } from '@/_components/ui/checkbox'
+import { inboxKeys } from '../_lib/inbox-query-keys'
 
 interface ChatSettingsSheetProps {
   open: boolean
@@ -102,6 +104,8 @@ export function ChatSettingsSheet({
   const [contactPopoverOpen, setContactPopoverOpen] = useState(false)
   const [dealPopoverOpen, setDealPopoverOpen] = useState(false)
 
+  const queryClient = useQueryClient()
+
   const updateContactAction = useAction(updateContact, {
     onSuccess: () => {
       toast.success('Nome do contato atualizado.')
@@ -114,6 +118,7 @@ export function ChatSettingsSheet({
   const updateConversationAction = useAction(updateConversation, {
     onSuccess: () => {
       toast.success('Conversa atualizada.')
+      queryClient.invalidateQueries({ queryKey: inboxKeys.conversations.all() })
     },
     onError: (error) => {
       toast.error(error.error?.serverError ?? 'Erro ao atualizar conversa.')
@@ -171,6 +176,7 @@ export function ChatSettingsSheet({
           : 'Conversa transferida com sucesso.',
       )
       setPendingTransferName(null)
+      queryClient.invalidateQueries({ queryKey: inboxKeys.conversations.all() })
     },
     onError: (error) => {
       toast.error(error.error?.serverError ?? 'Erro ao transferir conversa.')
@@ -179,6 +185,9 @@ export function ChatSettingsSheet({
   })
 
   const toggleLabelAction = useAction(toggleConversationLabel, {
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inboxKeys.conversations.all() })
+    },
     onError: (error) => {
       toast.error(error.error?.serverError ?? 'Erro ao atualizar etiqueta.')
     },

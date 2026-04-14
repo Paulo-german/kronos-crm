@@ -1,17 +1,10 @@
 'use client'
 
 import { useState, useRef, useMemo, useEffect } from 'react'
-import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
+import { useQueryClient } from '@tanstack/react-query'
 import { Separator } from '@/_components/ui/separator'
 import { TooltipProvider } from '@/_components/ui/tooltip'
-import { sendMessage } from '@/_actions/inbox/send-message'
-import { sendAudio } from '@/_actions/inbox/send-audio'
-import { sendMedia } from '@/_actions/inbox/send-media'
-import { retryFailedMessage } from '@/_actions/inbox/retry-failed-message'
-import { toggleAiPause } from '@/_actions/inbox/toggle-ai-pause'
-import { resolveConversation } from '@/_actions/inbox/resolve-conversation'
-import { reopenConversation } from '@/_actions/inbox/reopen-conversation'
 import {
   ALL_ACCEPTED_MEDIA_TYPES,
   getMaxSizeForMimetype,
@@ -20,7 +13,9 @@ import type { ConversationListDto, ConversationLabelDto } from '@/_data-access/c
 import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
 import type { ContactOptionDto } from '@/_data-access/contact/get-contacts-options'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
-import { useChatMessages } from '../_hooks/use-chat-messages'
+import { useInboxMessages } from '../_hooks/use-inbox-messages'
+import { useInboxMutations } from '../_hooks/use-inbox-mutations'
+import { inboxKeys } from '../_lib/inbox-query-keys'
 import { useAudioRecorder } from '../_hooks/use-audio-recorder'
 import { useConversationWindow } from '../_hooks/use-conversation-window'
 import { ChatHeader } from './chat-header'
@@ -39,7 +34,6 @@ interface ChatViewProps {
   orgSlug: string
   members: AcceptedMemberDto[]
   isElevated: boolean
-  currentUserId: string
   availableLabels: ConversationLabelDto[]
   onToggleAiPause?: (conversationId: string, aiPaused: boolean) => void
   onStatusChange?: (conversationId: string, status: 'OPEN' | 'RESOLVED') => void
@@ -53,6 +47,8 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
   const [mediaPreviewUrl, setMediaPreviewUrl] = useState<string | null>(null)
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false)
   const [retryingMessageId, setRetryingMessageId] = useState<string | null>(null)
+
+  const queryClient = useQueryClient()
 
   const isMetaCloud = conversation.inboxConnectionType === 'META_CLOUD'
   const mediaPreviewUrlRef = useRef<string | null>(null)
@@ -91,78 +87,15 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
     hasMore,
     isLoadingMore,
     connectionError,
-    setAiPaused,
-    togglePendingRef,
-    fetchMessages,
     loadOlderMessages,
     scrollRef,
     scrollAreaRef,
-  } = useChatMessages({
-    conversationId: conversation.id,
-    initialAiPaused: conversation.aiPaused,
-    initialPausedAt: conversation.pausedAt,
-  })
+  } = useInboxMessages({ conversationId: conversation.id })
 
-  // Actions
-  const sendAction = useAction(sendMessage, {
-    onSuccess: (result) => {
-      setText('')
-      chatInputRef.current?.focus()
-      fetchMessages()
-      if (result.data?.sendFailed) {
-        toast.error(result.data.errorMessage ?? 'Falha no envio. Verifique no chat.')
-      }
-    },
-    onError: (error) => {
-      toast.error(error.error?.serverError ?? 'Erro ao enviar mensagem')
-    },
-  })
-
-  const toggleAction = useAction(toggleAiPause, {
-    onSuccess: () => {
-      const wasPaused = togglePendingRef.current
-      togglePendingRef.current = null
-      toast.success(wasPaused ? 'IA pausada' : 'IA reativada')
-    },
-    onError: (error) => {
-      if (togglePendingRef.current !== null) {
-        setAiPaused(!togglePendingRef.current)
-      }
-      togglePendingRef.current = null
-      toast.error(error.error?.serverError ?? 'Erro ao alterar estado da IA')
-    },
-  })
-
-  const resolveAction = useAction(resolveConversation, {
-    onSuccess: () => {
-      toast.success('Conversa resolvida.')
-      onStatusChange?.(conversation.id, 'RESOLVED')
-    },
-    onError: (error) => {
-      toast.error(error.error?.serverError ?? 'Erro ao resolver conversa.')
-    },
-  })
-
-  const reopenAction = useAction(reopenConversation, {
-    onSuccess: () => {
-      toast.success('Conversa reaberta.')
-      onStatusChange?.(conversation.id, 'OPEN')
-    },
-    onError: (error) => {
-      toast.error(error.error?.serverError ?? 'Erro ao reabrir conversa.')
-    },
-  })
-
-  const sendAudioAction = useAction(sendAudio, {
-    onSuccess: (result) => {
-      fetchMessages()
-      if (result.data?.sendFailed) {
-        toast.error(result.data.errorMessage ?? 'Falha no envio do áudio. Verifique no chat.')
-      }
-    },
-    onError: (error) => {
-      toast.error(error.error?.serverError ?? 'Erro ao enviar áudio')
-    },
+  const mutations = useInboxMutations({
+    availableLabels,
+    members,
+    statusFilter: conversation.status,
   })
 
   const handleFileRemove = () => {
@@ -172,36 +105,21 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
     mediaPreviewUrlRef.current = null
   }
 
-  const sendMediaAction = useAction(sendMedia, {
-    onSuccess: (result) => {
-      handleFileRemove()
-      setText('')
-      chatInputRef.current?.focus()
-      fetchMessages()
-      if (result.data?.sendFailed) {
-        toast.error(result.data.errorMessage ?? 'Falha no envio do arquivo. Verifique no chat.')
-      }
-    },
-    onError: (error) => {
-      toast.error(error.error?.serverError ?? 'Erro ao enviar arquivo')
-    },
-  })
-
-  const retryAction = useAction(retryFailedMessage, {
-    onSuccess: () => {
-      setRetryingMessageId(null)
-      fetchMessages()
-      toast.success('Mensagem reenviada.')
-    },
-    onError: (error) => {
-      setRetryingMessageId(null)
-      toast.error(error.error?.serverError ?? 'Erro ao reenviar mensagem.')
-    },
-  })
-
   const handleRetryMessage = (messageId: string) => {
     setRetryingMessageId(messageId)
-    retryAction.execute({ messageId })
+    mutations.retryFailedMessage.mutate(
+      { messageId, conversationId: conversation.id },
+      {
+        onSuccess: () => {
+          setRetryingMessageId(null)
+          toast.success('Mensagem reenviada.')
+        },
+        onError: () => {
+          setRetryingMessageId(null)
+          toast.error('Erro ao reenviar mensagem.')
+        },
+      },
+    )
   }
 
   const {
@@ -213,11 +131,17 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
   } = useAudioRecorder({
     conversationId: conversation.id,
     onAudioReady: (base64, duration) => {
-      sendAudioAction.execute({
-        conversationId: conversation.id,
-        audioBase64: base64,
-        duration,
-      })
+      mutations.sendAudio.mutate(
+        { conversationId: conversation.id, audioBase64: base64, duration },
+        {
+          onSuccess: (result) => {
+            if (result?.data?.sendFailed) {
+              toast.error(result.data.errorMessage ?? 'Falha no envio do áudio. Verifique no chat.')
+            }
+          },
+          onError: () => toast.error('Erro ao enviar áudio'),
+        },
+      )
     },
   })
 
@@ -277,23 +201,25 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
 
   const handleSend = () => {
     const trimmed = text.trim()
-    if (!trimmed || sendAction.isPending) return
-
-    sendAction.execute({
-      conversationId: conversation.id,
-      text: trimmed,
-    })
+    if (!trimmed || mutations.sendMessage.isPending) return
+    mutations.sendMessage.mutate(
+      { conversationId: conversation.id, text: trimmed },
+      {
+        onSuccess: (result) => {
+          setText('')
+          chatInputRef.current?.focus()
+          if (result?.data?.sendFailed) {
+            toast.error(result.data.errorMessage ?? 'Falha no envio. Verifique no chat.')
+          }
+        },
+        onError: () => toast.error('Erro ao enviar mensagem'),
+      },
+    )
   }
 
   const handleToggleAi = (checked: boolean) => {
     const newPaused = !checked
-    setAiPaused(newPaused)
-    togglePendingRef.current = newPaused
     onToggleAiPause?.(conversation.id, newPaused)
-    toggleAction.execute({
-      conversationId: conversation.id,
-      aiPaused: newPaused,
-    })
   }
 
   const handleFileSelect = (file: File) => {
@@ -314,7 +240,7 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
   }
 
   const handleSendMedia = () => {
-    if (!selectedFile || sendMediaAction.isPending) return
+    if (!selectedFile || mutations.sendMedia.isPending) return
 
     try {
       const reader = new FileReader()
@@ -322,19 +248,32 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
         toast.error('Erro ao ler o arquivo.')
       }
       reader.onloadend = () => {
-        const result = reader.result as string
-        const base64 = result.split(',')[1]
+        const fileDataUrl = reader.result as string
+        const base64 = fileDataUrl.split(',')[1]
         if (!base64) {
           toast.error('Erro ao processar arquivo.')
           return
         }
-        sendMediaAction.execute({
-          conversationId: conversation.id,
-          mediaBase64: base64,
-          mimetype: selectedFile.type,
-          fileName: selectedFile.name,
-          caption: text.trim() || undefined,
-        })
+        mutations.sendMedia.mutate(
+          {
+            conversationId: conversation.id,
+            mediaBase64: base64,
+            mimetype: selectedFile.type,
+            fileName: selectedFile.name,
+            caption: text.trim() || undefined,
+          },
+          {
+            onSuccess: (result) => {
+              handleFileRemove()
+              setText('')
+              chatInputRef.current?.focus()
+              if (result?.data?.sendFailed) {
+                toast.error(result.data.errorMessage ?? 'Falha no envio do arquivo. Verifique no chat.')
+              }
+            },
+            onError: () => toast.error('Erro ao enviar arquivo'),
+          },
+        )
       }
       reader.readAsDataURL(selectedFile)
     } catch {
@@ -352,15 +291,15 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
           agentGroupName={conversation.agentGroupName}
           activeAgentName={conversation.activeAgentName}
           aiPaused={aiPaused}
-          isTogglePending={toggleAction.isPending}
+          isTogglePending={false}
           onToggleAi={handleToggleAi}
           onOpenSettings={() => setSettingsOpen(true)}
           assigneeName={conversation.assigneeName}
           onBack={onBack}
           conversationStatus={conversation.status}
-          isStatusPending={resolveAction.isPending || reopenAction.isPending}
-          onResolve={() => resolveAction.execute({ conversationId: conversation.id })}
-          onReopen={() => reopenAction.execute({ conversationId: conversation.id })}
+          isStatusPending={false}
+          onResolve={() => onStatusChange?.(conversation.id, 'RESOLVED')}
+          onReopen={() => onStatusChange?.(conversation.id, 'OPEN')}
           windowState={windowState}
         />
         <ChatBanners
@@ -390,8 +329,8 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
           text={text}
           onTextChange={setText}
           onSend={handleSend}
-          isSendPending={sendAction.isPending}
-          isAudioPending={sendAudioAction.isPending}
+          isSendPending={mutations.sendMessage.isPending}
+          isAudioPending={mutations.sendAudio.isPending}
           isRecording={isRecording}
           recordingDuration={recordingDuration}
           onStartRecording={startRecording}
@@ -402,7 +341,7 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
           onFileSelect={handleFileSelect}
           onFileRemove={handleFileRemove}
           onSendMedia={handleSendMedia}
-          isMediaPending={sendMediaAction.isPending}
+          isMediaPending={mutations.sendMedia.isPending}
           onOpenTemplateDialog={isMetaCloud ? () => setTemplateDialogOpen(true) : undefined}
           windowClosed={isWindowClosed}
         />
@@ -414,7 +353,7 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
             inboxId={conversation.inboxId}
             orgSlug={orgSlug}
             onSent={() => {
-              fetchMessages()
+              queryClient.invalidateQueries({ queryKey: inboxKeys.messages.byConversation(conversation.id) })
               chatInputRef.current?.focus()
             }}
           />
