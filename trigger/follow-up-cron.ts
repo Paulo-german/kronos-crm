@@ -1,4 +1,4 @@
-import { schedules, logger } from '@trigger.dev/sdk/v3'
+import { schedules, logger, metadata as triggerMetadata } from '@trigger.dev/sdk/v3'
 import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
 import { resolveWhatsAppProvider } from '@/_lib/whatsapp/provider'
@@ -332,17 +332,26 @@ export const followUpCron = schedules.task({
       orderBy: { nextFollowUpAt: 'asc' }, // Processar mais antigos primeiro
     })
 
+    triggerMetadata.set('batchSize', conversations.length)
+
     if (conversations.length === 0) {
       return { processed: 0, skipped: 0, errors: 0, total: 0 }
     }
 
-    logger.info(`[follow-up-cron] Processing ${conversations.length} conversations`)
+    logger.info('[follow-up-cron] Processing batch', { batchSize: conversations.length })
 
     let processed = 0
     let skipped = 0
     let errors = 0
 
     for (const conv of conversations) {
+      // Helper de log — campos estruturados, nunca IDs embutidos na string
+      const log = (
+        step: string,
+        outcome: 'SENT' | 'SKIP' | 'ERROR',
+        extra?: Record<string, unknown>,
+      ) => logger.info(`[fup] ${step} → ${outcome}`, { convId: conv.id, organizationId: conv.organizationId, ...extra })
+
       try {
         // Validar: inbox ativa e remoteJid disponível
         if (!conv.inbox.isActive || !conv.remoteJid) {
@@ -351,6 +360,7 @@ export const followUpCron = schedules.task({
             where: { id: conv.id },
             data: { nextFollowUpAt: null, followUpCount: 0 },
           })
+          log('conversation_check', 'SKIP', { reason: !conv.inbox.isActive ? 'inbox_inactive' : 'no_remote_jid' })
           skipped++
           continue
         }
@@ -361,7 +371,7 @@ export const followUpCron = schedules.task({
         // - Se nenhum dos dois estiver preenchido, a conversa ainda não foi classificada → skip
         const agentId = conv.inbox.agentId ?? conv.activeAgentId
         if (!agentId) {
-          logger.info(`[follow-up-cron] Conversation ${conv.id} has no active agent (group inbox, not yet routed), skipping`)
+          log('agent_resolve', 'SKIP', { reason: 'no_active_agent_not_yet_routed' })
           skipped++
           continue
         }
@@ -385,7 +395,7 @@ export const followUpCron = schedules.task({
           })
 
           if (!workerFromGroup) {
-            logger.info(`[follow-up-cron] Active worker ${conv.activeAgentId} not found for conversation ${conv.id}, skipping`)
+            log('agent_resolve', 'SKIP', { reason: 'worker_not_found', workerId: conv.activeAgentId })
             skipped++
             continue
           }
@@ -399,6 +409,7 @@ export const followUpCron = schedules.task({
             where: { id: conv.id },
             data: { nextFollowUpAt: null, followUpCount: 0 },
           })
+          log('agent_resolve', 'SKIP', { reason: 'agent_deleted' })
           skipped++
           continue
         }
@@ -413,6 +424,7 @@ export const followUpCron = schedules.task({
             where: { id: conv.id },
             data: { nextFollowUpAt: null, followUpCount: 0 },
           })
+          log('followup_lookup', 'SKIP', { reason: 'no_follow_ups_for_step', stepOrder: conv.currentStepOrder })
           skipped++
           continue
         }
@@ -429,6 +441,7 @@ export const followUpCron = schedules.task({
             where: { id: conv.id },
             data: { nextFollowUpAt: null, followUpCount: 0 },
           })
+          log('followup_lookup', 'SKIP', { reason: 'all_exhausted', followUpCount: conv.followUpCount })
           skipped++
           continue
         }
@@ -447,7 +460,7 @@ export const followUpCron = schedules.task({
           freshConv.followUpCount !== conv.followUpCount
 
         if (hasFupChanged) {
-          logger.info(`[follow-up-cron] Conversation ${conv.id} state changed since batch read, skipping`)
+          log('race_condition_check', 'SKIP', { reason: 'state_changed_since_batch' })
           skipped++
           continue
         }
@@ -461,7 +474,7 @@ export const followUpCron = schedules.task({
             resolvedAgent.followUpBusinessHoursConfig === null ||
             Array.isArray(resolvedAgent.followUpBusinessHoursConfig)
           ) {
-            logger.warn(`[follow-up-cron] Invalid FUP business hours config for conversation ${conv.id}, skipping check`)
+            logger.warn('[follow-up-cron] Invalid FUP business hours config', { convId: conv.id })
           } else {
             const bhConfig = resolvedAgent.followUpBusinessHoursConfig as BusinessHoursConfig
             const timezone = resolvedAgent.followUpBusinessHoursTimezone
@@ -478,11 +491,11 @@ export const followUpCron = schedules.task({
                 data: { nextFollowUpAt: nextOpeningTime },
               })
 
-              logger.info(`[follow-up-cron] FUP deferred to next business hours opening for conversation ${conv.id}`, {
+              log('business_hours_check', 'SKIP', {
+                reason: 'outside_business_hours',
                 timezone,
                 nextOpeningTime: nextOpeningTime.toISOString(),
               })
-
               skipped++
               continue
             }
@@ -494,7 +507,8 @@ export const followUpCron = schedules.task({
         try {
           provider = resolveWhatsAppProvider(conv.inbox)
         } catch (providerError) {
-          logger.warn(`[follow-up-cron] Provider resolution failed for conversation ${conv.id}, clearing FUP state`, {
+          log('provider_resolve', 'SKIP', {
+            reason: 'provider_error',
             error: providerError instanceof Error ? providerError.message : String(providerError),
           })
           // Limpar estado e registrar evento visível ao usuário
@@ -520,6 +534,11 @@ export const followUpCron = schedules.task({
         }
 
         // 4. Enviar mensagem via provider correto (Evolution, Meta Cloud ou Z-API)
+        log('fup_sending', 'SENT', {
+          followUpIndex: conv.followUpCount,
+          connectionType: conv.inbox.connectionType,
+          textLength: currentFollowUp.messageContent.length,
+        })
         const sentIds = await provider.sendText(conv.remoteJid, currentFollowUp.messageContent)
 
         // 5. Pré-registrar dedup keys para evitar que webhook reprocesse como msg humana
@@ -595,13 +614,16 @@ export const followUpCron = schedules.task({
         await revalidateConversationCache(conv.id, conv.organizationId)
 
         processed++
-        logger.info(`[follow-up-cron] Sent FUP #${conv.followUpCount + 1} to conversation ${conv.id}`, {
+        log('fup_sent', 'SENT', {
+          followUpIndex: conv.followUpCount,
           followUpId: currentFollowUp.id,
           followUpOrder: currentFollowUp.order,
+          sentIds,
         })
       } catch (error) {
         errors++
-        logger.error(`[follow-up-cron] Failed for conversation ${conv.id}`, {
+        log('conversation_failed', 'ERROR', {
+          followUpCount: conv.followUpCount,
           error: error instanceof Error ? error.message : String(error),
         })
         // Limpar estado de FUP para evitar retry infinito a cada 3 minutos
@@ -613,7 +635,11 @@ export const followUpCron = schedules.task({
       }
     }
 
-    logger.info(`[follow-up-cron] Done`, { processed, skipped, errors, total: conversations.length })
+    triggerMetadata.set('processed', processed)
+    triggerMetadata.set('skipped', skipped)
+    triggerMetadata.set('errors', errors)
+
+    logger.info('[follow-up-cron] Done', { processed, skipped, errors, total: conversations.length })
 
     return { processed, skipped, errors, total: conversations.length }
   },
