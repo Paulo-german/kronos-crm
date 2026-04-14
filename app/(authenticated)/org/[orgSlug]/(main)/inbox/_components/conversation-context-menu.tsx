@@ -1,9 +1,7 @@
 'use client'
 
-import { useTransition } from 'react'
 import Link from 'next/link'
 import { Check, CheckCircle2, Mail, MailOpen, Pin, RotateCcw, Settings2, Tag, UserCog } from 'lucide-react'
-import { toast } from 'sonner'
 import { cn } from '@/_lib/utils'
 import { getLabelColor } from '@/_lib/constants/label-colors'
 import {
@@ -25,11 +23,6 @@ import {
 } from '@/_components/ui/dropdown-menu'
 import type { ConversationListDto, ConversationLabelDto } from '@/_data-access/conversation/get-conversations'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
-import { toggleReadStatus } from '@/_actions/inbox/toggle-read-status'
-import { resolveConversation } from '@/_actions/inbox/resolve-conversation'
-import { reopenConversation } from '@/_actions/inbox/reopen-conversation'
-import { toggleConversationLabel } from '@/_actions/inbox/toggle-conversation-label'
-import { updateConversation } from '@/_actions/inbox/update-conversation'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -362,88 +355,22 @@ export function ConversationContextMenu({
   orgSlug,
   children,
 }: ConversationContextMenuProps) {
-  const [isPending, startTransition] = useTransition()
-
-  const handleToggleRead = (conversationId: string) => {
-    startTransition(async () => {
-      const result = await toggleReadStatus({ conversationId })
-      if (result?.serverError) {
-        toast.error('Erro ao atualizar status de leitura.')
-        return
-      }
-      onToggleRead(conversationId)
-    })
-  }
-
-  const handleResolve = (conversationId: string) => {
-    startTransition(async () => {
-      const result = await resolveConversation({ conversationId })
-      if (result?.serverError) {
-        toast.error('Erro ao resolver conversa.')
-        return
-      }
-      toast.success('Conversa resolvida.')
-      onResolve(conversationId)
-    })
-  }
-
-  const handleReopen = (conversationId: string) => {
-    startTransition(async () => {
-      const result = await reopenConversation({ conversationId })
-      if (result?.serverError) {
-        toast.error('Erro ao reabrir conversa.')
-        return
-      }
-      toast.success('Conversa reaberta.')
-      onReopen(conversationId)
-    })
-  }
-
-  const handleToggleLabel = (conversationId: string, labelId: string) => {
-    startTransition(async () => {
-      const result = await toggleConversationLabel({ conversationId, labelId })
-      if (result?.serverError) {
-        toast.error(result.serverError)
-        return
-      }
-      onToggleLabel(conversationId, labelId)
-    })
-  }
-
-  const handleAssign = (conversationId: string, userId: string) => {
-    const targetMember = members.find((member) => member.userId === userId)
-    const targetName = targetMember?.user?.fullName ?? null
-    startTransition(async () => {
-      const result = await updateConversation({ conversationId, assignedTo: userId })
-      if (result?.serverError) {
-        toast.error(result.serverError ?? 'Erro ao atribuir conversa.')
-        return
-      }
-      toast.success(
-        targetName
-          ? `Conversa atribuída para ${targetName}`
-          : 'Conversa atribuída com sucesso.',
-      )
-      onAssign(conversationId, userId)
-    })
-  }
-
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
       <ContextMenuContent className="w-52">
         <ConversationMenuItems
           conversation={conversation}
-          onToggleRead={handleToggleRead}
-          onResolve={handleResolve}
-          onReopen={handleReopen}
-          onToggleLabel={handleToggleLabel}
-          onAssign={handleAssign}
+          onToggleRead={onToggleRead}
+          onResolve={onResolve}
+          onReopen={onReopen}
+          onToggleLabel={onToggleLabel}
+          onAssign={onAssign}
           availableLabels={availableLabels}
           members={members}
           isElevated={isElevated}
           orgSlug={orgSlug}
-          isPending={isPending}
+          isPending={false}
           variant="context"
         />
       </ContextMenuContent>

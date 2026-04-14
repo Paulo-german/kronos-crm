@@ -1,6 +1,5 @@
 'use client'
 
-import { useTransition } from 'react'
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -40,14 +39,9 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/_components/ui/dropdown-menu'
-import { toast } from 'sonner'
 import type { ConversationListDto, ConversationLabelDto } from '@/_data-access/conversation/get-conversations'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import { getLabelColor } from '@/_lib/constants/label-colors'
-import { resolveConversation } from '@/_actions/inbox/resolve-conversation'
-import { reopenConversation } from '@/_actions/inbox/reopen-conversation'
-import { toggleConversationLabel } from '@/_actions/inbox/toggle-conversation-label'
-import { updateConversation } from '@/_actions/inbox/update-conversation'
 import {
   ConversationContextMenu,
   ConversationMenuItems,
@@ -197,61 +191,6 @@ export function ConversationList({
   onAssign,
   members,
 }: ConversationListProps) {
-  const [isStatusPending, startStatusTransition] = useTransition()
-
-  const handleDropdownResolve = (conversationId: string) => {
-    startStatusTransition(async () => {
-      const result = await resolveConversation({ conversationId })
-      if (result?.serverError) {
-        toast.error('Erro ao resolver conversa.')
-        return
-      }
-      toast.success('Conversa resolvida.')
-      onResolve(conversationId)
-    })
-  }
-
-  const handleDropdownReopen = (conversationId: string) => {
-    startStatusTransition(async () => {
-      const result = await reopenConversation({ conversationId })
-      if (result?.serverError) {
-        toast.error('Erro ao reabrir conversa.')
-        return
-      }
-      toast.success('Conversa reaberta.')
-      onReopen(conversationId)
-    })
-  }
-
-  const handleDropdownToggleLabel = (conversationId: string, labelId: string) => {
-    startStatusTransition(async () => {
-      const result = await toggleConversationLabel({ conversationId, labelId })
-      if (result?.serverError) {
-        toast.error(result.serverError)
-        return
-      }
-      onToggleLabel(conversationId, labelId)
-    })
-  }
-
-  const handleDropdownAssign = (conversationId: string, userId: string) => {
-    const targetMember = members.find((member) => member.userId === userId)
-    const targetName = targetMember?.user?.fullName ?? null
-    startStatusTransition(async () => {
-      const result = await updateConversation({ conversationId, assignedTo: userId })
-      if (result?.serverError) {
-        toast.error(result.serverError ?? 'Erro ao atribuir conversa.')
-        return
-      }
-      toast.success(
-        targetName
-          ? `Conversa atribuída para ${targetName}`
-          : 'Conversa atribuída com sucesso.',
-      )
-      onAssign(conversationId, userId)
-    })
-  }
-
   return (
     <div className="flex h-full flex-col border-r border-border/50">
       {/* Header */}
@@ -553,15 +492,15 @@ export function ConversationList({
                           <ConversationMenuItems
                             conversation={conversation}
                             onToggleRead={onToggleRead}
-                            onResolve={handleDropdownResolve}
-                            onReopen={handleDropdownReopen}
-                            onToggleLabel={handleDropdownToggleLabel}
-                            onAssign={handleDropdownAssign}
+                            onResolve={onResolve}
+                            onReopen={onReopen}
+                            onToggleLabel={onToggleLabel}
+                            onAssign={onAssign}
                             availableLabels={availableLabels}
                             members={members}
                             isElevated={isElevated}
                             orgSlug={orgSlug}
-                            isPending={isStatusPending}
+                            isPending={false}
                             variant="dropdown"
                           />
                         </DropdownMenuContent>
