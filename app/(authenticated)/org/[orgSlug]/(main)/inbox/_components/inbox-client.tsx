@@ -43,11 +43,14 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
   const [selectedInboxId, setSelectedInboxId] = useState<string | null>(null)
   const [filter, setFilter] = useState<FilterTab>('all')
   const [search, setSearch] = useState('')
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedConversation, setSelectedConversation] = useState<ConversationListDto | null>(null)
   const [statusFilter, setStatusFilter] = useState<'OPEN' | 'RESOLVED'>('OPEN')
   const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([])
   const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>([])
   const didApplyDeepLink = useRef(false)
+
+  // Derivado para backward compat com props que esperam string | null
+  const selectedId = selectedConversation?.id ?? null
 
   const contactId = searchParams.get('contactId')
 
@@ -89,7 +92,7 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
     const statusMutation = newStatus === 'RESOLVED' ? mutations.resolveConversation : mutations.reopenConversation
     statusMutation.mutate(conversationId)
     if (newStatus === statusFilter) return
-    setSelectedId(null)
+    setSelectedConversation(null)
   }
 
   // Seleção automática de conversa com cadeia de prioridade
@@ -97,39 +100,44 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
     if (isLoading) return
 
     // Prioridade 1: deep link com conversa existente
-    if (!didApplyDeepLink.current && deepLinkConversationId) {
-      setSelectedId(deepLinkConversationId)
-      if (deepLinkConversation && deepLinkConversation.unreadCount > 0) {
-        markAsReadMutate(deepLinkConversationId)
+    if (!didApplyDeepLink.current && deepLinkConversation) {
+      setSelectedConversation(deepLinkConversation)
+      if (deepLinkConversation.unreadCount > 0) {
+        markAsReadMutate(deepLinkConversation.id)
       }
       didApplyDeepLink.current = true
       return
     }
 
-    // Prioridade 1b: deep link sem conversa (contato sem conversa) — não auto-selecionar
-    if (deepLinkContact && !deepLinkConversationId) {
-      return
-    }
+    // Prioridade 1b: deep link de contato sem conversa — não auto-selecionar
+    if (deepLinkContact && !deepLinkConversationId) return
 
-    if (conversations.length === 0) return
+    // Prioridade 2: manter seleção existente
+    // O objeto persiste mesmo após a conversa sair da lista filtrada (ex: marcada como lida
+    // enquanto no filtro "não lidas"), evitando fechar o ChatView involuntariamente
+    if (selectedConversation) return
+  }, [conversations, isLoading, deepLinkConversationId, deepLinkConversation, deepLinkContact, selectedConversation, markAsReadMutate])
 
-    // Prioridade 2: manter seleção atual se ainda existe na lista ou é deep link
-    if (selectedId && (conversations.some((conv) => conv.id === selectedId) || selectedId === deepLinkConversationId)) return
-
-    // Prioridade 3: limpar seleção se a conversa selecionada saiu da lista
-    if (selectedId) setSelectedId(null)
-  }, [conversations, isLoading, deepLinkConversationId, deepLinkConversation, deepLinkContact, selectedId, markAsReadMutate])
+  // Sincroniza selectedConversation com a lista viva a cada polling cycle
+  useEffect(() => {
+    if (!selectedConversation) return
+    const live = conversations.find((conv) => conv.id === selectedConversation.id)
+    // Guard: só atualiza se updatedAt mudou, evitando loop de re-renders
+    if (!live || live.updatedAt === selectedConversation.updatedAt) return
+    setSelectedConversation(live)
+  }, [conversations, selectedConversation])
 
   const handleSelect = (conversationId: string) => {
-    setSelectedId(conversationId)
     const target = conversations.find((conv) => conv.id === conversationId)
-    if (target && target.unreadCount > 0) {
+    if (!target) return
+    setSelectedConversation(target)
+    if (target.unreadCount > 0) {
       mutations.markAsRead.mutate(conversationId)
     }
   }
 
   const handleConversationCreated = (conversation: ConversationListDto) => {
-    setSelectedId(conversation.id)
+    setSelectedConversation(conversation)
   }
 
   // Se não tem nenhuma inbox, mostrar empty state com CTA
@@ -141,10 +149,6 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
   if (!isLoading && conversations.length === 0 && !search && filter === 'all' && !selectedInboxId && !deepLinkContact && statusFilter === 'OPEN' && selectedLabelIds.length === 0 && selectedAssigneeIds.length === 0) {
     return <EmptyInbox orgSlug={orgSlug} />
   }
-
-  const selectedConversation =
-    conversations.find((conversation) => conversation.id === selectedId)
-    ?? (selectedId === deepLinkConversationId ? deepLinkConversation : null)
 
   return (
     <div className="flex h-full flex-col">
@@ -214,7 +218,7 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
             availableLabels={availableLabels}
             onToggleAiPause={(id, aiPaused) => mutations.toggleAiPause.mutate({ conversationId: id, aiPaused })}
             onStatusChange={handleStatusChange}
-            onBack={() => setSelectedId(null)}
+            onBack={() => setSelectedConversation(null)}
           />
         ) : deepLinkContact && !selectedConversation ? (
           <StartConversationPanel
