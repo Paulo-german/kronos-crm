@@ -194,8 +194,21 @@ export const processAgentMessage = task({
           sessionId: conversationId,
           userId: organizationId,
           tags: traceTags,
-          metadata: { agentId, messageType: message.type },
+          metadata: { agentId, organizationId, messageType: message.type },
         })
+
+        // Helper: garante que todo caminho de saída fecha o trace com output + tags + metadata
+        const finalizeTrace = (
+          outcome: string,
+          extra?: { metadata?: Record<string, unknown> },
+        ) => {
+          triggerMetadata.set('outcome', outcome)
+          updateActiveTrace({
+            output: { outcome },
+            tags: [...traceTags],
+            metadata: { outcome, organizationId, ...extra?.metadata },
+          })
+        }
 
         const taskStartMs = Date.now()
 
@@ -222,7 +235,7 @@ export const processAgentMessage = task({
                 currentTimestamp,
               })
               // Tracker ainda não existe — skip direto sem registrar
-              triggerMetadata.set('outcome', 'skipped:debounce')
+              finalizeTrace('skipped:debounce')
               return { skipped: true, reason: 'debounce' }
             }
             log('step:1 debounce_check', 'PASS')
@@ -304,7 +317,7 @@ export const processAgentMessage = task({
                 await revalidateConversationCache(conversationId, organizationId)
               }
 
-              triggerMetadata.set('outcome', 'skipped:router_failed')
+              finalizeTrace('skipped:router_failed', { metadata: { error: errorMessage } })
               return { skipped: true, reason: 'router_failed' }
             }
 
@@ -320,7 +333,7 @@ export const processAgentMessage = task({
                 triggerMessageId: message.messageId,
                 reason: 'no_suitable_worker',
               })
-              triggerMetadata.set('outcome', 'skipped:no_suitable_worker')
+              finalizeTrace('skipped:no_suitable_worker')
               return { skipped: true, reason: 'no_suitable_worker' }
             }
 
@@ -385,7 +398,7 @@ export const processAgentMessage = task({
                   triggerMessageId: message.messageId,
                   reason: 'outside_business_hours',
                 })
-                triggerMetadata.set('outcome', 'skipped:outside_business_hours')
+                finalizeTrace('skipped:outside_business_hours', { metadata: { workerId: effectiveAgentId } })
                 return { skipped: true, reason: 'outside_business_hours' }
               }
             }
@@ -943,11 +956,7 @@ export const processAgentMessage = task({
               output: { reason: 'no_credits', estimatedCost },
             })
             await revalidateConversationCache(conversationId, organizationId)
-            updateActiveTrace({
-              output: { outcome: 'no_credits' },
-              tags: traceTags,
-              metadata: { outcome: 'no_credits', estimatedCost },
-            })
+            finalizeTrace('no_credits', { metadata: { estimatedCost } })
             await tracker.skip('no_credits')
             return { skipped: true, reason: 'no_credits' }
           }
@@ -1213,13 +1222,9 @@ export const processAgentMessage = task({
             })
             await revalidateConversationCache(conversationId, organizationId)
             traceTags.push('empty_response')
-            triggerMetadata.set('outcome', 'empty_response')
             triggerMetadata.set('model', promptContext.modelId)
-            updateActiveTrace({
-              output: { outcome: 'empty_response' },
-              tags: traceTags,
+            finalizeTrace('empty_response', {
               metadata: {
-                outcome: 'empty_response',
                 finishReason: result.finishReason,
                 creditsCost: emptyActualCost,
                 resultTextLength: result.text?.length ?? 0,
@@ -1400,14 +1405,7 @@ export const processAgentMessage = task({
               status: 'SKIPPED',
               output: { reason: 'ai_paused_during_generation' },
             })
-            updateActiveTrace({
-              output: { outcome: 'ai_paused_during_generation' },
-              tags: traceTags,
-              metadata: {
-                outcome: 'ai_paused_during_generation',
-                creditsCost: pausedActualCost,
-              },
-            })
+            finalizeTrace('ai_paused_during_generation', { metadata: { creditsCost: pausedActualCost } })
             await tracker.skip({
               reason: 'ai_paused_during_generation',
               modelId: promptContext.modelId,
@@ -1710,13 +1708,10 @@ export const processAgentMessage = task({
           // -----------------------------------------------------------------------
           const totalDurationMs = Date.now() - taskStartMs
 
-          triggerMetadata.set('outcome', 'completed')
           triggerMetadata.set('model', promptContext.modelId)
-          updateActiveTrace({
-            output: { outcome: 'completed', responseLength: responseText.length },
-            tags: traceTags,
+          finalizeTrace('completed', {
             metadata: {
-              outcome: 'completed',
+              responseLength: responseText.length,
               finishReason: result.finishReason,
               creditsCost: actualCost,
               totalDurationMs,
@@ -1742,6 +1737,11 @@ export const processAgentMessage = task({
           })
 
           return { success: true }
+        } catch (unexpectedError) {
+          const errorMessage = unexpectedError instanceof Error ? unexpectedError.message : String(unexpectedError)
+          finalizeTrace('unexpected_error', { metadata: { error: errorMessage } })
+          // Re-throw para o Trigger.dev executar os retries normalmente
+          throw unexpectedError
         } finally {
           await flushLangfuse()
         }
