@@ -18,6 +18,8 @@ interface DownloadAndStoreMediaParams {
   organizationId: string
   mimetype: string
   fileName?: string
+  apiUrl?: string
+  apiKey?: string
 }
 
 interface DownloadAndStoreMetaMediaParams {
@@ -43,9 +45,11 @@ export async function downloadAndStoreMedia({
   organizationId,
   mimetype,
   fileName,
+  apiUrl: credApiUrl,
+  apiKey: credApiKey,
 }: DownloadAndStoreMediaParams): Promise<string | null> {
-  const apiUrl = process.env.EVOLUTION_API_URL
-  const apiKey = process.env.EVOLUTION_API_KEY
+  const apiUrl = credApiUrl ?? process.env.EVOLUTION_API_URL
+  const apiKey = credApiKey ?? process.env.EVOLUTION_API_KEY
 
   if (!apiUrl || !apiKey) {
     logger.warn('Evolution API env vars not configured, skipping media download')

@@ -483,10 +483,22 @@ export const processAgentMessage = task({
               )
             } else {
               // Para Evolution: buscar audio via getBase64FromMediaMessage
-              transcription = await transcribeAudio(
-                message.instanceName,
-                message.messageId,
-              )
+              // Usa credenciais per-inbox (self-hosted) ou globais como fallback
+              try {
+                const evolutionCredentials = await resolveEvolutionCredentialsByInstanceName(message.instanceName)
+                transcription = await transcribeAudio(
+                  message.instanceName,
+                  message.messageId,
+                  evolutionCredentials,
+                )
+              } catch (error) {
+                logger.warn('Evolution audio transcription failed, using fallback', {
+                  instanceName: message.instanceName,
+                  messageId: message.messageId,
+                  error: error instanceof Error ? error.message : String(error),
+                })
+                transcription = '[Áudio não transcrito — erro ao buscar mídia]'
+              }
             }
 
             messageText = transcription
@@ -567,6 +579,8 @@ export const processAgentMessage = task({
               })
             } else {
               // Best-effort para Evolution: falha não bloqueia o fluxo
+              // Usa credenciais per-inbox (self-hosted) ou globais como fallback
+              const evolutionCredentialsForMedia = await resolveEvolutionCredentialsByInstanceName(message.instanceName).catch(() => null)
               await downloadAndStoreMedia({
                 instanceName: message.instanceName,
                 messageId: message.messageId,
@@ -575,6 +589,8 @@ export const processAgentMessage = task({
                 organizationId,
                 mimetype: message.media.mimetype,
                 fileName: message.media.fileName,
+                apiUrl: evolutionCredentialsForMedia?.apiUrl,
+                apiKey: evolutionCredentialsForMedia?.apiKey,
               }).catch((error) => {
                 logger.warn('Media download failed (non-fatal)', {
                   ...ctx,

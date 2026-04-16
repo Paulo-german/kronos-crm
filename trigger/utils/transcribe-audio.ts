@@ -53,10 +53,11 @@ export async function transcribeAudioFromBuffer(
 export async function transcribeAudio(
   instanceName: string,
   messageId: string,
+  credentials?: { apiUrl: string; apiKey: string },
 ): Promise<string> {
   return observe(async () => {
-  const apiUrl = process.env.EVOLUTION_API_URL
-  const apiKey = process.env.EVOLUTION_API_KEY
+  const apiUrl = credentials?.apiUrl ?? process.env.EVOLUTION_API_URL
+  const apiKey = credentials?.apiKey ?? process.env.EVOLUTION_API_KEY
 
   if (!apiUrl || !apiKey) {
     throw new Error('EVOLUTION_API_URL and EVOLUTION_API_KEY must be configured')
