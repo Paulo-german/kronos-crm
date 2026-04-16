@@ -57,7 +57,6 @@ import {
 } from '@/_components/ui/sheet'
 import { updateContact } from '@/_actions/contact/update-contact'
 import { updateConversation } from '@/_actions/inbox/update-conversation'
-import { toggleConversationLabel } from '@/_actions/inbox/toggle-conversation-label'
 import type { ConversationListDto, ConversationLabelDto } from '@/_data-access/conversation/get-conversations'
 import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
 import type { ContactOptionDto } from '@/_data-access/contact/get-contacts-options'
@@ -76,6 +75,7 @@ interface ChatSettingsSheetProps {
   members: AcceptedMemberDto[]
   isElevated: boolean
   availableLabels: ConversationLabelDto[]
+  onToggleLabel?: (conversationId: string, labelId: string) => void
 }
 
 function getMemberInitials(name: string | null): string {
@@ -98,6 +98,7 @@ export function ChatSettingsSheet({
   members,
   isElevated,
   availableLabels,
+  onToggleLabel,
 }: ChatSettingsSheetProps) {
   // Inline name edit
   const [editName, setEditName] = useState(conversation.contactName)
@@ -184,20 +185,8 @@ export function ChatSettingsSheet({
     },
   })
 
-  const toggleLabelAction = useAction(toggleConversationLabel, {
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: inboxKeys.conversations.all() })
-    },
-    onError: (error) => {
-      toast.error(error.error?.serverError ?? 'Erro ao atualizar etiqueta.')
-    },
-  })
-
   const handleToggleLabel = (labelId: string) => {
-    toggleLabelAction.execute({
-      conversationId: conversation.id,
-      labelId,
-    })
+    onToggleLabel?.(conversation.id, labelId)
   }
 
   const handleTransferAssignee = (assignedTo: string) => {
@@ -534,7 +523,7 @@ export function ChatSettingsSheet({
                   const isAtLimit = conversation.labels.length >= 5
                   const colorConfig = getLabelColor(label.color)
 
-                  const isDisabled = toggleLabelAction.isPending || (isAtLimit && !isAssigned)
+                  const isDisabled = isAtLimit && !isAssigned
 
                   return (
                     <label

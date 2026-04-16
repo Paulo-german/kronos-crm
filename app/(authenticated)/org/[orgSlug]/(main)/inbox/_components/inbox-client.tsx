@@ -118,12 +118,13 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
     if (selectedConversation) return
   }, [conversations, isLoading, deepLinkConversationId, deepLinkConversation, deepLinkContact, selectedConversation, markAsReadMutate])
 
-  // Sincroniza selectedConversation com a lista viva a cada polling cycle
+  // Sincroniza selectedConversation com a lista viva a cada polling cycle.
+  // Guard por referência de objeto (Object.is): TanStack Query retorna novo objeto quando
+  // qualquer campo muda — incluindo labels, que não alteram updatedAt na conversa.
   useEffect(() => {
     if (!selectedConversation) return
     const live = conversations.find((conv) => conv.id === selectedConversation.id)
-    // Guard: só atualiza se updatedAt mudou, evitando loop de re-renders
-    if (!live || live.updatedAt === selectedConversation.updatedAt) return
+    if (!live || Object.is(live, selectedConversation)) return
     setSelectedConversation(live)
   }, [conversations, selectedConversation])
 

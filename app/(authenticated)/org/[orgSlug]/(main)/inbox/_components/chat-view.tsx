@@ -368,6 +368,7 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
           members={members}
           isElevated={isElevated}
           availableLabels={availableLabels}
+          onToggleLabel={(id, labelId) => mutations.toggleLabel.mutate({ conversationId: id, labelId })}
         />
       </div>
     </TooltipProvider>
