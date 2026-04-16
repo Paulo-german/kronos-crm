@@ -114,6 +114,118 @@ export function DashboardTabsSkeleton() {
   return <Skeleton className="h-12 w-[280px] rounded-md" />
 }
 
+// --- Skeletons do Dashboard Inbox ---
+
+export function InboxKpiSkeleton() {
+  return (
+    <div className="grid h-full w-full grid-cols-2 gap-4 md:grid-cols-3">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <Card key={i} className="flex h-full w-full flex-col">
+          <CardContent className="flex flex-1 flex-col justify-center p-4">
+            <div className="flex items-center gap-2">
+              <Skeleton className="size-8 rounded-lg" />
+              <Skeleton className="h-4 w-28" />
+            </div>
+            <div className="mt-3 flex items-end gap-2">
+              <Skeleton className="h-8 w-24" />
+              <Skeleton className="mb-0.5 h-5 w-14 rounded-full" />
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  )
+}
+
+export function InboxChartSkeleton() {
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <Skeleton className="h-5 w-40" />
+      </CardHeader>
+      <CardContent>
+        <Skeleton className="h-[300px] w-full" />
+      </CardContent>
+    </Card>
+  )
+}
+
+export function InboxHeatmapSkeleton() {
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <Skeleton className="h-5 w-36" />
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-1.5">
+          {Array.from({ length: 7 }).map((_, rowIndex) => (
+            <div key={rowIndex} className="flex items-center gap-1">
+              <Skeleton className="h-4 w-8 shrink-0" />
+              <div className="grid flex-1 grid-cols-12 gap-0.5">
+                {Array.from({ length: 12 }).map((__, colIndex) => (
+                  <Skeleton key={colIndex} className="aspect-square rounded-sm" />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+export function InboxBottomSkeleton() {
+  return (
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+      {Array.from({ length: 2 }).map((_, colIndex) => (
+        <Card key={colIndex}>
+          <CardHeader className="pb-2">
+            <Skeleton className="h-5 w-32" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {Array.from({ length: 5 }).map((__, rowIndex) => (
+                <div key={rowIndex} className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="size-2.5 rounded-full" />
+                      <Skeleton className="h-4 w-24" />
+                    </div>
+                    <Skeleton className="h-5 w-10 rounded-full" />
+                  </div>
+                  <Skeleton className="h-1.5 w-full rounded-full" />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  )
+}
+
+export function InboxDashboardSkeleton() {
+  return (
+    <>
+      {/* Row 1: KPIs + Canal */}
+      <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-3">
+        <div className="flex lg:col-span-2">
+          <InboxKpiSkeleton />
+        </div>
+        <PipelineStatusSkeleton />
+      </div>
+      {/* Row 2: Volume */}
+      <InboxChartSkeleton />
+      {/* Row 3: Heatmap */}
+      <InboxHeatmapSkeleton />
+      {/* Row 4: Labels + IA vs Humano */}
+      <InboxBottomSkeleton />
+      {/* Row 5: Atendentes */}
+      <InboxChartSkeleton />
+    </>
+  )
+}
+
 export function AiDashboardSkeleton() {
   return (
     <>
