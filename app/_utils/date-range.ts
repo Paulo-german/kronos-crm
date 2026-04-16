@@ -1,4 +1,7 @@
 import {
+  parse,
+  startOfDay,
+  endOfDay,
   startOfMonth,
   endOfMonth,
   startOfYear,
@@ -8,12 +11,21 @@ import {
 } from 'date-fns'
 import type { DateRange } from '@/_data-access/dashboard/types'
 
+const URL_DATE_FORMAT = 'yyyy-MM-dd'
+
 export function parseDateRange(start?: string, end?: string): DateRange {
   const now = new Date()
 
+  // Usamos `parse` (date-fns) em vez de `new Date(string)` para evitar o
+  // shift de timezone do parser nativo, que interpreta "yyyy-MM-dd" como
+  // UTC midnight. `startOfDay`/`endOfDay` normalizam para que o range cubra
+  // o dia inteiro (00:00:00.000 → 23:59:59.999) nas queries `gte/lte` do
+  // Prisma, cobrindo também seleções de 1 dia (start=end).
   return {
-    start: start ? new Date(start) : startOfMonth(now),
-    end: end ? new Date(end) : endOfMonth(now),
+    start: start
+      ? startOfDay(parse(start, URL_DATE_FORMAT, now))
+      : startOfMonth(now),
+    end: end ? endOfDay(parse(end, URL_DATE_FORMAT, now)) : endOfMonth(now),
   }
 }
 
