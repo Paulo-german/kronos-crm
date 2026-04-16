@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { cn } from '@/_lib/utils'
 import { AlertTriangle, Bot, Check, CheckCheck, FileDown, FileText, Loader2, Pause, Play, RotateCw, UserRound, X } from 'lucide-react'
@@ -20,14 +21,19 @@ function AudioPlayer({ src, isUser }: { src: string; isUser: boolean }) {
   const [progress, setProgress] = useState(0)
   const [duration, setDuration] = useState(0)
 
-  const togglePlay = useCallback(() => {
+  const togglePlay = useCallback(async () => {
     const audio = audioRef.current
     if (!audio) return
 
     if (isPlaying) {
       audio.pause()
-    } else {
-      audio.play()
+      return
+    }
+
+    try {
+      await audio.play()
+    } catch {
+      toast.error('Não foi possível reproduzir o áudio.')
     }
   }, [isPlaying])
 
@@ -42,7 +48,7 @@ function AudioPlayer({ src, isUser }: { src: string; isUser: boolean }) {
       setProgress(0)
     }
     const handleTimeUpdate = () => {
-      if (audio.duration) {
+      if (audio.duration && isFinite(audio.duration)) {
         setProgress((audio.currentTime / audio.duration) * 100)
       }
     }
@@ -51,12 +57,16 @@ function AudioPlayer({ src, isUser }: { src: string; isUser: boolean }) {
         setDuration(audio.duration)
       }
     }
+    const handleError = () => {
+      toast.error('Não foi possível carregar o áudio.')
+    }
 
     audio.addEventListener('play', handlePlay)
     audio.addEventListener('pause', handlePause)
     audio.addEventListener('ended', handleEnded)
     audio.addEventListener('timeupdate', handleTimeUpdate)
     audio.addEventListener('loadedmetadata', handleLoadedMetadata)
+    audio.addEventListener('error', handleError)
 
     return () => {
       audio.removeEventListener('play', handlePlay)
@@ -64,6 +74,7 @@ function AudioPlayer({ src, isUser }: { src: string; isUser: boolean }) {
       audio.removeEventListener('ended', handleEnded)
       audio.removeEventListener('timeupdate', handleTimeUpdate)
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata)
+      audio.removeEventListener('error', handleError)
     }
   }, [])
 
