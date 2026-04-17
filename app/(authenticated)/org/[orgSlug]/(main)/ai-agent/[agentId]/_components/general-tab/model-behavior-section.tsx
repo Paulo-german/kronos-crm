@@ -15,6 +15,7 @@ import {
 } from '@/_components/ui/select'
 import {
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -25,6 +26,8 @@ import { Badge } from '@/_components/ui/badge'
 import type { SectionProps } from './types'
 
 export const ModelBehaviorSection = ({ form, canManage }: SectionProps) => {
+  const agentVersion = form.watch('agentVersion')
+
   return (
     <Card className="border-border/50 bg-card">
       <CardHeader className="pb-3">
@@ -99,6 +102,54 @@ export const ModelBehaviorSection = ({ form, canManage }: SectionProps) => {
                   duplicadas.
                 </span>
               </p>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="agentVersion"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Versão do Pipeline</FormLabel>
+              <Select
+                value={field.value}
+                onValueChange={field.onChange}
+                disabled={!canManage}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="v1">
+                    <div className="flex items-baseline gap-2">
+                      <span>Clássico</span>
+                      <span className="text-xs text-muted-foreground">
+                        Pipeline único com todas as ferramentas.
+                      </span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="v2">
+                    <div className="flex items-baseline gap-2">
+                      <span>Multi-agente</span>
+                      <Badge variant="outline" className="text-xs">
+                        Experimental
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        3 estágios: ações → resposta → validação.
+                      </span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <FormDescription>
+                {agentVersion === 'v2'
+                  ? 'Pipeline em 3 estágios — menor chance de vazamento de ferramentas, custo ~2x maior por mensagem.'
+                  : 'Pipeline padrão em estágio único. Mais econômico e estável.'}
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}

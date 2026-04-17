@@ -39,6 +39,7 @@ export const updateAgentSchema = z.object({
   businessHoursTimezone: z.string().optional(),
   businessHoursConfig: businessHoursConfigSchema.optional(),
   outOfHoursMessage: z.string().nullable().optional(),
+  agentVersion: z.enum(['v1', 'v2']).optional(),
 })
 
 export type UpdateAgentInput = z.infer<typeof updateAgentSchema>

@@ -125,6 +125,15 @@ export type AnyModelId = AgentModelId | RouterModelId
 export const SUMMARIZATION_MODEL_ID =
   'openai/gpt-4o-mini' satisfies AnyModelId
 
+// ---------------------------------------------------------------------------
+// Modelo fixo para o Leak Guardrail (Agent 3 da pipeline v2)
+// ---------------------------------------------------------------------------
+// Validador de vazamento roda sempre com Gemini 2.5 Flash — rápido (~500ms p95),
+// barato e com capacidade suficiente para classificação binária de leak.
+// Não configurável por agente: é uma decisão de infraestrutura.
+export const GUARDRAIL_MODEL_ID =
+  'google/gemini-2.5-flash' satisfies AnyModelId
+
 export function getModelById(id: string): AiModel | undefined {
   return AI_MODELS.find((model) => model.id === id)
 }

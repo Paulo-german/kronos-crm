@@ -36,6 +36,7 @@ export const generalTabSchema = z.object({
   businessHoursTimezone: z.string(),
   businessHoursConfig: businessHoursConfigSchema,
   outOfHoursMessage: z.string().nullable(),
+  agentVersion: z.enum(['v1', 'v2']),
 })
 
 export type GeneralTabFormValues = z.infer<typeof generalTabSchema>
@@ -62,6 +63,7 @@ const GeneralTab = ({ agent, pipelines, canManage, onSaveSuccess }: GeneralTabPr
       businessHoursTimezone: agent.businessHoursTimezone,
       businessHoursConfig: agent.businessHoursConfig ?? DEFAULT_BUSINESS_HOURS_CONFIG,
       outOfHoursMessage: agent.outOfHoursMessage,
+      agentVersion: agent.agentVersion === 'v2' ? 'v2' : 'v1',
     },
   })
 

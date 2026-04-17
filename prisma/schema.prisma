@@ -537,6 +537,7 @@ model Agent {
   updatedAt             DateTime                @updatedAt @map("updated_at")
   debounceSeconds       Int                     @default(3) @map("debounce_seconds")
   modelId               String                  @default("google/gemini-2.5-pro") @map("model_id")
+  agentVersion          String                  @default("v1") @map("agent_version")
   businessHoursConfig   Json?                   @map("business_hours_config")
   businessHoursEnabled  Boolean                 @default(false) @map("business_hours_enabled")
   businessHoursTimezone String                  @default("America/Sao_Paulo") @map("business_hours_timezone")

@@ -68,6 +68,7 @@ export interface AgentDetailDto {
   businessHoursTimezone: string
   businessHoursConfig: BusinessHoursConfig | null
   outOfHoursMessage: string | null
+  agentVersion: string
   followUpBusinessHoursEnabled: boolean
   followUpBusinessHoursTimezone: string
   followUpBusinessHoursConfig: FollowUpBusinessHoursConfig | null
@@ -120,6 +121,7 @@ const fetchAgentByIdFromDb = async (
     businessHoursTimezone: agent.businessHoursTimezone,
     businessHoursConfig: agent.businessHoursConfig as BusinessHoursConfig | null,
     outOfHoursMessage: agent.outOfHoursMessage,
+    agentVersion: agent.agentVersion,
     followUpBusinessHoursEnabled: agent.followUpBusinessHoursEnabled,
     followUpBusinessHoursTimezone: agent.followUpBusinessHoursTimezone,
     followUpBusinessHoursConfig:
