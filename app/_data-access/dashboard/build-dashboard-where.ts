@@ -1,5 +1,6 @@
 import 'server-only'
 
+import { SIMULATOR_CONTACT_PHONE } from '@/_lib/simulator'
 import type { DashboardFilters } from './types'
 
 interface BuildDashboardWhereOptions {
@@ -25,6 +26,8 @@ export function buildDashboardWhere(
 ) {
   return {
     organizationId: orgId,
+    // Exclui deals simulados de todas as métricas do dashboard
+    contacts: { none: { contact: { phone: SIMULATOR_CONTACT_PHONE } } },
     // RBAC: MEMBER é forçado a ver apenas seus próprios deals; elevated pode filtrar por assignee específico
     ...(elevated && filters.assignee
       ? { assignedTo: filters.assignee }

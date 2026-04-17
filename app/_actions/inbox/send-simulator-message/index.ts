@@ -10,13 +10,11 @@ import { AUTO_REOPEN_FIELDS } from '@/_lib/conversation/auto-reopen'
 import { resolveAgentForConversation } from '@/../trigger/lib/resolve-agent'
 import { tasks } from '@trigger.dev/sdk/v3'
 import type { processAgentMessage } from '@/../../trigger/process-agent-message'
+import {
+  SIMULATOR_CONTACT_PHONE,
+  SIMULATOR_REMOTE_JID,
+} from '@/_lib/simulator'
 import { sendSimulatorMessageSchema } from './schema'
-
-// JID fictício — consistente com o criado pela create-simulator-conversation action
-const SIMULATOR_REMOTE_JID = 'simulator@s.whatsapp.net'
-
-// Número virtual do contato simulador — consistente com o criado na create-simulator-conversation action
-const SIMULATOR_CONTACT_PHONE = 'simulator'
 
 export const sendSimulatorMessage = orgActionClient
   .schema(sendSimulatorMessageSchema)

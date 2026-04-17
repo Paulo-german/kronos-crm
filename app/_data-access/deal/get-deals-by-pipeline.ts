@@ -4,6 +4,7 @@ import { db } from '@/_lib/prisma'
 import { DealStatus, DealPriority } from '@prisma/client'
 import type { RBACContext } from '@/_lib/rbac'
 import { isElevated } from '@/_lib/rbac'
+import { SIMULATOR_CONTACT_PHONE } from '@/_lib/simulator'
 
 export interface DealDto {
   id: string
@@ -43,6 +44,8 @@ const fetchDealsByPipelineFromDb = async (
       pipelineStageId: { in: stageIds },
       organizationId: orgId,
       ...(elevated ? {} : { assignedTo: userId }),
+      // Exclui deals simulados do kanban
+      contacts: { none: { contact: { phone: SIMULATOR_CONTACT_PHONE } } },
     },
     include: {
       contacts: {

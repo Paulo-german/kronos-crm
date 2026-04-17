@@ -1,5 +1,6 @@
 import 'server-only'
 import type { Prisma, DealStatus, DealPriority } from '@prisma/client'
+import { SIMULATOR_CONTACT_PHONE } from '@/_lib/simulator'
 
 interface DealFilterParams {
   orgId: string
@@ -92,6 +93,8 @@ export function buildDealWhereClause(params: DealFilterParams): Prisma.DealWhere
 
   return {
     organizationId: orgId,
+    // Exclui deals simulados da listagem paginada e exports
+    contacts: { none: { contact: { phone: SIMULATOR_CONTACT_PHONE } } },
     ...rbacFilter,
     ...searchFilter,
     ...statusFilter,
