@@ -1,11 +1,28 @@
 'use client'
 
-import { AlertTriangle, ArrowLeft, Bot, CheckCircle2, Clock, FlaskConical, Info, Loader2, RotateCcw, UserCog, Users } from 'lucide-react'
+import { useState } from 'react'
+import { AlertTriangle, ArrowLeft, Bot, CheckCircle2, Clock, FlaskConical, Info, Loader2, MoreVertical, RotateCcw, Trash2, UserCog, Users } from 'lucide-react'
 import type { ConversationWindowState } from '../_hooks/use-conversation-window'
 import { cn } from '@/_lib/utils'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/_components/ui/alert-dialog'
 import { Avatar, AvatarFallback, AvatarImage } from '@/_components/ui/avatar'
 import { Badge } from '@/_components/ui/badge'
 import { Button } from '@/_components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/_components/ui/dropdown-menu'
 import { Label } from '@/_components/ui/label'
 import { Separator } from '@/_components/ui/separator'
 import { Switch } from '@/_components/ui/switch'
@@ -34,6 +51,9 @@ interface ChatHeaderProps {
   onReopen: () => void
   windowState?: ConversationWindowState
   isSimulator?: boolean
+  onResetSimulator?: () => void
+  onEndSimulator?: () => void
+  isSimulatorActionPending?: boolean
 }
 
 export function ChatHeader({
@@ -54,7 +74,14 @@ export function ChatHeader({
   onReopen,
   windowState,
   isSimulator,
+  onResetSimulator,
+  onEndSimulator,
+  isSimulatorActionPending,
 }: ChatHeaderProps) {
+  const [endDialogOpen, setEndDialogOpen] = useState(false)
+
+  const showSimulatorActions =
+    isSimulator && (onResetSimulator || onEndSimulator)
   const initials = contactName
     .split(' ')
     .slice(0, 2)
@@ -79,10 +106,18 @@ export function ChatHeader({
             <ArrowLeft className="h-4 w-4" />
           </Button>
         )}
-        <button
-          type="button"
-          className="flex min-w-0 cursor-pointer items-center gap-3 rounded-md transition-colors"
+        {/* div role=button porque contém outro button (DropdownMenuTrigger) — HTML proíbe nesting */}
+        <div
+          role="button"
+          tabIndex={0}
+          className="flex min-w-0 cursor-pointer items-center gap-3 rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onClick={onOpenSettings}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              onOpenSettings()
+            }
+          }}
         >
           <Avatar className="h-10 w-10 shrink-0">
             <AvatarImage />
@@ -105,6 +140,44 @@ export function ChatHeader({
                   <FlaskConical className="h-3 w-3" />
                   Simulação
                 </Badge>
+              )}
+
+              {/* Menu de ações da simulação — reiniciar / encerrar */}
+              {showSimulatorActions && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 shrink-0 text-amber-600 hover:bg-amber-500/10 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
+                      disabled={isSimulatorActionPending}
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      {isSimulatorActionPending ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <MoreVertical className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" onClick={(event) => event.stopPropagation()}>
+                    {onResetSimulator && (
+                      <DropdownMenuItem onClick={onResetSimulator}>
+                        <RotateCcw className="mr-2 h-3.5 w-3.5" />
+                        Reiniciar simulação
+                      </DropdownMenuItem>
+                    )}
+                    {onEndSimulator && (
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => setEndDialogOpen(true)}
+                      >
+                        <Trash2 className="mr-2 h-3.5 w-3.5" />
+                        Encerrar simulação
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
 
               {/* Modo grupo: badge com worker ativo + tooltip com equipe/agente */}
@@ -181,7 +254,7 @@ export function ChatHeader({
               </div>
             )}
           </div>
-        </button>
+        </div>
       </div>
 
       <div className="flex shrink-0 items-center gap-3">
@@ -229,9 +302,11 @@ export function ChatHeader({
           </TooltipContent>
         </Tooltip>
 
-        <Separator orientation="vertical" className="h-6" />
+        {/* Resolver/Reabrir só faz sentido em conversas reais — simulação usa Reiniciar/Encerrar */}
+        {!isSimulator && <Separator orientation="vertical" className="h-6" />}
 
         {/* Botão Resolver / Reabrir */}
+        {!isSimulator && (
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -264,6 +339,7 @@ export function ChatHeader({
             </p>
           </TooltipContent>
         </Tooltip>
+        )}
 
         <Separator orientation="vertical" className="h-6" />
 
@@ -293,6 +369,29 @@ export function ChatHeader({
           </TooltipContent>
         </Tooltip>
       </div>
+
+      <AlertDialog open={endDialogOpen} onOpenChange={setEndDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Encerrar simulação?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Essa ação apaga a conversa, a negociação e o contato simulador. Não é reversível.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={() => {
+                setEndDialogOpen(false)
+                onEndSimulator?.()
+              }}
+            >
+              Encerrar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

@@ -18,6 +18,8 @@ import { toggleConversationLabel } from '@/_actions/inbox/toggle-conversation-la
 import { updateConversation } from '@/_actions/inbox/update-conversation'
 import { retryFailedMessage } from '@/_actions/inbox/retry-failed-message'
 import { sendSimulatorMessage } from '@/_actions/inbox/send-simulator-message'
+import { resetSimulatorConversation } from '@/_actions/inbox/reset-simulator-conversation'
+import { endSimulatorConversation } from '@/_actions/inbox/end-simulator-conversation'
 
 interface ConversationsPage {
   conversations: ConversationListDto[]
@@ -280,6 +282,26 @@ export function useInboxMutations({ availableLabels, members, statusFilter }: Us
     },
   })
 
+  // Reinicia a simulação: deleta conversa+deal atuais e cria par novo com mesmo agente
+  const resetSimulatorMutation = useMutation({
+    mutationFn: (conversationId: string) =>
+      resetSimulatorConversation({ conversationId }),
+    onSettled: (_data, _err, conversationId) => {
+      queryClient.invalidateQueries({ queryKey: inboxKeys.messages.byConversation(conversationId) })
+      invalidateConversationList()
+    },
+  })
+
+  // Encerra simulação: remove conversa, deal e contato do banco
+  const endSimulatorMutation = useMutation({
+    mutationFn: (conversationId: string) =>
+      endSimulatorConversation({ conversationId }),
+    onSuccess: (_result, conversationId) => {
+      removeConversationFromCache(conversationId)
+    },
+    onSettled: () => invalidateConversationList(),
+  })
+
   return {
     markAsRead: markAsReadMutation,
     toggleReadStatus: toggleReadStatusMutation,
@@ -293,5 +315,7 @@ export function useInboxMutations({ availableLabels, members, statusFilter }: Us
     assignConversation: assignConversationMutation,
     retryFailedMessage: retryFailedMessageMutation,
     sendSimulatorMessage: sendSimulatorMessageMutation,
+    resetSimulator: resetSimulatorMutation,
+    endSimulator: endSimulatorMutation,
   }
 }

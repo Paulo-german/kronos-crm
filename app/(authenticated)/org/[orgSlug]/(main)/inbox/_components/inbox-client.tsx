@@ -226,6 +226,7 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
             onToggleAiPause={(id, aiPaused) => mutations.toggleAiPause.mutate({ conversationId: id, aiPaused })}
             onStatusChange={handleStatusChange}
             onBack={() => setSelectedConversation(null)}
+            onSimulatorEnded={() => setSelectedConversation(null)}
           />
         ) : deepLinkContact && !selectedConversation ? (
           <StartConversationPanel

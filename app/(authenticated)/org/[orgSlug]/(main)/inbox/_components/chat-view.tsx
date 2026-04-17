@@ -38,9 +38,10 @@ interface ChatViewProps {
   onToggleAiPause?: (conversationId: string, aiPaused: boolean) => void
   onStatusChange?: (conversationId: string, status: 'OPEN' | 'RESOLVED') => void
   onBack?: () => void
+  onSimulatorEnded?: () => void
 }
 
-export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, members, isElevated, availableLabels, onToggleAiPause, onStatusChange, onBack }: ChatViewProps) {
+export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, members, isElevated, availableLabels, onToggleAiPause, onStatusChange, onBack, onSimulatorEnded }: ChatViewProps) {
   const [text, setText] = useState('')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -321,6 +322,30 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
           onReopen={() => onStatusChange?.(conversation.id, 'OPEN')}
           windowState={windowState}
           isSimulator={isSimulator}
+          onResetSimulator={
+            isSimulator
+              ? () =>
+                  mutations.resetSimulator.mutate(conversation.id, {
+                    onSuccess: () => toast.success('Simulação reiniciada.'),
+                    onError: () => toast.error('Erro ao reiniciar simulação.'),
+                  })
+              : undefined
+          }
+          onEndSimulator={
+            isSimulator
+              ? () =>
+                  mutations.endSimulator.mutate(conversation.id, {
+                    onSuccess: () => {
+                      toast.success('Simulação encerrada.')
+                      onSimulatorEnded?.()
+                    },
+                    onError: () => toast.error('Erro ao encerrar simulação.'),
+                  })
+              : undefined
+          }
+          isSimulatorActionPending={
+            mutations.resetSimulator.isPending || mutations.endSimulator.isPending
+          }
         />
         <ChatBanners
           connectionError={connectionError}
