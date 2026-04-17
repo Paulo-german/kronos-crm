@@ -450,7 +450,7 @@ export const followUpCron = schedules.task({
         // O cliente pode ter respondido entre a leitura do batch e este ponto
         const freshConv = await db.conversation.findUnique({
           where: { id: conv.id },
-          select: { nextFollowUpAt: true, aiPaused: true, followUpCount: true },
+          select: { nextFollowUpAt: true, aiPaused: true, followUpCount: true, currentStepOrder: true },
         })
 
         const hasFupChanged =
@@ -461,6 +461,24 @@ export const followUpCron = schedules.task({
 
         if (hasFupChanged) {
           log('race_condition_check', 'SKIP', { reason: 'state_changed_since_batch' })
+          skipped++
+          continue
+        }
+
+        // Rede de segurança: se o LLM classificou um novo step durante uma mensagem
+        // recebida após a leitura do batch, os FUPs carregados são do step antigo e
+        // não devem ser enviados — abortar e limpar o ciclo para que o process-agent-message
+        // reagende com os FUPs corretos do step novo.
+        if (freshConv.currentStepOrder !== conv.currentStepOrder) {
+          await db.conversation.update({
+            where: { id: conv.id },
+            data: { nextFollowUpAt: null, followUpCount: 0 },
+          })
+          log('step_mismatch_check', 'SKIP', {
+            reason: 'stage_mismatch_aborted',
+            batchStep: conv.currentStepOrder,
+            currentStep: freshConv.currentStepOrder,
+          })
           skipped++
           continue
         }
@@ -500,6 +518,76 @@ export const followUpCron = schedules.task({
               continue
             }
           }
+        }
+
+        // 3. Guard SIMULATOR: não há provider WhatsApp real — salvar mensagem diretamente no banco.
+        // Conversas simuladas existem apenas no inbox local; envio externo causaria erro de credenciais.
+        if (conv.inbox.connectionType === 'SIMULATOR') {
+          log('fup_sending', 'SENT', {
+            followUpIndex: conv.followUpCount,
+            connectionType: 'SIMULATOR',
+            textLength: currentFollowUp.messageContent.length,
+          })
+
+          // Salvar FUP como mensagem do assistant (o usuário vê no inbox normalmente)
+          await db.message.create({
+            data: {
+              conversationId: conv.id,
+              role: 'assistant',
+              content: currentFollowUp.messageContent,
+              providerMessageId: `sim_fup_${crypto.randomUUID()}`,
+              metadata: {
+                source: 'follow_up',
+                followUpId: currentFollowUp.id,
+                followUpOrder: currentFollowUp.order,
+                mode: 'simulator',
+              } as Prisma.InputJsonValue,
+            },
+          })
+
+          // Registrar evento visível ao usuário
+          await db.conversationEvent.create({
+            data: {
+              conversationId: conv.id,
+              type: 'INFO',
+              toolName: 'follow_up',
+              content: `Follow-up #${conv.followUpCount + 1} enviado automaticamente`,
+              visibleToUser: true,
+              metadata: {
+                subtype: 'FOLLOW_UP_SENT' satisfies InfoSubtype,
+                followUpId: currentFollowUp.id,
+                followUpOrder: currentFollowUp.order,
+                delayMinutes: currentFollowUp.delayMinutes,
+              } as Prisma.InputJsonValue,
+            },
+          })
+
+          // Agendar próximo FUP ou finalizar ciclo (mesma lógica do caminho normal)
+          const nextFupIndexSim = conv.followUpCount + 1
+          const nextFollowUpSim = followUps[nextFupIndexSim]
+
+          if (nextFollowUpSim) {
+            const nextFollowUpAtSim = new Date(now.getTime() + nextFollowUpSim.delayMinutes * 60 * 1000)
+            await db.conversation.update({
+              where: { id: conv.id },
+              data: { followUpCount: nextFupIndexSim, nextFollowUpAt: nextFollowUpAtSim },
+            })
+          } else {
+            await db.conversation.update({
+              where: { id: conv.id },
+              data: { nextFollowUpAt: null, followUpCount: 0 },
+            })
+          }
+
+          await revalidateConversationCache(conv.id, conv.organizationId)
+          processed++
+          log('fup_sent', 'SENT', {
+            followUpIndex: conv.followUpCount,
+            followUpId: currentFollowUp.id,
+            followUpOrder: currentFollowUp.order,
+            mode: 'simulator',
+          })
+          continue
         }
 
         // 3. Resolver provider com tratamento de credenciais ausentes

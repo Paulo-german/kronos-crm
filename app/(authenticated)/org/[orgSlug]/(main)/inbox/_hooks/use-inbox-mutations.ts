@@ -17,6 +17,7 @@ import { toggleAiPause } from '@/_actions/inbox/toggle-ai-pause'
 import { toggleConversationLabel } from '@/_actions/inbox/toggle-conversation-label'
 import { updateConversation } from '@/_actions/inbox/update-conversation'
 import { retryFailedMessage } from '@/_actions/inbox/retry-failed-message'
+import { sendSimulatorMessage } from '@/_actions/inbox/send-simulator-message'
 
 interface ConversationsPage {
   conversations: ConversationListDto[]
@@ -269,6 +270,16 @@ export function useInboxMutations({ availableLabels, members, statusFilter }: Us
     },
   })
 
+  // Sem optimistic update — aguarda o pipeline do agente processar a mensagem simulada
+  const sendSimulatorMessageMutation = useMutation({
+    mutationFn: (input: { conversationId: string; text: string }) =>
+      sendSimulatorMessage(input),
+    onSettled: (_data, _err, variables) => {
+      queryClient.invalidateQueries({ queryKey: inboxKeys.messages.byConversation(variables.conversationId) })
+      invalidateConversationList()
+    },
+  })
+
   return {
     markAsRead: markAsReadMutation,
     toggleReadStatus: toggleReadStatusMutation,
@@ -281,5 +292,6 @@ export function useInboxMutations({ availableLabels, members, statusFilter }: Us
     toggleLabel: toggleLabelMutation,
     assignConversation: assignConversationMutation,
     retryFailedMessage: retryFailedMessageMutation,
+    sendSimulatorMessage: sendSimulatorMessageMutation,
   }
 }

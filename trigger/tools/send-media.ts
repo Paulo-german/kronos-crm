@@ -108,6 +108,16 @@ export function createSendMediaTool(ctx: ToolContext) {
         .describe('Legenda opcional a ser exibida junto com a midia no WhatsApp.'),
     }),
     execute: async ({ url, type, caption }): Promise<SendMediaResult> => {
+      // Simulator não tem provider WhatsApp — a resposta de mídia já está no contexto da conversa.
+      // Retornar sucesso imediatamente sem tentar download ou envio externo.
+      if (ctx.inboxProvider?.connectionType === 'SIMULATOR') {
+        logger.info('Tool send_media: simulator mode, skipping external send', {
+          conversationId: ctx.conversationId,
+          url,
+        })
+        return { success: true, message: 'Mídia enviada (simulado).' }
+      }
+
       // 1. Validar que remoteJid e inboxProvider existem no contexto
       if (!ctx.remoteJid || !ctx.inboxProvider) {
         logger.warn('Tool send_media: missing remoteJid or inboxProvider', {

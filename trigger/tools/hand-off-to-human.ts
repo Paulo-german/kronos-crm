@@ -215,6 +215,16 @@ async function sendHandOffNotification(
     return
   }
 
+  // Simulator não tem número WhatsApp real para receber a notificação.
+  // A notificação in-app (criada depois desta função) já funciona normalmente.
+  if (inbox.connectionType === 'SIMULATOR') {
+    logger.info('hand_off_to_human: simulator mode, skipping WhatsApp notification', {
+      conversationId: ctx.conversationId,
+      notifyTarget: config.notifyTarget,
+    })
+    return
+  }
+
   let provider
   try {
     provider = resolveWhatsAppProvider(inbox)

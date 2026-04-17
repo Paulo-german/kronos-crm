@@ -65,6 +65,12 @@ const ROUTING_SUBTYPE_CONFIG: Partial<
     colorClass: 'text-muted-foreground',
     bgClass: 'bg-muted/50',
   },
+  // Visual roxo para distinguir de eventos INFO genéricos (amber) — sinaliza progressão de fluxo
+  STEP_ADVANCED: {
+    icon: ArrowRightLeft,
+    colorClass: 'text-kronos-purple',
+    bgClass: 'bg-kronos-purple/5',
+  },
 }
 
 // Resolve o subtype a partir dos dados do evento (toolName para TOOL_SUCCESS, content para INFO)
@@ -80,6 +86,7 @@ function resolveSubtype(
   if (type === 'INFO' && subtype === 'ROUTER_ASSIGNED') return 'ROUTER_ASSIGNED'
   if (type === 'INFO' && subtype === 'AGENT_TRANSFER_LOOP') return 'AGENT_TRANSFER_LOOP'
   if (type === 'INFO' && subtype === 'EMPTY_RESPONSE') return 'EMPTY_RESPONSE'
+  if (type === 'INFO' && subtype === 'STEP_ADVANCED') return 'STEP_ADVANCED'
 
   return null
 }

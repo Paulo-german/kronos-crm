@@ -22,6 +22,16 @@ export function createSendProductMediaTool(ctx: ToolContext) {
       ),
     }),
     execute: async ({ productId }): Promise<SendProductMediaResult> => {
+      // Simulator não tem provider WhatsApp — skip de envio externo.
+      // O usuário já vê o contexto da conversa no inbox sem precisar receber as mídias pelo WhatsApp.
+      if (ctx.inboxProvider?.connectionType === 'SIMULATOR') {
+        logger.info('Tool send_product_media: simulator mode, skipping external send', {
+          conversationId: ctx.conversationId,
+          productId,
+        })
+        return { success: true, message: 'Mídias do produto enviadas (simulado).', sentCount: 0 }
+      }
+
       try {
         // 1. Validar que remoteJid e inboxProvider existem no contexto
         if (!ctx.remoteJid || !ctx.inboxProvider) {

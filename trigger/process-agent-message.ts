@@ -188,7 +188,11 @@ export const processAgentMessage = task({
         let effectiveAgentId = agentId
 
         // Tags acumulativas para o trace Langfuse (updateActiveTrace faz replace, não merge)
-        const traceTags: string[] = ['whatsapp', 'agent']
+        // Simulator usa tag distinta para separar traces de testes de produção real
+        const traceTags: string[] = [
+          message.provider === 'simulator' ? 'simulator' : 'whatsapp',
+          'agent',
+        ]
 
         updateActiveTrace({
           sessionId: conversationId,
@@ -1544,7 +1548,13 @@ export const processAgentMessage = task({
             textLength: textToSend.length,
           })
 
-          if (message.provider === 'meta_cloud') {
+          if (message.provider === 'simulator') {
+            // Simulator: a mensagem do assistente já foi salva no banco no step 8.
+            // Não há provider externo — gerar ID fictício apenas para manter consistência
+            // com o fluxo de dedup e logging que espera sentMessageIds preenchido.
+            sentMessageIds = [`sim_resp_${crypto.randomUUID()}`]
+            log('step:9 simulator_send', 'PASS', { textLength: textToSend.length })
+          } else if (message.provider === 'meta_cloud') {
             // Para Meta Cloud: buscar metaAccessToken do inbox (nunca vem no payload por seguranca)
             const metaInbox = await db.inbox.findFirst({
               where: { metaPhoneNumberId: message.instanceName },
@@ -1610,11 +1620,14 @@ export const processAgentMessage = task({
 
           // Pré-registrar dedup keys para que o webhook fromMe ignore estas mensagens
           // (evita duplicata no banco + auto-pause da IA)
-          await Promise.all(
-            sentMessageIds.map((sentId) =>
-              redis.set(`dedup:${sentId}`, '1', 'EX', 300).catch(() => {}),
-            ),
-          )
+          // Simulator não tem webhook — IDs fictícios não precisam ser registrados no Redis
+          if (message.provider !== 'simulator') {
+            await Promise.all(
+              sentMessageIds.map((sentId) =>
+                redis.set(`dedup:${sentId}`, '1', 'EX', 300).catch(() => {}),
+              ),
+            )
+          }
 
           log('step:9 whatsapp_sent', 'PASS', {
             responseLength: responseText.length,

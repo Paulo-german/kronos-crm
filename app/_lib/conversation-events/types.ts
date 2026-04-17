@@ -57,6 +57,7 @@ export type InfoSubtype =
   | 'ROUTER_ASSIGNED' // Router classificou e atribuiu worker a conversa nova
   | 'AGENT_TRANSFER_LOOP' // Loop de transfer detectado — conversa direcionada para humano
   | 'EMPTY_RESPONSE' // LLM retornou resposta vazia (não é erro — benigno)
+  | 'STEP_ADVANCED' // LLM classificou que a conversa avançou para uma nova etapa do processo
 
 // ---------------------------------------------------------------------------
 // Tool → Subtype mapping (apenas tools com failure real)

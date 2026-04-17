@@ -1,19 +1,30 @@
 'use client'
 
-import { AlertTriangle, WifiOff } from 'lucide-react'
+import { AlertTriangle, FlaskConical, WifiOff } from 'lucide-react'
 
 interface ChatBannersProps {
   connectionError: boolean
   aiPaused: boolean
+  isSimulator?: boolean
 }
 
-export function ChatBanners({ connectionError, aiPaused }: ChatBannersProps) {
+export function ChatBanners({ connectionError, aiPaused, isSimulator }: ChatBannersProps) {
   return (
     <>
       {connectionError && (
         <div className="flex items-center gap-2 border-b border-destructive/20 bg-destructive/10 px-4 py-2 text-xs text-destructive">
           <WifiOff className="h-3.5 w-3.5 shrink-0" />
           <span>Conexão instável. Verifique sua internet.</span>
+        </div>
+      )}
+
+      {/* Banner informativo exclusivo para conversas simuladas */}
+      {isSimulator && (
+        <div className="flex items-center gap-2 border-b border-amber-500/20 bg-amber-500/10 px-4 py-2 text-xs text-amber-700 dark:text-amber-400">
+          <FlaskConical className="h-3.5 w-3.5 shrink-0" />
+          <span>
+            Esta é uma conversa simulada. As mensagens não são enviadas por WhatsApp.
+          </span>
         </div>
       )}
 

@@ -51,6 +51,8 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
   const queryClient = useQueryClient()
 
   const isMetaCloud = conversation.inboxConnectionType === 'META_CLOUD'
+  // Simulador: usa pipeline diferente de envio, esconde controles específicos de WhatsApp
+  const isSimulator = conversation.inboxConnectionType === 'SIMULATOR'
   const mediaPreviewUrlRef = useRef<string | null>(null)
 
   const windowState = useConversationWindow(
@@ -201,6 +203,23 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
 
   const handleSend = () => {
     const trimmed = text.trim()
+
+    // Simulador: rota para sendSimulatorMessage em vez de sendMessage real
+    if (isSimulator) {
+      if (!trimmed || mutations.sendSimulatorMessage.isPending) return
+      mutations.sendSimulatorMessage.mutate(
+        { conversationId: conversation.id, text: trimmed },
+        {
+          onSuccess: () => {
+            setText('')
+            chatInputRef.current?.focus()
+          },
+          onError: () => toast.error('Erro ao enviar mensagem para o simulador'),
+        },
+      )
+      return
+    }
+
     if (!trimmed || mutations.sendMessage.isPending) return
     mutations.sendMessage.mutate(
       { conversationId: conversation.id, text: trimmed },
@@ -301,10 +320,12 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
           onResolve={() => onStatusChange?.(conversation.id, 'RESOLVED')}
           onReopen={() => onStatusChange?.(conversation.id, 'OPEN')}
           windowState={windowState}
+          isSimulator={isSimulator}
         />
         <ChatBanners
           connectionError={connectionError}
           aiPaused={aiPaused}
+          isSimulator={isSimulator}
         />
         <ChatMessageList
           conversationId={conversation.id}
@@ -329,21 +350,25 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
           text={text}
           onTextChange={setText}
           onSend={handleSend}
-          isSendPending={mutations.sendMessage.isPending}
-          isAudioPending={mutations.sendAudio.isPending}
-          isRecording={isRecording}
+          isSendPending={isSimulator ? mutations.sendSimulatorMessage.isPending : mutations.sendMessage.isPending}
+          // Simulador não suporta áudio — esconde o controle de gravação
+          isAudioPending={isSimulator ? false : mutations.sendAudio.isPending}
+          isRecording={isSimulator ? false : isRecording}
           recordingDuration={recordingDuration}
-          onStartRecording={startRecording}
-          onStopRecording={stopRecording}
-          onCancelRecording={cancelRecording}
-          selectedFile={selectedFile}
-          mediaPreviewUrl={mediaPreviewUrl}
-          onFileSelect={handleFileSelect}
-          onFileRemove={handleFileRemove}
-          onSendMedia={handleSendMedia}
-          isMediaPending={mutations.sendMedia.isPending}
-          onOpenTemplateDialog={isMetaCloud ? () => setTemplateDialogOpen(true) : undefined}
-          windowClosed={isWindowClosed}
+          onStartRecording={isSimulator ? () => {} : startRecording}
+          onStopRecording={isSimulator ? () => {} : stopRecording}
+          onCancelRecording={isSimulator ? () => {} : cancelRecording}
+          // Simulador não suporta anexos — esconde o controle de arquivo
+          selectedFile={isSimulator ? null : selectedFile}
+          mediaPreviewUrl={isSimulator ? null : mediaPreviewUrl}
+          onFileSelect={isSimulator ? () => {} : handleFileSelect}
+          onFileRemove={isSimulator ? () => {} : handleFileRemove}
+          onSendMedia={isSimulator ? () => {} : handleSendMedia}
+          isMediaPending={isSimulator ? false : mutations.sendMedia.isPending}
+          // Simulador não usa templates Meta
+          onOpenTemplateDialog={isMetaCloud && !isSimulator ? () => setTemplateDialogOpen(true) : undefined}
+          windowClosed={isSimulator ? false : isWindowClosed}
+          placeholder={isSimulator ? 'Digite uma mensagem para o agente...' : undefined}
         />
         {isMetaCloud && (
           <TemplateMessageDialog

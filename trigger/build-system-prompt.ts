@@ -280,6 +280,8 @@ export interface BuildSystemPromptResult {
   hasActiveProducts: boolean
   hasActiveProductsWithMedia: boolean
   hasKnowledgeBase: boolean // true quando completedFileCount > 0
+  currentStepOrder: number
+  totalSteps: number
 }
 
 /**
@@ -360,6 +362,7 @@ export async function buildSystemPrompt(
       where: { id: conversationId },
       select: {
         summary: true,
+        currentStepOrder: true,
         contact: {
           select: {
             name: true,
@@ -600,6 +603,15 @@ export async function buildSystemPrompt(
       '- Quando uma etapa tiver um template de mensagem, você DEVE usá-lo como base da sua resposta, adaptando com os dados reais do cliente. Não ignore os templates.',
     )
 
+    // O LLM deve inferir o step atual pelo histórico — não informamos explicitamente para
+    // evitar que ele fique preso em um step que já foi superado na conversa.
+    lines.push('')
+    lines.push('**Classificação de etapa (obrigatório no output estruturado):**')
+    lines.push(
+      'Classifique o campo `currentStep` no output com o número (0-indexed) da etapa em que a conversa se encontra após esta interação.',
+    )
+    lines.push('O campo `message` deve conter sua resposta ao cliente.')
+
     for (const step of agent.steps) {
       lines.push('')
       lines.push(`**${step.order + 1}. ${step.name}**`)
@@ -799,5 +811,7 @@ export async function buildSystemPrompt(
     hasActiveProducts: activeProductCount > 0,
     hasActiveProductsWithMedia: activeProductMediaCount > 0,
     hasKnowledgeBase: completedFileCount > 0,
+    currentStepOrder: conversation.currentStepOrder,
+    totalSteps: agent.steps.length,
   }
 }

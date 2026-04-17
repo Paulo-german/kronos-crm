@@ -38,6 +38,8 @@ interface ChatInputProps {
   onOpenTemplateDialog?: () => void
   /** Quando true, desabilita texto livre (janela Meta expirada) */
   windowClosed?: boolean
+  /** Placeholder customizado (ex: modo simulador) */
+  placeholder?: string
 }
 
 function formatDuration(seconds: number) {
@@ -67,6 +69,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
       isMediaPending,
       onOpenTemplateDialog,
       windowClosed = false,
+      placeholder,
     },
     ref,
   ) {
@@ -164,11 +167,12 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
                   onChange={(event) => onTextChange(event.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder={
-                    windowClosed
+                    placeholder ??
+                    (windowClosed
                       ? 'Janela de 24h expirada. Envie um template para retomar.'
                       : selectedFile
                         ? 'Adicione uma legenda...'
-                        : 'Digite uma mensagem...'
+                        : 'Digite uma mensagem...')
                   }
                   className="max-h-[120px] min-h-[44px] resize-none border-0 bg-transparent shadow-none focus-visible:ring-0"
                   rows={1}

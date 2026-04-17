@@ -1155,6 +1155,7 @@ enum ConnectionType {
   EVOLUTION
   META_CLOUD
   Z_API
+  SIMULATOR
 }
 
 enum MessageRole {

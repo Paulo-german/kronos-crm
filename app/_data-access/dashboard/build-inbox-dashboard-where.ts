@@ -6,6 +6,9 @@ import type { InboxDashboardFilters } from './inbox-dashboard-types'
 /**
  * Centraliza a construção do WHERE clause para Conversation a partir dos filtros do dashboard inbox.
  * RBAC é aplicado aqui: MEMBER vê apenas conversas onde assignedTo = userId.
+ *
+ * O filtro `inbox.connectionType != SIMULATOR` é aplicado aqui para que conversas de teste
+ * não poluam nenhuma métrica real do dashboard — cobre todos os data-access que usam este builder.
  */
 export function buildInboxDashboardWhere(
   orgId: string,
@@ -15,6 +18,8 @@ export function buildInboxDashboardWhere(
 ): Prisma.ConversationWhereInput {
   return {
     organizationId: orgId,
+    // Exclui conversas simuladas de todas as métricas do dashboard
+    inbox: { connectionType: { not: 'SIMULATOR' } },
     // RBAC: MEMBER é restrito às suas próprias conversas; elevated pode filtrar por atendente específico
     ...(elevated && filters.assignee
       ? { assignedTo: filters.assignee }

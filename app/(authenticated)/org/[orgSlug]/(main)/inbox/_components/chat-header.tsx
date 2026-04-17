@@ -1,6 +1,6 @@
 'use client'
 
-import { AlertTriangle, ArrowLeft, Bot, CheckCircle2, Clock, Info, Loader2, RotateCcw, UserCog, Users } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Bot, CheckCircle2, Clock, FlaskConical, Info, Loader2, RotateCcw, UserCog, Users } from 'lucide-react'
 import type { ConversationWindowState } from '../_hooks/use-conversation-window'
 import { cn } from '@/_lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@/_components/ui/avatar'
@@ -33,6 +33,7 @@ interface ChatHeaderProps {
   onResolve: () => void
   onReopen: () => void
   windowState?: ConversationWindowState
+  isSimulator?: boolean
 }
 
 export function ChatHeader({
@@ -52,6 +53,7 @@ export function ChatHeader({
   onResolve,
   onReopen,
   windowState,
+  isSimulator,
 }: ChatHeaderProps) {
   const initials = contactName
     .split(' ')
@@ -93,6 +95,17 @@ export function ChatHeader({
               <span className="truncate text-base font-semibold tracking-tight">
                 {contactName}
               </span>
+
+              {/* Badge de simulação — visível apenas em conversas simuladas */}
+              {isSimulator && (
+                <Badge
+                  variant="outline"
+                  className="h-5 shrink-0 gap-1 border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-700 dark:text-amber-400"
+                >
+                  <FlaskConical className="h-3 w-3" />
+                  Simulação
+                </Badge>
+              )}
 
               {/* Modo grupo: badge com worker ativo + tooltip com equipe/agente */}
               {isGroupMode && displayAgentName && (

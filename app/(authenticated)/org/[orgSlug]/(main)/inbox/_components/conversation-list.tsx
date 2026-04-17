@@ -5,6 +5,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
   Bot,
+  FlaskConical,
   Loader2,
   MoreVertical,
   Pause,
@@ -41,6 +42,8 @@ import {
 } from '@/_components/ui/dropdown-menu'
 import type { ConversationListDto, ConversationLabelDto } from '@/_data-access/conversation/get-conversations'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
+import type { AgentDto } from '@/_data-access/agent/get-agents'
+import { SimulatorDialog } from './simulator-dialog'
 import { getLabelColor } from '@/_lib/constants/label-colors'
 import {
   ConversationContextMenu,
@@ -95,6 +98,10 @@ interface ConversationListProps {
   onToggleLabel: (conversationId: string, labelId: string) => void
   onAssign: (conversationId: string, userId: string) => void
   members: AcceptedMemberDto[]
+  /** Apenas super admins veem o botão do simulador */
+  isSuperAdmin?: boolean
+  agents?: AgentDto[]
+  onSimulatorConversationCreated?: (conversation: ConversationListDto) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -190,6 +197,9 @@ export function ConversationList({
   onToggleLabel,
   onAssign,
   members,
+  isSuperAdmin,
+  agents,
+  onSimulatorConversationCreated,
 }: ConversationListProps) {
   return (
     <div className="flex h-full flex-col border-r border-border/50">
@@ -244,6 +254,13 @@ export function ConversationList({
               currentUserId={currentUserId}
               showAssigneeFilter={isElevated}
             />
+            {/* Botão do simulador — visível apenas para super admins */}
+            {isSuperAdmin && agents && onSimulatorConversationCreated && (
+              <SimulatorDialog
+                agents={agents}
+                onConversationCreated={onSimulatorConversationCreated}
+              />
+            )}
             <Tooltip>
               <TooltipTrigger asChild>
                 <div data-tour="inbox-manage">
@@ -364,14 +381,26 @@ export function ConversationList({
 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
-                          <span
-                            className={cn(
-                              'truncate text-sm',
-                              hasUnread ? 'font-semibold' : 'font-medium',
+                          <div className="flex min-w-0 items-center gap-1.5">
+                            <span
+                              className={cn(
+                                'truncate text-sm',
+                                hasUnread ? 'font-semibold' : 'font-medium',
+                              )}
+                            >
+                              {conversation.contactName}
+                            </span>
+                            {/* Badge do simulador — identifica conversas simuladas na lista */}
+                            {conversation.inboxConnectionType === 'SIMULATOR' && (
+                              <Badge
+                                variant="outline"
+                                className="h-4 shrink-0 gap-0.5 border-amber-500/30 bg-amber-500/10 px-1 text-[9px] text-amber-700 dark:text-amber-400"
+                              >
+                                <FlaskConical className="h-2.5 w-2.5" />
+                                Sim
+                              </Badge>
                             )}
-                          >
-                            {conversation.contactName}
-                          </span>
+                          </div>
                           {/* Timestamp — oculto no hover para dar lugar ao botão de ação */}
                           <div className="flex shrink-0 items-center gap-1.5">
                             {conversation.lastMessage && (

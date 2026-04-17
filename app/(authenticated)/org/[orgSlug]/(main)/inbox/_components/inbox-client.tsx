@@ -9,6 +9,7 @@ import type { ConversationListDto, ConversationLabelDto } from '@/_data-access/c
 import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
 import type { ContactOptionDto } from '@/_data-access/contact/get-contacts-options'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
+import type { AgentDto } from '@/_data-access/agent/get-agents'
 import { isElevated } from '@/_lib/rbac/permissions'
 import { ConversationList, type FilterTab } from './conversation-list'
 import { ChatView } from './chat-view'
@@ -35,9 +36,11 @@ interface InboxClientProps {
   userRole: MemberRole
   currentUserId: string
   availableLabels: ConversationLabelDto[]
+  isSuperAdmin: boolean
+  agents: AgentDto[]
 }
 
-export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug, members, userRole, currentUserId, availableLabels }: InboxClientProps) {
+export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug, members, userRole, currentUserId, availableLabels, isSuperAdmin, agents }: InboxClientProps) {
   const elevated = isElevated(userRole)
   const searchParams = useSearchParams()
   const [selectedInboxId, setSelectedInboxId] = useState<string | null>(null)
@@ -199,6 +202,9 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
           onToggleLabel={(conversationId, labelId) => mutations.toggleLabel.mutate({ conversationId, labelId })}
           onAssign={(conversationId, assignedTo) => mutations.assignConversation.mutate({ conversationId, assignedTo })}
           members={members}
+          isSuperAdmin={isSuperAdmin}
+          agents={agents}
+          onSimulatorConversationCreated={handleConversationCreated}
         />
       </div>
 
