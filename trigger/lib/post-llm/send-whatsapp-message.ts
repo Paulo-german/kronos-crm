@@ -1,3 +1,4 @@
+import crypto from 'crypto'
 import { resolveWhatsAppProvider } from '@/_lib/whatsapp/provider'
 import type { ConnectionType } from '@prisma/client'
 
@@ -52,6 +53,14 @@ export async function sendWhatsappMessage(
   ctx: SendWhatsappMessageCtx,
 ): Promise<SendWhatsappMessageResult> {
   const { credentials, remoteJid, text } = ctx
+
+  // SIMULATOR: nunca enviar para provider real — credenciais são fictícias.
+  // Retorna ID sintético para preservar dedup/logging do caller. Sem este guard,
+  // o pipeline V2 dispara erro real ao tentar resolver Evolution/Meta com
+  // instanceName fake, e o Trigger.dev re-executa a task até maxAttempts.
+  if (credentials.connectionType === 'SIMULATOR') {
+    return { sentIds: [`sim_resp_${crypto.randomUUID()}`] }
+  }
 
   const provider = resolveWhatsAppProvider(credentials)
   const sentIds = await provider.sendText(remoteJid, text)
