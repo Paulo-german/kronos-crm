@@ -1,5 +1,6 @@
 import { task, tasks, logger, metadata as triggerMetadata } from '@trigger.dev/sdk/v3'
-import { generateText, stepCountIs } from 'ai'
+import { generateText, stepCountIs, Output } from 'ai'
+import { z } from 'zod'
 import { observe, updateActiveTrace } from '@langfuse/tracing'
 import { getModel } from '@/_lib/ai/provider'
 import { SUMMARIZATION_MODEL_ID } from '@/_lib/ai/models'
@@ -63,6 +64,20 @@ const KNOWN_TOOL_NAMES = new Set([
   'send_media',
   'transfer_to_agent',
 ])
+
+// Schema para structured output quando o agente tem steps configurados.
+// Separar message de currentStep evita que o LLM "vaze" JSON como texto ao cliente.
+const agentOutputSchema = z.object({
+  message: z.string().describe(
+    'Sua resposta ao cliente. Texto natural que será enviado diretamente ao lead.',
+  ),
+  currentStep: z.number().int().min(0).describe(
+    'Número (0-indexed) da etapa do processo de atendimento em que a conversa se encontra após esta interação. Só avança, nunca retrocede.',
+  ),
+})
+
+// Custo em steps LLM de gerar structured output — o SDK usa um step extra para o output
+const STEP_OUTPUT_OVERHEAD = 1
 
 /**
  * Strip JSON tool calls que o LLM vazou como texto puro.
@@ -1055,13 +1070,19 @@ export const processAgentMessage = task({
 
           const llmStartMs = Date.now()
 
+          // Agentes sem steps não precisam de structured output — comportamento idêntico ao atual
+          const hasSteps = promptContext.totalSteps > 0
+
           const result = await generateText({
             model: getModel(promptContext.modelId),
             messages: llmMessages,
             tools,
             temperature: LLM_TEMPERATURE,
-            stopWhen: stepCountIs(4),
+            // Output estruturado exige um step extra no SDK — compensamos com +1
+            stopWhen: stepCountIs(4 + (hasSteps ? STEP_OUTPUT_OVERHEAD : 0)),
             maxOutputTokens: MAX_OUTPUT_TOKENS,
+            // Quando há steps, forçamos output tipado para separar message de currentStep
+            output: hasSteps ? Output.object({ schema: agentOutputSchema }) : undefined,
             experimental_telemetry: {
               isEnabled: true,
               tracer: langfuseTracer,
@@ -1116,7 +1137,23 @@ export const processAgentMessage = task({
 
           const llmDurationMs = Date.now() - llmStartMs
 
-          let responseText = result.text
+          // Quando Output.object está ativo, result.text do último step é o JSON stringified —
+          // não serve como mensagem ao cliente. A mensagem real vem de result.output.message.
+          let responseText = hasSteps
+            ? (result.output?.message ?? '')
+            : result.text
+
+          // Guard de monotonicidade: step só avança, nunca regride.
+          // Math.max previne regressão; Math.min previne avanço além do último step.
+          const classifiedStep = hasSteps ? result.output?.currentStep : undefined
+          const newStepOrder =
+            classifiedStep !== undefined
+              ? Math.max(
+                  promptContext.currentStepOrder,
+                  Math.min(classifiedStep, promptContext.totalSteps - 1),
+                )
+              : promptContext.currentStepOrder
+          const stepAdvanced = newStepOrder > promptContext.currentStepOrder
 
           // Se o LLM gastou todos os steps em tool calls e não gerou texto,
           // faz uma chamada extra SEM tools para gerar a resposta ao cliente.
@@ -1247,7 +1284,9 @@ export const processAgentMessage = task({
               metadata: {
                 finishReason: result.finishReason,
                 creditsCost: emptyActualCost,
+                // result.text é o JSON raw quando Output.object ativo — útil para debug
                 resultTextLength: result.text?.length ?? 0,
+                outputMessageLength: hasSteps ? (result.output?.message?.length ?? 0) : undefined,
               },
             })
             log('step:5 llm_call', 'EXIT', {
@@ -1257,7 +1296,9 @@ export const processAgentMessage = task({
               finishReason: result.finishReason,
               outputTokens: result.usage?.outputTokens ?? 0,
               stepsCount: result.steps?.length ?? 0,
+              // result.text pode ser JSON quando Output.object ativo — manter para debug
               resultTextLength: result.text?.length ?? 0,
+              outputMessageLength: hasSteps ? (result.output?.message?.length ?? 0) : undefined,
             })
             tracker.addStep({
               type: 'LLM_CALL',
@@ -1267,6 +1308,7 @@ export const processAgentMessage = task({
                 reason: 'empty_response',
                 resultText: result.text ?? null,
                 resultTextLength: result.text?.length ?? 0,
+                outputMessageLength: hasSteps ? (result.output?.message?.length ?? 0) : undefined,
                 finishReason: result.finishReason,
                 outputTokens: result.usage?.outputTokens ?? 0,
                 inputTokens: result.usage?.inputTokens ?? 0,
@@ -1303,6 +1345,9 @@ export const processAgentMessage = task({
                 (step) =>
                   step.toolCalls?.map((toolCall) => toolCall.toolName) ?? [],
               ) ?? [],
+            classifiedStep,
+            newStepOrder,
+            stepAdvanced,
           })
           tracker.addStep({
             type: 'LLM_CALL',
@@ -1648,64 +1693,86 @@ export const processAgentMessage = task({
           // Non-fatal: falha no agendamento nao bloqueia o fluxo principal
           // -----------------------------------------------------------------------
           try {
-            const conversationForFup = await db.conversation.findUnique({
-              where: { id: conversationId },
-              select: { currentStepOrder: true },
-            })
+            // Persistir avanço de step antes de buscar FUPs — garante que o step
+            // correto é usado no agendamento e reseta o ciclo de FUP anterior
+            if (stepAdvanced) {
+              await db.conversation.update({
+                where: { id: conversationId },
+                data: {
+                  currentStepOrder: newStepOrder,
+                  // Limpar ciclo de FUP do step anterior ao avançar
+                  nextFollowUpAt: null,
+                  followUpCount: 0,
+                },
+              })
 
-            if (!conversationForFup) {
-              logger.warn(
-                '[step:10b] Conversation not found for FUP scheduling',
-                { conversationId },
+              await createConversationEvent({
+                conversationId,
+                type: 'INFO',
+                content: `Conversa avançou para etapa ${newStepOrder + 1}`,
+                metadata: {
+                  subtype: 'STEP_ADVANCED' satisfies InfoSubtype,
+                  previousStep: promptContext.currentStepOrder,
+                  newStep: newStepOrder,
+                  classifiedByLlm: classifiedStep,
+                },
+              })
+
+              log('step:10a step_advanced', 'PASS', {
+                previousStep: promptContext.currentStepOrder,
+                newStep: newStepOrder,
+                classifiedStep,
+              })
+            }
+
+            // newStepOrder já tem o valor correto (currentStepOrder ou avançado)
+            // — não precisa mais de findUnique para ler currentStepOrder
+            const followUps = await getFollowUpsForStep(
+              effectiveAgentId,
+              newStepOrder,
+            )
+
+            if (followUps.length > 0) {
+              const firstFollowUp = followUps[0] // order 0 — o primeiro da sequência
+              const nextFollowUpAt = new Date(
+                Date.now() + firstFollowUp.delayMinutes * 60 * 1000,
               )
-            } else {
-              const followUps = await getFollowUpsForStep(
-                effectiveAgentId,
-                conversationForFup.currentStepOrder,
-              )
 
-              if (followUps.length > 0) {
-                const firstFollowUp = followUps[0] // order 0 — o primeiro da sequência
-                const nextFollowUpAt = new Date(
-                  Date.now() + firstFollowUp.delayMinutes * 60 * 1000,
-                )
+              await db.conversation.update({
+                where: { id: conversationId },
+                data: {
+                  nextFollowUpAt,
+                  followUpCount: 0,
+                },
+              })
 
-                await db.conversation.update({
-                  where: { id: conversationId },
-                  data: {
-                    nextFollowUpAt,
-                    followUpCount: 0,
-                  },
-                })
-
-                log('step:10b follow_up_scheduled', 'PASS', {
+              log('step:10b follow_up_scheduled', 'PASS', {
+                totalFollowUps: followUps.length,
+                firstDelayMinutes: firstFollowUp.delayMinutes,
+                nextFollowUpAt: nextFollowUpAt.toISOString(),
+              })
+              tracker.addStep({
+                type: 'FOLLOW_UP_SCHEDULE',
+                status: 'PASSED',
+                output: {
                   totalFollowUps: followUps.length,
                   firstDelayMinutes: firstFollowUp.delayMinutes,
-                  nextFollowUpAt: nextFollowUpAt.toISOString(),
-                })
-                tracker.addStep({
-                  type: 'FOLLOW_UP_SCHEDULE',
-                  status: 'PASSED',
-                  output: {
-                    totalFollowUps: followUps.length,
-                    firstDelayMinutes: firstFollowUp.delayMinutes,
-                  },
-                })
-              } else {
-                // Nenhum follow-up cobre este step — limpar qualquer FUP pendente
-                await db.conversation.update({
-                  where: { id: conversationId },
-                  data: { nextFollowUpAt: null, followUpCount: 0 },
-                })
-                log('step:10b follow_up_scheduled', 'SKIP', {
-                  reason: 'no_follow_ups_for_step',
-                })
-                tracker.addStep({
-                  type: 'FOLLOW_UP_SCHEDULE',
-                  status: 'SKIPPED',
-                  output: { reason: 'no_follow_ups_for_step' },
-                })
-              }
+                },
+              })
+            } else {
+              // Nenhum follow-up cobre este step — limpar qualquer FUP pendente
+              await db.conversation.update({
+                where: { id: conversationId },
+                data: { nextFollowUpAt: null, followUpCount: 0 },
+              })
+              log('step:10b follow_up_scheduled', 'SKIP', {
+                reason: 'no_follow_ups_for_step',
+              })
+              tracker.addStep({
+                type: 'FOLLOW_UP_SCHEDULE',
+                status: 'SKIPPED',
+                output: { reason: 'no_follow_ups_for_step' },
+              })
             }
           } catch (fupError) {
             logger.error('Follow-up scheduling failed', {
@@ -1738,6 +1805,8 @@ export const processAgentMessage = task({
           const totalDurationMs = Date.now() - taskStartMs
 
           triggerMetadata.set('model', promptContext.modelId)
+          triggerMetadata.set('stepAdvanced', stepAdvanced)
+          triggerMetadata.set('newStepOrder', newStepOrder)
           finalizeTrace('completed', {
             metadata: {
               responseLength: responseText.length,
