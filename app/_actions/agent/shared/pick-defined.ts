@@ -20,4 +20,5 @@ export const OPTIONAL_AGENT_FIELDS = [
   'businessHoursTimezone',
   'businessHoursConfig',
   'outOfHoursMessage',
+  'agentVersion',
 ] as const

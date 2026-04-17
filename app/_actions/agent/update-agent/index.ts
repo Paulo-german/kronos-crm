@@ -31,7 +31,7 @@ export const updateAgent = orgActionClient
         ...(data.promptConfig !== undefined && {
           promptConfig: data.promptConfig === null ? Prisma.DbNull : data.promptConfig,
         }),
-        ...pickDefined(data, [...OPTIONAL_AGENT_FIELDS, 'agentVersion'] as const),
+        ...pickDefined(data, OPTIONAL_AGENT_FIELDS),
       },
     })
 
