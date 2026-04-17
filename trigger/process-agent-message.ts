@@ -85,16 +85,21 @@ const KNOWN_TOOL_NAMES = new Set([
   'transfer_to_agent',
 ])
 
-// Schema para structured output quando o agente tem steps configurados.
+// Schema para structured output é construído dinamicamente por agente em runtime
+// (ver `buildAgentOutputSchema` abaixo) — o enum de `currentStep` depende dos UUIDs dos steps.
 // Separar message de currentStep evita que o LLM "vaze" JSON como texto ao cliente.
-const agentOutputSchema = z.object({
-  message: z.string().describe(
-    'Sua resposta ao cliente. Texto natural que será enviado diretamente ao lead.',
-  ),
-  currentStep: z.number().int().min(0).describe(
-    'Número (0-indexed) da etapa do processo de atendimento em que a conversa se encontra após esta interação. Só avança, nunca retrocede.',
-  ),
-})
+function buildAgentOutputSchema(stepIds: readonly string[]) {
+  // Cast obrigatório: z.enum exige tuple não-vazia; o caller garante que stepIds.length > 0.
+  const enumValues = stepIds as unknown as [string, ...string[]]
+  return z.object({
+    message: z.string().describe(
+      'Sua resposta ao cliente. Texto natural que será enviado diretamente ao lead.',
+    ),
+    currentStep: z.enum(enumValues).describe(
+      'UUID exato da etapa atual, escolhido entre os IDs listados no Processo de Atendimento. Só avança, nunca retrocede.',
+    ),
+  })
+}
 
 // Custo em steps LLM de gerar structured output — o SDK usa um step extra para o output
 const STEP_OUTPUT_OVERHEAD = 1
@@ -1727,6 +1732,13 @@ export const processAgentMessage = task({
           // Agentes sem steps não precisam de structured output — comportamento idêntico ao atual
           const hasSteps = promptContext.totalSteps > 0
 
+          // Schema dinâmico: enum de UUIDs dos steps do agente atual.
+          // Evita ambiguidade 0/1-indexed no canal LLM↔app e blinda contra hallucination
+          // — structured output restringe tokens válidos ao conjunto de IDs declarados.
+          const agentOutputSchema = hasSteps
+            ? buildAgentOutputSchema(promptContext.steps.map((step) => step.id))
+            : undefined
+
           const result = await generateText({
             model: getModel(promptContext.modelId),
             messages: llmMessages,
@@ -1736,7 +1748,7 @@ export const processAgentMessage = task({
             stopWhen: stepCountIs(4 + (hasSteps ? STEP_OUTPUT_OVERHEAD : 0)),
             maxOutputTokens: MAX_OUTPUT_TOKENS,
             // Quando há steps, forçamos output tipado para separar message de currentStep
-            output: hasSteps ? Output.object({ schema: agentOutputSchema }) : undefined,
+            output: agentOutputSchema ? Output.object({ schema: agentOutputSchema }) : undefined,
             experimental_telemetry: {
               isEnabled: true,
               tracer: langfuseTracer,
@@ -1798,8 +1810,12 @@ export const processAgentMessage = task({
             : result.text
 
           // Guard de monotonicidade: step só avança, nunca regride.
+          // O LLM retorna o UUID do step — convertemos para `order` via lookup no context.
           // Math.max previne regressão; Math.min previne avanço além do último step.
-          const classifiedStep = hasSteps ? result.output?.currentStep : undefined
+          const classifiedId = hasSteps ? result.output?.currentStep : undefined
+          const classifiedStep = classifiedId
+            ? promptContext.steps.find((step) => step.id === classifiedId)?.order
+            : undefined
           const newStepOrder =
             classifiedStep !== undefined
               ? Math.max(
@@ -2368,13 +2384,16 @@ export const processAgentMessage = task({
                   subtype: 'STEP_ADVANCED' satisfies InfoSubtype,
                   previousStep: promptContext.currentStepOrder,
                   newStep: newStepOrder,
-                  classifiedByLlm: classifiedStep,
+                  newStepId: promptContext.steps[newStepOrder]?.id,
+                  newStepName: promptContext.steps[newStepOrder]?.name,
+                  classifiedByLlm: classifiedId ?? null,
                 },
               })
 
               log('step:10a step_advanced', 'PASS', {
                 previousStep: promptContext.currentStepOrder,
                 newStep: newStepOrder,
+                classifiedId,
                 classifiedStep,
               })
             }

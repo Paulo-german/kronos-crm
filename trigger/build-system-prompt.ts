@@ -282,6 +282,7 @@ export interface BuildSystemPromptResult {
   hasKnowledgeBase: boolean // true quando completedFileCount > 0
   currentStepOrder: number
   totalSteps: number
+  steps: { id: string; order: number; name: string }[]
 }
 
 /**
@@ -348,6 +349,7 @@ export async function buildSystemPrompt(
         steps: {
           orderBy: { order: 'asc' },
           select: {
+            id: true,
             name: true,
             objective: true,
             order: true,
@@ -608,13 +610,13 @@ export async function buildSystemPrompt(
     lines.push('')
     lines.push('**Classificação de etapa (obrigatório no output estruturado):**')
     lines.push(
-      'Classifique o campo `currentStep` no output com o número (0-indexed) da etapa em que a conversa se encontra após esta interação.',
+      'Classifique o campo `currentStep` no output com o ID exato (UUID entre crases) da etapa em que a conversa se encontra após esta interação. Use apenas IDs que aparecem na lista abaixo.',
     )
     lines.push('O campo `message` deve conter sua resposta ao cliente.')
 
     for (const step of agent.steps) {
       lines.push('')
-      lines.push(`**${step.order + 1}. ${step.name}**`)
+      lines.push(`**${step.order + 1}. ${step.name}** (id: \`${step.id}\`)`)
       lines.push(step.objective)
 
       if (step.keyQuestion) {
@@ -813,5 +815,10 @@ export async function buildSystemPrompt(
     hasKnowledgeBase: completedFileCount > 0,
     currentStepOrder: conversation.currentStepOrder,
     totalSteps: agent.steps.length,
+    steps: agent.steps.map((step) => ({
+      id: step.id,
+      order: step.order,
+      name: step.name,
+    })),
   }
 }
