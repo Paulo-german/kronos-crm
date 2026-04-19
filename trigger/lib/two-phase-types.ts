@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import type { ModelMessage as AISDKModelMessage } from 'ai'
 import { ConnectionType } from '@prisma/client'
 import type { ToolContext } from '../tools/types'
 
@@ -7,15 +8,22 @@ import type { ToolContext } from '../tools/types'
 export const GENERIC_SAFE_FALLBACK =
   'Vou te retornar em instantes, um atendente vai continuar por aqui!'
 
-// Schema para mensagens do histórico LLM enviadas como payload para os subtasks.
-// Contém apenas role + content — metadata (transcrição de mídia, anexos) é
-// enriquecida pelo orchestrator antes de montar o array, nunca aqui.
-export const modelMessageSchema = z.object({
-  role: z.enum(['system', 'user', 'assistant']),
-  content: z.string(),
+// Schema de ModelMessage compatível com AI SDK v6.
+// Usa z.custom<AISDKModelMessage>() para que o tipo inferido pelo Zod seja
+// exatamente o `ModelMessage` do SDK (union discriminada por role). A
+// validação runtime é intencionalmente permissiva — duplicar as uniões
+// rigorosas do SDK em schemas Zod seria frágil entre upgrades do pacote.
+// O SDK ainda faz validação estruturada ao receber as messages em
+// generateText/generateObject.
+export const modelMessageSchema = z.custom<AISDKModelMessage>((val) => {
+  if (typeof val !== 'object' || val === null) return false
+  const candidate = val as Record<string, unknown>
+  if (typeof candidate.role !== 'string') return false
+  const content = candidate.content
+  return typeof content === 'string' || Array.isArray(content)
 })
 
-export type ModelMessage = z.infer<typeof modelMessageSchema>
+export type ModelMessage = AISDKModelMessage
 
 // Schema interno do provider WhatsApp — espelha InboxProviderContext de tools/types.ts
 const inboxProviderContextSchema = z.object({
@@ -213,6 +221,7 @@ export interface ToolAgentTrace {
   usage: { inputTokens: number; outputTokens: number; totalTokens: number }
   rawText: string // descartado do caminho de resposta; útil apenas para debug
   inferredStepOrder: number | null // step do funil conversacional inferido pelo Agent 1; null = sem confiança suficiente
+  classifiedStepId: string | null // UUID do step inferido pelo Agent 1; null = sem confiança/funil vazio
 }
 
 // Output do Agent 2 (Response Agent) — mensagem final ao cliente + metadados de uso.

@@ -74,7 +74,13 @@ export function compileStepActions(actions: StepAction[]): string[] {
 
     switch (action.type) {
       case 'move_deal':
-        return `* ${trigger} → execute \`move_deal\` com targetStageId="${action.targetStage}".`
+        // UUID em linha isolada para evitar alucinação do modelo — quando o ID
+        // está embutido em prosa (ex: targetStageId="..."), Gemini tende a
+        // pattern-generate um UUID novo ao invés de copiar o valor exato.
+        return [
+          `* ${trigger} → execute \`move_deal\`.`,
+          `  → targetStageId: ${action.targetStage}`,
+        ].join('\n')
       case 'update_contact':
         return `* ${trigger} → execute \`update_contact\` para registrar no contato.`
       case 'update_deal': {

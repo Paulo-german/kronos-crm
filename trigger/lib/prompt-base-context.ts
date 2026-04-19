@@ -60,6 +60,7 @@ const dealContextSchema = z.object({
 
 // Mantido 1:1 com o schema existente em app/_actions/agent/shared/step-action-schema.ts
 const agentStepSchema = z.object({
+  id: z.string().uuid(),
   name: z.string(),
   objective: z.string(),
   order: z.number().int(),
@@ -184,6 +185,7 @@ export async function buildPromptBaseContext(
         steps: {
           orderBy: { order: 'asc' },
           select: {
+            id: true,
             name: true,
             objective: true,
             order: true,
@@ -322,6 +324,7 @@ export async function buildPromptBaseContext(
   const steps: PromptBaseContext['steps'] = agent.steps.map((step) => {
     const parsedActions = z.array(stepActionSchema).safeParse(step.actions)
     return {
+      id: step.id,
       name: step.name,
       objective: step.objective,
       order: step.order,

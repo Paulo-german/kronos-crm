@@ -30,7 +30,12 @@ const PRIORITY_LABELS: Record<string, string> = {
 // ---------------------------------------------------------------------------
 
 export function compileStepCore(step: AgentStep): string {
-  return `**${step.order}. ${step.name}**\nObjetivo: ${step.objective}`
+  // (stepId: `UUID`) ancora o modelo no identificador da etapa do funil de
+  // atendimento — usado EXCLUSIVAMENTE no campo `currentStep` do output
+  // estruturado. Nunca deve ser passado como parâmetro de ferramentas (ex:
+  // `targetStageId` do move_deal é UUID do pipeline kanban, outra entidade).
+  // O rótulo `stepId` (em vez do genérico `id`) desambigua visualmente.
+  return `**${step.order}. ${step.name}** (stepId: \`${step.id}\`)\nObjetivo: ${step.objective}`
 }
 
 // ---------------------------------------------------------------------------
@@ -63,7 +68,13 @@ function compileActionLine(action: StepAction): string {
 
   switch (action.type) {
     case 'move_deal':
-      return `* ${trigger} → execute \`move_deal\` com targetStageId="${action.targetStage}".`
+      // UUID em linha isolada para evitar alucinação do modelo — quando o ID
+      // está embutido em prosa (ex: targetStageId="..."), Gemini tende a
+      // pattern-generate um UUID novo ao invés de copiar o valor exato.
+      return [
+        `* ${trigger} → execute \`move_deal\`.`,
+        `  → targetStageId: ${action.targetStage}`,
+      ].join('\n')
 
     case 'update_contact':
       return `* ${trigger} → execute \`update_contact\` para registrar no contato.`

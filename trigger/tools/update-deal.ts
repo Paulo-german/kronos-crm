@@ -17,6 +17,12 @@ export function createUpdateDealTool(ctx: ToolContext) {
     description:
       'Atualiza dados de um negócio (título, valor, prioridade, previsão de fechamento, notas, status). Use quando o cliente informar valor, prazo, ou quando o negócio for ganho ou perdido.',
     inputSchema: z.object({
+      callReason: z
+        .string()
+        .min(10)
+        .describe(
+          'Motivo curto (1 frase) do porquê esta ferramenta está sendo chamada agora, referenciando o gatilho do Processo de Atendimento que justifica a ação. Obrigatório para auditoria.',
+        ),
       title: z.string().optional().describe('Novo título do negócio'),
       value: z
         .number()

@@ -1,5 +1,6 @@
 import { schemaTask, logger, metadata, AbortTaskRunError } from '@trigger.dev/sdk/v3'
-import { generateText, Output, stepCountIs } from 'ai'
+import type { ModelMessage } from 'ai'
+import { generateObject, generateText, stepCountIs } from 'ai'
 import { z } from 'zod'
 import { startObservation } from '@langfuse/tracing'
 import { getModel } from '@/_lib/ai/provider'
@@ -8,17 +9,25 @@ import { extractToolDataForResponder } from '../lib/tool-data-extractor'
 import type { ToolStep } from '../lib/tool-data-extractor'
 import { abortIfPermanent } from '../lib/retry-helpers'
 import { buildMutationToolSet } from '../tools/build-mutation-tool-set'
+import { flushLangfuse, langfuseTracer } from '../lib/langfuse'
 import { promptBaseContextSchema } from '../lib/prompt-base-context'
 import { modelMessageSchema, toolContextSchema } from '../lib/two-phase-types'
 import type { ToolAgentTrace } from '../lib/two-phase-types'
 import type { GroupToolConfig } from '../tools/transfer-to-agent'
 import { stepActionSchema } from '@/_actions/agent/shared/step-action-schema'
 
-// Output estruturado leve — o LLM declara o step do funil inferido após execução
-// das tools. Ver §1.7 (ToolAgentTrace.inferredStepOrder) do plano.
-const toolAgentOutputSchema = z.object({
-  inferredStepOrder: z.number().int().min(0).nullable(),
-})
+// Tools que, uma vez executadas com sucesso neste turno, não devem rodar de
+// novo. Complementam create_task, create_event, search_knowledge,
+// search_products, list_availability — essas podem ser chamadas múltiplas
+// vezes por turno legitimamente (buscas distintas, múltiplas tarefas).
+const IDEMPOTENT_TOOL_NAMES = [
+  'update_deal',
+  'move_deal',
+  'update_contact',
+  'update_event',
+  'hand_off_to_human',
+  'transfer_to_agent',
+] as const
 
 const toolAgentPayloadSchema = z.object({
   modelId: z.string(),
@@ -134,13 +143,72 @@ export const toolAgent = schemaTask({
         system,
         messages: llmMessages,
         tools,
-        // generateText + Output.object combina tool calls com output estruturado.
-        // generateObject não aceita tools, por isso este padrão (§8.1 do plano).
-        output: Output.object({ schema: toolAgentOutputSchema }),
-        // 6 steps máximos: cobre tool calls encadeadas + step de output estruturado
-        stopWhen: stepCountIs(6),
+        // Paridade com v1 — default do Gemini (~1.0) gera tool-calls redundantes
+        // com "justificativas" levemente diferentes, alimentando o loop intra-turno.
+        temperature: 0.4,
+        // Sem Output.object aqui: combinar tools + structured output com Gemini
+        // faz o modelo ficar fixado em tool-calls e nunca emitir o schema,
+        // disparando "No output generated". A classificação de step é feita em
+        // chamada dedicada (generateObject) logo abaixo.
+        stopWhen: stepCountIs(4),
+
+        // Remove do toolSet, a cada step, as tools idempotentes que já foram
+        // executadas com sucesso em steps anteriores deste turno. Substitui o
+        // antigo wrapToolsWithDedup (execute-wrapper com retorno textual) por
+        // uma barreira estrutural do SDK: a tool deixa de existir para o
+        // modelo, eliminando o loop de reavaliação observado em Gemini 2.5
+        // Pro, onde o modelo interpretava o retorno "alreadyExecutedThisTurn"
+        // como feedback e retentava com novas justificativas.
+        prepareStep: async ({ steps }) => {
+          if (!tools) return {}
+
+          const executedIdempotent = new Set<string>()
+          for (const step of steps) {
+            for (const toolResult of step.toolResults ?? []) {
+              const toolName = toolResult.toolName
+              if (!IDEMPOTENT_TOOL_NAMES.includes(toolName as never)) continue
+
+              const output = toolResult.output as unknown
+              const didSucceed =
+                typeof output !== 'object' ||
+                output === null ||
+                (output as Record<string, unknown>).success !== false
+              if (didSucceed) executedIdempotent.add(toolName)
+            }
+          }
+
+          if (executedIdempotent.size === 0) return {}
+
+          const activeTools = Object.keys(tools).filter(
+            (name) => !executedIdempotent.has(name),
+          ) as Array<keyof typeof tools>
+
+          return { activeTools }
+        },
+
+        // Preserva log estruturado de callReason que antes vivia no wrapper
+        // de dedup. Útil para diagnóstico rápido no Trigger.dev de loops e
+        // chamadas indevidas — complementa o trace do Langfuse.
+        onStepFinish: async ({ toolCalls }) => {
+          for (const toolCall of toolCalls ?? []) {
+            const input = toolCall.input as Record<string, unknown> | undefined
+            const callReason =
+              input && 'callReason' in input
+                ? String(input.callReason ?? '')
+                : null
+            if (!callReason) continue
+            logger.info('Tool call reason', {
+              toolName: toolCall.toolName,
+              callReason,
+              conversationId,
+              phaseTraceId,
+            })
+          }
+        },
+
         experimental_telemetry: {
           isEnabled: true,
+          tracer: langfuseTracer,
           functionId: 'agent-tool-executor',
           metadata: { phaseTraceId, stage: 'tool_agent' },
         },
@@ -169,11 +237,57 @@ export const toolAgent = schemaTask({
           abortIfPermanent(error, { tool: toolName }),
       })
 
-      // Validação defensiva — Zod já garante min(0) no parse; null é explícito
-      // quando o LLM não tem confiança suficiente para classificar o step.
-      const rawInferred = result.output?.inferredStepOrder ?? null
-      const inferredStepOrder =
-        rawInferred !== null && rawInferred >= 0 ? rawInferred : null
+      // ===================================================================
+      // Classificação de step em chamada dedicada (generateObject, sem tools).
+      // Separado do generateText para evitar o bug de Gemini ficar fixado em
+      // tool-calls e nunca emitir structured output.
+      // ===================================================================
+      const stepIds = promptBaseContext.steps.map((step) => step.id)
+      let classifiedStepId: string | null = null
+
+      if (stepIds.length > 0) {
+        const classifierSchema = z.object({
+          currentStep: z.enum(stepIds as [string, ...string[]]).nullable(),
+        })
+
+        // Reenvia histórico + trajetória do turno (response.messages traz
+        // tool-call/tool-result nativos) para o classificador ter contexto pleno.
+        const classifierMessages: ModelMessage[] = [
+          ...llmMessages,
+          ...result.response.messages,
+        ]
+
+        try {
+          const classifierResult = await generateObject({
+            model: getModel(modelId),
+            system,
+            messages: classifierMessages,
+            schema: classifierSchema,
+            temperature: 0.4,
+            experimental_telemetry: {
+              isEnabled: true,
+              tracer: langfuseTracer,
+              functionId: 'agent-tool-classifier',
+              metadata: { phaseTraceId, stage: 'tool_agent_classifier' },
+            },
+          })
+          classifiedStepId = classifierResult.object.currentStep ?? null
+        } catch (classifierError) {
+          logger.warn('Step classifier failed — keeping current step', {
+            conversationId,
+            phaseTraceId,
+            error:
+              classifierError instanceof Error
+                ? classifierError.message
+                : String(classifierError),
+          })
+        }
+      }
+
+      const inferredStepOrder = classifiedStepId
+        ? (promptBaseContext.steps.find((step) => step.id === classifiedStepId)
+            ?.order ?? null)
+        : null
 
       // Construir trace detalhado para logs/Langfuse — NUNCA enviado ao Agent 2.
       const toolCallsTrace: ToolAgentTrace['toolCalls'] = (result.steps ?? []).flatMap(
@@ -238,11 +352,13 @@ export const toolAgent = schemaTask({
         // rawText descartado do caminho de resposta — preservado apenas para debug
         rawText: result.text ?? '',
         inferredStepOrder,
+        classifiedStepId,
       }
 
-      return { dataFromTools, toolAgentTrace }
+      return { dataFromTools, toolAgentTrace, responseMessages: result.response.messages }
     } finally {
       langfuseSpan.end()
+      await flushLangfuse()
     }
   },
 })

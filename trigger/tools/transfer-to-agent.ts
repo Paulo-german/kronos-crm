@@ -50,6 +50,12 @@ export function createTransferToAgentTool(
       'Transfere a conversa para outro agente especializado do grupo. ' +
       'Use quando perceber que o assunto está fora do seu escopo de atuação.',
     inputSchema: z.object({
+      callReason: z
+        .string()
+        .min(10)
+        .describe(
+          'Motivo curto (1 frase) do porquê esta ferramenta está sendo chamada agora, referenciando o gatilho do Processo de Atendimento que justifica a ação. Obrigatório para auditoria.',
+        ),
       reason: z.string().describe('Motivo da transferência para outro agente'),
       targetExpertise: z
         .string()
