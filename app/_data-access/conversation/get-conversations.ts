@@ -5,6 +5,30 @@ import { db } from '@/_lib/prisma'
 import type { Prisma, ConversationStatus } from '@prisma/client'
 import { maskPhone, maskRemoteJid } from '@/_lib/pii-mask'
 
+// Whitelist explícita de campos de metadata da última mensagem expostos ao cliente.
+// Impede que campos internos (model, llmDurationMs, agentTrajectory) vazem para o frontend.
+export interface LastMessageMetadataDto {
+  media?: unknown
+  sentBy?: string
+  sentByName?: string
+  sentFrom?: string
+  template?: unknown
+  deliveryError?: unknown
+}
+
+function toLastMessageSafeMetadata(raw: unknown): LastMessageMetadataDto | null {
+  if (raw === null || typeof raw !== 'object') return null
+  const meta = raw as Record<string, unknown>
+  return {
+    media: meta.media,
+    sentBy: typeof meta.sentBy === 'string' ? meta.sentBy : undefined,
+    sentByName: typeof meta.sentByName === 'string' ? meta.sentByName : undefined,
+    sentFrom: typeof meta.sentFrom === 'string' ? meta.sentFrom : undefined,
+    template: meta.template,
+    deliveryError: meta.deliveryError,
+  }
+}
+
 export interface ConversationLabelDto {
   id: string
   name: string
@@ -37,7 +61,7 @@ export interface ConversationListDto {
     content: string
     role: string
     createdAt: Date
-    metadata: unknown
+    metadata: LastMessageMetadataDto | null
   } | null
   messageCount: number
   updatedAt: Date
@@ -166,7 +190,9 @@ function mapConversationToDto(
           content: conversation.messages[0].content,
           role: conversation.messages[0].role,
           createdAt: conversation.messages[0].createdAt,
-          metadata: conversation.messages[0].metadata,
+          // Whitelist explícita: expõe apenas campos seguros de metadata ao frontend.
+          // agentTrajectory, model e llmDurationMs são internos e não devem vazar.
+          metadata: toLastMessageSafeMetadata(conversation.messages[0].metadata),
         }
       : null,
     messageCount: conversation._count.messages,

@@ -4,11 +4,23 @@ import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 import { maskPhone, maskRemoteJid } from '@/_lib/pii-mask'
 
+// Whitelist explícita de campos de metadata expostos ao cliente.
+// Campos internos (model, llmDurationMs, agentTrajectory) são filtrados aqui
+// para nunca vazar estruturas de depuração para o frontend.
+export interface MessageMetadataDto {
+  media?: unknown
+  sentBy?: string
+  sentByName?: string
+  sentFrom?: string
+  template?: unknown
+  deliveryError?: unknown
+}
+
 export interface MessageDto {
   id: string
   role: string
   content: string
-  metadata: unknown
+  metadata: MessageMetadataDto | null
   deliveryStatus: string | null
   createdAt: Date
 }
@@ -29,6 +41,22 @@ export interface ConversationDetailDto {
 }
 
 const DEFAULT_MESSAGE_LIMIT = 30
+
+// Filtra metadata para expor apenas campos seguros ao frontend.
+// Campos como model, llmDurationMs e agentTrajectory são internos e nunca devem
+// chegar ao cliente — whitelist explícita protege contra adições futuras acidentais.
+function toSafeMetadata(raw: unknown): MessageMetadataDto | null {
+  if (raw === null || typeof raw !== 'object') return null
+  const meta = raw as Record<string, unknown>
+  return {
+    media: meta.media,
+    sentBy: typeof meta.sentBy === 'string' ? meta.sentBy : undefined,
+    sentByName: typeof meta.sentByName === 'string' ? meta.sentByName : undefined,
+    sentFrom: typeof meta.sentFrom === 'string' ? meta.sentFrom : undefined,
+    template: meta.template,
+    deliveryError: meta.deliveryError,
+  }
+}
 
 const fetchMessagesFromDb = async (
   conversationId: string,
@@ -51,7 +79,10 @@ const fetchMessagesFromDb = async (
     },
   })
 
-  return messages
+  return messages.map((msg) => ({
+    ...msg,
+    metadata: toSafeMetadata(msg.metadata),
+  }))
 }
 
 export const getConversationMessages = cache(
@@ -99,7 +130,10 @@ export async function getConversationMessagesPaginated(
   const sliced = hasMore ? messages.slice(0, limit) : messages
 
   return {
-    messages: sliced.reverse(),
+    messages: sliced.reverse().map((msg) => ({
+      ...msg,
+      metadata: toSafeMetadata(msg.metadata),
+    })),
     hasMore,
   }
 }
