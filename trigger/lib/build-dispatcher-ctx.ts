@@ -263,10 +263,27 @@ export async function buildDispatcherCtx(
         workerName: routerResult.workerName,
         confidence: routerResult.confidence,
       })
+    }
 
+    // -----------------------------------------------------------------------
+    // Post-routing housekeeping — roda sempre que a conversa tem worker
+    // resolvido via routing, independente de quem fez o routing
+    // (buildDispatcherCtx OU router-lite via skipRouting).
+    // -----------------------------------------------------------------------
+    if (requiresRouting && groupId) {
       triggerMetadata.set('effectiveAgentId', effectiveAgentId)
       traceTags.push('routed')
 
+      // Re-emit updateActiveTrace pra refletir a tag 'routed' no Langfuse
+      // (o update inicial nas linhas ~120 aconteceu antes do routing)
+      updateActiveTrace({
+        sessionId: conversationId,
+        userId: organizationId,
+        tags: traceTags,
+        metadata: { agentId: effectiveAgentId, organizationId, messageType: message.type },
+      })
+
+      // Business hours check do worker resolvido
       const resolvedWorker = await db.agent.findUnique({
         where: { id: effectiveAgentId },
         select: {
@@ -317,7 +334,7 @@ export async function buildDispatcherCtx(
       })
     }
 
-    if (requiresRouting && groupId && effectiveAgentId !== agentId) {
+    if (requiresRouting && groupId) {
       tracker.addStep({
         type: 'ROUTER_CLASSIFICATION',
         status: 'PASSED',
