@@ -15,7 +15,6 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -33,7 +32,6 @@ import { Textarea } from '@/_components/ui/textarea'
 import { Button } from '@/_components/ui/button'
 import { Switch } from '@/_components/ui/switch'
 import { Separator } from '@/_components/ui/separator'
-import { Badge } from '@/_components/ui/badge'
 import { Loader2 } from 'lucide-react'
 import { createAgent } from '@/_actions/agent/create-agent'
 import {
@@ -281,23 +279,14 @@ const CreateAgentPromptFields = ({ control }: CreateAgentPromptFieldsProps) => {
                 </SelectItem>
                 <SelectItem value="v2">
                   <div className="flex items-baseline gap-2">
-                    <span>Avançado</span>
-                    <Badge variant="outline" className="text-xs">
-                      Experimental
-                    </Badge>
+                    <span>v2</span>
                     <span className="text-xs text-muted-foreground">
-                      Múltiplas etapas de análise.
+                      Em desenvolvimento.
                     </span>
                   </div>
                 </SelectItem>
               </SelectContent>
             </Select>
-            {field.value === 'v2' && (
-              <FormDescription className="text-amber-600 dark:text-amber-500">
-                Atenção: múltiplas etapas de análise aumentam o tempo de resposta
-                e dobram o custo por mensagem.
-              </FormDescription>
-            )}
             <FormMessage />
           </FormItem>
         )}

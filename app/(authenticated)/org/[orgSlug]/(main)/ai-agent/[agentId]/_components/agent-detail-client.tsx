@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
-import { ArrowLeft, CircleIcon, MessageSquare } from 'lucide-react'
+import { ArrowLeft, CircleIcon, MessageSquare, Sparkles } from 'lucide-react'
 import { Badge } from '@/_components/ui/badge'
 import { Button } from '@/_components/ui/button'
 import { Switch } from '@/_components/ui/switch'
@@ -139,6 +139,40 @@ const AgentDetailClient = ({
                   Inativo
                 </Badge>
               )}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  {agent.agentVersion === 'v3' ? (
+                    <Badge
+                      variant="outline"
+                      className="h-6 gap-1.5 border-amber-500/30 bg-amber-500/10 px-2 text-xs font-semibold text-amber-600 dark:text-amber-400"
+                    >
+                      <Sparkles className="h-3 w-3" />
+                      Avançado
+                    </Badge>
+                  ) : agent.agentVersion === 'v2' ? (
+                    <Badge
+                      variant="outline"
+                      className="h-6 gap-1.5 px-2 text-xs font-semibold text-muted-foreground"
+                    >
+                      v2
+                    </Badge>
+                  ) : (
+                    <Badge
+                      variant="outline"
+                      className="h-6 gap-1.5 px-2 text-xs font-semibold text-muted-foreground"
+                    >
+                      Clássico
+                    </Badge>
+                  )}
+                </TooltipTrigger>
+                <TooltipContent>
+                  {agent.agentVersion === 'v3'
+                    ? 'Modo Avançado: múltiplas etapas de análise. Maior tempo de resposta e custo dobrado por mensagem.'
+                    : agent.agentVersion === 'v2'
+                      ? 'Modo v2: em desenvolvimento.'
+                      : 'Modo Clássico: respostas diretas e econômicas.'}
+                </TooltipContent>
+              </Tooltip>
               {canManage && (
                 <Switch
                   checked={isActive}
