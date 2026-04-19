@@ -8,7 +8,11 @@ interface ChatBannersProps {
   isSimulator?: boolean
 }
 
-export function ChatBanners({ connectionError, aiPaused, isSimulator }: ChatBannersProps) {
+export function ChatBanners({
+  connectionError,
+  aiPaused,
+  isSimulator,
+}: ChatBannersProps) {
   return (
     <>
       {connectionError && (
@@ -20,10 +24,11 @@ export function ChatBanners({ connectionError, aiPaused, isSimulator }: ChatBann
 
       {/* Banner informativo exclusivo para conversas simuladas */}
       {isSimulator && (
-        <div className="flex items-center gap-2 border-b border-amber-500/20 bg-amber-500/10 px-4 py-2 text-xs text-amber-700 dark:text-amber-400">
+        <div className="flex items-center gap-2 border-b border-kronos-cyan bg-cyan-300/10 px-4 py-2 text-xs text-[var(--kronos-cyan)]">
           <FlaskConical className="h-3.5 w-3.5 shrink-0" />
           <span>
-            Esta é uma conversa simulada. As mensagens não são enviadas por WhatsApp.
+            Esta é uma conversa simulada. As mensagens não são enviadas por
+            WhatsApp.
           </span>
         </div>
       )}
@@ -32,7 +37,8 @@ export function ChatBanners({ connectionError, aiPaused, isSimulator }: ChatBann
         <div className="flex items-center gap-2 border-b border-kronos-yellow/20 bg-kronos-yellow/10 px-4 py-2 text-xs text-kronos-yellow">
           <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
           <span>
-            IA pausada. Você está no controle da conversa. Reative manualmente pelo switch acima.
+            IA pausada. Você está no controle da conversa. Reative manualmente
+            pelo switch acima.
           </span>
         </div>
       )}

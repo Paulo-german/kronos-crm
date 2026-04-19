@@ -127,7 +127,7 @@
     --kanban-card-foreground: 0 0% 98%; /* hsl(0 0% 98%) */
 
     /* Tab: #18181b (Zinc 900) - For Cards, Sidebars, Modals */
-    --tab: 240 6% 9%; /* hsl(240 6% 9%) */
+    --tab: 240 6% 6%; /* hsl(240 6% 6%) - match sidebar */
     --tab-active: 240 6% 15%; /* hsl(240 6%  15%) */
     --tab-foreground: 0 0% 98%; /* hsl(0 0% 98%) */
 

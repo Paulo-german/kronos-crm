@@ -40,7 +40,10 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/_components/ui/dropdown-menu'
-import type { ConversationListDto, ConversationLabelDto } from '@/_data-access/conversation/get-conversations'
+import type {
+  ConversationListDto,
+  ConversationLabelDto,
+} from '@/_data-access/conversation/get-conversations'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import type { AgentDto } from '@/_data-access/agent/get-agents'
 import { SimulatorDialog } from './simulator-dialog'
@@ -290,16 +293,10 @@ export function ConversationList({
           className="mb-3"
         >
           <TabsList className="grid h-10 w-full grid-cols-3 rounded-md border border-border/50">
-            <TabsTrigger
-              value="all"
-              className="rounded-md py-1.5"
-            >
+            <TabsTrigger value="all" className="rounded-md py-1.5">
               Todas
             </TabsTrigger>
-            <TabsTrigger
-              value="unread"
-              className="gap-1.5 rounded-md py-1.5"
-            >
+            <TabsTrigger value="unread" className="gap-1.5 rounded-md py-1.5">
               Não lidas
               {totalUnread > 0 && (
                 <Badge className="flex h-5 min-w-5 items-center justify-center rounded-full bg-kronos-green px-1 text-[10px] font-medium text-white">
@@ -333,7 +330,7 @@ export function ConversationList({
       </div>
 
       {/* Lista */}
-      <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-kronos-purple/50 [&::-webkit-scrollbar-track]:bg-transparent">
+      <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-kronos-purple/50 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-1">
         {isLoading ? (
           <LoadingSkeleton />
         ) : (
@@ -391,13 +388,14 @@ export function ConversationList({
                               {conversation.contactName}
                             </span>
                             {/* Badge do simulador — identifica conversas simuladas na lista */}
-                            {conversation.inboxConnectionType === 'SIMULATOR' && (
+                            {conversation.inboxConnectionType ===
+                              'SIMULATOR' && (
                               <Badge
                                 variant="outline"
-                                className="h-4 shrink-0 gap-0.5 border-amber-500/30 bg-amber-500/10 px-1 text-[9px] text-amber-700 dark:text-amber-400"
+                                className="bg-cyan/20 h-4 shrink-0 gap-0.5 border-cyan-300/20 px-1 text-[9px] text-kronos-cyan"
                               >
                                 <FlaskConical className="h-2.5 w-2.5" />
-                                Sim
+                                Simulação
                               </Badge>
                             )}
                           </div>
@@ -431,7 +429,9 @@ export function ConversationList({
                             {conversation.lastMessage.role === 'assistant' && (
                               <span className="font-medium">Você: </span>
                             )}
-                            {renderWhatsappText(truncateMessage(conversation.lastMessage.content))}
+                            {renderWhatsappText(
+                              truncateMessage(conversation.lastMessage.content),
+                            )}
                           </p>
                         )}
 
@@ -475,7 +475,9 @@ export function ConversationList({
                                   </Badge>
                                 </TooltipTrigger>
                                 <TooltipContent side="right">
-                                  <p>Responsável: {conversation.assigneeName}</p>
+                                  <p>
+                                    Responsável: {conversation.assigneeName}
+                                  </p>
                                 </TooltipContent>
                               </Tooltip>
                             </TooltipProvider>
@@ -494,7 +496,9 @@ export function ConversationList({
                                   colorConfig.dark_text,
                                 )}
                               >
-                                <Tag className={cn('h-3 w-3', colorConfig.text)} />
+                                <Tag
+                                  className={cn('h-3 w-3', colorConfig.text)}
+                                />
                                 {label.name}
                               </Badge>
                             )

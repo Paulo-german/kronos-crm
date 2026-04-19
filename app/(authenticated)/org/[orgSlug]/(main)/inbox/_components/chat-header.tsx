@@ -1,7 +1,21 @@
 'use client'
 
 import { useState } from 'react'
-import { AlertTriangle, ArrowLeft, Bot, CheckCircle2, Clock, FlaskConical, Info, Loader2, MoreVertical, RotateCcw, Trash2, UserCog, Users } from 'lucide-react'
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Bot,
+  CheckCircle2,
+  Clock,
+  FlaskConical,
+  Info,
+  Loader2,
+  MoreVertical,
+  RotateCcw,
+  Trash2,
+  UserCog,
+  Users,
+} from 'lucide-react'
 import type { ConversationWindowState } from '../_hooks/use-conversation-window'
 import { cn } from '@/_lib/utils'
 import {
@@ -135,7 +149,7 @@ export function ChatHeader({
               {isSimulator && (
                 <Badge
                   variant="outline"
-                  className="h-5 shrink-0 gap-1 border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-700 dark:text-amber-400"
+                  className="h-5 shrink-0 gap-1 border-cyan-300/10 bg-cyan-300/20 text-[10px] text-kronos-cyan"
                 >
                   <FlaskConical className="h-3 w-3" />
                   Simulação
@@ -149,7 +163,7 @@ export function ChatHeader({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6 shrink-0 text-amber-600 hover:bg-amber-500/10 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
+                      className="hover:bg-[var(--kronos-cyan)]/10 h-6 w-6 shrink-0 text-[var(--kronos-cyan)] hover:text-[var(--kronos-cyan)]"
                       disabled={isSimulatorActionPending}
                       onClick={(event) => event.stopPropagation()}
                     >
@@ -160,7 +174,10 @@ export function ChatHeader({
                       )}
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" onClick={(event) => event.stopPropagation()}>
+                  <DropdownMenuContent
+                    align="start"
+                    onClick={(event) => event.stopPropagation()}
+                  >
                     {onResetSimulator && (
                       <DropdownMenuItem onClick={onResetSimulator}>
                         <RotateCcw className="mr-2 h-3.5 w-3.5" />
@@ -234,12 +251,18 @@ export function ChatHeader({
                 </p>
                 {windowState?.isMetaCloud && (
                   <>
-                    <span className="text-[10px] text-muted-foreground/40">·</span>
+                    <span className="text-[10px] text-muted-foreground/40">
+                      ·
+                    </span>
                     {windowState.isOpen ? (
-                      <span className={cn(
-                        'flex items-center gap-1 text-[11px]',
-                        windowState.isExpiring ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400',
-                      )}>
+                      <span
+                        className={cn(
+                          'flex items-center gap-1 text-[11px]',
+                          windowState.isExpiring
+                            ? 'text-amber-600 dark:text-amber-400'
+                            : 'text-green-600 dark:text-green-400',
+                        )}
+                      >
                         <Clock className="h-3 w-3 shrink-0" />
                         {windowState.formattedTimeRemaining}
                       </span>
@@ -307,38 +330,43 @@ export function ChatHeader({
 
         {/* Botão Resolver / Reabrir */}
         {!isSimulator && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant={conversationStatus === 'RESOLVED' ? 'outline' : 'default'}
-              size="sm"
-              className={cn(
-                'h-8 gap-1.5 text-xs',
-                conversationStatus === 'OPEN' && 'bg-green-600 text-white hover:bg-green-700',
-              )}
-              onClick={conversationStatus === 'RESOLVED' ? onReopen : onResolve}
-              disabled={isStatusPending}
-            >
-              {isStatusPending ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : conversationStatus === 'RESOLVED' ? (
-                <RotateCcw className="h-3.5 w-3.5" />
-              ) : (
-                <CheckCircle2 className="h-3.5 w-3.5" />
-              )}
-              <span className="hidden sm:inline">
-                {conversationStatus === 'RESOLVED' ? 'Reabrir' : 'Resolver'}
-              </span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">
-            <p>
-              {conversationStatus === 'RESOLVED'
-                ? 'Reabrir esta conversa'
-                : 'Marcar conversa como resolvida'}
-            </p>
-          </TooltipContent>
-        </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={
+                  conversationStatus === 'RESOLVED' ? 'outline' : 'default'
+                }
+                size="sm"
+                className={cn(
+                  'h-8 gap-1.5 text-xs',
+                  conversationStatus === 'OPEN' &&
+                    'bg-green-600 text-white hover:bg-green-700',
+                )}
+                onClick={
+                  conversationStatus === 'RESOLVED' ? onReopen : onResolve
+                }
+                disabled={isStatusPending}
+              >
+                {isStatusPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : conversationStatus === 'RESOLVED' ? (
+                  <RotateCcw className="h-3.5 w-3.5" />
+                ) : (
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                )}
+                <span className="hidden sm:inline">
+                  {conversationStatus === 'RESOLVED' ? 'Reabrir' : 'Resolver'}
+                </span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <p>
+                {conversationStatus === 'RESOLVED'
+                  ? 'Reabrir esta conversa'
+                  : 'Marcar conversa como resolvida'}
+              </p>
+            </TooltipContent>
+          </Tooltip>
         )}
 
         <Separator orientation="vertical" className="h-6" />
@@ -375,7 +403,8 @@ export function ChatHeader({
           <AlertDialogHeader>
             <AlertDialogTitle>Encerrar simulação?</AlertDialogTitle>
             <AlertDialogDescription>
-              Essa ação apaga a conversa, a negociação e o contato simulador. Não é reversível.
+              Essa ação apaga a conversa, a negociação e o contato simulador.
+              Não é reversível.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
