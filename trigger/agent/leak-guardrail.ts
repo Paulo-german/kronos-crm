@@ -5,6 +5,7 @@ import { startObservation } from '@langfuse/tracing'
 import { getModel } from '@/_lib/ai/provider'
 import { GUARDRAIL_MODEL_ID } from '@/_lib/ai/models'
 import { buildLeakGuardrailPrompt } from '../lib/prompt-builders'
+import { flushLangfuse, langfuseTracer } from '../lib/langfuse'
 
 const leakGuardrailPayloadSchema = z.object({
   customerMessage: z.string(),
@@ -80,6 +81,7 @@ export const leakGuardrail = schemaTask({
         schema: leakGuardrailOutputSchema,
         experimental_telemetry: {
           isEnabled: true,
+          tracer: langfuseTracer,
           functionId: 'agent-leak-guardrail',
           metadata: {
             phaseTraceId: payload.phaseTraceId,
@@ -109,6 +111,7 @@ export const leakGuardrail = schemaTask({
       return { ...result.object, usage: result.usage }
     } finally {
       langfuseSpan.end()
+      await flushLangfuse()
     }
   },
 })

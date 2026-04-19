@@ -9,6 +9,7 @@ import { buildResponseAgentPrompt } from '../lib/prompt-builders'
 import { formatDataFromTools } from '../lib/format-data-from-tools'
 import { createSearchKnowledgeTool } from '../tools/search-knowledge'
 import { createSearchProductsTool } from '../tools/search-products'
+import { flushLangfuse, langfuseTracer } from '../lib/langfuse'
 
 const responseAgentPayloadSchema = z.object({
   modelId: z.string(),
@@ -99,6 +100,7 @@ export const responseAgent = schemaTask({
       stopWhen: stepCountIs(5),
       experimental_telemetry: {
         isEnabled: true,
+        tracer: langfuseTracer,
         functionId: 'agent-responder',
         metadata: {
           phaseTraceId: payload.phaseTraceId,
@@ -132,6 +134,7 @@ export const responseAgent = schemaTask({
     }
     } finally {
       langfuseSpan.end()
+      await flushLangfuse()
     }
   },
 })

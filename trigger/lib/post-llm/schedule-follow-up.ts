@@ -9,6 +9,9 @@ import { getFollowUpsForStep } from '@/_data-access/follow-up/get-follow-ups-for
 export interface ScheduleFollowUpCtx {
   conversationId: string
   agentId: string
+  // Quando o caller já tem o step autoritativo (ex: orchestrator v2 logo após
+  // persistir currentStepOrder), passar aqui economiza 1 roundtrip no banco.
+  stepOrder?: number
 }
 
 // ---------------------------------------------------------------------------
@@ -33,20 +36,27 @@ export interface ScheduleFollowUpCtx {
  * para evitar loop no cron de follow-ups.
  */
 export async function scheduleFollowUp(ctx: ScheduleFollowUpCtx): Promise<void> {
-  const { conversationId, agentId } = ctx
+  const { conversationId, agentId, stepOrder } = ctx
 
   try {
-    const conversation = await db.conversation.findUnique({
-      where: { id: conversationId },
-      select: { currentStepOrder: true },
-    })
+    let currentStepOrder: number
 
-    if (!conversation) {
-      logger.warn('scheduleFollowUp: conversa não encontrada', { conversationId })
-      return
+    if (stepOrder !== undefined) {
+      currentStepOrder = stepOrder
+    } else {
+      const conversation = await db.conversation.findUnique({
+        where: { id: conversationId },
+        select: { currentStepOrder: true },
+      })
+
+      if (!conversation) {
+        logger.warn('scheduleFollowUp: conversa não encontrada', { conversationId })
+        return
+      }
+
+      currentStepOrder = conversation.currentStepOrder ?? 0
     }
 
-    const currentStepOrder = conversation.currentStepOrder ?? 0
     const followUps = await getFollowUpsForStep(agentId, currentStepOrder)
 
     if (followUps.length === 0) {

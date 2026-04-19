@@ -17,6 +17,10 @@ export interface SaveAssistantMessageCtx {
   llmDurationMs: number
   agentName: string | null
   showAttendantName: boolean
+  // Trajetória completa do tool-agent (response.messages do AI SDK v6).
+  // Mantido como unknown para evitar acoplamento direto com o pacote ai.
+  // Presente apenas no primeiro bloco de texto do turno — undefined nos demais.
+  agentTrajectory?: unknown
 }
 
 export interface SaveAssistantMessageResult {
@@ -53,6 +57,7 @@ export async function saveAssistantMessage(
     llmDurationMs,
     agentName,
     showAttendantName,
+    agentTrajectory,
   } = ctx
 
   const textSent = prefixAttendantName(text, agentName, showAttendantName)
@@ -67,6 +72,7 @@ export async function saveAssistantMessage(
       metadata: {
         model: modelId,
         llmDurationMs,
+        ...(agentTrajectory !== undefined && { agentTrajectory }),
       },
     },
     select: { id: true },
