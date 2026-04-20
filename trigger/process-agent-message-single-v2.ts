@@ -1,4 +1,4 @@
-import { task, tasks, logger, metadata as triggerMetadata } from '@trigger.dev/sdk/v3'
+import { task, logger, metadata as triggerMetadata } from '@trigger.dev/sdk/v3'
 import { observe, updateActiveTrace } from '@langfuse/tracing'
 import { flushLangfuse, langfuseTracer } from './lib/langfuse'
 import { buildDispatcherCtx } from './lib/build-dispatcher-ctx'
@@ -7,17 +7,15 @@ import { handleAgentTaskFailure } from './lib/handle-task-failure'
 import { generateText, stepCountIs, Output } from 'ai'
 import { z } from 'zod'
 import { getModel } from '@/_lib/ai/provider'
-import { SUMMARIZATION_MODEL_ID } from '@/_lib/ai/models'
 import { db } from '@/_lib/prisma'
-import { redis } from '@/_lib/redis'
-import { debitCredits, refundCredits } from '@/_lib/billing/credit-utils'
-import { estimateMaxCost, calculateCreditCost } from '@/_lib/ai/pricing'
-import {
-  sendWhatsAppMessage,
-  sendPresence,
-} from '@/_lib/evolution/send-message'
+import { estimateMaxCost } from '@/_lib/ai/pricing'
+import { debitCredits } from '@/_lib/billing/credit-utils'
+import { settleCredits } from './lib/settle-credits'
+import { notifyNoCredits } from './lib/notify-no-credits'
+import { sendPresence } from '@/_lib/evolution/send-message'
 import { resolveEvolutionCredentialsByInstanceName } from '@/_lib/evolution/resolve-credentials'
-import { sendMetaTextMessage } from '@/_lib/meta/send-meta-message'
+import { compressMemory } from './lib/compress-memory'
+import { sendOutboundMessage } from './lib/send-outbound-message'
 import { buildSystemPrompt } from './build-system-prompt'
 import { buildToolSet } from './tools'
 import type { GroupToolConfig } from './tools'
@@ -38,12 +36,6 @@ import type { DispatcherCtx } from './dispatcher-types'
 
 // Limite de mensagens carregadas no histórico para context LLM
 const MESSAGE_HISTORY_LIMIT = 50
-
-// Threshold de mensagens para disparar compressão de memória
-const SUMMARIZATION_THRESHOLD = 12
-
-// Quantidade de mensagens recentes a preservar ao arquivar
-const KEEP_RECENT_MESSAGES = 3
 
 // Tool names que o LLM pode vazar como texto JSON em vez de usar tool calling estruturado
 const KNOWN_TOOL_NAMES = new Set([
@@ -110,95 +102,6 @@ function buildAgentOutputSchema(stepIds: readonly string[]) {
       'UUID exato da etapa atual, escolhido entre os IDs listados no Processo de Atendimento. Só avança, nunca retrocede.',
     ),
   })
-}
-
-// ---------------------------------------------------------------------------
-// Memory Compression — inline no v2 (função utilitária privada)
-// ---------------------------------------------------------------------------
-
-async function compressMemory(conversationId: string): Promise<boolean> {
-  try {
-    const totalMessages = await db.message.count({
-      where: { conversationId, isArchived: false },
-    })
-
-    if (totalMessages < SUMMARIZATION_THRESHOLD) return false
-
-    const allMessages = await db.message.findMany({
-      where: { conversationId, isArchived: false },
-      orderBy: { createdAt: 'asc' },
-      select: {
-        id: true,
-        role: true,
-        content: true,
-      },
-    })
-
-    const toArchiveCount = allMessages.length - KEEP_RECENT_MESSAGES
-    if (toArchiveCount <= 0) return false
-
-    const messagesToArchive = allMessages.slice(0, toArchiveCount)
-
-    const transcript = messagesToArchive
-      .map((msg) => `[${msg.role}]: ${msg.content}`)
-      .join('\n')
-
-    const summaryResult = await generateText({
-      model: getModel(SUMMARIZATION_MODEL_ID),
-      messages: [
-        {
-          role: 'system',
-          content:
-            'Você é um assistente especializado em gerar resumos densos de conversas. ' +
-            'Resuma a conversa abaixo mantendo: pontos-chave discutidos, decisões tomadas, ' +
-            'informações do cliente mencionadas e próximos passos combinados. ' +
-            'Seja conciso mas não perca informações importantes. Responda em português.',
-        },
-        {
-          role: 'user',
-          content: `Resuma esta conversa:\n\n${transcript}`,
-        },
-      ],
-      maxOutputTokens: 512,
-      experimental_telemetry: {
-        isEnabled: true,
-        tracer: langfuseTracer,
-        functionId: 'memory-compression',
-        metadata: { conversationId, model: SUMMARIZATION_MODEL_ID },
-      },
-    })
-
-    const summary = summaryResult.text
-
-    if (!summary) {
-      logger.warn('Summarization returned empty result', { conversationId })
-      return false
-    }
-
-    const archiveIds = messagesToArchive.map((msg) => msg.id)
-
-    await db.$transaction([
-      db.conversation.update({
-        where: { id: conversationId },
-        data: { summary },
-      }),
-      db.message.updateMany({
-        where: { id: { in: archiveIds } },
-        data: { isArchived: true },
-      }),
-    ])
-
-    logger.info('Memory compressed', {
-      conversationId,
-      archivedCount: archiveIds.length,
-      summaryLength: summary.length,
-    })
-    return true
-  } catch (error) {
-    // Non-fatal: falha na compressão não bloqueia o fluxo
-    logger.warn('Memory compression failed', { conversationId, error })
-    return false
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -380,55 +283,7 @@ export async function runSingleV2(
       },
     })
 
-    // Notificar OWNER/ADMIN apenas se nao existe notificacao nao lida com mesmo titulo
-    // nas ultimas 24h — evita spam por cada mensagem sem credito
-    const recentCreditNotification = await db.notification.findFirst({
-      where: {
-        organizationId: ctx.organizationId,
-        type: 'SYSTEM',
-        title: 'Créditos de IA esgotados',
-        readAt: null,
-        createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
-      },
-    })
-
-    if (!recentCreditNotification) {
-      const [orgAdmins, organization] = await Promise.all([
-        db.member.findMany({
-          where: {
-            organizationId: ctx.organizationId,
-            role: { in: ['OWNER', 'ADMIN'] },
-            status: 'ACCEPTED',
-            userId: { not: null },
-          },
-          select: { userId: true },
-        }),
-        db.organization.findUnique({
-          where: { id: ctx.organizationId },
-          select: { slug: true },
-        }),
-      ])
-
-      if (orgAdmins.length > 0) {
-        // Criar notificacoes diretamente (sem import server-only — ambiente Trigger.dev)
-        for (const admin of orgAdmins) {
-          void db.notification.create({
-            data: {
-              organizationId: ctx.organizationId,
-              userId: admin.userId!,
-              type: 'SYSTEM',
-              title: 'Créditos de IA esgotados',
-              body: 'Seus créditos de IA acabaram. Recarregue para continuar usando o agente.',
-              actionUrl: organization
-                ? `/org/${organization.slug}/settings/billing`
-                : null,
-              resourceType: 'credit',
-              resourceId: null,
-            },
-          })
-        }
-      }
-    }
+    await notifyNoCredits({ organizationId: ctx.organizationId, estimatedCost })
 
     ctx.tracker.addStep({
       type: 'CREDIT_CHECK',
@@ -567,19 +422,18 @@ export async function runSingleV2(
             : String(llmError),
       },
     })
-    await refundCredits(
-      ctx.organizationId,
+    await settleCredits({
+      organizationId: ctx.organizationId,
       estimatedCost,
-      'Refund — erro na chamada LLM',
-      {
+      modelId: promptContext.modelId,
+      actualUsage: null,
+      reason: 'llm_error',
+      metadata: {
         agentId: ctx.effectiveAgentId,
         conversationId: ctx.conversationId,
-        model: promptContext.modelId,
-        estimatedCost,
-        reason: 'llm_error',
       },
-    ).catch((refundError) => {
-      logger.error('Failed to refund credits after LLM error', {
+    }).catch((refundError) => {
+      logger.error('Failed to settle credits after LLM error', {
         ...ctx.baseLogContext,
         refundError,
       })
@@ -705,28 +559,21 @@ export async function runSingleV2(
     const hadToolCalls = result.steps?.some(
       (step) => step.toolCalls && step.toolCalls.length > 0,
     ) ?? false
-    const emptyTotalTokens =
-      (result.usage?.inputTokens ?? 0) +
-      (result.usage?.outputTokens ?? 0)
-    const emptyActualCost = calculateCreditCost(
-      promptContext.modelId,
-      emptyTotalTokens,
-    )
-    const emptyRefund = estimatedCost - emptyActualCost
-    if (emptyRefund > 0) {
-      await refundCredits(
-        ctx.organizationId,
-        emptyRefund,
-        'Refund — LLM empty response',
-        {
-          agentId: ctx.effectiveAgentId,
-          conversationId: ctx.conversationId,
-          model: promptContext.modelId,
-          estimatedCost,
-          actualCost: emptyActualCost,
-        },
-      )
+    const emptyUsage = {
+      inputTokens: result.usage?.inputTokens ?? 0,
+      outputTokens: result.usage?.outputTokens ?? 0,
     }
+    const { actualCost: emptyActualCost } = await settleCredits({
+      organizationId: ctx.organizationId,
+      estimatedCost,
+      modelId: promptContext.modelId,
+      actualUsage: emptyUsage,
+      reason: 'empty_response',
+      metadata: {
+        agentId: ctx.effectiveAgentId,
+        conversationId: ctx.conversationId,
+      },
+    })
     await createConversationEvent({
       conversationId: ctx.conversationId,
       type: 'INFO',
@@ -883,29 +730,20 @@ export async function runSingleV2(
       },
     })
 
-    // Ajustar créditos: cobrar custo real, refundar a diferença
-    const pausedTotalTokens =
-      (result.usage?.inputTokens ?? 0) +
-      (result.usage?.outputTokens ?? 0)
-    const pausedActualCost = calculateCreditCost(
-      promptContext.modelId,
-      pausedTotalTokens,
-    )
-    const pausedRefund = estimatedCost - pausedActualCost
-    if (pausedRefund > 0) {
-      await refundCredits(
-        ctx.organizationId,
-        pausedRefund,
-        'Refund — IA pausada durante geração',
-        {
-          agentId: ctx.effectiveAgentId,
-          conversationId: ctx.conversationId,
-          model: promptContext.modelId,
-          estimatedCost,
-          actualCost: pausedActualCost,
-        },
-      )
-    }
+    const { actualCost: pausedActualCost } = await settleCredits({
+      organizationId: ctx.organizationId,
+      estimatedCost,
+      modelId: promptContext.modelId,
+      actualUsage: {
+        inputTokens: result.usage?.inputTokens ?? 0,
+        outputTokens: result.usage?.outputTokens ?? 0,
+      },
+      reason: 'ai_paused_during_generation',
+      metadata: {
+        agentId: ctx.effectiveAgentId,
+        conversationId: ctx.conversationId,
+      },
+    })
 
     await createConversationEvent({
       conversationId: ctx.conversationId,
@@ -978,157 +816,50 @@ export async function runSingleV2(
   // -----------------------------------------------------------------------
   const totalTokens =
     (result.usage?.inputTokens ?? 0) + (result.usage?.outputTokens ?? 0)
-  const actualCost = calculateCreditCost(
-    promptContext.modelId,
+  const { actualCost, type: creditAdjType } = await settleCredits({
+    organizationId: ctx.organizationId,
+    estimatedCost,
+    modelId: promptContext.modelId,
+    actualUsage: {
+      inputTokens: result.usage?.inputTokens ?? 0,
+      outputTokens: result.usage?.outputTokens ?? 0,
+    },
+    reason: 'completed',
+    metadata: {
+      agentId: ctx.effectiveAgentId,
+      conversationId: ctx.conversationId,
+      totalTokens,
+    },
+  })
+  ctx.log('step:8 credit_adjustment', 'PASS', {
+    type: creditAdjType,
+    estimatedCost,
+    actualCost,
     totalTokens,
-  )
-  const creditDiff = estimatedCost - actualCost
-
-  if (creditDiff > 0) {
-    await refundCredits(
-      ctx.organizationId,
-      creditDiff,
-      'Ajuste pós-LLM — custo real menor que estimado',
-      {
-        agentId: ctx.effectiveAgentId,
-        conversationId: ctx.conversationId,
-        model: promptContext.modelId,
-        estimatedCost,
-        actualCost,
-        totalTokens,
-      },
-    )
-    ctx.log('step:8 credit_adjustment', 'PASS', {
-      type: 'refund',
-      creditDiff,
-      estimatedCost,
-      actualCost,
-      totalTokens,
-    })
-  } else if (creditDiff < 0) {
-    // Custo real maior que estimado (raro) — debitar diferença
-    const extraDebited = await debitCredits(
-      ctx.organizationId,
-      -creditDiff,
-      'Ajuste pós-LLM — custo real maior que estimado',
-      {
-        agentId: ctx.effectiveAgentId,
-        conversationId: ctx.conversationId,
-        model: promptContext.modelId,
-        estimatedCost,
-        actualCost,
-        totalTokens,
-        type: 'adjustment',
-      },
-      false, // não incrementar totalMessagesUsed
-    )
-    ctx.log('step:8 credit_adjustment', extraDebited ? 'PASS' : 'SKIP', {
-      type: 'extra_debit',
-      creditDiff: -creditDiff,
-      estimatedCost,
-      actualCost,
-      totalTokens,
-    })
-  } else {
-    ctx.log('step:8 credit_adjustment', 'PASS', {
-      type: 'exact',
-      estimatedCost,
-      actualCost,
-      totalTokens,
-    })
-  }
+  })
 
   // -----------------------------------------------------------------------
   // 10. Send WhatsApp message + pre-register dedup keys
-  // Roteamento pelo provider: Evolution ou Meta Cloud
+  // Delegado ao helper sendOutboundMessage que centraliza routing e dedup
   // -----------------------------------------------------------------------
-  let sentMessageIds: string[]
-
   ctx.log('step:9 whatsapp_sending', 'PASS', {
     provider: ctx.message.provider,
     textLength: textToSend.length,
   })
 
-  if (ctx.message.provider === 'simulator') {
-    // Simulator: a mensagem do assistente já foi salva no banco no step 8.
-    // Não há provider externo — gerar ID fictício apenas para manter consistência
-    // com o fluxo de dedup e logging que espera sentMessageIds preenchido.
-    sentMessageIds = [`sim_resp_${crypto.randomUUID()}`]
-    ctx.log('step:9 simulator_send', 'PASS', { textLength: textToSend.length })
-  } else if (ctx.message.provider === 'meta_cloud') {
-    // Para Meta Cloud: buscar metaAccessToken do inbox (nunca vem no payload por seguranca)
-    const metaInbox = await db.inbox.findFirst({
-      where: { metaPhoneNumberId: ctx.message.instanceName },
-      select: { metaAccessToken: true },
-    })
-
-    if (!metaInbox?.metaAccessToken) {
-      throw new Error(
-        `Meta access token not found for phoneNumberId: ${ctx.message.instanceName}`,
-      )
-    }
-
-    sentMessageIds = await sendMetaTextMessage(
-      ctx.message.instanceName,
-      metaInbox.metaAccessToken,
-      ctx.message.remoteJid.replace('@s.whatsapp.net', ''),
-      textToSend,
-    )
-  } else if (ctx.message.provider === 'z_api') {
-    // Para Z-API: buscar credenciais do inbox (per-inbox, nunca no payload)
-    const zapiInbox = await db.inbox.findFirst({
-      where: { zapiInstanceId: ctx.message.instanceName },
-      select: {
-        zapiInstanceId: true,
-        zapiToken: true,
-        zapiClientToken: true,
-      },
-    })
-
-    if (
-      !zapiInbox?.zapiToken ||
-      !zapiInbox?.zapiClientToken ||
-      !zapiInbox?.zapiInstanceId
-    ) {
-      throw new Error(
-        `Z-API credentials not found for instanceId: ${ctx.message.instanceName}`,
-      )
-    }
-
-    const { sendZApiTextMessage } =
-      await import('@/_lib/zapi/send-message')
-    sentMessageIds = await sendZApiTextMessage(
-      {
-        instanceId: zapiInbox.zapiInstanceId,
-        token: zapiInbox.zapiToken,
-        clientToken: zapiInbox.zapiClientToken,
-      },
-      ctx.message.remoteJid.replace('@s.whatsapp.net', ''),
-      textToSend,
-    )
-  } else {
-    // Provider Evolution (default)
-    const evolutionCredentials = await resolveEvolutionCredentialsByInstanceName(
-      ctx.message.instanceName,
-    )
-    sentMessageIds = await sendWhatsAppMessage(
-      ctx.message.instanceName,
-      ctx.message.remoteJid,
-      textToSend,
-      evolutionCredentials,
+  if (!conversation.inbox) {
+    throw new Error(
+      `Inbox not found for conversation: ${ctx.conversationId}`,
     )
   }
 
-  // Pré-registrar dedup keys para que o webhook fromMe ignore estas mensagens
-  // (evita duplicata no banco + auto-pause da IA)
-  // Simulator não tem webhook — IDs fictícios não precisam ser registrados no Redis
-  if (ctx.message.provider !== 'simulator') {
-    await Promise.all(
-      sentMessageIds.map((sentId) =>
-        redis.set(`dedup:${sentId}`, '1', 'EX', 300).catch(() => {}),
-      ),
-    )
-  }
+  const { sentIds: sentMessageIds } = await sendOutboundMessage({
+    conversationId: ctx.conversationId,
+    organizationId: ctx.organizationId,
+    credentials: conversation.inbox,
+    remoteJid: ctx.message.remoteJid,
+    text: textToSend,
+  })
 
   ctx.log('step:9 whatsapp_sent', 'PASS', {
     responseLength: responseText.length,
@@ -1251,11 +982,13 @@ export async function runSingleV2(
   // -----------------------------------------------------------------------
   // 11. Memory compression — se >= threshold msgs, summarizar e arquivar
   // -----------------------------------------------------------------------
-  const memoryCompressed = await compressMemory(ctx.conversationId)
+  const memoryResult = await compressMemory({ conversationId: ctx.conversationId })
   ctx.tracker.addStep({
     type: 'MEMORY_COMPRESSION',
-    status: memoryCompressed ? 'PASSED' : 'SKIPPED',
-    output: memoryCompressed ? { compressed: true } : { reason: 'below_threshold' },
+    status: memoryResult.compressed ? 'PASSED' : 'SKIPPED',
+    output: memoryResult.compressed
+      ? { compressed: true, archivedCount: memoryResult.archivedCount }
+      : { reason: memoryResult.reason ?? 'below_threshold' },
   })
 
   // -----------------------------------------------------------------------
