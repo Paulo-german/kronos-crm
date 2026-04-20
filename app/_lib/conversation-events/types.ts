@@ -58,6 +58,7 @@ export type InfoSubtype =
   | 'AGENT_TRANSFER_LOOP' // Loop de transfer detectado — conversa direcionada para humano
   | 'EMPTY_RESPONSE' // LLM retornou resposta vazia (não é erro — benigno)
   | 'STEP_ADVANCED' // LLM classificou que a conversa avançou para uma nova etapa do processo
+  | 'GUARD_ESCALATION' // single-v2: guard rejeitou 2x, resposta bloqueada e conversa escalada para humano
 
 // ---------------------------------------------------------------------------
 // Tool → Subtype mapping (apenas tools com failure real)

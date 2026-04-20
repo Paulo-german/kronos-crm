@@ -36,6 +36,11 @@ import { getFollowUpsForStep } from '@/_data-access/follow-up/get-follow-ups-for
 import { revalidateConversationCache } from './lib/revalidate-cache'
 import type { ToolContext } from './tools/types'
 import type { DispatcherCtx } from './dispatcher-types'
+import { GENERIC_SAFE_FALLBACK } from './lib/two-phase-types'
+import { triggerHumanHandoff } from './lib/trigger-human-handoff'
+import { runSingleFallback } from './agent/single-fallback'
+import { runSingleGuard } from './agent/single-guard'
+import { getProductCatalogForGuard } from './lib/product-catalog-cache'
 
 // Limite de mensagens carregadas no histórico para context LLM
 const MESSAGE_HISTORY_LIMIT = 50
@@ -582,6 +587,283 @@ export async function runSingleV2(
     responseText = sanitized || ''
   }
 
+  // -----------------------------------------------------------------------
+  // 5d. Guard + Fallback pipeline (Fase 3 — atrás da flag SINGLE_V2_OVERHAUL)
+  //     Só executa quando há texto para validar; empty_response é tratado abaixo.
+  // -----------------------------------------------------------------------
+
+  // pendingHumanHandoff é preenchido no degraded path e disparado DEPOIS do send
+  // para evitar que aiPaused=true bloqueie o envio ao cliente
+  let pendingHumanHandoff: {
+    conversationId: string
+    organizationId: string
+    reason: string
+    phaseTraceId: string
+  } | null = null
+
+  if (useOverhaul && responseText) {
+    // Extrair tools utilizadas nesta execução para contexto do guard
+    const toolsUsed = result.steps?.flatMap(
+      (step) => step.toolCalls?.map((tc) => tc.toolName) ?? [],
+    ) ?? []
+
+    // Cascata de seleção de produtos em contexto (seção 5.3 do plano):
+    // 1. IDs dos produtos retornados por search_products nesta execução
+    // 2. Substring match no catálogo completo contra o texto de resposta
+    // 3. Se vazio: pular apenas price_mismatch (guard roda as demais categorias)
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
+    let productsInContext: any[] = []
+
+    try {
+      // Passo 1: produtos retornados diretamente por search_products nos steps
+      const searchProductsResults = result.steps?.flatMap((step) =>
+        step.toolCalls
+          ?.filter((tc) => tc.toolName === 'search_products')
+          .map((tc) => {
+            const toolResult = step.toolResults?.find(
+              (tr) => tr.toolName === tc.toolName,
+            )
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+            return toolResult?.output
+          }) ?? [],
+      ) ?? []
+
+      const productIdsFromTools = new Set<string>()
+      for (const output of searchProductsResults) {
+        if (
+          output !== null &&
+          output !== undefined &&
+          typeof output === 'object' &&
+          'products' in (output as Record<string, unknown>)
+        ) {
+          const outputRecord = output as Record<string, unknown>
+          const products = outputRecord.products
+          if (Array.isArray(products)) {
+            for (const product of products) {
+              if (
+                typeof product === 'object' &&
+                product !== null &&
+                'id' in (product as Record<string, unknown>)
+              ) {
+                const productRecord = product as Record<string, unknown>
+                if (typeof productRecord.id === 'string') {
+                  productIdsFromTools.add(productRecord.id)
+                }
+              }
+            }
+          }
+        }
+      }
+
+      if (productIdsFromTools.size > 0) {
+        // Buscar itens do catálogo apenas pelos IDs encontrados nos steps
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const fullCatalog = await getProductCatalogForGuard(ctx.organizationId)
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+        productsInContext = fullCatalog.filter((item: { id: string }) =>
+          productIdsFromTools.has(item.id),
+        )
+      }
+
+      // Passo 2: substring match no catálogo se ainda não encontramos produtos
+      if (productsInContext.length === 0 && responseText) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const fullCatalog = await getProductCatalogForGuard(ctx.organizationId)
+        const normalizedResponse = responseText.toLowerCase()
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+        productsInContext = fullCatalog.filter((item: { name: string }) =>
+          normalizedResponse.includes(item.name.toLowerCase()),
+        )
+      }
+
+      // Passo 3: se ainda vazio, guard roda sem price_mismatch (flag para o guard)
+      if (productsInContext.length === 0) {
+        logger.info('single-guard: price validation skipped', {
+          conversationId: ctx.conversationId,
+          reason: 'no_product_context',
+        })
+        triggerMetadata.set('priceValidationSkipped', true)
+      }
+    } catch (catalogError) {
+      logger.warn('single-guard: failed to load product catalog, skipping price validation', {
+        conversationId: ctx.conversationId,
+        error: catalogError instanceof Error ? catalogError.message : String(catalogError),
+      })
+      triggerMetadata.set('priceValidationSkipped', true)
+    }
+
+    // Guard attempt 1
+    const guardStartMs = Date.now()
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const guardResult1 = await runSingleGuard({
+      customerMessage: responseText,
+      context: { toolsUsed, productsInContext },
+      conversationId: ctx.conversationId,
+      organizationId: ctx.organizationId,
+    })
+    const guardDurationMs = Date.now() - guardStartMs
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    const guard1Approved: boolean = guardResult1.approved === true
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+    const guard1Violations: Array<{ type: string; details: string; confidence: number }> =
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      Array.isArray(guardResult1.violations) ? guardResult1.violations : []
+
+    logger.info('single-guard completed', {
+      conversationId: ctx.conversationId,
+      organizationId: ctx.organizationId,
+      approved: guard1Approved,
+      violationTypes: guard1Violations.map((v) => v.type),
+      durationMs: guardDurationMs,
+      attempt: 1,
+    })
+
+    triggerMetadata.set('guardApprovedOnFirstAttempt', guard1Approved)
+    triggerMetadata.set(
+      'guardViolationType',
+      guard1Violations[0]?.type ?? null,
+    )
+
+    if (!guard1Approved) {
+      // Guard rejeitou — invocar fallback para reescrita
+      triggerMetadata.set('fallbackTriggered', true)
+      ctx.traceTags.push('guard_rejected')
+
+      const fallbackResult = await runSingleFallback({
+        modelId: promptContext.modelId,
+        rejectedMessage: responseText,
+        guardViolations: guard1Violations,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        correctedContext: guardResult1.correctedContext,
+        // Passar apenas as mensagens sem o system prompt original para evitar conflito
+        llmMessages: llmMessages.filter((m) => m.role !== 'system'),
+        toolResults: result.steps,
+        agentPersona: {
+          name: promptContext.agentName,
+          // voice não está exposto no promptContext — o fallback usa apenas o nome
+          voice: '',
+        },
+        conversationId: ctx.conversationId,
+        organizationId: ctx.organizationId,
+      }).catch((fallbackError) => {
+        logger.warn('single-fallback call failed', {
+          conversationId: ctx.conversationId,
+          error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
+        })
+        return null
+      })
+
+      const fallbackRawText = fallbackResult?.text
+        ? stripLeakedToolCalls(fallbackResult.text).replace(/\n{3,}/g, '\n\n').trim()
+        : ''
+
+      if (fallbackRawText) {
+        // Guard attempt 2 com o texto do fallback
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const guardResult2 = await runSingleGuard({
+          customerMessage: fallbackRawText,
+          context: { toolsUsed, productsInContext },
+          conversationId: ctx.conversationId,
+          organizationId: ctx.organizationId,
+        })
+
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        const guard2Approved: boolean = guardResult2.approved === true
+
+        logger.info('single-guard completed', {
+          conversationId: ctx.conversationId,
+          organizationId: ctx.organizationId,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          approved: guardResult2.approved,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+          violationTypes: Array.isArray(guardResult2.violations)
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+            ? guardResult2.violations.map((v: { type: string }) => v.type)
+            : [],
+          attempt: 2,
+        })
+
+        if (guard2Approved) {
+          // Fallback aprovado — usar como resposta final
+          responseText = fallbackRawText
+          ctx.traceTags.push('guard_fallback_approved')
+        } else {
+          // Degraded path: 2 rejeições consecutivas — escalar para humano
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+          const lastViolations: Array<{ type: string; details: string }> = Array.isArray(
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            guardResult2.violations,
+          )
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return
+            ? guardResult2.violations.map((v: { type: string; details: string }) => ({
+                type: v.type,
+                details: v.details,
+              }))
+            : []
+
+          responseText = GENERIC_SAFE_FALLBACK
+          pendingHumanHandoff = {
+            conversationId: ctx.conversationId,
+            organizationId: ctx.organizationId,
+            reason: 'Guard bloqueou resposta 2x consecutivas. Conversa encaminhada para atendente.',
+            phaseTraceId: ctx.conversationId,
+          }
+
+          await createConversationEvent({
+            conversationId: ctx.conversationId,
+            type: 'INFO',
+            content:
+              'Resposta do agente bloqueada pelo guard (2x). Conversa encaminhada para atendente humano.',
+            metadata: {
+              subtype: 'GUARD_ESCALATION' satisfies InfoSubtype,
+              violations: lastViolations,
+              attempts: 2,
+            },
+          })
+
+          triggerMetadata.set('escalationTriggered', true)
+          ctx.traceTags.push('guard_escalation')
+
+          logger.info('single-guard: escalation triggered', {
+            conversationId: ctx.conversationId,
+            organizationId: ctx.organizationId,
+            lastViolations,
+          })
+        }
+      } else {
+        // Fallback não gerou texto — degraded path imediato
+        const lastViolations = guard1Violations.map((v) => ({
+          type: v.type,
+          details: v.details,
+        }))
+
+        responseText = GENERIC_SAFE_FALLBACK
+        pendingHumanHandoff = {
+          conversationId: ctx.conversationId,
+          organizationId: ctx.organizationId,
+          reason: 'Fallback não gerou resposta válida após rejeição do guard.',
+          phaseTraceId: ctx.conversationId,
+        }
+
+        await createConversationEvent({
+          conversationId: ctx.conversationId,
+          type: 'INFO',
+          content:
+            'Resposta do agente bloqueada pelo guard. Fallback sem resposta. Encaminhado para humano.',
+          metadata: {
+            subtype: 'GUARD_ESCALATION' satisfies InfoSubtype,
+            violations: lastViolations,
+            attempts: 1,
+          },
+        })
+
+        triggerMetadata.set('escalationTriggered', true)
+        ctx.traceTags.push('guard_escalation')
+      }
+    }
+  }
+
   if (!responseText) {
     // Genuinamente sem resposta (sem tool calls ou fallback falhou)
     const hadToolCalls = result.steps?.some(
@@ -902,6 +1184,19 @@ export async function runSingleV2(
       provider: ctx.message.provider,
     },
   })
+
+  // -----------------------------------------------------------------------
+  // 10a-guard. Handoff humano pendente do degraded path do guard
+  // Chamado DEPOIS do send para evitar que aiPaused=true bloqueie o envio
+  // -----------------------------------------------------------------------
+  if (pendingHumanHandoff) {
+    await triggerHumanHandoff(pendingHumanHandoff).catch((handoffError) => {
+      logger.error('single-guard: triggerHumanHandoff failed', {
+        conversationId: ctx.conversationId,
+        error: handoffError instanceof Error ? handoffError.message : String(handoffError),
+      })
+    })
+  }
 
   // -----------------------------------------------------------------------
   // 10b. Schedule follow-up (se agente tem regras de FUP para o step atual)
