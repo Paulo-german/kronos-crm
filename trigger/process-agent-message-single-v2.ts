@@ -16,6 +16,7 @@ import { sendPresence } from '@/_lib/evolution/send-message'
 import { resolveEvolutionCredentialsByInstanceName } from '@/_lib/evolution/resolve-credentials'
 import { compressMemory } from './lib/compress-memory'
 import { sendOutboundMessage } from './lib/send-outbound-message'
+import { extractAndSendInlineMedia } from './lib/extract-and-send-inline-media'
 import { buildSystemPrompt } from './build-system-prompt'
 import { buildToolSet } from './tools'
 import { isSingleV2OverhaulEnabled } from './lib/feature-flags'
@@ -374,6 +375,7 @@ export async function runSingleV2(
       hasKnowledgeBase: promptContext.hasKnowledgeBase,
     },
     groupToolConfig,
+    /* omitLegacyMediaTools */ useOverhaul,
   )
 
   // -----------------------------------------------------------------------
@@ -1163,27 +1165,66 @@ export async function runSingleV2(
     )
   }
 
-  const { sentIds: sentMessageIds } = await sendOutboundMessage({
-    conversationId: ctx.conversationId,
-    organizationId: ctx.organizationId,
-    credentials: conversation.inbox,
-    remoteJid: ctx.message.remoteJid,
-    text: textToSend,
-  })
+  if (useOverhaul) {
+    // Fase 4: extrair blocos de mídia inline e enviar separadamente
+    const inlineResult = await extractAndSendInlineMedia(textToSend, {
+      conversationId: ctx.conversationId,
+      organizationId: ctx.organizationId,
+      remoteJid: ctx.message.remoteJid,
+      inboxProvider: conversation.inbox,
+      credentials: conversation.inbox,
+    })
 
-  ctx.log('step:9 whatsapp_sent', 'PASS', {
-    responseLength: responseText.length,
-    sentMessageIds,
-    provider: ctx.message.provider,
-  })
-  ctx.tracker.addStep({
-    type: 'SEND_MESSAGE',
-    status: 'PASSED',
-    output: {
+    logger.info('single-v2 inline media send completed', {
+      conversationId: ctx.conversationId,
+      blocksSent: inlineResult.blocksSent,
+      blocksSkipped: inlineResult.blocksSkipped,
+      ssrfBlockedCount: inlineResult.ssrfBlockedUrls.length,
+    })
+
+    triggerMetadata.set('ssrfBlockedCount', inlineResult.ssrfBlockedUrls.length)
+
+    ctx.log('step:9 whatsapp_sent', 'PASS', {
       responseLength: responseText.length,
+      blocksSent: inlineResult.blocksSent,
+      blocksSkipped: inlineResult.blocksSkipped,
+      ssrfBlockedCount: inlineResult.ssrfBlockedUrls.length,
       provider: ctx.message.provider,
-    },
-  })
+    })
+    ctx.tracker.addStep({
+      type: 'SEND_MESSAGE',
+      status: 'PASSED',
+      output: {
+        responseLength: responseText.length,
+        blocksSent: inlineResult.blocksSent,
+        blocksSkipped: inlineResult.blocksSkipped,
+        provider: ctx.message.provider,
+      },
+    })
+  } else {
+    // Path legado (single-v1): mensagem única sem extração de mídia inline
+    const { sentIds: sentMessageIds } = await sendOutboundMessage({
+      conversationId: ctx.conversationId,
+      organizationId: ctx.organizationId,
+      credentials: conversation.inbox,
+      remoteJid: ctx.message.remoteJid,
+      text: textToSend,
+    })
+
+    ctx.log('step:9 whatsapp_sent', 'PASS', {
+      responseLength: responseText.length,
+      sentMessageIds,
+      provider: ctx.message.provider,
+    })
+    ctx.tracker.addStep({
+      type: 'SEND_MESSAGE',
+      status: 'PASSED',
+      output: {
+        responseLength: responseText.length,
+        provider: ctx.message.provider,
+      },
+    })
+  }
 
   // -----------------------------------------------------------------------
   // 10a-guard. Handoff humano pendente do degraded path do guard

@@ -12,6 +12,8 @@ interface SearchProductsResult {
     name: string
     description: string | null
     price: number
+    /** URL pública da primeira mídia do produto — use em linha isolada para enviar ao cliente */
+    mediaUrl: string | null
     hasMedia: boolean
     similarity: number
   }>
@@ -58,6 +60,7 @@ export function createSearchProductsTool(ctx: ToolContext) {
             name: result.name,
             description: result.description,
             price: Number(result.price),
+            mediaUrl: result.mediaUrl,
             hasMedia: result.mediaCount > 0,
             similarity: Number(Number(result.similarity).toFixed(2)),
           })),

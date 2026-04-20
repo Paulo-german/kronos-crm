@@ -175,25 +175,24 @@ function buildCriticalRulesSection(base: PromptBaseContext, filteredTools: strin
     )
     if (base.hasActiveProductsWithMedia) {
       lines.push(
-        '- Quando o objetivo da etapa mencionar apresentação de produtos, ENVIE as mídias proativamente usando `search_products` seguido de `send_product_media`.',
-        '- Se o cliente pedir para ver fotos, vídeos ou imagens de um produto, envie imediatamente.',
-        '- Sempre use `search_products` primeiro para encontrar o produto correto e obter o ID, depois `send_product_media` para enviar as mídias.',
+        '- Quando o objetivo da etapa mencionar apresentação de produtos, ENVIE as mídias proativamente.',
+        '- Se o cliente pedir para ver fotos, vídeos ou imagens de um produto, use `search_products` para obter o campo `mediaUrl` do produto e inclua essa URL em linha isolada na sua resposta.',
+        '- Sempre use `search_products` primeiro para encontrar o produto correto — o campo `mediaUrl` contém a URL pronta para envio.',
       )
     }
   }
 
-  // Seção de mídia via URL — presente no legacy mas removida na single-v2
-  // (send_media não faz parte do conjunto de tools da single-v2 — Fase 4).
-  // Incluímos a regra apenas quando send_media ainda está no filteredTools,
-  // o que não ocorrerá para single-v2 após o gating em buildToolSet.
-  if (filteredTools.includes('send_media')) {
+  // Seção de envio de mídia via URL isolada — convenção do single-v2 (Fase 4).
+  // Presente APENAS quando send_media não está no conjunto de tools (i.e., single-v2).
+  // No legado (single-v1/crew-v1) send_media segue disponível e as regras abaixo não se aplicam.
+  if (!filteredTools.includes('send_media')) {
     lines.push(
       '',
-      '**Envio de Midia (URLs):**',
-      '- Quando o texto de uma resposta, das suas instruções ou da base de conhecimento contiver URLs de imagens (.jpg, .png, .webp), videos (.mp4) ou documentos (.pdf), use `send_media` para enviar o arquivo diretamente ao cliente via WhatsApp.',
-      '- Para links de redes sociais (Instagram, YouTube, TikTok, etc.), inclua o link na mensagem de texto — NAO use send_media.',
-      '- Se nao tiver certeza do tipo do arquivo, informe a URL e deixe o sistema inferir pelo tipo.',
-      '- Envie no maximo 3 midias por resposta para nao sobrecarregar o cliente.',
+      '**Envio de Mídia:**',
+      '- Você NÃO tem ferramentas de envio de mídia. Para compartilhar uma imagem, vídeo ou documento com o cliente, inclua a URL em uma linha isolada (com linha em branco antes e depois).',
+      '- Fontes autorizadas de URL: campo `mediaUrl` retornado por `search_products`, URLs presentes em chunks de `search_knowledge`, ou URLs configuradas pelo dono do agente nas instruções.',
+      '- NUNCA invente URLs.',
+      '- A URL deve estar sozinha na linha. Qualquer outro caractere na mesma linha será tratado como texto.',
     )
   }
 

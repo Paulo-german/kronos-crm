@@ -44,6 +44,7 @@ export function buildToolSet(
   stepActions: StepAction[],
   globalFlags?: GlobalToolFlags,
   groupConfig?: GroupToolConfig,
+  omitLegacyMediaTools = false,
 ) {
   const tools: Record<
     string,
@@ -119,12 +120,15 @@ export function buildToolSet(
   if (globalFlags?.hasActiveProducts) {
     tools['search_products'] = createSearchProductsTool(ctx)
   }
-  if (globalFlags?.hasActiveProductsWithMedia) {
-    tools['send_product_media'] = createSendProductMediaTool(ctx)
-  }
 
-  // Tool de envio de mídia — sempre disponível para todos os agentes
-  tools['send_media'] = createSendMediaTool(ctx)
+  // Tools de mídia legadas — omitidas no single-v2 que usa detecção inline de URL
+  if (!omitLegacyMediaTools) {
+    if (globalFlags?.hasActiveProductsWithMedia) {
+      tools['send_product_media'] = createSendProductMediaTool(ctx)
+    }
+    // Tool de envio de mídia — sempre disponível para agentes single-v1 e crew-v1
+    tools['send_media'] = createSendMediaTool(ctx)
+  }
 
   // Tool de transferência entre agentes — injetada quando o worker faz parte de um grupo
   // com mais de 1 worker ativo (transferir para si mesmo seria inútil)

@@ -9,6 +9,8 @@ export interface ProductSearchResult {
   price: number
   similarity: number
   mediaCount: number
+  /** URL pública da primeira mídia do produto (order asc), ou null se não houver */
+  mediaUrl: string | null
 }
 
 /**
@@ -39,6 +41,7 @@ export async function searchProducts(
       price: string | number
       similarity: string | number
       mediaCount: string | number
+      mediaUrl: string | null
     }>
   >`
     SELECT
@@ -47,7 +50,8 @@ export async function searchProducts(
       p.description,
       p.price,
       1 - (p.embedding <=> ${embeddingStr}::vector) AS similarity,
-      (SELECT COUNT(*) FROM product_media pm WHERE pm.product_id = p.id)::int AS "mediaCount"
+      (SELECT COUNT(*) FROM product_media pm WHERE pm.product_id = p.id)::int AS "mediaCount",
+      (SELECT pm2.url FROM product_media pm2 WHERE pm2.product_id = p.id ORDER BY pm2.order ASC, pm2.created_at ASC LIMIT 1) AS "mediaUrl"
     FROM products p
     WHERE p.organization_id = ${organizationId}
       AND p.is_active = true
@@ -65,5 +69,6 @@ export async function searchProducts(
     price: Number(row.price),
     similarity: Number(row.similarity),
     mediaCount: Number(row.mediaCount),
+    mediaUrl: row.mediaUrl ?? null,
   }))
 }
