@@ -10,6 +10,7 @@ import {
   LANGUAGE_INSTRUCTIONS,
 } from '@/_actions/agent/shared/prompt-labels'
 import { stepActionSchema, type StepAction } from '@/_actions/agent/shared/step-action-schema'
+import type { SingleSystemPrompt } from './lib/prompt-single-compiler'
 
 export function compilePromptConfig(config: PromptConfig, agentName: string): string {
   const sections: string[] = []
@@ -273,23 +274,10 @@ export interface GroupPromptContext {
   currentAgentId: string
 }
 
-export interface BuildSystemPromptResult {
-  systemPrompt: string
-  modelId: string
-  agentName: string
-  summary: string | null
-  contactName: string
-  estimatedTokens: number
-  toolsEnabled: string[]
-  pipelineIds: string[]
-  allStepActions: StepAction[]
-  hasActiveProducts: boolean
-  hasActiveProductsWithMedia: boolean
-  hasKnowledgeBase: boolean // true quando completedFileCount > 0
-  currentStepOrder: number
-  totalSteps: number
-  steps: { id: string; order: number; name: string }[]
-}
+// BuildSystemPromptResult foi unificado com SingleSystemPrompt (trigger/lib/prompt-single-compiler.ts).
+// Use SingleSystemPrompt diretamente como tipo de retorno de buildSystemPrompt.
+// Alias mantido para evitar quebrar importações externas durante transição.
+export type BuildSystemPromptResult = SingleSystemPrompt
 
 /**
  * Monta a seção de transferência entre agentes quando o worker faz parte de um grupo.
@@ -340,7 +328,7 @@ export async function buildSystemPrompt(
   conversationId: string,
   organizationId: string,
   groupContext?: GroupPromptContext,
-): Promise<BuildSystemPromptResult> {
+): Promise<SingleSystemPrompt> {
   const now = new Date()
 
   const [agent, conversation, completedFileCount, lossReasons, recentToolEvents, activeProductMediaCount, activeProductCount] = await Promise.all([
@@ -821,10 +809,11 @@ export async function buildSystemPrompt(
     hasKnowledgeBase: completedFileCount > 0,
     currentStepOrder: conversation.currentStepOrder,
     totalSteps: agent.steps.length,
+    hasSteps: agent.steps.length > 0,
     steps: agent.steps.map((step) => ({
       id: step.id,
       order: step.order,
       name: step.name,
     })),
-  }
+  } satisfies SingleSystemPrompt
 }

@@ -22,6 +22,7 @@ import { buildToolSet } from './tools'
 import { isSingleV2OverhaulEnabled } from './lib/feature-flags'
 import { buildPromptBaseContext } from './lib/prompt-base-context'
 import { compileSingleSystemPrompt } from './lib/prompt-single-compiler'
+import type { SingleSystemPrompt } from './lib/prompt-single-compiler'
 import type { GroupToolConfig } from './tools'
 import {
   createConversationEvent,
@@ -148,8 +149,7 @@ export async function runSingleV2(
               where: { id: ctx.conversationId },
               select: { summary: true },
             })
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-            return compileSingleSystemPrompt(base, { summary }) as Awaited<ReturnType<typeof buildSystemPrompt>>
+            return compileSingleSystemPrompt(base, { summary })
           })
         : buildSystemPrompt(ctx.effectiveAgentId, ctx.conversationId, ctx.organizationId, ctx.groupPromptContext),
       db.message.findMany({
