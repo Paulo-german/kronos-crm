@@ -6,6 +6,7 @@ import { db } from '@/_lib/prisma'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission, requireQuota } from '@/_lib/rbac'
 import { tasks } from '@trigger.dev/sdk/v3'
+import { invalidateProductCatalogCache } from '@/_lib/cache/invalidate-product-catalog'
 
 export const createProduct = orgActionClient
   .schema(productSchema)
@@ -39,6 +40,7 @@ export const createProduct = orgActionClient
 
     revalidateTag(`products:${ctx.orgId}`)
     revalidatePath('/org/[orgSlug]/settings/products', 'page')
+    await invalidateProductCatalogCache(ctx.orgId)
 
     return { success: true, productId: product.id }
   })

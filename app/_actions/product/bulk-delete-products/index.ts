@@ -5,6 +5,7 @@ import { db } from '@/_lib/prisma'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { bulkDeleteProductsSchema } from './schema'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
+import { invalidateProductCatalogCache } from '@/_lib/cache/invalidate-product-catalog'
 
 export const bulkDeleteProducts = orgActionClient
   .schema(bulkDeleteProductsSchema)
@@ -25,6 +26,7 @@ export const bulkDeleteProducts = orgActionClient
     revalidateTag(`deals:${ctx.orgId}`)
     revalidatePath('/org/[orgSlug]/settings/products', 'page')
     revalidatePath('/crm/deals/pipeline')
+    await invalidateProductCatalogCache(ctx.orgId)
 
     return { count: result.count }
   })

@@ -5,6 +5,7 @@ import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
+import { invalidateProductCatalogCache } from '@/_lib/cache/invalidate-product-catalog'
 
 const deleteProductSchema = z.object({
   id: z.string().uuid(),
@@ -35,6 +36,7 @@ export const deleteProduct = orgActionClient
     revalidateTag(`products:${ctx.orgId}`)
     revalidateTag(`deals:${ctx.orgId}`)
     revalidatePath('/org/[orgSlug]/settings/products', 'page')
+    await invalidateProductCatalogCache(ctx.orgId)
 
     return { success: true }
   })

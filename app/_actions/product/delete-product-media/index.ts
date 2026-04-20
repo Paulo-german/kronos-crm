@@ -7,6 +7,7 @@ import { getB2Client } from '@/_lib/b2/client'
 import { DeleteObjectCommand } from '@aws-sdk/client-s3'
 import { revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
+import { invalidateProductCatalogCache } from '@/_lib/cache/invalidate-product-catalog'
 
 const BUCKET = process.env.B2_BUCKET_NAME ?? 'kronos-media'
 
@@ -49,6 +50,7 @@ export const deleteProductMedia = orgActionClient
     // 5. Invalidar cache
     revalidateTag(`products:${ctx.orgId}`)
     revalidateTag(`product-media:${data.productId}`)
+    await invalidateProductCatalogCache(ctx.orgId)
 
     return { success: true }
   })
