@@ -59,62 +59,6 @@ const ACCEPTED_MIME_PREFIXES = [
 ]
 
 // ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Deduz o mediaType (enum do WhatsApp) a partir do Content-Type retornado
- * pelo HEAD. Retorna null para tipos não suportados.
- */
-function resolveMediaType(
-  contentType: string,
-): 'image' | 'video' | 'audio' | 'document' | null {
-  const normalized = contentType.split(';')[0].trim().toLowerCase()
-
-  if (normalized.startsWith('image/')) return 'image'
-  if (normalized.startsWith('video/')) return 'video'
-  if (normalized.startsWith('audio/')) return 'audio'
-  if (normalized === 'application/pdf') return 'document'
-
-  return null
-}
-
-/**
- * Faz HEAD request para a URL e retorna mediaType + tamanho (quando disponível).
- * Retorna null se a URL não for mídia válida ou exceder o limite.
- */
-async function probeMediaUrl(url: string): Promise<{
-  mediaType: 'image' | 'video' | 'audio' | 'document'
-  contentLength: number | null
-} | null> {
-  const controller = new AbortController()
-  const timeoutHandle = setTimeout(() => controller.abort(), 2_000)
-
-  try {
-    const response = await fetch(url, {
-      method: 'HEAD',
-      signal: controller.signal,
-      redirect: 'follow',
-    })
-
-    if (!response.ok) return null
-
-    const rawContentType = response.headers.get('content-type') ?? ''
-    const mediaType = resolveMediaType(rawContentType)
-    if (!mediaType) return null
-
-    const rawContentLength = response.headers.get('content-length')
-    const contentLength = rawContentLength !== null ? parseInt(rawContentLength, 10) : null
-
-    return { mediaType, contentLength: isNaN(contentLength ?? NaN) ? null : contentLength }
-  } catch {
-    return null
-  } finally {
-    clearTimeout(timeoutHandle)
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Block builder
 // ---------------------------------------------------------------------------
 
@@ -155,8 +99,9 @@ async function buildBlocks(lines: string[]): Promise<{
 
     const url = line.trim()
 
-    // Fase 1: SSRF guard — verifica scheme, DNS, Content-Type e Content-Length
-    // para o maior limite possível (document = 100 MB) como pré-filtro.
+    // SSRF guard — verifica scheme, DNS, Content-Type e Content-Length.
+    // Os headers da resposta terminal ficam em ssrfResult.headers, eliminando
+    // a necessidade de um segundo HEAD para extrair mediaType e Content-Length.
     const ssrfResult = await ssrfSafeValidateUrl(url, {
       acceptedMimePrefixes: ACCEPTED_MIME_PREFIXES,
       maxBytes: WHATSAPP_SIZE_LIMITS.document,
@@ -169,18 +114,14 @@ async function buildBlocks(lines: string[]): Promise<{
       continue
     }
 
-    // Fase 2: HEAD request adicional para obter mediaType e tamanho exato.
-    // (ssrfSafeValidateUrl já fez um HEAD mas não expõe os headers — fazemos
-    // um segundo HEAD leve para extrair mediaType e Content-Length.)
-    const probeResult = await probeMediaUrl(url)
+    const mediaType = ssrfResult.headers?.mediaType ?? null
+    const contentLength = ssrfResult.headers?.contentLength ?? null
 
-    if (!probeResult) {
-      // Tipo não suportado ou erro de rede — trata como texto.
+    if (!mediaType) {
+      // Tipo não suportado — trata como texto.
       pendingTextLines.push(line)
       continue
     }
-
-    const { mediaType, contentLength } = probeResult
 
     // Verifica limite específico por tipo de mídia do WhatsApp.
     if (contentLength !== null && contentLength > WHATSAPP_SIZE_LIMITS[mediaType]) {

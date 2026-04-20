@@ -16,6 +16,14 @@ export interface SsrfCheckResult {
     | 'head_failed'
     | 'unsupported_content_type'
     | 'too_large'
+    | 'too_many_redirects'
+  // Populado apenas quando allowed === true — expõe headers da resposta terminal
+  // para evitar um segundo HEAD no caller (ex: extract-and-send-inline-media).
+  headers?: {
+    contentType: string
+    contentLength: number | null
+    mediaType: 'image' | 'video' | 'audio' | 'document' | null
+  }
 }
 
 interface SsrfValidateOptions {
@@ -29,6 +37,7 @@ interface SsrfValidateOptions {
 // ---------------------------------------------------------------------------
 
 const DEFAULT_TIMEOUT_MS = 2_000
+const MAX_REDIRECT_HOPS = 3
 
 // Ranges RFC1918 e especiais que nunca devem ser alvos de requisições.
 // Representados como [networkBigInt, maskBigInt] para comparação eficiente.
@@ -109,6 +118,47 @@ function isBlockedIpv6(ip: string): SsrfCheckResult['reason'] | null {
 }
 
 // ---------------------------------------------------------------------------
+// Helpers — validação de IP por URL
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolve o hostname de uma URL e verifica se o IP é bloqueado.
+ * Reutilizado tanto na validação inicial quanto em cada hop de redirect.
+ */
+async function validateUrlIp(url: URL): Promise<SsrfCheckResult['reason'] | null> {
+  let resolvedIp: string
+  try {
+    const result = await dns.lookup(url.hostname)
+    resolvedIp = result.address
+  } catch {
+    return 'dns_failed'
+  }
+
+  const ipv4Block = isBlockedIpv4(resolvedIp)
+  if (ipv4Block) return ipv4Block
+
+  const ipv6Block = isBlockedIpv6(resolvedIp)
+  if (ipv6Block) return ipv6Block
+
+  return null
+}
+
+// ---------------------------------------------------------------------------
+// Helpers — mediaType
+// ---------------------------------------------------------------------------
+
+function resolveMediaType(contentType: string): 'image' | 'video' | 'audio' | 'document' | null {
+  const normalized = contentType.split(';')[0].trim().toLowerCase()
+
+  if (normalized.startsWith('image/')) return 'image'
+  if (normalized.startsWith('video/')) return 'video'
+  if (normalized.startsWith('audio/')) return 'audio'
+  if (normalized === 'application/pdf') return 'document'
+
+  return null
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -119,9 +169,14 @@ function isBlockedIpv6(ip: string): SsrfCheckResult['reason'] | null {
  * A validação é feita em camadas ordenadas:
  *   1. Scheme (apenas http/https)
  *   2. DNS resolve server-side (bloqueia IPs privados/loopback/link-local)
- *   3. HEAD request com timeout (verifica Content-Type e Content-Length)
+ *   3. HEAD request com redirect: 'manual' + loop manual de até MAX_REDIRECT_HOPS
+ *      — cada Location é revalidado via DNS antes de seguir, eliminando o bypass
+ *      onde um servidor legítimo retorna 302 para http://169.254.169.254/.
+ *   4. Content-Type e Content-Length verificados apenas na resposta terminal.
  *
  * Qualquer camada que falhe retorna imediatamente com { allowed: false, reason }.
+ * Em caso de sucesso, `result.headers` é populado para evitar um segundo HEAD
+ * no caller.
  */
 export async function ssrfSafeValidateUrl(
   url: string,
@@ -143,62 +198,92 @@ export async function ssrfSafeValidateUrl(
     return { allowed: false, reason: 'invalid_scheme' }
   }
 
-  const hostname = parsed.hostname
+  // ------------------------------------------------------------------
+  // 2. DNS resolve + verificação do IP inicial
+  // ------------------------------------------------------------------
+  const initialIpBlock = await validateUrlIp(parsed)
+  if (initialIpBlock) return { allowed: false, reason: initialIpBlock }
 
   // ------------------------------------------------------------------
-  // 2. DNS resolve + verificação do IP resolvido
-  // ------------------------------------------------------------------
-  let resolvedIp: string
-  try {
-    const result = await dns.lookup(hostname)
-    resolvedIp = result.address
-  } catch {
-    return { allowed: false, reason: 'dns_failed' }
-  }
-
-  const ipv4Block = isBlockedIpv4(resolvedIp)
-  if (ipv4Block) return { allowed: false, reason: ipv4Block }
-
-  const ipv6Block = isBlockedIpv6(resolvedIp)
-  if (ipv6Block) return { allowed: false, reason: ipv6Block }
-
-  // ------------------------------------------------------------------
-  // 3. HEAD request — verificar Content-Type e Content-Length sem baixar o corpo
+  // 3. HEAD request com redirect manual — revalida IP a cada hop
   // ------------------------------------------------------------------
   const controller = new AbortController()
   const timeoutHandle = setTimeout(() => controller.abort(), timeoutMs)
 
+  let currentUrl = url
+  let hops = 0
+
   try {
-    const response = await fetch(url, {
-      method: 'HEAD',
-      signal: controller.signal,
-      redirect: 'follow',
-    })
+    while (true) {
+      const response = await fetch(currentUrl, {
+        method: 'HEAD',
+        signal: controller.signal,
+        redirect: 'manual',
+      })
 
-    if (!response.ok) {
-      return { allowed: false, reason: 'head_failed' }
-    }
-
-    // Content-Type — deve ter um dos prefixos aceitos pelo caller
-    const contentType = response.headers.get('content-type') ?? ''
-    const normalizedContentType = contentType.split(';')[0].trim().toLowerCase()
-
-    const contentTypeAllowed = acceptedMimePrefixes.some((prefix) =>
-      normalizedContentType.startsWith(prefix.toLowerCase()),
-    )
-
-    if (!contentTypeAllowed) {
-      return { allowed: false, reason: 'unsupported_content_type' }
-    }
-
-    // Content-Length — opcional; se presente e `maxBytes` informado, verificar
-    if (maxBytes !== undefined) {
-      const contentLengthHeader = response.headers.get('content-length')
-      if (contentLengthHeader !== null) {
-        const contentLength = parseInt(contentLengthHeader, 10)
-        if (!isNaN(contentLength) && contentLength > maxBytes) {
-          return { allowed: false, reason: 'too_large' }
+      // Resposta de redirect (3xx) — seguir manualmente com revalidação de IP
+      if (response.status >= 300 && response.status < 400) {
+        if (hops >= MAX_REDIRECT_HOPS) {
+          return { allowed: false, reason: 'too_many_redirects' }
         }
+
+        const location = response.headers.get('location')
+        if (!location) {
+          return { allowed: false, reason: 'head_failed' }
+        }
+
+        // Resolve URL relativa contra a URL atual antes de validar
+        let nextUrl: URL
+        try {
+          nextUrl = new URL(location, currentUrl)
+        } catch {
+          return { allowed: false, reason: 'head_failed' }
+        }
+
+        if (nextUrl.protocol !== 'http:' && nextUrl.protocol !== 'https:') {
+          return { allowed: false, reason: 'invalid_scheme' }
+        }
+
+        // Revalidar IP do destino do redirect — aqui está o bypass que estamos fechando
+        const redirectIpBlock = await validateUrlIp(nextUrl)
+        if (redirectIpBlock) return { allowed: false, reason: redirectIpBlock }
+
+        currentUrl = nextUrl.toString()
+        hops++
+        continue
+      }
+
+      // Resposta terminal (não-3xx) — verificar Content-Type e Content-Length
+      if (!response.ok) {
+        return { allowed: false, reason: 'head_failed' }
+      }
+
+      const contentType = response.headers.get('content-type') ?? ''
+      const normalizedContentType = contentType.split(';')[0].trim().toLowerCase()
+
+      const contentTypeAllowed = acceptedMimePrefixes.some((prefix) =>
+        normalizedContentType.startsWith(prefix.toLowerCase()),
+      )
+
+      if (!contentTypeAllowed) {
+        return { allowed: false, reason: 'unsupported_content_type' }
+      }
+
+      const rawContentLength = response.headers.get('content-length')
+      const contentLength = rawContentLength !== null ? parseInt(rawContentLength, 10) : null
+      const resolvedContentLength = contentLength !== null && !isNaN(contentLength) ? contentLength : null
+
+      if (maxBytes !== undefined && resolvedContentLength !== null && resolvedContentLength > maxBytes) {
+        return { allowed: false, reason: 'too_large' }
+      }
+
+      return {
+        allowed: true,
+        headers: {
+          contentType: normalizedContentType,
+          contentLength: resolvedContentLength,
+          mediaType: resolveMediaType(contentType),
+        },
       }
     }
   } catch (error) {
@@ -210,6 +295,4 @@ export async function ssrfSafeValidateUrl(
   } finally {
     clearTimeout(timeoutHandle)
   }
-
-  return { allowed: true }
 }
