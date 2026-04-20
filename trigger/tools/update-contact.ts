@@ -16,12 +16,6 @@ export function createUpdateContactTool(ctx: ToolContext) {
     description:
       'Atualiza dados de um contato (nome, email, telefone, cargo). Use quando o cliente fornecer informações novas sobre si.',
     inputSchema: z.object({
-      callReason: z
-        .string()
-        .min(10)
-        .describe(
-          'Motivo curto (1 frase) do porquê esta ferramenta está sendo chamada agora, referenciando o gatilho do Processo de Atendimento que justifica a ação. Obrigatório para auditoria.',
-        ),
       name: z.string().optional().describe('Nome completo do contato'),
       email: z.string().email().optional().describe('Email do contato'),
       phone: z.string().optional().describe('Telefone do contato'),

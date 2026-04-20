@@ -16,12 +16,6 @@ export function createMoveDealTool(ctx: ToolContext) {
     description:
       'Move um negócio para outra etapa do pipeline de vendas. Use quando o cliente avançar ou regredir no funil.',
     inputSchema: z.object({
-      callReason: z
-        .string()
-        .min(10)
-        .describe(
-          'Motivo curto (1 frase) do porquê esta ferramenta está sendo chamada agora, referenciando o gatilho do Processo de Atendimento que justifica a ação. Obrigatório para auditoria.',
-        ),
       targetStageId: z
         .string()
         .describe(

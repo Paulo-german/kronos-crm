@@ -353,12 +353,6 @@ export function createHandOffToHumanTool(
     description:
       'Transfere a conversa para um atendente humano. Use quando o cliente solicitar falar com uma pessoa, quando não souber responder, ou em situações delicadas.',
     inputSchema: z.object({
-      callReason: z
-        .string()
-        .min(10)
-        .describe(
-          'Motivo curto (1 frase) do porquê esta ferramenta está sendo chamada agora, referenciando o gatilho do Processo de Atendimento que justifica a ação. Obrigatório para auditoria.',
-        ),
       reason: z
         .string()
         .describe(

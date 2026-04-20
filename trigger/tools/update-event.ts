@@ -16,12 +16,6 @@ export function createUpdateEventTool(ctx: ToolContext) {
     description:
       'Reagenda um evento existente para nova data/hora. Use quando o cliente solicitar mudança de horário. Você precisa do ID do evento (disponível nos dados do negócio).',
     inputSchema: z.object({
-      callReason: z
-        .string()
-        .min(10)
-        .describe(
-          'Motivo curto (1 frase) do porquê esta ferramenta está sendo chamada agora, referenciando o gatilho do Processo de Atendimento que justifica a ação. Obrigatório para auditoria.',
-        ),
       appointmentId: z
         .string()
         .describe('ID do evento a ser reagendado'),

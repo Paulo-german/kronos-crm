@@ -62,12 +62,6 @@ export function createCreateEventTool(ctx: ToolContext, config: CreateEventConfi
       `Somente agende horários entre ${config.startTime} e ${config.endTime} (horário de Brasília). ` +
       `Não agende eventos fora desse intervalo.`,
     inputSchema: z.object({
-      callReason: z
-        .string()
-        .min(10)
-        .describe(
-          'Motivo curto (1 frase) do porquê esta ferramenta está sendo chamada agora, referenciando o gatilho do Processo de Atendimento que justifica a ação. Obrigatório para auditoria.',
-        ),
       title: z
         .string()
         .describe('Título do evento seguindo as instruções fornecidas'),

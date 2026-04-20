@@ -9,6 +9,7 @@ import { extractToolDataForResponder } from '../lib/tool-data-extractor'
 import type { ToolStep } from '../lib/tool-data-extractor'
 import { abortIfPermanent } from '../lib/retry-helpers'
 import { buildMutationToolSet } from '../tools/build-mutation-tool-set'
+import { withCallReasonAll } from './lib/with-audit-fields'
 import { flushLangfuse, langfuseTracer } from '../lib/langfuse'
 import { promptBaseContextSchema } from '../lib/prompt-base-context'
 import { modelMessageSchema, toolContextSchema } from '../lib/two-phase-types'
@@ -130,13 +131,16 @@ export const toolAgent = schemaTask({
 
       // Wrapper sobre buildToolSet que remove search_knowledge, send_media e
       // send_product_media — tools proibidas no Agent 1 (§4.1 Construção do toolSet).
-      const tools = buildMutationToolSet(
+      const rawTools = buildMutationToolSet(
         promptBaseContext.toolsEnabled,
         toolContext,
         stepActions,
         globalFlags,
         groupConfig,
       )
+      // callReason é injetado via decorator apenas no v3 para preservar as tools
+      // base como ports puros — v1/v2 não instruem o LLM a preencher o campo.
+      const tools = rawTools ? withCallReasonAll(rawTools) : rawTools
 
       const result = await generateText({
         model: getModel(modelId),

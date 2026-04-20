@@ -16,12 +16,6 @@ export function createCreateTaskTool(ctx: ToolContext) {
     description:
       'Cria uma tarefa de follow-up vinculada ao negócio. Use quando combinar algo com o cliente (ex: enviar proposta, agendar reunião).',
     inputSchema: z.object({
-      callReason: z
-        .string()
-        .min(10)
-        .describe(
-          'Motivo curto (1 frase) do porquê esta ferramenta está sendo chamada agora, referenciando o gatilho do Processo de Atendimento que justifica a ação. Obrigatório para auditoria.',
-        ),
       title: z.string().describe('Título descritivo da tarefa'),
       dueDate: z
         .string()
