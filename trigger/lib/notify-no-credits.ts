@@ -33,20 +33,20 @@ const NOTIFICATION_BODY =
  * Notifica os admins/owners da org quando os créditos de IA estão esgotados.
  *
  * Debounce de 24h por org — evita spam por cada mensagem que chega sem saldo.
- * Verifica se já existe notificação não lida com o mesmo título nas últimas 24h.
+ * O debounce é puramente temporal: se já existe qualquer notificação do mesmo tipo
+ * nas últimas 24h (lida ou não), suprime a nova.
  */
 export async function notifyNoCredits(
   input: NotifyNoCreditsInput,
 ): Promise<NotifyNoCreditsResult> {
   const { organizationId, estimatedCost } = input
 
-  // Debounce: só notificar se não há notificação não lida do mesmo tipo nas últimas 24h
+  // Debounce: só notificar se não há notificação do mesmo tipo nas últimas 24h
   const recentCreditNotification = await db.notification.findFirst({
     where: {
       organizationId,
       type: 'SYSTEM',
       title: NOTIFICATION_TITLE,
-      readAt: null,
       createdAt: { gte: new Date(Date.now() - NOTIFICATION_DEBOUNCE_MS) },
     },
   })
