@@ -1,4 +1,5 @@
 import { logger, metadata as triggerMetadata } from '@trigger.dev/sdk/v3'
+import { resolveCanonicalAgentVersion } from '../../app/_lib/agent/agent-version'
 import { updateActiveTrace } from '@langfuse/tracing'
 import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
@@ -624,7 +625,7 @@ export async function buildDispatcherCtx(
       conversationId,
       organizationId,
       effectiveAgentId,
-      agentVersion: (agentVersion ?? 'v1') as 'v1' | 'v2' | 'v3',
+      agentVersion: resolveCanonicalAgentVersion(agentVersion),
       tracker,
       log,
       baseLogContext: logCtx,

@@ -113,7 +113,7 @@ function buildAgentOutputSchema(stepIds: readonly string[]) {
 }
 
 // ---------------------------------------------------------------------------
-// Memory Compression — inline no v1 (função utilitária privada)
+// Memory Compression — inline no v2 (função utilitária privada)
 // ---------------------------------------------------------------------------
 
 async function compressMemory(conversationId: string): Promise<boolean> {
@@ -202,14 +202,14 @@ async function compressMemory(conversationId: string): Promise<boolean> {
 }
 
 // ---------------------------------------------------------------------------
-// Pipeline V1 — Fluxo legado (single-agent)
+// Pipeline Single V2 — Em desenvolvimento (alvo da reforma substancial)
 // ---------------------------------------------------------------------------
 
-export async function runV1(
+export async function runSingleV2(
   ctx: DispatcherCtx,
 ): Promise<{ success: true } | { skipped: true; reason?: string }> {
   // ===================================================================
-  // PIPELINE V1 — Fluxo legado (inalterado)
+  // PIPELINE V2 — Fluxo single-agent (cópia exata do V1)
   // A partir daqui, nenhuma linha do v1 foi modificada.
   // ===================================================================
   const [promptContext, messageHistory, conversation] =
@@ -1300,20 +1300,20 @@ export async function runV1(
 // Task Trigger.dev — registra esta pipeline como task independente
 // ---------------------------------------------------------------------------
 
-export const processAgentMessageV1 = task({
-  id: 'process-agent-message-v1',
+export const processAgentMessageSingleV2 = task({
+  id: 'process-agent-message-single-v2',
   retry: { maxAttempts: 3 },
   run: async (payload: ProcessAgentMessagePayload, { ctx: triggerCtx }) => {
     return observe(async () => {
       try {
         const result = await buildDispatcherCtx(payload, triggerCtx)
         if ('skipped' in result) return result
-        return runV1(result.ctx)
+        return runSingleV2(result.ctx)
       } finally {
         await flushLangfuse()
       }
-    }, { name: 'process-agent-message-v1' })()
+    }, { name: 'process-agent-message-single-v2' })()
   },
   onFailure: async ({ payload, error }) =>
-    handleAgentTaskFailure('process-agent-message-v1', { payload, error }),
+    handleAgentTaskFailure('process-agent-message-single-v2', { payload, error }),
 })

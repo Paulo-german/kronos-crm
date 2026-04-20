@@ -10,7 +10,7 @@ export interface DispatcherCtx {
   conversationId: string
   organizationId: string
   effectiveAgentId: string
-  agentVersion: 'v1' | 'v2' | 'v3'
+  agentVersion: 'single-v1' | 'single-v2' | 'crew-v1'
 
   // Execução / rastreamento
   tracker: ExecutionTracker

@@ -260,7 +260,7 @@ const CreateAgentPromptFields = ({ control }: CreateAgentPromptFieldsProps) => {
           <FormItem>
             <FormLabel>Modo de resposta</FormLabel>
             <Select
-              value={field.value ?? 'v1'}
+              value={field.value ?? 'single-v1'}
               onValueChange={field.onChange}
             >
               <FormControl>
@@ -269,7 +269,7 @@ const CreateAgentPromptFields = ({ control }: CreateAgentPromptFieldsProps) => {
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                <SelectItem value="v1">
+                <SelectItem value="single-v1">
                   <div className="flex items-baseline gap-2">
                     <span>Padrão</span>
                     <span className="text-xs text-muted-foreground">
@@ -277,7 +277,7 @@ const CreateAgentPromptFields = ({ control }: CreateAgentPromptFieldsProps) => {
                     </span>
                   </div>
                 </SelectItem>
-                <SelectItem value="v2">
+                <SelectItem value="single-v2">
                   <div className="flex items-baseline gap-2">
                     <span>v2</span>
                     <span className="text-xs text-muted-foreground">

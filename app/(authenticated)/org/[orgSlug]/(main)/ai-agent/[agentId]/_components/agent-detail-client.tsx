@@ -141,7 +141,7 @@ const AgentDetailClient = ({
               )}
               <Tooltip>
                 <TooltipTrigger asChild>
-                  {agent.agentVersion === 'v3' ? (
+                  {agent.agentVersion === 'crew-v1' ? (
                     <Badge
                       variant="outline"
                       className="h-6 gap-1.5 border-amber-500/30 bg-amber-500/10 px-2 text-xs font-semibold text-amber-600 dark:text-amber-400"
@@ -149,7 +149,7 @@ const AgentDetailClient = ({
                       <Sparkles className="h-3 w-3" />
                       Avançado
                     </Badge>
-                  ) : agent.agentVersion === 'v2' ? (
+                  ) : agent.agentVersion === 'single-v2' ? (
                     <Badge
                       variant="outline"
                       className="h-6 gap-1.5 px-2 text-xs font-semibold text-muted-foreground"
@@ -166,9 +166,9 @@ const AgentDetailClient = ({
                   )}
                 </TooltipTrigger>
                 <TooltipContent>
-                  {agent.agentVersion === 'v3'
+                  {agent.agentVersion === 'crew-v1'
                     ? 'Modo Avançado: múltiplas etapas de análise. Maior tempo de resposta e custo dobrado por mensagem.'
-                    : agent.agentVersion === 'v2'
+                    : agent.agentVersion === 'single-v2'
                       ? 'Modo v2: em desenvolvimento.'
                       : 'Modo Clássico: respostas diretas e econômicas.'}
                 </TooltipContent>

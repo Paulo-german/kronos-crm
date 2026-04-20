@@ -13,6 +13,7 @@ import {
   stepActionSchema,
   type StepAction,
 } from '@/_actions/agent/shared/step-action-schema'
+import { resolveCanonicalAgentVersion } from '@/_lib/agent/agent-version'
 
 export interface AgentStepDto {
   id: string
@@ -121,7 +122,7 @@ const fetchAgentByIdFromDb = async (
     businessHoursTimezone: agent.businessHoursTimezone,
     businessHoursConfig: agent.businessHoursConfig as BusinessHoursConfig | null,
     outOfHoursMessage: agent.outOfHoursMessage,
-    agentVersion: agent.agentVersion,
+    agentVersion: resolveCanonicalAgentVersion(agent.agentVersion),
     followUpBusinessHoursEnabled: agent.followUpBusinessHoursEnabled,
     followUpBusinessHoursTimezone: agent.followUpBusinessHoursTimezone,
     followUpBusinessHoursConfig:

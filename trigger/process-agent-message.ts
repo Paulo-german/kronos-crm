@@ -1,4 +1,5 @@
 import { task, tasks, logger } from '@trigger.dev/sdk/v3'
+import { resolveCanonicalAgentVersion } from '../app/_lib/agent/agent-version'
 import { db } from '@/_lib/prisma'
 import { routeConversation } from './lib/route-conversation'
 import { createConversationEvent } from './lib/create-conversation-event'
@@ -173,7 +174,7 @@ export const processAgentMessage = task({
       select: { agentVersion: true },
     })
 
-    const version = agentVersion ?? 'v1'
+    const version = resolveCanonicalAgentVersion(agentVersion)
     const targetTaskId = `process-agent-message-${version}` as const
 
     logger.info('[router] dispatching to versioned task', {

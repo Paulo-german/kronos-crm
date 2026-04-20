@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { db } from '@/_lib/prisma'
 import { promptConfigSchema } from '@/_actions/agent/shared/prompt-config-schema'
 import { stepActionSchema } from '@/_actions/agent/shared/step-action-schema'
+import { resolveCanonicalAgentVersion } from '../../app/_lib/agent/agent-version'
 
 // ---------------------------------------------------------------------------
 // Sub-schemas serializable — sem Decimal, sem Date, sem Buffer.
@@ -98,7 +99,7 @@ export const promptBaseContextSchema = z.object({
   // Identidade do agente
   agentId: z.string().uuid(),
   agentName: z.string(),
-  agentVersion: z.enum(['v1', 'v2']),
+  agentVersion: z.enum(['single-v1', 'single-v2', 'crew-v1']),
   modelId: z.string(),
 
   // Persona configurada
@@ -398,9 +399,8 @@ export async function buildPromptBaseContext(
   const parsedConfig = promptConfigSchema.safeParse(agent.promptConfig)
   const promptConfig = parsedConfig.success ? parsedConfig.data : null
 
-  // Validar agentVersion — enum estrito; fallback para v1 se campo desconhecido
-  const agentVersionRaw = agent.agentVersion
-  const agentVersion: 'v1' | 'v2' = agentVersionRaw === 'v2' ? 'v2' : 'v1'
+  // Validar agentVersion — resolver canonical; fallback para single-v1 se campo desconhecido
+  const agentVersion = resolveCanonicalAgentVersion(agent.agentVersion)
 
   return {
     agentId,

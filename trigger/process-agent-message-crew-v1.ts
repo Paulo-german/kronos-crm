@@ -95,11 +95,10 @@ function stripLeakedToolCalls(text: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Pipeline V3 — Multi-agente (Tool Agent → Response Agent → Leak Guardrail)
-// Renomeado de V2 para V3 — lógica idêntica, apenas identificadores atualizados.
+// Pipeline Crew V1 — Multi-agente orquestrado (Tool Agent → Response Agent → Leak Guardrail)
 // ---------------------------------------------------------------------------
 
-export async function runV3(
+export async function runCrewV1(
   ctx: DispatcherCtx,
 ): Promise<{ success: true } | { skipped: true; reason?: string }> {
   // ===================================================================
@@ -852,20 +851,20 @@ export async function runV3(
 // Task Trigger.dev — registra esta pipeline como task independente
 // ---------------------------------------------------------------------------
 
-export const processAgentMessageV3 = task({
-  id: 'process-agent-message-v3',
+export const processAgentMessageCrewV1 = task({
+  id: 'process-agent-message-crew-v1',
   retry: { maxAttempts: 3 },
   run: async (payload: ProcessAgentMessagePayload, { ctx: triggerCtx }) => {
     return observe(async () => {
       try {
         const result = await buildDispatcherCtx(payload, triggerCtx)
         if ('skipped' in result) return result
-        return runV3(result.ctx)
+        return runCrewV1(result.ctx)
       } finally {
         await flushLangfuse()
       }
-    }, { name: 'process-agent-message-v3' })()
+    }, { name: 'process-agent-message-crew-v1' })()
   },
   onFailure: async ({ payload, error }) =>
-    handleAgentTaskFailure('process-agent-message-v3', { payload, error }),
+    handleAgentTaskFailure('process-agent-message-crew-v1', { payload, error }),
 })
