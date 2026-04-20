@@ -18,6 +18,9 @@ import { compressMemory } from './lib/compress-memory'
 import { sendOutboundMessage } from './lib/send-outbound-message'
 import { buildSystemPrompt } from './build-system-prompt'
 import { buildToolSet } from './tools'
+import { isSingleV2OverhaulEnabled } from './lib/feature-flags'
+import { buildPromptBaseContext } from './lib/prompt-base-context'
+import { compileSingleSystemPrompt } from './lib/prompt-single-compiler'
 import type { GroupToolConfig } from './tools'
 import {
   createConversationEvent,
@@ -115,9 +118,34 @@ export async function runSingleV2(
   // PIPELINE V2 — Fluxo single-agent (cópia exata do V1)
   // A partir daqui, nenhuma linha do v1 foi modificada.
   // ===================================================================
+  // Determina o caminho de construção do system prompt uma única vez
+  const useOverhaul = isSingleV2OverhaulEnabled()
+
+  // No caminho de overhaul (Fase 2) a query de summary é feita separadamente;
+  // no caminho legacy o summary já vem embutido no retorno de buildSystemPrompt.
   const [promptContext, messageHistory, conversation] =
     await Promise.all([
-      buildSystemPrompt(ctx.effectiveAgentId, ctx.conversationId, ctx.organizationId, ctx.groupPromptContext),
+      useOverhaul
+        ? buildPromptBaseContext(
+            ctx.effectiveAgentId,
+            ctx.conversationId,
+            ctx.organizationId,
+            ctx.groupPromptContext
+              ? {
+                  groupId: ctx.groupPromptContext.groupId,
+                  currentAgentId: ctx.effectiveAgentId,
+                  workers: ctx.groupPromptContext.workers,
+                }
+              : null,
+          ).then(async (base) => {
+            const { summary } = await db.conversation.findUniqueOrThrow({
+              where: { id: ctx.conversationId },
+              select: { summary: true },
+            })
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+            return compileSingleSystemPrompt(base, { summary }) as Awaited<ReturnType<typeof buildSystemPrompt>>
+          })
+        : buildSystemPrompt(ctx.effectiveAgentId, ctx.conversationId, ctx.organizationId, ctx.groupPromptContext),
       db.message.findMany({
         where: {
           conversationId: ctx.conversationId,
