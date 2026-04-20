@@ -154,23 +154,23 @@ const AgentDetailClient = ({
                       variant="outline"
                       className="h-6 gap-1.5 px-2 text-xs font-semibold text-muted-foreground"
                     >
-                      v2
+                      Nova geração
                     </Badge>
                   ) : (
                     <Badge
                       variant="outline"
                       className="h-6 gap-1.5 px-2 text-xs font-semibold text-muted-foreground"
                     >
-                      Clássico
+                      Padrão
                     </Badge>
                   )}
                 </TooltipTrigger>
                 <TooltipContent>
                   {agent.agentVersion === 'crew-v1'
-                    ? 'Modo Avançado: múltiplas etapas de análise. Maior tempo de resposta e custo dobrado por mensagem.'
+                    ? 'Modo Avançado: múltiplos agentes orquestrados. Maior tempo de resposta e custo mais elevado por mensagem.'
                     : agent.agentVersion === 'single-v2'
-                      ? 'Modo v2: em desenvolvimento.'
-                      : 'Modo Clássico: respostas diretas e econômicas.'}
+                      ? 'Nova geração: guard de qualidade, validação de preço e suporte a mídia inline.'
+                      : 'Padrão: respostas diretas e econômicas.'}
                 </TooltipContent>
               </Tooltip>
               {canManage && (

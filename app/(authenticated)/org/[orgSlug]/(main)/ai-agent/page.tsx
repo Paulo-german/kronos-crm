@@ -9,6 +9,10 @@ import { getAgents } from '@/_data-access/agent/get-agents'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 import { AgentsCardGrid } from './_components/agents-card-grid'
 
+// Forçar renderização dinâmica para que process.env seja lido em runtime,
+// evitando que Next.js cache o valor da flag durante o build.
+export const dynamic = 'force-dynamic'
+
 interface AiAgentPageProps {
   params: Promise<{ orgSlug: string }>
 }
@@ -16,6 +20,9 @@ interface AiAgentPageProps {
 const AiAgentPage = async ({ params }: AiAgentPageProps) => {
   const { orgSlug } = await params
   const ctx = await getOrgContext(orgSlug)
+
+  const singleV2OverhaulEnabled =
+    process.env.SINGLE_V2_OVERHAUL_ENABLED === 'true'
 
   const [agents, quota] = await Promise.all([
     getAgents(ctx.orgId),
@@ -40,6 +47,7 @@ const AiAgentPage = async ({ params }: AiAgentPageProps) => {
         userRole={ctx.userRole}
         withinQuota={quota.withinQuota}
         allAgents={agents}
+        singleV2OverhaulEnabled={singleV2OverhaulEnabled}
       />
     </div>
   )

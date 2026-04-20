@@ -1,11 +1,12 @@
 'use client'
 
-import { Dispatch, SetStateAction } from 'react'
+import { useState, type Dispatch, type SetStateAction } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Control, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
+import { BotIcon, UsersIcon, Loader2 } from 'lucide-react'
 import {
   SheetContent,
   SheetDescription,
@@ -27,12 +28,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/_components/ui/select'
+import { Card, CardContent } from '@/_components/ui/card'
+import { Badge } from '@/_components/ui/badge'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/_components/ui/tooltip'
 import { Input } from '@/_components/ui/input'
+import { Label } from '@/_components/ui/label'
 import { Textarea } from '@/_components/ui/textarea'
 import { Button } from '@/_components/ui/button'
 import { Switch } from '@/_components/ui/switch'
 import { Separator } from '@/_components/ui/separator'
-import { Loader2 } from 'lucide-react'
 import { createAgent } from '@/_actions/agent/create-agent'
 import {
   createAgentSchema,
@@ -45,6 +53,11 @@ import {
   RESPONSE_LENGTH_OPTIONS,
   LANGUAGE_OPTIONS,
 } from '../[agentId]/_components/constants'
+import {
+  composeAgentVersion,
+  decomposeAgentVersion,
+  type AgentVersionFormState,
+} from '../_lib/agent-version-ui'
 import { z } from 'zod'
 
 const editAgentSchema = z.object({
@@ -53,6 +66,10 @@ const editAgentSchema = z.object({
 })
 
 type EditAgentInput = z.infer<typeof editAgentSchema>
+
+// ---------------------------------------------------------------------------
+// Subcomponente: campos de prompt (apenas no create flow)
+// ---------------------------------------------------------------------------
 
 interface CreateAgentPromptFieldsProps {
   control: Control<CreateAgentInput>
@@ -249,57 +266,178 @@ const CreateAgentPromptFields = ({ control }: CreateAgentPromptFieldsProps) => {
           )}
         />
       </div>
-
-      <Separator />
-
-      {/* Modo de resposta */}
-      <FormField
-        control={control}
-        name="agentVersion"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Modo de resposta</FormLabel>
-            <Select
-              value={field.value ?? 'single-v1'}
-              onValueChange={field.onChange}
-            >
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                <SelectItem value="single-v1">
-                  <div className="flex items-baseline gap-2">
-                    <span>Padrão</span>
-                    <span className="text-xs text-muted-foreground">
-                      Respostas diretas e econômicas.
-                    </span>
-                  </div>
-                </SelectItem>
-                <SelectItem value="single-v2">
-                  <div className="flex items-baseline gap-2">
-                    <span>v2</span>
-                    <span className="text-xs text-muted-foreground">
-                      Em desenvolvimento.
-                    </span>
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
     </>
   )
 }
 
+// ---------------------------------------------------------------------------
+// Subcomponente: seletor de versão (só aparece quando agentType === 'single')
+// ---------------------------------------------------------------------------
+
+interface AgentVersionSelectorProps {
+  singleVersion: AgentVersionFormState['singleVersion']
+  onVersionChange: (version: AgentVersionFormState['singleVersion']) => void
+  singleV2OverhaulEnabled: boolean
+}
+
+const AgentVersionSelector = ({
+  singleVersion,
+  onVersionChange,
+  singleV2OverhaulEnabled,
+}: AgentVersionSelectorProps) => {
+  // Copy condicional pela flag — quando off, copy honesto de "em desenvolvimento"
+  const v2Title = singleV2OverhaulEnabled ? 'Nova geração' : 'v2'
+  const v2Description = singleV2OverhaulEnabled
+    ? 'Guard + validação de preço + mídia inline'
+    : 'Em desenvolvimento'
+
+  return (
+    <div className="space-y-2">
+      <Label>Versão</Label>
+      <Select value={singleVersion} onValueChange={onVersionChange}>
+        <SelectTrigger>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="single-v1">
+            <div className="flex items-baseline gap-2">
+              <span>Padrão</span>
+              <span className="text-xs text-muted-foreground">
+                Respostas diretas e econômicas
+              </span>
+            </div>
+          </SelectItem>
+          <SelectItem value="single-v2">
+            <div className="flex items-baseline gap-2">
+              <span>{v2Title}</span>
+              <span className="text-xs text-muted-foreground">
+                {v2Description}
+              </span>
+            </div>
+          </SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Subcomponente: seletor de tipo de agente (Cards clicáveis)
+// ---------------------------------------------------------------------------
+
+interface AgentTypeSelectorProps {
+  agentType: AgentVersionFormState['agentType']
+  onTypeChange: (type: AgentVersionFormState['agentType']) => void
+  singleVersion: AgentVersionFormState['singleVersion']
+  onVersionChange: (version: AgentVersionFormState['singleVersion']) => void
+  singleV2OverhaulEnabled: boolean
+}
+
+const AgentTypeSelector = ({
+  agentType,
+  onTypeChange,
+  singleVersion,
+  onVersionChange,
+  singleV2OverhaulEnabled,
+}: AgentTypeSelectorProps) => {
+  const isSingleSelected = agentType === 'single'
+  const isCrewSelected = agentType === 'crew'
+
+  return (
+    <div className="space-y-3">
+      <Label>Arquitetura do agente</Label>
+
+      <div className="grid grid-cols-2 gap-3">
+        {/* Card Single — habilitado */}
+        <button
+          type="button"
+          onClick={() => onTypeChange('single')}
+          aria-pressed={isSingleSelected}
+          className="text-left"
+        >
+          <Card
+            className={
+              isSingleSelected
+                ? 'border-primary ring-2 ring-primary/20 transition-colors'
+                : 'border-border/50 transition-colors hover:border-primary/40'
+            }
+          >
+            <CardContent className="flex flex-col gap-2 p-4">
+              <div className="flex items-center gap-2">
+                <BotIcon className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-semibold">Single</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Agente único, fluxo linear
+              </p>
+            </CardContent>
+          </Card>
+        </button>
+
+        {/* Card Crew — disabled, com Badge "Em breve" e Tooltip explicativo.
+            Crew não está público ainda — GA previsto na próxima release. */}
+        <Tooltip delayDuration={300}>
+          <TooltipTrigger asChild>
+            {/* span necessário para Tooltip funcionar com elemento disabled */}
+            <span className="block">
+              <Card
+                className={
+                  isCrewSelected
+                    ? 'cursor-not-allowed border-primary opacity-60 ring-2 ring-primary/20'
+                    : 'cursor-not-allowed border-border/50 opacity-60'
+                }
+                aria-disabled="true"
+              >
+                <CardContent className="flex flex-col gap-2 p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <UsersIcon className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-semibold">Crew</span>
+                    </div>
+                    <Badge variant="secondary" className="text-xs">
+                      Em breve
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Múltiplos agentes orquestrados
+                  </p>
+                </CardContent>
+              </Card>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="max-w-[220px] text-center">
+            Estamos finalizando o fluxo de criação de crews. Fique de olho.
+          </TooltipContent>
+        </Tooltip>
+      </div>
+
+      {/* Select de versão — só aparece quando tipo é 'single' */}
+      {agentType !== 'single' ? null : (
+        <AgentVersionSelector
+          singleVersion={singleVersion}
+          onVersionChange={onVersionChange}
+          singleV2OverhaulEnabled={singleV2OverhaulEnabled}
+        />
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Componente principal
+// ---------------------------------------------------------------------------
+
 interface UpsertAgentSheetContentProps {
-  defaultValues?: { id: string; name: string; isActive: boolean }
+  defaultValues?: {
+    id: string
+    name: string
+    isActive: boolean
+    agentVersion?: 'single-v1' | 'single-v2' | 'crew-v1'
+  }
   setIsOpen: Dispatch<SetStateAction<boolean>>
   onUpdate?: (data: UpdateAgentInput) => void
   isUpdating?: boolean
+  singleV2OverhaulEnabled: boolean
 }
 
 const UpsertAgentSheetContent = ({
@@ -307,11 +445,23 @@ const UpsertAgentSheetContent = ({
   setIsOpen,
   onUpdate,
   isUpdating: isUpdatingProp = false,
+  singleV2OverhaulEnabled,
 }: UpsertAgentSheetContentProps) => {
   const isEditing = !!defaultValues?.id
   const router = useRouter()
   const params = useParams()
   const orgSlug = params?.orgSlug as string
+
+  // Estado visual de tipo/versão fora do useForm — os campos agentType e
+  // singleVersion não fazem parte do schema Zod persistido.
+  // Derivar diretamente dos defaultValues no render: sem useEffect.
+  const initialVersionState = decomposeAgentVersion(defaultValues?.agentVersion)
+  const [agentType, setAgentType] = useState<AgentVersionFormState['agentType']>(
+    initialVersionState.agentType,
+  )
+  const [singleVersion, setSingleVersion] = useState<
+    AgentVersionFormState['singleVersion']
+  >(initialVersionState.singleVersion)
 
   const form = useForm<CreateAgentInput | EditAgentInput>({
     resolver: zodResolver(isEditing ? editAgentSchema : createAgentSchema),
@@ -364,10 +514,19 @@ const UpsertAgentSheetContent = ({
 
   const onSubmit = (data: CreateAgentInput | EditAgentInput) => {
     if (isEditing && defaultValues?.id) {
-      onUpdate?.({ id: defaultValues.id, name: data.name, isActive: data.isActive } as UpdateAgentInput)
-    } else {
-      executeCreate(data as CreateAgentInput)
+      onUpdate?.({
+        id: defaultValues.id,
+        name: data.name,
+        isActive: data.isActive,
+      } as UpdateAgentInput)
+      return
     }
+
+    // Injetar agentVersion composto a partir dos estados visuais locais
+    executeCreate({
+      ...(data as CreateAgentInput),
+      agentVersion: composeAgentVersion({ agentType, singleVersion }),
+    })
   }
 
   const handleCloseDialog = () => {
@@ -408,7 +567,20 @@ const UpsertAgentSheetContent = ({
           />
 
           {!isEditing && (
-            <CreateAgentPromptFields control={createControl} />
+            <>
+              <CreateAgentPromptFields control={createControl} />
+
+              <Separator />
+
+              {/* Seletor de arquitetura + versão — apenas no create flow */}
+              <AgentTypeSelector
+                agentType={agentType}
+                onTypeChange={setAgentType}
+                singleVersion={singleVersion}
+                onVersionChange={setSingleVersion}
+                singleV2OverhaulEnabled={singleV2OverhaulEnabled}
+              />
+            </>
           )}
 
           <FormField

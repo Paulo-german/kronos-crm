@@ -35,6 +35,7 @@ interface AgentsCardGridProps {
   userRole: MemberRole
   withinQuota: boolean
   allAgents: AgentDto[]
+  singleV2OverhaulEnabled: boolean
 }
 
 export function AgentsCardGrid({
@@ -43,6 +44,7 @@ export function AgentsCardGrid({
   userRole,
   withinQuota,
   allAgents,
+  singleV2OverhaulEnabled,
 }: AgentsCardGridProps) {
   const [editingAgent, setEditingAgent] = useState<AgentDto | null>(null)
   const [isEditOpen, setIsEditOpen] = useState(false)
@@ -121,7 +123,10 @@ export function AgentsCardGrid({
         </div>
 
         <Sheet open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <UpsertAgentSheetContent setIsOpen={setIsCreateOpen} />
+          <UpsertAgentSheetContent
+            setIsOpen={setIsCreateOpen}
+            singleV2OverhaulEnabled={singleV2OverhaulEnabled}
+          />
         </Sheet>
       </>
     )
@@ -262,13 +267,17 @@ export function AgentsCardGrid({
             setIsOpen={setIsEditOpen}
             onUpdate={(data) => executeUpdate(data)}
             isUpdating={isUpdating}
+            singleV2OverhaulEnabled={singleV2OverhaulEnabled}
           />
         )}
       </Sheet>
 
       {/* Create sheet */}
       <Sheet open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <UpsertAgentSheetContent setIsOpen={setIsCreateOpen} />
+        <UpsertAgentSheetContent
+          setIsOpen={setIsCreateOpen}
+          singleV2OverhaulEnabled={singleV2OverhaulEnabled}
+        />
       </Sheet>
 
       {/* Delete dialog — suporta fluxo de grupo (requiresGroupDecision) */}
