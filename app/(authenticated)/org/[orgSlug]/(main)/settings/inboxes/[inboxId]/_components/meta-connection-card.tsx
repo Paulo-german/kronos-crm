@@ -107,13 +107,11 @@ const MetaConnectionCard = ({
   }
 
   const handleSdkReady = () => {
-    console.log('[MetaSDK] handleSdkReady() called — window.FB:', !!window.FB)
     if (!window.FB) return
 
     // Listener para capturar sessionInfo do Embedded Signup
     // O Meta envia eventos via window.message durante o fluxo
     const sessionInfoListener = (event: MessageEvent) => {
-      console.log('[MetaSDK] postMessage recebido — origin:', event.origin, 'data:', event.data)
       if (!event.origin.endsWith('facebook.com')) return
 
       try {
@@ -121,24 +119,26 @@ const MetaConnectionCard = ({
           typeof event.data === 'string' ? JSON.parse(event.data) : event.data
 
         if (data?.type === 'WA_EMBEDDED_SIGNUP') {
-          console.log('[MetaSDK] WA_EMBEDDED_SIGNUP — event:', data?.event, 'payload:', data?.data)
-          if (data?.event === 'FINISH' || data?.event === 'FINISH_ONLY_WABA') {
+          const finishEvents = [
+            'FINISH',
+            'FINISH_ONLY_WABA',
+            'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING',
+          ]
+          if (finishEvents.includes(data?.event)) {
             const sessionInfo = data.data as EmbeddedSignupSessionInfo
             sessionInfoRef.current = sessionInfo
             window.removeEventListener('message', sessionInfoListener)
           }
         }
-      } catch (err) {
-        console.log('[MetaSDK] erro parseando postMessage:', err)
+      } catch {
+        // Ignora eventos nao JSON ou de outras origens
       }
     }
 
     window.addEventListener('message', sessionInfoListener)
 
-    console.log('[MetaSDK] Calling FB.login() — FB object keys:', Object.keys(window.FB))
     window.FB.login(
       (response: FBLoginResponse) => {
-        console.log('[MetaSDK] FB.login callback — status:', response.status, 'hasCode:', !!response.authResponse?.code)
         window.removeEventListener('message', sessionInfoListener)
 
         if (!response.authResponse?.code) {
@@ -155,7 +155,6 @@ const MetaConnectionCard = ({
         const sessionInfo = sessionInfoRef.current
         const wabaId = sessionInfo?.waba_id
         const phoneNumberId = sessionInfo?.phone_number_id
-        console.log('[MetaSDK] estado no callback — sessionInfo:', sessionInfo, 'wabaId:', wabaId, 'phoneNumberId:', phoneNumberId)
 
         if (!wabaId || !phoneNumberId) {
           setIsAuthPending(false)
