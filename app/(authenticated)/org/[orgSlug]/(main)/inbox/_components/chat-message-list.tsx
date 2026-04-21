@@ -103,6 +103,7 @@ export function ChatMessageList({
               metadata={item.data.metadata}
               createdAt={item.data.createdAt}
               deliveryStatus={item.data.deliveryStatus}
+              isAiGenerated={item.data.isAiGenerated}
               onRetry={onRetryMessage}
               isRetrying={retryingMessageId === item.data.id}
             />

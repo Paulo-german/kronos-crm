@@ -23,6 +23,9 @@ export interface MessageDto {
   metadata: MessageMetadataDto | null
   deliveryStatus: string | null
   createdAt: Date
+  // Sinal derivado no server — indica que a mensagem foi gerada pela IA.
+  // Deriva de metadata.model (campo interno que não vaza para o cliente via whitelist).
+  isAiGenerated: boolean
 }
 
 export interface ConversationDetailDto {
@@ -79,10 +82,14 @@ const fetchMessagesFromDb = async (
     },
   })
 
-  return messages.map((msg) => ({
-    ...msg,
-    metadata: toSafeMetadata(msg.metadata),
-  }))
+  return messages.map((msg) => {
+    const rawMeta = msg.metadata as Record<string, unknown> | null
+    return {
+      ...msg,
+      metadata: toSafeMetadata(msg.metadata),
+      isAiGenerated: msg.role === 'assistant' && !!rawMeta?.model,
+    }
+  })
 }
 
 export const getConversationMessages = cache(
@@ -130,10 +137,14 @@ export async function getConversationMessagesPaginated(
   const sliced = hasMore ? messages.slice(0, limit) : messages
 
   return {
-    messages: sliced.reverse().map((msg) => ({
-      ...msg,
-      metadata: toSafeMetadata(msg.metadata),
-    })),
+    messages: sliced.reverse().map((msg) => {
+      const rawMeta = msg.metadata as Record<string, unknown> | null
+      return {
+        ...msg,
+        metadata: toSafeMetadata(msg.metadata),
+        isAiGenerated: msg.role === 'assistant' && !!rawMeta?.model,
+      }
+    }),
     hasMore,
   }
 }

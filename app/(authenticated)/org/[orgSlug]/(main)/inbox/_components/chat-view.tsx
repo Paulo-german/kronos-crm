@@ -152,10 +152,7 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
   const displayTimeline = useMemo(() => {
     const expandedMessages: MessageDto[] = []
     for (const message of messages) {
-      const meta = message.metadata as Record<string, unknown> | null
-      const isAiGenerated = message.role === 'assistant' && !!meta?.model
-
-      if (isAiGenerated) {
+      if (message.isAiGenerated) {
         const chunks = message.content
           .split(/\n\n+/)
           .map((chunk) => chunk.trim())

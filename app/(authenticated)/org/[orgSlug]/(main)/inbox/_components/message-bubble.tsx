@@ -280,11 +280,12 @@ interface MessageBubbleProps {
   metadata: unknown
   deliveryStatus: string | null
   createdAt: Date | string
+  isAiGenerated: boolean
   onRetry?: (messageId: string) => void
   isRetrying?: boolean
 }
 
-export function MessageBubble({ id, conversationId, role, content, metadata, deliveryStatus, createdAt, onRetry, isRetrying }: MessageBubbleProps) {
+export function MessageBubble({ id, conversationId, role, content, metadata, deliveryStatus, createdAt, isAiGenerated, onRetry, isRetrying }: MessageBubbleProps) {
   const isUser = role === 'user'
   const meta = metadata as MessageMetadata | null
   const media = meta?.media
@@ -303,7 +304,7 @@ export function MessageBubble({ id, conversationId, role, content, metadata, del
     /^\[(Áudio \d+s|Imagem[^\]]*|Documento[^\]]*)\]$/.test(content)
   const timestamp = format(new Date(createdAt), 'HH:mm')
   const isFromInbox = meta?.sentFrom === 'inbox'
-  const isAiMessage = role === 'assistant' && !!meta?.model
+  const isAiMessage = isAiGenerated
   const isTemplateMessage = !!meta?.template
 
   return (
