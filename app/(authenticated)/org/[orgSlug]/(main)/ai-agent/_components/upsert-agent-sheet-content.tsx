@@ -6,7 +6,8 @@ import { Control, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
-import { BotIcon, UsersIcon, Loader2 } from 'lucide-react'
+import { BotIcon, UsersIcon, Loader2, SparklesIcon } from 'lucide-react'
+import { Alert, AlertDescription } from '@/_components/ui/alert'
 import {
   SheetContent,
   SheetDescription,
@@ -278,18 +279,19 @@ interface AgentVersionSelectorProps {
   singleVersion: AgentVersionFormState['singleVersion']
   onVersionChange: (version: AgentVersionFormState['singleVersion']) => void
   singleV2OverhaulEnabled: boolean
+  isSuperAdmin: boolean
 }
 
 const AgentVersionSelector = ({
   singleVersion,
   onVersionChange,
   singleV2OverhaulEnabled,
+  isSuperAdmin,
 }: AgentVersionSelectorProps) => {
-  // Copy condicional pela flag — quando off, copy honesto de "em desenvolvimento"
-  const v2Title = singleV2OverhaulEnabled ? 'Nova geração' : 'v2'
-  const v2Description = singleV2OverhaulEnabled
-    ? 'Guard + validação de preço + mídia inline'
-    : 'Em desenvolvimento'
+  // v2 só é visível para superadmins durante o rollout controlado.
+  if (!isSuperAdmin) return null
+
+  const isV2Selected = singleVersion === 'single-v2'
 
   return (
     <div className="space-y-2">
@@ -299,24 +301,38 @@ const AgentVersionSelector = ({
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="single-v1">
-            <div className="flex items-baseline gap-2">
-              <span>Padrão</span>
-              <span className="text-xs text-muted-foreground">
-                Respostas diretas e econômicas
-              </span>
-            </div>
-          </SelectItem>
+          <SelectItem value="single-v1">Padrão</SelectItem>
           <SelectItem value="single-v2">
-            <div className="flex items-baseline gap-2">
-              <span>{v2Title}</span>
-              <span className="text-xs text-muted-foreground">
-                {v2Description}
-              </span>
+            <div className="flex items-center gap-2">
+              <span>Avançado</span>
+              <Badge
+                variant="secondary"
+                className="border-yellow-500/30 bg-yellow-500/10 text-[10px] text-yellow-600 dark:text-yellow-400"
+              >
+                Beta
+              </Badge>
             </div>
           </SelectItem>
         </SelectContent>
       </Select>
+
+      {isV2Selected && (
+        <Alert className="border-primary/30 bg-primary/5">
+          <SparklesIcon className="h-4 w-4 text-primary" />
+          <AlertDescription className="space-y-1.5 text-xs">
+            <p className="font-medium text-foreground">
+              {singleV2OverhaulEnabled
+                ? 'O que muda na versão Avançada'
+                : 'Em desenvolvimento — ainda não disponível em produção'}
+            </p>
+            <ul className="list-disc space-y-0.5 pl-4 text-muted-foreground">
+              <li>Bloqueia respostas com preço inventado pela IA</li>
+              <li>Envia imagens de produtos automaticamente na conversa</li>
+              <li>Resposta de segurança se a IA falhar, sem travar o atendimento</li>
+            </ul>
+          </AlertDescription>
+        </Alert>
+      )}
     </div>
   )
 }
@@ -331,6 +347,7 @@ interface AgentTypeSelectorProps {
   singleVersion: AgentVersionFormState['singleVersion']
   onVersionChange: (version: AgentVersionFormState['singleVersion']) => void
   singleV2OverhaulEnabled: boolean
+  isSuperAdmin: boolean
 }
 
 const AgentTypeSelector = ({
@@ -339,6 +356,7 @@ const AgentTypeSelector = ({
   singleVersion,
   onVersionChange,
   singleV2OverhaulEnabled,
+  isSuperAdmin,
 }: AgentTypeSelectorProps) => {
   const isSingleSelected = agentType === 'single'
   const isCrewSelected = agentType === 'crew'
@@ -411,12 +429,13 @@ const AgentTypeSelector = ({
         </Tooltip>
       </div>
 
-      {/* Select de versão — só aparece quando tipo é 'single' */}
+      {/* Select de versão — só aparece quando tipo é 'single' e usuário é superadmin */}
       {agentType !== 'single' ? null : (
         <AgentVersionSelector
           singleVersion={singleVersion}
           onVersionChange={onVersionChange}
           singleV2OverhaulEnabled={singleV2OverhaulEnabled}
+          isSuperAdmin={isSuperAdmin}
         />
       )}
     </div>
@@ -438,6 +457,7 @@ interface UpsertAgentSheetContentProps {
   onUpdate?: (data: UpdateAgentInput) => void
   isUpdating?: boolean
   singleV2OverhaulEnabled: boolean
+  isSuperAdmin: boolean
 }
 
 const UpsertAgentSheetContent = ({
@@ -446,6 +466,7 @@ const UpsertAgentSheetContent = ({
   onUpdate,
   isUpdating: isUpdatingProp = false,
   singleV2OverhaulEnabled,
+  isSuperAdmin,
 }: UpsertAgentSheetContentProps) => {
   const isEditing = !!defaultValues?.id
   const router = useRouter()
@@ -579,6 +600,7 @@ const UpsertAgentSheetContent = ({
                 singleVersion={singleVersion}
                 onVersionChange={setSingleVersion}
                 singleV2OverhaulEnabled={singleV2OverhaulEnabled}
+                isSuperAdmin={isSuperAdmin}
               />
             </>
           )}

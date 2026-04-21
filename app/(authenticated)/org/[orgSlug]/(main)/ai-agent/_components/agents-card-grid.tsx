@@ -36,6 +36,7 @@ interface AgentsCardGridProps {
   withinQuota: boolean
   allAgents: AgentDto[]
   singleV2OverhaulEnabled: boolean
+  isSuperAdmin: boolean
 }
 
 export function AgentsCardGrid({
@@ -45,6 +46,7 @@ export function AgentsCardGrid({
   withinQuota,
   allAgents,
   singleV2OverhaulEnabled,
+  isSuperAdmin,
 }: AgentsCardGridProps) {
   const [editingAgent, setEditingAgent] = useState<AgentDto | null>(null)
   const [isEditOpen, setIsEditOpen] = useState(false)
@@ -126,6 +128,7 @@ export function AgentsCardGrid({
           <UpsertAgentSheetContent
             setIsOpen={setIsCreateOpen}
             singleV2OverhaulEnabled={singleV2OverhaulEnabled}
+            isSuperAdmin={isSuperAdmin}
           />
         </Sheet>
       </>
@@ -268,6 +271,7 @@ export function AgentsCardGrid({
             onUpdate={(data) => executeUpdate(data)}
             isUpdating={isUpdating}
             singleV2OverhaulEnabled={singleV2OverhaulEnabled}
+            isSuperAdmin={isSuperAdmin}
           />
         )}
       </Sheet>
@@ -277,6 +281,7 @@ export function AgentsCardGrid({
         <UpsertAgentSheetContent
           setIsOpen={setIsCreateOpen}
           singleV2OverhaulEnabled={singleV2OverhaulEnabled}
+          isSuperAdmin={isSuperAdmin}
         />
       </Sheet>
 

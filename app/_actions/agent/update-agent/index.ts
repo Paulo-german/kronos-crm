@@ -6,6 +6,7 @@ import { Prisma } from '@prisma/client'
 import { db } from '@/_lib/prisma'
 import { revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
+import { getUserById } from '@/_data-access/user/get-user-by-id'
 import { pickDefined, OPTIONAL_AGENT_FIELDS } from '../shared/pick-defined'
 
 export const updateAgent = orgActionClient
@@ -19,6 +20,14 @@ export const updateAgent = orgActionClient
 
     if (!existingAgent) {
       throw new Error('Agente não encontrado.')
+    }
+
+    // Durante o rollout controlado, single-v2 só é selecionável por superadmins.
+    if (data.agentVersion === 'single-v2') {
+      const user = await getUserById(ctx.userId)
+      if (!user?.isSuperAdmin) {
+        throw new Error('Versão indisponível.')
+      }
     }
 
     await db.agent.update({

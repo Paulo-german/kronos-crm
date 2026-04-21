@@ -6,6 +6,7 @@ import Header, {
 import { QuotaHint } from '@/_components/trial/quota-hint'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getAgents } from '@/_data-access/agent/get-agents'
+import { getUserById } from '@/_data-access/user/get-user-by-id'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 import { AgentsCardGrid } from './_components/agents-card-grid'
 
@@ -24,10 +25,13 @@ const AiAgentPage = async ({ params }: AiAgentPageProps) => {
   const singleV2OverhaulEnabled =
     process.env.SINGLE_V2_OVERHAUL_ENABLED === 'true'
 
-  const [agents, quota] = await Promise.all([
+  const [agents, quota, user] = await Promise.all([
     getAgents(ctx.orgId),
     checkPlanQuota(ctx.orgId, 'agent'),
+    getUserById(ctx.userId),
   ])
+
+  const isSuperAdmin = user?.isSuperAdmin ?? false
 
   return (
     <div className="space-y-6">
@@ -48,6 +52,7 @@ const AiAgentPage = async ({ params }: AiAgentPageProps) => {
         withinQuota={quota.withinQuota}
         allAgents={agents}
         singleV2OverhaulEnabled={singleV2OverhaulEnabled}
+        isSuperAdmin={isSuperAdmin}
       />
     </div>
   )
