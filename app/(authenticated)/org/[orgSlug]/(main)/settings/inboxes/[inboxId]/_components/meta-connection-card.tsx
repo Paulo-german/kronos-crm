@@ -113,19 +113,23 @@ const MetaConnectionCard = ({
     // Listener para capturar sessionInfo do Embedded Signup
     // O Meta envia eventos via window.message durante o fluxo
     const sessionInfoListener = (event: MessageEvent) => {
-      if (event.origin !== 'https://www.facebook.com') return
+      console.log('[MetaSDK] postMessage recebido — origin:', event.origin, 'data:', event.data)
+      if (!event.origin.endsWith('facebook.com')) return
 
       try {
         const data =
           typeof event.data === 'string' ? JSON.parse(event.data) : event.data
 
-        if (data?.type === 'WA_EMBEDDED_SIGNUP' && data?.event === 'FINISH') {
-          const sessionInfo = data.data as EmbeddedSignupSessionInfo
-          sessionInfoRef.current = sessionInfo
-          window.removeEventListener('message', sessionInfoListener)
+        if (data?.type === 'WA_EMBEDDED_SIGNUP') {
+          console.log('[MetaSDK] WA_EMBEDDED_SIGNUP — event:', data?.event, 'payload:', data?.data)
+          if (data?.event === 'FINISH' || data?.event === 'FINISH_ONLY_WABA') {
+            const sessionInfo = data.data as EmbeddedSignupSessionInfo
+            sessionInfoRef.current = sessionInfo
+            window.removeEventListener('message', sessionInfoListener)
+          }
         }
-      } catch {
-        // Ignora eventos nao JSON ou de outras origens
+      } catch (err) {
+        console.log('[MetaSDK] erro parseando postMessage:', err)
       }
     }
 
@@ -151,6 +155,7 @@ const MetaConnectionCard = ({
         const sessionInfo = sessionInfoRef.current
         const wabaId = sessionInfo?.waba_id
         const phoneNumberId = sessionInfo?.phone_number_id
+        console.log('[MetaSDK] estado no callback — sessionInfo:', sessionInfo, 'wabaId:', wabaId, 'phoneNumberId:', phoneNumberId)
 
         if (!wabaId || !phoneNumberId) {
           setIsAuthPending(false)
