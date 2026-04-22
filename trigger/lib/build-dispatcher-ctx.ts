@@ -387,11 +387,20 @@ export async function buildDispatcherCtx(
             evolutionCredentials,
           )
         } catch (error) {
-          logger.warn('Evolution audio transcription failed, using fallback', {
+          const errorMessage = error instanceof Error ? error.message : String(error)
+
+          logger.error('Evolution audio transcription failed, using fallback', {
             instanceName: message.instanceName,
             messageId: message.messageId,
-            error: error instanceof Error ? error.message : String(error),
+            error: errorMessage,
+            provider: message.provider,
           })
+
+          updateActiveTrace({
+            tags: ['media-transcription-failed'],
+            metadata: { transcriptionError: errorMessage, mediaType: 'audio' },
+          })
+
           transcription = '[Áudio não transcrito — erro ao buscar mídia]'
         }
       }
@@ -552,10 +561,21 @@ export async function buildDispatcherCtx(
           data: { content: messageText },
         })
       } catch (error) {
-        logger.warn('Image transcription failed, using placeholder', {
+        const errorMessage = error instanceof Error ? error.message : String(error)
+
+        logger.error('Image transcription failed, using placeholder', {
           ...logCtx,
-          error: error instanceof Error ? error.message : String(error),
+          error: errorMessage,
+          provider: message.provider,
+          messageId: message.messageId,
+          mimetype: message.media?.mimetype,
         })
+
+        updateActiveTrace({
+          tags: ['media-transcription-failed'],
+          metadata: { transcriptionError: errorMessage, mediaType: 'image' },
+        })
+
         const caption = message.text ? ` com legenda: "${message.text}"` : ''
         messageText = `[O cliente enviou uma imagem${caption}]`
         await db.message.updateMany({
@@ -564,8 +584,8 @@ export async function buildDispatcherCtx(
         })
         tracker.addStep({
           type: 'IMAGE_TRANSCRIPTION',
-          status: 'PASSED',
-          output: { fallback: true },
+          status: 'FAILED',
+          output: { error: errorMessage },
         })
       }
     } else if (message.type === 'image') {
