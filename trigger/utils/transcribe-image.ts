@@ -1,4 +1,5 @@
 import { describeImageWithVision } from './describe-image'
+import type { VisionResult } from './describe-image'
 
 interface EvolutionBase64Response {
   mediaType: string
@@ -11,6 +12,9 @@ interface EvolutionBase64Response {
  *
  * Aceita opcionalmente o base64 já baixado (evita chamada dupla à Evolution API
  * quando downloadAndStoreMedia já foi executado antes).
+ *
+ * Retorna VisionResult ({ text, totalTokens }) — totalTokens necessário para cobrar
+ * por tokens reais consumidos (padrão do projeto: calculateCreditCost * VISION_COST_MULTIPLIER).
  */
 export async function transcribeImage(
   instanceName: string,
@@ -18,10 +22,9 @@ export async function transcribeImage(
   caption?: string,
   preloadedBase64?: { base64: string; mimetype: string },
   credentials?: { apiUrl: string; apiKey: string },
-): Promise<string> {
+): Promise<VisionResult> {
   if (preloadedBase64) {
-    const result = await describeImageWithVision(preloadedBase64.base64, preloadedBase64.mimetype, caption)
-    return result.text
+    return describeImageWithVision(preloadedBase64.base64, preloadedBase64.mimetype, caption)
   }
 
   const apiUrl = credentials?.apiUrl ?? process.env.EVOLUTION_API_URL
@@ -62,6 +65,5 @@ export async function transcribeImage(
 
   const mimetype = data.mimetype ?? 'image/jpeg'
 
-  const result = await describeImageWithVision(data.base64, mimetype, caption)
-  return result.text
+  return describeImageWithVision(data.base64, mimetype, caption)
 }

@@ -20,8 +20,17 @@ import { transcribeImage } from '../utils/transcribe-image'
 import { downloadAndStoreMedia } from '../utils/download-and-store-media'
 import { createExecutionTracker } from './execution-tracker'
 import { revalidateConversationCache } from './revalidate-cache'
+import { runWithCreditDebit } from './debit-transcription'
+import { calculateCreditCost, calculateAudioCreditCost } from '@/_lib/ai/pricing'
+import { IMAGE_MODEL } from '../utils/describe-image'
 import type { NormalizedWhatsAppMessage } from '@/_lib/evolution/types'
 import type { DispatcherCtx } from '../dispatcher-types'
+
+// Modelos de vision são mais caros — refletido no multiplicador de créditos
+const VISION_COST_MULTIPLIER = 2
+
+// Guard de tamanho para PDFs: acima deste limite a chamada vision pode ser impraticável
+const PDF_VISION_MAX_BYTES = 5 * 1024 * 1024 // 5 MB
 
 export interface ProcessAgentMessagePayload {
   message: NormalizedWhatsAppMessage
@@ -344,7 +353,7 @@ export async function buildDispatcherCtx(
     }
 
     // -----------------------------------------------------------------------
-    // 2b. Se áudio, transcrever com Whisper
+    // 2b. Se áudio, transcrever com Whisper e debitar créditos
     // -----------------------------------------------------------------------
     let messageText = message.text
     if (message.type === 'audio' && message.media) {
@@ -353,7 +362,12 @@ export async function buildDispatcherCtx(
         provider: message.provider,
       })
 
-      let transcription: string
+      const audioMimetype = message.media.mimetype
+
+      // Caso especial: Meta Cloud sem token de acesso — não há como transcrever,
+      // então pulamos o ciclo de créditos inteiro (não há chamada AI para debitar).
+      let metaTokenMissing = false
+      let resolvedMetaBuffer: Buffer | null = null
 
       if (message.provider === 'meta_cloud') {
         const { downloadMetaMedia } = await import('@/_lib/meta/download-meta-media')
@@ -362,54 +376,71 @@ export async function buildDispatcherCtx(
           select: { metaAccessToken: true },
         })
 
-        if (metaInbox?.metaAccessToken) {
-          const audioBuffer = await downloadMetaMedia(
-            message.media.url,
-            metaInbox.metaAccessToken,
-          )
-          const { transcribeAudioFromBuffer } = await import('../utils/transcribe-audio')
-          transcription = await transcribeAudioFromBuffer(audioBuffer, message.media.mimetype)
-        } else {
+        if (!metaInbox?.metaAccessToken) {
+          metaTokenMissing = true
           log('step:3a audio_transcription', 'SKIP', { reason: 'no_meta_access_token' })
-          transcription = '[Áudio não transcrito — token de acesso não disponível]'
-        }
-      } else if (message.provider === 'z_api') {
-        const audioResponse = await fetch(message.media.url)
-        const audioBuffer = Buffer.from(await audioResponse.arrayBuffer())
-        const { transcribeAudioFromBuffer } = await import('../utils/transcribe-audio')
-        transcription = await transcribeAudioFromBuffer(audioBuffer, message.media.mimetype)
-      } else {
-        try {
-          const evolutionCredentials = await resolveEvolutionCredentialsByInstanceName(message.instanceName)
-          transcription = await transcribeAudio(
-            message.instanceName,
-            message.messageId,
-            evolutionCredentials,
-          )
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error)
-
-          logger.error('Evolution audio transcription failed, using fallback', {
-            instanceName: message.instanceName,
-            messageId: message.messageId,
-            error: errorMessage,
-            provider: message.provider,
-          })
-
-          updateActiveTrace({
-            tags: ['media-transcription-failed'],
-            metadata: { transcriptionError: errorMessage, mediaType: 'audio' },
-          })
-
-          transcription = '[Áudio não transcrito — erro ao buscar mídia]'
+        } else {
+          resolvedMetaBuffer = await downloadMetaMedia(message.media.url, metaInbox.metaAccessToken)
         }
       }
 
+      const creditResult = metaTokenMissing
+        ? { text: '[Áudio não transcrito — token de acesso não disponível]', skipped: false, cost: 0, debited: false }
+        : await runWithCreditDebit({
+            organizationId,
+            description: 'Transcrição de áudio recebido (whisper)',
+            metadata: {
+              providerMessageId: message.messageId,
+              mimetype: audioMimetype,
+              model: 'whisper-1',
+              direction: 'inbound',
+            },
+            execute: async () => {
+              const { transcribeAudioFromBuffer: transcribeBuffer } = await import('../utils/transcribe-audio')
+
+              let audioBuffer: Buffer
+
+              if (resolvedMetaBuffer) {
+                audioBuffer = resolvedMetaBuffer
+              } else if (message.provider === 'z_api') {
+                const audioResponse = await fetch(message.media!.url)
+                audioBuffer = Buffer.from(await audioResponse.arrayBuffer())
+              } else {
+                // Evolution: busca base64 via API própria
+                const evolutionCredentials = await resolveEvolutionCredentialsByInstanceName(message.instanceName)
+                const { text, duration } = await transcribeAudio(
+                  message.instanceName,
+                  message.messageId,
+                  evolutionCredentials,
+                )
+                const cost = calculateAudioCreditCost(duration)
+                return { text, cost }
+              }
+
+              const { text, duration } = await transcribeBuffer(audioBuffer, audioMimetype)
+              const cost = calculateAudioCreditCost(duration)
+              return { text, cost }
+            },
+          })
+
+      let transcription: string
+
+      if (creditResult.skipped) {
+        transcription = '[Áudio recebido — sem créditos para transcrever]'
+        log('step:3a audio_transcription', 'SKIP', { reason: 'no_credits' })
+      } else {
+        transcription = creditResult.text ?? '[Áudio não transcrito]'
+        log('step:3a audio_transcribed', 'PASS', {
+          length: transcription.length,
+          creditsCost: creditResult.cost,
+          debited: creditResult.debited,
+        })
+      }
+
       messageText = transcription
-      log('step:3a audio_transcribed', 'PASS', { length: transcription.length })
       tracker.addStep({
         type: 'AUDIO_TRANSCRIPTION',
-        status: 'PASSED',
+        status: creditResult.skipped ? 'FAILED' : 'PASSED',
         output: { length: transcription.length },
       })
 
@@ -497,73 +528,56 @@ export async function buildDispatcherCtx(
       })
     }
 
-    // Para image: transcrever com visão; document: placeholder
+    // Para image: transcrever com visão + debitar créditos; document: placeholder
     if (message.type === 'image' && message.media) {
       log('step:3c image_transcription', 'PASS', {
         hasCaption: !!message.text,
         provider: message.provider,
       })
-      try {
-        let description: string
 
-        if (message.provider === 'meta_cloud') {
-          const { downloadMetaMedia } = await import('@/_lib/meta/download-meta-media')
-          const metaInboxForImage = await db.inbox.findFirst({
-            where: { metaPhoneNumberId: message.instanceName },
-            select: { metaAccessToken: true },
-          })
+      const imageMimetype = message.media.mimetype
+      const imageCaption = message.text ?? undefined
 
-          if (!metaInboxForImage?.metaAccessToken) {
-            throw new Error('Meta access token not found for image transcription')
+      const imageCreditResult = await runWithCreditDebit({
+        organizationId,
+        description: 'Transcrição de imagem recebida (vision AI)',
+        metadata: {
+          providerMessageId: message.messageId,
+          mimetype: imageMimetype,
+          multiplier: VISION_COST_MULTIPLIER,
+          direction: 'inbound',
+        },
+        execute: async () => {
+          let visionResult: import('../utils/describe-image').VisionResult
+
+          if (message.provider === 'meta_cloud') {
+            const { downloadMetaMedia } = await import('@/_lib/meta/download-meta-media')
+            const metaInboxForImage = await db.inbox.findFirst({
+              where: { metaPhoneNumberId: message.instanceName },
+              select: { metaAccessToken: true },
+            })
+
+            if (!metaInboxForImage?.metaAccessToken) {
+              throw new Error('Meta access token not found for image transcription')
+            }
+
+            const imageBuffer = await downloadMetaMedia(message.media!.url, metaInboxForImage.metaAccessToken)
+            const imageBase64 = imageBuffer.toString('base64')
+            visionResult = await transcribeImage(message.instanceName, message.messageId, imageCaption, { base64: imageBase64, mimetype: imageMimetype })
+          } else if (message.provider === 'z_api') {
+            const imageResponse = await fetch(message.media!.url)
+            const imageBuffer = Buffer.from(await imageResponse.arrayBuffer())
+            const imageBase64 = imageBuffer.toString('base64')
+            visionResult = await transcribeImage(message.instanceName, message.messageId, imageCaption, { base64: imageBase64, mimetype: imageMimetype })
+          } else {
+            const evolutionCredentialsForImage = await resolveEvolutionCredentialsByInstanceName(message.instanceName).catch(() => null)
+            visionResult = await transcribeImage(message.instanceName, message.messageId, imageCaption, undefined, evolutionCredentialsForImage ?? undefined)
           }
 
-          const imageBuffer = await downloadMetaMedia(
-            message.media.url,
-            metaInboxForImage.metaAccessToken,
-          )
-          const imageBase64 = imageBuffer.toString('base64')
-
-          description = await transcribeImage(
-            message.instanceName,
-            message.messageId,
-            message.text ?? undefined,
-            { base64: imageBase64, mimetype: message.media.mimetype },
-          )
-        } else if (message.provider === 'z_api') {
-          const imageResponse = await fetch(message.media.url)
-          const imageBuffer = Buffer.from(await imageResponse.arrayBuffer())
-          const imageBase64 = imageBuffer.toString('base64')
-
-          description = await transcribeImage(
-            message.instanceName,
-            message.messageId,
-            message.text ?? undefined,
-            { base64: imageBase64, mimetype: message.media.mimetype },
-          )
-        } else {
-          const evolutionCredentialsForImage = await resolveEvolutionCredentialsByInstanceName(message.instanceName).catch(() => null)
-          description = await transcribeImage(
-            message.instanceName,
-            message.messageId,
-            message.text ?? undefined,
-            undefined,
-            evolutionCredentialsForImage ?? undefined,
-          )
-        }
-
-        const caption = message.text ? `\nLegenda do cliente: "${message.text}"` : ''
-        messageText = `[Imagem enviada pelo cliente — descrição: ${description}${caption}]`
-        log('step:3c image_transcribed', 'PASS', { length: description.length })
-        tracker.addStep({
-          type: 'IMAGE_TRANSCRIPTION',
-          status: 'PASSED',
-          output: { length: description.length },
-        })
-        await db.message.updateMany({
-          where: { providerMessageId: message.messageId },
-          data: { content: messageText },
-        })
-      } catch (error) {
+          const cost = calculateCreditCost(IMAGE_MODEL, visionResult.totalTokens) * VISION_COST_MULTIPLIER
+          return { text: visionResult.text, cost }
+        },
+      }).catch((error) => {
         const errorMessage = error instanceof Error ? error.message : String(error)
 
         logger.error('Image transcription failed, using placeholder', {
@@ -571,7 +585,7 @@ export async function buildDispatcherCtx(
           error: errorMessage,
           provider: message.provider,
           messageId: message.messageId,
-          mimetype: message.media?.mimetype,
+          mimetype: imageMimetype,
         })
 
         updateActiveTrace({
@@ -579,18 +593,40 @@ export async function buildDispatcherCtx(
           metadata: { transcriptionError: errorMessage, mediaType: 'image' },
         })
 
-        const caption = message.text ? ` com legenda: "${message.text}"` : ''
-        messageText = `[O cliente enviou uma imagem${caption}]`
-        await db.message.updateMany({
-          where: { providerMessageId: message.messageId },
-          data: { content: messageText },
-        })
+        return null
+      })
+
+      const caption = message.text ? `\nLegenda do cliente: "${message.text}"` : ''
+
+      if (!imageCreditResult || imageCreditResult.skipped) {
+        const fallbackCaption = message.text ? ` com legenda: "${message.text}"` : ''
+        messageText = imageCreditResult?.skipped
+          ? `[Imagem recebida — sem créditos para descrever${fallbackCaption}]`
+          : `[O cliente enviou uma imagem${fallbackCaption}]`
         tracker.addStep({
           type: 'IMAGE_TRANSCRIPTION',
           status: 'FAILED',
-          output: { error: errorMessage },
+          output: { reason: imageCreditResult?.reason ?? 'error' },
+        })
+      } else {
+        const description = imageCreditResult.text ?? ''
+        messageText = `[Imagem enviada pelo cliente — descrição: ${description}${caption}]`
+        log('step:3c image_transcribed', 'PASS', {
+          length: description.length,
+          creditsCost: imageCreditResult.cost,
+          debited: imageCreditResult.debited,
+        })
+        tracker.addStep({
+          type: 'IMAGE_TRANSCRIPTION',
+          status: 'PASSED',
+          output: { length: description.length },
         })
       }
+
+      await db.message.updateMany({
+        where: { providerMessageId: message.messageId },
+        data: { content: messageText },
+      })
     } else if (message.type === 'image') {
       const caption = message.text ? ` com legenda: "${message.text}"` : ''
       messageText = `[O cliente enviou uma imagem${caption}]`
@@ -669,17 +705,81 @@ export async function buildDispatcherCtx(
 
         // 2. Dispatch por mimetype
         if (resolvedMimetype.startsWith('image/')) {
-          const { describeImageWithVision } = await import('../utils/describe-image')
-          const result = await describeImageWithVision(base64, resolvedMimetype, message.text ?? undefined)
-          messageText = `[Documento de imagem enviado pelo cliente (${fileName}) — descrição: ${result.text}${caption}]`
-          log('step:3d document_image_described', 'PASS', { length: result.text.length })
+          // Documento de imagem: cobrar via vision (mesma lógica do branch image)
+          const docImageResult = await runWithCreditDebit({
+            organizationId,
+            description: 'Transcrição de documento de imagem recebido (vision AI)',
+            metadata: {
+              providerMessageId: message.messageId,
+              mimetype: resolvedMimetype,
+              multiplier: VISION_COST_MULTIPLIER,
+              direction: 'inbound',
+            },
+            execute: async () => {
+              const { describeImageWithVision: describeDoc } = await import('../utils/describe-image')
+              const result = await describeDoc(base64, resolvedMimetype, message.text ?? undefined)
+              const cost = calculateCreditCost(IMAGE_MODEL, result.totalTokens) * VISION_COST_MULTIPLIER
+              return { text: result.text, cost }
+            },
+          })
+
+          if (docImageResult.skipped) {
+            messageText = `[O cliente enviou um documento de imagem (${fileName}) — sem créditos para descrever${caption}]`
+            log('step:3d document_image_skipped_no_credits', 'SKIP', { fileName })
+          } else {
+            const description = docImageResult.text ?? ''
+            messageText = `[Documento de imagem enviado pelo cliente (${fileName}) — descrição: ${description}${caption}]`
+            log('step:3d document_image_described', 'PASS', {
+              length: description.length,
+              creditsCost: docImageResult.cost,
+              debited: docImageResult.debited,
+            })
+          }
         } else if (resolvedMimetype === 'application/pdf') {
           const { extractPdfText, PDF_NO_TEXT_EXTRACTED } = await import('@/_lib/media/extract-pdf-text')
           const extracted = await extractPdfText(base64)
+
           if (extracted === PDF_NO_TEXT_EXTRACTED) {
-            messageText = `[O cliente enviou um PDF escaneado (${fileName}) — sem texto extraível. Peça para reenviar como foto ou descrever o conteúdo.${caption}]`
-            log('step:3d pdf_no_text_extracted', 'PASS', { fileName })
+            // PDF escaneado: tentar vision com guard de tamanho (Gap 2)
+            const pdfBuffer = Buffer.from(base64, 'base64')
+
+            if (pdfBuffer.byteLength > PDF_VISION_MAX_BYTES) {
+              // PDF muito grande — vision seria impraticável (custo + latência)
+              messageText = `[O cliente enviou um PDF escaneado (${fileName}). O arquivo é muito grande para processamento visual (${Math.round(pdfBuffer.byteLength / 1024 / 1024)}MB > 5MB). Peça para reenviar em partes ou descrever o conteúdo.${caption}]`
+              log('step:3d pdf_vision_skipped_too_large', 'SKIP', { fileName, sizeBytes: pdfBuffer.byteLength })
+            } else {
+              const pdfVisionResult = await runWithCreditDebit({
+                organizationId,
+                description: 'Transcrição de PDF escaneado recebido (vision AI)',
+                metadata: {
+                  providerMessageId: message.messageId,
+                  mimetype: resolvedMimetype,
+                  multiplier: VISION_COST_MULTIPLIER,
+                  direction: 'inbound',
+                },
+                execute: async () => {
+                  const { describePdfWithVision } = await import('../utils/describe-pdf')
+                  const result = await describePdfWithVision(base64)
+                  const cost = calculateCreditCost(IMAGE_MODEL, result.totalTokens) * VISION_COST_MULTIPLIER
+                  return { text: result.text, cost }
+                },
+              })
+
+              if (pdfVisionResult.skipped) {
+                messageText = `[O cliente enviou um PDF escaneado (${fileName}). Sem créditos disponíveis para processar o conteúdo.${caption}]`
+                log('step:3d pdf_vision_skipped_no_credits', 'SKIP', { fileName })
+              } else {
+                const pdfText = pdfVisionResult.text ?? ''
+                messageText = `[Conteúdo do PDF escaneado enviado pelo cliente (${fileName}):\n${pdfText}${caption}]`
+                log('step:3d pdf_vision_extracted', 'PASS', {
+                  length: pdfText.length,
+                  creditsCost: pdfVisionResult.cost,
+                  debited: pdfVisionResult.debited,
+                })
+              }
+            }
           } else {
+            // PDF com texto extraível via pdf-parse: não cobrar AI (CPU-bound, sem LLM)
             messageText = `[Conteúdo do PDF enviado pelo cliente (${fileName}):\n${extracted}${caption}]`
             log('step:3d pdf_text_extracted', 'PASS', { length: extracted.length })
           }

@@ -14,6 +14,12 @@ const MIME_TO_EXT: Record<string, string> = {
   'audio/ogg; codecs=opus': 'ogg',
 }
 
+export interface AudioTranscriptionResult {
+  text: string
+  /** Duração em segundos, retornada nativamente pela API Whisper com verbose_json */
+  duration: number
+}
+
 interface EvolutionBase64Response {
   mediaType: string
   mimetype: string
@@ -23,24 +29,27 @@ interface EvolutionBase64Response {
 /**
  * Transcreve audio a partir de um Buffer (provider-agnostic).
  * Usado para Meta Cloud onde o audio ja foi baixado via downloadMetaMedia().
+ * Retorna { text, duration } — duration é necessário para cobrar por segundo (Whisper $0.006/min).
  */
 export async function transcribeAudioFromBuffer(
   audioBuffer: Buffer,
   mimetype: string,
-): Promise<string> {
+): Promise<AudioTranscriptionResult> {
   return observe(async () => {
-  const ext = MIME_TO_EXT[mimetype] ?? 'ogg'
-  const resolvedMimetype = mimetype || 'audio/ogg'
+    const ext = MIME_TO_EXT[mimetype] ?? 'ogg'
+    const resolvedMimetype = mimetype || 'audio/ogg'
 
-  const file = await toFile(audioBuffer, `audio.${ext}`, { type: resolvedMimetype })
+    const file = await toFile(audioBuffer, `audio.${ext}`, { type: resolvedMimetype })
 
-  const transcription = await openai.audio.transcriptions.create({
-    model: 'whisper-1',
-    file,
-    language: 'pt',
-  })
+    // verbose_json expõe `duration` nativamente — zero dependência extra (sem ffprobe, sem music-metadata)
+    const transcription = await openai.audio.transcriptions.create({
+      model: 'whisper-1',
+      file,
+      language: 'pt',
+      response_format: 'verbose_json',
+    })
 
-  return transcription.text
+    return { text: transcription.text, duration: transcription.duration }
   }, { name: 'audio-transcription-from-buffer' })()
 }
 
@@ -49,52 +58,53 @@ export async function transcribeAudioFromBuffer(
  *
  * A URL no audioMessage do webhook é interna do WhatsApp CDN e não é acessível diretamente.
  * Precisamos pedir ao servidor Evolution para fazer o download e retornar em base64.
+ * Retorna { text, duration } — mesma interface de transcribeAudioFromBuffer.
  */
 export async function transcribeAudio(
   instanceName: string,
   messageId: string,
   credentials?: { apiUrl: string; apiKey: string },
-): Promise<string> {
+): Promise<AudioTranscriptionResult> {
   return observe(async () => {
-  const apiUrl = credentials?.apiUrl ?? process.env.EVOLUTION_API_URL
-  const apiKey = credentials?.apiKey ?? process.env.EVOLUTION_API_KEY
+    const apiUrl = credentials?.apiUrl ?? process.env.EVOLUTION_API_URL
+    const apiKey = credentials?.apiKey ?? process.env.EVOLUTION_API_KEY
 
-  if (!apiUrl || !apiKey) {
-    throw new Error('EVOLUTION_API_URL and EVOLUTION_API_KEY must be configured')
-  }
+    if (!apiUrl || !apiKey) {
+      throw new Error('EVOLUTION_API_URL and EVOLUTION_API_KEY must be configured')
+    }
 
-  // 1. Buscar áudio em base64 via Evolution API
-  const response = await fetch(
-    `${apiUrl}/chat/getBase64FromMediaMessage/${instanceName}`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: apiKey,
-      },
-      body: JSON.stringify({
-        message: {
-          key: { id: messageId },
+    // 1. Buscar áudio em base64 via Evolution API
+    const response = await fetch(
+      `${apiUrl}/chat/getBase64FromMediaMessage/${instanceName}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: apiKey,
         },
-      }),
-    },
-  )
-
-  if (!response.ok) {
-    const errorBody = await response.text().catch(() => 'unknown')
-    throw new Error(
-      `Evolution getBase64FromMediaMessage failed (${response.status}): ${errorBody}`,
+        body: JSON.stringify({
+          message: {
+            key: { id: messageId },
+          },
+        }),
+      },
     )
-  }
 
-  const data: EvolutionBase64Response = await response.json()
+    if (!response.ok) {
+      const errorBody = await response.text().catch(() => 'unknown')
+      throw new Error(
+        `Evolution getBase64FromMediaMessage failed (${response.status}): ${errorBody}`,
+      )
+    }
 
-  if (!data.base64) {
-    throw new Error('Evolution returned empty base64 for audio message')
-  }
+    const data: EvolutionBase64Response = await response.json()
 
-  // 2. Converter base64 para Buffer e transcrever
-  const audioBuffer = Buffer.from(data.base64, 'base64')
-  return transcribeAudioFromBuffer(audioBuffer, data.mimetype ?? 'audio/ogg')
+    if (!data.base64) {
+      throw new Error('Evolution returned empty base64 for audio message')
+    }
+
+    // 2. Converter base64 para Buffer e transcrever
+    const audioBuffer = Buffer.from(data.base64, 'base64')
+    return transcribeAudioFromBuffer(audioBuffer, data.mimetype ?? 'audio/ogg')
   }, { name: 'audio-transcription' })() // observe
 }
