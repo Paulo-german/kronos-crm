@@ -594,6 +594,139 @@ export async function buildDispatcherCtx(
     } else if (message.type === 'image') {
       const caption = message.text ? ` com legenda: "${message.text}"` : ''
       messageText = `[O cliente enviou uma imagem${caption}]`
+    } else if (message.type === 'document' && message.media) {
+      const fileName = message.media.fileName ?? 'arquivo'
+      const mimetype = message.media.mimetype ?? ''
+      const caption = message.text ? `\nLegenda do cliente: "${message.text}"` : ''
+
+      log('step:3d document_processing', 'PASS', {
+        mimetype,
+        fileName,
+        provider: message.provider,
+      })
+
+      try {
+        // 1. Obter base64 por provider (espelha pattern do image branch)
+        let base64: string
+        let resolvedMimetype: string
+
+        if (message.provider === 'meta_cloud') {
+          const { downloadMetaMedia } = await import('@/_lib/meta/download-meta-media')
+          const metaInboxForDocument = await db.inbox.findFirst({
+            where: { metaPhoneNumberId: message.instanceName },
+            select: { metaAccessToken: true },
+          })
+
+          if (!metaInboxForDocument?.metaAccessToken) {
+            throw new Error('Meta access token not found for document processing')
+          }
+
+          const buffer = await downloadMetaMedia(message.media.url, metaInboxForDocument.metaAccessToken)
+          base64 = buffer.toString('base64')
+          resolvedMimetype = mimetype
+        } else if (message.provider === 'z_api') {
+          const response = await fetch(message.media.url)
+          if (!response.ok) {
+            throw new Error(`Z-API document fetch failed (${response.status})`)
+          }
+          const buffer = Buffer.from(await response.arrayBuffer())
+          base64 = buffer.toString('base64')
+          resolvedMimetype = mimetype
+        } else {
+          const evolutionCredentialsForDocument = await resolveEvolutionCredentialsByInstanceName(message.instanceName).catch(() => null)
+          const apiUrl = evolutionCredentialsForDocument?.apiUrl ?? process.env.EVOLUTION_API_URL
+          const apiKey = evolutionCredentialsForDocument?.apiKey ?? process.env.EVOLUTION_API_KEY
+
+          if (!apiUrl || !apiKey) {
+            throw new Error('EVOLUTION_API_URL and EVOLUTION_API_KEY must be configured')
+          }
+
+          const response = await fetch(
+            `${apiUrl}/chat/getBase64FromMediaMessage/${message.instanceName}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', apikey: apiKey },
+              body: JSON.stringify({ message: { key: { id: message.messageId } } }),
+            },
+          )
+
+          if (!response.ok) {
+            const errorBody = await response.text().catch(() => 'unknown')
+            throw new Error(
+              `Evolution getBase64FromMediaMessage failed (${response.status}): ${errorBody}`,
+            )
+          }
+
+          const data = (await response.json()) as { base64?: string; mimetype?: string }
+
+          if (!data.base64) {
+            throw new Error('Evolution returned empty base64 for document')
+          }
+
+          base64 = data.base64
+          resolvedMimetype = data.mimetype ?? mimetype
+        }
+
+        // 2. Dispatch por mimetype
+        if (resolvedMimetype.startsWith('image/')) {
+          const { describeImageWithVision } = await import('../utils/describe-image')
+          const result = await describeImageWithVision(base64, resolvedMimetype, message.text ?? undefined)
+          messageText = `[Documento de imagem enviado pelo cliente (${fileName}) — descrição: ${result.text}${caption}]`
+          log('step:3d document_image_described', 'PASS', { length: result.text.length })
+        } else if (resolvedMimetype === 'application/pdf') {
+          const { extractPdfText, PDF_NO_TEXT_EXTRACTED } = await import('@/_lib/media/extract-pdf-text')
+          const extracted = await extractPdfText(base64)
+          if (extracted === PDF_NO_TEXT_EXTRACTED) {
+            messageText = `[O cliente enviou um PDF escaneado (${fileName}) — sem texto extraível. Peça para reenviar como foto ou descrever o conteúdo.${caption}]`
+            log('step:3d pdf_no_text_extracted', 'PASS', { fileName })
+          } else {
+            messageText = `[Conteúdo do PDF enviado pelo cliente (${fileName}):\n${extracted}${caption}]`
+            log('step:3d pdf_text_extracted', 'PASS', { length: extracted.length })
+          }
+        } else {
+          messageText = `[O cliente enviou um documento: "${fileName}"${caption}]`
+          log('step:3d document_unsupported_mimetype', 'PASS', { mimetype: resolvedMimetype })
+        }
+
+        await db.message.updateMany({
+          where: { providerMessageId: message.messageId },
+          data: { content: messageText },
+        })
+
+        tracker.addStep({
+          type: 'IMAGE_TRANSCRIPTION',
+          status: 'PASSED',
+          output: { mimetype: resolvedMimetype, length: messageText.length, fileName },
+        })
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error)
+
+        logger.error('Document processing failed, using placeholder', {
+          ...logCtx,
+          error: errorMessage,
+          provider: message.provider,
+          messageId: message.messageId,
+          mimetype,
+          fileName,
+        })
+
+        updateActiveTrace({
+          tags: ['media-transcription-failed'],
+          metadata: { transcriptionError: errorMessage, mediaType: 'document', mimetype },
+        })
+
+        messageText = `[O cliente enviou um documento: "${fileName}"${caption}]`
+        await db.message.updateMany({
+          where: { providerMessageId: message.messageId },
+          data: { content: messageText },
+        })
+
+        tracker.addStep({
+          type: 'IMAGE_TRANSCRIPTION',
+          status: 'FAILED',
+          output: { error: errorMessage, fileName, mimetype },
+        })
+      }
     } else if (message.type === 'document') {
       const fileName = message.media?.fileName ?? 'arquivo'
       messageText = `[O cliente enviou um documento: "${fileName}"]`
