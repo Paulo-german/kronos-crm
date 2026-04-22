@@ -541,10 +541,13 @@ export async function buildDispatcherCtx(
             { base64: imageBase64, mimetype: message.media.mimetype },
           )
         } else {
+          const evolutionCredentialsForImage = await resolveEvolutionCredentialsByInstanceName(message.instanceName).catch(() => null)
           description = await transcribeImage(
             message.instanceName,
             message.messageId,
             message.text ?? undefined,
+            undefined,
+            evolutionCredentialsForImage ?? undefined,
           )
         }
 

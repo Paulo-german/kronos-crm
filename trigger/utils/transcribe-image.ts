@@ -17,14 +17,15 @@ export async function transcribeImage(
   messageId: string,
   caption?: string,
   preloadedBase64?: { base64: string; mimetype: string },
+  credentials?: { apiUrl: string; apiKey: string },
 ): Promise<string> {
   if (preloadedBase64) {
     const result = await describeImageWithVision(preloadedBase64.base64, preloadedBase64.mimetype, caption)
     return result.text
   }
 
-  const apiUrl = process.env.EVOLUTION_API_URL
-  const apiKey = process.env.EVOLUTION_API_KEY
+  const apiUrl = credentials?.apiUrl ?? process.env.EVOLUTION_API_URL
+  const apiKey = credentials?.apiKey ?? process.env.EVOLUTION_API_KEY
 
   if (!apiUrl || !apiKey) {
     throw new Error('EVOLUTION_API_URL and EVOLUTION_API_KEY must be configured')
