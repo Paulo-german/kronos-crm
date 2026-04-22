@@ -54,7 +54,6 @@ interface AgentDetailClientProps {
   orgSlug: string
   availableInboxes: InboxOptionDto[]
   inboxConnectionData: InboxConnectionDataMap
-  metaCloudEnabled: boolean
   followUps: FollowUpDto[]
   followUpQuota?: { withinQuota: boolean; current: number; limit: number }
   followUpExhaustedAction?: 'NONE' | 'NOTIFY_HUMAN' | 'MOVE_DEAL_STAGE'
@@ -69,7 +68,6 @@ const AgentDetailClient = ({
   orgSlug,
   availableInboxes,
   inboxConnectionData,
-  metaCloudEnabled,
   followUps,
   followUpQuota,
   followUpExhaustedAction,
@@ -254,7 +252,6 @@ const AgentDetailClient = ({
                 canManage={canManage}
                 availableInboxes={availableInboxes}
                 inboxConnectionData={inboxConnectionData}
-                metaCloudEnabled={metaCloudEnabled}
               />
             </TabsContent>
 

@@ -83,7 +83,6 @@ interface InboxDetailClientProps {
   instanceInfo: EvolutionInstanceInfo | null
   members: AcceptedMemberDto[]
   pipelines: OrgPipelineDto[]
-  metaCloudEnabled: boolean
 }
 
 const channelLabels: Record<string, string> = {
@@ -116,7 +115,6 @@ const InboxDetailClient = ({
   instanceInfo,
   members,
   pipelines,
-  metaCloudEnabled,
 }: InboxDetailClientProps) => {
   const canManage = userRole === 'OWNER' || userRole === 'ADMIN'
   const [isEditOpen, setIsEditOpen] = useState(false)
@@ -311,7 +309,6 @@ const InboxDetailClient = ({
         canManage={canManage}
         connectionStats={connectionStats}
         instanceInfo={instanceInfo}
-        metaCloudEnabled={metaCloudEnabled}
       />
     )
   }

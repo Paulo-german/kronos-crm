@@ -63,7 +63,6 @@ interface ConnectionTabProps {
   canManage: boolean
   availableInboxes: InboxOptionDto[]
   inboxConnectionData: InboxConnectionDataMap
-  metaCloudEnabled: boolean
 }
 
 const createInlineInboxSchema = z.object({
@@ -72,7 +71,7 @@ const createInlineInboxSchema = z.object({
 
 type CreateInlineInboxInput = z.infer<typeof createInlineInboxSchema>
 
-const ConnectionTab = ({ agent, canManage, availableInboxes, inboxConnectionData, metaCloudEnabled }: ConnectionTabProps) => {
+const ConnectionTab = ({ agent, canManage, availableInboxes, inboxConnectionData }: ConnectionTabProps) => {
   const params = useParams()
   const orgSlug = params?.orgSlug as string
   const [showLinkForm, setShowLinkForm] = useState(false)
@@ -175,7 +174,6 @@ const ConnectionTab = ({ agent, canManage, availableInboxes, inboxConnectionData
                 onUnlink={() => handleUnlink(inbox.id)}
                 isUnlinking={isUnlinking}
                 connectionData={inboxConnectionData[inbox.id]}
-                metaCloudEnabled={metaCloudEnabled}
               />
             ))}
           </CardContent>
@@ -370,7 +368,6 @@ interface InboxRowProps {
   onUnlink: () => void
   isUnlinking: boolean
   connectionData?: { stats: InboxConnectionDataMap[string]['stats']; info: InboxConnectionDataMap[string]['info'] }
-  metaCloudEnabled: boolean
 }
 
 const InboxRow = ({
@@ -380,7 +377,6 @@ const InboxRow = ({
   onUnlink,
   isUnlinking,
   connectionData,
-  metaCloudEnabled,
 }: InboxRowProps) => {
   return (
     <div className="rounded-lg border border-border/50 bg-background/70 overflow-hidden">
@@ -455,21 +451,6 @@ const InboxRow = ({
           hasInstance
           instanceName={inbox.evolutionInstanceName}
           initialConnected={inbox.evolutionConnected}
-        />
-      )
-    }
-
-    // Se Meta Cloud nao esta habilitado para esta org, ir direto para Evolution
-    if (!metaCloudEnabled) {
-      return (
-        <InboxConnectionCard
-          inboxId={inbox.id}
-          canManage={canManage}
-          connectionStats={connectionData?.stats ?? null}
-          instanceInfo={connectionData?.info ?? null}
-          hasInstance={false}
-          instanceName={null}
-          initialConnected={false}
         />
       )
     }
