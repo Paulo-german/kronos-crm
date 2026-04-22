@@ -41,6 +41,7 @@ export const dealListParamsSchema = z.object({
   dateTo: z.string().optional(),
   valueMin: z.coerce.number().optional(),
   valueMax: z.coerce.number().optional(),
+  pipelineId: z.string().uuid().optional(),
 })
 
 /**
@@ -82,5 +83,6 @@ function mapSchemaToParams(
     dateTo: parsed.dateTo,
     valueMin: parsed.valueMin,
     valueMax: parsed.valueMax,
+    pipelineId: parsed.pipelineId,
   }
 }

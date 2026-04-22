@@ -89,6 +89,7 @@ export const exportDeals = orgActionClient
       dateTo: filters.dateTo,
       valueMin: filters.valueMin,
       valueMax: filters.valueMax,
+      pipelineId: filters.pipelineId,
     })
 
     const rows = deals.map((deal) => buildCsvRow(deal))

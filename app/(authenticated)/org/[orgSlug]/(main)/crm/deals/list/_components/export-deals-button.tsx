@@ -21,6 +21,7 @@ interface ExportDealsButtonProps {
     valueMin?: number | null
     valueMax?: number | null
     sort: string
+    pipelineId?: string
   }
 }
 
@@ -67,6 +68,7 @@ export function ExportDealsButton({ filters }: ExportDealsButtonProps) {
         | 'value-asc'
         | 'priority-desc'
         | 'title-asc',
+      pipelineId: filters.pipelineId,
     })
   }
 

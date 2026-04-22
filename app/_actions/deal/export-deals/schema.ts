@@ -13,6 +13,7 @@ export const exportDealsSchema = z.object({
   dateTo: z.string().optional(),
   valueMin: z.number().optional(),
   valueMax: z.number().optional(),
+  pipelineId: z.string().uuid().optional(),
   sort: z
     .enum([
       'created-desc',

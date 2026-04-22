@@ -19,11 +19,15 @@ const CREATE_NEW_VALUE = '__create_new__'
 interface PipelineSelectorProps {
   pipelines: OrgPipelineDto[]
   activePipelineId: string
+  /** Callback opcional: se presente, delega a escrita de URL para o chamador (ex: list usa replace).
+   *  Ausente = kanban mantém comportamento interno com history: 'push'. */
+  onChange?: (pipelineId: string | null) => void
 }
 
 export function PipelineSelector({
   pipelines,
   activePipelineId,
+  onChange,
 }: PipelineSelectorProps) {
   const router = useRouter()
   const params = useParams<{ orgSlug: string }>()
@@ -40,9 +44,17 @@ export function PipelineSelector({
     }
 
     const selectedPipeline = pipelines.find((pipeline) => pipeline.id === value)
-
     // Pipeline default: remove o param da URL (server carrega o default)
-    if (selectedPipeline?.isDefault) {
+    const isDefault = selectedPipeline?.isDefault ?? false
+
+    // Se há callback externo (list), delega para ele — quem escreve é o setToolbarParams (replace)
+    if (onChange) {
+      onChange(isDefault ? null : value)
+      return
+    }
+
+    // Comportamento original do kanban: history 'push' para navegação primária entre funis
+    if (isDefault) {
       setPipelineId(null)
     } else {
       setPipelineId(value)

@@ -14,6 +14,7 @@ interface DealFilterParams {
   dateTo?: string
   valueMin?: number
   valueMax?: number
+  pipelineId?: string
 }
 
 /**
@@ -41,6 +42,7 @@ export function buildDealWhereClause(params: DealFilterParams): Prisma.DealWhere
     dateTo,
     valueMin,
     valueMax,
+    pipelineId,
   } = params
 
   const rbacFilter: Prisma.DealWhereInput = elevated
@@ -91,6 +93,13 @@ export function buildDealWhereClause(params: DealFilterParams): Prisma.DealWhere
         }
       : {}
 
+  // Deal não tem coluna pipelineId direta — o pipeline é acessado via relação
+  // Deal → PipelineStage → Pipeline. Filtrar pela relação evita denormalização e
+  // é idiomático no Prisma (traduzido para JOIN otimizado pelo query engine).
+  const pipelineFilter: Prisma.DealWhereInput = pipelineId
+    ? { stage: { pipelineId } }
+    : {}
+
   return {
     organizationId: orgId,
     // Exclui deals simulados da listagem paginada e exports
@@ -101,5 +110,6 @@ export function buildDealWhereClause(params: DealFilterParams): Prisma.DealWhere
     ...priorityFilter,
     ...dateFilter,
     ...valueFilter,
+    ...pipelineFilter,
   }
 }

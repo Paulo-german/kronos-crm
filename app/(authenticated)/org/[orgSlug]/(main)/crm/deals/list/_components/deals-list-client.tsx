@@ -19,6 +19,7 @@ import type { DealListDto } from '@/_data-access/deal/get-deals'
 import type { ContactDto } from '@/_data-access/contact/get-contacts'
 import type { StageDto, PipelineWithStagesDto } from '@/_data-access/pipeline/get-user-pipeline'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
+import type { OrgPipelineDto } from '@/_data-access/pipeline/get-org-pipelines'
 import type { MemberRole } from '@prisma/client'
 
 interface DealsListClientProps {
@@ -30,6 +31,8 @@ interface DealsListClientProps {
   stages: StageDto[]
   contacts: ContactDto[]
   pipeline: PipelineWithStagesDto
+  pipelines: OrgPipelineDto[]
+  activePipelineId: string
   members: AcceptedMemberDto[]
   currentUserId: string
   userRole: MemberRole
@@ -47,6 +50,8 @@ export function DealsListClient({
   stages,
   contacts,
   pipeline,
+  pipelines,
+  activePipelineId,
   members,
   currentUserId,
   userRole,
@@ -68,6 +73,8 @@ export function DealsListClient({
     setSearch,
     setPage,
     setPageSize,
+    pipelineId,
+    setPipelineId,
   } = useDealListFilters()
 
   // Estado elevado do Sheet de edição — sobrevive a re-renders
@@ -143,7 +150,8 @@ export function DealsListClient({
   }
 
   // Verifica se há qualquer filtro URL ativo para distinguir "lista vazia" de "sem resultados"
-  const hasAnyUrlFilter = hasActiveFilters || !!search || !!assignedTo
+  // pipelineId incluído: funil sem deals não deve cair no empty state de "crie seu primeiro deal"
+  const hasAnyUrlFilter = hasActiveFilters || !!search || !!assignedTo || !!pipelineId
 
   // Empty state premium: total zero E sem nenhum filtro ativo
   const showEmptyState = total === 0 && !hasAnyUrlFilter
@@ -166,6 +174,10 @@ export function DealsListClient({
           contacts={contacts}
           stages={stages}
           pipeline={pipeline}
+          pipelines={pipelines}
+          activePipelineId={activePipelineId}
+          onPipelineChange={setPipelineId}
+          pipelineId={pipelineId}
           currentUserId={currentUserId}
           userRole={userRole}
           withinQuota={withinQuota}

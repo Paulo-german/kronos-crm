@@ -43,6 +43,8 @@ const toolbarParsers = {
   pageSize: parseAsStringLiteral(PAGE_SIZE_OPTIONS.map(String) as [string, ...string[]]).withDefault(
     String(DEFAULT_PAGE_SIZE),
   ),
+  // default null = usa pipeline default no server
+  pipelineId: parseAsString,
 }
 
 export function useDealListFilters() {
@@ -129,6 +131,14 @@ export function useDealListFilters() {
     [setToolbarParams],
   )
 
+  const setPipelineId = useCallback(
+    (value: string | null) => {
+      // Troca de funil reseta para página 1 para evitar página fora do range
+      setToolbarParams((prev) => ({ ...prev, pipelineId: value, page: 1 }))
+    },
+    [setToolbarParams],
+  )
+
   const activeFilterCount = useMemo(() => {
     let count = 0
     if (filters.status.length > 0) count++
@@ -157,5 +167,8 @@ export function useDealListFilters() {
     setPage,
     pageSize: Number(toolbarParams.pageSize),
     setPageSize,
+    // Pipeline filter
+    pipelineId: toolbarParams.pipelineId ?? null,
+    setPipelineId,
   }
 }

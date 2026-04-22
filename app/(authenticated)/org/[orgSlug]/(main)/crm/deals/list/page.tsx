@@ -2,6 +2,7 @@ import { getOrgContext } from '@/_data-access/organization/get-organization-cont
 import { getDealsPaginated } from '@/_data-access/deal/get-deals'
 import { getContacts } from '@/_data-access/contact/get-contacts'
 import { getOrgPipeline } from '@/_data-access/pipeline/get-user-pipeline'
+import { getOrgPipelines } from '@/_data-access/pipeline/get-org-pipelines'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 import { createDefaultPipeline } from '@/_data-access/pipeline/create-default-pipeline'
@@ -20,11 +21,23 @@ const DealsListPage = async ({ params, searchParams }: DealsListPageProps) => {
   const ctx = await getOrgContext(orgSlug)
   const listParams = parseDealListParams(resolvedSearchParams)
 
-  const pipelineRaw = await getOrgPipeline(ctx.orgId)
+  // listParams já inclui pipelineId via parseDealListParams (Zod valida UUID)
+  const [pipelines, pipelineRaw] = await Promise.all([
+    getOrgPipelines(ctx.orgId),
+    getOrgPipeline(ctx.orgId, listParams.pipelineId),
+  ])
+
   const pipeline = pipelineRaw ?? (await createDefaultPipeline({ orgId: ctx.orgId }))
 
+  // Se ?pipelineId=<uuid> aponta para um funil que não existe mais (deletado),
+  // getOrgPipeline retorna null e caímos no fallback createDefaultPipeline.
+  // Neutralizar o pipelineId stale antes de getDealsPaginated para evitar 0 resultados.
+  const effectiveParams = pipelineRaw
+    ? listParams
+    : { ...listParams, pipelineId: undefined }
+
   const [result, contacts, members, quota, completedTutorialIds] = await Promise.all([
-    getDealsPaginated(ctx, listParams),
+    getDealsPaginated(ctx, effectiveParams),
     getContacts(ctx),
     getOrganizationMembers(ctx.orgId),
     checkPlanQuota(ctx.orgId, 'deal'),
@@ -41,6 +54,8 @@ const DealsListPage = async ({ params, searchParams }: DealsListPageProps) => {
       stages={pipeline.stages}
       contacts={contacts}
       pipeline={pipeline}
+      pipelines={pipelines}
+      activePipelineId={pipeline.id}
       members={members.accepted}
       currentUserId={ctx.userId}
       userRole={ctx.userRole}

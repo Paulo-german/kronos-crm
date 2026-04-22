@@ -18,6 +18,7 @@ export interface ExportDealFilters {
   dateTo?: string
   valueMin?: number
   valueMax?: number
+  pipelineId?: string
 }
 
 /**

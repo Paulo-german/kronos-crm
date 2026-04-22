@@ -145,6 +145,8 @@ export interface DealListParams {
   dateTo?: string
   valueMin?: number
   valueMax?: number
+  /** Filtra deals cuja stage pertença ao pipeline indicado. Omitido = todos os pipelines. */
+  pipelineId?: string
 }
 
 export interface DealListResult {
@@ -188,6 +190,7 @@ const fetchDealsPaginatedFromDb = async (
     dateTo: params.dateTo,
     valueMin: params.valueMin,
     valueMax: params.valueMax,
+    pipelineId: params.pipelineId,
   })
 
   // Executa count e findMany em paralelo para eficiência
@@ -303,6 +306,7 @@ export const getDealsPaginated = async (
     dateTo: params.dateTo ?? '',
     valueMin: params.valueMin ?? '',
     valueMax: params.valueMax ?? '',
+    pipelineId: params.pipelineId ?? '',
   })
 
   const getCached = unstable_cache(

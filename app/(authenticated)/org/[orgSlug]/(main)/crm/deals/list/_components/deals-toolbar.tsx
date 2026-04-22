@@ -13,6 +13,7 @@ import {
 import { DealsFiltersSheet } from './deals-filters-sheet'
 import { DealFilterBadges } from './deal-filter-badges'
 import { ViewToggle } from '../../_components/view-toggle'
+import { PipelineSelector } from '../../_components/pipeline-selector'
 import { PipelineSettingsButton } from '../../_components/pipeline-settings-button'
 import { TutorialTriggerButton } from '@/_components/tutorials/tutorial-trigger-button'
 import CreateDealButton from '../../_components/create-deal-button'
@@ -23,6 +24,7 @@ import type { DealFilters } from '../../_lib/deal-filters'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import type { ContactDto } from '@/_data-access/contact/get-contacts'
 import type { StageDto, PipelineWithStagesDto } from '@/_data-access/pipeline/get-user-pipeline'
+import type { OrgPipelineDto } from '@/_data-access/pipeline/get-org-pipelines'
 import type { MemberRole } from '@prisma/client'
 
 const SEARCH_DEBOUNCE_MS = 300
@@ -32,6 +34,10 @@ interface DealsToolbarProps {
   contacts: ContactDto[]
   stages: StageDto[]
   pipeline: PipelineWithStagesDto
+  pipelines: OrgPipelineDto[]
+  activePipelineId: string
+  onPipelineChange: (pipelineId: string | null) => void
+  pipelineId: string | null
   currentUserId: string
   userRole: MemberRole
   withinQuota: boolean
@@ -54,6 +60,10 @@ export function DealsToolbar({
   contacts,
   stages,
   pipeline,
+  pipelines,
+  activePipelineId,
+  onPipelineChange,
+  pipelineId,
   currentUserId,
   userRole,
   withinQuota,
@@ -121,8 +131,15 @@ export function DealsToolbar({
         />
       </div>
 
-      {/* Linha 2: Sort + Responsável + Filtros + ViewToggle + Tutorial + PipelineSettings + Criar */}
+      {/* Linha 2: PipelineSelector + Sort + Responsável + Filtros + ViewToggle + Tutorial + PipelineSettings + Criar */}
       <div className="flex flex-wrap items-center gap-2">
+        {/* Seletor de funil — hierarquia primária: escolhe funil antes de ordenar/filtrar */}
+        <PipelineSelector
+          pipelines={pipelines}
+          activePipelineId={activePipelineId}
+          onChange={onPipelineChange}
+        />
+
         {/* Select de Ordenação */}
         <Select value={sort} onValueChange={handleSortChange}>
           <SelectTrigger className="w-[200px]">
@@ -181,6 +198,7 @@ export function DealsToolbar({
             valueMin: filters.valueMin,
             valueMax: filters.valueMax,
             sort: sort,
+            pipelineId: pipelineId ?? undefined,
           }}
         />
 
