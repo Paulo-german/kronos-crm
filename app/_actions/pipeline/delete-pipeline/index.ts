@@ -66,22 +66,36 @@ export const deletePipeline = orgActionClient
         throw new Error('O novo funil padrão não pode ser o mesmo que está sendo excluído.')
       }
 
-      // Transação: promover novo default e excluir o pipeline atual (cascade deleta stages)
+      // Transação: promover novo default, limpar FKs órfãs e excluir o pipeline atual
       await db.$transaction([
         db.pipeline.update({
           where: { id: data.newDefaultPipelineId },
           data: { isDefault: true },
         }),
+        db.inbox.updateMany({
+          where: { organizationId: ctx.orgId, pipelineId: data.pipelineId },
+          data: { pipelineId: null },
+        }),
+        db.$executeRaw`UPDATE agents SET pipeline_ids = array_remove(pipeline_ids, ${data.pipelineId}::uuid) WHERE organization_id = ${ctx.orgId}::uuid AND ${data.pipelineId}::uuid = ANY(pipeline_ids)`,
         db.pipeline.delete({ where: { id: data.pipelineId } }),
       ])
     } else {
-      // Pipeline não-default: exclusão direta (cascade deleta stages)
-      await db.pipeline.delete({ where: { id: data.pipelineId } })
+      // Pipeline não-default: limpar FKs órfãs e excluir (cascade deleta stages)
+      await db.$transaction([
+        db.inbox.updateMany({
+          where: { organizationId: ctx.orgId, pipelineId: data.pipelineId },
+          data: { pipelineId: null },
+        }),
+        db.$executeRaw`UPDATE agents SET pipeline_ids = array_remove(pipeline_ids, ${data.pipelineId}::uuid) WHERE organization_id = ${ctx.orgId}::uuid AND ${data.pipelineId}::uuid = ANY(pipeline_ids)`,
+        db.pipeline.delete({ where: { id: data.pipelineId } }),
+      ])
     }
 
-    // 6. Invalidar cache de pipeline e de deals (deals ficam órfãos se a cascade não ocorrer)
+    // 6. Invalidar cache de pipeline, deals, inboxes e agentes
     revalidateTag(`pipeline:${ctx.orgId}`)
     revalidateTag(`deals:${ctx.orgId}`)
+    revalidateTag(`inboxes:${ctx.orgId}`)
+    revalidateTag(`agents:${ctx.orgId}`)
 
     return { success: true }
   })
