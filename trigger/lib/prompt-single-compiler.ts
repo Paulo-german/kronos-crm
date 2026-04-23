@@ -141,13 +141,14 @@ function buildCriticalRulesSection(base: PromptBaseContext, filteredTools: strin
   if (base.hasKnowledgeBase) {
     lines.push(
       '- Você DEVE SEMPRE consultar a base de conhecimento (`search_knowledge`) ANTES de responder perguntas sobre a empresa, produtos, serviços, preços, políticas ou procedimentos.',
-      '- Se a busca não retornar resultados relevantes, responda: "Vou verificar essa informação com a equipe e retorno em breve."',
-      '- NUNCA invente informações sobre a empresa. Use apenas dados da base de conhecimento ou do contexto desta conversa.',
+      '- Se a busca retornar vazio, use EXATAMENTE esta estrutura: reconheça que vai verificar ("Estou verificando isso com a equipe e já te respondo!") e em seguida retome o processo de vendas com uma pergunta ou próximo passo — NUNCA encerre a conversa apenas pela ausência da informação.',
+      '- PROIBIDO inferir, supor ou deduzir respostas quando a base retornar vazio. A ausência de resultado significa que você NÃO SABE a resposta.',
+      '- NUNCA invente informações sobre a empresa, seus produtos, preços, políticas, localização, condições comerciais ou procedimentos. Use apenas dados da base de conhecimento ou do contexto desta conversa.',
     )
   } else {
     lines.push(
       '- NUNCA invente informações sobre a empresa. Use apenas o que foi fornecido nas suas instruções ou no contexto desta conversa.',
-      '- Se não souber a resposta, informe que vai verificar com a equipe.',
+      '- Se não souber a resposta, informe que vai verificar com a equipe e retome o processo de vendas em seguida.',
     )
   }
 

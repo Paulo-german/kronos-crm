@@ -70,7 +70,7 @@ export function compilePromptConfig(config: PromptConfig, agentName: string): st
 }
 
 export function compileStepActions(actions: StepAction[]): string[] {
-  return actions.map((action) => {
+  const compiled = actions.map((action) => {
     const { trigger } = action
 
     switch (action.type) {
@@ -154,7 +154,8 @@ export function compileStepActions(actions: StepAction[]): string[] {
         return lines.join('\n')
       }
       case 'search_knowledge':
-        return `* ${trigger} → execute \`search_knowledge\` para consultar a base.`
+        // Tool implícita: injetada automaticamente quando há KB — instrução por step é redundante.
+        return ''
       case 'hand_off_to_human': {
         const base = `* ${trigger} → execute \`hand_off_to_human\` para transferir.`
         if (action.notifyTarget === 'specific_number') {
@@ -171,6 +172,7 @@ export function compileStepActions(actions: StepAction[]): string[] {
       }
     }
   })
+  return compiled.filter((line) => line.length > 0)
 }
 
 export const TOOL_PROMPT_DESCRIPTIONS: Record<string, { label: string; description: string }> = {
@@ -517,13 +519,14 @@ export async function buildSystemPrompt(
   if (completedFileCount > 0) {
     criticalRules.push(
       '- Você DEVE SEMPRE consultar a base de conhecimento (`search_knowledge`) ANTES de responder perguntas sobre a empresa, produtos, serviços, preços, políticas ou procedimentos.',
-      '- Se a busca não retornar resultados relevantes, responda: "Vou verificar essa informação com a equipe e retorno em breve."',
-      '- NUNCA invente informações sobre a empresa. Use apenas dados da base de conhecimento ou do contexto desta conversa.',
+      '- Se a busca retornar vazio, use EXATAMENTE esta estrutura: reconheça que vai verificar ("Estou verificando isso com a equipe e já te respondo!") e em seguida retome o processo de vendas com uma pergunta ou próximo passo — NUNCA encerre a conversa apenas pela ausência da informação.',
+      '- PROIBIDO inferir, supor ou deduzir respostas quando a base retornar vazio. A ausência de resultado significa que você NÃO SABE a resposta.',
+      '- NUNCA invente informações sobre a empresa, seus produtos, preços, políticas, localização, condições comerciais ou procedimentos. Use apenas dados da base de conhecimento ou do contexto desta conversa.',
     )
   } else {
     criticalRules.push(
       '- NUNCA invente informações sobre a empresa. Use apenas o que foi fornecido nas suas instruções ou no contexto desta conversa.',
-      '- Se não souber a resposta, informe que vai verificar com a equipe.',
+      '- Se não souber a resposta, informe que vai verificar com a equipe e retome o processo de vendas em seguida.',
     )
   }
 
