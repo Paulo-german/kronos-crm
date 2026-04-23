@@ -37,11 +37,6 @@ export const TOOL_OPTIONS = [
     label: 'Transferir para Humano',
     description: 'Pausa a IA e notifica um atendente humano',
   },
-  {
-    value: 'search_knowledge',
-    label: 'Buscar Conhecimento',
-    description: 'Busca na base de conhecimento do agente',
-  },
 ] as const
 
 export const DURATION_OPTIONS = [

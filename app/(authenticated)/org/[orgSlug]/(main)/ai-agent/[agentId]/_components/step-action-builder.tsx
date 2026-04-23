@@ -45,7 +45,6 @@ const TRIGGER_PLACEHOLDERS: Record<string, string> = {
   create_task: 'Ex: Ao identificar necessidade de follow-up',
   list_availability: 'Ex: Quando o lead quiser agendar uma reunião',
   create_event: 'Ex: Quando o lead confirmar o horário do evento',
-  search_knowledge: 'Ex: Se precisar de informações específicas',
   hand_off_to_human: 'Ex: Se necessário atendimento humano',
 }
 
@@ -80,8 +79,6 @@ const buildDefaultAction = (type: string): StepAction => {
         allowReschedule: false,
         provider: 'internal',
       }
-    case 'search_knowledge':
-      return { type: 'search_knowledge', trigger: '' }
     case 'hand_off_to_human':
       return { type: 'hand_off_to_human', trigger: '', notifyTarget: 'none' as const }
     default:
@@ -141,7 +138,9 @@ const StepActionBuilder = ({
       </p>
 
       <div className="space-y-2">
-        {value.map((action) => {
+        {value
+          .filter((action) => action.type !== 'search_knowledge')
+          .map((action) => {
           const toolOption = TOOL_OPTIONS.find((t) => t.value === action.type)
 
           return (

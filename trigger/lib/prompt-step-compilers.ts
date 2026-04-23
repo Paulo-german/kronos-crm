@@ -59,7 +59,9 @@ export function compileStepKeyQuestion(step: AgentStep): string | null {
 // ---------------------------------------------------------------------------
 
 export function compileStepActions(actions: AgentStep['actions']): string {
-  const lines = actions.map((action) => compileActionLine(action))
+  const lines = actions
+    .map((action) => compileActionLine(action))
+    .filter((line) => line.length > 0)
   return lines.join('\n')
 }
 
@@ -146,7 +148,8 @@ function compileActionLine(action: StepAction): string {
     }
 
     case 'search_knowledge':
-      return `* ${trigger} → execute \`search_knowledge\` para consultar a base.`
+      // Tool implícita: injetada automaticamente quando há KB — instrução por step é redundante.
+      return ''
 
     case 'hand_off_to_human': {
       const base = `* ${trigger} → execute \`hand_off_to_human\` para transferir.`
