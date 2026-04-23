@@ -36,9 +36,13 @@ export const PipelinesSection = ({ form, canManage, pipelines }: PipelinesSectio
   return (
     <Card className="border-border/50 bg-card">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base font-semibold">Pipelines Vinculados</CardTitle>
+        <CardTitle className="text-base font-semibold">
+          Pipelines que este agente pode gerenciar
+        </CardTitle>
         <CardDescription>
-          Pipelines em que o agente pode atuar.
+          Controla quais pipelines o agente pode consultar e mover negócios via
+          ferramentas. Não define onde novos negócios são criados — isso é
+          configurado em cada caixa de entrada.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -84,7 +88,10 @@ export const PipelinesSection = ({ form, canManage, pipelines }: PipelinesSectio
         {watchPipelineIds.length === 0 && (
           <div className="flex items-center gap-2 text-sm text-yellow-600">
             <AlertTriangleIcon className="h-4 w-4" />
-            <span>Agente não poderá mover negócios sem pipelines vinculados.</span>
+            <span>
+              Sem pipelines vinculados, o agente não conseguirá mover negócios
+              entre etapas.
+            </span>
           </div>
         )}
 

@@ -634,7 +634,7 @@ const InboxDetailClient = ({
               {/* Pipeline Select */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">
-                  Pipeline de destino
+                  Pipeline padrão desta caixa
                 </Label>
                 <Select
                   value={inbox.pipelineId ?? 'auto'}
@@ -651,7 +651,7 @@ const InboxDetailClient = ({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="auto">
-                      Automático (primeiro pipeline)
+                      Automático (primeiro pipeline da organização)
                     </SelectItem>
                     {pipelines.map((pipeline) => (
                       <SelectItem key={pipeline.id} value={pipeline.id}>
@@ -661,7 +661,8 @@ const InboxDetailClient = ({
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  Pipeline onde novos negócios serão criados.
+                  Novos negócios criados a partir de conversas desta caixa
+                  nascerão no primeiro estágio deste pipeline.
                 </p>
               </div>
 

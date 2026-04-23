@@ -46,6 +46,7 @@ export interface AgentInboxDto {
   evolutionConnected: boolean
   metaPhoneNumberId: string | null
   metaPhoneDisplay: string | null
+  pipeline: { id: string; name: string } | null
   // NAO incluir metaAccessToken (seguranca — nunca expor ao cliente via DTO)
 }
 
@@ -104,6 +105,25 @@ const fetchAgentByIdFromDb = async (
 
   if (!agent) return null
 
+  // Buscar pipelines referenciados por alguma inbox (não há relação Prisma — FK solta)
+  const inboxPipelineIds = Array.from(
+    new Set(
+      agent.inboxes
+        .map((inbox) => inbox.pipelineId)
+        .filter((pipelineId): pipelineId is string => !!pipelineId),
+    ),
+  )
+  const referencedPipelines =
+    inboxPipelineIds.length > 0
+      ? await db.pipeline.findMany({
+          where: { id: { in: inboxPipelineIds }, organizationId: orgId },
+          select: { id: true, name: true },
+        })
+      : []
+  const pipelineById = new Map(
+    referencedPipelines.map((pipeline) => [pipeline.id, pipeline]),
+  )
+
   const parsedPromptConfig = promptConfigSchema.safeParse(agent.promptConfig)
   if (!parsedPromptConfig.success) {
     console.warn('[get-agent-by-id] Invalid promptConfig for agent', agentId, parsedPromptConfig.error.flatten())
@@ -140,6 +160,9 @@ const fetchAgentByIdFromDb = async (
       evolutionConnected: inbox.evolutionConnected,
       metaPhoneNumberId: inbox.metaPhoneNumberId,
       metaPhoneDisplay: inbox.metaPhoneDisplay,
+      pipeline: inbox.pipelineId
+        ? pipelineById.get(inbox.pipelineId) ?? null
+        : null,
     })),
     steps: agent.steps.map((step) => {
       const parsed = z.array(stepActionSchema).safeParse(step.actions)

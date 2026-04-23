@@ -17,6 +17,7 @@ import {
   Unlink,
   Users,
   ArrowRight,
+  GitBranch,
 } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import {
@@ -382,11 +383,26 @@ const InboxRow = ({
     <div className="rounded-lg border border-border/50 bg-background/70 overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b border-border/30">
-        <div className="flex items-center gap-3">
-          <span className="text-sm font-medium">{inbox.name}</span>
-          <Badge variant="secondary" className="text-xs">
-            {inbox.channel === 'WHATSAPP' ? 'WhatsApp' : 'Web Chat'}
-          </Badge>
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium">{inbox.name}</span>
+            <Badge variant="secondary" className="text-xs">
+              {inbox.channel === 'WHATSAPP' ? 'WhatsApp' : 'Web Chat'}
+            </Badge>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <GitBranch className="h-3 w-3" />
+            {inbox.pipeline ? (
+              <span>
+                Novos negócios em{' '}
+                <span className="font-medium text-foreground">
+                  {inbox.pipeline.name}
+                </span>
+              </span>
+            ) : (
+              <span>Sem pipeline configurado (usa padrão da organização)</span>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" asChild>
