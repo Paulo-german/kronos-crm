@@ -70,7 +70,7 @@ export function compilePromptConfig(config: PromptConfig, agentName: string): st
 }
 
 export function compileStepActions(actions: StepAction[]): string[] {
-  const compiled = actions.map((action) => {
+  return actions.map((action) => {
     const { trigger } = action
 
     switch (action.type) {
@@ -153,9 +153,6 @@ export function compileStepActions(actions: StepAction[]): string[] {
         }
         return lines.join('\n')
       }
-      case 'search_knowledge':
-        // Tool implícita: injetada automaticamente quando há KB — instrução por step é redundante.
-        return ''
       case 'hand_off_to_human': {
         const base = `* ${trigger} → execute \`hand_off_to_human\` para transferir.`
         if (action.notifyTarget === 'specific_number') {
@@ -172,7 +169,6 @@ export function compileStepActions(actions: StepAction[]): string[] {
       }
     }
   })
-  return compiled.filter((line) => line.length > 0)
 }
 
 export const TOOL_PROMPT_DESCRIPTIONS: Record<string, { label: string; description: string }> = {
@@ -462,10 +458,8 @@ export async function buildSystemPrompt(
     (action) => action.type === 'create_event' && action.allowReschedule,
   )
   const schedulingTools = hasReschedulableEvent ? ['update_event'] : []
-  const knowledgeTools =
-    completedFileCount > 0 && !baseEffectiveTools.includes('search_knowledge')
-      ? ['search_knowledge']
-      : []
+  // search_knowledge é implícita — injetada automaticamente quando há KB ativa
+  const knowledgeTools = completedFileCount > 0 ? ['search_knowledge'] : []
   const productSearchTools =
     activeProductCount > 0 ? ['search_products'] : []
   const productMediaTools =
@@ -519,16 +513,14 @@ export async function buildSystemPrompt(
   if (completedFileCount > 0) {
     criticalRules.push(
       '- Você DEVE SEMPRE consultar a base de conhecimento (`search_knowledge`) ANTES de responder perguntas sobre a empresa, produtos, serviços, preços, políticas ou procedimentos.',
-      '- Se a busca retornar vazio, use EXATAMENTE esta estrutura: reconheça que vai verificar ("Estou verificando isso com a equipe e já te respondo!") e em seguida retome o processo de vendas com uma pergunta ou próximo passo — NUNCA encerre a conversa apenas pela ausência da informação.',
-      '- PROIBIDO inferir, supor ou deduzir respostas quando a base retornar vazio. A ausência de resultado significa que você NÃO SABE a resposta.',
-      '- NUNCA invente informações sobre a empresa, seus produtos, preços, políticas, localização, condições comerciais ou procedimentos. Use apenas dados da base de conhecimento ou do contexto desta conversa.',
-    )
-  } else {
-    criticalRules.push(
-      '- NUNCA invente informações sobre a empresa. Use apenas o que foi fornecido nas suas instruções ou no contexto desta conversa.',
-      '- Se não souber a resposta, informe que vai verificar com a equipe e retome o processo de vendas em seguida.',
     )
   }
+
+  criticalRules.push(
+    '- PROIBIDO inferir, supor ou deduzir respostas sobre a empresa. Se você não tem certeza absoluta da informação (via base de conhecimento, suas instruções ou contexto desta conversa), você NÃO SABE a resposta.',
+    '- NUNCA invente informações sobre a empresa, seus produtos, preços, políticas, localização, condições comerciais ou procedimentos. Use apenas dados da base de conhecimento, das suas instruções ou do contexto desta conversa.',
+    '- Quando não souber a resposta, use EXATAMENTE esta estrutura: reconheça que vai verificar ("Estou verificando isso com a equipe e já te respondo!") e em seguida retome o processo de vendas com uma pergunta ou próximo passo — NUNCA encerre a conversa apenas pela ausência da informação.',
+  )
 
   criticalRules.push(
     '- NUNCA faça promessas de prazos, descontos ou garantias que não estejam explicitamente autorizados.',

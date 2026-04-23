@@ -53,10 +53,6 @@ export type BlueprintStepAction =
       allowedStatuses?: ('WON' | 'LOST')[]
     }
   | {
-      type: 'search_knowledge'
-      trigger: string
-    }
-  | {
       type: 'update_contact'
       trigger: string
     }

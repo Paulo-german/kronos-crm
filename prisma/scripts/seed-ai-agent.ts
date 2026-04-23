@@ -234,7 +234,7 @@ async function main() {
       name: 'Qualificação',
       objective:
         'Entender a necessidade do cliente, fazer perguntas exploratórias para qualificar o interesse. Identificar o produto ou serviço desejado e o nível de urgência.',
-      allowedActions: ['update_contact', 'move_deal', 'search_knowledge'],
+      allowedActions: ['update_contact', 'move_deal'],
       activationRequirement:
         'Quando o cliente já se identificou e expressou uma necessidade ou interesse em algum produto/serviço.',
       order: 1,

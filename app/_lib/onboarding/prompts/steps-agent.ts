@@ -74,12 +74,6 @@ Cria um evento/agendamento na agenda.
 }
 \`\`\`
 
-### search_knowledge
-Busca na base de conhecimento do agente.
-\`\`\`json
-{ "type": "search_knowledge", "trigger": "quando ocorre" }
-\`\`\`
-
 ### hand_off_to_human
 Transfere o atendimento para um humano.
 \`\`\`json
@@ -123,7 +117,6 @@ O campo \`salesProcess\` do perfil do negócio descreve EXATAMENTE como o client
    - Uma action \`hand_off_to_human\` (safety net para casos que o agente não sabe resolver)
    - Uma action \`create_task\` (follow-up se o lead parar de responder)
 6. **Progressão lógica**: Cada step deve avançar o funil usando \`move_deal\` quando o lead evolui.
-7. **search_knowledge**: Use nos steps onde o agente pode precisar de informações específicas (preços, procedimentos, detalhes técnicos).
 
 ---
 
@@ -175,10 +168,6 @@ O campo \`salesProcess\` do perfil do negócio descreve EXATAMENTE como o client
       "messageTemplate": "Pronto! Com base no seu veículo, a proteção completa fica a partir de [VALOR]. E o melhor: você já leva junto assistência 24h, telemedicina pra família toda e nosso clube de descontos. Quer que eu te explique melhor cada benefício?",
       "order": 1,
       "actions": [
-        {
-          "type": "search_knowledge",
-          "trigger": "Ao buscar detalhes dos planos e coberturas para apresentar ao cliente"
-        },
         {
           "type": "update_deal",
           "trigger": "Ao registrar o valor da cotação",
@@ -296,10 +285,6 @@ O campo \`salesProcess\` do perfil do negócio descreve EXATAMENTE como o client
           "trigger": "Ao identificar o procedimento de interesse e o nome da paciente",
           "allowedFields": ["title", "notes"],
           "allowedStatuses": []
-        },
-        {
-          "type": "search_knowledge",
-          "trigger": "Ao buscar informações sobre o procedimento específico que a paciente perguntou (valores, duração, preparo)"
         },
         {
           "type": "move_deal",

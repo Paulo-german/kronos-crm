@@ -87,11 +87,6 @@ export const stepActionSchema = z.discriminatedUnion('type', [
     provider: schedulingProviderSchema,
   }),
 
-  z.object({
-    ...baseFields,
-    type: z.literal('search_knowledge'),
-  }),
-
   // Transfere para humano — notificação via WhatsApp é best-effort e configurável
   // notifyTarget com .default('none') garante retrocompatibilidade com steps existentes
   z.object({

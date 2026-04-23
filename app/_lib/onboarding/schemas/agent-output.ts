@@ -11,7 +11,6 @@ export const blueprintStepActionSchema = z.object({
     'create_task',
     'list_availability',
     'create_event',
-    'search_knowledge',
     'hand_off_to_human',
   ]),
   trigger: z.string().min(1),

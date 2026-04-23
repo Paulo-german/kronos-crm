@@ -136,10 +136,6 @@ LINGUAGEM E OUTRAS INSTRUÇÕES:
         messageTemplate: null,
         actions: [
           {
-            type: 'search_knowledge',
-            trigger: 'Ao buscar informações de cases de sucesso para apresentar ao lead ou ao tirar dúvidas técnicas do nosso serviço',
-          },
-          {
             type: 'update_deal',
             trigger: 'Ao qualificar necessidades, dores reais ou prazos do lead',
             allowedFields: ['priority', 'notes'],
@@ -319,10 +315,6 @@ LINGUAGEM E OUTRAS INSTRUÇÕES:
         messageTemplate: 'Exatamente por isso que o [NOME DO SEU TREINAMENTO] é perfeito para você. Nele você vai ter acesso ao exato passo a passo para sair do ponto A pro ponto B. Para garantirmos sua vaga hoje, o acesso custa X. Você prefere garantir no PIX ou no cartão de crédito em até 12x?',
         actions: [
           {
-            type: 'search_knowledge',
-            trigger: 'Para verificar a ementa dos módulos do curso ou informações de check-out, se necessário',
-          },
-          {
             type: 'update_deal',
             trigger: 'Ao apresentar o valor, atualizar o card',
             allowedFields: ['value'],
@@ -446,11 +438,6 @@ LINGUAGEM E REGRAS:
         messageTemplate: null,
         actions: [
           {
-            type: 'search_knowledge',
-            trigger:
-              'Sempre que o cliente questionar compatibilidade técnica, integrações ou se o software faz XYZ',
-          },
-          {
             type: 'update_deal',
             trigger: 'Ao mapear tamanho do time, ferramentas stack e dor profunda',
             allowedFields: ['title', 'value', 'priority', 'notes'],
@@ -472,10 +459,6 @@ LINGUAGEM E REGRAS:
         messageTemplate:
           'Anotei tudo. Para o formato que vocês trabalham, nós ajudamos muito especialmente com {ponto_forte_software}. O melhor próximo passo é marcarmos um papo/demo rápido de X minutos para verem a tela na prática. O que acham?',
         actions: [
-          {
-            type: 'search_knowledge',
-            trigger: 'Para enviar link de cases de sucesso antes da visita, se aplicável',
-          },
           {
             type: 'list_availability',
             trigger: 'Assim que o lead aceitar participar de uma call ou demonstração',
@@ -617,10 +600,6 @@ LINGUAGEM E OUTRAS INSTRUÇÕES:
         keyQuestion: 'Excelente, {nome}! Qual região de preferência, quantos quartos em média você precisa e até qual orçamento mais ou menos estaríamos buscando?',
         messageTemplate: null,
         actions: [
-          {
-            type: 'search_knowledge',
-            trigger: 'Quando o cliente perguntar de um imóvel específico pelo código, ou quando ele fornecer as preferências e você precisar buscar os links e descrições dos imóveis ideais no seu catálogo',
-          },
           {
             type: 'update_deal',
             trigger: 'Ao levantar as informações de quantidade de quartos, orçamento, ou bairros/códigos de imóveis desejados',
@@ -784,10 +763,6 @@ LINGUAGEM E OUTRAS INSTRUÇÕES:
         messageTemplate: null,
         actions: [
           {
-            type: 'search_knowledge',
-            trigger: 'Se o paciente perguntar sobre convênios aceitos, valores de tratamentos ou detalhes de como funciona um procedimento, antes de responder afirmativamente ou negativamente',
-          },
-          {
             type: 'update_deal',
             trigger: 'Ao coletar a principal queixa, procedimento desejado e se ele tem plano de saúde/orçamento mapeado',
             allowedFields: ['priority', 'value', 'notes'],
@@ -949,11 +924,6 @@ LINGUAGEM DE MARCA:
         messageTemplate: null,
         actions: [
           {
-            type: 'search_knowledge',
-            trigger:
-              'MUITO IMPORTANTE: Acione assim que o usuário perguntar o link do produto, políticas de troca, prazo do frete SEDEX/PAC, tecidos, tamanhos ou onde fica a loja.',
-          },
-          {
             type: 'update_deal',
             trigger: 'Ao alinhar uma solução sobre reembolso ou identificar carrinho, frete, valor',
             allowedFields: ['title', 'priority', 'value', 'notes'],
@@ -975,10 +945,6 @@ LINGUAGEM DE MARCA:
         messageTemplate:
           'E então {nome}, achou incrível? Quer que eu te mando um cupom se você mandar ver na compra do carrinho agora mesmo antes que esgote o estoque?',
         actions: [
-          {
-            type: 'search_knowledge',
-            trigger: 'Ao buscar produtos complementares para indicar na conversa (cross-sell)',
-          },
           {
             type: 'update_deal',
             trigger: 'Ao o cliente aceitar ir pagar ou fazer pix real',
@@ -1112,11 +1078,6 @@ LINGUAGEM:
           'Para o aluno(a), qual série ou ano escolar vocês estão buscando, e o que é mais importante para vocês na escolha?',
         messageTemplate: null,
         actions: [
-          {
-            type: 'search_knowledge',
-            trigger:
-              'Ao buscar informações metodológicas, infraestrutura ou horários de aula',
-          },
           {
             type: 'update_deal',
             trigger:
@@ -1279,10 +1240,6 @@ LINGUAGEM E OUTRAS INSTRUÇÕES:
         messageTemplate: null,
         actions: [
           {
-            type: 'search_knowledge',
-            trigger: 'Sempre que o cliente solicitar orçamentos base, informações técnicas sobre o produto ou serviço',
-          },
-          {
             type: 'update_deal',
             trigger: 'Ao coletar necessidade pontual, requisitos específicos, prazo ou urgência',
             allowedFields: ['title', 'value', 'priority', 'notes'],
@@ -1304,10 +1261,6 @@ LINGUAGEM E OUTRAS INSTRUÇÕES:
         messageTemplate:
           'Com base no que você relatou, a melhor opção no nosso caso é {solução}. Ela visa resolver isso com {diferencial}. O que você acha de darmos o próximo passo com o especialista?',
         actions: [
-          {
-            type: 'search_knowledge',
-            trigger: 'Para apresentar garantias, links ou cases sobre o serviço escolhido pelo lead',
-          },
           {
             type: 'update_deal',
             trigger: 'Ao apresentar uma proposta técnica ou orçamentária',

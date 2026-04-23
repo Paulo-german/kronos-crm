@@ -302,11 +302,8 @@ export async function buildPromptBaseContext(
   )
   const schedulingTools: string[] = hasReschedulableEvent ? ['update_event'] : []
 
-  // search_knowledge implícito quando há arquivos completos mas o step não declarou explicitamente
-  const knowledgeTools: string[] =
-    completedFileCount > 0 && !baseEffectiveTools.includes('search_knowledge')
-      ? ['search_knowledge']
-      : []
+  // search_knowledge é implícita — injetada automaticamente quando há KB ativa
+  const knowledgeTools: string[] = completedFileCount > 0 ? ['search_knowledge'] : []
 
   const productSearchTools: string[] = activeProductCount > 0 ? ['search_products'] : []
   const productMediaTools: string[] = activeProductMediaCount > 0 ? ['send_product_media'] : []

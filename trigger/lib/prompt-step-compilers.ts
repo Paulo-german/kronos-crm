@@ -59,10 +59,7 @@ export function compileStepKeyQuestion(step: AgentStep): string | null {
 // ---------------------------------------------------------------------------
 
 export function compileStepActions(actions: AgentStep['actions']): string {
-  const lines = actions
-    .map((action) => compileActionLine(action))
-    .filter((line) => line.length > 0)
-  return lines.join('\n')
+  return actions.map((action) => compileActionLine(action)).join('\n')
 }
 
 function compileActionLine(action: StepAction): string {
@@ -146,10 +143,6 @@ function compileActionLine(action: StepAction): string {
 
       return eventLines.join('\n')
     }
-
-    case 'search_knowledge':
-      // Tool implícita: injetada automaticamente quando há KB — instrução por step é redundante.
-      return ''
 
     case 'hand_off_to_human': {
       const base = `* ${trigger} → execute \`hand_off_to_human\` para transferir.`

@@ -51,7 +51,6 @@ const ACTION_TYPE_COLORS: Record<BlueprintAction['type'], string> = {
   move_deal: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400',
   create_task: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
   update_deal: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  search_knowledge: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
   hand_off_to_human: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
   list_availability: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',
   create_event: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',
@@ -62,7 +61,6 @@ const ACTION_TYPE_LABELS: Record<BlueprintAction['type'], string> = {
   move_deal: 'Mover negócio',
   create_task: 'Criar tarefa',
   update_deal: 'Atualizar negócio',
-  search_knowledge: 'Buscar base',
   hand_off_to_human: 'Transferir humano',
   list_availability: 'Listar agenda',
   create_event: 'Criar evento',
@@ -126,7 +124,6 @@ function ActionDetail({ action }: { action: BlueprintAction }) {
         details.push(`Msg: "${action.notificationMessage}"`)
       }
       break
-    case 'search_knowledge':
     case 'update_contact':
       break
   }

@@ -84,10 +84,8 @@ export async function buildTestSystemPrompt(
     (action) => action.type === 'create_event' && action.allowReschedule,
   )
   const schedulingTools = hasReschedulableEvent ? ['update_event'] : []
-  const knowledgeTools =
-    completedFileCount > 0 && !baseEffectiveTools.includes('search_knowledge')
-      ? ['search_knowledge']
-      : []
+  // search_knowledge é implícita — injetada automaticamente quando há KB ativa
+  const knowledgeTools = completedFileCount > 0 ? ['search_knowledge'] : []
   const productSearchTools =
     activeProductCount > 0 ? ['search_products'] : []
   const productMediaTools =

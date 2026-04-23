@@ -138,9 +138,7 @@ const StepActionBuilder = ({
       </p>
 
       <div className="space-y-2">
-        {value
-          .filter((action) => action.type !== 'search_knowledge')
-          .map((action) => {
+        {value.map((action) => {
           const toolOption = TOOL_OPTIONS.find((t) => t.value === action.type)
 
           return (
