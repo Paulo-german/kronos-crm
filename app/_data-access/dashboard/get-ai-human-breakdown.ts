@@ -39,22 +39,33 @@ async function fetchAiHumanBreakdown(
         agentExecutions: { some: {} },
       },
     }),
-    // Eventos de handoff para humano no período
+    // Eventos de handoff com transferência real (mode=transfer) no período.
+    // Filtra por subtype=HAND_OFF_TO_HUMAN para excluir notificações pontuais (mode=notify)
+    // que não pausam a IA e não representam falha do atendimento automatizado.
+    // Eventos legados sem subtype não existem neste campo — o caso especial em
+    // create-tool-events.ts garante que todo evento hand_off_to_human tem subtype explícito.
     db.conversationEvent.count({
       where: {
         toolName: HANDOFF_TOOL_NAME,
         conversation: { ...baseWhere },
         createdAt: { gte: dateRange.start, lte: dateRange.end },
+        metadata: { path: ['subtype'], equals: 'HAND_OFF_TO_HUMAN' },
       },
     }),
-    // Conversas AI que foram resolvidas COM handoff (para calcular aiSuccessRate)
+    // Conversas AI que foram resolvidas COM handoff de transferência (para calcular aiSuccessRate).
+    // Ignora conversas onde apenas mode=notify foi chamado — IA continuou ativa.
     db.conversation.count({
       where: {
         ...baseWhere,
         ...dateFilter,
         status: 'RESOLVED',
         agentExecutions: { some: {} },
-        events: { some: { toolName: HANDOFF_TOOL_NAME } },
+        events: {
+          some: {
+            toolName: HANDOFF_TOOL_NAME,
+            metadata: { path: ['subtype'], equals: 'HAND_OFF_TO_HUMAN' },
+          },
+        },
       },
     }),
   ])

@@ -17,6 +17,23 @@ export interface HandOffNotificationConfig {
   notificationMessage?: string
 }
 
+export type HandOffMode = 'transfer' | 'notify'
+
+interface HandOffToolInput {
+  mode: HandOffMode
+  reason: string
+}
+
+// ---------------------------------------------------------------------------
+// Constantes de wording por modo — evitam strings duplicadas e facilitam i18n
+// ---------------------------------------------------------------------------
+
+const TRANSFER_ACTIVITY_PREFIX = 'Conversa transferida para atendimento humano.'
+const NOTIFY_ACTIVITY_PREFIX = 'Dúvida encaminhada ao responsável (IA continua conduzindo).'
+const TRANSFER_RETURN_MESSAGE = 'Conversa transferida para atendimento humano.'
+const NOTIFY_RETURN_MESSAGE =
+  'Responsável notificado. Continue atendendo normalmente — avise ao cliente que está verificando a informação e retome o processo de vendas.'
+
 // ---------------------------------------------------------------------------
 // Tipo interno para dados da conversa necessarios nas notificacoes
 // ---------------------------------------------------------------------------
@@ -57,9 +74,11 @@ const TYPE_TO_PREFERENCE_KEY: Record<NotificationType, 'system' | 'userAction' |
 
 /**
  * Monta a mensagem de notificação para o atendente.
- * Se `notificationMessage` configurado, usa como base; senão, monta mensagem padrão.
+ * O wording do header e CTA varia por modo para deixar claro se a IA foi pausada ou não.
+ * Se `notificationMessage` configurado pelo step builder, usa como base (comportamento atual).
  */
 interface NotificationMessageContext {
+  mode: HandOffMode
   agentName: string
   contactName: string
   contactPhone: string | null
@@ -85,13 +104,23 @@ function buildNotificationMessage(
     return config.notificationMessage.trim()
   }
 
-  const lines: string[] = [
-    '🔔 *Transferência de atendimento*',
-    '',
-    `O agente *${context.agentName}* transferiu a conversa com *${context.contactName}* para você.`,
-    '',
-    `📋 *Motivo:* ${context.reason}`,
-  ]
+  const isTransfer = context.mode === 'transfer'
+
+  const lines: string[] = isTransfer
+    ? [
+        '🔔 *Transferência de atendimento*',
+        '',
+        `O agente *${context.agentName}* transferiu a conversa com *${context.contactName}* para você.`,
+        '',
+        `📋 *Motivo:* ${context.reason}`,
+      ]
+    : [
+        '❓ *Dúvida do cliente precisa de resposta humana*',
+        '',
+        `O agente *${context.agentName}* continua atendendo *${context.contactName}*, mas precisa de ajuda pontual para responder:`,
+        '',
+        `📋 *Dúvida:* ${context.reason}`,
+      ]
 
   // Dados do deal (se disponíveis)
   if (context.dealTitle) {
@@ -116,6 +145,11 @@ function buildNotificationMessage(
     lines.push('')
     lines.push(`🔗 Acesse a conversa:`)
     lines.push(context.inboxUrl)
+  }
+
+  if (!isTransfer) {
+    lines.push('')
+    lines.push('_Responda via inbox quando tiver a informação. A IA não foi pausada._')
   }
 
   return lines.join('\n')
@@ -199,6 +233,7 @@ async function checkUserNotificationPreference(
 /**
  * Executa o envio da notificacao WhatsApp para o atendente.
  * Recebe os dados ja buscados da conversation para evitar query duplicada.
+ * O mode afeta o wording da mensagem enviada — transfer vs notify.
  * Lança erro em caso de falha — o caller deve capturar (best-effort).
  */
 async function sendHandOffNotification(
@@ -206,6 +241,7 @@ async function sendHandOffNotification(
   config: HandOffNotificationConfig,
   reason: string,
   conversationData: ConversationDataForNotification,
+  mode: HandOffMode,
 ): Promise<void> {
   const inbox = conversationData.inbox
   if (!inbox) {
@@ -221,6 +257,7 @@ async function sendHandOffNotification(
     logger.info('hand_off_to_human: simulator mode, skipping WhatsApp notification', {
       conversationId: ctx.conversationId,
       notifyTarget: config.notifyTarget,
+      mode,
     })
     return
   }
@@ -295,6 +332,7 @@ async function sendHandOffNotification(
     recipientPhone: maskedPhone,
     connectionType: inbox.connectionType,
     conversationId: ctx.conversationId,
+    mode,
   })
 
   // Montar URL da conversa no inbox
@@ -310,6 +348,7 @@ async function sendHandOffNotification(
     ?? null
 
   const message = buildNotificationMessage(config, {
+    mode,
     agentName: ctx.agentName,
     contactName,
     contactPhone,
@@ -329,6 +368,7 @@ async function sendHandOffNotification(
       connectionType: inbox.connectionType,
       sentMessageIds: sentIds,
       conversationId: ctx.conversationId,
+      mode,
     })
   } catch (sendError) {
     // Logar erro detalhado para facilitar debug — o safeBestEffort do caller
@@ -338,6 +378,7 @@ async function sendHandOffNotification(
       recipientPhone: maskedPhone,
       connectionType: inbox.connectionType,
       conversationId: ctx.conversationId,
+      mode,
       error: sendError instanceof Error ? sendError.message : String(sendError),
       stack: sendError instanceof Error ? sendError.stack : undefined,
     })
@@ -351,40 +392,56 @@ export function createHandOffToHumanTool(
 ) {
   return tool({
     description:
-      'Transfere a conversa para um atendente humano. Use quando o cliente solicitar falar com uma pessoa, quando não souber responder, ou em situações delicadas.',
+      'Envolve um atendente humano no atendimento. Use dois modos: mode="transfer" pausa a IA e entrega o controle; mode="notify" NÃO pausa a IA — apenas notifica o responsável sobre uma dúvida pontual enquanto você continua atendendo.',
     inputSchema: z.object({
-      reason: z
-        .string()
+      mode: z
+        .enum(['transfer', 'notify'])
+        .default('transfer')
         .describe(
-          'Motivo da transferência (ex: "Cliente solicitou atendimento humano")',
+          'Como envolver o humano. ' +
+          '"transfer": pausa a IA e entrega o controle — use quando o cliente pedir explicitamente atendimento humano, reclamar, pedir para cancelar, ou quando a situação fugir do seu escopo. ' +
+          '"notify": NÃO pausa a IA — notifica o responsável sobre uma informação pontual que você não sabe responder, enquanto você continua conduzindo o atendimento. Use quando faltar um dado específico (endereço, preço, política) e você quer retomar o processo de vendas.',
         ),
+      reason: z.string().describe(
+        'Motivo da notificação/transferência. No modo "notify", descreva a dúvida específica (ex: "Cliente perguntou o endereço da loja"). No modo "transfer", descreva por que a IA não deve mais conduzir.',
+      ),
     }),
-    execute: async ({ reason }) => {
+    execute: async (rawInput) => {
       try {
-        // pausedAt: null → pausa indefinida (auto-unpause NÃO dispara)
-        const result = await withRetry(
-          () =>
-            db.conversation.updateMany({
-              where: { id: ctx.conversationId, organizationId: ctx.organizationId },
-              data: {
-                aiPaused: true,
-                pausedAt: null,
-              },
-            }),
-          'db.conversation.updateMany',
-        )
+        const { mode, reason } = rawInput as HandOffToolInput
 
-        if (result.count === 0) {
-          return { success: false, message: 'Conversa não encontrada nesta organização.' }
+        // Apenas no modo 'transfer' pausamos a IA
+        if (mode === 'transfer') {
+          // pausedAt: null → pausa indefinida (auto-unpause NÃO dispara)
+          const result = await withRetry(
+            () =>
+              db.conversation.updateMany({
+                where: { id: ctx.conversationId, organizationId: ctx.organizationId },
+                data: {
+                  aiPaused: true,
+                  pausedAt: null,
+                },
+              }),
+            'db.conversation.updateMany',
+          )
+
+          if (result.count === 0) {
+            return { success: false, message: 'Conversa não encontrada nesta organização.' }
+          }
         }
+        // No modo 'notify' — não mexer em aiPaused. A IA segue ativa.
 
         if (ctx.dealId) {
+          const activityContent = mode === 'transfer'
+            ? `${TRANSFER_ACTIVITY_PREFIX} Motivo: ${reason}`
+            : `${NOTIFY_ACTIVITY_PREFIX} Motivo: ${reason}`
+
           await safeBestEffort(
             () =>
               db.activity.create({
                 data: {
                   type: 'note',
-                  content: `Conversa transferida para atendimento humano. Motivo: ${reason}`,
+                  content: activityContent,
                   dealId: ctx.dealId!,
                   performedBy: null,
                   metadata: { agentId: ctx.agentId, agentName: ctx.agentName },
@@ -455,7 +512,7 @@ export function createHandOffToHumanTool(
             : phone ?? 'desconhecido'
 
           try {
-            await sendHandOffNotification(ctx, config, reason, conversationData)
+            await sendHandOffNotification(ctx, config, reason, conversationData, mode)
             whatsappNotification = { sent: true, recipientPhone: masked }
           } catch (whatsappError) {
             const errorMsg = whatsappError instanceof Error
@@ -486,13 +543,23 @@ export function createHandOffToHumanTool(
           const shouldNotify = await checkUserNotificationPreference(targetUserId, 'USER_ACTION')
           if (!shouldNotify) return
 
+          const { title, body } = mode === 'transfer'
+            ? {
+                title: 'Transferência de atendimento',
+                body: `O agente ${ctx.agentName} transferiu a conversa com ${contactName}. Motivo: ${reason}`,
+              }
+            : {
+                title: 'Dúvida do cliente precisa de resposta',
+                body: `O agente ${ctx.agentName} está atendendo ${contactName} e precisa de ajuda: ${reason}`,
+              }
+
           await db.notification.create({
             data: {
               organizationId: ctx.organizationId,
               userId: targetUserId,
               type: 'USER_ACTION',
-              title: 'Transferência de atendimento',
-              body: `O agente ${ctx.agentName} transferiu a conversa com ${contactName}. Motivo: ${reason}`,
+              title,
+              body,
               actionUrl: `/org/${orgSlug}/inbox?conversationId=${ctx.conversationId}`,
               resourceType: 'conversation',
               resourceId: ctx.conversationId,
@@ -505,10 +572,12 @@ export function createHandOffToHumanTool(
           logger.info('hand_off_to_human: notificacao in-app criada', {
             userId: targetUserId,
             conversationId: ctx.conversationId,
+            mode,
           })
         }, 'inApp.notification')
 
-        // Consolidar tags de revalidacao — incluir notificacoes apenas se notificacao foi de fato criada
+        // Consolidar tags de revalidacao — mesmas tags em ambos os modos para cobrir
+        // o caso em que a timeline de eventos aparece no card da conversa
         const tagsToRevalidate = [
           `conversation:${ctx.conversationId}`,
           `conversations:${ctx.organizationId}`,
@@ -524,6 +593,7 @@ export function createHandOffToHumanTool(
         )
 
         logger.info('Tool hand_off_to_human executed', {
+          mode,
           reason,
           conversationId: ctx.conversationId,
           agentId: ctx.agentId,
@@ -534,7 +604,8 @@ export function createHandOffToHumanTool(
 
         return {
           success: true,
-          message: 'Conversa transferida para atendimento humano.',
+          mode,
+          message: mode === 'transfer' ? TRANSFER_RETURN_MESSAGE : NOTIFY_RETURN_MESSAGE,
           notifyTarget,
           whatsappNotification,
           inAppNotification,

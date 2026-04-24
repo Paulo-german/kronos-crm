@@ -45,7 +45,26 @@ export async function createToolEvents(ctx: CreateToolEventsCtx): Promise<void> 
     for (const toolCall of steps) {
       const { toolName, input, success } = toolCall
 
-      // Tools que sempre resultam em success (hand_off_to_human, search_knowledge, etc.)
+      // Caso especial: hand_off_to_human tem subtype dinâmico baseado no mode escolhido pelo LLM.
+      // Eventos legados (sem input.mode) são tratados como 'transfer' — retrocompat.
+      if (toolName === 'hand_off_to_human') {
+        const handOffInput = toolCall.input as { mode?: string }
+        const subtype = handOffInput.mode === 'notify' ? 'HAND_OFF_NOTIFY' : 'HAND_OFF_TO_HUMAN'
+        events.push({
+          conversationId,
+          type: 'TOOL_SUCCESS',
+          toolName,
+          content: 'Operação concluída',
+          metadata: {
+            subtype,
+            input: toolCall.input as Record<string, unknown>,
+          } as Prisma.InputJsonValue,
+          visibleToUser: true,
+        })
+        continue
+      }
+
+      // Tools que sempre resultam em success (search_knowledge, etc.)
       const alwaysSuccessSubtype = ALWAYS_SUCCESS_TOOLS[toolName]
       if (alwaysSuccessSubtype) {
         events.push({

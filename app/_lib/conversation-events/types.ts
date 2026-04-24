@@ -24,6 +24,7 @@ export type ToolSuccessSubtype =
   | 'EVENT_RESCHEDULED'
   | 'AVAILABILITY_LISTED'
   | 'HAND_OFF_TO_HUMAN'
+  | 'HAND_OFF_NOTIFY'
   | 'KNOWLEDGE_FOUND'
   | 'PRODUCTS_SEARCHED'
   | 'PRODUCT_MEDIA_SENT'
@@ -84,8 +85,9 @@ export const TOOL_SUBTYPE_MAP: Record<
 // Tools que sempre resultam em success e têm subtype especial
 // search_products retorna success mesmo sem matches (nenhum produto encontrado é válido)
 // transfer_to_agent sempre registra como TOOL_SUCCESS (sucesso ou loop — ambos são controlados)
+// hand_off_to_human NÃO está aqui — o subtype é dinâmico (HAND_OFF_TO_HUMAN vs HAND_OFF_NOTIFY)
+// e é resolvido em create-tool-events.ts baseado no mode do input.
 export const ALWAYS_SUCCESS_TOOLS: Record<string, ToolSuccessSubtype> = {
-  hand_off_to_human: 'HAND_OFF_TO_HUMAN',
   search_knowledge: 'KNOWLEDGE_FOUND',
   list_availability: 'AVAILABILITY_LISTED',
   search_products: 'PRODUCTS_SEARCHED',
