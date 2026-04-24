@@ -15,6 +15,7 @@ import {
   ClipboardList,
   Palette,
   Newspaper,
+  Calculator,
 } from 'lucide-react'
 import { cn } from '@/_lib/utils'
 import { useSidebar } from '@/_providers/sidebar-provider'
@@ -159,6 +160,11 @@ export const AdminSidebar = () => {
             href="/admin/plans"
             label="Planos & Limites"
             icon={<CreditCard className="h-4 w-4" />}
+          />
+          <AdminNavItem
+            href="/admin/simulator"
+            label="Simulador"
+            icon={<Calculator className="h-4 w-4" />}
           />
           <AdminNavItem
             href="/admin/announcements"
