@@ -34,6 +34,7 @@ import { AUTO_REOPEN_FIELDS } from '@/_lib/conversation/auto-reopen'
 import { prefixAttendantName } from '@/_lib/inbox/prefix-attendant-name'
 import { getFollowUpsForStep } from '@/_data-access/follow-up/get-follow-ups-for-step'
 import { revalidateConversationCache } from './lib/revalidate-cache'
+import { emitAgentStatus } from './lib/emit-agent-status'
 import type { ToolContext } from './tools/types'
 import type { DispatcherCtx } from './dispatcher-types'
 
@@ -288,6 +289,14 @@ export async function runSingleV1(
     },
   })
 
+  // Emite thinking após carregar contexto — UI mostra que o agente está processando
+  await emitAgentStatus({
+    conversationId: ctx.conversationId,
+    organizationId: ctx.organizationId,
+    state: 'thinking',
+    agentName: promptContext.agentName,
+  })
+
   updateActiveTrace({
     metadata: {
       agentId: ctx.effectiveAgentId,
@@ -457,6 +466,13 @@ export async function runSingleV1(
     await revalidateConversationCache(ctx.conversationId, ctx.organizationId)
     ctx.finalizeTrace('no_credits', { metadata: { estimatedCost } })
     await ctx.tracker.skip('no_credits')
+    await emitAgentStatus({
+      conversationId: ctx.conversationId,
+      organizationId: ctx.organizationId,
+      state: 'idle',
+      agentName: 'Agente',
+      terminalReason: 'skipped',
+    })
     return { skipped: true, reason: 'no_credits' }
   }
   ctx.log('step:4b optimistic_debit', 'PASS', {
@@ -530,6 +546,15 @@ export async function runSingleV1(
     model: promptContext.modelId,
     messageCount: llmMessages.length,
     toolCount: Object.keys(tools ?? {}).length,
+  })
+
+  // Emite thinking imediatamente antes do LLM — refresh do estado caso o debounce
+  // tenha demorado e o client precise do sinal novamente
+  await emitAgentStatus({
+    conversationId: ctx.conversationId,
+    organizationId: ctx.organizationId,
+    state: 'thinking',
+    agentName: promptContext.agentName,
   })
 
   const llmStartMs = Date.now()
@@ -940,6 +965,13 @@ export async function runSingleV1(
         fallbackAttempted: hadToolCalls,
       },
     })
+    await emitAgentStatus({
+      conversationId: ctx.conversationId,
+      organizationId: ctx.organizationId,
+      state: 'idle',
+      agentName: promptContext.agentName,
+      terminalReason: 'skipped',
+    })
     return { skipped: true, reason: 'empty_response' }
   }
 
@@ -997,8 +1029,25 @@ export async function runSingleV1(
     )
     if (usedToolNames.length > 0) {
       ctx.traceTags.push('tool_calls')
+      // MVP: emite running_tool com o último tool chamado no turno
+      const lastToolName = usedToolNames[usedToolNames.length - 1]
+      await emitAgentStatus({
+        conversationId: ctx.conversationId,
+        organizationId: ctx.organizationId,
+        state: 'running_tool',
+        agentName: promptContext.agentName,
+        toolName: lastToolName,
+      })
     }
   }
+
+  // Emite composing antes de persistir/enviar a resposta
+  await emitAgentStatus({
+    conversationId: ctx.conversationId,
+    organizationId: ctx.organizationId,
+    state: 'composing',
+    agentName: promptContext.agentName,
+  })
 
   // -----------------------------------------------------------------------
   // 7. Double-check anti-atropelamento — re-query aiPaused
@@ -1086,6 +1135,13 @@ export async function runSingleV1(
       outputTokens: result.usage?.outputTokens ?? 0,
       creditsCost: pausedActualCost,
       finishReason: result.finishReason,
+    })
+    await emitAgentStatus({
+      conversationId: ctx.conversationId,
+      organizationId: ctx.organizationId,
+      state: 'idle',
+      agentName: promptContext.agentName,
+      terminalReason: 'skipped',
     })
     return { skipped: true, reason: 'ai_paused_during_generation' }
   }
@@ -1445,6 +1501,14 @@ export async function runSingleV1(
     finishReason: result.finishReason,
   })
 
+  await emitAgentStatus({
+    conversationId: ctx.conversationId,
+    organizationId: ctx.organizationId,
+    state: 'idle',
+    agentName: promptContext.agentName,
+    terminalReason: 'completed',
+  })
+
   return { success: true }
 }
 
@@ -1457,11 +1521,21 @@ export const processAgentMessageSingleV1 = task({
   retry: { maxAttempts: 3 },
   run: async (payload: ProcessAgentMessagePayload, { ctx: triggerCtx }) => {
     return observe(async () => {
+      const dispatchResult = await buildDispatcherCtx(payload, triggerCtx)
       try {
-        const result = await buildDispatcherCtx(payload, triggerCtx)
-        if ('skipped' in result) return result
-        return runSingleV1(result.ctx)
+        if ('skipped' in dispatchResult) return dispatchResult
+        return await runSingleV1(dispatchResult.ctx)
       } finally {
+        // Emite idle com failed antes do flushLangfuse — idempotente se completed já foi emitido
+        if (!('skipped' in dispatchResult)) {
+          await emitAgentStatus({
+            conversationId: dispatchResult.ctx.conversationId,
+            organizationId: dispatchResult.ctx.organizationId,
+            state: 'idle',
+            agentName: 'Agente',
+            terminalReason: 'failed',
+          })
+        }
         await flushLangfuse()
       }
     }, { name: 'process-agent-message-single-v1' })()

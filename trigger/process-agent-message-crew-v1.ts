@@ -37,6 +37,7 @@ import type {
   ProcessingErrorSubtype,
 } from '@/_lib/conversation-events/types'
 import { revalidateConversationCache } from './lib/revalidate-cache'
+import { emitAgentStatus } from './lib/emit-agent-status'
 import type { ToolContext } from './tools/types'
 import type { DispatcherCtx } from './dispatcher-types'
 
@@ -151,6 +152,14 @@ export async function runCrewV1(
     ctx.organizationId,
     groupCtxForV3,
   )
+
+  // Emite thinking após montar o contexto — client sabe que o pipeline iniciou
+  await emitAgentStatus({
+    conversationId: ctx.conversationId,
+    organizationId: ctx.organizationId,
+    state: 'thinking',
+    agentName: promptBaseContext.agentName,
+  })
 
   // === Message History v3 — últimas 12 mensagens (sem compressMemory) ===
   // V3 simplifica: 12 mais recentes (desc) + reverse para cronológico.
@@ -395,6 +404,13 @@ export async function runCrewV1(
     await revalidateConversationCache(ctx.conversationId, ctx.organizationId)
     ctx.finalizeTrace('no_credits', { metadata: { estimatedCost: estimatedCostV3, pipeline: 'v3' } })
     await ctx.tracker.skip('no_credits')
+    await emitAgentStatus({
+      conversationId: ctx.conversationId,
+      organizationId: ctx.organizationId,
+      state: 'idle',
+      agentName: promptBaseContext.agentName,
+      terminalReason: 'skipped',
+    })
     return { skipped: true, reason: 'no_credits' }
   }
 
@@ -410,6 +426,16 @@ export async function runCrewV1(
   // AGENT 1 — Tool Agent
   // Executa tools de CRM/agenda/pesquisa e infere step do funil.
   // ===================================================================
+
+  // Emite running_tool com tool_agent — cliente vê que o agente está atuando
+  await emitAgentStatus({
+    conversationId: ctx.conversationId,
+    organizationId: ctx.organizationId,
+    state: 'running_tool',
+    agentName: promptBaseContext.agentName,
+    toolName: 'tool_agent',
+  })
+
   const toolResult = await toolAgent.triggerAndWait({
     modelId: promptBaseContext.modelId,
     promptBaseContext,
@@ -487,6 +513,15 @@ export async function runCrewV1(
       organizationId: ctx.organizationId,
     })
 
+    // Emite running_tool com response_agent antes de invocar o subtask
+    await emitAgentStatus({
+      conversationId: ctx.conversationId,
+      organizationId: ctx.organizationId,
+      state: 'running_tool',
+      agentName: promptBaseContext.agentName,
+      toolName: 'response_agent',
+    })
+
     const responseResult = await responseAgent.triggerAndWait({
       modelId: promptBaseContext.modelId,
       promptBaseContext,
@@ -539,6 +574,15 @@ export async function runCrewV1(
     lastResponseInputTokens = responseResult.output.usage.inputTokens ?? 0
     lastResponseOutputTokens = responseResult.output.usage.outputTokens ?? 0
     totalTokensV3 += responseResult.output.usage.totalTokens ?? 0
+
+    // Emite running_tool com leak_guardrail antes de invocar o subtask
+    await emitAgentStatus({
+      conversationId: ctx.conversationId,
+      organizationId: ctx.organizationId,
+      state: 'running_tool',
+      agentName: promptBaseContext.agentName,
+      toolName: 'leak_guardrail',
+    })
 
     const guardrailResult = await leakGuardrail.triggerAndWait({
       customerMessage: responseResult.output.customerMessage,
@@ -644,6 +688,13 @@ export async function runCrewV1(
       reason: antiAtropel.skipReason ?? 'ai_paused_during_generation',
       creditsCost: antiAtropel.actualCost,
     })
+    await emitAgentStatus({
+      conversationId: ctx.conversationId,
+      organizationId: ctx.organizationId,
+      state: 'idle',
+      agentName: promptBaseContext.agentName,
+      terminalReason: 'skipped',
+    })
     return { skipped: true, reason: 'ai_paused_during_generation' }
   }
   ctx.tracker.addStep({ type: 'PAUSE_CHECK', status: 'PASSED' })
@@ -668,6 +719,14 @@ export async function runCrewV1(
   // A trajetória pertence ao turno (não ao bloco) — grava só na primeira
   // message de texto para não duplicar o array nos blocos subsequentes.
   let trajectoryPersisted = false
+
+  // Emite composing antes de persistir/enviar os blocos ao cliente
+  await emitAgentStatus({
+    conversationId: ctx.conversationId,
+    organizationId: ctx.organizationId,
+    state: 'composing',
+    agentName: promptBaseContext.agentName,
+  })
 
   for (const block of blocksV3) {
     if (block.type === 'text') {
@@ -844,6 +903,14 @@ export async function runCrewV1(
     blockCount: blocksV3.length,
   })
 
+  await emitAgentStatus({
+    conversationId: ctx.conversationId,
+    organizationId: ctx.organizationId,
+    state: 'idle',
+    agentName: promptBaseContext.agentName,
+    terminalReason: 'completed',
+  })
+
   return { success: true }
 }
 
@@ -856,11 +923,21 @@ export const processAgentMessageCrewV1 = task({
   retry: { maxAttempts: 3 },
   run: async (payload: ProcessAgentMessagePayload, { ctx: triggerCtx }) => {
     return observe(async () => {
+      const dispatchResult = await buildDispatcherCtx(payload, triggerCtx)
       try {
-        const result = await buildDispatcherCtx(payload, triggerCtx)
-        if ('skipped' in result) return result
-        return runCrewV1(result.ctx)
+        if ('skipped' in dispatchResult) return dispatchResult
+        return await runCrewV1(dispatchResult.ctx)
       } finally {
+        // Emite idle com failed antes do flushLangfuse — idempotente se completed já foi emitido
+        if (!('skipped' in dispatchResult)) {
+          await emitAgentStatus({
+            conversationId: dispatchResult.ctx.conversationId,
+            organizationId: dispatchResult.ctx.organizationId,
+            state: 'idle',
+            agentName: 'Agente',
+            terminalReason: 'failed',
+          })
+        }
         await flushLangfuse()
       }
     }, { name: 'process-agent-message-crew-v1' })()

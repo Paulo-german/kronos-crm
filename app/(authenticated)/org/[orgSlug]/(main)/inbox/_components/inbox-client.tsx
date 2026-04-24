@@ -17,6 +17,7 @@ import { EmptyInbox } from './empty-inbox'
 import { StartConversationPanel } from './start-conversation-panel'
 import { useInboxConversations } from '../_hooks/use-inbox-conversations'
 import { useInboxMutations } from '../_hooks/use-inbox-mutations'
+import { useAgentStatuses } from '../_hooks/use-agent-statuses'
 import { PageTourTrigger } from '@/_components/onboarding/page-tour-trigger'
 import { INBOX_TOUR_STEPS } from '@/_lib/onboarding/tours/inbox-tour'
 
@@ -32,6 +33,7 @@ interface InboxClientProps {
   dealOptions: DealOptionDto[]
   contactOptions: ContactOptionDto[]
   orgSlug: string
+  orgId: string
   members: AcceptedMemberDto[]
   userRole: MemberRole
   currentUserId: string
@@ -40,9 +42,12 @@ interface InboxClientProps {
   agents: AgentDto[]
 }
 
-export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug, members, userRole, currentUserId, availableLabels, isSuperAdmin, agents }: InboxClientProps) {
+export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug, orgId, members, userRole, currentUserId, availableLabels, isSuperAdmin, agents }: InboxClientProps) {
   const elevated = isElevated(userRole)
   const searchParams = useSearchParams()
+
+  // Subscriber único de status do agente para toda a org — evita múltiplas subscriptions
+  const { isConversationActive, getStatus } = useAgentStatuses(orgId)
   const [selectedInboxId, setSelectedInboxId] = useState<string | null>(null)
   const [filter, setFilter] = useState<FilterTab>('all')
   const [search, setSearch] = useState('')
@@ -205,6 +210,7 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
           isSuperAdmin={isSuperAdmin}
           agents={agents}
           onSimulatorConversationCreated={handleConversationCreated}
+          isConversationActive={isConversationActive}
         />
       </div>
 
@@ -227,6 +233,7 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
             onStatusChange={handleStatusChange}
             onBack={() => setSelectedConversation(null)}
             onSimulatorEnded={() => setSelectedConversation(null)}
+            getAgentStatus={getStatus}
           />
         ) : deepLinkContact && !selectedConversation ? (
           <StartConversationPanel

@@ -47,6 +47,7 @@ const InboxPage = async ({ params }: InboxPageProps) => {
           dealOptions={dealOptions}
           contactOptions={contactOptions}
           orgSlug={orgSlug}
+          orgId={ctx.orgId}
           members={orgMembers.accepted}
           userRole={ctx.userRole}
           currentUserId={ctx.userId}

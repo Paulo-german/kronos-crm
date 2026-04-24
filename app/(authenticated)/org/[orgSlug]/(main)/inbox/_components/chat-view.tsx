@@ -25,7 +25,9 @@ import { ChatInput, type ChatInputHandle } from './chat-input'
 import { ChatSettingsSheet } from './chat-settings-sheet'
 import { TemplateMessageDialog } from './template-message-dialog'
 import { ConversationWindowBanner } from './conversation-window-banner'
+import { AgentTypingIndicator } from './agent-typing-indicator'
 import type { MessageDto, TimelineItem } from './chat-types'
+import type { AgentStatusPayload } from '@/_lib/inbox/agent-status-types'
 
 interface ChatViewProps {
   conversation: ConversationListDto
@@ -39,9 +41,11 @@ interface ChatViewProps {
   onStatusChange?: (conversationId: string, status: 'OPEN' | 'RESOLVED') => void
   onBack?: () => void
   onSimulatorEnded?: () => void
+  /** Função de lookup do Map de status do agente — injetada pelo InboxClient */
+  getAgentStatus?: (conversationId: string) => AgentStatusPayload | null
 }
 
-export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, members, isElevated, availableLabels, onToggleAiPause, onStatusChange, onBack, onSimulatorEnded }: ChatViewProps) {
+export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, members, isElevated, availableLabels, onToggleAiPause, onStatusChange, onBack, onSimulatorEnded, getAgentStatus }: ChatViewProps) {
   const [text, setText] = useState('')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -367,6 +371,13 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
           windowState={windowState}
           onOpenTemplateDialog={() => setTemplateDialogOpen(true)}
         />
+        {/* Indicador de digitação do agente — visível enquanto a IA processa */}
+        {getAgentStatus && (
+          <AgentTypingIndicator
+            conversationId={conversation.id}
+            getStatus={getAgentStatus}
+          />
+        )}
         <ChatInput
           ref={chatInputRef}
           text={text}

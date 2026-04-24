@@ -105,6 +105,8 @@ interface ConversationListProps {
   isSuperAdmin?: boolean
   agents?: AgentDto[]
   onSimulatorConversationCreated?: (conversation: ConversationListDto) => void
+  /** Retorna true se o agente IA está processando ativamente esta conversa */
+  isConversationActive?: (conversationId: string) => boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -203,6 +205,7 @@ export function ConversationList({
   isSuperAdmin,
   agents,
   onSimulatorConversationCreated,
+  isConversationActive,
 }: ConversationListProps) {
   return (
     <div className="flex h-full flex-col border-r border-border/50">
@@ -344,6 +347,10 @@ export function ConversationList({
             {conversations.map((conversation) => {
               const isSelected = selectedId === conversation.id
               const hasUnread = conversation.unreadCount > 0
+              const agentDisplayName =
+                conversation.agentName ??
+                conversation.activeAgentName ??
+                conversation.agentGroupName
 
               return (
                 <ConversationContextMenu
@@ -436,13 +443,22 @@ export function ConversationList({
                         )}
 
                         <div className="mt-1.5 flex items-center gap-1.5">
-                          {conversation.agentName && (
+                          {agentDisplayName && (
                             <Badge
                               variant="outline"
-                              className="h-5 gap-1 border-kronos-purple/20 bg-kronos-purple/10 px-1.5 text-[10px] text-kronos-purple"
+                              className={cn(
+                                'h-5 gap-1 px-1.5 text-[10px] transition-colors duration-300',
+                                isConversationActive?.(conversation.id)
+                                  ? 'border-kronos-green/20 bg-kronos-green/10 text-kronos-green'
+                                  : 'border-kronos-purple/20 bg-kronos-purple/10 text-kronos-purple',
+                              )}
                             >
-                              <Bot className="h-3 w-3" />
-                              {conversation.agentName}
+                              {isConversationActive?.(conversation.id) ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Bot className="h-3 w-3" />
+                              )}
+                              {agentDisplayName}
                             </Badge>
                           )}
                           {conversation.aiPaused ? (
@@ -452,7 +468,7 @@ export function ConversationList({
                             >
                               <Pause className="h-3 w-3 fill-current" />
                             </Badge>
-                          ) : conversation.agentName ? (
+                          ) : (conversation.agentName ?? conversation.agentGroupName) ? (
                             <Badge
                               variant="outline"
                               className="h-5 w-5 items-center justify-center border-kronos-green/20 bg-kronos-green/10 p-0 text-kronos-green"
