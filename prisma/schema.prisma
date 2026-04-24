@@ -1395,3 +1395,22 @@ model ChangelogEntry {
   @@index([createdAt(sort: Desc)])
   @@map("changelog_entries")
 }
+
+// ─────────────────────────────────────────────────────────────
+// Business Analysis
+// ─────────────────────────────────────────────────────────────
+
+model BusinessReport {
+  id               String   @id @default(uuid())
+  singletonKey     String   @unique @default("singleton") @map("singleton_key")
+
+  aiMonthlyCostBrl Decimal  @default(0)    @map("ai_monthly_cost_brl") @db.Decimal(12, 2)
+  costItems        Json     @default("[]") @map("cost_items")
+  targetMarginPct  Decimal  @default(30)   @map("target_margin_pct")   @db.Decimal(5, 2)
+
+  updatedById      String?  @map("updated_by_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt      @map("updated_at")
+
+  @@map("business_reports")
+}
