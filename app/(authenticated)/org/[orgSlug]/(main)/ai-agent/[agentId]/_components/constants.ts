@@ -34,8 +34,8 @@ export const TOOL_OPTIONS = [
   },
   {
     value: 'hand_off_to_human',
-    label: 'Transferir para Humano',
-    description: 'Pausa a IA e notifica um atendente humano',
+    label: 'Envolver Humano',
+    description: 'Notifica o responsável. A IA decide se transfere (pausa) ou apenas notifica (continua atendendo).',
   },
 ] as const
 

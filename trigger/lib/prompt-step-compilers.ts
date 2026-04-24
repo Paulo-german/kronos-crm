@@ -145,15 +145,18 @@ function compileActionLine(action: StepAction): string {
     }
 
     case 'hand_off_to_human': {
-      const base = `* ${trigger} → execute \`hand_off_to_human\` para transferir.`
-
+      const lines = [
+        `* ${trigger} → execute \`hand_off_to_human\`.`,
+        `  → Escolha o modo por turno:`,
+        `    - \`mode: "transfer"\` quando o cliente pedir explicitamente humano, reclamar, ou o caso fugir do seu escopo (a IA será pausada).`,
+        `    - \`mode: "notify"\` quando faltar apenas uma informação pontual (endereço, preço, política). Depois de chamar, avise ao cliente "estou verificando com a equipe e já te respondo" e CONTINUE o processo de vendas.`,
+      ]
       if (action.notifyTarget === 'specific_number') {
-        return `${base}\n  → O atendente será notificado automaticamente via WhatsApp.`
+        lines.push(`  → O atendente será notificado automaticamente via WhatsApp em ambos os modos.`)
+      } else if (action.notifyTarget === 'deal_assignee') {
+        lines.push(`  → O responsável pelo negócio será notificado automaticamente via WhatsApp em ambos os modos.`)
       }
-      if (action.notifyTarget === 'deal_assignee') {
-        return `${base}\n  → O responsável pelo negócio será notificado automaticamente via WhatsApp.`
-      }
-      return base
+      return lines.join('\n')
     }
 
     default: {

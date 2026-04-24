@@ -154,14 +154,18 @@ export function compileStepActions(actions: StepAction[]): string[] {
         return lines.join('\n')
       }
       case 'hand_off_to_human': {
-        const base = `* ${trigger} → execute \`hand_off_to_human\` para transferir.`
+        const lines = [
+          `* ${trigger} → execute \`hand_off_to_human\`.`,
+          `  → Escolha o modo por turno:`,
+          `    - \`mode: "transfer"\` quando o cliente pedir explicitamente humano, reclamar, ou o caso fugir do seu escopo (a IA será pausada).`,
+          `    - \`mode: "notify"\` quando faltar apenas uma informação pontual (endereço, preço, política). Depois de chamar, avise ao cliente "estou verificando com a equipe e já te respondo" e CONTINUE o processo de vendas.`,
+        ]
         if (action.notifyTarget === 'specific_number') {
-          return `${base}\n  → O atendente será notificado automaticamente via WhatsApp.`
+          lines.push(`  → O atendente será notificado automaticamente via WhatsApp em ambos os modos.`)
+        } else if (action.notifyTarget === 'deal_assignee') {
+          lines.push(`  → O responsável pelo negócio será notificado automaticamente via WhatsApp em ambos os modos.`)
         }
-        if (action.notifyTarget === 'deal_assignee') {
-          return `${base}\n  → O responsável pelo negócio será notificado automaticamente via WhatsApp.`
-        }
-        return base
+        return lines.join('\n')
       }
       default: {
         const _exhaustive: never = action
@@ -211,8 +215,12 @@ export const TOOL_PROMPT_DESCRIPTIONS: Record<string, { label: string; descripti
     description: 'Busca informações na base de conhecimento do agente. Use para responder dúvidas sobre produtos, serviços, cases e materiais.',
   },
   hand_off_to_human: {
-    label: 'Transferir para Humano',
-    description: 'Transfere o atendimento para um atendente humano. Use quando o lead solicitar ou a situação fugir do seu escopo.',
+    label: 'Envolver Humano',
+    description:
+      'Envolve um atendente humano no atendimento. Use dois modos: ' +
+      'mode="transfer" pausa a IA e entrega o controle — quando o cliente pedir humano, reclamar, ou o caso fugir do seu escopo. ' +
+      'mode="notify" NÃO pausa a IA — apenas notifica o responsável sobre uma dúvida pontual (ex: endereço, preço não mapeado) enquanto você continua atendendo. ' +
+      'No modo notify, diga ao cliente que está verificando com a equipe e RETOME o processo de vendas — não encerre a conversa.',
   },
   search_products: {
     label: 'Buscar Produtos',
@@ -520,6 +528,7 @@ export async function buildSystemPrompt(
     '- PROIBIDO inferir, supor ou deduzir respostas sobre a empresa. Se você não tem certeza absoluta da informação (via base de conhecimento, suas instruções ou contexto desta conversa), você NÃO SABE a resposta.',
     '- NUNCA invente informações sobre a empresa, seus produtos, preços, políticas, localização, condições comerciais ou procedimentos. Use apenas dados da base de conhecimento, das suas instruções ou do contexto desta conversa.',
     '- Quando não souber a resposta, use EXATAMENTE esta estrutura: reconheça que vai verificar ("Estou verificando isso com a equipe e já te respondo!") e em seguida retome o processo de vendas com uma pergunta ou próximo passo — NUNCA encerre a conversa apenas pela ausência da informação.',
+    '- Para que o responsável seja avisado da dúvida, chame `hand_off_to_human` com `mode: "notify"` — isso NÃO pausa a IA e é o caminho correto quando falta apenas uma informação pontual.',
   )
 
   criticalRules.push(
@@ -527,7 +536,7 @@ export async function buildSystemPrompt(
     '',
     '**Limites de Atuação:**',
     '- Mantenha a conversa dentro do escopo da empresa. Não discuta política, religião ou temas não relacionados ao negócio.',
-    '- Se o cliente fizer perguntas fora do seu escopo ou demonstrar insatisfação, transfira para atendimento humano (`hand_off_to_human`).',
+    '- Se o cliente pedir humano, reclamar, ou o caso fugir do seu escopo, use `hand_off_to_human` com `mode: "transfer"` — isso pausa a IA e entrega o controle ao atendente.',
     '- NUNCA finja ser humano se o cliente perguntar diretamente se está falando com uma IA.',
     '- NUNCA repita a mesma informação ou pergunta mais de uma vez na conversa — consulte o histórico.',
     '',
@@ -751,6 +760,7 @@ export async function buildSystemPrompt(
       AVAILABILITY_LISTED: 'Disponibilidade consultada',
       KNOWLEDGE_FOUND: 'Base de conhecimento consultada',
       HAND_OFF_TO_HUMAN: 'Transferido para humano',
+      HAND_OFF_NOTIFY: 'Responsável notificado (IA continua)',
       DEAL_MOVE_FAILED: 'Falha ao mover negocio',
       CONTACT_UPDATE_FAILED: 'Falha ao atualizar contato',
       DEAL_UPDATE_FAILED: 'Falha ao atualizar negocio',

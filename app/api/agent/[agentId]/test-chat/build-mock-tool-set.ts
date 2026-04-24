@@ -14,7 +14,7 @@ const TOOL_LABELS: Record<string, string> = {
   list_availability: 'Consultar Disponibilidade',
   create_event: 'Criar Evento',
   update_event: 'Reagendar Evento',
-  hand_off_to_human: 'Transferir para Humano',
+  hand_off_to_human: 'Envolver Humano',
   search_products: 'Buscar Produtos',
   send_product_media: 'Enviar Midia do Produto',
   send_media: 'Enviar Midia',
@@ -283,19 +283,32 @@ export function buildMockToolSet(
       const config = allStepActions.find(
         (action) => action.type === 'hand_off_to_human',
       )
-      const description =
-        config && config.type === 'hand_off_to_human' && config.notifyTarget !== 'none'
-          ? 'Transfere a conversa para um atendente humano e envia notificação. Use quando o cliente solicitar falar com uma pessoa, quando não souber responder, ou em situações delicadas.'
-          : 'Transfere a conversa para um atendente humano. Use quando o cliente solicitar falar com uma pessoa, quando não souber responder, ou em situações delicadas.'
+      const hasNotification = config && config.type === 'hand_off_to_human' && config.notifyTarget !== 'none'
+      const description = hasNotification
+        ? 'Envolve um humano no atendimento e envia notificação. mode=transfer pausa a IA; mode=notify mantém a IA ativa e apenas notifica o responsável.'
+        : 'Envolve um humano no atendimento. mode=transfer pausa a IA; mode=notify mantém a IA ativa e apenas notifica o responsável.'
       tools[toolName] = tool({
         description,
         inputSchema: z.object({
+          mode: z
+            .enum(['transfer', 'notify'])
+            .default('transfer')
+            .describe(
+              '"transfer": pausa a IA e entrega o controle ao atendente. ' +
+              '"notify": NÃO pausa a IA — notifica o responsável sobre uma dúvida pontual enquanto você continua atendendo.',
+            ),
           reason: z
             .string()
-            .describe('Motivo da transferência (ex: "Cliente solicitou atendimento humano")'),
+            .describe('Motivo da notificação/transferência. No modo "notify", descreva a dúvida específica. No modo "transfer", descreva por que a IA não deve mais conduzir.'),
         }),
         execute: async (input) =>
-          mockResult('hand_off_to_human', input, 'Conversa transferida para atendimento humano.'),
+          mockResult(
+            'hand_off_to_human',
+            input,
+            input.mode === 'transfer'
+              ? 'Conversa transferida para atendimento humano.'
+              : 'Responsável notificado. IA continua atendendo.',
+          ),
       })
       continue
     }

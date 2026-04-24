@@ -596,6 +596,9 @@ const StepActionBuilder = ({
                   {action.type === 'hand_off_to_human' && (
                     <div className="space-y-3 border-t pt-3">
                       <Label className="text-xs">Notificação ao atendente</Label>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        O agente decide em tempo real se deve transferir (pausar a IA) ou apenas notificar (IA continua). A configuração abaixo define como o responsável será notificado em ambos os casos.
+                      </p>
 
                       {/* Select de modo de notificação */}
                       <div className="space-y-1.5">

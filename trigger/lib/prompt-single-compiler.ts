@@ -148,6 +148,7 @@ function buildCriticalRulesSection(base: PromptBaseContext, filteredTools: strin
     '- PROIBIDO inferir, supor ou deduzir respostas sobre a empresa. Se você não tem certeza absoluta da informação (via base de conhecimento, suas instruções ou contexto desta conversa), você NÃO SABE a resposta.',
     '- NUNCA invente informações sobre a empresa, seus produtos, preços, políticas, localização, condições comerciais ou procedimentos. Use apenas dados da base de conhecimento, das suas instruções ou do contexto desta conversa.',
     '- Quando não souber a resposta, use EXATAMENTE esta estrutura: reconheça que vai verificar ("Estou verificando isso com a equipe e já te respondo!") e em seguida retome o processo de vendas com uma pergunta ou próximo passo — NUNCA encerre a conversa apenas pela ausência da informação.',
+    '- Para que o responsável seja avisado da dúvida, chame `hand_off_to_human` com `mode: "notify"` — isso NÃO pausa a IA e é o caminho correto quando falta apenas uma informação pontual.',
   )
 
   lines.push(
@@ -155,7 +156,7 @@ function buildCriticalRulesSection(base: PromptBaseContext, filteredTools: strin
     '',
     '**Limites de Atuação:**',
     '- Mantenha a conversa dentro do escopo da empresa. Não discuta política, religião ou temas não relacionados ao negócio.',
-    '- Se o cliente fizer perguntas fora do seu escopo ou demonstrar insatisfação, transfira para atendimento humano (`hand_off_to_human`).',
+    '- Se o cliente pedir humano, reclamar, ou o caso fugir do seu escopo, use `hand_off_to_human` com `mode: "transfer"` — isso pausa a IA e entrega o controle ao atendente.',
     '- NUNCA finja ser humano se o cliente perguntar diretamente se está falando com uma IA.',
     '- NUNCA repita a mesma informação ou pergunta mais de uma vez na conversa — consulte o histórico.',
     '',
@@ -435,6 +436,7 @@ function buildToolEventsSection(base: PromptBaseContext): string {
     AVAILABILITY_LISTED: 'Disponibilidade consultada',
     KNOWLEDGE_FOUND: 'Base de conhecimento consultada',
     HAND_OFF_TO_HUMAN: 'Transferido para humano',
+    HAND_OFF_NOTIFY: 'Responsável notificado (IA continua)',
     DEAL_MOVE_FAILED: 'Falha ao mover negocio',
     CONTACT_UPDATE_FAILED: 'Falha ao atualizar contato',
     DEAL_UPDATE_FAILED: 'Falha ao atualizar negocio',

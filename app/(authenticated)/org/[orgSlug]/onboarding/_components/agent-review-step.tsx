@@ -61,7 +61,7 @@ const ACTION_TYPE_LABELS: Record<BlueprintAction['type'], string> = {
   move_deal: 'Mover negócio',
   create_task: 'Criar tarefa',
   update_deal: 'Atualizar negócio',
-  hand_off_to_human: 'Transferir humano',
+  hand_off_to_human: 'Envolver humano',
   list_availability: 'Listar agenda',
   create_event: 'Criar evento',
   update_contact: 'Atualizar contato',
