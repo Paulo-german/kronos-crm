@@ -1,10 +1,11 @@
-import { task, tasks, logger, metadata as triggerMetadata } from '@trigger.dev/sdk/v3'
+import { task, tasks, logger, metadata as triggerMetadata, AbortTaskRunError } from '@trigger.dev/sdk/v3'
 import { observe, updateActiveTrace } from '@langfuse/tracing'
 import { flushLangfuse, langfuseTracer } from './lib/langfuse'
 import { buildDispatcherCtx } from './lib/build-dispatcher-ctx'
 import type { ProcessAgentMessagePayload } from './lib/build-dispatcher-ctx'
 import { handleAgentTaskFailure } from './lib/handle-task-failure'
-import { generateText, stepCountIs, Output } from 'ai'
+import { extractErrorMessage } from './lib/retry-helpers'
+import { generateText, stepCountIs, Output, NoOutputGeneratedError } from 'ai'
 import { z } from 'zod'
 import { getModel } from '@/_lib/ai/provider'
 import { SUMMARIZATION_MODEL_ID } from '@/_lib/ai/models'
@@ -61,6 +62,24 @@ const KNOWN_TOOL_NAMES = new Set([
   'send_media',
   'transfer_to_agent',
 ])
+
+// Idêntico a tool-agent.ts:24-31 — executadas com sucesso uma vez, não devem repetir no mesmo turno.
+const IDEMPOTENT_TOOL_NAMES = [
+  'update_deal',
+  'move_deal',
+  'update_contact',
+  'update_event',
+  'hand_off_to_human',
+  'transfer_to_agent',
+] as const
+
+// Tools de conteúdo: impactam a resposta ao cliente diretamente; excluem mutações de CRM (epicentro do loop).
+const FALLBACK_TOOL_NAMES = [
+  'search_knowledge',
+  'search_products',
+  'list_availability',
+  'create_event',
+] as const
 
 // Custo em steps LLM de gerar structured output — o SDK usa um step extra para o output
 const STEP_OUTPUT_OVERHEAD = 1
@@ -525,67 +544,200 @@ export async function runSingleV1(
     ? buildAgentOutputSchema(promptContext.steps.map((step) => step.id))
     : undefined
 
-  const result = await generateText({
-    model: getModel(promptContext.modelId),
-    messages: llmMessages,
-    tools,
-    temperature: LLM_TEMPERATURE,
-    // Output estruturado exige um step extra no SDK — compensamos com +1
-    stopWhen: stepCountIs(4 + (hasSteps ? STEP_OUTPUT_OVERHEAD : 0)),
-    maxOutputTokens: MAX_OUTPUT_TOKENS,
-    // Quando há steps, forçamos output tipado para separar message de currentStep
-    output: agentOutputSchema ? Output.object({ schema: agentOutputSchema }) : undefined,
-    experimental_telemetry: {
-      isEnabled: true,
-      tracer: langfuseTracer,
-      functionId: 'chat-completion',
-      metadata: {
-        agentId: ctx.effectiveAgentId,
-        conversationId: ctx.conversationId,
-        model: promptContext.modelId,
-        contactName: promptContext.contactName,
-      },
-    },
-  }).catch(async (llmError: unknown) => {
-    // LLM falhou — devolver créditos do débito otimista
-    // NÃO cria PROCESSING_ERROR aqui: o Trigger.dev pode fazer retry e o evento
-    // ficaria "órfão" se o retry tiver sucesso. O evento é criado no onFailure
-    // (só executa quando TODOS os retries falharam).
-    ctx.log('step:5 llm_call', 'EXIT', {
-      reason: 'llm_error',
-      error:
-        llmError instanceof Error ? llmError.message : String(llmError),
-    })
-    ctx.tracker.addStep({
-      type: 'LLM_CALL',
-      status: 'FAILED',
-      output: {
+  // IIFE: `.catch(fn)` onde `fn` retorna `as typeof result` cria ciclo de tipo; try/catch quebra o ciclo.
+  const result = await (async () => {
+    try {
+      return await generateText({
+        model: getModel(promptContext.modelId),
+        messages: llmMessages,
+        tools,
+        temperature: LLM_TEMPERATURE,
+        // Output estruturado exige um step extra no SDK — compensamos com +1
+        stopWhen: stepCountIs(4 + (hasSteps ? STEP_OUTPUT_OVERHEAD : 0)),
+        maxOutputTokens: MAX_OUTPUT_TOKENS,
+        // Quando há steps, forçamos output tipado para separar message de currentStep
+        output: agentOutputSchema ? Output.object({ schema: agentOutputSchema }) : undefined,
+
+        // Barreira estrutural contra tool-call loops — idêntico a tool-agent.ts:166-191.
+        prepareStep: async ({ steps }) => {
+          if (!tools) return {}
+
+          const executedIdempotent = new Set<string>()
+          for (const step of steps) {
+            for (const toolResult of step.toolResults ?? []) {
+              const toolName = toolResult.toolName
+              if (!IDEMPOTENT_TOOL_NAMES.includes(toolName as never)) continue
+
+              const output = toolResult.output as unknown
+              const didSucceed =
+                typeof output !== 'object' ||
+                output === null ||
+                (output as Record<string, unknown>).success !== false
+              if (didSucceed) executedIdempotent.add(toolName)
+            }
+          }
+
+          if (executedIdempotent.size === 0) return {}
+
+          const activeTools = Object.keys(tools).filter(
+            (name) => !executedIdempotent.has(name),
+          ) as Array<keyof typeof tools>
+
+          return { activeTools }
+        },
+
+        experimental_telemetry: {
+          isEnabled: true,
+          tracer: langfuseTracer,
+          functionId: 'chat-completion',
+          metadata: {
+            agentId: ctx.effectiveAgentId,
+            conversationId: ctx.conversationId,
+            model: promptContext.modelId,
+            contactName: promptContext.contactName,
+          },
+        },
+      })
+    } catch (llmError: unknown) {
+      const isNoOutput = NoOutputGeneratedError.isInstance(llmError)
+
+      if (isNoOutput) {
+        // NoOutputGeneratedError: stepCountIs(N) esgotou sem output estruturado.
+        // Ocorre quando tools + Output.object são combinados na mesma chamada.
+        ctx.log('step:5 llm_call', 'EXIT', {
+          reason: 'no_output_generated',
+          error: llmError instanceof Error ? llmError.message : String(llmError),
+        })
+        ctx.tracker.addStep({
+          type: 'LLM_CALL',
+          status: 'FAILED',
+          output: {
+            reason: 'no_output_generated',
+            error: llmError instanceof Error ? llmError.message : String(llmError),
+          },
+        })
+        ctx.traceTags.push('no_output_generated')
+
+        // Filtra o `tools` JÁ configurado — não adiciona tools novas ao agente.
+        const fallbackTools = tools
+          ? (Object.fromEntries(
+              Object.entries(tools).filter(([name]) =>
+                FALLBACK_TOOL_NAMES.includes(name as never),
+              ),
+            ) as typeof tools)
+          : undefined
+        const hasFallbackTools =
+          fallbackTools && Object.keys(fallbackTools).length > 0
+
+        const fallbackResult = await generateText({
+          model: getModel(promptContext.modelId),
+          messages: llmMessages,
+          tools: hasFallbackTools ? fallbackTools : undefined,
+          temperature: LLM_TEMPERATURE,
+          stopWhen: stepCountIs(2),
+          maxOutputTokens: MAX_OUTPUT_TOKENS,
+          experimental_telemetry: {
+            isEnabled: true,
+            tracer: langfuseTracer,
+            functionId: 'chat-completion-no-output-fallback',
+            metadata: {
+              agentId: ctx.effectiveAgentId,
+              conversationId: ctx.conversationId,
+              model: promptContext.modelId,
+              reason: 'no_output_generated_recovery',
+            },
+          },
+        }).catch((fallbackError) => {
+          logger.warn('Inline fallback after NoOutputGeneratedError failed', {
+            conversationId: ctx.conversationId,
+            organizationId: ctx.organizationId,
+            error:
+              fallbackError instanceof Error
+                ? fallbackError.message
+                : String(fallbackError),
+          })
+          return null
+        })
+
+        if (fallbackResult?.text) {
+          ctx.traceTags.push('no_output_fallback_recovered')
+
+          // Result sintético: steps vazio (sem tool events) e output undefined (sem avanço de step).
+          return {
+            text: fallbackResult.text,
+            steps: [] as never[],
+            usage: fallbackResult.usage,
+            response: { messages: fallbackResult.response.messages },
+            finishReason: fallbackResult.finishReason,
+            output: undefined,
+          }
+        }
+
+        // Fallback também falhou (erro ou texto vazio) → abort sem retry.
+        // AbortTaskRunError impede retentativas do Trigger.dev — evita agravar o loop.
+        await refundCredits(
+          ctx.organizationId,
+          estimatedCost,
+          'Refund — NoOutputGeneratedError (fallback inline também falhou)',
+          {
+            agentId: ctx.effectiveAgentId,
+            conversationId: ctx.conversationId,
+            model: promptContext.modelId,
+            estimatedCost,
+            reason: 'no_output_generated_fallback_failed',
+          },
+        ).catch((refundError) => {
+          logger.error('Failed to refund credits after NoOutputGeneratedError', {
+            ...ctx.baseLogContext,
+            refundError,
+          })
+        })
+
+        throw new AbortTaskRunError(
+          `tools+Output.object NoOutput — inline fallback failed, aborting without retry: ${extractErrorMessage(llmError)}`,
+        )
+      }
+
+      // Outros erros (rede, 5xx do provider, etc.): comportamento atual — refund + re-throw para retry
+      // NÃO cria PROCESSING_ERROR aqui: o Trigger.dev pode fazer retry e o evento
+      // ficaria "órfão" se o retry tiver sucesso. O evento é criado no onFailure
+      // (só executa quando TODOS os retries falharam).
+      ctx.log('step:5 llm_call', 'EXIT', {
         reason: 'llm_error',
         error:
-          llmError instanceof Error
-            ? llmError.message
-            : String(llmError),
-      },
-    })
-    await refundCredits(
-      ctx.organizationId,
-      estimatedCost,
-      'Refund — erro na chamada LLM',
-      {
-        agentId: ctx.effectiveAgentId,
-        conversationId: ctx.conversationId,
-        model: promptContext.modelId,
-        estimatedCost,
-        reason: 'llm_error',
-      },
-    ).catch((refundError) => {
-      logger.error('Failed to refund credits after LLM error', {
-        ...ctx.baseLogContext,
-        refundError,
+          llmError instanceof Error ? llmError.message : String(llmError),
       })
-    })
-    throw llmError
-  })
+      ctx.tracker.addStep({
+        type: 'LLM_CALL',
+        status: 'FAILED',
+        output: {
+          reason: 'llm_error',
+          error:
+            llmError instanceof Error
+              ? llmError.message
+              : String(llmError),
+        },
+      })
+      await refundCredits(
+        ctx.organizationId,
+        estimatedCost,
+        'Refund — erro na chamada LLM',
+        {
+          agentId: ctx.effectiveAgentId,
+          conversationId: ctx.conversationId,
+          model: promptContext.modelId,
+          estimatedCost,
+          reason: 'llm_error',
+        },
+      ).catch((refundError) => {
+        logger.error('Failed to refund credits after LLM error', {
+          ...ctx.baseLogContext,
+          refundError,
+        })
+      })
+      throw llmError
+    }
+  })()
 
   const llmDurationMs = Date.now() - llmStartMs
 

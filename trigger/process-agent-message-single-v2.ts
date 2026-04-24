@@ -4,7 +4,7 @@ import { flushLangfuse, langfuseTracer } from './lib/langfuse'
 import { buildDispatcherCtx } from './lib/build-dispatcher-ctx'
 import type { ProcessAgentMessagePayload } from './lib/build-dispatcher-ctx'
 import { handleAgentTaskFailure } from './lib/handle-task-failure'
-import { generateText, stepCountIs, Output } from 'ai'
+import { generateText, generateObject, stepCountIs } from 'ai'
 import { z } from 'zod'
 import { getModel } from '@/_lib/ai/provider'
 import { db } from '@/_lib/prisma'
@@ -22,7 +22,6 @@ import { buildToolSet } from './tools'
 import { isSingleV2OverhaulEnabled } from './lib/feature-flags'
 import { buildPromptBaseContext } from './lib/prompt-base-context'
 import { compileSingleSystemPrompt } from './lib/prompt-single-compiler'
-import type { SingleSystemPrompt } from './lib/prompt-single-compiler'
 import type { GroupToolConfig } from './tools'
 import {
   createConversationEvent,
@@ -64,8 +63,15 @@ const KNOWN_TOOL_NAMES = new Set([
   'transfer_to_agent',
 ])
 
-// Custo em steps LLM de gerar structured output — o SDK usa um step extra para o output
-const STEP_OUTPUT_OVERHEAD = 1
+// Idêntico a tool-agent.ts:24-31 — executadas com sucesso uma vez, não devem repetir no mesmo turno.
+const IDEMPOTENT_TOOL_NAMES = [
+  'update_deal',
+  'move_deal',
+  'update_contact',
+  'update_event',
+  'hand_off_to_human',
+  'transfer_to_agent',
+] as const
 
 /**
  * Strip JSON tool calls que o LLM vazou como texto puro.
@@ -96,22 +102,6 @@ function stripLeakedToolCalls(text: string): string {
   )
 
   return cleaned
-}
-
-// Schema para structured output é construído dinamicamente por agente em runtime
-// (ver `buildAgentOutputSchema` abaixo) — o enum de `currentStep` depende dos UUIDs dos steps.
-// Separar message de currentStep evita que o LLM "vaze" JSON como texto ao cliente.
-function buildAgentOutputSchema(stepIds: readonly string[]) {
-  // Cast obrigatório: z.enum exige tuple não-vazia; o caller garante que stepIds.length > 0.
-  const enumValues = stepIds as unknown as [string, ...string[]]
-  return z.object({
-    message: z.string().describe(
-      'Sua resposta ao cliente. Texto natural que será enviado diretamente ao lead.',
-    ),
-    currentStep: z.enum(enumValues).describe(
-      'UUID exato da etapa atual, escolhido entre os IDs listados no Processo de Atendimento. Só avança, nunca retrocede.',
-    ),
-  })
 }
 
 // ---------------------------------------------------------------------------
@@ -405,26 +395,46 @@ export async function runSingleV2(
 
   const llmStartMs = Date.now()
 
-  // Agentes sem steps não precisam de structured output — comportamento idêntico ao atual
+  // Agentes sem steps não precisam de classificação de etapa no Call 2
   const hasSteps = promptContext.totalSteps > 0
 
-  // Schema dinâmico: enum de UUIDs dos steps do agente atual.
-  // Evita ambiguidade 0/1-indexed no canal LLM↔app e blinda contra hallucination
-  // — structured output restringe tokens válidos ao conjunto de IDs declarados.
-  const agentOutputSchema = hasSteps
-    ? buildAgentOutputSchema(promptContext.steps.map((step) => step.id))
-    : undefined
-
+  // Call 1: tools apenas — combinar tools+Output.object na mesma chamada pode travar o modelo (ver PLAN-agent-loop-fix).
   const result = await generateText({
     model: getModel(promptContext.modelId),
     messages: llmMessages,
     tools,
     temperature: LLM_TEMPERATURE,
-    // Output estruturado exige um step extra no SDK — compensamos com +1
-    stopWhen: stepCountIs(4 + (hasSteps ? STEP_OUTPUT_OVERHEAD : 0)),
+    stopWhen: stepCountIs(4),
     maxOutputTokens: MAX_OUTPUT_TOKENS,
-    // Quando há steps, forçamos output tipado para separar message de currentStep
-    output: agentOutputSchema ? Output.object({ schema: agentOutputSchema }) : undefined,
+
+    // Barreira estrutural contra tool-call loops — idêntico a tool-agent.ts:166-191.
+    prepareStep: async ({ steps }) => {
+      if (!tools) return {}
+
+      const executedIdempotent = new Set<string>()
+      for (const step of steps) {
+        for (const toolResult of step.toolResults ?? []) {
+          const toolName = toolResult.toolName
+          if (!IDEMPOTENT_TOOL_NAMES.includes(toolName as never)) continue
+
+          const output = toolResult.output as unknown
+          const didSucceed =
+            typeof output !== 'object' ||
+            output === null ||
+            (output as Record<string, unknown>).success !== false
+          if (didSucceed) executedIdempotent.add(toolName)
+        }
+      }
+
+      if (executedIdempotent.size === 0) return {}
+
+      const activeTools = Object.keys(tools).filter(
+        (name) => !executedIdempotent.has(name),
+      ) as Array<keyof typeof tools>
+
+      return { activeTools }
+    },
+
     experimental_telemetry: {
       isEnabled: true,
       tracer: langfuseTracer,
@@ -478,16 +488,99 @@ export async function runSingleV2(
 
   const llmDurationMs = Date.now() - llmStartMs
 
-  // Quando Output.object está ativo, result.text do último step é o JSON stringified —
-  // não serve como mensagem ao cliente. A mensagem real vem de result.output.message.
-  let responseText = hasSteps
-    ? (result.output?.message ?? '')
-    : result.text
+  // result.text descartado — alguns modelos vazam "thinking" como texto; responseText vem do Call 2.
+  let responseText = ''
+
+  // Zeros iniciais garantem que totalUsage seja tipado mesmo se Call 2 falhar.
+  let responderUsage = { inputTokens: 0, outputTokens: 0 }
+
+  // Call 2: generateObject sem tools — classifica step e gera mensagem sem o bug tools+Output.
+  const stepIds = promptContext.steps.map((step) => step.id)
+  const responderSchema = hasSteps
+    ? z.object({
+        message: z
+          .string()
+          .describe(
+            'Sua resposta ao cliente. Texto natural que será enviado diretamente ao lead.',
+          ),
+        currentStep: z
+          .enum(stepIds as [string, ...string[]])
+          .nullable()
+          .describe(
+            'UUID exato da etapa atual, escolhido entre os IDs do Processo de Atendimento. Só avança, nunca retrocede.',
+          ),
+      })
+    : z.object({
+        message: z
+          .string()
+          .describe(
+            'Sua resposta ao cliente. Texto natural que será enviado diretamente ao lead.',
+          ),
+      })
+
+  let classifiedId: string | undefined
+
+  try {
+    const responderResult = await generateObject({
+      model: getModel(promptContext.modelId),
+      // System prompt original + histórico + trajetória do turno (tool-calls/results)
+      messages: [
+        ...llmMessages,
+        ...result.response.messages,
+      ],
+      schema: responderSchema,
+      temperature: LLM_TEMPERATURE,
+      maxOutputTokens: MAX_OUTPUT_TOKENS,
+      experimental_telemetry: {
+        isEnabled: true,
+        tracer: langfuseTracer,
+        functionId: 'chat-completion-responder',
+        metadata: {
+          agentId: ctx.effectiveAgentId,
+          conversationId: ctx.conversationId,
+          model: promptContext.modelId,
+          stage: 'responder',
+        },
+      },
+    })
+
+    // [CRÍTICO] Capturar usage do Call 2 para agregação em totalUsage
+    responderUsage = {
+      inputTokens: responderResult.usage?.inputTokens ?? 0,
+      outputTokens: responderResult.usage?.outputTokens ?? 0,
+    }
+
+    responseText = responderResult.object.message ?? ''
+    classifiedId = hasSteps
+      ? (responderResult.object as unknown as { currentStep: string | null }).currentStep ?? undefined
+      : undefined
+  } catch (responderError) {
+    // Falha graceful: deixa responseText vazio → cai no tool_only_fallback
+    // (que continua rodando como safety net com generateText sem tools).
+    logger.warn('Responder (Call 2) failed — falling back', {
+      conversationId: ctx.conversationId,
+      organizationId: ctx.organizationId,
+      error:
+        responderError instanceof Error
+          ? responderError.message
+          : String(responderError),
+    })
+    ctx.traceTags.push('responder_failed')
+  }
+
+  // Agregação de tokens do Call 1 + Call 2 para accounting correto.
+  // totalUsage substitui result.usage em TODOS os pontos downstream.
+  // Padrão idêntico ao de crew-v1 (trigger/process-agent-message-crew-v1.ts:594-597).
+  const totalUsage = {
+    inputTokens:
+      (result.usage?.inputTokens ?? 0) + responderUsage.inputTokens,
+    outputTokens:
+      (result.usage?.outputTokens ?? 0) + responderUsage.outputTokens,
+  }
 
   // Guard de monotonicidade: step só avança, nunca regride.
-  // O LLM retorna o UUID do step — convertemos para `order` via lookup no context.
+  // O Call 2 retorna o UUID do step — convertemos para `order` via lookup no context.
   // Math.max previne regressão; Math.min previne avanço além do último step.
-  const classifiedId = hasSteps ? result.output?.currentStep : undefined
   const classifiedStep = classifiedId
     ? promptContext.steps.find((step) => step.id === classifiedId)?.order
     : undefined
@@ -516,10 +609,12 @@ export async function runSingleV2(
         ),
       })
 
-      // Construir mensagens com o histórico + resultados das tools para contexto
+      // Incluir a trajetória do turno (tool-calls + tool-results do Call 1) para que
+      // o modelo de fallback saiba o que as tools fizeram e possa descrevê-lo ao cliente.
+      // Sem result.response.messages o fallback gerava resposta sem contexto das ações.
       const fallbackMessages = [
         ...llmMessages,
-        // Incluir um resumo das ações realizadas pelas tools
+        ...result.response.messages,
         {
           role: 'system' as const,
           content:
@@ -872,8 +967,8 @@ export async function runSingleV2(
       (step) => step.toolCalls && step.toolCalls.length > 0,
     ) ?? false
     const emptyUsage = {
-      inputTokens: result.usage?.inputTokens ?? 0,
-      outputTokens: result.usage?.outputTokens ?? 0,
+      inputTokens: totalUsage.inputTokens,
+      outputTokens: totalUsage.outputTokens,
     }
     const { actualCost: emptyActualCost } = await settleCredits({
       organizationId: ctx.organizationId,
@@ -899,9 +994,8 @@ export async function runSingleV2(
       metadata: {
         finishReason: result.finishReason,
         creditsCost: emptyActualCost,
-        // result.text é o JSON raw quando Output.object ativo — útil para debug
         resultTextLength: result.text?.length ?? 0,
-        outputMessageLength: hasSteps ? (result.output?.message?.length ?? 0) : undefined,
+        responderMessageLength: responseText.length,
       },
     })
     ctx.log('step:5 llm_call', 'EXIT', {
@@ -909,11 +1003,10 @@ export async function runSingleV2(
       llmDurationMs,
       actualCost: emptyActualCost,
       finishReason: result.finishReason,
-      outputTokens: result.usage?.outputTokens ?? 0,
+      outputTokens: totalUsage.outputTokens,
       stepsCount: result.steps?.length ?? 0,
-      // result.text pode ser JSON quando Output.object ativo — manter para debug
       resultTextLength: result.text?.length ?? 0,
-      outputMessageLength: hasSteps ? (result.output?.message?.length ?? 0) : undefined,
+      responderMessageLength: responseText.length,
     })
     ctx.tracker.addStep({
       type: 'LLM_CALL',
@@ -923,10 +1016,10 @@ export async function runSingleV2(
         reason: 'empty_response',
         resultText: result.text ?? null,
         resultTextLength: result.text?.length ?? 0,
-        outputMessageLength: hasSteps ? (result.output?.message?.length ?? 0) : undefined,
+        responderMessageLength: responseText.length,
         finishReason: result.finishReason,
-        outputTokens: result.usage?.outputTokens ?? 0,
-        inputTokens: result.usage?.inputTokens ?? 0,
+        outputTokens: totalUsage.outputTokens,
+        inputTokens: totalUsage.inputTokens,
         stepsCount: result.steps?.length ?? 0,
         toolCalls: result.steps?.flatMap(
           (step) => step.toolCalls?.map((tc) => tc.toolName) ?? [],
@@ -937,8 +1030,8 @@ export async function runSingleV2(
     await ctx.tracker.skip({
       reason: 'empty_response',
       modelId: promptContext.modelId,
-      inputTokens: result.usage?.inputTokens ?? 0,
-      outputTokens: result.usage?.outputTokens ?? 0,
+      inputTokens: totalUsage.inputTokens,
+      outputTokens: totalUsage.outputTokens,
       creditsCost: emptyActualCost,
       finishReason: result.finishReason,
       metadata: {
@@ -952,8 +1045,8 @@ export async function runSingleV2(
 
   ctx.log('step:5 llm_response', 'PASS', {
     llmDurationMs,
-    inputTokens: result.usage?.inputTokens,
-    outputTokens: result.usage?.outputTokens,
+    inputTokens: totalUsage.inputTokens,
+    outputTokens: totalUsage.outputTokens,
     steps: result.steps?.length ?? 1,
     toolCalls:
       result.steps?.flatMap(
@@ -969,8 +1062,8 @@ export async function runSingleV2(
     status: 'PASSED',
     durationMs: llmDurationMs,
     output: {
-      inputTokens: result.usage?.inputTokens,
-      outputTokens: result.usage?.outputTokens,
+      inputTokens: totalUsage.inputTokens,
+      outputTokens: totalUsage.outputTokens,
     },
   })
 
@@ -1032,8 +1125,8 @@ export async function runSingleV2(
         conversationId: ctx.conversationId,
         role: 'assistant',
         content: responseText,
-        inputTokens: result.usage?.inputTokens ?? null,
-        outputTokens: result.usage?.outputTokens ?? null,
+        inputTokens: totalUsage.inputTokens ?? null,
+        outputTokens: totalUsage.outputTokens ?? null,
         metadata: {
           model: promptContext.modelId,
           skippedReason: 'ai_paused_during_generation',
@@ -1047,8 +1140,8 @@ export async function runSingleV2(
       estimatedCost,
       modelId: promptContext.modelId,
       actualUsage: {
-        inputTokens: result.usage?.inputTokens ?? 0,
-        outputTokens: result.usage?.outputTokens ?? 0,
+        inputTokens: totalUsage.inputTokens,
+        outputTokens: totalUsage.outputTokens,
       },
       reason: 'ai_paused_during_generation',
       metadata: {
@@ -1080,8 +1173,8 @@ export async function runSingleV2(
     await ctx.tracker.skip({
       reason: 'ai_paused_during_generation',
       modelId: promptContext.modelId,
-      inputTokens: result.usage?.inputTokens ?? 0,
-      outputTokens: result.usage?.outputTokens ?? 0,
+      inputTokens: totalUsage.inputTokens,
+      outputTokens: totalUsage.outputTokens,
       creditsCost: pausedActualCost,
       finishReason: result.finishReason,
     })
@@ -1104,8 +1197,8 @@ export async function runSingleV2(
       conversationId: ctx.conversationId,
       role: 'assistant',
       content: textToSend,
-      inputTokens: result.usage?.inputTokens ?? null,
-      outputTokens: result.usage?.outputTokens ?? null,
+      inputTokens: totalUsage.inputTokens ?? null,
+      outputTokens: totalUsage.outputTokens ?? null,
       metadata: {
         model: promptContext.modelId,
         llmDurationMs,
@@ -1126,15 +1219,14 @@ export async function runSingleV2(
   // -----------------------------------------------------------------------
   // 9. Ajuste de créditos (refund se custo real < estimado, debit extra se >)
   // -----------------------------------------------------------------------
-  const totalTokens =
-    (result.usage?.inputTokens ?? 0) + (result.usage?.outputTokens ?? 0)
+  const totalTokens = totalUsage.inputTokens + totalUsage.outputTokens
   const { actualCost, type: creditAdjType } = await settleCredits({
     organizationId: ctx.organizationId,
     estimatedCost,
     modelId: promptContext.modelId,
     actualUsage: {
-      inputTokens: result.usage?.inputTokens ?? 0,
-      outputTokens: result.usage?.outputTokens ?? 0,
+      inputTokens: totalUsage.inputTokens,
+      outputTokens: totalUsage.outputTokens,
     },
     reason: 'completed',
     metadata: {
@@ -1369,14 +1461,14 @@ export async function runSingleV2(
       finishReason: result.finishReason,
       creditsCost: actualCost,
       totalDurationMs,
-      inputTokens: result.usage?.inputTokens,
-      outputTokens: result.usage?.outputTokens,
+      inputTokens: totalUsage.inputTokens,
+      outputTokens: totalUsage.outputTokens,
     },
   })
 
   ctx.log('step:10 completed', 'PASS', {
-    inputTokens: result.usage?.inputTokens,
-    outputTokens: result.usage?.outputTokens,
+    inputTokens: totalUsage.inputTokens,
+    outputTokens: totalUsage.outputTokens,
     llmDurationMs,
     totalDurationMs,
   })
@@ -1384,8 +1476,8 @@ export async function runSingleV2(
   // Persistir execução completa em batch — falha non-fatal (try/catch interno)
   await ctx.tracker.complete({
     modelId: promptContext.modelId,
-    inputTokens: result.usage?.inputTokens ?? 0,
-    outputTokens: result.usage?.outputTokens ?? 0,
+    inputTokens: totalUsage.inputTokens,
+    outputTokens: totalUsage.outputTokens,
     creditsCost: actualCost,
     finishReason: result.finishReason,
   })
