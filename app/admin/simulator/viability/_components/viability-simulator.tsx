@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { NumericFormat } from 'react-number-format'
 import { AlertCircle } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/_components/ui/card'
 import { Input } from '@/_components/ui/input'
@@ -16,6 +17,13 @@ import {
 import { Badge } from '@/_components/ui/badge'
 import { cn } from '@/_lib/utils'
 
+// ---------------------------------------------------------------------------
+// Tipos e lógica de cálculo locais do simulador efêmero.
+// O simulador mantém a modelagem antiga (costPerCreditUsd + exchangeRateBrl +
+// 4 buckets de custo) propositalmente — é uma ferramenta "what-if" desacoplada
+// da Análise de Negócio persistente em /admin/business.
+// ---------------------------------------------------------------------------
+
 interface PlanBaseline {
   id: string
   name: string
@@ -23,6 +31,102 @@ interface PlanBaseline {
   credits: number
   activeCount: number
 }
+
+interface ViabilityParameters {
+  fixedCostInfra: number
+  fixedCostTools: number
+  fixedCostPayroll: number
+  fixedCostOther: number
+  costPerCreditUsd: number
+  exchangeRateBrl: number
+  targetMarginPct: number
+}
+
+interface ViabilityMetrics {
+  plans: Array<PlanBaseline & { revenueBRL: number; aiCostBRL: number }>
+  totalRevenue: number
+  totalAiCost: number
+  totalFixed: number
+  totalCost: number
+  marginBRL: number
+  marginPct: number
+  totalCustomers: number
+  targetMargin: number
+  extraCustomersNeeded: number | null
+  priceAdjustmentPct: number | null
+  suggestedPrices: Record<string, number>
+}
+
+const MAX_MARGIN_PCT = 99
+
+function computeViabilityMetrics(
+  baseline: PlanBaseline[],
+  params: ViabilityParameters,
+): ViabilityMetrics {
+  const rate = params.exchangeRateBrl
+  const costPerCredit = params.costPerCreditUsd
+  const targetMargin = Math.min(params.targetMarginPct, MAX_MARGIN_PCT)
+  const totalFixed =
+    params.fixedCostInfra +
+    params.fixedCostTools +
+    params.fixedCostPayroll +
+    params.fixedCostOther
+
+  const plans = baseline.map((plan) => ({
+    ...plan,
+    revenueBRL: plan.activeCount * plan.price,
+    aiCostBRL: plan.activeCount * plan.credits * costPerCredit * rate,
+  }))
+
+  const totalRevenue = plans.reduce((sum, plan) => sum + plan.revenueBRL, 0)
+  const totalAiCost = plans.reduce((sum, plan) => sum + plan.aiCostBRL, 0)
+  const totalCustomers = baseline.reduce((sum, plan) => sum + plan.activeCount, 0)
+  const totalCost = totalFixed + totalAiCost
+  const marginBRL = totalRevenue - totalCost
+  const marginPct = totalRevenue > 0 ? (marginBRL / totalRevenue) * 100 : 0
+
+  // Break-even: clientes adicionais no mix atual para atingir margem alvo
+  let extraCustomersNeeded: number | null = null
+  if (totalCustomers > 0 && targetMargin > 0) {
+    const avgRevenue = totalRevenue / totalCustomers
+    const avgAiCost = totalAiCost / totalCustomers
+    const contribPerCustomer = avgRevenue * (1 - targetMargin / 100) - avgAiCost
+    if (contribPerCustomer > 0) {
+      const gap = totalFixed - (totalRevenue * (1 - targetMargin / 100) - totalAiCost)
+      extraCustomersNeeded = gap > 0 ? Math.ceil(gap / contribPerCustomer) : 0
+    }
+    // null = impossível: cada novo cliente piora a margem no alvo
+  }
+
+  // Precificação reversa: ajuste % uniforme nos preços para atingir margem alvo
+  let priceAdjustmentPct: number | null = null
+  const suggestedPrices: Record<string, number> = {}
+  if (totalRevenue > 0 && targetMargin > 0) {
+    const uniformMultiplier =
+      (totalFixed + totalAiCost) / (totalRevenue * (1 - targetMargin / 100))
+    priceAdjustmentPct = (uniformMultiplier - 1) * 100
+    for (const plan of baseline) {
+      suggestedPrices[plan.id] = Math.ceil(plan.price * uniformMultiplier)
+    }
+  }
+
+  return {
+    plans,
+    totalRevenue,
+    totalAiCost,
+    totalFixed,
+    totalCost,
+    marginBRL,
+    marginPct,
+    totalCustomers,
+    targetMargin,
+    extraCustomersNeeded,
+    priceAdjustmentPct,
+    suggestedPrices,
+  }
+}
+
+// ---------------------------------------------------------------------------
 
 interface ViabilitySimulatorProps {
   baseline: PlanBaseline[]
@@ -44,74 +148,25 @@ function MarginBadge({ marginPct, targetPct }: { marginPct: number; targetPct: n
 }
 
 export function ViabilitySimulator({ baseline }: ViabilitySimulatorProps) {
-  const [infra,             setInfra]             = useState('')
-  const [tools,             setTools]             = useState('')
-  const [payroll,           setPayroll]           = useState('')
-  const [other,             setOther]             = useState('')
-  const [costPerCreditUsd,  setCostPerCreditUsd]  = useState('')
-  const [rateRaw,           setRateRaw]           = useState(String(DEFAULT_RATE))
-  const [targetMarginPct,   setTargetMarginPct]   = useState('30')
+  const [infra,            setInfra]            = useState(0)
+  const [tools,            setTools]            = useState(0)
+  const [payroll,          setPayroll]          = useState(0)
+  const [other,            setOther]            = useState(0)
+  const [costPerCreditUsd, setCostPerCreditUsd] = useState(0)
+  const [rate,             setRate]             = useState(DEFAULT_RATE)
+  const [targetMarginPct,  setTargetMarginPct]  = useState(30)
 
-  const totalFixed = (Number(infra) || 0) + (Number(tools) || 0) + (Number(payroll) || 0) + (Number(other) || 0)
+  const totalFixed = infra + tools + payroll + other
 
-  const results = useMemo(() => {
-    const rate         = Number(rateRaw) || DEFAULT_RATE
-    const costPerCredit = Number(costPerCreditUsd) || 0
-    const targetMargin = Math.min(Number(targetMarginPct) || 0, 99)
-    const fixed        = (Number(infra) || 0) + (Number(tools) || 0) + (Number(payroll) || 0) + (Number(other) || 0)
-
-    const plans = baseline.map((plan) => ({
-      ...plan,
-      revenueBRL: plan.activeCount * plan.price,
-      aiCostBRL:  plan.activeCount * plan.credits * costPerCredit * rate,
-    }))
-
-    const totalRevenue   = plans.reduce((sum, p) => sum + p.revenueBRL, 0)
-    const totalAiCost    = plans.reduce((sum, p) => sum + p.aiCostBRL, 0)
-    const totalCustomers = baseline.reduce((sum, p) => sum + p.activeCount, 0)
-    const totalCost      = fixed + totalAiCost
-    const marginBRL      = totalRevenue - totalCost
-    const marginPct      = totalRevenue > 0 ? (marginBRL / totalRevenue) * 100 : 0
-
-    // Break-even: clientes adicionais no mix atual para atingir margem alvo
-    let extraCustomersNeeded: number | null = null
-    if (totalCustomers > 0 && targetMargin > 0) {
-      const avgRevenue         = totalRevenue / totalCustomers
-      const avgAiCost          = totalAiCost / totalCustomers
-      const contribPerCustomer = avgRevenue * (1 - targetMargin / 100) - avgAiCost
-      if (contribPerCustomer > 0) {
-        const gap = fixed - (totalRevenue * (1 - targetMargin / 100) - totalAiCost)
-        extraCustomersNeeded = gap > 0 ? Math.ceil(gap / contribPerCustomer) : 0
-      }
-      // null = impossível: cada novo cliente piora a margem no alvo
-    }
-
-    // Precificação reversa: ajuste % uniforme nos preços para atingir margem alvo
-    let priceAdjustmentPct: number | null = null
-    const suggestedPrices: Record<string, number> = {}
-    if (totalRevenue > 0 && targetMargin > 0) {
-      const uniformMultiplier = (fixed + totalAiCost) / (totalRevenue * (1 - targetMargin / 100))
-      priceAdjustmentPct = (uniformMultiplier - 1) * 100
-      for (const plan of baseline) {
-        suggestedPrices[plan.id] = Math.ceil(plan.price * uniformMultiplier)
-      }
-    }
-
-    return {
-      plans,
-      totalRevenue,
-      totalAiCost,
-      totalFixed: fixed,
-      totalCost,
-      marginBRL,
-      marginPct,
-      totalCustomers,
-      targetMargin,
-      extraCustomersNeeded,
-      priceAdjustmentPct,
-      suggestedPrices,
-    }
-  }, [baseline, infra, tools, payroll, other, costPerCreditUsd, rateRaw, targetMarginPct])
+  const results = useMemo(() => computeViabilityMetrics(baseline, {
+    fixedCostInfra:   infra,
+    fixedCostTools:   tools,
+    fixedCostPayroll: payroll,
+    fixedCostOther:   other,
+    costPerCreditUsd,
+    exchangeRateBrl:  rate || DEFAULT_RATE,
+    targetMarginPct,
+  }), [baseline, infra, tools, payroll, other, costPerCreditUsd, rate, targetMarginPct])
 
   return (
     <div className="flex flex-col gap-6">
@@ -125,19 +180,59 @@ export function ViabilitySimulator({ baseline }: ViabilitySimulatorProps) {
           <CardContent className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label>Infraestrutura</Label>
-              <Input type="number" step="1" placeholder="Ex: 800" value={infra} onChange={(e) => setInfra(e.target.value)} />
+              <NumericFormat
+                customInput={Input}
+                thousandSeparator="."
+                decimalSeparator=","
+                prefix="R$ "
+                decimalScale={2}
+                allowNegative={false}
+                placeholder="R$ 0,00"
+                value={infra}
+                onValueChange={(values) => setInfra(values.floatValue ?? 0)}
+              />
             </div>
             <div className="space-y-2">
               <Label>Ferramentas / SaaS</Label>
-              <Input type="number" step="1" placeholder="Ex: 500" value={tools} onChange={(e) => setTools(e.target.value)} />
+              <NumericFormat
+                customInput={Input}
+                thousandSeparator="."
+                decimalSeparator=","
+                prefix="R$ "
+                decimalScale={2}
+                allowNegative={false}
+                placeholder="R$ 0,00"
+                value={tools}
+                onValueChange={(values) => setTools(values.floatValue ?? 0)}
+              />
             </div>
             <div className="space-y-2">
               <Label>Salários / RH</Label>
-              <Input type="number" step="1" placeholder="Ex: 15000" value={payroll} onChange={(e) => setPayroll(e.target.value)} />
+              <NumericFormat
+                customInput={Input}
+                thousandSeparator="."
+                decimalSeparator=","
+                prefix="R$ "
+                decimalScale={2}
+                allowNegative={false}
+                placeholder="R$ 0,00"
+                value={payroll}
+                onValueChange={(values) => setPayroll(values.floatValue ?? 0)}
+              />
             </div>
             <div className="space-y-2">
               <Label>Outros</Label>
-              <Input type="number" step="1" placeholder="Ex: 200" value={other} onChange={(e) => setOther(e.target.value)} />
+              <NumericFormat
+                customInput={Input}
+                thousandSeparator="."
+                decimalSeparator=","
+                prefix="R$ "
+                decimalScale={2}
+                allowNegative={false}
+                placeholder="R$ 0,00"
+                value={other}
+                onValueChange={(values) => setOther(values.floatValue ?? 0)}
+              />
             </div>
             <div className="md:col-span-2 border-t pt-3 text-sm text-muted-foreground">
               Total fixo:{' '}
@@ -156,34 +251,42 @@ export function ViabilitySimulator({ baseline }: ViabilitySimulatorProps) {
           <CardContent className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2 md:col-span-2">
               <Label>Custo médio por crédito IA (USD)</Label>
-              <Input
-                type="number"
-                step="0.000001"
-                placeholder="Ex: 0.000020"
+              <NumericFormat
+                customInput={Input}
+                prefix="$ "
+                decimalSeparator=","
+                thousandSeparator="."
+                decimalScale={8}
+                allowNegative={false}
+                placeholder="$ 0,00002000"
                 value={costPerCreditUsd}
-                onChange={(e) => setCostPerCreditUsd(e.target.value)}
+                onValueChange={(values) => setCostPerCreditUsd(values.floatValue ?? 0)}
               />
             </div>
             <div className="space-y-2">
               <Label>Taxa de câmbio BRL/USD</Label>
-              <Input
-                type="number"
-                step="0.01"
-                placeholder="5.70"
-                value={rateRaw}
-                onChange={(e) => setRateRaw(e.target.value)}
+              <NumericFormat
+                customInput={Input}
+                decimalSeparator=","
+                thousandSeparator="."
+                decimalScale={4}
+                allowNegative={false}
+                placeholder="5,7000"
+                value={rate}
+                onValueChange={(values) => setRate(values.floatValue ?? DEFAULT_RATE)}
               />
             </div>
             <div className="space-y-2">
               <Label>Margem alvo (%)</Label>
-              <Input
-                type="number"
-                step="1"
-                min="0"
-                max="99"
-                placeholder="30"
+              <NumericFormat
+                customInput={Input}
+                suffix=" %"
+                decimalScale={0}
+                allowNegative={false}
+                placeholder="30 %"
+                isAllowed={(values) => !values.floatValue || values.floatValue <= 99}
                 value={targetMarginPct}
-                onChange={(e) => setTargetMarginPct(e.target.value)}
+                onValueChange={(values) => setTargetMarginPct(values.floatValue ?? 0)}
               />
             </div>
           </CardContent>
