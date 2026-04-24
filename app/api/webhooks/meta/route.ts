@@ -602,7 +602,7 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
           `debounce:${conversationId}`,
           String(debounceTimestamp),
           'EX',
-          resolvedAgent.debounceSeconds + 1,
+          resolvedAgent.debounceSeconds + 120,
         )
         .catch((error) => {
           console.warn('[meta-webhook] Redis debounce set failed:', { msgId: messageId, error })
