@@ -75,7 +75,11 @@ const AdminNavItem = ({ href, icon, label }: AdminNavItemProps) => {
   return linkContent
 }
 
-export const AdminSidebar = () => {
+interface AdminSidebarProps {
+  isOwner?: boolean
+}
+
+export const AdminSidebar = ({ isOwner = false }: AdminSidebarProps) => {
   const { isCollapsed, toggle } = useSidebar()
 
   return (
@@ -156,11 +160,13 @@ export const AdminSidebar = () => {
             label="Usuários"
             icon={<Users className="h-4 w-4" />}
           />
-          <AdminNavItem
-            href="/admin/plans"
-            label="Planos & Limites"
-            icon={<CreditCard className="h-4 w-4" />}
-          />
+          {isOwner && (
+            <AdminNavItem
+              href="/admin/plans"
+              label="Planos & Limites"
+              icon={<CreditCard className="h-4 w-4" />}
+            />
+          )}
           <AdminNavItem
             href="/admin/simulator"
             label="Simulador"

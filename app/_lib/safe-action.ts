@@ -131,3 +131,26 @@ export const superAdminActionClient = authActionClient.use(async ({ ctx, next })
 
   return next({ ctx })
 })
+
+/**
+ * Action client exclusivo para o owner da plataforma.
+ * Requer: autenticado + isSuperAdmin + email igual a OWNER_EMAIL (env var server-only).
+ * Use para: actions que só o owner pode executar — gerenciar planos e toggle super-admin.
+ *
+ * A variável OWNER_EMAIL nunca é exposta ao cliente.
+ */
+export const ownerActionClient = authActionClient.use(async ({ ctx, next }) => {
+  const ownerEmail = process.env.OWNER_EMAIL
+  if (!ownerEmail) throw new Error('Acesso negado.')
+
+  const user = await db.user.findUnique({
+    where: { id: ctx.userId },
+    select: { isSuperAdmin: true, email: true },
+  })
+
+  if (!user?.isSuperAdmin || user.email?.toLowerCase() !== ownerEmail.toLowerCase()) {
+    throw new Error('Acesso negado.')
+  }
+
+  return next({ ctx })
+})

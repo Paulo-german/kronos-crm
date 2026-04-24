@@ -1,11 +1,11 @@
 'use server'
 
 import { revalidateTag } from 'next/cache'
-import { superAdminActionClient } from '@/_lib/safe-action'
+import { ownerActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { deletePlanSchema } from './schema'
 
-export const deletePlan = superAdminActionClient
+export const deletePlan = ownerActionClient
   .schema(deletePlanSchema)
   .action(async ({ parsedInput: { planId } }) => {
     const plan = await db.plan.findUnique({

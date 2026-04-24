@@ -1,11 +1,11 @@
 'use server'
 
 import { revalidateTag } from 'next/cache'
-import { superAdminActionClient } from '@/_lib/safe-action'
+import { ownerActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { upsertPlanSchema } from './schema'
 
-export const upsertPlan = superAdminActionClient
+export const upsertPlan = ownerActionClient
   .schema(upsertPlanSchema)
   .action(async ({ parsedInput: data }) => {
     // Resolver feature keys → ids

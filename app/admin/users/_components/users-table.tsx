@@ -16,15 +16,13 @@ import {
   TableRow,
 } from '@/_components/ui/table'
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/_components/ui/alert-dialog'
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/_components/ui/dialog'
 import {
   Tooltip,
   TooltipContent,
@@ -33,8 +31,13 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/_components/ui/avatar'
 import { Badge } from '@/_components/ui/badge'
 import { Switch } from '@/_components/ui/switch'
+import { Button } from '@/_components/ui/button'
+import { Input } from '@/_components/ui/input'
+import { Label } from '@/_components/ui/label'
 import { toggleSuperAdmin } from '@/_actions/admin/toggle-super-admin'
 import type { AdminUserDto } from '@/_data-access/admin/types'
+
+const CONFIRMATION_WORD = 'CONFIRMAR'
 
 const ROLE_MAP: Record<string, { label: string; className: string }> = {
   OWNER: {
@@ -63,15 +66,18 @@ function getInitials(fullName: string | null, email: string): string {
 
 interface UsersTableProps {
   users: AdminUserDto[]
+  isOwner: boolean
 }
 
-export const UsersTable = ({ users }: UsersTableProps) => {
+export const UsersTable = ({ users, isOwner }: UsersTableProps) => {
   const router = useRouter()
   const [pendingToggle, setPendingToggle] = useState<{
     userId: string
     userName: string
     newValue: boolean
   } | null>(null)
+  const [adminKey,     setAdminKey]     = useState('')
+  const [confirmation, setConfirmation] = useState('')
 
   const { execute, status } = useAction(toggleSuperAdmin, {
     onSuccess: ({ data }) => {
@@ -80,19 +86,40 @@ export const UsersTable = ({ users }: UsersTableProps) => {
           ? 'Usuário promovido a super admin.'
           : 'Super admin removido do usuário.',
       )
-      setPendingToggle(null)
+      closeDialog()
       router.refresh()
     },
     onError: ({ error }) => {
       toast.error(error.serverError ?? 'Erro ao alterar permissão.')
-      setPendingToggle(null)
     },
   })
 
-  const handleConfirmToggle = () => {
-    if (!pendingToggle) return
-    execute({ userId: pendingToggle.userId })
+  const openDialog = (userId: string, userName: string, newValue: boolean) => {
+    setAdminKey('')
+    setConfirmation('')
+    setPendingToggle({ userId, userName, newValue })
   }
+
+  const closeDialog = () => {
+    if (status === 'executing') return
+    setPendingToggle(null)
+    setAdminKey('')
+    setConfirmation('')
+  }
+
+  const handleConfirm = () => {
+    if (!pendingToggle) return
+    execute({
+      userId:       pendingToggle.userId,
+      adminKey,
+      confirmation,
+    })
+  }
+
+  const canConfirm =
+    adminKey.length > 0 &&
+    confirmation === CONFIRMATION_WORD &&
+    status !== 'executing'
 
   if (users.length === 0) {
     return (
@@ -175,17 +202,23 @@ export const UsersTable = ({ users }: UsersTableProps) => {
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <Switch
-                      checked={user.isSuperAdmin}
-                      onCheckedChange={(checked) =>
-                        setPendingToggle({
-                          userId: user.id,
-                          userName: user.fullName ?? user.email,
-                          newValue: checked,
-                        })
-                      }
-                      disabled={status === 'executing'}
-                    />
+                    {isOwner ? (
+                      <Switch
+                        checked={user.isSuperAdmin}
+                        onCheckedChange={(checked) =>
+                          openDialog(
+                            user.id,
+                            user.fullName ?? user.email,
+                            checked,
+                          )
+                        }
+                        disabled={status === 'executing'}
+                      />
+                    ) : (
+                      user.isSuperAdmin && (
+                        <span className="text-xs text-muted-foreground">Super Admin</span>
+                      )
+                    )}
                     {user.isSuperAdmin && (
                       <Shield className="h-3.5 w-3.5 text-primary" />
                     )}
@@ -215,34 +248,64 @@ export const UsersTable = ({ users }: UsersTableProps) => {
         </Table>
       </div>
 
-      <AlertDialog
-        open={pendingToggle !== null}
-        onOpenChange={(open) => {
-          if (!open) setPendingToggle(null)
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
+      <Dialog open={pendingToggle !== null} onOpenChange={(open) => { if (!open) closeDialog() }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
               {pendingToggle?.newValue ? 'Promover a super admin?' : 'Remover super admin?'}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
+            </DialogTitle>
+            <DialogDescription>
               {pendingToggle?.newValue
                 ? `${pendingToggle.userName} terá acesso completo ao painel Delfos e poderá gerenciar toda a plataforma.`
                 : `${pendingToggle?.userName} perderá acesso ao painel Delfos.`}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={status === 'executing'}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirmToggle}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="admin-key">Senha de autorização</Label>
+              <Input
+                id="admin-key"
+                type="password"
+                placeholder="••••••••"
+                value={adminKey}
+                onChange={(e) => setAdminKey(e.target.value)}
+                autoComplete="off"
+                disabled={status === 'executing'}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmation">
+                Digite <span className="font-mono font-semibold">{CONFIRMATION_WORD}</span> para prosseguir
+              </Label>
+              <Input
+                id="confirmation"
+                placeholder={CONFIRMATION_WORD}
+                value={confirmation}
+                onChange={(e) => setConfirmation(e.target.value)}
+                autoComplete="off"
+                disabled={status === 'executing'}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={closeDialog}
               disabled={status === 'executing'}
             >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleConfirm}
+              disabled={!canConfirm}
+            >
               {status === 'executing' ? 'Processando...' : 'Confirmar'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

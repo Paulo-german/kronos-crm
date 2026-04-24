@@ -1,11 +1,11 @@
 'use server'
 
 import { revalidateTag } from 'next/cache'
-import { superAdminActionClient } from '@/_lib/safe-action'
+import { ownerActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { updatePlanLimitsSchema } from './schema'
 
-export const updatePlanLimits = superAdminActionClient
+export const updatePlanLimits = ownerActionClient
   .schema(updatePlanLimitsSchema)
   .action(async ({ parsedInput: { limits } }) => {
     if (limits.length === 0) {

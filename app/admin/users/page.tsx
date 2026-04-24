@@ -1,9 +1,10 @@
 import Header, { HeaderLeft, HeaderTitle, HeaderSubTitle } from '@/_components/header'
 import { getAdminUsers } from '@/_data-access/admin/get-admin-users'
+import { isCurrentUserOwner } from '@/_lib/auth/is-owner'
 import { UsersTable } from './_components/users-table'
 
 const UsersPage = async () => {
-  const users = await getAdminUsers()
+  const [users, isOwner] = await Promise.all([getAdminUsers(), isCurrentUserOwner()])
 
   return (
     <div className="flex flex-col gap-6">
@@ -14,7 +15,7 @@ const UsersPage = async () => {
         </HeaderLeft>
       </Header>
 
-      <UsersTable users={users} />
+      <UsersTable users={users} isOwner={isOwner} />
     </div>
   )
 }
