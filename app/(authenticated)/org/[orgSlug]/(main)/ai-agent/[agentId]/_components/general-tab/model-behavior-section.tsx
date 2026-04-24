@@ -21,6 +21,7 @@ import {
   FormMessage,
 } from '@/_components/ui/form'
 import { AGENT_MODELS } from '@/_lib/ai/models'
+import { formatAvgCostPerMessage } from '@/_lib/ai/pricing'
 import { Badge } from '@/_components/ui/badge'
 import type { SectionProps } from './types'
 
@@ -64,6 +65,9 @@ export const ModelBehaviorSection = ({ form, canManage }: SectionProps) => {
                         )}
                         <span className="text-xs text-muted-foreground">
                           {model.description}
+                        </span>
+                        <span className="text-xs text-muted-foreground/60">
+                          {formatAvgCostPerMessage(model)}
                         </span>
                       </div>
                     </SelectItem>

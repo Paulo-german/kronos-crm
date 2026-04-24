@@ -7,6 +7,8 @@ export interface AiModel {
   description: string
   provider: 'openai' | 'google' | 'anthropic'
   tokensPerCredit: number
+  // Preço de referência no OpenRouter — usado para calibrar tokensPerCredit, não para billing.
+  costUsdPerMillion: { input: number; output: number }
   availableFor: ReadonlyArray<'agent' | 'router'>
   // Para qual(is) picker(s) esse modelo deve ganhar badge "Recomendado".
   // É array porque um modelo pode aparecer em ambas as listas mas ser
@@ -15,36 +17,42 @@ export interface AiModel {
 }
 
 export const AI_MODELS: ReadonlyArray<AiModel> = [
+  // Agente: GPT 5.2 → Gemini 2.5 Pro → Sonnet 4 → GPT 5.4 Mini → Gemini 2.5 Flash
   {
     id: 'openai/gpt-5.2',
     label: 'GPT 5.2',
     description: 'Mais inteligente da OpenAI. Maior custo por mensagem.',
     provider: 'openai',
-    tokensPerCredit: 350,
+    tokensPerCredit: 220,
+    costUsdPerMillion: { input: 1.75, output: 14 },
     availableFor: ['agent'],
-  },
-  {
-    id: 'openai/gpt-4.1-mini',
-    label: 'GPT 4.1 Mini',
-    description: 'Rápido e econômico. Bom para tarefas simples.',
-    provider: 'openai',
-    tokensPerCredit: 1700,
-    availableFor: ['agent', 'router'],
-  },
-  {
-    id: 'openai/gpt-4o-mini',
-    label: 'GPT-4o Mini',
-    description: 'Rápido e econômico. Ideal para classificação de rotas.',
-    provider: 'openai',
-    tokensPerCredit: 4500,
-    availableFor: ['router'],
   },
   {
     id: 'google/gemini-2.5-pro',
     label: 'Gemini 2.5 Pro',
     description: 'Alta capacidade do Google. Bom equilíbrio custo/qualidade.',
     provider: 'google',
-    tokensPerCredit: 350,
+    tokensPerCredit: 280,
+    costUsdPerMillion: { input: 1.25, output: 10 },
+    availableFor: ['agent'],
+    recommendedFor: ['agent'],
+  },
+  {
+    id: 'anthropic/claude-sonnet-4',
+    label: 'Claude Sonnet 4',
+    description: 'Melhor equilíbrio entre inteligência e custo.',
+    provider: 'anthropic',
+    tokensPerCredit: 200,
+    costUsdPerMillion: { input: 3, output: 15 },
+    availableFor: ['agent', 'router'],
+  },
+  {
+    id: 'openai/gpt-5.4-mini',
+    label: 'GPT 5.4 Mini',
+    description: 'Rápido e econômico da série 5. Bom para tarefas simples.',
+    provider: 'openai',
+    tokensPerCredit: 650,
+    costUsdPerMillion: { input: 0.75, output: 4.5 },
     availableFor: ['agent'],
   },
   {
@@ -52,18 +60,29 @@ export const AI_MODELS: ReadonlyArray<AiModel> = [
     label: 'Gemini 2.5 Flash',
     description: 'Mais rápido e econômico do Google.',
     provider: 'google',
-    tokensPerCredit: 4500,
+    tokensPerCredit: 1200,
+    costUsdPerMillion: { input: 0.3, output: 2.5 },
     availableFor: ['agent', 'router'],
     recommendedFor: ['router'],
   },
+  // Roteador: Sonnet 4 → Gemini 2.5 Flash → GPT 4.1 Mini → GPT-4o Mini
   {
-    id: 'anthropic/claude-sonnet-4',
-    label: 'Claude Sonnet 4',
-    description: 'Recomendado. Melhor equilíbrio entre inteligência e custo.',
-    provider: 'anthropic',
-    tokensPerCredit: 200,
-    availableFor: ['agent', 'router'],
-    recommendedFor: ['agent'],
+    id: 'openai/gpt-4.1-mini',
+    label: 'GPT 4.1 Mini',
+    description: 'Rápido e econômico. Ideal para classificação de rotas.',
+    provider: 'openai',
+    tokensPerCredit: 1700,
+    costUsdPerMillion: { input: 0.4, output: 1.6 },
+    availableFor: ['router'],
+  },
+  {
+    id: 'openai/gpt-4o-mini',
+    label: 'GPT-4o Mini',
+    description: 'Rápido e econômico. Ideal para classificação de rotas.',
+    provider: 'openai',
+    tokensPerCredit: 4000,
+    costUsdPerMillion: { input: 0.15, output: 0.6 },
+    availableFor: ['router'],
   },
 ]
 
@@ -88,7 +107,7 @@ const DEFAULT_TOKENS_PER_CREDIT = 200
 // O assertTuplesMatch no final deste arquivo detecta drift no boot.
 export const AGENT_MODEL_IDS = [
   'openai/gpt-5.2',
-  'openai/gpt-4.1-mini',
+  'openai/gpt-5.4-mini',
   'google/gemini-2.5-pro',
   'google/gemini-2.5-flash',
   'anthropic/claude-sonnet-4',
@@ -122,8 +141,7 @@ export type AnyModelId = AgentModelId | RouterModelId
 // a um modelo presente em AI_MODELS: se alguém remover 'openai/gpt-4o-mini' da
 // lista canônica, o TypeScript quebra o build neste ponto em vez de falhar
 // silenciosamente em runtime ao tentar resumir uma conversa.
-export const SUMMARIZATION_MODEL_ID =
-  'openai/gpt-4o-mini' satisfies AnyModelId
+export const SUMMARIZATION_MODEL_ID = 'openai/gpt-4o-mini' satisfies AnyModelId
 
 // ---------------------------------------------------------------------------
 // Modelo fixo para o Leak Guardrail (Agent 3 da pipeline v2)
@@ -131,8 +149,7 @@ export const SUMMARIZATION_MODEL_ID =
 // Validador de vazamento roda sempre com Gemini 2.5 Flash — rápido (~500ms p95),
 // barato e com capacidade suficiente para classificação binária de leak.
 // Não configurável por agente: é uma decisão de infraestrutura.
-export const GUARDRAIL_MODEL_ID =
-  'google/gemini-2.5-flash' satisfies AnyModelId
+export const GUARDRAIL_MODEL_ID = 'google/gemini-2.5-flash' satisfies AnyModelId
 
 export function getModelById(id: string): AiModel | undefined {
   return AI_MODELS.find((model) => model.id === id)
@@ -177,8 +194,9 @@ function assertTuplesMatch(
   role: 'agent' | 'router',
   declaredTuple: readonly string[],
 ): void {
-  const expectedFromCanonical = AI_MODELS
-    .filter((model) => model.availableFor.includes(role))
+  const expectedFromCanonical = AI_MODELS.filter((model) =>
+    model.availableFor.includes(role),
+  )
     .map((model) => model.id)
     .sort()
   const declared = [...declaredTuple].sort()

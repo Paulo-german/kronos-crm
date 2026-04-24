@@ -35,6 +35,7 @@ import {
   DEFAULT_ROUTER_MODEL_ID,
   isValidRouterModel,
 } from '@/_lib/ai/models'
+import { formatAvgCostPerMessage } from '@/_lib/ai/pricing'
 import type { AgentGroupDetailDto } from '@/_data-access/agent-group/get-agent-group-by-id'
 
 interface RouterConfigCardProps {
@@ -113,8 +114,15 @@ export function RouterConfigCard({ group }: RouterConfigCardProps) {
                     <SelectContent>
                       {ROUTER_MODELS.map((model) => (
                         <SelectItem key={model.id} value={model.id}>
-                          {model.label}
-                          {model.recommendedFor?.includes('router') && ' (recomendado)'}
+                          <div className="flex items-baseline gap-2">
+                            <span>{model.label}</span>
+                            {model.recommendedFor?.includes('router') && (
+                              <span className="text-xs text-muted-foreground">(recomendado)</span>
+                            )}
+                            <span className="text-xs text-muted-foreground/60">
+                              {formatAvgCostPerMessage(model)}
+                            </span>
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>

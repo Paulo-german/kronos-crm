@@ -1,3 +1,4 @@
+import type { AiModel } from './models'
 import { getTokensPerCreditForModel } from './models'
 
 /**
@@ -36,4 +37,15 @@ export function estimateMaxCost(
   maxOutputTokens: number,
 ): number {
   return calculateCreditCost(modelId, estimatedInputTokens + maxOutputTokens)
+}
+
+/**
+ * Estima créditos consumidos por mensagem para exibição no picker de modelos.
+ * Baseline de 8.500 tokens — real observado é ~5.900, mas precificamos pelo teto
+ * do range esperado (7k–9k) para evitar subcobrança em conversas mais longas.
+ * Usa a mesma fórmula do billing real: ceil(totalTokens / tokensPerCredit).
+ */
+export function formatAvgCostPerMessage(model: AiModel, totalTokens = 8_500): string {
+  const credits = Math.max(1, Math.ceil(totalTokens / model.tokensPerCredit))
+  return `~${credits} crédito${credits === 1 ? '' : 's'}/msg`
 }

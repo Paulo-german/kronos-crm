@@ -131,7 +131,7 @@ async function seedFeaturesAndPlans() {
     { planSlug: 'scale', featureKey: 'ai.max_knowledge_files', valueNumber: 20 },
     { planSlug: 'enterprise', featureKey: 'ai.max_knowledge_files', valueNumber: 35 },
 
-    // Créditos IA mensais (token-based: Sonnet ~10 créditos/msg, Flash ~1 crédito/msg)
+    // Créditos IA mensais (token-based: Sonnet ~43 créditos/msg, Flash ~7 créditos/msg em baseline 8.5k tokens)
     { planSlug: 'light', featureKey: 'ai.monthly_credits', valueNumber: 10000 },
     { planSlug: 'essential', featureKey: 'ai.monthly_credits', valueNumber: 18000 },
     { planSlug: 'scale', featureKey: 'ai.monthly_credits', valueNumber: 45000 },
