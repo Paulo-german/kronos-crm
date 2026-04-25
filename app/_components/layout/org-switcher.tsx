@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Building2, Check, ChevronsUpDown, Plus } from 'lucide-react'
+import { ChevronsUpDown, Plus } from 'lucide-react'
 import { useOrganization } from '@/_providers/organization-provider'
 import { useSidebar } from '@/_providers/sidebar-provider'
 import { cn } from '@/_lib/utils'
@@ -31,6 +31,37 @@ interface OrgSwitcherProps {
   organizations: OrgItem[]
 }
 
+const OrgAvatar = ({
+  name,
+  active,
+  onDark,
+}: {
+  name: string
+  active?: boolean
+  onDark?: boolean
+}) => {
+  const initials = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join('')
+    .toUpperCase()
+
+  return (
+    <div
+      className={cn(
+        'flex h-5 w-5 shrink-0 items-center justify-center rounded text-[9px] font-bold leading-none ring-1',
+        onDark
+          ? cn('bg-white/20 text-white', active ? 'ring-white/80' : 'ring-white/30')
+          : cn('bg-primary/20 text-primary', active ? 'ring-primary' : 'ring-primary/20'),
+      )}
+    >
+      {initials}
+    </div>
+  )
+}
+
 const roleLabelMap: Record<MemberRole, string> = {
   OWNER: 'Owner',
   ADMIN: 'Admin',
@@ -38,7 +69,7 @@ const roleLabelMap: Record<MemberRole, string> = {
 }
 
 export function OrgSwitcher({ organizations }: OrgSwitcherProps) {
-  const { organization } = useOrganization()
+  const { organization, userRole } = useOrganization()
   const { isCollapsed } = useSidebar()
   const router = useRouter()
 
@@ -53,11 +84,11 @@ export function OrgSwitcher({ organizations }: OrgSwitcherProps) {
       className={cn(
         'ease-[cubic-bezier(0.25,0.76,0.35,1)] group flex items-center rounded-md py-2 text-sm font-medium text-muted-foreground transition-all duration-500',
         'cursor-pointer hover:bg-primary/10 hover:text-primary',
-        isCollapsed ? 'ml-2 mr-2 pl-3 pr-0' : 'px-3',
+        isCollapsed ? 'mx-2 justify-center' : 'px-3',
       )}
     >
       <div className="flex items-center">
-        <Building2 className="h-4 w-4 shrink-0" />
+        <OrgAvatar name={organization.name} />
       </div>
       <span
         className={cn(
@@ -71,20 +102,27 @@ export function OrgSwitcher({ organizations }: OrgSwitcherProps) {
     </div>
   )
 
-  const trigger = isCollapsed ? (
-    <Tooltip delayDuration={0}>
-      <TooltipTrigger asChild>{content}</TooltipTrigger>
-      <TooltipContent side="right" sideOffset={10}>
-        Trocar organização
-      </TooltipContent>
-    </Tooltip>
-  ) : (
-    content
-  )
-
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
+      {isCollapsed ? (
+        <Tooltip delayDuration={0}>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>{content}</DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent side="right" sideOffset={10} className="w-48 space-y-1 p-3">
+            <div className="flex items-center gap-2">
+              <OrgAvatar name={organization.name} active onDark />
+              <span className="truncate font-medium">{organization.name}</span>
+            </div>
+            <p className="text-[10px] text-white/50">
+              {roleLabelMap[userRole]} · Clique para trocar
+            </p>
+          </TooltipContent>
+        </Tooltip>
+      ) : (
+        <DropdownMenuTrigger asChild>{content}</DropdownMenuTrigger>
+      )}
+
       <DropdownMenuContent
         side={isCollapsed ? 'right' : 'bottom'}
         align="start"
@@ -99,11 +137,7 @@ export function OrgSwitcher({ organizations }: OrgSwitcherProps) {
               className="flex items-center justify-between gap-2"
             >
               <div className="flex items-center gap-2">
-                {isActive ? (
-                  <Check className="h-4 w-4 shrink-0 text-primary" />
-                ) : (
-                  <div className="h-4 w-4 shrink-0" />
-                )}
+                <OrgAvatar name={org.name} active={isActive} />
                 <span className="truncate">{org.name}</span>
               </div>
               <Badge variant="secondary" className="text-[10px]">

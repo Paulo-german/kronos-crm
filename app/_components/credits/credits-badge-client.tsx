@@ -40,14 +40,12 @@ export const CreditsBadgeClient = ({
   const progressColor =
     usedPercent > 90 ? '[&>div]:bg-destructive' : '[&>div]:bg-primary'
 
-  const tooltipText = `${formatNumber(available)}/${formatNumber(monthlyLimit)} créditos IA (${availablePercent}%)`
-
   const linkContent = (
     <Link
       href={`/org/${orgSlug}/settings/credits`}
       className={cn(
-        'ease-[cubic-bezier(0.25,0.76,0.35,1)] group flex items-center rounded-md py-4 pl-0 pr-0 text-sm font-medium text-muted-foreground transition-all duration-1000 hover:bg-primary/10 hover:text-primary',
-        isCollapsed ? 'ml-2 mr-2 pl-3 pr-0' : 'px-3',
+        'ease-[cubic-bezier(0.25,0.76,0.35,1)] group flex items-center rounded-md py-4 text-sm font-medium text-muted-foreground transition-all duration-1000 hover:bg-primary/10 hover:text-primary',
+        isCollapsed ? 'mx-2 justify-center' : 'px-3',
       )}
     >
       <div className="flex items-center">
@@ -77,8 +75,23 @@ export const CreditsBadgeClient = ({
     return (
       <Tooltip delayDuration={0}>
         <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
-        <TooltipContent side="right" sideOffset={10}>
-          {tooltipText}
+        <TooltipContent side="right" sideOffset={10} className="w-44 space-y-1.5 p-3">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-medium">Créditos IA</span>
+            <span className={cn('tabular-nums', usedPercent > 90 ? 'text-red-300' : 'text-white/70')}>{availablePercent}%</span>
+          </div>
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/20">
+            <div
+              className={cn(
+                'h-full rounded-full transition-all',
+                usedPercent > 90 ? 'bg-red-300' : 'bg-white/90',
+              )}
+              style={{ width: `${availablePercent}%` }}
+            />
+          </div>
+          <p className="text-[10px] text-white/50">
+            {formatNumber(available)} / {formatNumber(monthlyLimit)} disponíveis
+          </p>
         </TooltipContent>
       </Tooltip>
     )
