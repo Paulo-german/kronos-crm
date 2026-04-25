@@ -25,19 +25,17 @@ export const SidebarItem = ({ href, label, badge, icon, dataTour }: SidebarItemP
   const { isCollapsed } = useSidebar()
   const isActive = pathname === href || pathname.startsWith(`${href}/`)
 
-  const linkContent = (
+  const link = (
     <Link
       href={href}
       data-tour={dataTour}
       className={cn(
-        'ease-[cubic-bezier(0.25,0.76,0.35,1)] group flex items-center rounded-md py-2 pl-0 pr-0 text-sm font-medium transition-all duration-1000 hover:bg-primary/10 hover:text-primary',
-        isActive
-          ? 'bg-primary/15 text-primary shadow-[0_0_20px_-10px_var(--color-kronos-purple)]'
-          : 'text-muted-foreground',
-        isCollapsed ? 'ml-2 mr-2 pl-3 pr-0' : 'px-3',
+        'ease-[cubic-bezier(0.25,0.76,0.35,1)] group flex items-center rounded-md py-2 text-sm font-medium transition-all duration-300 hover:bg-primary/10 hover:text-primary',
+        isActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground',
+        isCollapsed ? 'mx-2 justify-center' : 'px-3',
       )}
     >
-      <div className="flex items-center">{icon}</div>
+      <div className="flex items-center transition-transform duration-200 group-hover:scale-110">{icon}</div>
       <span
         className={cn(
           'ease-[cubic-bezier(0.25,0.76,0.35,1)] flex justify-between overflow-hidden whitespace-nowrap transition-all duration-1000',
@@ -61,13 +59,21 @@ export const SidebarItem = ({ href, label, badge, icon, dataTour }: SidebarItemP
   if (isCollapsed) {
     return (
       <Tooltip delayDuration={0}>
-        <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
-        <TooltipContent side="right" sideOffset={10}>
-          {label}
+        <TooltipTrigger asChild>{link}</TooltipTrigger>
+        <TooltipContent side="right" sideOffset={10} className="flex items-center gap-2 px-3 py-2">
+          <span className="text-white/60 [&_svg]:h-3.5 [&_svg]:w-3.5">{icon}</span>
+          <span className="font-medium">{label}</span>
         </TooltipContent>
       </Tooltip>
     )
   }
 
-  return linkContent
+  return (
+    <div className="relative">
+      {isActive && (
+        <span className="absolute left-0 top-1/2 h-[60%] w-[3px] -translate-y-1/2 rounded-r-full bg-primary" />
+      )}
+      {link}
+    </div>
+  )
 }

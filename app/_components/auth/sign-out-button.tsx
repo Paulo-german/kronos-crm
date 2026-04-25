@@ -22,7 +22,7 @@ export const SignOutButton = ({ isCollapsed = false }: SignOutButtonProps) => {
       onClick={() => execute()}
       className={cn(
         'ease-[cubic-bezier(0.25,0.76,0.35,1)] group flex cursor-pointer items-center rounded-md py-2 text-sm font-medium text-muted-foreground transition-all duration-500 hover:bg-destructive/10 hover:text-destructive',
-        isCollapsed ? 'ml-2 mr-2 pl-3 pr-0' : 'w-full justify-start px-3',
+        isCollapsed ? 'mx-2 justify-center' : 'w-full justify-start px-3',
         status === 'executing' && 'pointer-events-none opacity-50',
       )}
     >
@@ -44,8 +44,9 @@ export const SignOutButton = ({ isCollapsed = false }: SignOutButtonProps) => {
     return (
       <Tooltip delayDuration={0}>
         <TooltipTrigger asChild>{buttonContent}</TooltipTrigger>
-        <TooltipContent side="right" sideOffset={10}>
-          {status === 'executing' ? 'Saindo...' : 'Sair'}
+        <TooltipContent side="right" sideOffset={10} className="flex items-center gap-2 bg-destructive px-3 py-2">
+          <LogOut className="h-3.5 w-3.5 text-white/70" />
+          <span>{status === 'executing' ? 'Saindo...' : 'Encerrar sessão'}</span>
         </TooltipContent>
       </Tooltip>
     )

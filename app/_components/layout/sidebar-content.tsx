@@ -53,7 +53,7 @@ export const SidebarContent = ({
   }
 
   const sectionTitleClass = cn(
-    'ease-[cubic-bezier(0.25,0.76,0.35,1)] mb-1 block overflow-hidden whitespace-nowrap text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60 transition-all duration-700',
+    'ease-[cubic-bezier(0.25,0.76,0.35,1)] mb-1.5 mt-1 flex items-center gap-2 overflow-hidden whitespace-nowrap transition-all duration-700',
     isCollapsed ? 'h-0 opacity-0' : 'h-auto px-3 opacity-100',
   )
 
@@ -119,7 +119,10 @@ export const SidebarContent = ({
           {/* Módulo: CRM */}
           {hasModule('crm') && (
             <div>
-              <span className={sectionTitleClass}>CRM</span>
+              <div className={sectionTitleClass}>
+                <span className="h-px flex-1 bg-border/50" />
+                <span className="shrink-0 text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground/40">CRM</span>
+              </div>
               <SidebarItem
                 href={buildHref('/crm/tasks')}
                 label="Tarefas"
@@ -142,7 +145,10 @@ export const SidebarContent = ({
           {/* Módulo: Inbox */}
           {hasModule('inbox') && (
             <div>
-              <span className={sectionTitleClass}>Inbox</span>
+              <div className={sectionTitleClass}>
+                <span className="h-px flex-1 bg-border/50" />
+                <span className="shrink-0 text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground/40">Inbox</span>
+              </div>
               <SidebarItem
                 href={buildHref('/inbox')}
                 label="Conversas"
@@ -155,7 +161,10 @@ export const SidebarContent = ({
           {/* Módulo: AI Agent */}
           {hasModule('ai-agent') && (
             <div>
-              <span className={sectionTitleClass}>Agentes</span>
+              <div className={sectionTitleClass}>
+                <span className="h-px flex-1 bg-border/50" />
+                <span className="shrink-0 text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground/40">Agentes</span>
+              </div>
               <SidebarItem
                 href={buildHref('/ai-agent')}
                 label="Agentes"
