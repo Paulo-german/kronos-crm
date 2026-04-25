@@ -70,14 +70,14 @@ export const SidebarContent = ({
           href={buildHref('/dashboard')}
           className="flex items-center gap-2 font-bold text-foreground"
         >
-          <KronosLogo />
+          <KronosLogo className="text-primary" />
           <span
             className={cn(
               'ease-[cubic-bezier(0.25,0.76,0.35,1)] overflow-hidden whitespace-nowrap text-xl font-bold tracking-tight transition-all duration-700',
               isCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100 delay-100',
             )}
           >
-            KRONOS
+            KRONOS HUB
           </span>
         </Link>
       </div>
