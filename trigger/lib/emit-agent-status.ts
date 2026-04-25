@@ -17,9 +17,11 @@ interface EmitArgs {
 }
 
 export async function emitAgentStatus(args: EmitArgs): Promise<void> {
-  const channel = supabaseAdmin.channel(orgAgentStatusChannelName(args.organizationId))
+  let channel: ReturnType<typeof supabaseAdmin.channel> | null = null
 
   try {
+    channel = supabaseAdmin.channel(orgAgentStatusChannelName(args.organizationId))
+
     const payload: AgentStatusPayload = {
       conversationId: args.conversationId,
       organizationId: args.organizationId,
@@ -63,6 +65,6 @@ export async function emitAgentStatus(args: EmitArgs): Promise<void> {
     })
   } finally {
     // Cleanup do handle efêmero — evita leak de conexão WebSocket no worker
-    await supabaseAdmin.removeChannel(channel)
+    if (channel) await supabaseAdmin.removeChannel(channel)
   }
 }
