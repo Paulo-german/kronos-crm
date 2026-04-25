@@ -73,11 +73,12 @@ export const SidebarContent = ({
           <KronosLogo className="text-primary" />
           <span
             className={cn(
-              'ease-[cubic-bezier(0.25,0.76,0.35,1)] overflow-hidden whitespace-nowrap text-xl font-bold tracking-tight transition-all duration-700',
+              'ease-[cubic-bezier(0.25,0.76,0.35,1)] overflow-hidden whitespace-nowrap transition-all duration-700',
               isCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100 delay-100',
             )}
           >
-            KRONOS HUB
+            <span className="text-xl font-bold tracking-tight">KRONOS</span>
+            <span className="-translate-y-1 relative ml-1 align-top text-[10px] font-semibold tracking-widest text-primary">HUB</span>
           </span>
         </Link>
       </div>
