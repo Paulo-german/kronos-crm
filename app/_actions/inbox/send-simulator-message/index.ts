@@ -49,6 +49,7 @@ export const sendSimulatorMessage = orgActionClient
             agent: {
               select: {
                 id: true,
+                name: true,
                 isActive: true,
                 debounceSeconds: true,
                 businessHoursEnabled: true,
@@ -66,6 +67,7 @@ export const sendSimulatorMessage = orgActionClient
                     agent: {
                       select: {
                         id: true,
+                        name: true,
                         isActive: true,
                         debounceSeconds: true,
                         businessHoursEnabled: true,

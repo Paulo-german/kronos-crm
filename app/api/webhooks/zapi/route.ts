@@ -16,6 +16,7 @@ import type { BusinessHoursConfig } from '@/_actions/agent/update-agent/schema'
 import type { NormalizedWhatsAppMessage } from '@/_lib/evolution/types'
 import { AUTO_REOPEN_FIELDS } from '@/_lib/conversation/auto-reopen'
 import { hasActivePlan } from '@/_lib/billing/has-active-plan'
+import { broadcastAgentStatus } from '@/_lib/inbox/broadcast-agent-status'
 
 export async function POST(req: Request) {
   const t0 = Date.now()
@@ -72,6 +73,7 @@ export async function POST(req: Request) {
       agent: {
         select: {
           id: true,
+          name: true,
           isActive: true,
           debounceSeconds: true,
           businessHoursEnabled: true,
@@ -89,6 +91,7 @@ export async function POST(req: Request) {
               agent: {
                 select: {
                   id: true,
+                  name: true,
                   isActive: true,
                   debounceSeconds: true,
                   businessHoursEnabled: true,
@@ -622,6 +625,17 @@ export async function POST(req: Request) {
     ),
     // Z-API nao tem API documentada de typing presence — skip
   ])
+
+  // Emite waiting imediatamente se há debounce — evita que o usuário ache que o agente parou
+  if (resolvedAgent.debounceSeconds > 0) {
+    void broadcastAgentStatus({
+      conversationId,
+      organizationId: orgId,
+      state: 'waiting',
+      agentName: resolvedAgent.agentName ?? undefined,
+      updatedAt: new Date().toISOString(),
+    })
+  }
 
   revalidateTag(`conversations:${orgId}`)
   revalidateTag(`conversation-messages:${conversationId}`)

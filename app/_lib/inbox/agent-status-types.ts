@@ -1,4 +1,5 @@
 export type AgentStatusState =
+  | 'waiting'
   | 'thinking'
   | 'running_tool'
   | 'composing'
@@ -8,7 +9,7 @@ export interface AgentStatusPayload {
   conversationId: string
   organizationId: string
   state: AgentStatusState
-  agentName: string
+  agentName?: string
   toolName?: string
   updatedAt: string
   terminalReason?: 'completed' | 'skipped' | 'failed'

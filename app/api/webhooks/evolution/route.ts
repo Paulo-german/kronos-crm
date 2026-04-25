@@ -16,6 +16,7 @@ import type { BusinessHoursConfig } from '@/_actions/agent/update-agent/schema'
 import { resolveEvolutionCredentialsByInstanceName, resolveWebhookSecretByInstanceName } from '@/_lib/evolution/resolve-credentials'
 import { AUTO_REOPEN_FIELDS } from '@/_lib/conversation/auto-reopen'
 import { hasActivePlan } from '@/_lib/billing/has-active-plan'
+import { broadcastAgentStatus } from '@/_lib/inbox/broadcast-agent-status'
 
 export async function POST(req: Request) {
   const t0 = Date.now()
@@ -156,6 +157,7 @@ export async function POST(req: Request) {
       agent: {
         select: {
           id: true,
+          name: true,
           isActive: true,
           debounceSeconds: true,
           businessHoursEnabled: true,
@@ -173,6 +175,7 @@ export async function POST(req: Request) {
               agent: {
                 select: {
                   id: true,
+                  name: true,
                   isActive: true,
                   debounceSeconds: true,
                   businessHoursEnabled: true,
@@ -714,6 +717,17 @@ export async function POST(req: Request) {
     // "Digitando..." imediato — usuário vê feedback antes do debounce expirar
     sendPresence(instanceName, remoteJid, 'composing', inboxCredentials),
   ])
+
+  // Emite waiting imediatamente se há debounce — evita que o usuário ache que o agente parou
+  if (resolvedAgent.debounceSeconds > 0) {
+    void broadcastAgentStatus({
+      conversationId,
+      organizationId: orgId,
+      state: 'waiting',
+      agentName: resolvedAgent.agentName ?? undefined,
+      updatedAt: new Date().toISOString(),
+    })
+  }
 
   // Invalidar cache do inbox
   revalidateTag(`conversations:${orgId}`)

@@ -78,7 +78,7 @@ export function useAgentStatus({
 
   return {
     state: activePayload.state,
-    agentName: activePayload.agentName,
+    agentName: activePayload.agentName ?? null,
     toolName: activePayload.toolName,
     label,
     isActive: true,

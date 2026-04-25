@@ -24,28 +24,34 @@ const TOOL_LABELS: Record<string, string> = {
 interface AgentStatusLabelArgs {
   state: AgentStatusState
   toolName?: string
-  agentName: string
+  agentName?: string
 }
 
 export function getAgentStatusLabel(payload: AgentStatusLabelArgs): string {
   if (payload.state === 'idle') return ''
 
+  const name = payload.agentName ?? 'Agente'
+
+  if (payload.state === 'waiting') {
+    return `${name} aguardando...`
+  }
+
   if (payload.state === 'thinking') {
-    return `${payload.agentName} está pensando...`
+    return `${name} está pensando...`
   }
 
   if (payload.state === 'composing') {
-    return `${payload.agentName} está escrevendo...`
+    return `${name} está escrevendo...`
   }
 
   // running_tool
   if (payload.toolName) {
     const toolLabel = TOOL_LABELS[payload.toolName]
     if (toolLabel) {
-      return `${payload.agentName} está ${toolLabel}...`
+      return `${name} está ${toolLabel}...`
     }
-    return `${payload.agentName} está executando ação...`
+    return `${name} está executando ação...`
   }
 
-  return `${payload.agentName} está processando...`
+  return `${name} está processando...`
 }

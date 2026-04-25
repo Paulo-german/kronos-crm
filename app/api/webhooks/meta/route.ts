@@ -18,6 +18,7 @@ import type { BusinessHoursConfig } from '@/_actions/agent/update-agent/schema'
 import type { NormalizedWhatsAppMessage } from '@/_lib/evolution/types'
 import { AUTO_REOPEN_FIELDS } from '@/_lib/conversation/auto-reopen'
 import { hasActivePlan } from '@/_lib/billing/has-active-plan'
+import { broadcastAgentStatus } from '@/_lib/inbox/broadcast-agent-status'
 
 // -----------------------------------------------------------------------------
 // GET — Verificacao do webhook (Meta chama ao configurar)
@@ -174,6 +175,7 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
       agent: {
         select: {
           id: true,
+          name: true,
           isActive: true,
           debounceSeconds: true,
           businessHoursEnabled: true,
@@ -191,6 +193,7 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
               agent: {
                 select: {
                   id: true,
+                  name: true,
                   isActive: true,
                   debounceSeconds: true,
                   businessHoursEnabled: true,
@@ -622,6 +625,17 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
       ),
       // Meta Cloud API nao suporta typing presence para business — pulado intencionalmente
     ])
+
+    // Emite waiting imediatamente se há debounce — evita que o usuário ache que o agente parou
+    if (resolvedAgent.debounceSeconds > 0) {
+      void broadcastAgentStatus({
+        conversationId,
+        organizationId: orgId,
+        state: 'waiting',
+        agentName: resolvedAgent.agentName ?? undefined,
+        updatedAt: new Date().toISOString(),
+      })
+    }
 
     revalidateTag(`conversations:${orgId}`)
     revalidateTag(`conversation-messages:${conversationId}`)

@@ -1,70 +1,40 @@
 import { logger } from '@trigger.dev/sdk/v3'
-import { supabaseAdmin } from '@/_lib/supabase/admin'
-import {
-  AGENT_STATUS_EVENT,
-  orgAgentStatusChannelName,
-  type AgentStatusPayload,
-  type AgentStatusState,
-} from '@/_lib/inbox/agent-status-types'
+import { broadcastAgentStatus } from '@/_lib/inbox/broadcast-agent-status'
+import type { AgentStatusPayload, AgentStatusState } from '@/_lib/inbox/agent-status-types'
 
 interface EmitArgs {
   conversationId: string
   organizationId: string
   state: AgentStatusState
-  agentName: string
+  agentName?: string
   toolName?: string
   terminalReason?: AgentStatusPayload['terminalReason']
 }
 
 export async function emitAgentStatus(args: EmitArgs): Promise<void> {
-  let channel: ReturnType<typeof supabaseAdmin.channel> | null = null
+  const result = await broadcastAgentStatus({
+    conversationId: args.conversationId,
+    organizationId: args.organizationId,
+    state: args.state,
+    agentName: args.agentName,
+    toolName: args.toolName,
+    updatedAt: new Date().toISOString(),
+    terminalReason: args.terminalReason,
+  })
 
-  try {
-    channel = supabaseAdmin.channel(orgAgentStatusChannelName(args.organizationId))
-
-    const payload: AgentStatusPayload = {
+  if (result === 'failed') {
+    logger.warn('emitAgentStatus: broadcast failed', {
       conversationId: args.conversationId,
       organizationId: args.organizationId,
       state: args.state,
-      agentName: args.agentName,
-      toolName: args.toolName,
-      updatedAt: new Date().toISOString(),
-      terminalReason: args.terminalReason,
-    }
-
-    // RealtimeChannelSendResponse é uma string: 'ok' | 'timed out' | 'rate limited' | 'error'
-    const response = await channel.send({
-      type: 'broadcast',
-      event: AGENT_STATUS_EVENT,
-      payload,
     })
-
-    if (response !== 'ok') {
-      logger.warn('emitAgentStatus: broadcast failed', {
-        conversationId: args.conversationId,
-        organizationId: args.organizationId,
-        state: args.state,
-        response,
-      })
-      return
-    }
-
-    logger.info('emitAgentStatus: broadcast sent', {
-      conversationId: args.conversationId,
-      state: args.state,
-      toolName: args.toolName,
-      terminalReason: args.terminalReason,
-    })
-  } catch (error) {
-    // emitAgentStatus nunca lança — falha de observabilidade não pode derrubar o agente
-    logger.warn('emitAgentStatus: unexpected error', {
-      conversationId: args.conversationId,
-      organizationId: args.organizationId,
-      state: args.state,
-      error: error instanceof Error ? error.message : String(error),
-    })
-  } finally {
-    // Cleanup do handle efêmero — evita leak de conexão WebSocket no worker
-    if (channel) await supabaseAdmin.removeChannel(channel)
+    return
   }
+
+  logger.info('emitAgentStatus: broadcast sent', {
+    conversationId: args.conversationId,
+    state: args.state,
+    toolName: args.toolName,
+    terminalReason: args.terminalReason,
+  })
 }

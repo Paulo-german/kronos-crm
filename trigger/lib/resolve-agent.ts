@@ -6,6 +6,7 @@ import { db } from '@/_lib/prisma'
 
 export interface ResolvedAgent {
   agentId: string
+  agentName: string | null
   isActive: boolean
   debounceSeconds: number
   businessHoursEnabled: boolean
@@ -23,6 +24,7 @@ export interface InboxWithGroupContext {
   agentGroupId: string | null
   agent: {
     id: string
+    name: string
     isActive: boolean
     debounceSeconds: number
     businessHoursEnabled: boolean
@@ -36,6 +38,7 @@ export interface InboxWithGroupContext {
     members: Array<{
       agent: {
         id: string
+        name: string
         isActive: boolean
         debounceSeconds: number
         businessHoursEnabled: boolean
@@ -70,6 +73,7 @@ export async function resolveAgentForConversation(
   if (inbox.agentId && inbox.agent) {
     return {
       agentId: inbox.agent.id,
+      agentName: inbox.agent.name,
       isActive: inbox.agent.isActive,
       debounceSeconds: inbox.agent.debounceSeconds,
       businessHoursEnabled: inbox.agent.businessHoursEnabled,
@@ -92,6 +96,7 @@ export async function resolveAgentForConversation(
         where: { id: conversation.activeAgentId },
         select: {
           id: true,
+          name: true,
           isActive: true,
           debounceSeconds: true,
           businessHoursEnabled: true,
@@ -105,6 +110,7 @@ export async function resolveAgentForConversation(
       if (activeWorker?.isActive) {
         return {
           agentId: activeWorker.id,
+          agentName: activeWorker.name,
           isActive: activeWorker.isActive,
           debounceSeconds: activeWorker.debounceSeconds,
           businessHoursEnabled: activeWorker.businessHoursEnabled,
@@ -123,6 +129,7 @@ export async function resolveAgentForConversation(
     // Business hours check ocorre DEPOIS do roteamento, com a config do worker resolvido.
     return {
       agentId: '', // será preenchido pelo router
+      agentName: null,
       isActive: true,
       debounceSeconds: 0, // router processa imediatamente (sem debounce extra)
       businessHoursEnabled: false, // router opera 24h
