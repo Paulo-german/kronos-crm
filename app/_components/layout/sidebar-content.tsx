@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import {
+  Home,
   LayoutDashboard,
   Users,
   Kanban,
@@ -103,6 +104,12 @@ export const SidebarContent = ({
         <div className="grid gap-1 space-y-4">
           {/* Globais - sempre visíveis */}
           <div>
+            <SidebarItem
+              href={buildHref('/home')}
+              label="Início"
+              icon={<Home className="h-4 w-4" />}
+              dataTour="home"
+            />
             <SidebarItem
               href={buildHref('/dashboard')}
               label="Dashboard"
