@@ -87,7 +87,7 @@ export const SidebarContent = ({
       {/* Org Switcher */}
       <div
         className={cn(
-          'border-b border-border/50 py-2',
+          'ease-[cubic-bezier(0.25,0.76,0.35,1)] border-b border-border/50 py-2 transition-[padding] duration-500',
           isCollapsed ? 'px-2' : 'px-4',
         )}
       >
@@ -97,13 +97,13 @@ export const SidebarContent = ({
       {/* Menu */}
       <nav
         className={cn(
-          'flex-1 overflow-y-auto py-4',
+          'ease-[cubic-bezier(0.25,0.76,0.35,1)] flex-1 overflow-y-auto py-4 transition-[padding] duration-500',
           isCollapsed ? 'px-2' : 'px-4',
         )}
       >
         <div className="grid gap-1 space-y-4">
           {/* Globais - sempre visíveis */}
-          <div>
+          <div className="min-w-0">
             <SidebarItem
               href={buildHref('/home')}
               label="Início"
@@ -126,7 +126,7 @@ export const SidebarContent = ({
 
           {/* Módulo: CRM */}
           {hasModule('crm') && (
-            <div>
+            <div className="min-w-0">
               <div className={sectionTitleClass}>
                 <span className="h-px flex-1 bg-border/50" />
                 <span className="shrink-0 text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground/40">CRM</span>
@@ -152,7 +152,7 @@ export const SidebarContent = ({
 
           {/* Módulo: Inbox */}
           {hasModule('inbox') && (
-            <div>
+            <div className="min-w-0">
               <div className={sectionTitleClass}>
                 <span className="h-px flex-1 bg-border/50" />
                 <span className="shrink-0 text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground/40">Inbox</span>
@@ -168,7 +168,7 @@ export const SidebarContent = ({
 
           {/* Módulo: AI Agent */}
           {hasModule('ai-agent') && (
-            <div>
+            <div className="min-w-0">
               <div className={sectionTitleClass}>
                 <span className="h-px flex-1 bg-border/50" />
                 <span className="shrink-0 text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground/40">Agentes</span>
@@ -198,7 +198,7 @@ export const SidebarContent = ({
       {/* Ajustes */}
       <div
         className={cn(
-          'border-t border-border/50 py-3',
+          'ease-[cubic-bezier(0.25,0.76,0.35,1)] border-t border-border/50 py-3 transition-[padding] duration-500',
           isCollapsed ? 'px-2' : 'px-4',
         )}
       >

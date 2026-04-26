@@ -27,7 +27,7 @@ export const AppSidebar = ({
     <aside
       className={cn(
         'relative hidden h-full flex-col border-r border-border/50 bg-sidebar text-sidebar-foreground transition-all duration-500 ease-in-out md:flex',
-        isCollapsed ? 'w-[72px]' : 'w-64',
+        isCollapsed ? 'w-[73px]' : 'w-64',
       )}
     >
       {/* Floating Toggle Button */}

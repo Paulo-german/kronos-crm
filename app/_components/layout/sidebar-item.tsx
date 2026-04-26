@@ -25,55 +25,44 @@ export const SidebarItem = ({ href, label, badge, icon, dataTour }: SidebarItemP
   const { isCollapsed } = useSidebar()
   const isActive = pathname === href || pathname.startsWith(`${href}/`)
 
-  const link = (
-    <Link
-      href={href}
-      data-tour={dataTour}
-      className={cn(
-        'ease-[cubic-bezier(0.25,0.76,0.35,1)] group flex items-center rounded-md py-2 text-sm font-medium transition-all duration-300 hover:bg-primary/10 hover:text-primary',
-        isActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground',
-        isCollapsed ? 'mx-2 justify-center' : 'px-3',
-      )}
-    >
-      <div className="flex items-center transition-transform duration-200 group-hover:scale-110">{icon}</div>
-      <span
-        className={cn(
-          'ease-[cubic-bezier(0.25,0.76,0.35,1)] flex justify-between overflow-hidden whitespace-nowrap transition-all duration-1000',
-          isCollapsed ? 'w-0 opacity-0' : 'ml-3 w-full opacity-100 delay-100',
-        )}
-      >
-        {label}
-        {badge && (
-          <Badge className="rounded-full bg-primary/10 text-primary hover:bg-primary/10">
-            <span className="relative mr-2 flex">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75"></span>
-              <CircleIcon size={10} className="relative fill-primary" />
-            </span>
-            {badge}
-          </Badge>
-        )}
-      </span>
-    </Link>
-  )
-
-  if (isCollapsed) {
-    return (
-      <Tooltip delayDuration={0}>
-        <TooltipTrigger asChild>{link}</TooltipTrigger>
-        <TooltipContent side="right" sideOffset={10} className="flex items-center gap-2 px-3 py-2">
+  return (
+    <Tooltip delayDuration={300}>
+      <TooltipTrigger asChild>
+        <Link
+          href={href}
+          data-tour={dataTour}
+          className={cn(
+            'ease-[cubic-bezier(0.25,0.76,0.35,1)] group flex items-center rounded-md py-2 text-sm font-medium transition-all duration-500 hover:bg-primary/10 hover:text-primary',
+            isActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground',
+            isCollapsed ? 'mx-2 px-3' : 'px-3',
+          )}
+        >
+          <div className="flex items-center transition-transform duration-200 group-hover:scale-110">{icon}</div>
+          <span
+            className={cn(
+              'ease-[cubic-bezier(0.25,0.76,0.35,1)] flex min-w-0 justify-between overflow-hidden whitespace-nowrap transition-all duration-1000',
+              isCollapsed ? 'w-0 opacity-0' : 'ml-3 w-full opacity-100 delay-100',
+            )}
+          >
+            {label}
+            {badge && (
+              <Badge className="rounded-full bg-primary/10 text-primary hover:bg-primary/10">
+                <span className="relative mr-2 flex">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75"></span>
+                  <CircleIcon size={10} className="relative fill-primary" />
+                </span>
+                {badge}
+              </Badge>
+            )}
+          </span>
+        </Link>
+      </TooltipTrigger>
+      {isCollapsed && (
+        <TooltipContent side="right" sideOffset={10} className="flex items-center gap-2 px-3 py-2 shadow-none">
           <span className="text-white/60 [&_svg]:h-3.5 [&_svg]:w-3.5">{icon}</span>
           <span className="font-medium">{label}</span>
         </TooltipContent>
-      </Tooltip>
-    )
-  }
-
-  return (
-    <div className="relative">
-      {isActive && (
-        <span className="absolute left-0 top-1/2 h-[60%] w-[3px] -translate-y-1/2 rounded-r-full bg-primary" />
       )}
-      {link}
-    </div>
+    </Tooltip>
   )
 }

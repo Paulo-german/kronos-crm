@@ -84,7 +84,7 @@ export function OrgSwitcher({ organizations }: OrgSwitcherProps) {
       className={cn(
         'ease-[cubic-bezier(0.25,0.76,0.35,1)] group flex items-center rounded-md py-2 text-sm font-medium text-muted-foreground transition-all duration-500',
         'cursor-pointer hover:bg-primary/10 hover:text-primary',
-        isCollapsed ? 'mx-2 justify-center' : 'px-3',
+        isCollapsed ? 'mx-2 px-2.5' : 'px-2.5',
       )}
     >
       <div className="flex items-center">
@@ -92,7 +92,7 @@ export function OrgSwitcher({ organizations }: OrgSwitcherProps) {
       </div>
       <span
         className={cn(
-          'ease-[cubic-bezier(0.25,0.76,0.35,1)] flex items-center justify-between overflow-hidden whitespace-nowrap transition-all duration-500',
+          'ease-[cubic-bezier(0.25,0.76,0.35,1)] flex min-w-0 items-center justify-between overflow-hidden whitespace-nowrap transition-all duration-500',
           isCollapsed ? 'w-0 opacity-0' : 'ml-3 w-full opacity-100 delay-100',
         )}
       >
@@ -104,12 +104,12 @@ export function OrgSwitcher({ organizations }: OrgSwitcherProps) {
 
   return (
     <DropdownMenu>
-      {isCollapsed ? (
-        <Tooltip delayDuration={0}>
-          <TooltipTrigger asChild>
-            <DropdownMenuTrigger asChild>{content}</DropdownMenuTrigger>
-          </TooltipTrigger>
-          <TooltipContent side="right" sideOffset={10} className="w-48 space-y-1 p-3">
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>{content}</DropdownMenuTrigger>
+        </TooltipTrigger>
+        {isCollapsed && (
+          <TooltipContent side="right" sideOffset={10} className="w-48 space-y-1 p-3 shadow-none">
             <div className="flex items-center gap-2">
               <OrgAvatar name={organization.name} active onDark />
               <span className="truncate font-medium">{organization.name}</span>
@@ -118,10 +118,8 @@ export function OrgSwitcher({ organizations }: OrgSwitcherProps) {
               {roleLabelMap[userRole]} · Clique para trocar
             </p>
           </TooltipContent>
-        </Tooltip>
-      ) : (
-        <DropdownMenuTrigger asChild>{content}</DropdownMenuTrigger>
-      )}
+        )}
+      </Tooltip>
 
       <DropdownMenuContent
         side={isCollapsed ? 'right' : 'bottom'}
