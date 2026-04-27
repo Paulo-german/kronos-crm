@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import {
   Home,
@@ -16,7 +15,6 @@ import {
   GraduationCap,
 } from 'lucide-react'
 import { SidebarItem } from '@/_components/layout/sidebar-item'
-import { KronosLogo } from '@/_components/icons/kronos-logo'
 import { SignOutButton } from '@/_components/auth/sign-out-button'
 import { useSidebar } from '@/_providers/sidebar-provider'
 import { cn } from '@/_lib/utils'
@@ -60,30 +58,6 @@ export const SidebarContent = ({
 
   return (
     <div className="flex h-full flex-col" onClick={onNavigate}>
-      {/* Header */}
-      <div
-        className={cn(
-          'ease-[cubic-bezier(0.25,0.76,0.35,1)] flex h-16 items-center border-b border-border/50 transition-[padding] duration-700',
-          isCollapsed ? 'pl-6 pr-0' : 'px-6',
-        )}
-      >
-        <Link
-          href={buildHref('/dashboard')}
-          className="flex items-center gap-2 font-bold text-foreground"
-        >
-          <KronosLogo className="text-primary" />
-          <span
-            className={cn(
-              'ease-[cubic-bezier(0.25,0.76,0.35,1)] overflow-hidden whitespace-nowrap transition-all duration-700',
-              isCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100 delay-100',
-            )}
-          >
-            <span className="text-xl font-bold tracking-tight">KRONOS</span>
-            <span className="-translate-y-1 relative ml-1 align-top text-[10px] font-semibold tracking-widest text-primary">HUB</span>
-          </span>
-        </Link>
-      </div>
-
       {/* Org Switcher */}
       <div
         className={cn(

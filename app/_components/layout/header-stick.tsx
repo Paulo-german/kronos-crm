@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { usePathname } from 'next/navigation'
-import { cn } from '@/_lib/utils'
+import Link from 'next/link'
+import { useParams } from 'next/navigation'
 import { ThemeToggle } from '@/_components/theme-toggle'
 import { GlobalSearch } from '@/_components/global-search'
 import { RevalidateCacheButton } from '@/_components/layout/revalidate-cache-button'
+import { KronosLogo } from '@/_components/icons/kronos-logo'
 
 const DEV_EMAILS = ['paulo.roriz01@gmail.com', 'paulo.german777@gmail.com']
 
@@ -14,36 +14,21 @@ interface HeaderStickProps {
 }
 
 const HeaderStick = ({ userEmail }: HeaderStickProps) => {
-  const [hidden, setHidden] = useState(false)
-  const pathname = usePathname()
-  const isInbox = /\/inbox(\/|$)/.test(pathname)
-
-  useEffect(() => {
-    const main = document.querySelector('main')
-    if (!main) return
-
-    let lastScrollTop = 0
-
-    const handleScroll = () => {
-      const scrollTop = main.scrollTop
-      setHidden(scrollTop > 50 && scrollTop > lastScrollTop)
-      lastScrollTop = scrollTop
-    }
-
-    main.addEventListener('scroll', handleScroll, { passive: true })
-    return () => main.removeEventListener('scroll', handleScroll)
-  }, [])
-
-  if (isInbox) return null
+  const params = useParams()
+  const orgSlug = params?.orgSlug as string | undefined
 
   return (
-    <header
-      className={cn(
-        'absolute right-8 top-0 z-50 transition-transform duration-300',
-        hidden && '-translate-y-full',
-      )}
-    >
-      <div className="flex items-center justify-center gap-1 rounded-b-xl bg-secondary/50 px-1 py-1 transition-all hover:bg-secondary/90">
+    <header className="flex h-14 shrink-0 items-center justify-between border-b border-border/50 bg-background px-6">
+      <Link
+        href={orgSlug ? `/org/${orgSlug}/dashboard` : '/'}
+        className="flex items-center gap-2 font-bold text-foreground"
+      >
+        <KronosLogo className="text-primary" />
+        <span className="text-xl font-bold tracking-tight">KRONOS</span>
+        <span className="-translate-y-1 relative ml-0.5 align-top text-[10px] font-semibold tracking-widest text-primary">HUB</span>
+      </Link>
+
+      <div className="flex items-center gap-1">
         {userEmail && DEV_EMAILS.includes(userEmail) && <RevalidateCacheButton />}
         <GlobalSearch />
         <ThemeToggle />
