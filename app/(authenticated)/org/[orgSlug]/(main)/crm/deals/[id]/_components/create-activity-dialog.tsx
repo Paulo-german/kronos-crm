@@ -3,6 +3,7 @@
 import { useAction } from 'next-safe-action/hooks'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
@@ -20,40 +21,36 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from '@/_components/ui/form'
 import { createActivity } from '@/_actions/deal/create-activity'
-import {
-  createActivitySchema,
-  type CreateActivityInput,
-} from '@/_actions/deal/create-activity/schema'
 import { MANUAL_ACTIVITY_CONFIG, type ManualActivityType } from '@/_lib/deal/activity-config'
-import { cn } from '@/_lib/utils'
 
 interface CreateActivityDialogProps {
   dealId: string
   open: boolean
   onOpenChange: (open: boolean) => void
+  initialType?: ManualActivityType
 }
 
-const ACTIVITY_TYPES = Object.entries(MANUAL_ACTIVITY_CONFIG) as [
-  ManualActivityType,
-  (typeof MANUAL_ACTIVITY_CONFIG)[ManualActivityType],
-][]
+const formSchema = z.object({
+  content: z.string().min(1, 'Conteúdo é obrigatório'),
+})
+
+type FormValues = z.infer<typeof formSchema>
 
 export function CreateActivityDialog({
   dealId,
   open,
   onOpenChange,
+  initialType = 'note',
 }: CreateActivityDialogProps) {
-  const form = useForm<CreateActivityInput>({
-    resolver: zodResolver(createActivitySchema),
-    defaultValues: {
-      dealId,
-      type: 'note',
-      content: '',
-    },
+  const config = MANUAL_ACTIVITY_CONFIG[initialType]
+  const Icon = config.icon
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: { content: '' },
   })
 
   const { execute, isPending } = useAction(createActivity, {
@@ -61,24 +58,32 @@ export function CreateActivityDialog({
       toast.success('Atividade registrada com sucesso!', {
         position: 'bottom-right',
       })
-      form.reset({ dealId, type: 'note', content: '' })
+      form.reset()
       onOpenChange(false)
     },
     onError: ({ error }) => {
-      toast.error(error.serverError || 'Erro ao registrar atividade.', {
-        position: 'bottom-right',
-      })
+      const validationMessage = error.validationErrors
+        ? Object.values(error.validationErrors)
+            .flatMap((field) =>
+              Array.isArray((field as { _errors?: string[] })?._errors)
+                ? (field as { _errors: string[] })._errors
+                : [],
+            )
+            .join(', ')
+        : null
+      toast.error(
+        error.serverError ?? validationMessage ?? 'Erro ao registrar atividade.',
+        { position: 'bottom-right' },
+      )
     },
   })
 
-  const onSubmit = (data: CreateActivityInput) => {
-    execute(data)
+  const onSubmit = (data: FormValues) => {
+    execute({ dealId, type: initialType, content: data.content })
   }
 
   const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen) {
-      form.reset({ dealId, type: 'note', content: '' })
-    }
+    if (!nextOpen) form.reset()
     onOpenChange(nextOpen)
   }
 
@@ -86,57 +91,24 @@ export function CreateActivityDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Registrar atividade</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-kronos-blue/10">
+              <Icon className="h-3.5 w-3.5 text-kronos-blue" />
+            </span>
+            {config.label}
+          </DialogTitle>
           <DialogDescription>
-            Registre uma nota, ligação, e-mail ou reunião nesta negociação.
+            Registre as informações importantes que ocorreram nesta atividade.
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {/* Type picker */}
-            <FormField<CreateActivityInput, 'type'>
-              control={form.control}
-              name="type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tipo</FormLabel>
-                  <FormControl>
-                    <div className="grid grid-cols-4 gap-2">
-                      {ACTIVITY_TYPES.map(([key, config]) => {
-                        const Icon = config.icon
-                        const isSelected = field.value === key
-                        return (
-                          <button
-                            key={key}
-                            type="button"
-                            onClick={() => field.onChange(key)}
-                            className={cn(
-                              'flex flex-col items-center gap-1.5 rounded-lg border px-2 py-3 text-xs font-medium transition-colors',
-                              isSelected
-                                ? `border-primary ${config.bgColor} ${config.color}`
-                                : 'border-border-strong text-muted-foreground hover:bg-accent',
-                            )}
-                          >
-                            <Icon className="h-4 w-4" />
-                            {config.label}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Content */}
-            <FormField<CreateActivityInput, 'content'>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-3">
+            <FormField<FormValues, 'content'>
               control={form.control}
               name="content"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Descrição</FormLabel>
                   <FormControl>
                     <Textarea
                       {...field}
