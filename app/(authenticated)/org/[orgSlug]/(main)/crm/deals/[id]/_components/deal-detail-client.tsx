@@ -42,6 +42,7 @@ import type { MemberRole } from '@prisma/client'
 import { Checkbox } from '@/_components/ui/checkbox'
 
 import TabSummary from './tab-summary'
+import { useDealWonCelebration } from '../_hooks/use-deal-won-celebration'
 
 interface MemberDto {
   id: string
@@ -132,6 +133,7 @@ const DealDetailClient = ({
 }: DealDetailClientProps) => {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState('summary')
+  const { celebrate } = useDealWonCelebration()
 
   // Lost Logic
   const [isLostOpen, setIsLostOpen] = useState(false)
@@ -188,6 +190,7 @@ const DealDetailClient = ({
     markDealWon,
     {
       onSuccess: () => {
+        celebrate()
         toast.success('🎉 Deal marcado como ganho!', {
           position: 'bottom-right',
         })
@@ -318,8 +321,7 @@ const DealDetailClient = ({
             ) : (
               <>
                 <Button
-                  variant="ghost"
-                  className="bg-primary/30 text-primary hover:bg-primary/40 hover:text-primary"
+                  variant="soft"
                   onClick={() => setIsLostOpen(true)}
                   disabled={isPending}
                 >
@@ -327,8 +329,6 @@ const DealDetailClient = ({
                   Marcar perda
                 </Button>
                 <Button
-                  variant="ghost"
-                  className="text-primary-dark hover:text-primary-dark bg-primary hover:bg-primary/90"
                   onClick={handleMarkWon}
                   disabled={isPending}
                 >

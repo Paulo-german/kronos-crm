@@ -224,6 +224,9 @@ importers:
       tailwindcss-animate:
         specifier: ^1.0.7
         version: 1.0.7(tailwindcss@3.4.19(tsx@4.21.0))
+      use-sound:
+        specifier: ^5.0.0
+        version: 5.0.0(react@19.2.3)
       xlsx:
         specifier: ^0.18.5
         version: 0.18.5
@@ -3191,6 +3194,9 @@ packages:
   hoist-non-react-statics@3.3.2:
     resolution: {integrity: sha512-/gGivxi8JPKWNm/W0jSmzcMPpfpPLc3dY/6GxhX2hQ9iGj3aDfklV4ET7NjKpSinLpJ5vafa9iiGIEZg10SfBw==}
 
+  howler@2.2.4:
+    resolution: {integrity: sha512-iARIBPgcQrwtEr+tALF+rapJ8qSc+Set2GJQl7xT1MQzWaVkFebdJhR3alVlSiUf5U7nAANKuj3aWpwerocD5w==}
+
   html-url-attributes@3.0.1:
     resolution: {integrity: sha512-ol6UPyBWqsrO6EJySPz2O7ZSr856WDrEzM5zMqp+FJJLGMW35cLYmmZnl0vztAZxRUoNZJFTCohfjuIJ8I4QBQ==}
 
@@ -4661,6 +4667,11 @@ packages:
     peerDependenciesMeta:
       '@types/react':
         optional: true
+
+  use-sound@5.0.0:
+    resolution: {integrity: sha512-MNHT3FFC5HxNCrgZtrnpIMJI2cw/0D2xismcrtyht8BTuF5FhFhb57xO/jlQr2xJaFrc/0btzRQvGyHQwB7PVA==}
+    peerDependencies:
+      react: '>=16.8'
 
   use-sync-external-store@1.6.0:
     resolution: {integrity: sha512-Pp6GSwGP/NrPIrxVFAIkOQeyw8lFenOHijQWkUTrDvrF4ALqylP2C/KCkeS9dpUM3KvYRQhna5vt7IL95+ZQ9w==}
@@ -8261,6 +8272,8 @@ snapshots:
     dependencies:
       react-is: 16.13.1
 
+  howler@2.2.4: {}
+
   html-url-attributes@3.0.1: {}
 
   human-signals@5.0.0: {}
@@ -10048,6 +10061,11 @@ snapshots:
       tslib: 2.8.1
     optionalDependencies:
       '@types/react': 19.2.7
+
+  use-sound@5.0.0(react@19.2.3):
+    dependencies:
+      howler: 2.2.4
+      react: 19.2.3
 
   use-sync-external-store@1.6.0(react@19.2.3):
     dependencies:
