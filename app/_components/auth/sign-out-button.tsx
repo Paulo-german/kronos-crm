@@ -9,6 +9,7 @@ import {
   TooltipTrigger,
 } from '@/_components/ui/tooltip'
 import { cn } from '@/_lib/utils'
+import { useSidebar } from '@/_providers/sidebar-provider'
 
 interface SignOutButtonProps {
   isCollapsed?: boolean
@@ -16,6 +17,7 @@ interface SignOutButtonProps {
 
 export const SignOutButton = ({ isCollapsed = false }: SignOutButtonProps) => {
   const { execute, status } = useAction(signOut)
+  const { isAnimating } = useSidebar()
 
   const buttonContent = (
     <div
@@ -24,6 +26,7 @@ export const SignOutButton = ({ isCollapsed = false }: SignOutButtonProps) => {
         'ease-[cubic-bezier(0.25,0.76,0.35,1)] group flex cursor-pointer items-center rounded-md py-2 text-sm font-medium text-muted-foreground transition-all duration-500 hover:bg-destructive/10 hover:text-destructive',
         isCollapsed ? 'mx-2 px-3' : 'w-full px-3',
         status === 'executing' && 'pointer-events-none opacity-50',
+        isAnimating && 'pointer-events-none',
       )}
     >
       <div className="flex items-center">
@@ -41,7 +44,7 @@ export const SignOutButton = ({ isCollapsed = false }: SignOutButtonProps) => {
   )
 
   return (
-    <Tooltip delayDuration={300}>
+    <Tooltip delayDuration={300} open={!isCollapsed || isAnimating ? false : undefined}>
       <TooltipTrigger asChild>{buttonContent}</TooltipTrigger>
       {isCollapsed && (
         <TooltipContent side="right" sideOffset={10} className="flex items-center gap-2 bg-destructive px-3 py-2 shadow-none">

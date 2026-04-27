@@ -70,7 +70,7 @@ const roleLabelMap: Record<MemberRole, string> = {
 
 export function OrgSwitcher({ organizations }: OrgSwitcherProps) {
   const { organization, userRole } = useOrganization()
-  const { isCollapsed } = useSidebar()
+  const { isCollapsed, isAnimating } = useSidebar()
   const router = useRouter()
 
   const handleSwitch = (slug: string) => {
@@ -85,6 +85,7 @@ export function OrgSwitcher({ organizations }: OrgSwitcherProps) {
         'ease-[cubic-bezier(0.25,0.76,0.35,1)] group flex items-center rounded-md py-2 text-sm font-medium text-muted-foreground transition-all duration-500',
         'cursor-pointer hover:bg-primary/10 hover:text-primary',
         isCollapsed ? 'mx-2 px-2.5' : 'px-2.5',
+        isAnimating && 'pointer-events-none',
       )}
     >
       <div className="flex items-center">
@@ -104,7 +105,7 @@ export function OrgSwitcher({ organizations }: OrgSwitcherProps) {
 
   return (
     <DropdownMenu>
-      <Tooltip delayDuration={300}>
+      <Tooltip delayDuration={300} open={!isCollapsed || isAnimating ? false : undefined}>
         <TooltipTrigger asChild>
           <DropdownMenuTrigger asChild>{content}</DropdownMenuTrigger>
         </TooltipTrigger>

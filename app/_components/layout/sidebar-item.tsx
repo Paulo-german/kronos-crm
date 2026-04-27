@@ -22,11 +22,11 @@ interface SidebarItemProps {
 
 export const SidebarItem = ({ href, label, badge, icon, dataTour }: SidebarItemProps) => {
   const pathname = usePathname()
-  const { isCollapsed } = useSidebar()
+  const { isCollapsed, isAnimating } = useSidebar()
   const isActive = pathname === href || pathname.startsWith(`${href}/`)
 
   return (
-    <Tooltip delayDuration={300}>
+    <Tooltip delayDuration={300} open={!isCollapsed || isAnimating ? false : undefined}>
       <TooltipTrigger asChild>
         <Link
           href={href}
@@ -35,6 +35,7 @@ export const SidebarItem = ({ href, label, badge, icon, dataTour }: SidebarItemP
             'ease-[cubic-bezier(0.25,0.76,0.35,1)] group flex items-center rounded-md py-2 text-sm font-medium transition-all duration-500 hover:bg-primary/10 hover:text-primary',
             isActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground',
             isCollapsed ? 'mx-2 px-3' : 'px-3',
+            isAnimating && 'pointer-events-none',
           )}
         >
           <div className="flex items-center transition-transform duration-200 group-hover:scale-110">{icon}</div>

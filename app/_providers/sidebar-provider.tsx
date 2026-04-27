@@ -5,15 +5,18 @@ import {
   useContext,
   useState,
   useEffect,
+  useRef,
   useCallback,
   type ReactNode,
 } from 'react'
 
 const SIDEBAR_COOKIE_KEY = 'kronos-sidebar-collapsed'
 const SIDEBAR_STORAGE_KEY = 'kronos-sidebar-collapsed'
+const ANIMATION_MS = 600
 
 interface SidebarContextType {
   isCollapsed: boolean
+  isAnimating: boolean
   toggle: () => void
   collapse: () => void
   expand: () => void
@@ -39,6 +42,8 @@ export function SidebarProvider({
 }: SidebarProviderProps) {
   // Estado inicial vem do cookie (lido no servidor), eliminando flicker
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed)
+  const [isAnimating, setIsAnimating] = useState(false)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Sincroniza localStorage + cookie ao mudar (skip para instâncias mobile)
   useEffect(() => {
@@ -47,12 +52,31 @@ export function SidebarProvider({
     }
   }, [isCollapsed, persist])
 
-  const toggle = useCallback(() => setIsCollapsed((prev) => !prev), [])
-  const collapse = useCallback(() => setIsCollapsed(true), [])
-  const expand = useCallback(() => setIsCollapsed(false), [])
+  // isAnimating=true é setado de forma síncrona nos callbacks abaixo,
+  // garantindo que chegue no mesmo render que isCollapsed — sem gap.
+  const startAnimation = useCallback(() => {
+    setIsAnimating(true)
+    if (timerRef.current) clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(() => setIsAnimating(false), ANIMATION_MS)
+  }, [])
+
+  const toggle = useCallback(() => {
+    startAnimation()
+    setIsCollapsed((prev) => !prev)
+  }, [startAnimation])
+
+  const collapse = useCallback(() => {
+    startAnimation()
+    setIsCollapsed(true)
+  }, [startAnimation])
+
+  const expand = useCallback(() => {
+    startAnimation()
+    setIsCollapsed(false)
+  }, [startAnimation])
 
   return (
-    <SidebarContext.Provider value={{ isCollapsed, toggle, collapse, expand }}>
+    <SidebarContext.Provider value={{ isCollapsed, isAnimating, toggle, collapse, expand }}>
       {children}
     </SidebarContext.Provider>
   )
