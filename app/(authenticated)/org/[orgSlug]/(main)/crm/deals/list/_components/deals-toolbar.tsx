@@ -142,7 +142,7 @@ export function DealsToolbar({
 
         {/* Select de Ordenação */}
         <Select value={sort} onValueChange={handleSortChange}>
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-[200px] bg-background">
             <ArrowUpDown className="mr-2 h-4 w-4 text-muted-foreground" />
             <SelectValue placeholder="Ordenar por" />
           </SelectTrigger>
@@ -161,7 +161,7 @@ export function DealsToolbar({
           onValueChange={handleAssigneeChange}
           disabled={isMember}
         >
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-[200px] bg-background">
             <UserIcon className="mr-2 h-4 w-4 text-muted-foreground" />
             <SelectValue placeholder="Responsável" />
           </SelectTrigger>

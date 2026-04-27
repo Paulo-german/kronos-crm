@@ -80,7 +80,7 @@ export function DealsFiltersSheet({
   return (
     <Sheet open={isOpen} onOpenChange={handleOpenChange}>
       <SheetTrigger asChild>
-        <Button variant="soft" className="gap-2">
+        <Button variant="outline" className="gap-2 bg-background hover:bg-background/80">
           <Filter className="h-4 w-4" />
           Filtros
           {activeFilterCount > 0 && (

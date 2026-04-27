@@ -51,11 +51,11 @@ export function KanbanColumn({
       className={`flex h-full w-96 shrink-0 flex-col overflow-hidden rounded-xl border transition-all duration-200 ${
         isOver
           ? 'border-primary/50 bg-primary/[0.03] shadow-lg shadow-primary/10 ring-1 ring-primary/20'
-          : 'bg-kanban-column'
+          : 'border-border-strong bg-kanban-column'
       }`}
     >
       {/* Header */}
-      <div className="bg-kanban-column space-y-2.5 border-b p-3">
+      <div className="bg-kanban-column space-y-2.5 border-b border-border-strong p-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-base font-semibold">{stage.name}</span>
@@ -99,7 +99,7 @@ export function KanbanColumn({
       {/* Cards */}
       <div
         ref={setNodeRef}
-        className="bg-kanban-column flex-1 space-y-2 overflow-y-auto p-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border hover:[&::-webkit-scrollbar-thumb]:bg-kronos-purple [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-0.5"
+        className="bg-kanban-column flex-1 space-y-4 overflow-y-auto p-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border hover:[&::-webkit-scrollbar-thumb]:bg-kronos-purple [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-0.5"
       >
         <SortableContext
           items={deals.map((d) => d.id)}
