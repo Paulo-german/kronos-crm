@@ -75,7 +75,7 @@ export const CreditsBadgeClient = ({
     return (
       <Tooltip delayDuration={0}>
         <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
-        <TooltipContent side="right" sideOffset={10} className="w-44 space-y-1.5 p-3">
+        <TooltipContent side="right" sideOffset={10} className="w-44 space-y-1.5 p-3 shadow-none">
           <div className="flex items-center justify-between text-xs">
             <span className="font-medium">Créditos IA</span>
             <span className={cn('tabular-nums', usedPercent > 90 ? 'text-red-300' : 'text-white/70')}>{availablePercent}%</span>
