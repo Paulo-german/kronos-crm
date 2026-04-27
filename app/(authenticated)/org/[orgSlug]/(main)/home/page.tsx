@@ -8,6 +8,8 @@ import QuickAccessGrid from './_components/quick-access-grid'
 import PlatformMap from './_components/platform-map'
 import OnboardingChecklist from './_components/onboarding-checklist'
 import EcosystemGrid from './_components/ecosystem-grid'
+import AnimatedSection from './_components/animated-section'
+import HomeTipsStrip from './_components/home-tips-strip'
 
 interface HomePageProps {
   params: Promise<{ orgSlug: string }>
@@ -27,13 +29,24 @@ const HomePage = async ({ params }: HomePageProps) => {
 
   return (
     <div className="flex flex-col gap-8 p-6">
-      <HomeGreeting firstName={firstName} />
-      <QuickAccessGrid orgSlug={orgSlug} activeModules={activeModuleSlugs} />
-      <div className="grid gap-6 lg:grid-cols-2">
-        <PlatformMap />
-        <OnboardingChecklist orgSlug={orgSlug} activeModules={activeModuleSlugs} />
-      </div>
-      <EcosystemGrid />
+      <AnimatedSection delay={0}>
+        <HomeGreeting firstName={firstName} />
+      </AnimatedSection>
+      <AnimatedSection delay={0.08}>
+        <HomeTipsStrip />
+      </AnimatedSection>
+      <AnimatedSection delay={0.16}>
+        <QuickAccessGrid orgSlug={orgSlug} activeModules={activeModuleSlugs} />
+      </AnimatedSection>
+      <AnimatedSection delay={0.24}>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <PlatformMap />
+          <OnboardingChecklist orgSlug={orgSlug} activeModules={activeModuleSlugs} />
+        </div>
+      </AnimatedSection>
+      <AnimatedSection delay={0.32}>
+        <EcosystemGrid />
+      </AnimatedSection>
     </div>
   )
 }
