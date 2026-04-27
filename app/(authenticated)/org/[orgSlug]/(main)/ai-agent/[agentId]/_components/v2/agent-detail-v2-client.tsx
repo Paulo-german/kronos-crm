@@ -26,9 +26,13 @@ import KnowledgeTab from '../knowledge-tab'
 import ConnectionTab from '../connection-tab'
 import FollowUpsTab from '../follow-ups-tab'
 import TestChatPanel from '../test-chat-panel'
+import GlobalToolsSection from './global-tools-section'
 import { PageTourTrigger } from '@/_components/onboarding/page-tour-trigger'
 import { AGENT_DETAIL_TOUR_STEPS } from '@/_lib/onboarding/tours/agent-detail-tour'
-import type { FollowUpDto, ExhaustedConfig } from '@/_data-access/follow-up/types'
+import type {
+  FollowUpDto,
+  ExhaustedConfig,
+} from '@/_data-access/follow-up/types'
 import type { InboxConnectionDataMap } from '../agent-detail-client'
 
 interface InboxOptionDto {
@@ -93,8 +97,8 @@ const AgentDetailV2Client = ({
 
   return (
     <TooltipProvider>
-      <div className="flex flex-1 min-h-0 bg-background">
-        <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-6">
+      <div className="flex flex-1 min-h-0 min-w-0 bg-background">
+        <div className="flex flex-1 min-w-0 flex-col gap-6 overflow-x-hidden overflow-y-auto p-6">
           <div className="flex flex-col gap-4">
             <Button variant="ghost" size="sm" className="w-fit" asChild>
               <Link href={`/org/${orgSlug}/ai-agent`}>
@@ -134,7 +138,8 @@ const AgentDetailV2Client = ({
                   </Badge>
                 </TooltipTrigger>
                 <TooltipContent>
-                  Nova geração: guard de qualidade, validação de preço e suporte a mídia inline.
+                  Nova geração: guard de qualidade, validação de preço e suporte
+                  a mídia inline.
                 </TooltipContent>
               </Tooltip>
               {canManage && (
@@ -148,26 +153,32 @@ const AgentDetailV2Client = ({
           </div>
 
           <Tabs defaultValue="general">
-            <TabsList className="grid h-12 w-full grid-cols-5 rounded-md border border-border/50 bg-tab/30">
-              <TabsTrigger value="general" className="rounded-md py-2 data-[state=active]:bg-card/80">
+            <TabsList
+              data-tour="agent-tabs"
+              className="grid h-12 w-full grid-cols-5 rounded-md border border-border/50"
+            >
+              <TabsTrigger value="general" className="rounded-md py-2">
                 Geral
               </TabsTrigger>
-              <TabsTrigger value="process" className="rounded-md py-2 data-[state=active]:bg-card/80">
+              <TabsTrigger value="process" className="rounded-md py-2">
                 Processo
               </TabsTrigger>
               <TabsTrigger
                 value="knowledge"
                 data-tour="agent-knowledge"
-                className="rounded-md py-2 data-[state=active]:bg-card/80"
+                className="rounded-md py-2"
               >
                 Conhecimento
               </TabsTrigger>
-              <TabsTrigger value="connection" className="rounded-md py-2 data-[state=active]:bg-card/80">
+              <TabsTrigger value="connection" className="rounded-md py-2">
                 Conexão
               </TabsTrigger>
-              <TabsTrigger value="follow-ups" className="rounded-md py-2 data-[state=active]:bg-card/80">
+              <TabsTrigger value="follow-ups" className="rounded-md py-2">
                 Follow-ups
-                <Badge variant="outline" className="ml-1.5 border-amber-500/30 bg-amber-500/10 px-1.5 py-0 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                <Badge
+                  variant="outline"
+                  className="ml-1.5 border-amber-500/30 bg-amber-500/10 px-1.5 py-0 text-[10px] font-medium text-amber-600 dark:text-amber-400"
+                >
                   Beta
                 </Badge>
               </TabsTrigger>
@@ -182,14 +193,18 @@ const AgentDetailV2Client = ({
               />
             </TabsContent>
 
-            <TabsContent value="process" className="mt-6">
+            <TabsContent value="process" className="mt-6 space-y-4">
               <ProcessTab
                 agent={agent}
                 canManage={canManage}
                 pipelineStages={pipelineStages}
                 onSaveSuccess={handleConfigSaved}
                 excludeGlobalTools
-                showGlobalTools
+              />
+              <GlobalToolsSection
+                agent={agent}
+                canManage={canManage}
+                onSaveSuccess={handleConfigSaved}
               />
             </TabsContent>
 
@@ -241,7 +256,7 @@ const AgentDetailV2Client = ({
       </div>
 
       {!isChatOpen && (
-        <div className="fixed right-6 top-1/2 -translate-y-1/2 z-50">
+        <div className="fixed right-6 top-1/2 z-50 -translate-y-1/2">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button

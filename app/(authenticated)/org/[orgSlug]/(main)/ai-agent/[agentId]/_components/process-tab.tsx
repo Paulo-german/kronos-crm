@@ -1,7 +1,14 @@
 'use client'
 
 import { useState, useEffect, useRef, useId, useMemo } from 'react'
-import { Plus, ListChecks, ChevronRight, GripVertical, AlertTriangle, Loader2, Save, ChevronDown, Wrench } from 'lucide-react'
+import {
+  Plus,
+  GripVertical,
+  AlertTriangle,
+  Loader2,
+  ChevronDown,
+  X,
+} from 'lucide-react'
 import {
   DndContext,
   closestCenter,
@@ -23,31 +30,23 @@ import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 import { cn } from '@/_lib/utils'
 import { Button } from '@/_components/ui/button'
+import { Badge } from '@/_components/ui/badge'
 import { Alert, AlertDescription } from '@/_components/ui/alert'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/_components/ui/card'
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/_components/ui/collapsible'
-import { ScrollArea } from '@/_components/ui/scroll-area'
 import StepDetailPanel from './step-detail-panel'
-import GlobalToolBuilder from './v2/global-tool-builder'
 import { reorderSteps } from '@/_actions/agent/reorder-steps'
 import { migrateStepToolsToGlobal } from '@/_actions/agent/migrate-step-tools-to-global'
-import { updateAgentGlobalTools } from '@/_actions/agent/update-agent-global-tools'
 import type {
   AgentDetailDto,
   AgentStepDto,
 } from '@/_data-access/agent/get-agent-by-id'
-import type { GlobalTool, GlobalToolType } from '@/_actions/agent/shared/global-tool-schema'
+import type { GlobalToolType } from '@/_actions/agent/shared/global-tool-schema'
 import type { PipelineStageOption } from '@/_data-access/pipeline/get-pipeline-stages'
+import type { StepAction } from '@/_actions/agent/shared/step-action-schema'
 
 const GLOBAL_TOOL_TYPES: GlobalToolType[] = [
   'hand_off_to_human',
@@ -56,21 +55,93 @@ const GLOBAL_TOOL_TYPES: GlobalToolType[] = [
   'create_task',
 ]
 
-interface SortableStepItemProps {
-  step: AgentStepDto
-  index: number
-  isSelected: boolean
-  canManage: boolean
-  onSelect: (id: string) => void
+const ACTION_TYPE_COLORS: Record<string, string> = {
+  move_deal:
+    'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400',
+  create_task:
+    'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+  update_deal:
+    'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  hand_off_to_human:
+    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+  list_availability:
+    'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',
+  create_event:
+    'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',
+  update_contact:
+    'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400',
 }
 
-const SortableStepItem = ({
+const ACTION_TYPE_LABELS: Record<string, string> = {
+  move_deal: 'Mover negócio',
+  create_task: 'Criar tarefa',
+  update_deal: 'Atualizar negócio',
+  hand_off_to_human: 'Envolver humano',
+  list_availability: 'Listar agenda',
+  create_event: 'Criar evento',
+  update_contact: 'Atualizar contato',
+}
+
+interface ActionBadgesProps {
+  actions: StepAction[]
+}
+
+const ActionBadges = ({ actions }: ActionBadgesProps) => {
+  const visible = actions.slice(0, 3)
+  const overflow = actions.length - visible.length
+  return (
+    <div className="hidden items-center gap-1 sm:flex">
+      {visible.map((action, index) => (
+        <Badge
+          key={index}
+          variant="secondary"
+          className={cn(
+            'px-1.5 py-0 text-[10px] font-medium',
+            ACTION_TYPE_COLORS[action.type],
+          )}
+        >
+          {ACTION_TYPE_LABELS[action.type] ?? action.type}
+        </Badge>
+      ))}
+      {overflow > 0 && (
+        <Badge
+          variant="secondary"
+          className="px-1.5 py-0 text-[10px] font-medium"
+        >
+          +{overflow}
+        </Badge>
+      )}
+    </div>
+  )
+}
+
+interface SortableStepCardProps {
+  step: AgentStepDto
+  index: number
+  isOpen: boolean
+  canManage: boolean
+  onToggle: (id: string) => void
+  agentId: string
+  pipelineStages: PipelineStageOption[]
+  onCreateSuccess: () => void
+  onDeleteSuccess: (id: string) => void
+  onSaveSuccess?: () => void
+  excludeGlobalTools?: boolean
+}
+
+const SortableStepCard = ({
   step,
   index,
-  isSelected,
+  isOpen,
   canManage,
-  onSelect,
-}: SortableStepItemProps) => {
+  onToggle,
+  agentId,
+  pipelineStages,
+  onCreateSuccess,
+  onDeleteSuccess,
+  onSaveSuccess,
+  excludeGlobalTools,
+}: SortableStepCardProps) => {
   const {
     attributes,
     listeners,
@@ -87,33 +158,73 @@ const SortableStepItem = ({
   }
 
   return (
-    <div ref={setNodeRef} style={style} className="flex items-center">
-      {canManage && (
-        <button
-          type="button"
-          className="cursor-grab touch-none px-1 text-muted-foreground hover:text-foreground active:cursor-grabbing"
-          {...attributes}
-          {...listeners}
-        >
-          <GripVertical className="h-3.5 w-3.5" />
-        </button>
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        'overflow-hidden rounded-lg border bg-card transition-shadow',
+        isOpen && 'shadow-sm',
       )}
-      <Button
-        variant="ghost"
-        className={cn(
-          'flex-1 justify-start gap-2 px-3 font-normal',
-          isSelected && 'bg-muted font-medium text-foreground',
-        )}
-        onClick={() => onSelect(step.id)}
+    >
+      <Collapsible
+        open={isOpen}
+        onOpenChange={() => onToggle(step.id)}
+        className="w-full"
       >
-        <span className="w-4 shrink-0 text-center text-xs text-muted-foreground">
-          {index + 1}
-        </span>
-        <span className="flex-1 truncate text-left">{step.name}</span>
-        {isSelected && (
-          <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-        )}
-      </Button>
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="flex w-full min-w-0 items-center gap-3 overflow-hidden px-4 py-3 text-left transition-colors hover:bg-muted/30"
+          >
+            {canManage && (
+              <span
+                className="shrink-0 cursor-grab touch-none text-muted-foreground"
+                onClick={(e) => e.stopPropagation()}
+                {...attributes}
+                {...listeners}
+              >
+                <GripVertical className="h-4 w-4" />
+              </span>
+            )}
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+              {index + 1}
+            </span>
+            <span className="min-w-0 flex-1 overflow-hidden">
+              <span className="block truncate text-sm font-semibold">
+                {step.name}
+              </span>
+              {!isOpen && (
+                <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                  {step.objective}
+                </span>
+              )}
+            </span>
+            {!isOpen && step.actions.length > 0 && (
+              <ActionBadges actions={step.actions} />
+            )}
+            <ChevronDown
+              className={cn(
+                'h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200',
+                isOpen && 'rotate-180',
+              )}
+            />
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="border-t">
+            <StepDetailPanel
+              step={step}
+              agentId={agentId}
+              canManage={canManage}
+              pipelineStages={pipelineStages}
+              onCreateSuccess={onCreateSuccess}
+              onDeleteSuccess={() => onDeleteSuccess(step.id)}
+              onSaveSuccess={onSaveSuccess}
+              excludeGlobalTools={excludeGlobalTools}
+            />
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   )
 }
@@ -124,46 +235,32 @@ interface ProcessTabProps {
   pipelineStages: PipelineStageOption[]
   onSaveSuccess?: () => void
   excludeGlobalTools?: boolean
-  showGlobalTools?: boolean
 }
 
-const ProcessTab = ({ agent, canManage, pipelineStages, onSaveSuccess, excludeGlobalTools = false, showGlobalTools = false }: ProcessTabProps) => {
+const ProcessTab = ({
+  agent,
+  canManage,
+  pipelineStages,
+  onSaveSuccess,
+  excludeGlobalTools = false,
+}: ProcessTabProps) => {
   const dndContextId = useId()
   const [isMounted, setIsMounted] = useState(false)
   const [steps, setSteps] = useState<AgentStepDto[]>(agent.steps)
-  const [selectedStepId, setSelectedStepId] = useState<string | null>(
-    agent.steps[0]?.id ?? null,
-  )
+  const [openStepId, setOpenStepId] = useState<string | 'new' | null>(null)
   const selectLastRef = useRef(false)
-  const [globalTools, setGlobalTools] = useState<GlobalTool[]>(agent.globalTools)
-  const [isGlobalToolsOpen, setIsGlobalToolsOpen] = useState(false)
-
-  const { execute: executeSaveGlobalTools, isPending: isSavingGlobalTools } = useAction(
-    updateAgentGlobalTools,
-    {
-      onSuccess: () => {
-        toast.success('Ferramentas globais salvas!')
-        onSaveSuccess?.()
-      },
-      onError: ({ error }) => {
-        toast.error(error.serverError || 'Falha ao salvar ferramentas globais.')
-      },
-    },
-  )
 
   useEffect(() => {
     setIsMounted(true)
   }, [])
 
-  // Sincroniza estado local com props do servidor após revalidação
   useEffect(() => {
     setSteps(agent.steps)
 
-    // Após create, seleciona o último step adicionado
     if (selectLastRef.current) {
       selectLastRef.current = false
       const lastStep = agent.steps[agent.steps.length - 1]
-      setSelectedStepId(lastStep?.id ?? null)
+      setOpenStepId(lastStep?.id ?? null)
     }
   }, [agent.steps])
 
@@ -200,17 +297,22 @@ const ProcessTab = ({ agent, canManage, pipelineStages, onSaveSuccess, excludeGl
     })
   }
 
+  const handleToggleStep = (id: string) => {
+    setOpenStepId((curr) => (curr === id ? null : id))
+  }
+
   const handleAddStep = () => {
-    setSelectedStepId(null)
+    setOpenStepId('new')
   }
 
   const handleCreateSuccess = () => {
     selectLastRef.current = true
   }
 
-  const handleDeleteSuccess = () => {
-    const remaining = steps.filter((step) => step.id !== selectedStepId)
-    setSelectedStepId(remaining[0]?.id ?? null)
+  const handleDeleteSuccess = (id: string) => {
+    if (openStepId === id) {
+      setOpenStepId(null)
+    }
   }
 
   const { execute: executeMigrate, isPending: isMigrating } = useAction(
@@ -218,12 +320,12 @@ const ProcessTab = ({ agent, canManage, pipelineStages, onSaveSuccess, excludeGl
     {
       onSuccess: () => {
         toast.success('Ferramentas migradas com sucesso')
-        // Remove as global tools das actions localmente para o banner sumir sem reload
         setSteps((current) =>
           current.map((step) => ({
             ...step,
             actions: step.actions.filter(
-              (action) => !GLOBAL_TOOL_TYPES.includes(action.type as GlobalToolType),
+              (action) =>
+                !GLOBAL_TOOL_TYPES.includes(action.type as GlobalToolType),
             ),
           })),
         )
@@ -245,32 +347,33 @@ const ProcessTab = ({ agent, canManage, pipelineStages, onSaveSuccess, excludeGl
   )
   const hasMigrationPending = stepsWithGlobalTools.length > 0
 
-  const selectedStep = steps.find((step) => step.id === selectedStepId)
-  const showEmptyRight = !canManage && steps.length === 0
-
-  const stepList = (
-    <div className="p-1">
-      {steps.map((step, index) => (
-        <SortableStepItem
-          key={step.id}
-          step={step}
-          index={index}
-          isSelected={selectedStepId === step.id}
-          canManage={canManage}
-          onSelect={setSelectedStepId}
-        />
-      ))}
-    </div>
-  )
+  const stepCards = steps.map((step, index) => (
+    <SortableStepCard
+      key={step.id}
+      step={step}
+      index={index}
+      isOpen={openStepId === step.id}
+      canManage={canManage}
+      onToggle={handleToggleStep}
+      agentId={agent.id}
+      pipelineStages={pipelineStages}
+      onCreateSuccess={handleCreateSuccess}
+      onDeleteSuccess={handleDeleteSuccess}
+      onSaveSuccess={onSaveSuccess}
+      excludeGlobalTools={excludeGlobalTools}
+    />
+  ))
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex w-full min-w-0 flex-col gap-3">
       {excludeGlobalTools && hasMigrationPending && (
         <Alert>
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription className="flex items-center justify-between gap-4">
             <span>
-              {stepsWithGlobalTools.length} etapa(s) têm ferramentas que agora são globais. Migre para evitar perda de configuração ao editar essas etapas.
+              {stepsWithGlobalTools.length} etapa(s) têm ferramentas que agora
+              são globais. Migre para evitar perda de configuração ao editar
+              essas etapas.
             </span>
             <Button
               size="sm"
@@ -286,143 +389,71 @@ const ProcessTab = ({ agent, canManage, pipelineStages, onSaveSuccess, excludeGl
           </AlertDescription>
         </Alert>
       )}
-    <div className="grid grid-cols-[320px_1fr] items-start gap-6">
-      {/* Coluna esquerda: lista de etapas */}
-      <div className="sticky top-1 flex flex-col gap-3">
-        <Card className="border-border/50 bg-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold">
-              Etapas do Processo
-            </CardTitle>
-            <CardDescription>
-              Selecione uma etapa para configurar.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="px-2 pb-2">
-            <ScrollArea className="max-h-80">
-              {steps.length === 0 ? (
-                <p className="px-3 py-4 text-center text-xs text-muted-foreground">
-                  Nenhuma etapa configurada.
-                </p>
-              ) : isMounted && canManage ? (
-                <DndContext
-                  id={dndContextId}
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleDragEnd}
-                >
-                  <SortableContext
-                    items={steps.map((step) => step.id)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    {stepList}
-                  </SortableContext>
-                </DndContext>
-              ) : (
-                stepList
-              )}
-            </ScrollArea>
-          </CardContent>
-        </Card>
 
-        {canManage && (
-          <Button variant="outline" className="w-full" onClick={handleAddStep}>
-            <Plus className="mr-2 h-4 w-4" />
-            Adicionar Etapa
-          </Button>
+      <div className="flex min-w-0 flex-col gap-2">
+        {steps.length === 0 && openStepId !== 'new' && (
+          <div className="flex items-center justify-center rounded-lg border border-dashed py-10">
+            <p className="text-sm text-muted-foreground">
+              Nenhuma etapa configurada.
+            </p>
+          </div>
         )}
 
-        {showGlobalTools && (
-          <Collapsible open={isGlobalToolsOpen} onOpenChange={setIsGlobalToolsOpen}>
-            <Card className="border-border/50 bg-card">
-              <CollapsibleTrigger asChild>
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-between px-4 py-3 text-left"
-                >
-                  <div className="flex items-center gap-2">
-                    <Wrench className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm font-semibold">Ferramentas Globais</span>
-                    {globalTools.length > 0 && (
-                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                        {globalTools.length}
-                      </span>
-                    )}
-                  </div>
-                  <ChevronDown
-                    className={cn(
-                      'h-4 w-4 text-muted-foreground transition-transform',
-                      isGlobalToolsOpen && 'rotate-180',
-                    )}
-                  />
-                </button>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="border-t px-4 pb-4 pt-3 space-y-3">
-                  <p className="text-xs text-muted-foreground">
-                    Disponíveis em qualquer etapa da conversa.
-                  </p>
-                  <GlobalToolBuilder value={globalTools} onChange={setGlobalTools} />
-                  {canManage && (
-                    <div className="flex justify-end pt-1">
-                      <Button
-                        size="sm"
-                        disabled={isSavingGlobalTools}
-                        onClick={() => executeSaveGlobalTools({ agentId: agent.id, globalTools })}
-                        type="button"
-                      >
-                        {isSavingGlobalTools ? (
-                          <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <Save className="mr-2 h-3.5 w-3.5" />
-                        )}
-                        Salvar
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
+        {isMounted && canManage ? (
+          <DndContext
+            id={dndContextId}
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={steps.map((step) => step.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {stepCards}
+            </SortableContext>
+          </DndContext>
+        ) : (
+          stepCards
         )}
-      </div>
 
-      {/* Coluna direita: painel de detalhes */}
-      <Card className="border-border/50 bg-card">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">
-            Configuração da Etapa
-          </CardTitle>
-          <CardDescription>
-            Defina o nome, objetivo e ações desta etapa.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-0">
-          {showEmptyRight ? (
-            <div className="flex flex-col items-center justify-center gap-3 p-8 text-center">
-              <div className="rounded-full bg-muted p-4">
-                <ListChecks className="h-6 w-6 text-muted-foreground" />
+        {openStepId === 'new' && (
+          <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
+            <div className="flex items-center justify-between border-b px-4 py-3">
+              <div className="flex items-center gap-3">
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                  {steps.length + 1}
+                </span>
+                <span className="text-sm font-semibold">Nova etapa</span>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Nenhuma etapa configurada.
-              </p>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => setOpenStepId(null)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
             </div>
-          ) : (
             <StepDetailPanel
-              key={selectedStepId ?? 'new'}
-              step={selectedStep}
               agentId={agent.id}
               canManage={canManage}
               pipelineStages={pipelineStages}
               onCreateSuccess={handleCreateSuccess}
-              onDeleteSuccess={handleDeleteSuccess}
+              onDeleteSuccess={() => setOpenStepId(null)}
               onSaveSuccess={onSaveSuccess}
               excludeGlobalTools={excludeGlobalTools}
             />
-          )}
-        </CardContent>
-      </Card>
-    </div>
+          </div>
+        )}
+      </div>
+
+      {canManage && openStepId !== 'new' && (
+        <Button variant="outline" className="w-full" onClick={handleAddStep}>
+          <Plus className="mr-2 h-4 w-4" />
+          Adicionar Etapa
+        </Button>
+      )}
     </div>
   )
 }
