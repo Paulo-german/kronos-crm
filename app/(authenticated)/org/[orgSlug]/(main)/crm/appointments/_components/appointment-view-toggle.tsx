@@ -23,8 +23,8 @@ export function AppointmentViewToggle({
         className={cn(
           'inline-flex items-center justify-center p-2.5 transition-all',
           activeView === 'list'
-            ? 'bg-primary-dark text-primary-foreground dark:bg-primary/15 dark:text-primary'
-            : 'text-primary',
+            ? 'bg-primary text-primary-foreground'
+            : 'text-primary hover:bg-primary/10',
         )}
       >
         <LayoutList className="h-5 w-5" />
@@ -34,8 +34,8 @@ export function AppointmentViewToggle({
         className={cn(
           'inline-flex items-center justify-center p-2.5 transition-all',
           activeView === 'calendar'
-            ? 'bg-primary-dark text-primary-foreground dark:bg-primary/15 dark:text-primary'
-            : 'text-primary',
+            ? 'bg-primary text-primary-foreground'
+            : 'text-primary hover:bg-primary/10',
         )}
       >
         <CalendarDays className="h-5 w-5" />

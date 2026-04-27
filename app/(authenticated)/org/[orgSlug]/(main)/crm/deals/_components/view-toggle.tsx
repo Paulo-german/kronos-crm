@@ -21,8 +21,8 @@ export function ViewToggle({ activeView }: ViewToggleProps) {
         className={cn(
           'inline-flex items-center justify-center p-2.5 transition-all',
           activeView === 'pipeline'
-            ? 'bg-primary-dark text-primary-foreground dark:bg-primary/15 dark:text-primary'
-            : 'text-primary',
+            ? 'bg-primary text-primary-foreground'
+            : 'text-primary hover:bg-primary/10',
         )}
       >
         <Kanban className="h-5 w-5" />
@@ -32,8 +32,8 @@ export function ViewToggle({ activeView }: ViewToggleProps) {
         className={cn(
           'inline-flex items-center justify-center p-2.5 transition-all',
           activeView === 'list'
-            ? 'bg-primary-dark text-primary-foreground dark:bg-primary/15 dark:text-primary'
-            : 'text-primary',
+            ? 'bg-primary text-primary-foreground'
+            : 'text-primary hover:bg-primary/10',
         )}
       >
         <LayoutList className="h-5 w-5" />
