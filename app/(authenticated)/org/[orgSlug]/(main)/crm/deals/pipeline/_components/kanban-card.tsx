@@ -6,11 +6,7 @@ import { Card, CardContent } from '@/_components/ui/card'
 import { formatCurrency } from '@/_utils/format-currency'
 import type { DealDto } from '@/_data-access/deal/get-deals-by-pipeline'
 import { Badge } from '@/_components/ui/badge'
-import {
-  ChevronDown,
-  Clock,
-  SquareIcon,
-} from 'lucide-react'
+import { Clock, SquareIcon, Flag } from 'lucide-react'
 import { Label } from '@/_components/ui/label'
 import {
   Tooltip,
@@ -29,11 +25,24 @@ interface KanbanCardProps {
 export const priorityConfig = {
   low: {
     label: 'BAIXA',
+    icon: Flag,
     color: 'border-muted-foreground/30 text-muted-foreground',
   },
-  medium: { label: 'MÉDIA', color: 'border-kronos-blue/40 text-kronos-blue' },
-  high: { label: 'ALTA', color: 'border-kronos-yellow/40 text-kronos-yellow' },
-  urgent: { label: 'URGENTE', color: 'border-kronos-red/40 text-kronos-red' },
+  medium: {
+    label: 'MÉDIA',
+    icon: Flag,
+    color: 'border-kronos-blue/40 text-kronos-blue',
+  },
+  high: {
+    label: 'ALTA',
+    icon: Flag,
+    color: 'border-kronos-yellow/40 text-kronos-yellow',
+  },
+  urgent: {
+    label: 'URGENTE',
+    icon: Flag,
+    color: 'border-kronos-red/40 text-kronos-red',
+  },
 }
 
 const statusConfig = {
@@ -130,7 +139,7 @@ const KanbanCard = ({
       style={style}
       {...attributes}
       {...listeners}
-      className={`bg-kanban-card relative cursor-grab border-border-strong shadow-none transition-all hover:bg-card/50 ${draggingClass}`}
+      className={`border-border-strong relative cursor-grab bg-kanban-card shadow-none transition-all ${draggingClass}`}
       onClick={handleCardClick}
     >
       <CardContent className="flex flex-col gap-4 p-3.5">
@@ -155,11 +164,10 @@ const KanbanCard = ({
           >
             <button
               type="button"
-              className={`flex h-6 items-center gap-1 rounded-md border bg-transparent px-2 text-[9px] font-medium transition-colors hover:bg-accent ${priorityConfig[priority].color}`}
+              className={`flex h-6 w-6 items-center justify-center rounded-md border bg-transparent transition-colors hover:bg-accent ${priorityConfig[priority].color}`}
               onClick={(e) => onPriorityClick?.(deal.id, e.currentTarget)}
             >
-              {priorityConfig[priority].label}
-              <ChevronDown className="h-3 w-3 opacity-50" />
+              {(() => { const Icon = priorityConfig[priority].icon; return <Icon className="h-3.5 w-3.5" /> })()}
             </button>
           </div>
         </div>
@@ -246,7 +254,7 @@ const KanbanCard = ({
 
         {/* 4. Base: Observações */}
         {deal.notes && (
-          <div className="flex flex-col gap-1 border-t border-border-strong pt-2">
+          <div className="border-border-strong flex flex-col gap-1 border-t pt-2">
             <Label className="text-[10px] uppercase text-muted-foreground">
               Observações
             </Label>
