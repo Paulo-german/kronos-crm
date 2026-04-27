@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from 'react'
 import {
-  Plus,
   ArrowRightLeft,
   Package,
   PackageMinus,
@@ -38,7 +37,7 @@ import {
   TooltipTrigger,
 } from '@/_components/ui/tooltip'
 import { getActivities } from '@/_actions/deal/get-activities'
-import { MANUAL_ACTIVITY_CONFIG } from '@/_lib/deal/activity-config'
+import { MANUAL_ACTIVITY_CONFIG, type ManualActivityType } from '@/_lib/deal/activity-config'
 import { CreateActivityDialog } from './create-activity-dialog'
 
 interface ActivityTimelineProps {
@@ -182,7 +181,13 @@ const ActivityTimeline = ({
   activities: initialActivities,
   totalActivities,
 }: ActivityTimelineProps) => {
+  const [selectedType, setSelectedType] = useState<ManualActivityType>('note')
   const [isCreateOpen, setIsCreateOpen] = useState(false)
+
+  const handleOpenWithType = (type: ManualActivityType) => {
+    setSelectedType(type)
+    setIsCreateOpen(true)
+  }
   const [extraActivities, setExtraActivities] = useState<DealActivityDto[]>([])
   const [prevInitialIds, setPrevInitialIds] = useState(() =>
     initialActivities.map((a) => a.id).join(','),
@@ -250,14 +255,28 @@ const ActivityTimeline = ({
               </span>
             )}
           </div>
-          <Button
-            size="sm"
-            variant="soft"
-            onClick={() => setIsCreateOpen(true)}
-          >
-            <Plus className="mr-1.5 h-3.5 w-3.5" />
-            Nova atividade
-          </Button>
+          <div className="flex items-center gap-1">
+            {(Object.entries(MANUAL_ACTIVITY_CONFIG) as [ManualActivityType, typeof MANUAL_ACTIVITY_CONFIG[ManualActivityType]][]).map(([type, config]) => {
+              const Icon = config.icon
+              return (
+                <Tooltip key={type}>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="h-7 w-7 border-kronos-blue/40 text-kronos-blue hover:bg-kronos-blue/10 hover:text-kronos-blue"
+                      onClick={() => handleOpenWithType(type)}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{config.label}</p>
+                  </TooltipContent>
+                </Tooltip>
+              )
+            })}
+          </div>
         </div>
       </CardHeader>
 
@@ -374,6 +393,7 @@ const ActivityTimeline = ({
         dealId={dealId}
         open={isCreateOpen}
         onOpenChange={setIsCreateOpen}
+        initialType={selectedType}
       />
     </Card>
   )
