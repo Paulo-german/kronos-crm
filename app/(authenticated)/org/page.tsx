@@ -23,7 +23,7 @@ const OrgSelectorPage = async ({ searchParams }: OrgSelectorPageProps) => {
 
   // Se o usuário tem apenas uma org, redireciona direto (exceto se veio do switcher)
   if (organizations.length === 1 && show !== 'true') {
-    redirect(`/org/${organizations[0].slug}/dashboard`)
+    redirect(`/org/${organizations[0].slug}/home`)
   }
 
   return (

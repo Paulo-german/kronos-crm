@@ -21,7 +21,7 @@ export default async function MembersPage({ params }: MembersPageProps) {
 
   // RBAC: Apenas ADMIN/OWNER podem acessar esta página
   if (userRole !== 'ADMIN' && userRole !== 'OWNER') {
-    redirect(`/org/${orgSlug}/dashboard`)
+    redirect(`/org/${orgSlug}/home`)
   }
 
   const [{ accepted, pending }, quota] = await Promise.all([

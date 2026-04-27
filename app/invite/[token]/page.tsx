@@ -41,7 +41,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
 
   // Se já foi aceito, redirecionar para o dashboard da org
   if (member.status === 'ACCEPTED') {
-    redirect(`/org/${member.organization.slug}/dashboard`)
+    redirect(`/org/${member.organization.slug}/home`)
   }
 
   // Verificar expiração (7 dias a partir do último envio)
