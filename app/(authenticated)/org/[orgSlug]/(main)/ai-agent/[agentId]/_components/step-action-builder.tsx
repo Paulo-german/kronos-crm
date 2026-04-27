@@ -19,8 +19,6 @@ import { Button } from '@/_components/ui/button'
 import { Card, CardContent } from '@/_components/ui/card'
 import { Input } from '@/_components/ui/input'
 import { Label } from '@/_components/ui/label'
-import { Checkbox } from '@/_components/ui/checkbox'
-import { Badge } from '@/_components/ui/badge'
 import { Textarea } from '@/_components/ui/textarea'
 import {
   Select,
@@ -42,21 +40,19 @@ import {
 } from '@/_components/ui/collapsible'
 import { Switch } from '@/_components/ui/switch'
 import { cn } from '@/_lib/utils'
-import { DAYS_AHEAD_OPTIONS, DURATION_OPTIONS, TOOL_OPTIONS } from './constants'
+import { DAYS_AHEAD_OPTIONS, DURATION_OPTIONS, GLOBAL_TOOL_OPTIONS, TOOL_OPTIONS } from './constants'
 import type { StepAction } from '@/_actions/agent/shared/step-action-schema'
 import type { PipelineStageOption } from '@/_data-access/pipeline/get-pipeline-stages'
+import HandOffConfig from './tool-config/hand-off-config'
+import UpdateDealConfig from './tool-config/update-deal-config'
+import CreateTaskConfig from './tool-config/create-task-config'
 
 interface StepActionBuilderProps {
   value: StepAction[]
   onChange: (actions: StepAction[]) => void
   pipelineStages: PipelineStageOption[]
+  excludeGlobalTools?: boolean
 }
-
-const NOTIFY_TARGET_OPTIONS = [
-  { value: 'none', label: 'Sem notificação' },
-  { value: 'specific_number', label: 'Número específico' },
-  { value: 'deal_assignee', label: 'Responsável pelo negócio' },
-] as const
 
 const TRIGGER_PLACEHOLDERS: Record<string, string> = {
   move_deal: 'Ex: Ao concluir esta etapa',
@@ -220,6 +216,7 @@ const StepActionBuilder = ({
   value,
   onChange,
   pipelineStages,
+  excludeGlobalTools = false,
 }: StepActionBuilderProps) => {
   const [expandedTypes, setExpandedTypes] = useState<Set<string>>(new Set())
 
@@ -262,9 +259,13 @@ const StepActionBuilder = ({
     )
   }
 
-  const availableToAdd = TOOL_OPTIONS.filter(
-    (tool) => !value.some((action) => action.type === tool.value),
-  )
+  const globalToolTypes = new Set(GLOBAL_TOOL_OPTIONS.map((option) => option.value))
+
+  const availableToAdd = TOOL_OPTIONS.filter((tool) => {
+    if (value.some((action) => action.type === tool.value)) return false
+    if (excludeGlobalTools && globalToolTypes.has(tool.value)) return false
+    return true
+  })
 
   const groupedStages = pipelineStages.reduce<
     Record<string, { pipelineName: string; stages: PipelineStageOption[] }>
@@ -289,48 +290,68 @@ const StepActionBuilder = ({
       <div className="space-y-2">
         {value.map((action) => {
           const toolOption = TOOL_OPTIONS.find((t) => t.value === action.type)
+          const isGlobalTool = excludeGlobalTools && globalToolTypes.has(action.type)
           const isOpen = expandedTypes.has(action.type)
           const summary = getActionSummary(action, pipelineStages)
 
           return (
             <Collapsible
               key={action.type}
-              open={isOpen}
-              onOpenChange={() => toggle(action.type)}
+              open={isOpen && !isGlobalTool}
+              onOpenChange={() => { if (!isGlobalTool) toggle(action.type) }}
             >
-              <Card className="border-primary/30 bg-primary/5">
+              <Card className={cn(
+                isGlobalTool
+                  ? 'border-amber-500/40 bg-amber-500/5'
+                  : 'border-primary/30 bg-primary/5',
+              )}>
                 <CardContent className="p-0">
                   {/* Header compacto — sempre visível */}
                   <div className="flex items-center pr-2">
-                    <CollapsibleTrigger asChild>
+                    <CollapsibleTrigger asChild disabled={isGlobalTool}>
                       <button
                         type="button"
                         className="flex min-w-0 flex-1 items-center gap-3 p-4 text-left"
                       >
                         <div className="min-w-0 flex-1 space-y-0.5">
-                          <span className="block text-sm font-medium">
-                            {toolOption?.label ?? action.type}
-                          </span>
-                          {!isOpen && (
-                            <span className="flex flex-col gap-0.5 text-xs text-muted-foreground/70">
-                              {summary.trigger && (
-                                <span className="inline-flex min-w-0 items-center gap-0.5 truncate">
-                                  <Zap className="h-3 w-3 shrink-0" />
-                                  <span className="truncate">{summary.trigger}</span>
-                                </span>
-                              )}
-                              <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-                                {summary.config}
-                              </span>
+                          <div className="flex items-center gap-2">
+                            <span className="block text-sm font-medium">
+                              {toolOption?.label ?? action.type}
                             </span>
+                            {isGlobalTool && (
+                              <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600">
+                                Global
+                              </span>
+                            )}
+                          </div>
+                          {isGlobalTool ? (
+                            <span className="block text-xs text-amber-600/70">
+                              Configurada na aba Ferramentas Globais
+                            </span>
+                          ) : (
+                            !isOpen && (
+                              <span className="flex flex-col gap-0.5 text-xs text-muted-foreground/70">
+                                {summary.trigger && (
+                                  <span className="inline-flex min-w-0 items-center gap-0.5 truncate">
+                                    <Zap className="h-3 w-3 shrink-0" />
+                                    <span className="truncate">{summary.trigger}</span>
+                                  </span>
+                                )}
+                                <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                                  {summary.config}
+                                </span>
+                              </span>
+                            )
                           )}
                         </div>
-                        <ChevronDown
-                          className={cn(
-                            'h-4 w-4 shrink-0 text-muted-foreground transition-transform',
-                            isOpen && 'rotate-180',
-                          )}
-                        />
+                        {!isGlobalTool && (
+                          <ChevronDown
+                            className={cn(
+                              'h-4 w-4 shrink-0 text-muted-foreground transition-transform',
+                              isOpen && 'rotate-180',
+                            )}
+                          />
+                        )}
                       </button>
                     </CollapsibleTrigger>
                     <Button
@@ -415,178 +436,35 @@ const StepActionBuilder = ({
 
                       {/* create_task: título + vencimento */}
                       {action.type === 'create_task' && (
-                        <>
-                          <div className="space-y-1.5">
-                            <Label className="text-xs">Título da tarefa *</Label>
-                            <Input
-                              placeholder="Ex: Follow-up com o lead"
-                              value={action.title}
-                              onChange={(event) =>
-                                updateAction('create_task', {
-                                  title: event.target.value,
-                                })
-                              }
-                            />
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label className="text-xs">
-                              Vencimento em dias (opcional)
-                            </Label>
-                            <Input
-                              type="number"
-                              min={1}
-                              placeholder="Ex: 3"
-                              value={action.dueDaysOffset ?? ''}
-                              onChange={(event) => {
-                                const val = event.target.value
-                                updateAction('create_task', {
-                                  dueDaysOffset: val
-                                    ? parseInt(val, 10)
-                                    : undefined,
-                                })
-                              }}
-                            />
-                          </div>
-                        </>
+                        <CreateTaskConfig
+                          title={action.title}
+                          dueDaysOffset={action.dueDaysOffset}
+                          onTitleChange={(val) => updateAction('create_task', { title: val })}
+                          onDueDaysOffsetChange={(val) => updateAction('create_task', { dueDaysOffset: val })}
+                        />
                       )}
 
                       {/* update_deal: campos permitidos + status */}
                       {action.type === 'update_deal' && (
-                        <>
-                          {/* Bloco A — Campos permitidos */}
-                          <div className="space-y-2">
-                            <Label className="text-xs">Campos que o agente pode atualizar</Label>
-                            <div className="grid grid-cols-2 gap-2">
-                              {(
-                                [
-                                  { id: 'title', label: 'Título' },
-                                  { id: 'value', label: 'Valor (R$)' },
-                                  { id: 'priority', label: 'Prioridade' },
-                                  { id: 'expectedCloseDate', label: 'Previsão de fechamento' },
-                                  { id: 'notes', label: 'Notas' },
-                                ] as const
-                              ).map((field) => {
-                                const isChecked = (action.allowedFields ?? []).includes(field.id)
-                                return (
-                                  <div key={field.id} className="flex items-center gap-2">
-                                    <Checkbox
-                                      id={`${action.type}-${field.id}`}
-                                      checked={isChecked}
-                                      onCheckedChange={(checked) => {
-                                        const current = action.allowedFields ?? []
-                                        updateAction('update_deal', {
-                                          allowedFields: checked
-                                            ? [...current, field.id]
-                                            : current.filter((f) => f !== field.id),
-                                          ...(field.id === 'priority' && !checked
-                                            ? { fixedPriority: undefined }
-                                            : {}),
-                                          ...(field.id === 'notes' && !checked
-                                            ? { notesTemplate: undefined }
-                                            : {}),
-                                        })
-                                      }}
-                                    />
-                                    <Label
-                                      htmlFor={`${action.type}-${field.id}`}
-                                      className="text-xs font-normal cursor-pointer"
-                                    >
-                                      {field.label}
-                                    </Label>
-                                  </div>
-                                )
-                              })}
-                            </div>
-
-                            {/* Prioridade fixa (condicional) */}
-                            {(action.allowedFields ?? []).includes('priority') && (
-                              <div className="space-y-1.5 pl-1">
-                                <Label className="text-xs text-muted-foreground">
-                                  Prioridade fixa (opcional)
-                                </Label>
-                                <Select
-                                  value={action.fixedPriority ?? ''}
-                                  onValueChange={(val) =>
-                                    updateAction('update_deal', {
-                                      fixedPriority: val || undefined,
-                                    })
-                                  }
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Deixar o agente decidir" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="low">Baixa</SelectItem>
-                                    <SelectItem value="medium">Média</SelectItem>
-                                    <SelectItem value="high">Alta</SelectItem>
-                                    <SelectItem value="urgent">Urgente</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            )}
-
-                            {/* Instruções para notas (condicional) */}
-                            {(action.allowedFields ?? []).includes('notes') && (
-                              <div className="space-y-1.5 pl-1">
-                                <Label className="text-xs text-muted-foreground">
-                                  Instruções para as notas (opcional)
-                                </Label>
-                                <Textarea
-                                  placeholder="Ex: Registre o decisor, orçamento disponível e prazo"
-                                  value={action.notesTemplate ?? ''}
-                                  onChange={(event) =>
-                                    updateAction('update_deal', {
-                                      notesTemplate: event.target.value || undefined,
-                                    })
-                                  }
-                                  rows={2}
-                                />
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Bloco B — Status do negócio */}
-                          <div className="space-y-2 border-t pt-3">
-                            <div className="flex items-center gap-2">
-                              <Label className="text-xs">Status do negócio</Label>
-                              <Badge variant="outline" className="text-[10px] border-yellow-500 text-yellow-600">
-                                Ação irreversível
-                              </Badge>
-                            </div>
-                            <div className="space-y-2">
-                              {(
-                                [
-                                  { id: 'WON', label: 'Pode marcar como Ganho (WON)' },
-                                  { id: 'LOST', label: 'Pode marcar como Perdido (LOST)' },
-                                ] as const
-                              ).map((status) => {
-                                const isChecked = (action.allowedStatuses ?? []).includes(status.id)
-                                return (
-                                  <div key={status.id} className="flex items-center gap-2">
-                                    <Checkbox
-                                      id={`${action.type}-${status.id}`}
-                                      checked={isChecked}
-                                      onCheckedChange={(checked) => {
-                                        const current = action.allowedStatuses ?? []
-                                        updateAction('update_deal', {
-                                          allowedStatuses: checked
-                                            ? [...current, status.id]
-                                            : current.filter((s) => s !== status.id),
-                                        })
-                                      }}
-                                    />
-                                    <Label
-                                      htmlFor={`${action.type}-${status.id}`}
-                                      className="text-xs font-normal cursor-pointer"
-                                    >
-                                      {status.label}
-                                    </Label>
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          </div>
-                        </>
+                        <UpdateDealConfig
+                          actionType={action.type}
+                          allowedFields={action.allowedFields ?? []}
+                          fixedPriority={action.fixedPriority}
+                          notesTemplate={action.notesTemplate}
+                          allowedStatuses={action.allowedStatuses ?? []}
+                          onAllowedFieldsChange={(fields, extra) =>
+                            updateAction('update_deal', { allowedFields: fields, ...extra })
+                          }
+                          onFixedPriorityChange={(val) =>
+                            updateAction('update_deal', { fixedPriority: val as 'low' | 'medium' | 'high' | 'urgent' | undefined })
+                          }
+                          onNotesTemplateChange={(val) =>
+                            updateAction('update_deal', { notesTemplate: val })
+                          }
+                          onAllowedStatusesChange={(statuses) =>
+                            updateAction('update_deal', { allowedStatuses: statuses })
+                          }
+                        />
                       )}
 
                       {/* list_availability: janela de busca de disponibilidade */}
@@ -778,86 +656,28 @@ const StepActionBuilder = ({
 
                       {/* hand_off_to_human: notificação ao atendente via WhatsApp */}
                       {action.type === 'hand_off_to_human' && (
-                        <div className="space-y-3 border-t pt-3">
-                          <Label className="text-xs">Notificação ao atendente</Label>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            O agente decide em tempo real se deve transferir (pausar a IA) ou apenas notificar (IA continua). A configuração abaixo define como o responsável será notificado em ambos os casos.
-                          </p>
-
-                          <div className="space-y-1.5">
-                            <Select
-                              value={action.notifyTarget}
-                              onValueChange={(val) =>
-                                updateAction('hand_off_to_human', {
-                                  notifyTarget: val,
-                                  ...(val === 'none'
-                                    ? { specificPhone: undefined, notificationMessage: undefined }
-                                    : {}),
-                                  ...(val === 'deal_assignee'
-                                    ? { specificPhone: undefined }
-                                    : {}),
-                                })
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione o tipo de notificação" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {NOTIFY_TARGET_OPTIONS.map((option) => (
-                                  <SelectItem key={option.value} value={option.value}>
-                                    {option.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          {action.notifyTarget === 'specific_number' && (
-                            <div className="space-y-1.5">
-                              <Label className="text-xs">Número de WhatsApp *</Label>
-                              <Input
-                                placeholder="5511999999999"
-                                value={action.specificPhone ?? ''}
-                                onChange={(event) =>
-                                  updateAction('hand_off_to_human', {
-                                    specificPhone: event.target.value || undefined,
-                                  })
-                                }
-                              />
-                              <p className="text-[11px] text-muted-foreground">
-                                Informe o número com DDD e código do país
-                              </p>
-                            </div>
-                          )}
-
-                          {action.notifyTarget === 'deal_assignee' && (
-                            <p className="text-[11px] text-muted-foreground">
-                              O responsável pelo negócio será notificado no WhatsApp cadastrado no
-                              perfil dele. Se não houver telefone, a notificação será ignorada
-                              silenciosamente.
-                            </p>
-                          )}
-
-                          {(action.notifyTarget === 'specific_number' ||
-                            action.notifyTarget === 'deal_assignee') && (
-                            <div className="space-y-1.5">
-                              <Label className="text-xs">Mensagem personalizada (opcional)</Label>
-                              <Textarea
-                                placeholder="Ex: Conversa transferida. Por favor, assuma o atendimento."
-                                value={action.notificationMessage ?? ''}
-                                onChange={(event) =>
-                                  updateAction('hand_off_to_human', {
-                                    notificationMessage: event.target.value || undefined,
-                                  })
-                                }
-                                rows={2}
-                              />
-                              <p className="text-[11px] text-muted-foreground">
-                                Se vazio, será enviada uma mensagem padrão com o nome do contato e motivo
-                              </p>
-                            </div>
-                          )}
-                        </div>
+                        <HandOffConfig
+                          notifyTarget={action.notifyTarget}
+                          specificPhone={action.specificPhone}
+                          notificationMessage={action.notificationMessage}
+                          onNotifyTargetChange={(val) =>
+                            updateAction('hand_off_to_human', {
+                              notifyTarget: val,
+                              ...(val === 'none'
+                                ? { specificPhone: undefined, notificationMessage: undefined }
+                                : {}),
+                              ...(val === 'deal_assignee'
+                                ? { specificPhone: undefined }
+                                : {}),
+                            })
+                          }
+                          onSpecificPhoneChange={(val) =>
+                            updateAction('hand_off_to_human', { specificPhone: val })
+                          }
+                          onNotificationMessageChange={(val) =>
+                            updateAction('hand_off_to_human', { notificationMessage: val })
+                          }
+                        />
                       )}
                     </div>
                   </CollapsibleContent>

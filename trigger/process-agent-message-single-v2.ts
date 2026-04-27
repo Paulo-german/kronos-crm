@@ -375,6 +375,7 @@ export async function runSingleV2(
     effectiveToolsEnabled,
     toolContext,
     promptContext.allStepActions,
+    'globalTools' in promptContext ? promptContext.globalTools : [],
     {
       hasActiveProducts: promptContext.hasActiveProducts,
       hasActiveProductsWithMedia: promptContext.hasActiveProductsWithMedia,

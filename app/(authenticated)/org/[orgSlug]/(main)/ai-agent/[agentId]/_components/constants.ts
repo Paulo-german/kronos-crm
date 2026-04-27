@@ -39,6 +39,10 @@ export const TOOL_OPTIONS = [
   },
 ] as const
 
+export const GLOBAL_TOOL_OPTIONS = TOOL_OPTIONS.filter((tool) =>
+  ['hand_off_to_human', 'update_contact', 'update_deal', 'create_task'].includes(tool.value),
+)
+
 export const DURATION_OPTIONS = [
   { value: 15, label: '15 minutos' },
   { value: 30, label: '30 minutos' },

@@ -135,6 +135,7 @@ export const toolAgent = schemaTask({
         promptBaseContext.toolsEnabled,
         toolContext,
         stepActions,
+        promptBaseContext.globalTools,
         globalFlags,
         groupConfig,
       )

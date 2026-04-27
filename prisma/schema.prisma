@@ -548,6 +548,7 @@ model Agent {
   promptConfig                     Json?                   @map("prompt_config")
   followUpExhaustedAction          String                  @default("NONE") @map("follow_up_exhausted_action")
   followUpExhaustedConfig          Json?                   @map("follow_up_exhausted_config")
+  globalTools                      Json?                   @map("global_tools")
   executions            AgentExecution[]
   groupMemberships      AgentGroupMember[]
   knowledgeChunks       AgentKnowledgeChunk[]

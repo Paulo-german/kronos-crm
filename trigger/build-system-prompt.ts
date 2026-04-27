@@ -809,6 +809,9 @@ export async function buildSystemPrompt(
     toolsEnabled: effectiveTools,
     pipelineIds: agent.pipelineIds,
     allStepActions,
+    // legado: v1/crew-v1 não têm global tools — array sempre vazio para manter
+    // paridade estrutural com SingleSystemPrompt (campo obrigatório desde a v2).
+    globalTools: [],
     hasActiveProducts: activeProductCount > 0,
     hasActiveProductsWithMedia: activeProductMediaCount > 0,
     hasKnowledgeBase: completedFileCount > 0,

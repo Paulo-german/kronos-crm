@@ -13,6 +13,10 @@ import {
   stepActionSchema,
   type StepAction,
 } from '@/_actions/agent/shared/step-action-schema'
+import {
+  globalToolsArraySchema,
+  type GlobalTool,
+} from '@/_actions/agent/shared/global-tool-schema'
 import { resolveCanonicalAgentVersion } from '@/_lib/agent/agent-version'
 
 export interface AgentStepDto {
@@ -79,6 +83,7 @@ export interface AgentDetailDto {
   inboxes: AgentInboxDto[]
   steps: AgentStepDto[]
   knowledgeFiles: AgentKnowledgeFileDto[]
+  globalTools: GlobalTool[]
   groupMemberships: AgentGroupMembershipDto[]
   createdAt: Date
   updatedAt: Date
@@ -129,6 +134,11 @@ const fetchAgentByIdFromDb = async (
     console.warn('[get-agent-by-id] Invalid promptConfig for agent', agentId, parsedPromptConfig.error.flatten())
   }
 
+  const parsedGlobalTools = globalToolsArraySchema.safeParse(agent.globalTools ?? [])
+  if (!parsedGlobalTools.success) {
+    console.warn('[get-agent-by-id] Invalid globalTools for agent', agentId, parsedGlobalTools.error.flatten())
+  }
+
   return {
     id: agent.id,
     name: agent.name,
@@ -143,6 +153,7 @@ const fetchAgentByIdFromDb = async (
     businessHoursConfig: agent.businessHoursConfig as BusinessHoursConfig | null,
     outOfHoursMessage: agent.outOfHoursMessage,
     agentVersion: resolveCanonicalAgentVersion(agent.agentVersion),
+    globalTools: parsedGlobalTools.success ? parsedGlobalTools.data : [],
     followUpBusinessHoursEnabled: agent.followUpBusinessHoursEnabled,
     followUpBusinessHoursTimezone: agent.followUpBusinessHoursTimezone,
     followUpBusinessHoursConfig:

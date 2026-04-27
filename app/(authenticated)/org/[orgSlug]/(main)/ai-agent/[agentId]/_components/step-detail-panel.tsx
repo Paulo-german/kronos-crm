@@ -40,6 +40,7 @@ interface StepDetailPanelProps {
   onCreateSuccess: () => void
   onDeleteSuccess: () => void
   onSaveSuccess?: () => void
+  excludeGlobalTools?: boolean
 }
 
 const StepDetailPanel = ({
@@ -50,6 +51,7 @@ const StepDetailPanel = ({
   onCreateSuccess,
   onDeleteSuccess,
   onSaveSuccess,
+  excludeGlobalTools = false,
 }: StepDetailPanelProps) => {
   const isEditing = !!step?.id
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
@@ -126,7 +128,7 @@ const StepDetailPanel = ({
         agentId,
         name: data.name,
         objective: data.objective,
-        actions: data.actions,
+        actions: data.actions ?? [],
         keyQuestion: data.keyQuestion,
         messageTemplate: data.messageTemplate,
       })
@@ -191,6 +193,7 @@ const StepDetailPanel = ({
                 value={(form.watch('actions') ?? []) as StepAction[]}
                 onChange={(actions) => form.setValue('actions', actions, { shouldDirty: true })}
                 pipelineStages={pipelineStages}
+                excludeGlobalTools={excludeGlobalTools}
               />
             )}
 

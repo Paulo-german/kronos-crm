@@ -1,6 +1,7 @@
 import { buildToolSet, type GlobalToolFlags } from './index'
 import type { GroupToolConfig } from './transfer-to-agent'
 import type { StepAction } from '@/_actions/agent/shared/step-action-schema'
+import type { GlobalTool } from '@/_actions/agent/shared/global-tool-schema'
 import type { ToolContext } from './types'
 
 // Tools reserved for Agent 2 (conversational layer) or the transport layer —
@@ -15,10 +16,11 @@ export function buildMutationToolSet(
   toolsEnabled: string[],
   ctx: ToolContext,
   stepActions: StepAction[],
+  globalTools: GlobalTool[] = [],
   globalFlags?: GlobalToolFlags,
   groupConfig?: GroupToolConfig,
 ) {
-  const tools = buildToolSet(toolsEnabled, ctx, stepActions, globalFlags, groupConfig)
+  const tools = buildToolSet(toolsEnabled, ctx, stepActions, globalTools, globalFlags, groupConfig)
   if (!tools) return undefined
 
   for (const toolName of EXCLUDED_FROM_MUTATION_AGENT) {

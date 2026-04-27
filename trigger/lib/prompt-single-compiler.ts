@@ -6,8 +6,10 @@ import {
   LENGTH_INSTRUCTIONS,
   LANGUAGE_INSTRUCTIONS,
 } from '@/_actions/agent/shared/prompt-labels'
-import { TOOL_PROMPT_DESCRIPTIONS } from '../build-system-prompt'
-import { compileStepActions } from './prompt-step-compilers'
+import { compileStepActions, compileGlobalTools } from './prompt-step-compilers'
+import {
+  type GlobalTool,
+} from '@/_actions/agent/shared/global-tool-schema'
 
 // ---------------------------------------------------------------------------
 // Tipos públicos
@@ -25,6 +27,7 @@ export interface SingleSystemPrompt {
   hasSteps: boolean
   toolsEnabled: string[]
   allStepActions: StepAction[]
+  globalTools: GlobalTool[]
   hasActiveProducts: boolean
   hasActiveProductsWithMedia: boolean
   hasKnowledgeBase: boolean
@@ -199,20 +202,13 @@ function buildCriticalRulesSection(base: PromptBaseContext, filteredTools: strin
   return lines.join('\n')
 }
 
-function buildToolsSection(toolsEnabled: string[]): string | null {
-  const lines: string[] = []
+function buildGlobalToolsSection(globalTools: GlobalTool[]): string | null {
+  if (globalTools.length === 0) return null
 
-  for (const toolKey of toolsEnabled) {
-    const toolInfo = TOOL_PROMPT_DESCRIPTIONS[toolKey]
-    if (!toolInfo) continue
-    lines.push(`**${toolInfo.label}** (\`${toolKey}\`)`)
-    lines.push(`Quando usar: ${toolInfo.description}`)
-    lines.push('')
-  }
+  const compiled = compileGlobalTools(globalTools)
+  if (!compiled.trim()) return null
 
-  if (lines.length === 0) return null
-
-  return `## Ferramentas Disponíveis\n\n${lines.join('\n').trimEnd()}`
+  return `## Ferramentas Globais\nDisponíveis em qualquer etapa:\n${compiled}`
 }
 
 function buildGroupTransferSection(base: PromptBaseContext): string | null {
@@ -510,19 +506,19 @@ export function compileSingleSystemPrompt(
   // 1b. Regras críticas de comportamento
   parts.push(buildCriticalRulesSection(base, filteredTools))
 
-  // 2. Ferramentas disponíveis
-  const toolsSection = buildToolsSection(filteredTools)
-  if (toolsSection) {
-    parts.push(`\n${toolsSection}`)
-  }
-
-  // 2b. Transferência entre agentes (só quando worker de grupo com outros workers)
+  // 2. Transferência entre agentes (só quando worker de grupo com outros workers)
   const groupTransferSection = buildGroupTransferSection(base)
   if (groupTransferSection) {
     parts.push(`\n${groupTransferSection}`)
   }
 
-  // 3. Processo de atendimento (funil de steps)
+  // 3. Ferramentas globais compactas — imediatamente antes do funil
+  const globalToolsSection = buildGlobalToolsSection(base.globalTools)
+  if (globalToolsSection) {
+    parts.push(`\n${globalToolsSection}`)
+  }
+
+  // 4. Processo de atendimento (funil de steps)
   const funnelSection = buildFunnelSection(base)
   if (funnelSection) {
     parts.push(funnelSection)
@@ -568,6 +564,7 @@ export function compileSingleSystemPrompt(
     hasSteps: base.steps.length > 0,
     toolsEnabled: filteredTools,
     allStepActions,
+    globalTools: base.globalTools,
     hasActiveProducts: base.hasActiveProducts,
     hasActiveProductsWithMedia: base.hasActiveProductsWithMedia,
     hasKnowledgeBase: base.hasKnowledgeBase,

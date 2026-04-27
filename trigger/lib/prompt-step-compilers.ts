@@ -1,5 +1,6 @@
 import type { PromptBaseContext } from './prompt-base-context'
 import type { StepAction } from '@/_actions/agent/shared/step-action-schema'
+import type { GlobalTool } from '@/_actions/agent/shared/global-tool-schema'
 
 // Tipo de um step individual — extraído do array tipado do contexto base
 type AgentStep = PromptBaseContext['steps'][number]
@@ -177,4 +178,50 @@ function compileActionLine(action: StepAction): string {
 export function compileStepTemplate(step: AgentStep): string | null {
   if (!step.messageTemplate) return null
   return `**Template de mensagem:** ${step.messageTemplate}`
+}
+
+// ---------------------------------------------------------------------------
+// G1 — Global Tools (single-v2) — formato compacto, uma linha por ferramenta
+// ---------------------------------------------------------------------------
+
+export function compileGlobalTools(globalTools: GlobalTool[]): string {
+  return globalTools.map(compileGlobalToolLine).join('\n')
+}
+
+function compileGlobalToolLine(tool: GlobalTool): string {
+  const trigger = tool.trigger || 'Quando necessário'
+
+  switch (tool.type) {
+    case 'update_contact':
+      return `* ${trigger} → \`update_contact\``
+
+    case 'hand_off_to_human':
+      return `* ${trigger} → \`hand_off_to_human\``
+
+    case 'update_deal': {
+      const parts: string[] = []
+      if (tool.allowedFields && tool.allowedFields.length > 0) {
+        parts.push(`campos: ${tool.allowedFields.map((field) => FIELD_LABELS[field] ?? field).join(', ')}`)
+      }
+      if (tool.fixedPriority) {
+        parts.push(`prioridade fixa: ${PRIORITY_LABELS[tool.fixedPriority]}`)
+      }
+      if (tool.allowedStatuses && tool.allowedStatuses.length > 0) {
+        const statusLabels = tool.allowedStatuses
+          .map((status) => (status === 'WON' ? 'GANHO' : 'PERDIDO'))
+          .join('/')
+        parts.push(`pode marcar: ${statusLabels}`)
+      }
+      const detail = parts.length > 0 ? ` (${parts.join(', ')})` : ''
+      return `* ${trigger} → \`update_deal\`${detail}`
+    }
+
+    case 'create_task': {
+      const parts: string[] = []
+      if (tool.title) parts.push(`título: "${tool.title}"`)
+      if (tool.dueDaysOffset) parts.push(`prazo: ${tool.dueDaysOffset} dias`)
+      const detail = parts.length > 0 ? ` (${parts.join(', ')})` : ''
+      return `* ${trigger} → \`create_task\`${detail}`
+    }
+  }
 }

@@ -18,6 +18,7 @@
 
 import { compileSingleSystemPrompt } from '../prompt-single-compiler'
 import type { PromptBaseContext } from '../prompt-base-context'
+import type { GlobalTool } from '@/_actions/agent/shared/global-tool-schema'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -131,6 +132,7 @@ const BASE_FIXTURE: PromptBaseContext = {
   recentToolEvents: [],
   lossReasonNames: [],
   toolsEnabled: ['move_deal', 'update_contact', 'hand_off_to_human'],
+  globalTools: [],
   groupContext: null,
   currentStepOrder: 0,
   pipelineIds: ['00000000-0000-0000-0000-000000000030'],
@@ -169,6 +171,71 @@ const FIXTURE_WITH_PRODUCTS: PromptBaseContext = {
     tasks: [],
     appointments: [],
   },
+}
+
+// Cenário C: agente single-v2 com globalTools populados
+// Este cenário valida APENAS o compilador novo (não compara com legado).
+const GLOBAL_TOOLS_FIXTURE: PromptBaseContext = {
+  ...BASE_FIXTURE,
+  agentId: '00000000-0000-0000-0000-000000000003',
+  globalTools: [
+    {
+      type: 'hand_off_to_human',
+      trigger: 'Quando o cliente pedir para falar com humano',
+      notifyTarget: 'deal_assignee',
+      specificPhone: undefined,
+      notificationMessage: 'Cliente solicitou atendimento humano.',
+    },
+    {
+      type: 'update_contact',
+      trigger: 'Quando o cliente informar dados de contato',
+    },
+  ] as GlobalTool[],
+  toolsEnabled: ['move_deal', 'hand_off_to_human', 'update_contact'],
+}
+
+/**
+ * Executa validações estruturais no compilador novo com globalTools populados.
+ * Não compara com o legado — apenas garante que o compilador não explode e
+ * emite a seção esperada.
+ */
+function runGlobalToolsScenario(): ScenarioResult {
+  const name = 'Cenário C: agente single-v2 com globalTools (sem comparação com legado)'
+  const errors: string[] = []
+
+  const result = compileSingleSystemPrompt(GLOBAL_TOOLS_FIXTURE, { summary: null })
+  const prompt = result.systemPrompt
+
+  // Deve conter a seção de ferramentas globais
+  if (!prompt.includes('Ferramentas Globais')) {
+    errors.push('systemPrompt não contém seção "Ferramentas Globais"')
+  }
+
+  // Deve conter o trigger da hand_off_to_human global
+  if (!prompt.includes('Quando o cliente pedir para falar com humano')) {
+    errors.push('systemPrompt não contém trigger da globalTool hand_off_to_human')
+  }
+
+  // globalTools devem estar presentes no retorno tipado
+  if (result.globalTools.length !== GLOBAL_TOOLS_FIXTURE.globalTools.length) {
+    errors.push(
+      `globalTools.length: esperado=${GLOBAL_TOOLS_FIXTURE.globalTools.length} recebido=${result.globalTools.length}`,
+    )
+  }
+
+  // Idempotência
+  const result2 = compileSingleSystemPrompt(GLOBAL_TOOLS_FIXTURE, { summary: null })
+  if (result.systemPrompt !== result2.systemPrompt) {
+    errors.push('Compilador não é idempotente com globalTools populados')
+  }
+
+  return {
+    name,
+    passed: errors.length === 0,
+    similarityPct: '100.0',
+    metaOk: errors.length === 0,
+    errors,
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -277,6 +344,7 @@ function run(): void {
   const scenarios: ScenarioResult[] = [
     runScenario('Cenário A: agente com steps, sem produtos, sem KB', BASE_FIXTURE),
     runScenario('Cenário B: agente sem steps, com produtos+mídia+KB', FIXTURE_WITH_PRODUCTS),
+    runGlobalToolsScenario(),
   ]
 
   let allPassed = true

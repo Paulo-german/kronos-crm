@@ -2,6 +2,10 @@ import { z } from 'zod'
 import { db } from '@/_lib/prisma'
 import { promptConfigSchema } from '@/_actions/agent/shared/prompt-config-schema'
 import { stepActionSchema } from '@/_actions/agent/shared/step-action-schema'
+import {
+  globalToolsArraySchema,
+  type GlobalTool,
+} from '@/_actions/agent/shared/global-tool-schema'
 import { resolveCanonicalAgentVersion } from '../../app/_lib/agent/agent-version'
 
 // ---------------------------------------------------------------------------
@@ -127,6 +131,10 @@ export const promptBaseContextSchema = z.object({
   // Tools disponíveis — builders filtram conforme a "lente" do agente
   toolsEnabled: z.array(z.string()),
 
+  // Tools globais (single-v2 apenas) — disponíveis em qualquer etapa do funil
+  // v1/crew-v1 sempre recebem [] independente do valor no banco
+  globalTools: globalToolsArraySchema.default([]),
+
   // Grupo de agentes (transferência entre workers)
   groupContext: groupContextSchema.nullable(),
 
@@ -183,6 +191,7 @@ export async function buildPromptBaseContext(
         agentVersion: true,
         pipelineIds: true,
         businessHoursTimezone: true,
+        globalTools: true,
         steps: {
           orderBy: { order: 'asc' },
           select: {
@@ -399,6 +408,21 @@ export async function buildPromptBaseContext(
   // Validar agentVersion — resolver canonical; fallback para single-v1 se campo desconhecido
   const agentVersion = resolveCanonicalAgentVersion(agent.agentVersion)
 
+  // Parsear globalTools — apenas single-v2 usa; v1/crew-v1 recebem [] para isolar o comportamento
+  const parsedGlobalTools = agentVersion === 'single-v2'
+    ? globalToolsArraySchema.safeParse(agent.globalTools ?? [])
+    : { success: true as const, data: [] as GlobalTool[] }
+
+  if (!parsedGlobalTools.success) {
+    console.warn('[prompt-base-context] Invalid globalTools for agent', agentId)
+  }
+
+  const globalTools: GlobalTool[] = parsedGlobalTools.success ? parsedGlobalTools.data : []
+
+  // Incluir types das global tools no conjunto de tools disponíveis — sem duplicatas
+  const globalToolTypes = globalTools.map((tool) => tool.type)
+  const allToolsEnabled = [...new Set([...toolsEnabled, ...globalToolTypes])]
+
   return {
     agentId,
     agentName: agent.name,
@@ -414,7 +438,8 @@ export async function buildPromptBaseContext(
     hasActiveProductsWithMedia: activeProductMediaCount > 0,
     recentToolEvents: serializedToolEvents,
     lossReasonNames: lossReasons.map((reason) => reason.name),
-    toolsEnabled,
+    toolsEnabled: allToolsEnabled,
+    globalTools,
     groupContext,
     currentStepOrder: conversation.currentStepOrder,
     pipelineIds: agent.pipelineIds,

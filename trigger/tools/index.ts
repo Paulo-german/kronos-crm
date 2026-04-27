@@ -1,4 +1,5 @@
 import type { StepAction } from '@/_actions/agent/shared/step-action-schema'
+import type { GlobalTool } from '@/_actions/agent/shared/global-tool-schema'
 import type { ToolContext } from './types'
 import { createMoveDealTool } from './move-deal'
 import { createUpdateContactTool } from './update-contact'
@@ -42,6 +43,7 @@ export function buildToolSet(
   toolsEnabled: string[],
   ctx: ToolContext,
   stepActions: StepAction[],
+  globalTools: GlobalTool[] = [],
   globalFlags?: GlobalToolFlags,
   groupConfig?: GroupToolConfig,
   omitLegacyMediaTools = false,
@@ -95,7 +97,11 @@ export function buildToolSet(
     }
 
     if (toolName === 'hand_off_to_human') {
-      const config = stepActions.find((action) => action.type === 'hand_off_to_human')
+      // Prioridade: config global > config de step (retrocompat para v1)
+      const globalConfig = globalTools.find((tool) => tool.type === 'hand_off_to_human')
+      const stepConfig = stepActions.find((action) => action.type === 'hand_off_to_human')
+      const config = globalConfig ?? stepConfig
+
       if (config && config.type === 'hand_off_to_human') {
         tools[toolName] = createHandOffToHumanTool(ctx, {
           notifyTarget: config.notifyTarget,
@@ -103,7 +109,7 @@ export function buildToolSet(
           notificationMessage: config.notificationMessage,
         })
       } else {
-        // Retrocompat: step sem config de notificação → tool sem config (comportamento original)
+        // Retrocompat: sem config → tool sem config (comportamento original)
         tools[toolName] = createHandOffToHumanTool(ctx)
       }
       continue

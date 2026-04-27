@@ -9,7 +9,9 @@ import { getEvolutionInstanceInfo } from '@/_lib/evolution/instance-management'
 import { resolveEvolutionCredentials } from '@/_lib/evolution/resolve-credentials'
 import { getFollowUps } from '@/_data-access/follow-up/get-follow-ups'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
+import { resolveCanonicalAgentVersion } from '@/_lib/agent/agent-version'
 import AgentDetailClient from './_components/agent-detail-client'
+import AgentDetailV2Client from './_components/v2/agent-detail-v2-client'
 
 interface AgentDetailPageProps {
   params: Promise<{ orgSlug: string; agentId: string }>
@@ -60,19 +62,23 @@ const AgentDetailPage = async ({ params }: AgentDetailPageProps) => {
     agentId: inbox.agentId,
   }))
 
-  return (
-    <AgentDetailClient
-      agent={agent}
-      pipelines={pipelines}
-      pipelineStages={pipelineStages}
-      userRole={ctx.userRole}
-      orgSlug={orgSlug}
-      availableInboxes={availableInboxes}
-      inboxConnectionData={inboxConnectionData}
-      followUps={followUps}
-      followUpQuota={followUpQuota}
-    />
-  )
+  const sharedProps = {
+    agent,
+    pipelines,
+    pipelineStages,
+    userRole: ctx.userRole,
+    orgSlug,
+    availableInboxes,
+    inboxConnectionData,
+    followUps,
+    followUpQuota,
+  }
+
+  if (resolveCanonicalAgentVersion(agent.agentVersion) === 'single-v2') {
+    return <AgentDetailV2Client {...sharedProps} />
+  }
+
+  return <AgentDetailClient {...sharedProps} />
 }
 
 export default AgentDetailPage

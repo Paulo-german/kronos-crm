@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef, useId } from 'react'
-import { Plus, ListChecks, ChevronRight, GripVertical } from 'lucide-react'
+import { useState, useEffect, useRef, useId, useMemo } from 'react'
+import { Plus, ListChecks, ChevronRight, GripVertical, AlertTriangle, Loader2, Save, ChevronDown, Wrench } from 'lucide-react'
 import {
   DndContext,
   closestCenter,
@@ -23,6 +23,7 @@ import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 import { cn } from '@/_lib/utils'
 import { Button } from '@/_components/ui/button'
+import { Alert, AlertDescription } from '@/_components/ui/alert'
 import {
   Card,
   CardContent,
@@ -30,14 +31,30 @@ import {
   CardHeader,
   CardTitle,
 } from '@/_components/ui/card'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/_components/ui/collapsible'
 import { ScrollArea } from '@/_components/ui/scroll-area'
 import StepDetailPanel from './step-detail-panel'
+import GlobalToolBuilder from './v2/global-tool-builder'
 import { reorderSteps } from '@/_actions/agent/reorder-steps'
+import { migrateStepToolsToGlobal } from '@/_actions/agent/migrate-step-tools-to-global'
+import { updateAgentGlobalTools } from '@/_actions/agent/update-agent-global-tools'
 import type {
   AgentDetailDto,
   AgentStepDto,
 } from '@/_data-access/agent/get-agent-by-id'
+import type { GlobalTool, GlobalToolType } from '@/_actions/agent/shared/global-tool-schema'
 import type { PipelineStageOption } from '@/_data-access/pipeline/get-pipeline-stages'
+
+const GLOBAL_TOOL_TYPES: GlobalToolType[] = [
+  'hand_off_to_human',
+  'update_contact',
+  'update_deal',
+  'create_task',
+]
 
 interface SortableStepItemProps {
   step: AgentStepDto
@@ -106,9 +123,11 @@ interface ProcessTabProps {
   canManage: boolean
   pipelineStages: PipelineStageOption[]
   onSaveSuccess?: () => void
+  excludeGlobalTools?: boolean
+  showGlobalTools?: boolean
 }
 
-const ProcessTab = ({ agent, canManage, pipelineStages, onSaveSuccess }: ProcessTabProps) => {
+const ProcessTab = ({ agent, canManage, pipelineStages, onSaveSuccess, excludeGlobalTools = false, showGlobalTools = false }: ProcessTabProps) => {
   const dndContextId = useId()
   const [isMounted, setIsMounted] = useState(false)
   const [steps, setSteps] = useState<AgentStepDto[]>(agent.steps)
@@ -116,6 +135,21 @@ const ProcessTab = ({ agent, canManage, pipelineStages, onSaveSuccess }: Process
     agent.steps[0]?.id ?? null,
   )
   const selectLastRef = useRef(false)
+  const [globalTools, setGlobalTools] = useState<GlobalTool[]>(agent.globalTools)
+  const [isGlobalToolsOpen, setIsGlobalToolsOpen] = useState(false)
+
+  const { execute: executeSaveGlobalTools, isPending: isSavingGlobalTools } = useAction(
+    updateAgentGlobalTools,
+    {
+      onSuccess: () => {
+        toast.success('Ferramentas globais salvas!')
+        onSaveSuccess?.()
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError || 'Falha ao salvar ferramentas globais.')
+      },
+    },
+  )
 
   useEffect(() => {
     setIsMounted(true)
@@ -179,6 +213,38 @@ const ProcessTab = ({ agent, canManage, pipelineStages, onSaveSuccess }: Process
     setSelectedStepId(remaining[0]?.id ?? null)
   }
 
+  const { execute: executeMigrate, isPending: isMigrating } = useAction(
+    migrateStepToolsToGlobal,
+    {
+      onSuccess: () => {
+        toast.success('Ferramentas migradas com sucesso')
+        // Remove as global tools das actions localmente para o banner sumir sem reload
+        setSteps((current) =>
+          current.map((step) => ({
+            ...step,
+            actions: step.actions.filter(
+              (action) => !GLOBAL_TOOL_TYPES.includes(action.type as GlobalToolType),
+            ),
+          })),
+        )
+      },
+      onError: () => {
+        toast.error('Erro ao migrar ferramentas')
+      },
+    },
+  )
+
+  const stepsWithGlobalTools = useMemo(
+    () =>
+      steps.filter((step) =>
+        step.actions.some((action) =>
+          GLOBAL_TOOL_TYPES.includes(action.type as GlobalToolType),
+        ),
+      ),
+    [steps],
+  )
+  const hasMigrationPending = stepsWithGlobalTools.length > 0
+
   const selectedStep = steps.find((step) => step.id === selectedStepId)
   const showEmptyRight = !canManage && steps.length === 0
 
@@ -198,6 +264,28 @@ const ProcessTab = ({ agent, canManage, pipelineStages, onSaveSuccess }: Process
   )
 
   return (
+    <div className="flex flex-col gap-4">
+      {excludeGlobalTools && hasMigrationPending && (
+        <Alert>
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription className="flex items-center justify-between gap-4">
+            <span>
+              {stepsWithGlobalTools.length} etapa(s) têm ferramentas que agora são globais. Migre para evitar perda de configuração ao editar essas etapas.
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isMigrating}
+              onClick={() => executeMigrate({ agentId: agent.id })}
+            >
+              {isMigrating ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              Migrar agora
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
     <div className="grid grid-cols-[320px_1fr] items-start gap-6">
       {/* Coluna esquerda: lista de etapas */}
       <div className="sticky top-1 flex flex-col gap-3">
@@ -243,6 +331,60 @@ const ProcessTab = ({ agent, canManage, pipelineStages, onSaveSuccess }: Process
             Adicionar Etapa
           </Button>
         )}
+
+        {showGlobalTools && (
+          <Collapsible open={isGlobalToolsOpen} onOpenChange={setIsGlobalToolsOpen}>
+            <Card className="border-border/50 bg-card">
+              <CollapsibleTrigger asChild>
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between px-4 py-3 text-left"
+                >
+                  <div className="flex items-center gap-2">
+                    <Wrench className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-semibold">Ferramentas Globais</span>
+                    {globalTools.length > 0 && (
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                        {globalTools.length}
+                      </span>
+                    )}
+                  </div>
+                  <ChevronDown
+                    className={cn(
+                      'h-4 w-4 text-muted-foreground transition-transform',
+                      isGlobalToolsOpen && 'rotate-180',
+                    )}
+                  />
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="border-t px-4 pb-4 pt-3 space-y-3">
+                  <p className="text-xs text-muted-foreground">
+                    Disponíveis em qualquer etapa da conversa.
+                  </p>
+                  <GlobalToolBuilder value={globalTools} onChange={setGlobalTools} />
+                  {canManage && (
+                    <div className="flex justify-end pt-1">
+                      <Button
+                        size="sm"
+                        disabled={isSavingGlobalTools}
+                        onClick={() => executeSaveGlobalTools({ agentId: agent.id, globalTools })}
+                        type="button"
+                      >
+                        {isSavingGlobalTools ? (
+                          <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Save className="mr-2 h-3.5 w-3.5" />
+                        )}
+                        Salvar
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
+        )}
       </div>
 
       {/* Coluna direita: painel de detalhes */}
@@ -275,10 +417,12 @@ const ProcessTab = ({ agent, canManage, pipelineStages, onSaveSuccess }: Process
               onCreateSuccess={handleCreateSuccess}
               onDeleteSuccess={handleDeleteSuccess}
               onSaveSuccess={onSaveSuccess}
+              excludeGlobalTools={excludeGlobalTools}
             />
           )}
         </CardContent>
       </Card>
+    </div>
     </div>
   )
 }

@@ -515,6 +515,7 @@ export async function runSingleV1(
     effectiveToolsEnabled,
     toolContext,
     promptContext.allStepActions,
+    [], // v1 não tem global tools
     {
       hasActiveProducts: promptContext.hasActiveProducts,
       hasActiveProductsWithMedia: promptContext.hasActiveProductsWithMedia,
