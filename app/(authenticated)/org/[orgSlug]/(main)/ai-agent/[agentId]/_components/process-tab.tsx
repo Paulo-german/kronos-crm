@@ -377,7 +377,7 @@ const ProcessTab = ({
             </span>
             <Button
               size="sm"
-              variant="outline"
+              variant="soft"
               disabled={isMigrating}
               onClick={() => executeMigrate({ agentId: agent.id })}
             >
