@@ -124,7 +124,7 @@ export function GlobalSearchDialog({
       shouldFilter={false}
     >
       <CommandInput
-        placeholder="Buscar contatos, empresas, negócios..."
+        placeholder="Buscar contatos, empresas, negociações..."
         value={query}
         onValueChange={setQuery}
       />
