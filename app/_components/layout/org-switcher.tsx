@@ -51,10 +51,16 @@ const OrgAvatar = ({
   return (
     <div
       className={cn(
-        'flex h-5 w-5 shrink-0 items-center justify-center rounded text-[9px] font-bold leading-none ring-1',
+        'flex h-[1.45rem] w-6 shrink-0 items-center justify-center rounded text-[9px] font-bold leading-none ring-1',
         onDark
-          ? cn('bg-white/20 text-white', active ? 'ring-white/80' : 'ring-white/30')
-          : cn('bg-primary/20 text-primary', active ? 'ring-primary' : 'ring-primary/20'),
+          ? cn(
+              'bg-white/20 text-white',
+              active ? 'ring-white/80' : 'ring-white/30',
+            )
+          : cn(
+              'bg-primary/20 text-primary',
+              active ? 'ring-primary' : 'ring-primary/20',
+            ),
       )}
     >
       {initials}
@@ -105,12 +111,19 @@ export function OrgSwitcher({ organizations }: OrgSwitcherProps) {
 
   return (
     <DropdownMenu>
-      <Tooltip delayDuration={300} open={!isCollapsed || isAnimating ? false : undefined}>
+      <Tooltip
+        delayDuration={300}
+        open={!isCollapsed || isAnimating ? false : undefined}
+      >
         <TooltipTrigger asChild>
           <DropdownMenuTrigger asChild>{content}</DropdownMenuTrigger>
         </TooltipTrigger>
         {isCollapsed && (
-          <TooltipContent side="right" sideOffset={10} className="w-48 space-y-1 p-3 shadow-none">
+          <TooltipContent
+            side="right"
+            sideOffset={10}
+            className="w-48 space-y-1 p-3 shadow-none"
+          >
             <div className="flex items-center gap-2">
               <OrgAvatar name={organization.name} active onDark />
               <span className="truncate font-medium">{organization.name}</span>
