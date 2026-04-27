@@ -11,10 +11,15 @@ interface MoveDealResult {
   message: string
 }
 
-export function createMoveDealTool(ctx: ToolContext) {
+export function createMoveDealTool(ctx: ToolContext, opts?: { triggerHint?: string }) {
+  const baseDescription =
+    'Move um negócio para outra etapa do pipeline de vendas. Use quando o cliente avançar ou regredir no funil.'
+  const description = opts?.triggerHint
+    ? `${baseDescription}\n\nQuando usar esta instância: ${opts.triggerHint}`
+    : baseDescription
+
   return tool({
-    description:
-      'Move um negócio para outra etapa do pipeline de vendas. Use quando o cliente avançar ou regredir no funil.',
+    description,
     inputSchema: z.object({
       targetStageId: z
         .string()

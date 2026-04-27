@@ -1,6 +1,7 @@
 import type { PromptBaseContext } from './prompt-base-context'
 import type { StepAction } from '@/_actions/agent/shared/step-action-schema'
 import type { GlobalTool } from '@/_actions/agent/shared/global-tool-schema'
+import { getRuntimeToolName } from '../tools/lib/runtime-tool-name'
 
 // Tipo de um step individual — extraído do array tipado do contexto base
 type AgentStep = PromptBaseContext['steps'][number]
@@ -59,30 +60,56 @@ export function compileStepKeyQuestion(step: AgentStep): string | null {
 // Builders v2 incluem este bloco apenas no Tool Agent prompt.
 // ---------------------------------------------------------------------------
 
-export function compileStepActions(actions: AgentStep['actions']): string {
-  return actions.map((action) => compileActionLine(action)).join('\n')
+/**
+ * Pré-computa o nome runtime de cada action no array.
+ * Quando há apenas 1 instância de um type, o nome canônico é preservado —
+ * isso garante que conversas em andamento não sejam invalidadas.
+ * Com N > 1, expõe `${type}_${index}` para que o LLM distinga as instâncias.
+ */
+function computeRuntimeNames(actions: StepAction[]): Map<StepAction, string> {
+  const countByType = new Map<string, number>()
+  for (const action of actions) {
+    countByType.set(action.type, (countByType.get(action.type) ?? 0) + 1)
+  }
+
+  const indexByType = new Map<string, number>()
+  const runtimeNames = new Map<StepAction, string>()
+  for (const action of actions) {
+    const groupSize = countByType.get(action.type) ?? 1
+    const indexInGroup = indexByType.get(action.type) ?? 0
+    runtimeNames.set(action, getRuntimeToolName(action.type, indexInGroup, groupSize))
+    indexByType.set(action.type, indexInGroup + 1)
+  }
+  return runtimeNames
 }
 
-function compileActionLine(action: StepAction): string {
+export function compileStepActions(actions: AgentStep['actions']): string {
+  const runtimeNames = computeRuntimeNames(actions)
+  return actions
+    .map((action) => compileActionLine(action, runtimeNames.get(action) ?? action.type))
+    .join('\n')
+}
+
+function compileActionLine(action: StepAction, runtimeName: string): string {
   const { trigger } = action
 
   switch (action.type) {
     case 'move_deal':
       // UUID em linha isolada para evitar alucinação do modelo — quando o ID
-      // está embutido em prosa (ex: targetStageId="..."), Gemini tende a
+      // está embutido em prosa (ex: targetStageId="..."), o LLM tende a
       // pattern-generate um UUID novo ao invés de copiar o valor exato.
       return [
-        `* ${trigger} → execute \`move_deal\`.`,
+        `* ${trigger} → execute \`${runtimeName}\`.`,
         `  → targetStageId: ${action.targetStage}`,
       ].join('\n')
 
     case 'update_contact':
-      return `* ${trigger} → execute \`update_contact\` para registrar no contato.`
+      return `* ${trigger} → execute \`${runtimeName}\` para registrar no contato.`
 
     case 'update_deal': {
       const resultLines: string[] = []
 
-      let instruction = `* ${trigger} → execute \`update_deal\``
+      let instruction = `* ${trigger} → execute \`${runtimeName}\``
       if (action.allowedFields.length > 0) {
         const fieldList = action.allowedFields.map((field) => FIELD_LABELS[field]).join(', ')
         instruction += ` atualizando apenas: ${fieldList}`
@@ -114,12 +141,12 @@ function compileActionLine(action: StepAction): string {
     }
 
     case 'create_task':
-      return `* ${trigger} → execute \`create_task\` com título "${action.title}"${
+      return `* ${trigger} → execute \`${runtimeName}\` com título "${action.title}"${
         action.dueDaysOffset ? ` (vencimento em ${action.dueDaysOffset} dias)` : ''
       }.`
 
     case 'list_availability':
-      return `* ${trigger} → execute \`list_availability\` para consultar horários disponíveis. Quando o cliente pedir data/horário específico, passe \`date\` e/ou \`time\`.`
+      return `* ${trigger} → execute \`${runtimeName}\` para consultar horários disponíveis. Quando o cliente pedir data/horário específico, passe \`date\` e/ou \`time\`.`
 
     case 'create_event': {
       const durationMinutes = action.duration
@@ -131,7 +158,7 @@ function compileActionLine(action: StepAction): string {
           : `${durationMinutes}min`
 
       const eventLines = [
-        `* ${trigger} → execute \`create_event\` (duração: ${durationLabel}, janela: ${action.startTime}–${action.endTime}).`,
+        `* ${trigger} → execute \`${runtimeName}\` (duração: ${durationLabel}, janela: ${action.startTime}–${action.endTime}).`,
         `  → Para o título, siga: ${action.titleInstructions}`,
       ]
 
@@ -147,7 +174,7 @@ function compileActionLine(action: StepAction): string {
 
     case 'hand_off_to_human': {
       const lines = [
-        `* ${trigger} → execute \`hand_off_to_human\`.`,
+        `* ${trigger} → execute \`${runtimeName}\`.`,
         `  → Escolha o modo por turno:`,
         `    - \`mode: "transfer"\` quando o cliente pedir explicitamente humano, reclamar, ou o caso fugir do seu escopo (a IA será pausada).`,
         `    - \`mode: "notify"\` quando faltar apenas uma informação pontual (endereço, preço, política). Depois de chamar, avise ao cliente "estou verificando com a equipe e já te respondo" e CONTINUE o processo de vendas.`,
@@ -184,19 +211,43 @@ export function compileStepTemplate(step: AgentStep): string | null {
 // G1 — Global Tools (single-v2) — formato compacto, uma linha por ferramenta
 // ---------------------------------------------------------------------------
 
-export function compileGlobalTools(globalTools: GlobalTool[]): string {
-  return globalTools.map(compileGlobalToolLine).join('\n')
+/**
+ * Pré-computa o nome runtime de cada global tool no array.
+ * Mesma lógica de computeRuntimeNames para step actions.
+ */
+function computeGlobalToolRuntimeNames(globalTools: GlobalTool[]): Map<GlobalTool, string> {
+  const countByType = new Map<string, number>()
+  for (const globalTool of globalTools) {
+    countByType.set(globalTool.type, (countByType.get(globalTool.type) ?? 0) + 1)
+  }
+
+  const indexByType = new Map<string, number>()
+  const runtimeNames = new Map<GlobalTool, string>()
+  for (const globalTool of globalTools) {
+    const groupSize = countByType.get(globalTool.type) ?? 1
+    const indexInGroup = indexByType.get(globalTool.type) ?? 0
+    runtimeNames.set(globalTool, getRuntimeToolName(globalTool.type, indexInGroup, groupSize))
+    indexByType.set(globalTool.type, indexInGroup + 1)
+  }
+  return runtimeNames
 }
 
-function compileGlobalToolLine(tool: GlobalTool): string {
+export function compileGlobalTools(globalTools: GlobalTool[]): string {
+  const runtimeNames = computeGlobalToolRuntimeNames(globalTools)
+  return globalTools
+    .map((globalTool) => compileGlobalToolLine(globalTool, runtimeNames.get(globalTool) ?? globalTool.type))
+    .join('\n')
+}
+
+function compileGlobalToolLine(tool: GlobalTool, runtimeName: string): string {
   const trigger = tool.trigger || 'Quando necessário'
 
   switch (tool.type) {
     case 'update_contact':
-      return `* ${trigger} → \`update_contact\``
+      return `* ${trigger} → \`${runtimeName}\``
 
     case 'hand_off_to_human':
-      return `* ${trigger} → \`hand_off_to_human\``
+      return `* ${trigger} → \`${runtimeName}\``
 
     case 'update_deal': {
       const parts: string[] = []
@@ -213,7 +264,7 @@ function compileGlobalToolLine(tool: GlobalTool): string {
         parts.push(`pode marcar: ${statusLabels}`)
       }
       const detail = parts.length > 0 ? ` (${parts.join(', ')})` : ''
-      return `* ${trigger} → \`update_deal\`${detail}`
+      return `* ${trigger} → \`${runtimeName}\`${detail}`
     }
 
     case 'create_task': {
@@ -221,7 +272,7 @@ function compileGlobalToolLine(tool: GlobalTool): string {
       if (tool.title) parts.push(`título: "${tool.title}"`)
       if (tool.dueDaysOffset) parts.push(`prazo: ${tool.dueDaysOffset} dias`)
       const detail = parts.length > 0 ? ` (${parts.join(', ')})` : ''
-      return `* ${trigger} → \`create_task\`${detail}`
+      return `* ${trigger} → \`${runtimeName}\`${detail}`
     }
   }
 }

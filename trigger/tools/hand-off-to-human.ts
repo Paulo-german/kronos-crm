@@ -389,10 +389,16 @@ async function sendHandOffNotification(
 export function createHandOffToHumanTool(
   ctx: ToolContext,
   config?: HandOffNotificationConfig,
+  opts?: { triggerHint?: string },
 ) {
+  const baseDescription =
+    'Envolve um atendente humano no atendimento. Use dois modos: mode="transfer" pausa a IA e entrega o controle; mode="notify" NÃO pausa a IA — apenas notifica o responsável sobre uma dúvida pontual enquanto você continua atendendo.'
+  const description = opts?.triggerHint
+    ? `${baseDescription}\n\nQuando usar esta instância: ${opts.triggerHint}`
+    : baseDescription
+
   return tool({
-    description:
-      'Envolve um atendente humano no atendimento. Use dois modos: mode="transfer" pausa a IA e entrega o controle; mode="notify" NÃO pausa a IA — apenas notifica o responsável sobre uma dúvida pontual enquanto você continua atendendo.',
+    description,
     inputSchema: z.object({
       mode: z
         .enum(['transfer', 'notify'])

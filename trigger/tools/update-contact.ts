@@ -11,10 +11,15 @@ interface UpdateContactResult {
   message: string
 }
 
-export function createUpdateContactTool(ctx: ToolContext) {
+export function createUpdateContactTool(ctx: ToolContext, opts?: { triggerHint?: string }) {
+  const baseDescription =
+    'Atualiza dados de um contato (nome, email, telefone, cargo). Use quando o cliente fornecer informações novas sobre si.'
+  const description = opts?.triggerHint
+    ? `${baseDescription}\n\nQuando usar esta instância: ${opts.triggerHint}`
+    : baseDescription
+
   return tool({
-    description:
-      'Atualiza dados de um contato (nome, email, telefone, cargo). Use quando o cliente fornecer informações novas sobre si.',
+    description,
     inputSchema: z.object({
       name: z.string().optional().describe('Nome completo do contato'),
       email: z.string().email().optional().describe('Email do contato'),

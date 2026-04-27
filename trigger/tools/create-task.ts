@@ -11,10 +11,15 @@ interface CreateTaskResult {
   message: string
 }
 
-export function createCreateTaskTool(ctx: ToolContext) {
+export function createCreateTaskTool(ctx: ToolContext, opts?: { triggerHint?: string }) {
+  const baseDescription =
+    'Cria uma tarefa de follow-up vinculada ao negócio. Use quando combinar algo com o cliente (ex: enviar proposta, agendar reunião).'
+  const description = opts?.triggerHint
+    ? `${baseDescription}\n\nQuando usar esta instância: ${opts.triggerHint}`
+    : baseDescription
+
   return tool({
-    description:
-      'Cria uma tarefa de follow-up vinculada ao negócio. Use quando combinar algo com o cliente (ex: enviar proposta, agendar reunião).',
+    description,
     inputSchema: z.object({
       title: z.string().describe('Título descritivo da tarefa'),
       dueDate: z

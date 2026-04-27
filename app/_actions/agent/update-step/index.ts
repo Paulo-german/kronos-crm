@@ -6,6 +6,7 @@ import { Prisma } from '@prisma/client'
 import { db } from '@/_lib/prisma'
 import { revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
+import { normalizeToolIds } from '../shared/normalize-tool-ids'
 
 export const updateStep = orgActionClient
   .schema(updateStepSchema)
@@ -28,13 +29,15 @@ export const updateStep = orgActionClient
       throw new Error('Etapa não encontrada.')
     }
 
+    const normalizedActions = normalizeToolIds(data.actions)
+
     await db.agentStep.update({
       where: { id: data.id },
       data: {
         name: data.name,
         objective: data.objective,
         actions:
-          data.actions.length > 0 ? data.actions : Prisma.JsonNull,
+          normalizedActions.length > 0 ? normalizedActions : Prisma.JsonNull,
         keyQuestion: data.keyQuestion || null,
         messageTemplate: data.messageTemplate || null,
       },

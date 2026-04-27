@@ -12,10 +12,15 @@ interface UpdateDealResult {
   message: string
 }
 
-export function createUpdateDealTool(ctx: ToolContext) {
+export function createUpdateDealTool(ctx: ToolContext, opts?: { triggerHint?: string }) {
+  const baseDescription =
+    'Atualiza dados de um negócio (título, valor, prioridade, previsão de fechamento, notas, status). Use quando o cliente informar valor, prazo, ou quando o negócio for ganho ou perdido.'
+  const description = opts?.triggerHint
+    ? `${baseDescription}\n\nQuando usar esta instância: ${opts.triggerHint}`
+    : baseDescription
+
   return tool({
-    description:
-      'Atualiza dados de um negócio (título, valor, prioridade, previsão de fechamento, notas, status). Use quando o cliente informar valor, prazo, ou quando o negócio for ganho ou perdido.',
+    description,
     inputSchema: z.object({
       title: z.string().optional().describe('Novo título do negócio'),
       value: z

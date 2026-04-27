@@ -6,6 +6,7 @@ import { db } from '@/_lib/prisma'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 import { resolveCanonicalAgentVersion } from '@/_lib/agent/agent-version'
 import { updateAgentGlobalToolsSchema } from './schema'
+import { normalizeToolIds } from '../shared/normalize-tool-ids'
 
 export const updateAgentGlobalTools = orgActionClient
   .schema(updateAgentGlobalToolsSchema)
@@ -23,9 +24,11 @@ export const updateAgentGlobalTools = orgActionClient
       throw new Error('Ferramentas globais só estão disponíveis na versão v2.')
     }
 
+    const normalizedGlobalTools = normalizeToolIds(parsedInput.globalTools)
+
     await db.agent.update({
       where: { id: parsedInput.agentId },
-      data: { globalTools: parsedInput.globalTools },
+      data: { globalTools: normalizedGlobalTools },
     })
 
     revalidateTag(`agent:${parsedInput.agentId}`)

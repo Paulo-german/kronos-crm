@@ -1,6 +1,9 @@
 import { z } from 'zod'
 
 const baseFields = {
+  // id por instância — opcional para retrocompat com dados existentes (que não tinham).
+  // Permite múltiplas instâncias do mesmo type no array global de um agente.
+  id: z.string().uuid().optional(),
   trigger: z.string().min(1),
 }
 
@@ -55,16 +58,11 @@ export const globalToolSchema = z.discriminatedUnion('type', [
 ])
 
 /**
- * Array de global tools com validação de unicidade por type.
- * Cada tool global pode ser configurada apenas uma vez por agente —
- * duplicatas são ambíguas e rejeitadas na validação.
+ * Array de global tools — múltiplas instâncias do mesmo type são permitidas
+ * (ex: dois hand_off_to_human com triggers distintos). O diferenciador semântico
+ * é o campo `trigger`; a identidade é o `id` gerado pelo UI.
  */
-export const globalToolsArraySchema = z
-  .array(globalToolSchema)
-  .refine(
-    (tools) => new Set(tools.map((tool) => tool.type)).size === tools.length,
-    'Cada tool global pode ser configurada apenas uma vez',
-  )
+export const globalToolsArraySchema = z.array(globalToolSchema)
 
 export type GlobalTool = z.infer<typeof globalToolSchema>
 export type GlobalToolType = GlobalTool['type']

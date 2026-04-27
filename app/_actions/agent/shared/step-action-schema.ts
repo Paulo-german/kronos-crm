@@ -1,6 +1,10 @@
 import { z } from 'zod'
 
 const baseFields = {
+  // id por instância — opcional para retrocompat com dados existentes (que não tinham).
+  // O UI sempre gera ao adicionar; o runtime usa para indexação determinística quando
+  // há múltiplas instâncias do mesmo type no mesmo step.
+  id: z.string().uuid().optional(),
   trigger: z.string().min(1),
 }
 

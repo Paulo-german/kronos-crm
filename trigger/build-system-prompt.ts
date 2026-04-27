@@ -11,6 +11,7 @@ import {
 } from '@/_actions/agent/shared/prompt-labels'
 import { stepActionSchema, type StepAction } from '@/_actions/agent/shared/step-action-schema'
 import type { SingleSystemPrompt } from './lib/prompt-single-compiler'
+import { getRuntimeToolName } from './tools/lib/runtime-tool-name'
 
 export function compilePromptConfig(config: PromptConfig, agentName: string): string {
   const sections: string[] = []
@@ -69,39 +70,64 @@ export function compilePromptConfig(config: PromptConfig, agentName: string): st
   return sections.join('\n')
 }
 
+/**
+ * Pré-computa o nome runtime de cada action no array.
+ * Quando há apenas 1 instância de um type, preserva o nome canônico —
+ * garante que conversas em andamento não sejam invalidadas.
+ */
+function computeLegacyRuntimeNames(actions: StepAction[]): Map<StepAction, string> {
+  const countByType = new Map<string, number>()
+  for (const action of actions) {
+    countByType.set(action.type, (countByType.get(action.type) ?? 0) + 1)
+  }
+
+  const indexByType = new Map<string, number>()
+  const runtimeNames = new Map<StepAction, string>()
+  for (const action of actions) {
+    const groupSize = countByType.get(action.type) ?? 1
+    const indexInGroup = indexByType.get(action.type) ?? 0
+    runtimeNames.set(action, getRuntimeToolName(action.type, indexInGroup, groupSize))
+    indexByType.set(action.type, indexInGroup + 1)
+  }
+  return runtimeNames
+}
+
 export function compileStepActions(actions: StepAction[]): string[] {
+  const FIELD_LABELS: Record<string, string> = {
+    title: 'título',
+    value: 'valor em reais',
+    priority: 'prioridade',
+    expectedCloseDate: 'previsão de fechamento (ISO 8601)',
+    notes: 'notas',
+  }
+  const PRIORITY_LABELS: Record<string, string> = {
+    low: 'baixa',
+    medium: 'média',
+    high: 'alta',
+    urgent: 'urgente',
+  }
+
+  const runtimeNames = computeLegacyRuntimeNames(actions)
+
   return actions.map((action) => {
     const { trigger } = action
+    const runtimeName = runtimeNames.get(action) ?? action.type
 
     switch (action.type) {
       case 'move_deal':
         // UUID em linha isolada para evitar alucinação do modelo — quando o ID
-        // está embutido em prosa (ex: targetStageId="..."), Gemini tende a
+        // está embutido em prosa (ex: targetStageId="..."), o LLM tende a
         // pattern-generate um UUID novo ao invés de copiar o valor exato.
         return [
-          `* ${trigger} → execute \`move_deal\`.`,
+          `* ${trigger} → execute \`${runtimeName}\`.`,
           `  → targetStageId: ${action.targetStage}`,
         ].join('\n')
       case 'update_contact':
-        return `* ${trigger} → execute \`update_contact\` para registrar no contato.`
+        return `* ${trigger} → execute \`${runtimeName}\` para registrar no contato.`
       case 'update_deal': {
-        const FIELD_LABELS: Record<string, string> = {
-          title: 'título',
-          value: 'valor em reais',
-          priority: 'prioridade',
-          expectedCloseDate: 'previsão de fechamento (ISO 8601)',
-          notes: 'notas',
-        }
-        const PRIORITY_LABELS: Record<string, string> = {
-          low: 'baixa',
-          medium: 'média',
-          high: 'alta',
-          urgent: 'urgente',
-        }
-
         const lines: string[] = []
 
-        let instruction = `* ${trigger} → execute \`update_deal\``
+        let instruction = `* ${trigger} → execute \`${runtimeName}\``
         if (action.allowedFields.length > 0) {
           const fieldList = action.allowedFields.map((field) => FIELD_LABELS[field]).join(', ')
           instruction += ` atualizando apenas: ${fieldList}`
@@ -132,9 +158,9 @@ export function compileStepActions(actions: StepAction[]): string[] {
         return lines.join('\n')
       }
       case 'create_task':
-        return `* ${trigger} → execute \`create_task\` com título "${action.title}"${action.dueDaysOffset ? ` (vencimento em ${action.dueDaysOffset} dias)` : ''}.`
+        return `* ${trigger} → execute \`${runtimeName}\` com título "${action.title}"${action.dueDaysOffset ? ` (vencimento em ${action.dueDaysOffset} dias)` : ''}.`
       case 'list_availability':
-        return `* ${trigger} → execute \`list_availability\` para consultar horários disponíveis. Quando o cliente pedir data/horário específico, passe \`date\` e/ou \`time\`.`
+        return `* ${trigger} → execute \`${runtimeName}\` para consultar horários disponíveis. Quando o cliente pedir data/horário específico, passe \`date\` e/ou \`time\`.`
       case 'create_event': {
         const durationMinutes = action.duration
         const durationLabel =
@@ -142,7 +168,7 @@ export function compileStepActions(actions: StepAction[]): string[] {
             ? `${Math.floor(durationMinutes / 60)}h${durationMinutes % 60 > 0 ? ` ${durationMinutes % 60}min` : ''}`
             : `${durationMinutes}min`
         const lines = [
-          `* ${trigger} → execute \`create_event\` (duração: ${durationLabel}, janela: ${action.startTime}–${action.endTime}).`,
+          `* ${trigger} → execute \`${runtimeName}\` (duração: ${durationLabel}, janela: ${action.startTime}–${action.endTime}).`,
           `  → Para o título, siga: ${action.titleInstructions}`,
         ]
         if (action.allowReschedule) {
@@ -155,7 +181,7 @@ export function compileStepActions(actions: StepAction[]): string[] {
       }
       case 'hand_off_to_human': {
         const lines = [
-          `* ${trigger} → execute \`hand_off_to_human\`.`,
+          `* ${trigger} → execute \`${runtimeName}\`.`,
           `  → Escolha o modo por turno:`,
           `    - \`mode: "transfer"\` quando o cliente pedir explicitamente humano, reclamar, ou o caso fugir do seu escopo (a IA será pausada).`,
           `    - \`mode: "notify"\` quando faltar apenas uma informação pontual (endereço, preço, política). Depois de chamar, avise ao cliente "estou verificando com a equipe e já te respondo" e CONTINUE o processo de vendas.`,

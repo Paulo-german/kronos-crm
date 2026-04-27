@@ -1,6 +1,7 @@
 import { tool, type ToolSet } from 'ai'
 import { z } from 'zod'
 import type { StepAction } from '@/_actions/agent/shared/step-action-schema'
+import { getRuntimeToolName } from '../../../../../trigger/tools/lib/runtime-tool-name'
 
 /**
  * Labels em pt-BR para cada tool — usados no retorno do mock
@@ -34,14 +35,30 @@ function formatDurationLabel(minutes: number): string {
  * Cria um resultado mock padronizado para todas as tools simuladas.
  */
 function mockResult(toolName: string, input: Record<string, unknown>, message: string) {
+  // Resolver o label canônico: remover sufixo de índice (ex: move_deal_1 → move_deal)
+  const canonicalName = toolName.replace(/_\d+$/, '')
   return {
     success: true,
     simulated: true,
     action: toolName,
-    label: TOOL_LABELS[toolName] ?? toolName,
+    label: TOOL_LABELS[canonicalName] ?? toolName,
     input,
     message,
   }
+}
+
+/**
+ * Agrupa step actions por type, preservando a ordem original.
+ * A ordem importa para o índice de naming determinístico.
+ */
+function groupActionsByType(actions: StepAction[]): Map<string, StepAction[]> {
+  const byType = new Map<string, StepAction[]>()
+  for (const action of actions) {
+    const list = byType.get(action.type) ?? []
+    list.push(action)
+    byType.set(action.type, list)
+  }
+  return byType
 }
 
 /**
@@ -50,207 +67,325 @@ function mockResult(toolName: string, input: Record<string, unknown>, message: s
  *
  * O `search_knowledge` NÃO é incluído aqui — ele continua como tool real
  * e é adicionado separadamente no route.ts.
+ *
+ * Suporta múltiplas instâncias do mesmo type: nomes runtime determinísticos
+ * via getRuntimeToolName (ex: move_deal_0, move_deal_1 quando há 2 instâncias).
  */
 export function buildMockToolSet(
   toolsEnabled: string[],
   allStepActions: StepAction[],
 ): ToolSet {
   const tools: ToolSet = {}
+  const stepActionsByType = groupActionsByType(allStepActions)
 
   for (const toolName of toolsEnabled) {
     // search_knowledge é mantido como tool real — não incluir no mock
     if (toolName === 'search_knowledge') continue
 
     if (toolName === 'move_deal') {
-      tools[toolName] = tool({
-        description:
-          'Move um negócio para outra etapa do pipeline de vendas. Use quando o cliente avançar ou regredir no funil.',
-        inputSchema: z.object({
-          targetStageId: z
-            .string()
-            .describe('ID (UUID) da etapa de destino no pipeline.'),
-        }),
-        execute: async (input) =>
-          mockResult('move_deal', input, 'Negócio movido para a etapa selecionada.'),
-      })
+      const configs = stepActionsByType.get('move_deal') ?? []
+      const groupSize = configs.length > 0 ? configs.length : 1
+      if (configs.length > 0) {
+        configs.forEach((config, indexInGroup) => {
+          const runtimeName = getRuntimeToolName('move_deal', indexInGroup, groupSize)
+          const triggerHint = config.trigger
+          const description = triggerHint
+            ? `Move um negócio para outra etapa do pipeline de vendas.\n\nQuando usar esta instância: ${triggerHint}`
+            : 'Move um negócio para outra etapa do pipeline de vendas. Use quando o cliente avançar ou regredir no funil.'
+          tools[runtimeName] = tool({
+            description,
+            inputSchema: z.object({
+              targetStageId: z
+                .string()
+                .describe('ID (UUID) da etapa de destino no pipeline.'),
+            }),
+            execute: async (input) =>
+              mockResult(runtimeName, input, 'Negócio movido para a etapa selecionada.'),
+          })
+        })
+      } else {
+        tools[toolName] = tool({
+          description:
+            'Move um negócio para outra etapa do pipeline de vendas. Use quando o cliente avançar ou regredir no funil.',
+          inputSchema: z.object({
+            targetStageId: z
+              .string()
+              .describe('ID (UUID) da etapa de destino no pipeline.'),
+          }),
+          execute: async (input) =>
+            mockResult('move_deal', input, 'Negócio movido para a etapa selecionada.'),
+        })
+      }
       continue
     }
 
     if (toolName === 'update_contact') {
-      tools[toolName] = tool({
-        description:
-          'Atualiza dados de um contato (nome, email, telefone, cargo). Use quando o cliente fornecer informações novas sobre si.',
-        inputSchema: z.object({
-          name: z.string().optional().describe('Nome completo do contato'),
-          email: z.string().email().optional().describe('Email do contato'),
-          phone: z.string().optional().describe('Telefone do contato'),
-          role: z.string().optional().describe('Cargo/função do contato'),
-        }),
-        execute: async (input) => {
-          const fields = Object.keys(input).filter(
-            (key) => input[key as keyof typeof input] !== undefined,
-          )
-          return mockResult(
-            'update_contact',
-            input,
-            `Campos atualizados: ${fields.join(', ')}.`,
-          )
-        },
-      })
+      const configs = stepActionsByType.get('update_contact') ?? []
+      const groupSize = configs.length > 0 ? configs.length : 1
+      const baseDescription =
+        'Atualiza dados de um contato (nome, email, telefone, cargo). Use quando o cliente fornecer informações novas sobre si.'
+      if (configs.length > 0) {
+        configs.forEach((config, indexInGroup) => {
+          const runtimeName = getRuntimeToolName('update_contact', indexInGroup, groupSize)
+          const description = config.trigger
+            ? `${baseDescription}\n\nQuando usar esta instância: ${config.trigger}`
+            : baseDescription
+          tools[runtimeName] = tool({
+            description,
+            inputSchema: z.object({
+              name: z.string().optional().describe('Nome completo do contato'),
+              email: z.string().email().optional().describe('Email do contato'),
+              phone: z.string().optional().describe('Telefone do contato'),
+              role: z.string().optional().describe('Cargo/função do contato'),
+            }),
+            execute: async (input) => {
+              const fields = Object.keys(input).filter(
+                (key) => input[key as keyof typeof input] !== undefined,
+              )
+              return mockResult(runtimeName, input, `Campos atualizados: ${fields.join(', ')}.`)
+            },
+          })
+        })
+      } else {
+        tools[toolName] = tool({
+          description: baseDescription,
+          inputSchema: z.object({
+            name: z.string().optional().describe('Nome completo do contato'),
+            email: z.string().email().optional().describe('Email do contato'),
+            phone: z.string().optional().describe('Telefone do contato'),
+            role: z.string().optional().describe('Cargo/função do contato'),
+          }),
+          execute: async (input) => {
+            const fields = Object.keys(input).filter(
+              (key) => input[key as keyof typeof input] !== undefined,
+            )
+            return mockResult('update_contact', input, `Campos atualizados: ${fields.join(', ')}.`)
+          },
+        })
+      }
       continue
     }
 
     if (toolName === 'update_deal') {
-      tools[toolName] = tool({
-        description:
-          'Atualiza dados de um negócio (título, valor, prioridade, previsão de fechamento, notas, status). Use quando o cliente informar valor, prazo, ou quando o negócio for ganho ou perdido.',
-        inputSchema: z.object({
-          title: z.string().optional().describe('Novo título do negócio'),
-          value: z
-            .number()
-            .min(0)
-            .optional()
-            .describe('Valor do negócio em reais (ex: 15000)'),
-          priority: z
-            .enum(['low', 'medium', 'high', 'urgent'])
-            .optional()
-            .describe('Prioridade do negócio'),
-          expectedCloseDate: z
-            .string()
-            .optional()
-            .describe('Previsão de fechamento ISO 8601 (ex: 2026-04-15T00:00:00)'),
-          notes: z
-            .string()
-            .optional()
-            .describe('Notas a adicionar ao negócio (concatenadas com notas existentes)'),
-          status: z
-            .enum(['WON', 'LOST'])
-            .optional()
-            .describe('Marcar negócio como ganho (WON) ou perdido (LOST)'),
-          reason: z
-            .string()
-            .optional()
-            .describe(
-              'Motivo da perda (quando status = LOST). Use exatamente um dos motivos listados em [Motivos de perda disponíveis] no system prompt.',
-            ),
-        }),
-        execute: async (input) => {
-          const fields = Object.keys(input).filter(
-            (key) => input[key as keyof typeof input] !== undefined,
-          )
-          return mockResult(
-            'update_deal',
-            input,
-            `Negócio atualizado: ${fields.join(', ')}.`,
-          )
-        },
+      const configs = stepActionsByType.get('update_deal') ?? []
+      const groupSize = configs.length > 0 ? configs.length : 1
+      const baseDescription =
+        'Atualiza dados de um negócio (título, valor, prioridade, previsão de fechamento, notas, status). Use quando o cliente informar valor, prazo, ou quando o negócio for ganho ou perdido.'
+      const inputSchema = z.object({
+        title: z.string().optional().describe('Novo título do negócio'),
+        value: z
+          .number()
+          .min(0)
+          .optional()
+          .describe('Valor do negócio em reais (ex: 15000)'),
+        priority: z
+          .enum(['low', 'medium', 'high', 'urgent'])
+          .optional()
+          .describe('Prioridade do negócio'),
+        expectedCloseDate: z
+          .string()
+          .optional()
+          .describe('Previsão de fechamento ISO 8601 (ex: 2026-04-15T00:00:00)'),
+        notes: z
+          .string()
+          .optional()
+          .describe('Notas a adicionar ao negócio (concatenadas com notas existentes)'),
+        status: z
+          .enum(['WON', 'LOST'])
+          .optional()
+          .describe('Marcar negócio como ganho (WON) ou perdido (LOST)'),
+        reason: z
+          .string()
+          .optional()
+          .describe(
+            'Motivo da perda (quando status = LOST). Use exatamente um dos motivos listados em [Motivos de perda disponíveis] no system prompt.',
+          ),
       })
+      if (configs.length > 0) {
+        configs.forEach((config, indexInGroup) => {
+          const runtimeName = getRuntimeToolName('update_deal', indexInGroup, groupSize)
+          const description = config.trigger
+            ? `${baseDescription}\n\nQuando usar esta instância: ${config.trigger}`
+            : baseDescription
+          tools[runtimeName] = tool({
+            description,
+            inputSchema,
+            execute: async (input) => {
+              const fields = Object.keys(input).filter(
+                (key) => input[key as keyof typeof input] !== undefined,
+              )
+              return mockResult(runtimeName, input, `Negócio atualizado: ${fields.join(', ')}.`)
+            },
+          })
+        })
+      } else {
+        tools[toolName] = tool({
+          description: baseDescription,
+          inputSchema,
+          execute: async (input) => {
+            const fields = Object.keys(input).filter(
+              (key) => input[key as keyof typeof input] !== undefined,
+            )
+            return mockResult('update_deal', input, `Negócio atualizado: ${fields.join(', ')}.`)
+          },
+        })
+      }
       continue
     }
 
     if (toolName === 'create_task') {
-      tools[toolName] = tool({
-        description:
-          'Cria uma tarefa de follow-up vinculada ao negócio. Use quando combinar algo com o cliente (ex: enviar proposta, agendar reunião).',
-        inputSchema: z.object({
-          title: z.string().describe('Título descritivo da tarefa'),
-          dueDate: z
-            .string()
-            .describe('Data de vencimento no formato ISO 8601 (ex: 2026-03-01T14:00:00)'),
-        }),
-        execute: async (input) =>
-          mockResult('create_task', input, `Tarefa "${input.title}" criada com sucesso.`),
+      const configs = stepActionsByType.get('create_task') ?? []
+      const groupSize = configs.length > 0 ? configs.length : 1
+      const baseDescription =
+        'Cria uma tarefa de follow-up vinculada ao negócio. Use quando combinar algo com o cliente (ex: enviar proposta, agendar reunião).'
+      const inputSchema = z.object({
+        title: z.string().describe('Título descritivo da tarefa'),
+        dueDate: z
+          .string()
+          .describe('Data de vencimento no formato ISO 8601 (ex: 2026-03-01T14:00:00)'),
       })
+      if (configs.length > 0) {
+        configs.forEach((config, indexInGroup) => {
+          const runtimeName = getRuntimeToolName('create_task', indexInGroup, groupSize)
+          const description = config.trigger
+            ? `${baseDescription}\n\nQuando usar esta instância: ${config.trigger}`
+            : baseDescription
+          tools[runtimeName] = tool({
+            description,
+            inputSchema,
+            execute: async (input) =>
+              mockResult(runtimeName, input, `Tarefa "${input.title}" criada com sucesso.`),
+          })
+        })
+      } else {
+        tools[toolName] = tool({
+          description: baseDescription,
+          inputSchema,
+          execute: async (input) =>
+            mockResult('create_task', input, `Tarefa "${input.title}" criada com sucesso.`),
+        })
+      }
       continue
     }
 
     if (toolName === 'list_availability') {
-      const config = allStepActions.find(
-        (action) => action.type === 'list_availability',
-      )
-      const description =
-        config && config.type === 'list_availability'
-          ? `Consulta horários disponíveis na agenda. Configuração: ${config.daysAhead} dias à frente, slots de ${config.slotDuration}min, entre ${config.startTime} e ${config.endTime}.`
-          : 'Consulta horários disponíveis na agenda. Use ANTES de sugerir horários ao cliente.'
-      tools[toolName] = tool({
-        description,
-        inputSchema: z.object({
-          date: z
-            .string()
-            .optional()
-            .describe(
-              'Data específica no formato YYYY-MM-DD (ex: 2026-07-19). Se omitido, lista os próximos dias.',
-            ),
-          time: z
-            .string()
-            .optional()
-            .describe(
-              'Horário específico no formato HH:MM (ex: 10:00). Usar junto com date para checar um slot exato.',
-            ),
-        }),
-        execute: async (input) =>
-          mockResult(
-            'list_availability',
-            input,
-            input.date && input.time
-              ? `O horário ${input.time} de ${input.date} está DISPONÍVEL.`
-              : 'Encontrei 5 horário(s) disponível(is) nos próximos dias.',
+      const configs = stepActionsByType.get('list_availability') ?? []
+      const groupSize = configs.length > 0 ? configs.length : 1
+      const availabilityInputSchema = z.object({
+        date: z
+          .string()
+          .optional()
+          .describe(
+            'Data específica no formato YYYY-MM-DD (ex: 2026-07-19). Se omitido, lista os próximos dias.',
+          ),
+        time: z
+          .string()
+          .optional()
+          .describe(
+            'Horário específico no formato HH:MM (ex: 10:00). Usar junto com date para checar um slot exato.',
           ),
       })
+      if (configs.length > 0) {
+        configs.forEach((config, indexInGroup) => {
+          if (config.type !== 'list_availability') return
+          const runtimeName = getRuntimeToolName('list_availability', indexInGroup, groupSize)
+          const baseDescription = `Consulta horários disponíveis na agenda. Configuração: ${config.daysAhead} dias à frente, slots de ${config.slotDuration}min, entre ${config.startTime} e ${config.endTime}.`
+          const description = config.trigger
+            ? `${baseDescription}\n\nQuando usar esta instância: ${config.trigger}`
+            : baseDescription
+          tools[runtimeName] = tool({
+            description,
+            inputSchema: availabilityInputSchema,
+            execute: async (input) =>
+              mockResult(
+                runtimeName,
+                input,
+                input.date && input.time
+                  ? `O horário ${input.time} de ${input.date} está DISPONÍVEL.`
+                  : 'Encontrei 5 horário(s) disponível(is) nos próximos dias.',
+              ),
+          })
+        })
+      } else {
+        tools[toolName] = tool({
+          description:
+            'Consulta horários disponíveis na agenda. Use ANTES de sugerir horários ao cliente.',
+          inputSchema: availabilityInputSchema,
+          execute: async (input) =>
+            mockResult(
+              'list_availability',
+              input,
+              input.date && input.time
+                ? `O horário ${input.time} de ${input.date} está DISPONÍVEL.`
+                : 'Encontrei 5 horário(s) disponível(is) nos próximos dias.',
+            ),
+        })
+      }
       continue
     }
 
     if (toolName === 'create_event') {
-      const config = allStepActions.find(
-        (action) => action.type === 'create_event',
-      )
-      let description =
-        'Agenda um evento vinculado ao negócio.'
-      if (config && config.type === 'create_event') {
-        const durationLabel = formatDurationLabel(config.duration)
-        description =
-          `Agenda um evento vinculado ao negócio. Para o título, siga estas instruções: ${config.titleInstructions}. ` +
-          `O evento terá duração de ${durationLabel}. ` +
-          `Somente agende horários entre ${config.startTime} e ${config.endTime} (horário de Brasília). ` +
-          `Não agende eventos fora desse intervalo.`
-      }
-      tools[toolName] = tool({
-        description,
-        inputSchema: z.object({
-          title: z
-            .string()
-            .describe('Título do evento seguindo as instruções fornecidas'),
-          description: z
-            .string()
-            .optional()
-            .describe('Descrição ou pauta do evento'),
-          startDate: z
-            .string()
-            .describe(
-              'Data/hora início ISO 8601 com fuso horário de Brasília (ex: 2026-03-10T14:00:00-03:00)',
-            ),
-        }),
-        execute: async (input) =>
-          mockResult('create_event', input, `Evento "${input.title}" agendado com sucesso.`),
+      const configs = stepActionsByType.get('create_event') ?? []
+      const groupSize = configs.length > 0 ? configs.length : 1
+      const eventInputSchema = z.object({
+        title: z
+          .string()
+          .describe('Título do evento seguindo as instruções fornecidas'),
+        description: z
+          .string()
+          .optional()
+          .describe('Descrição ou pauta do evento'),
+        startDate: z
+          .string()
+          .describe(
+            'Data/hora início ISO 8601 com fuso horário de Brasília (ex: 2026-03-10T14:00:00-03:00)',
+          ),
       })
-
-      // Registrar update_event apenas se allowReschedule estiver habilitado
-      if (config && config.type === 'create_event' && config.allowReschedule) {
-        tools['update_event'] = tool({
-          description:
-            'Reagenda um evento existente para nova data/hora. Use quando o cliente solicitar mudança de horário.',
-          inputSchema: z.object({
-            appointmentId: z
-              .string()
-              .describe('ID do evento a ser reagendado'),
-            newStartDate: z
-              .string()
-              .describe(
-                'Nova data/hora início ISO 8601 com fuso horário de Brasília (ex: 2026-03-10T14:00:00-03:00)',
-              ),
-          }),
+      if (configs.length > 0) {
+        configs.forEach((config, indexInGroup) => {
+          if (config.type !== 'create_event') return
+          const runtimeName = getRuntimeToolName('create_event', indexInGroup, groupSize)
+          const durationLabel = formatDurationLabel(config.duration)
+          const baseDescription =
+            `Agenda um evento vinculado ao negócio. Para o título, siga estas instruções: ${config.titleInstructions}. ` +
+            `O evento terá duração de ${durationLabel}. ` +
+            `Somente agende horários entre ${config.startTime} e ${config.endTime} (horário de Brasília). ` +
+            `Não agende eventos fora desse intervalo.`
+          const description = config.trigger
+            ? `${baseDescription}\n\nQuando usar esta instância: ${config.trigger}`
+            : baseDescription
+          tools[runtimeName] = tool({
+            description,
+            inputSchema: eventInputSchema,
+            execute: async (input) =>
+              mockResult(runtimeName, input, `Evento "${input.title}" agendado com sucesso.`),
+          })
+          // Registrar update_event apenas se allowReschedule estiver habilitado
+          if (config.allowReschedule) {
+            tools['update_event'] = tool({
+              description:
+                'Reagenda um evento existente para nova data/hora. Use quando o cliente solicitar mudança de horário.',
+              inputSchema: z.object({
+                appointmentId: z
+                  .string()
+                  .describe('ID do evento a ser reagendado'),
+                newStartDate: z
+                  .string()
+                  .describe(
+                    'Nova data/hora início ISO 8601 com fuso horário de Brasília (ex: 2026-03-10T14:00:00-03:00)',
+                  ),
+              }),
+              execute: async (input) =>
+                mockResult('update_event', input, 'Evento reagendado com sucesso.'),
+            })
+          }
+        })
+      } else {
+        tools[toolName] = tool({
+          description: 'Agenda um evento vinculado ao negócio.',
+          inputSchema: eventInputSchema,
           execute: async (input) =>
-            mockResult('update_event', input, 'Evento reagendado com sucesso.'),
+            mockResult('create_event', input, `Evento "${input.title}" agendado com sucesso.`),
         })
       }
       continue
@@ -280,36 +415,59 @@ export function buildMockToolSet(
     }
 
     if (toolName === 'hand_off_to_human') {
-      const config = allStepActions.find(
-        (action) => action.type === 'hand_off_to_human',
-      )
-      const hasNotification = config && config.type === 'hand_off_to_human' && config.notifyTarget !== 'none'
-      const description = hasNotification
-        ? 'Envolve um humano no atendimento e envia notificação. mode=transfer pausa a IA; mode=notify mantém a IA ativa e apenas notifica o responsável.'
-        : 'Envolve um humano no atendimento. mode=transfer pausa a IA; mode=notify mantém a IA ativa e apenas notifica o responsável.'
-      tools[toolName] = tool({
-        description,
-        inputSchema: z.object({
-          mode: z
-            .enum(['transfer', 'notify'])
-            .default('transfer')
-            .describe(
-              '"transfer": pausa a IA e entrega o controle ao atendente. ' +
-              '"notify": NÃO pausa a IA — notifica o responsável sobre uma dúvida pontual enquanto você continua atendendo.',
-            ),
-          reason: z
-            .string()
-            .describe('Motivo da notificação/transferência. No modo "notify", descreva a dúvida específica. No modo "transfer", descreva por que a IA não deve mais conduzir.'),
-        }),
-        execute: async (input) =>
-          mockResult(
-            'hand_off_to_human',
-            input,
-            input.mode === 'transfer'
-              ? 'Conversa transferida para atendimento humano.'
-              : 'Responsável notificado. IA continua atendendo.',
+      const configs = stepActionsByType.get('hand_off_to_human') ?? []
+      const groupSize = configs.length > 0 ? configs.length : 1
+      const handOffInputSchema = z.object({
+        mode: z
+          .enum(['transfer', 'notify'])
+          .default('transfer')
+          .describe(
+            '"transfer": pausa a IA e entrega o controle ao atendente. ' +
+            '"notify": NÃO pausa a IA — notifica o responsável sobre uma dúvida pontual enquanto você continua atendendo.',
           ),
+        reason: z
+          .string()
+          .describe('Motivo da notificação/transferência. No modo "notify", descreva a dúvida específica. No modo "transfer", descreva por que a IA não deve mais conduzir.'),
       })
+      if (configs.length > 0) {
+        configs.forEach((config, indexInGroup) => {
+          if (config.type !== 'hand_off_to_human') return
+          const runtimeName = getRuntimeToolName('hand_off_to_human', indexInGroup, groupSize)
+          const hasNotification = config.notifyTarget !== 'none'
+          const baseDescription = hasNotification
+            ? 'Envolve um humano no atendimento e envia notificação. mode=transfer pausa a IA; mode=notify mantém a IA ativa e apenas notifica o responsável.'
+            : 'Envolve um humano no atendimento. mode=transfer pausa a IA; mode=notify mantém a IA ativa e apenas notifica o responsável.'
+          const description = config.trigger
+            ? `${baseDescription}\n\nQuando usar esta instância: ${config.trigger}`
+            : baseDescription
+          tools[runtimeName] = tool({
+            description,
+            inputSchema: handOffInputSchema,
+            execute: async (input) =>
+              mockResult(
+                runtimeName,
+                input,
+                input.mode === 'transfer'
+                  ? 'Conversa transferida para atendimento humano.'
+                  : 'Responsável notificado. IA continua atendendo.',
+              ),
+          })
+        })
+      } else {
+        tools[toolName] = tool({
+          description:
+            'Envolve um humano no atendimento. mode=transfer pausa a IA; mode=notify mantém a IA ativa e apenas notifica o responsável.',
+          inputSchema: handOffInputSchema,
+          execute: async (input) =>
+            mockResult(
+              'hand_off_to_human',
+              input,
+              input.mode === 'transfer'
+                ? 'Conversa transferida para atendimento humano.'
+                : 'Responsável notificado. IA continua atendendo.',
+            ),
+        })
+      }
       continue
     }
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   BellOff,
   CalendarDays,
@@ -16,6 +16,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
+import { Badge } from '@/_components/ui/badge'
 import { Card, CardContent } from '@/_components/ui/card'
 import { Input } from '@/_components/ui/input'
 import { Label } from '@/_components/ui/label'
@@ -135,7 +136,7 @@ const getActionSummary = (action: StepAction, pipelineStages: PipelineStageOptio
 
   switch (action.type) {
     case 'move_deal': {
-      const stage = pipelineStages.find((s) => s.stageId === action.targetStage)
+      const stage = pipelineStages.find((stage) => stage.stageId === action.targetStage)
       return {
         trigger,
         config: stage
@@ -218,41 +219,55 @@ const StepActionBuilder = ({
   pipelineStages,
   excludeGlobalTools = false,
 }: StepActionBuilderProps) => {
-  const [expandedTypes, setExpandedTypes] = useState<Set<string>>(new Set())
+  // Indexado por id de instância (não por type) para permitir abrir/fechar
+  // cards individuais quando há múltiplas instâncias do mesmo type.
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
 
-  const toggle = (type: string) => {
-    setExpandedTypes((prev) => {
+  // Backfill defensivo: itens vindos do servidor sem id recebem um id local
+  // para uso como React key. Não chamamos onChange — o backend normalizará no
+  // próximo save. O useMemo garante ids estáveis entre re-renders.
+  const valueWithIds = useMemo(
+    () =>
+      value.map((action) =>
+        action.id ? action : { ...action, id: crypto.randomUUID() },
+      ),
+    [value],
+  )
+
+  const toggle = (id: string) => {
+    setExpandedIds((prev) => {
       const next = new Set(prev)
-      if (next.has(type)) {
-        next.delete(type)
+      if (next.has(id)) {
+        next.delete(id)
       } else {
-        next.add(type)
+        next.add(id)
       }
       return next
     })
   }
 
   const addAction = (type: string) => {
-    onChange([...value, buildDefaultAction(type)])
-    setExpandedTypes((prev) => new Set([...prev, type]))
+    const newAction = { id: crypto.randomUUID(), ...buildDefaultAction(type) }
+    onChange([...value, newAction])
+    setExpandedIds((prev) => new Set([...prev, newAction.id!]))
   }
 
-  const removeAction = (type: string) => {
-    onChange(value.filter((action) => action.type !== type))
-    setExpandedTypes((prev) => {
+  const removeAction = (id: string) => {
+    onChange(value.filter((action) => action.id !== id))
+    setExpandedIds((prev) => {
       const next = new Set(prev)
-      next.delete(type)
+      next.delete(id)
       return next
     })
   }
 
   const updateAction = (
-    type: string,
+    id: string,
     updates: Record<string, unknown>,
   ) => {
     onChange(
       value.map((action) =>
-        action.type === type
+        action.id === id
           ? ({ ...action, ...updates } as StepAction)
           : action,
       ),
@@ -261,8 +276,9 @@ const StepActionBuilder = ({
 
   const globalToolTypes = new Set(GLOBAL_TOOL_OPTIONS.map((option) => option.value))
 
+  // Permite adicionar qualquer tool sem restrição de duplicata (multi-instância).
+  // Apenas tools globais são bloqueadas quando excludeGlobalTools está ativo.
   const availableToAdd = TOOL_OPTIONS.filter((tool) => {
-    if (value.some((action) => action.type === tool.value)) return false
     if (excludeGlobalTools && globalToolTypes.has(tool.value)) return false
     return true
   })
@@ -288,17 +304,24 @@ const StepActionBuilder = ({
       </p>
 
       <div className="space-y-2">
-        {value.map((action) => {
-          const toolOption = TOOL_OPTIONS.find((t) => t.value === action.type)
+        {valueWithIds.map((action, index) => {
+          const toolOption = TOOL_OPTIONS.find((tool) => tool.value === action.type)
           const isGlobalTool = excludeGlobalTools && globalToolTypes.has(action.type)
-          const isOpen = expandedTypes.has(action.type)
+          const actionId = action.id!
+          const isOpen = expandedIds.has(actionId)
           const summary = getActionSummary(action, pipelineStages)
+
+          // Badge de índice (#1, #2) aparece somente quando há mais de uma
+          // instância do mesmo type, para distinguir visualmente as instâncias.
+          const sameTypeCount = valueWithIds.filter((item) => item.type === action.type).length
+          const instanceIndex = valueWithIds.slice(0, index).filter((item) => item.type === action.type).length
+          const showInstanceBadge = sameTypeCount > 1
 
           return (
             <Collapsible
-              key={action.type}
+              key={actionId}
               open={isOpen && !isGlobalTool}
-              onOpenChange={() => { if (!isGlobalTool) toggle(action.type) }}
+              onOpenChange={() => { if (!isGlobalTool) toggle(actionId) }}
             >
               <Card className={cn(
                 isGlobalTool
@@ -318,6 +341,14 @@ const StepActionBuilder = ({
                             <span className="block text-sm font-medium">
                               {toolOption?.label ?? action.type}
                             </span>
+                            {showInstanceBadge && (
+                              <Badge
+                                variant="secondary"
+                                className="h-4 px-1.5 text-[10px] font-medium"
+                              >
+                                #{instanceIndex + 1}
+                              </Badge>
+                            )}
                             {isGlobalTool && (
                               <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600">
                                 Global
@@ -358,7 +389,7 @@ const StepActionBuilder = ({
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
-                      onClick={() => removeAction(action.type)}
+                      onClick={() => removeAction(actionId)}
                       type="button"
                     >
                       <X className="h-4 w-4" />
@@ -380,7 +411,7 @@ const StepActionBuilder = ({
                           placeholder={TRIGGER_PLACEHOLDERS[action.type]}
                           value={action.trigger}
                           onChange={(event) =>
-                            updateAction(action.type, {
+                            updateAction(actionId, {
                               trigger: event.target.value,
                             })
                           }
@@ -394,7 +425,7 @@ const StepActionBuilder = ({
                           <Select
                             value={action.targetStage}
                             onValueChange={(stageId) =>
-                              updateAction('move_deal', {
+                              updateAction(actionId, {
                                 targetStage: stageId,
                               })
                             }
@@ -439,8 +470,8 @@ const StepActionBuilder = ({
                         <CreateTaskConfig
                           title={action.title}
                           dueDaysOffset={action.dueDaysOffset}
-                          onTitleChange={(val) => updateAction('create_task', { title: val })}
-                          onDueDaysOffsetChange={(val) => updateAction('create_task', { dueDaysOffset: val })}
+                          onTitleChange={(val) => updateAction(actionId, { title: val })}
+                          onDueDaysOffsetChange={(val) => updateAction(actionId, { dueDaysOffset: val })}
                         />
                       )}
 
@@ -453,16 +484,16 @@ const StepActionBuilder = ({
                           notesTemplate={action.notesTemplate}
                           allowedStatuses={action.allowedStatuses ?? []}
                           onAllowedFieldsChange={(fields, extra) =>
-                            updateAction('update_deal', { allowedFields: fields, ...extra })
+                            updateAction(actionId, { allowedFields: fields, ...extra })
                           }
                           onFixedPriorityChange={(val) =>
-                            updateAction('update_deal', { fixedPriority: val as 'low' | 'medium' | 'high' | 'urgent' | undefined })
+                            updateAction(actionId, { fixedPriority: val as 'low' | 'medium' | 'high' | 'urgent' | undefined })
                           }
                           onNotesTemplateChange={(val) =>
-                            updateAction('update_deal', { notesTemplate: val })
+                            updateAction(actionId, { notesTemplate: val })
                           }
                           onAllowedStatusesChange={(statuses) =>
-                            updateAction('update_deal', { allowedStatuses: statuses })
+                            updateAction(actionId, { allowedStatuses: statuses })
                           }
                         />
                       )}
@@ -475,7 +506,7 @@ const StepActionBuilder = ({
                             <Select
                               value={String(action.daysAhead)}
                               onValueChange={(val) =>
-                                updateAction('list_availability', { daysAhead: parseInt(val, 10) })
+                                updateAction(actionId, { daysAhead: parseInt(val, 10) })
                               }
                             >
                               <SelectTrigger>
@@ -495,7 +526,7 @@ const StepActionBuilder = ({
                             <Select
                               value={String(action.slotDuration)}
                               onValueChange={(val) =>
-                                updateAction('list_availability', { slotDuration: val })
+                                updateAction(actionId, { slotDuration: val })
                               }
                             >
                               <SelectTrigger>
@@ -517,7 +548,7 @@ const StepActionBuilder = ({
                               pattern="\d{2}:\d{2}"
                               value={action.startTime}
                               onChange={(event) =>
-                                updateAction('list_availability', {
+                                updateAction(actionId, {
                                   startTime: event.target.value,
                                 })
                               }
@@ -530,7 +561,7 @@ const StepActionBuilder = ({
                               pattern="\d{2}:\d{2}"
                               value={action.endTime}
                               onChange={(event) =>
-                                updateAction('list_availability', {
+                                updateAction(actionId, {
                                   endTime: event.target.value,
                                 })
                               }
@@ -548,7 +579,7 @@ const StepActionBuilder = ({
                               placeholder="Ex: Use o nome do contato + tipo de reunião"
                               value={action.titleInstructions}
                               onChange={(event) =>
-                                updateAction('create_event', {
+                                updateAction(actionId, {
                                   titleInstructions: event.target.value,
                                 })
                               }
@@ -560,7 +591,7 @@ const StepActionBuilder = ({
                             <Select
                               value={String(action.duration)}
                               onValueChange={(val) =>
-                                updateAction('create_event', { duration: val })
+                                updateAction(actionId, { duration: val })
                               }
                             >
                               <SelectTrigger>
@@ -592,7 +623,7 @@ const StepActionBuilder = ({
                                   pattern="\d{2}:\d{2}"
                                   value={action.startTime}
                                   onChange={(event) =>
-                                    updateAction('create_event', {
+                                    updateAction(actionId, {
                                       startTime: event.target.value,
                                     })
                                   }
@@ -605,7 +636,7 @@ const StepActionBuilder = ({
                                   pattern="\d{2}:\d{2}"
                                   value={action.endTime}
                                   onChange={(event) =>
-                                    updateAction('create_event', {
+                                    updateAction(actionId, {
                                       endTime: event.target.value,
                                     })
                                   }
@@ -626,7 +657,7 @@ const StepActionBuilder = ({
                               <Switch
                                 checked={action.allowReschedule}
                                 onCheckedChange={(checked) =>
-                                  updateAction('create_event', {
+                                  updateAction(actionId, {
                                     allowReschedule: checked,
                                     ...(!checked ? { rescheduleInstructions: undefined } : {}),
                                   })
@@ -642,7 +673,7 @@ const StepActionBuilder = ({
                                   placeholder="Ex: Limite a 2 reagendamentos por evento"
                                   value={action.rescheduleInstructions ?? ''}
                                   onChange={(event) =>
-                                    updateAction('create_event', {
+                                    updateAction(actionId, {
                                       rescheduleInstructions:
                                         event.target.value || undefined,
                                     })
@@ -661,7 +692,7 @@ const StepActionBuilder = ({
                           specificPhone={action.specificPhone}
                           notificationMessage={action.notificationMessage}
                           onNotifyTargetChange={(val) =>
-                            updateAction('hand_off_to_human', {
+                            updateAction(actionId, {
                               notifyTarget: val,
                               ...(val === 'none'
                                 ? { specificPhone: undefined, notificationMessage: undefined }
@@ -672,10 +703,10 @@ const StepActionBuilder = ({
                             })
                           }
                           onSpecificPhoneChange={(val) =>
-                            updateAction('hand_off_to_human', { specificPhone: val })
+                            updateAction(actionId, { specificPhone: val })
                           }
                           onNotificationMessageChange={(val) =>
-                            updateAction('hand_off_to_human', { notificationMessage: val })
+                            updateAction(actionId, { notificationMessage: val })
                           }
                         />
                       )}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   BellOff,
   ChevronDown,
@@ -12,6 +12,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
+import { Badge } from '@/_components/ui/badge'
 import { Card, CardContent } from '@/_components/ui/card'
 import { Input } from '@/_components/ui/input'
 import { Label } from '@/_components/ui/label'
@@ -127,59 +128,79 @@ const getToolSummary = (tool: GlobalTool): ToolSummary => {
 }
 
 const GlobalToolBuilder = ({ value, onChange }: GlobalToolBuilderProps) => {
-  const [expandedTypes, setExpandedTypes] = useState<Set<string>>(new Set())
+  // Indexado por id de instância (não por type) para permitir abrir/fechar
+  // cards individuais quando há múltiplas instâncias do mesmo type.
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
 
-  const toggle = (type: string) => {
-    setExpandedTypes((prev) => {
+  // Backfill defensivo: itens vindos do servidor sem id recebem um id local
+  // para uso como React key. Não chamamos onChange — o backend normalizará no
+  // próximo save. O useMemo garante ids estáveis entre re-renders.
+  const valueWithIds = useMemo(
+    () =>
+      value.map((tool) =>
+        tool.id ? tool : { ...tool, id: crypto.randomUUID() },
+      ),
+    [value],
+  )
+
+  const toggle = (id: string) => {
+    setExpandedIds((prev) => {
       const next = new Set(prev)
-      if (next.has(type)) {
-        next.delete(type)
+      if (next.has(id)) {
+        next.delete(id)
       } else {
-        next.add(type)
+        next.add(id)
       }
       return next
     })
   }
 
   const addTool = (type: string) => {
-    onChange([...value, buildDefaultGlobalTool(type)])
-    setExpandedTypes((prev) => new Set([...prev, type]))
+    const newTool = { id: crypto.randomUUID(), ...buildDefaultGlobalTool(type) }
+    onChange([...value, newTool])
+    setExpandedIds((prev) => new Set([...prev, newTool.id!]))
   }
 
-  const removeTool = (type: string) => {
-    onChange(value.filter((tool) => tool.type !== type))
-    setExpandedTypes((prev) => {
+  const removeTool = (id: string) => {
+    onChange(value.filter((tool) => tool.id !== id))
+    setExpandedIds((prev) => {
       const next = new Set(prev)
-      next.delete(type)
+      next.delete(id)
       return next
     })
   }
 
-  const updateTool = (type: string, updates: Record<string, unknown>) => {
+  const updateTool = (id: string, updates: Record<string, unknown>) => {
     onChange(
       value.map((tool) =>
-        tool.type === type ? ({ ...tool, ...updates } as GlobalTool) : tool,
+        tool.id === id ? ({ ...tool, ...updates } as GlobalTool) : tool,
       ),
     )
   }
 
-  const availableToAdd = GLOBAL_TOOL_OPTIONS.filter(
-    (option) => !value.some((tool) => tool.type === option.value),
-  )
+  // Permite adicionar qualquer ferramenta global sem restrição de duplicata (multi-instância).
+  const availableToAdd = GLOBAL_TOOL_OPTIONS
 
   return (
     <div className="space-y-3">
       <div className="space-y-2">
-        {value.map((tool) => {
+        {valueWithIds.map((tool, index) => {
           const toolOption = GLOBAL_TOOL_OPTIONS.find((opt) => opt.value === tool.type)
-          const isOpen = expandedTypes.has(tool.type)
+          const toolId = tool.id!
+          const isOpen = expandedIds.has(toolId)
           const summary = getToolSummary(tool)
+
+          // Badge de índice (#1, #2) aparece somente quando há mais de uma
+          // instância do mesmo type, para distinguir visualmente as instâncias.
+          const sameTypeCount = valueWithIds.filter((item) => item.type === tool.type).length
+          const instanceIndex = valueWithIds.slice(0, index).filter((item) => item.type === tool.type).length
+          const showInstanceBadge = sameTypeCount > 1
 
           return (
             <Collapsible
-              key={tool.type}
+              key={toolId}
               open={isOpen}
-              onOpenChange={() => toggle(tool.type)}
+              onOpenChange={() => toggle(toolId)}
             >
               <Card className="border-primary/30 bg-primary/5">
                 <CardContent className="p-0">
@@ -190,9 +211,19 @@ const GlobalToolBuilder = ({ value, onChange }: GlobalToolBuilderProps) => {
                         className="flex min-w-0 flex-1 items-center gap-3 p-4 text-left"
                       >
                         <div className="min-w-0 flex-1 space-y-0.5">
-                          <span className="block text-sm font-medium">
-                            {toolOption?.label ?? tool.type}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="block text-sm font-medium">
+                              {toolOption?.label ?? tool.type}
+                            </span>
+                            {showInstanceBadge && (
+                              <Badge
+                                variant="secondary"
+                                className="h-4 px-1.5 text-[10px] font-medium"
+                              >
+                                #{instanceIndex + 1}
+                              </Badge>
+                            )}
+                          </div>
                           {!isOpen && (
                             <span className="flex flex-col gap-0.5 text-xs text-muted-foreground/70">
                               {summary.trigger && (
@@ -219,7 +250,7 @@ const GlobalToolBuilder = ({ value, onChange }: GlobalToolBuilderProps) => {
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
-                      onClick={() => removeTool(tool.type)}
+                      onClick={() => removeTool(toolId)}
                       type="button"
                     >
                       <X className="h-4 w-4" />
@@ -240,7 +271,7 @@ const GlobalToolBuilder = ({ value, onChange }: GlobalToolBuilderProps) => {
                           placeholder={TRIGGER_PLACEHOLDERS[tool.type]}
                           value={tool.trigger}
                           onChange={(event) =>
-                            updateTool(tool.type, { trigger: event.target.value })
+                            updateTool(toolId, { trigger: event.target.value })
                           }
                         />
                       </div>
@@ -251,7 +282,7 @@ const GlobalToolBuilder = ({ value, onChange }: GlobalToolBuilderProps) => {
                           specificPhone={tool.specificPhone}
                           notificationMessage={tool.notificationMessage}
                           onNotifyTargetChange={(val) =>
-                            updateTool('hand_off_to_human', {
+                            updateTool(toolId, {
                               notifyTarget: val,
                               ...(val === 'none'
                                 ? { specificPhone: undefined, notificationMessage: undefined }
@@ -262,10 +293,10 @@ const GlobalToolBuilder = ({ value, onChange }: GlobalToolBuilderProps) => {
                             })
                           }
                           onSpecificPhoneChange={(val) =>
-                            updateTool('hand_off_to_human', { specificPhone: val })
+                            updateTool(toolId, { specificPhone: val })
                           }
                           onNotificationMessageChange={(val) =>
-                            updateTool('hand_off_to_human', { notificationMessage: val })
+                            updateTool(toolId, { notificationMessage: val })
                           }
                         />
                       )}
@@ -280,16 +311,16 @@ const GlobalToolBuilder = ({ value, onChange }: GlobalToolBuilderProps) => {
                           notesTemplate={tool.notesTemplate}
                           allowedStatuses={tool.allowedStatuses ?? []}
                           onAllowedFieldsChange={(fields, extra) =>
-                            updateTool('update_deal', { allowedFields: fields, ...extra })
+                            updateTool(toolId, { allowedFields: fields, ...extra })
                           }
                           onFixedPriorityChange={(val) =>
-                            updateTool('update_deal', { fixedPriority: val as 'low' | 'medium' | 'high' | 'urgent' | undefined })
+                            updateTool(toolId, { fixedPriority: val as 'low' | 'medium' | 'high' | 'urgent' | undefined })
                           }
                           onNotesTemplateChange={(val) =>
-                            updateTool('update_deal', { notesTemplate: val })
+                            updateTool(toolId, { notesTemplate: val })
                           }
                           onAllowedStatusesChange={(statuses) =>
-                            updateTool('update_deal', { allowedStatuses: statuses })
+                            updateTool(toolId, { allowedStatuses: statuses })
                           }
                         />
                       )}
@@ -298,9 +329,9 @@ const GlobalToolBuilder = ({ value, onChange }: GlobalToolBuilderProps) => {
                         <CreateTaskConfig
                           title={tool.title}
                           dueDaysOffset={tool.dueDaysOffset}
-                          onTitleChange={(val) => updateTool('create_task', { title: val })}
+                          onTitleChange={(val) => updateTool(toolId, { title: val })}
                           onDueDaysOffsetChange={(val) =>
-                            updateTool('create_task', { dueDaysOffset: val })
+                            updateTool(toolId, { dueDaysOffset: val })
                           }
                         />
                       )}
@@ -313,23 +344,21 @@ const GlobalToolBuilder = ({ value, onChange }: GlobalToolBuilderProps) => {
         })}
       </div>
 
-      {availableToAdd.length > 0 && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" type="button">
-              <Plus className="mr-2 h-4 w-4" />
-              Adicionar Ferramenta
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            {availableToAdd.map((option) => (
-              <DropdownMenuItem key={option.value} onClick={() => addTool(option.value)}>
-                {option.label}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="sm" type="button">
+            <Plus className="mr-2 h-4 w-4" />
+            Adicionar Ferramenta
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start">
+          {availableToAdd.map((option) => (
+            <DropdownMenuItem key={option.value} onClick={() => addTool(option.value)}>
+              {option.label}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   )
 }

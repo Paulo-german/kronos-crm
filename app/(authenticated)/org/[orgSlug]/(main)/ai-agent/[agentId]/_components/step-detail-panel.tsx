@@ -55,7 +55,8 @@ const StepDetailPanel = ({
 }: StepDetailPanelProps) => {
   const isEditing = !!step?.id
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
-  const { progress, visible, isError, start, complete, fail } = useTrainingProgress()
+  const { progress, visible, isError, start, complete, fail } =
+    useTrainingProgress()
 
   const form = useForm<CreateStepFormInput>({
     resolver: zodResolver(createStepSchema),
@@ -99,7 +100,9 @@ const StepDetailPanel = ({
         onSaveSuccess?.()
       },
       onError: ({ error }) => {
-        toast.error(error.serverError || 'Falha ao treinar o agente com esta etapa.')
+        toast.error(
+          error.serverError || 'Falha ao treinar o agente com esta etapa.',
+        )
         fail()
       },
     },
@@ -150,7 +153,7 @@ const StepDetailPanel = ({
           onSubmit={form.handleSubmit(onSubmit, onValidationError)}
           className="flex flex-col"
         >
-          <div className="p-5 space-y-5">
+          <div className="space-y-5 p-5">
             <FormField
               control={form.control}
               name="name"
@@ -191,7 +194,9 @@ const StepDetailPanel = ({
             {canManage && (
               <StepActionBuilder
                 value={(form.watch('actions') ?? []) as StepAction[]}
-                onChange={(actions) => form.setValue('actions', actions, { shouldDirty: true })}
+                onChange={(actions) =>
+                  form.setValue('actions', actions, { shouldDirty: true })
+                }
                 pipelineStages={pipelineStages}
                 excludeGlobalTools={excludeGlobalTools}
               />
@@ -240,7 +245,7 @@ const StepDetailPanel = ({
 
           {/* Rodapé fixo com ações */}
           {canManage && (
-            <div className="relative border-t p-4 flex items-center justify-between gap-2 overflow-hidden">
+            <div className="relative flex items-center justify-between gap-2 overflow-hidden border-t p-4">
               {visible && (
                 <div
                   className="absolute inset-x-0 top-0 h-0.5 transition-all ease-out"
@@ -248,31 +253,41 @@ const StepDetailPanel = ({
                     width: `${progress}%`,
                     transitionDuration: progress < 100 ? '1200ms' : '300ms',
                     background: isError
-                    ? 'hsl(var(--destructive))'
-                    : 'linear-gradient(90deg, var(--kronos-purple), var(--kronos-cyan), var(--kronos-green))',
+                      ? 'hsl(var(--destructive))'
+                      : 'linear-gradient(90deg, var(--kronos-purple), var(--kronos-cyan), var(--kronos-green))',
                   }}
                 />
               )}
               {isEditing ? (
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
-                  className="text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/10"
+                  className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
                   onClick={() => setIsDeleteOpen(true)}
                 >
-                  <Trash2 className="h-4 w-4 mr-2" />
+                  <Trash2 className="mr-2 h-4 w-4" />
                   Excluir Etapa
                 </Button>
               ) : (
                 <div />
               )}
 
-              <Button type="submit" size="sm" disabled={isPending || (isEditing && !form.formState.isDirty)}>
-                <Brain className={cn('mr-2 h-4 w-4', isPending && 'animate-pulse')} />
+              <Button
+                type="submit"
+                size="sm"
+                disabled={isPending || (isEditing && !form.formState.isDirty)}
+              >
+                <Brain
+                  className={cn('mr-2 h-4 w-4', isPending && 'animate-pulse')}
+                />
                 {isPending
-                  ? isEditing ? 'Treinando...' : 'Criando...'
-                  : isEditing ? 'Treinar Agente' : 'Criar Etapa'}
+                  ? isEditing
+                    ? 'Treinando...'
+                    : 'Criando...'
+                  : isEditing
+                    ? 'Treinar Agente'
+                    : 'Criar Etapa'}
               </Button>
             </div>
           )}

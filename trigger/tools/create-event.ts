@@ -16,6 +16,7 @@ export interface CreateEventConfig {
   duration: number    // minutos
   startTime: string   // "HH:MM" — horário mínimo permitido para agendamento
   endTime: string     // "HH:MM" — horário máximo permitido para agendamento
+  triggerHint?: string
 }
 
 /**
@@ -55,12 +56,17 @@ function extractLocalTime(date: Date): string {
 export function createCreateEventTool(ctx: ToolContext, config: CreateEventConfig) {
   const durationLabel = formatDurationLabel(config.duration)
 
+  const baseDescription =
+    `Agenda um evento vinculado ao negócio. Para o título, siga estas instruções: ${config.titleInstructions}. ` +
+    `O evento terá duração de ${durationLabel}. ` +
+    `Somente agende horários entre ${config.startTime} e ${config.endTime} (horário de Brasília). ` +
+    `Não agende eventos fora desse intervalo.`
+  const description = config.triggerHint
+    ? `${baseDescription}\n\nQuando usar esta instância: ${config.triggerHint}`
+    : baseDescription
+
   return tool({
-    description:
-      `Agenda um evento vinculado ao negócio. Para o título, siga estas instruções: ${config.titleInstructions}. ` +
-      `O evento terá duração de ${durationLabel}. ` +
-      `Somente agende horários entre ${config.startTime} e ${config.endTime} (horário de Brasília). ` +
-      `Não agende eventos fora desse intervalo.`,
+    description,
     inputSchema: z.object({
       title: z
         .string()

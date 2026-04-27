@@ -26,6 +26,7 @@ export interface ListAvailabilityConfig {
   slotDuration: number   // 15, 30, 45, 60, 90, 120
   startTime: string      // "07:00"
   endTime: string        // "23:00"
+  triggerHint?: string
 }
 
 const MAX_SLOTS_TO_RETURN = 30
@@ -107,11 +108,16 @@ export function createListAvailabilityTool(
   ctx: ToolContext,
   config: ListAvailabilityConfig,
 ) {
+  const baseDescription =
+    'Consulta horários disponíveis na agenda. Use ANTES de sugerir horários ao cliente. ' +
+    'Aceita parâmetros opcionais: date (YYYY-MM-DD) para consultar um dia específico, ' +
+    'e time (HH:MM) junto com date para verificar se um slot exato está livre.'
+  const description = config.triggerHint
+    ? `${baseDescription}\n\nQuando usar esta instância: ${config.triggerHint}`
+    : baseDescription
+
   return tool({
-    description:
-      'Consulta horários disponíveis na agenda. Use ANTES de sugerir horários ao cliente. ' +
-      'Aceita parâmetros opcionais: date (YYYY-MM-DD) para consultar um dia específico, ' +
-      'e time (HH:MM) junto com date para verificar se um slot exato está livre.',
+    description,
     inputSchema: z.object({
       date: z
         .string()
