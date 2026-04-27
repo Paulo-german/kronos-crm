@@ -87,11 +87,14 @@ export const SidebarContent = ({
       {/* Org Switcher */}
       <div
         className={cn(
-          'ease-[cubic-bezier(0.25,0.76,0.35,1)] border-b border-border/50 py-2 transition-[padding] duration-500',
+          'ease-[cubic-bezier(0.25,0.76,0.35,1)] py-2 transition-[padding] duration-500',
           isCollapsed ? 'px-2' : 'px-4',
         )}
       >
         <OrgSwitcher organizations={organizations} />
+      </div>
+      <div className={cn('transition-all duration-500', isCollapsed ? 'mx-2' : 'mx-4')}>
+        <div className="h-px bg-border-strong" />
       </div>
 
       {/* Menu */}
@@ -128,7 +131,7 @@ export const SidebarContent = ({
           {hasModule('crm') && (
             <div className="min-w-0">
               <div className={sectionTitleClass}>
-                <span className="h-px flex-1 bg-border/50" />
+                <span className="h-px flex-1 bg-border-strong" />
                 <span className="shrink-0 text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground/40">CRM</span>
               </div>
               <SidebarItem
@@ -154,7 +157,7 @@ export const SidebarContent = ({
           {hasModule('inbox') && (
             <div className="min-w-0">
               <div className={sectionTitleClass}>
-                <span className="h-px flex-1 bg-border/50" />
+                <span className="h-px flex-1 bg-border-strong" />
                 <span className="shrink-0 text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground/40">Inbox</span>
               </div>
               <SidebarItem
@@ -170,7 +173,7 @@ export const SidebarContent = ({
           {hasModule('ai-agent') && (
             <div className="min-w-0">
               <div className={sectionTitleClass}>
-                <span className="h-px flex-1 bg-border/50" />
+                <span className="h-px flex-1 bg-border-strong" />
                 <span className="shrink-0 text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground/40">Agentes</span>
               </div>
               <SidebarItem
@@ -196,9 +199,12 @@ export const SidebarContent = ({
       </div>
 
       {/* Ajustes */}
+      <div className={cn('transition-all duration-500', isCollapsed ? 'mx-2' : 'mx-4')}>
+        <div className="h-px bg-border-strong" />
+      </div>
       <div
         className={cn(
-          'ease-[cubic-bezier(0.25,0.76,0.35,1)] border-t border-border/50 py-3 transition-[padding] duration-500',
+          'ease-[cubic-bezier(0.25,0.76,0.35,1)] py-3 transition-[padding] duration-500',
           isCollapsed ? 'px-2' : 'px-4',
         )}
       >

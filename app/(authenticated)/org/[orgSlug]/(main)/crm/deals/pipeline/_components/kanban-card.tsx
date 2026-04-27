@@ -130,7 +130,7 @@ const KanbanCard = ({
       style={style}
       {...attributes}
       {...listeners}
-      className={`bg-kanban-card relative cursor-grab border-border shadow-none transition-all hover:bg-card/50 ${draggingClass}`}
+      className={`bg-kanban-card relative cursor-grab border-border-strong shadow-none transition-all hover:bg-card/50 ${draggingClass}`}
       onClick={handleCardClick}
     >
       <CardContent className="flex flex-col gap-4 p-3.5">
@@ -246,7 +246,7 @@ const KanbanCard = ({
 
         {/* 4. Base: Observações */}
         {deal.notes && (
-          <div className="flex flex-col gap-1 border-t border-border/50 pt-2">
+          <div className="flex flex-col gap-1 border-t border-border-strong pt-2">
             <Label className="text-[10px] uppercase text-muted-foreground">
               Observações
             </Label>
