@@ -99,7 +99,7 @@ export function KanbanColumn({
       {/* Cards */}
       <div
         ref={setNodeRef}
-        className="bg-kanban-column flex-1 space-y-4 overflow-y-auto p-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border hover:[&::-webkit-scrollbar-thumb]:bg-kronos-purple [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-0.5"
+        className="bg-kanban-column flex-1 space-y-3 overflow-y-auto p-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border hover:[&::-webkit-scrollbar-thumb]:bg-kronos-purple [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-0.5"
       >
         <SortableContext
           items={deals.map((d) => d.id)}
