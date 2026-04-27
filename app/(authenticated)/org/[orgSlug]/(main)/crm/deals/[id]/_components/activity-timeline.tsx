@@ -2,10 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import {
-  Phone,
-  Mail,
-  FileText,
-  Users,
+  Plus,
   ArrowRightLeft,
   Package,
   PackageMinus,
@@ -28,6 +25,7 @@ import {
   User2Icon,
   Bot,
   Loader2,
+  FileText,
 } from 'lucide-react'
 import { useAction } from 'next-safe-action/hooks'
 import type { DealActivityDto } from '@/_data-access/deal/get-deal-details'
@@ -40,6 +38,8 @@ import {
   TooltipTrigger,
 } from '@/_components/ui/tooltip'
 import { getActivities } from '@/_actions/deal/get-activities'
+import { MANUAL_ACTIVITY_CONFIG } from '@/_lib/deal/activity-config'
+import { CreateActivityDialog } from './create-activity-dialog'
 
 interface ActivityTimelineProps {
   dealId: string
@@ -51,31 +51,7 @@ const activityConfig: Record<
   string,
   { icon: typeof FileText; label: string; color: string; bgColor: string }
 > = {
-  // Manuais
-  note: {
-    icon: FileText,
-    label: 'Nota',
-    color: 'text-blue-500',
-    bgColor: 'bg-blue-500/10',
-  },
-  call: {
-    icon: Phone,
-    label: 'Ligação',
-    color: 'text-green-500',
-    bgColor: 'bg-green-500/10',
-  },
-  email: {
-    icon: Mail,
-    label: 'Email',
-    color: 'text-purple-500',
-    bgColor: 'bg-purple-500/10',
-  },
-  meeting: {
-    icon: Users,
-    label: 'Reunião',
-    color: 'text-orange-500',
-    bgColor: 'bg-orange-500/10',
-  },
+  ...MANUAL_ACTIVITY_CONFIG,
   // Sistema
   stage_change: {
     icon: ArrowRightLeft,
@@ -206,6 +182,7 @@ const ActivityTimeline = ({
   activities: initialActivities,
   totalActivities,
 }: ActivityTimelineProps) => {
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [extraActivities, setExtraActivities] = useState<DealActivityDto[]>([])
   const [prevInitialIds, setPrevInitialIds] = useState(() =>
     initialActivities.map((a) => a.id).join(','),
@@ -262,15 +239,25 @@ const ActivityTimeline = ({
   return (
     <Card className="border-none bg-transparent shadow-none">
       <CardHeader className="px-0 pb-3">
-        <div className="mb-4 flex items-center gap-2">
-          <CardTitle className="text-base font-semibold">
-            Histórico de Atividades
-          </CardTitle>
-          {totalActivities > 0 && (
-            <span className="text-xs text-muted-foreground">
-              {totalActivities}
-            </span>
-          )}
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-base font-semibold">
+              Histórico de Atividades
+            </CardTitle>
+            {totalActivities > 0 && (
+              <span className="text-xs text-muted-foreground">
+                {totalActivities}
+              </span>
+            )}
+          </div>
+          <Button
+            size="sm"
+            variant="soft"
+            onClick={() => setIsCreateOpen(true)}
+          >
+            <Plus className="mr-1.5 h-3.5 w-3.5" />
+            Nova atividade
+          </Button>
         </div>
       </CardHeader>
 
@@ -382,6 +369,12 @@ const ActivityTimeline = ({
           </div>
         )}
       </CardContent>
+
+      <CreateActivityDialog
+        dealId={dealId}
+        open={isCreateOpen}
+        onOpenChange={setIsCreateOpen}
+      />
     </Card>
   )
 }
