@@ -15,7 +15,6 @@ import {
   Users,
   AlertTriangleIcon,
   Instagram,
-  AtSign,
 } from 'lucide-react'
 import { Badge } from '@/_components/ui/badge'
 import { Button } from '@/_components/ui/button'
@@ -59,6 +58,7 @@ import MetaConnectionCard from './meta-connection-card'
 import ZApiConnectionCard from './zapi-connection-card'
 import ConnectionProviderSelector from './connection-provider-selector'
 import EvolutionSelfHostedCard from './evolution-self-hosted-card'
+import ConnectInstagramButton from './connect-instagram-button'
 
 // Modo de vinculação da IA neste inbox
 type AiLinkMode = 'agent' | 'group'
@@ -777,57 +777,15 @@ const InboxDetailClient = ({
             {/* Connection Card — roteado por provider */}
             {inbox.channel === 'WHATSAPP' && renderConnectionSection()}
 
-            {/* Instagram Direct — card de status de conexão */}
+            {/* Instagram Direct — botão de connect/disconnect */}
             {inbox.channel === 'INSTAGRAM_DM' && (
-              <Card className="border-border/50 bg-secondary/20">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2 text-base font-semibold">
-                      <Instagram className="h-5 w-5 text-pink-500" />
-                      Instagram Direct
-                    </CardTitle>
-                    {inbox.metaIgUserId ? (
-                      <Badge
-                        variant="outline"
-                        className="border-kronos-green/20 bg-kronos-green/10 px-2 text-xs font-semibold text-kronos-green"
-                      >
-                        Conectado
-                      </Badge>
-                    ) : (
-                      <Badge
-                        variant="outline"
-                        className="border-destructive/30 bg-destructive/10 px-2 text-xs font-semibold text-destructive"
-                      >
-                        Desconectado
-                      </Badge>
-                    )}
-                  </div>
-                  <CardDescription>
-                    {inbox.metaIgUserId
-                      ? 'Esta caixa de entrada está recebendo mensagens via Instagram Direct.'
-                      : 'Conecte uma conta Instagram Business para receber e enviar mensagens diretas.'}
-                  </CardDescription>
-                </CardHeader>
-                {inbox.metaIgUserId && (
-                  <CardContent>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="flex items-center gap-3 rounded-md border border-border/50 bg-background/70 p-3">
-                        <AtSign className="h-4 w-4 text-muted-foreground" />
-                        <div>
-                          <p className="text-xs text-muted-foreground">
-                            Conta Instagram
-                          </p>
-                          <p className="text-sm font-medium">
-                            {inbox.metaIgUsername
-                              ? `@${inbox.metaIgUsername}`
-                              : 'Não disponível'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                )}
-              </Card>
+              <ConnectInstagramButton
+                inboxId={inbox.id}
+                canManage={canManage}
+                isConnected={!!inbox.metaIgUserId}
+                igUsername={inbox.metaIgUsername ?? null}
+                igUserId={inbox.metaIgUserId ?? null}
+              />
             )}
 
             {/* Templates Card — somente para inboxes Meta Cloud conectados */}

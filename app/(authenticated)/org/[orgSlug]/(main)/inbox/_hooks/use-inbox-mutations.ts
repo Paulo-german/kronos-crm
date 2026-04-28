@@ -117,7 +117,8 @@ export function useInboxMutations({ availableLabels, members, statusFilter }: Us
 
   // Sem optimistic update — o resultado depende de confirmação do provedor de mensagens
   const sendMessageMutation = useMutation({
-    mutationFn: (input: { conversationId: string; text: string }) => sendMessage(input),
+    mutationFn: (input: { conversationId: string; text: string; useHumanAgentTag?: boolean }) =>
+      sendMessage(input),
     onSettled: (_data, _err, variables) => {
       queryClient.invalidateQueries({ queryKey: inboxKeys.messages.byConversation(variables.conversationId) })
       invalidateConversationList()

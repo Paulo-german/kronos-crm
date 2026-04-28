@@ -18,6 +18,7 @@ import { useInboxMutations } from '../_hooks/use-inbox-mutations'
 import { inboxKeys } from '../_lib/inbox-query-keys'
 import { useAudioRecorder } from '../_hooks/use-audio-recorder'
 import { useConversationWindow } from '../_hooks/use-conversation-window'
+import { IG_CONVERSATION_WINDOW_MS, IG_HUMAN_AGENT_WINDOW_MS } from '@/_lib/instagram/constants'
 import { ChatHeader } from './chat-header'
 import { ChatBanners } from './chat-banners'
 import { ChatMessageList } from './chat-message-list'
@@ -25,6 +26,7 @@ import { ChatInput, type ChatInputHandle } from './chat-input'
 import { ChatSettingsSheet } from './chat-settings-sheet'
 import { TemplateMessageDialog } from './template-message-dialog'
 import { ConversationWindowBanner } from './conversation-window-banner'
+import { InstagramWindowBanner } from './instagram-window-banner'
 import { AgentTypingIndicator } from './agent-typing-indicator'
 import type { MessageDto, TimelineItem } from './chat-types'
 import type { AgentStatusPayload } from '@/_lib/inbox/agent-status-types'
@@ -52,19 +54,37 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
   const [mediaPreviewUrl, setMediaPreviewUrl] = useState<string | null>(null)
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false)
   const [retryingMessageId, setRetryingMessageId] = useState<string | null>(null)
+  // Controla se o envio para Instagram usará a tag HUMAN_AGENT (janela 24h–7d)
+  const [useHumanAgentTag, setUseHumanAgentTag] = useState(true)
 
   const queryClient = useQueryClient()
 
   const isMetaCloud = conversation.inboxConnectionType === 'META_CLOUD'
+  const isInstagramDm = conversation.channel === 'INSTAGRAM_DM'
   // Simulador: usa pipeline diferente de envio, esconde controles específicos de WhatsApp
   const isSimulator = conversation.inboxConnectionType === 'SIMULATOR'
+
+  // Lógica de janela de tempo para Instagram Direct
+  const instagramElapsed =
+    isInstagramDm && conversation.lastCustomerMessageAt
+      ? Date.now() - new Date(conversation.lastCustomerMessageAt).getTime()
+      : null
+  const isInstagramWithin24h =
+    instagramElapsed !== null && instagramElapsed < IG_CONVERSATION_WINDOW_MS
+  const isInstagramWithin7d =
+    instagramElapsed !== null && instagramElapsed < IG_HUMAN_AGENT_WINDOW_MS
+  // Sem mensagem do cliente → trata como fora da janela (bloqueado)
+  const isInstagramBlocked =
+    isInstagramDm &&
+    (conversation.lastCustomerMessageAt === null || !isInstagramWithin7d)
   const mediaPreviewUrlRef = useRef<string | null>(null)
 
   const windowState = useConversationWindow(
     conversation.lastCustomerMessageAt ? new Date(conversation.lastCustomerMessageAt) : null,
     conversation.inboxConnectionType,
   )
-  const isWindowClosed = windowState.isMetaCloud && !windowState.isOpen
+  const isWindowClosed =
+    (windowState.isMetaCloud && !windowState.isOpen) || isInstagramBlocked
   const chatInputRef = useRef<ChatInputHandle>(null)
 
   useEffect(() => {
@@ -224,7 +244,12 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
 
     if (!trimmed || mutations.sendMessage.isPending) return
     mutations.sendMessage.mutate(
-      { conversationId: conversation.id, text: trimmed },
+      {
+        conversationId: conversation.id,
+        text: trimmed,
+        // Para Instagram fora da janela de 24h, inclui a tag human_agent se habilitada pelo usuário
+        ...(isInstagramDm && !isInstagramWithin24h && { useHumanAgentTag }),
+      },
       {
         onSuccess: (result) => {
           setText('')
@@ -371,6 +396,15 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
           windowState={windowState}
           onOpenTemplateDialog={() => setTemplateDialogOpen(true)}
         />
+        {/* Banner de janela de tempo para Instagram Direct */}
+        {isInstagramDm && !isSimulator && (
+          <InstagramWindowBanner
+            isWithin24h={isInstagramWithin24h}
+            isWithin7d={isInstagramWithin7d}
+            useHumanAgentTag={useHumanAgentTag}
+            onHumanAgentTagChange={setUseHumanAgentTag}
+          />
+        )}
         {/* Indicador de digitação do agente — visível enquanto a IA processa */}
         {getAgentStatus && (
           <AgentTypingIndicator
@@ -401,7 +435,13 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
           // Simulador não usa templates Meta
           onOpenTemplateDialog={isMetaCloud && !isSimulator ? () => setTemplateDialogOpen(true) : undefined}
           windowClosed={isSimulator ? false : isWindowClosed}
-          placeholder={isSimulator ? 'Digite uma mensagem para o agente...' : undefined}
+          placeholder={
+            isSimulator
+              ? 'Digite uma mensagem para o agente...'
+              : isInstagramBlocked
+                ? 'Aguardando nova mensagem do cliente para reabrir a conversa.'
+                : undefined
+          }
         />
         {isMetaCloud && (
           <TemplateMessageDialog
