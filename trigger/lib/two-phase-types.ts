@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import type { ModelMessage as AISDKModelMessage } from 'ai'
-import { ConnectionType } from '@prisma/client'
+import { ConnectionType, InboxChannel } from '@prisma/client'
 import type { ToolContext } from '../tools/types'
 
 // Mensagem genérica de fallback seguro — usada quando nenhuma resposta pode ser
@@ -28,11 +28,13 @@ export type ModelMessage = AISDKModelMessage
 // Schema interno do provider WhatsApp — espelha InboxProviderContext de tools/types.ts
 const inboxProviderContextSchema = z.object({
   connectionType: z.nativeEnum(ConnectionType),
+  channel: z.nativeEnum(InboxChannel),
   evolutionInstanceName: z.string().nullable(),
   evolutionApiUrl: z.string().nullable(),
   evolutionApiKey: z.string().nullable(),
   metaPhoneNumberId: z.string().nullable(),
   metaAccessToken: z.string().nullable(),
+  metaIgUserId: z.string().nullable(),
   zapiInstanceId: z.string().nullable(),
   zapiToken: z.string().nullable(),
   zapiClientToken: z.string().nullable(),

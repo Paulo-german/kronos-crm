@@ -64,11 +64,13 @@ export const retryFailedMessage = orgActionClient
               select: {
                 id: true,
                 connectionType: true,
+                channel: true,
                 evolutionInstanceName: true,
                 evolutionApiUrl: true,
                 evolutionApiKey: true,
                 metaPhoneNumberId: true,
                 metaAccessToken: true,
+                metaIgUserId: true,
                 zapiInstanceId: true,
                 zapiToken: true,
                 zapiClientToken: true,

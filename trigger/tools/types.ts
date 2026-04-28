@@ -1,14 +1,16 @@
-import type { ConnectionType } from '@prisma/client'
+import type { ConnectionType, InboxChannel } from '@prisma/client'
 
 // Contexto de provider WhatsApp necessário para a tool send_product_media
 // Espelha a InboxProviderContext de app/_lib/whatsapp/provider.ts
 export interface InboxProviderContext {
   connectionType: ConnectionType
+  channel: InboxChannel
   evolutionInstanceName: string | null
   evolutionApiUrl: string | null
   evolutionApiKey: string | null
   metaPhoneNumberId: string | null
   metaAccessToken: string | null
+  metaIgUserId: string | null
   zapiInstanceId: string | null
   zapiToken: string | null
   zapiClientToken: string | null

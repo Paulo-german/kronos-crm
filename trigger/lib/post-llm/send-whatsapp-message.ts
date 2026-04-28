@@ -1,6 +1,6 @@
 import crypto from 'crypto'
 import { resolveWhatsAppProvider } from '@/_lib/whatsapp/provider'
-import type { ConnectionType } from '@prisma/client'
+import type { ConnectionType, InboxChannel } from '@prisma/client'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -12,11 +12,13 @@ import type { ConnectionType } from '@prisma/client'
  */
 export interface InboxCredentials {
   connectionType: ConnectionType
+  channel: InboxChannel
   evolutionInstanceName: string | null
   evolutionApiUrl: string | null
   evolutionApiKey: string | null
   metaPhoneNumberId: string | null
   metaAccessToken: string | null
+  metaIgUserId: string | null
   zapiInstanceId: string | null
   zapiToken: string | null
   zapiClientToken: string | null

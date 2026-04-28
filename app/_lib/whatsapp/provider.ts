@@ -6,10 +6,11 @@ import { sendZApiTextMessage } from '@/_lib/zapi/send-message'
 import { sendZApiAudio } from '@/_lib/zapi/send-audio'
 import { sendZApiMedia } from '@/_lib/zapi/send-media'
 import { sendMetaTemplateMessage } from '@/_lib/meta/template-api'
+import { sendInstagramText, sendInstagramAudio, sendInstagramMedia } from '@/_lib/instagram/send-instagram-message'
 import type { ZApiConfig } from '@/_lib/zapi/types'
 import type { EvolutionCredentials } from '@/_lib/evolution/resolve-credentials'
 import type { MetaTemplateSendComponent } from '@/_lib/meta/types'
-import { ConnectionType } from '@prisma/client'
+import { ConnectionType, InboxChannel } from '@prisma/client'
 
 /**
  * Interface unificada de envio WhatsApp — usada por actions e Trigger.dev.
@@ -41,11 +42,13 @@ export interface WhatsAppProvider {
 
 interface InboxProviderContext {
   connectionType: ConnectionType
+  channel: InboxChannel
   evolutionInstanceName: string | null
   evolutionApiUrl: string | null
   evolutionApiKey: string | null
   metaPhoneNumberId: string | null
   metaAccessToken: string | null
+  metaIgUserId: string | null
   zapiInstanceId: string | null
   zapiToken: string | null
   zapiClientToken: string | null
@@ -56,7 +59,29 @@ interface InboxProviderContext {
  * Lanca erro se dados insuficientes para o provider selecionado.
  */
 export function resolveWhatsAppProvider(inbox: InboxProviderContext): WhatsAppProvider {
-  if (inbox.connectionType === 'META_CLOUD') {
+  // Branch Instagram Direct — deve vir antes do branch META_CLOUD generico
+  if (inbox.connectionType === 'META_CLOUD' && inbox.channel === 'INSTAGRAM_DM') {
+    if (!inbox.metaIgUserId || !inbox.metaAccessToken) {
+      throw new Error('Instagram Direct não configurado corretamente. Reconecte a conta.')
+    }
+
+    const igUserId = inbox.metaIgUserId
+    const accessToken = inbox.metaAccessToken
+
+    return {
+      sendText: (recipientJid: string, text: string) =>
+        sendInstagramText(igUserId, accessToken, recipientJid.replace('@instagram', ''), text),
+      sendAudio: (recipientJid: string, audioBase64: string) =>
+        sendInstagramAudio(igUserId, accessToken, recipientJid.replace('@instagram', ''), audioBase64),
+      sendMedia: (recipientJid: string, _b64: string, mimetype: string, mediatype: 'image' | 'document' | 'video', _fileName?: string, caption?: string, mediaUrl?: string) => {
+        if (!mediaUrl) throw new Error('Instagram Direct requer URL pública para envio de mídia.')
+        return sendInstagramMedia(igUserId, accessToken, recipientJid.replace('@instagram', ''), mediaUrl, mimetype, mediatype, caption)
+      },
+      sendTemplate: () => Promise.reject(new Error('Templates não suportados no Instagram Direct.')),
+    }
+  }
+
+  if (inbox.connectionType === 'META_CLOUD' && inbox.channel === 'WHATSAPP') {
     if (!inbox.metaPhoneNumberId || !inbox.metaAccessToken) {
       throw new Error(
         'Meta Cloud API nao configurada corretamente. Configure o phoneNumberId e accessToken.',

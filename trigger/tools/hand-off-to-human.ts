@@ -8,7 +8,7 @@ import { withRetry, safeBestEffort } from './lib/with-retry'
 import {
   notificationPreferencesSchema,
 } from '@/_data-access/notification/types'
-import type { NotificationType, ConnectionType, Prisma } from '@prisma/client'
+import type { NotificationType, ConnectionType, InboxChannel, Prisma } from '@prisma/client'
 import type { ToolContext } from './types'
 
 export interface HandOffNotificationConfig {
@@ -41,11 +41,13 @@ const NOTIFY_RETURN_MESSAGE =
 interface ConversationDataForNotification {
   inbox: {
     connectionType: ConnectionType
+    channel: InboxChannel
     evolutionInstanceName: string | null
     evolutionApiUrl: string | null
     evolutionApiKey: string | null
     metaPhoneNumberId: string | null
     metaAccessToken: string | null
+    metaIgUserId: string | null
     zapiInstanceId: string | null
     zapiToken: string | null
     zapiClientToken: string | null
@@ -467,11 +469,13 @@ export function createHandOffToHumanTool(
               inbox: {
                 select: {
                   connectionType: true,
+                  channel: true,
                   evolutionInstanceName: true,
                   evolutionApiUrl: true,
                   evolutionApiKey: true,
                   metaPhoneNumberId: true,
                   metaAccessToken: true,
+                  metaIgUserId: true,
                   zapiInstanceId: true,
                   zapiToken: true,
                   zapiClientToken: true,

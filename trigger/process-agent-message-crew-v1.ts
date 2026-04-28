@@ -263,11 +263,13 @@ export async function runCrewV1(
       inbox: {
         select: {
           connectionType: true,
+          channel: true,
           evolutionInstanceName: true,
           evolutionApiUrl: true,
           evolutionApiKey: true,
           metaPhoneNumberId: true,
           metaAccessToken: true,
+          metaIgUserId: true,
           zapiInstanceId: true,
           zapiToken: true,
           zapiClientToken: true,

@@ -165,11 +165,13 @@ export async function runSingleV2(
           inbox: {
             select: {
               connectionType: true,
+              channel: true,
               evolutionInstanceName: true,
               evolutionApiUrl: true,
               evolutionApiKey: true,
               metaPhoneNumberId: true,
               metaAccessToken: true,
+              metaIgUserId: true,
               zapiInstanceId: true,
               zapiToken: true,
               zapiClientToken: true,

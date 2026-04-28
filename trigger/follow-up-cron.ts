@@ -4,7 +4,7 @@ import { redis } from '@/_lib/redis'
 import { resolveWhatsAppProvider } from '@/_lib/whatsapp/provider'
 import { checkBusinessHours } from '@/_lib/agent/check-business-hours'
 import { getFollowUpsForStep } from '@/_data-access/follow-up/get-follow-ups-for-step'
-import type { ConnectionType, Prisma } from '@prisma/client'
+import type { ConnectionType, InboxChannel, Prisma } from '@prisma/client'
 import type { BusinessHoursConfig } from '@/_actions/agent/update-agent/schema'
 import type { InfoSubtype } from '@/_lib/conversation-events/types'
 
@@ -38,11 +38,13 @@ interface ConvInbox {
   id: string
   isActive: boolean
   connectionType: ConnectionType
+  channel: InboxChannel
   evolutionInstanceName: string | null
   evolutionApiUrl: string | null
   evolutionApiKey: string | null
   metaPhoneNumberId: string | null
   metaAccessToken: string | null
+  metaIgUserId: string | null
   zapiInstanceId: string | null
   zapiToken: string | null
   zapiClientToken: string | null
@@ -305,11 +307,13 @@ export const followUpCron = schedules.task({
             id: true,
             isActive: true,
             connectionType: true,
+            channel: true,
             evolutionInstanceName: true,
             evolutionApiUrl: true,
             evolutionApiKey: true,
             metaPhoneNumberId: true,
             metaAccessToken: true,
+            metaIgUserId: true,
             zapiInstanceId: true,
             zapiToken: true,
             zapiClientToken: true,

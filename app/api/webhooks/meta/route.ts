@@ -6,6 +6,9 @@ import { redis } from '@/_lib/redis'
 import { verifyMetaWebhookSignature } from '@/_lib/meta/verify-webhook-signature'
 import { parseMetaMessage } from '@/_lib/meta/parse-meta-message'
 import { sendMetaTextMessage } from '@/_lib/meta/send-meta-message'
+import { sendInstagramText } from '@/_lib/instagram/send-instagram-message'
+import { parseInstagramMessage } from '@/_lib/instagram/parse-instagram-message'
+import type { InstagramWebhookPayload, InstagramMessagingEvent } from '@/_lib/instagram/types'
 import { resolveConversation } from '@/_lib/evolution/resolve-conversation'
 import { checkBusinessHours } from '@/_lib/agent/check-business-hours'
 import { scheduleNotifyOrgAdmins } from '@/_lib/notifications/notify-org-admins'
@@ -53,7 +56,12 @@ export async function POST(req: Request) {
 
   const payload: MetaWebhookPayload = JSON.parse(rawBody)
 
-  // 2. Validar objeto — so processar eventos da WABA
+  // 2a. Branch Instagram — payload.object === 'instagram' roteia para handler dedicado
+  if ((payload as unknown as { object: string }).object === 'instagram') {
+    return processInstagramPayload(payload as unknown as InstagramWebhookPayload, t0)
+  }
+
+  // 2b. Validar objeto — so processar eventos da WABA
   if (payload.object !== 'whatsapp_business_account') {
     return NextResponse.json({ ignored: true, reason: 'not_whatsapp_business_account' })
   }
@@ -649,6 +657,547 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
       totalMs: Date.now() - t0,
     })
   }
+}
+
+// -----------------------------------------------------------------------------
+// Processa payload do webhook Instagram (payload.object === 'instagram')
+// Reusa resolveConversation, dedup Redis e task processAgentMessage do fluxo WhatsApp.
+// O fluxo WhatsApp permanece intacto — apenas adicionamos codigo aqui.
+// -----------------------------------------------------------------------------
+async function processInstagramPayload(
+  payload: InstagramWebhookPayload,
+  t0: number,
+): Promise<Response> {
+  const results = await Promise.allSettled(
+    payload.entry.flatMap((entry) => {
+      const events = entry.messaging ?? []
+      return events.map((messagingEvent) =>
+        processInstagramMessagingEvent(entry.id, messagingEvent, t0),
+      )
+    }),
+  )
+
+  for (const result of results) {
+    if (result.status === 'rejected') {
+      console.error('[ig-webhook] processInstagramMessagingEvent failed (isolated):', result.reason)
+    }
+  }
+
+  return NextResponse.json({ success: true })
+}
+
+async function processInstagramMessagingEvent(
+  igUserId: string,
+  messagingEvent: InstagramMessagingEvent,
+  t0: number,
+): Promise<void> {
+  // Tratar delivery/read como delivery status updates
+  if (messagingEvent.read) {
+    const result = await updateDeliveryStatus(messagingEvent.read.mid, 'read').catch(() => null)
+    if (result) {
+      revalidateTag(`conversations:${result.organizationId}`)
+      revalidateTag(`conversation-messages:${result.conversationId}`)
+    }
+    return
+  }
+
+  if (messagingEvent.delivery) {
+    await Promise.all(
+      messagingEvent.delivery.mids.map(async (mid) => {
+        const result = await updateDeliveryStatus(mid, 'delivered').catch(() => null)
+        if (result) {
+          revalidateTag(`conversations:${result.organizationId}`)
+          revalidateTag(`conversation-messages:${result.conversationId}`)
+        }
+      }),
+    )
+    return
+  }
+
+  // Normalizar mensagem — retorna null para ecos, deletadas e tipos não suportados
+  const normalizedMessage = parseInstagramMessage({ id: igUserId, time: Date.now(), messaging: [messagingEvent] }, messagingEvent)
+
+  if (!normalizedMessage) {
+    return
+  }
+
+  const psid = messagingEvent.sender.id
+  const mid = normalizedMessage.messageId
+
+  const log = (step: string, outcome: 'PASS' | 'EXIT' | 'SKIP', extra?: Record<string, unknown>) =>
+    console.log(`[ig-webhook] ${step} → ${outcome}`, { igUserId, psid, mid, ...extra })
+
+  // Lookup de inbox pelo metaIgUserId
+  const inbox = await db.inbox.findFirst({
+    where: { metaIgUserId: igUserId, channel: 'INSTAGRAM_DM' },
+    select: {
+      id: true,
+      isActive: true,
+      organizationId: true,
+      autoCreateDeal: true,
+      pipelineId: true,
+      distributionUserIds: true,
+      metaAccessToken: true,
+      metaIgUserId: true,
+      channel: true,
+      agentId: true,
+      agentGroupId: true,
+      agent: {
+        select: {
+          id: true,
+          name: true,
+          isActive: true,
+          debounceSeconds: true,
+          businessHoursEnabled: true,
+          businessHoursTimezone: true,
+          businessHoursConfig: true,
+          outOfHoursMessage: true,
+        },
+      },
+      agentGroup: {
+        select: {
+          id: true,
+          isActive: true,
+          members: {
+            select: {
+              agent: {
+                select: {
+                  id: true,
+                  name: true,
+                  isActive: true,
+                  debounceSeconds: true,
+                  businessHoursEnabled: true,
+                  businessHoursTimezone: true,
+                  businessHoursConfig: true,
+                  outOfHoursMessage: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  })
+
+  if (!inbox) {
+    log('inbox_lookup', 'EXIT', { reason: 'no_inbox_found' })
+    return
+  }
+
+  const orgId = inbox.organizationId
+
+  const orgHasPlan = await hasActivePlan(orgId)
+  if (!orgHasPlan) {
+    log('plan_guard', 'EXIT', { reason: 'no_active_plan', orgId })
+    return
+  }
+
+  const contactAssignContext = {
+    distributionUserIds: inbox.distributionUserIds,
+    inboxId: inbox.id,
+  }
+
+  const dealContext = inbox.autoCreateDeal
+    ? {
+        pipelineId: inbox.pipelineId,
+        distributionUserIds: inbox.distributionUserIds,
+        inboxId: inbox.id,
+      }
+    : undefined
+
+  log('inbox_lookup', 'PASS', { inboxId: inbox.id, orgId, inboxActive: inbox.isActive })
+
+  const remoteJid = normalizedMessage.remoteJid
+
+  // Inbox desativada ou sem agente/grupo configurado — salvar mensagem mas não processar com IA
+  const hasAiConfigured = !!(inbox.agentId || inbox.agentGroupId)
+  if (!inbox.isActive || !hasAiConfigured) {
+    log('agent_active_check', 'EXIT', {
+      reason: !inbox.isActive ? 'inbox_inactive' : 'no_ai_configured',
+    })
+
+    if (!inbox.isActive) {
+      const recentDisconnectedNotification = await db.notification.findFirst({
+        where: {
+          organizationId: orgId,
+          type: 'SYSTEM',
+          title: 'Instagram Direct desconectado',
+          readAt: null,
+          createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+        },
+      })
+
+      if (!recentDisconnectedNotification) {
+        scheduleNotifyOrgAdmins({
+          orgId,
+          type: 'SYSTEM',
+          title: 'Instagram Direct desconectado',
+          body: `A conexão Instagram Direct "${igUserId}" está desativada. Mensagens não estão sendo processadas.`,
+          actionPath: '/settings/inboxes',
+          resourceType: 'inbox',
+          resourceId: inbox.id,
+        })
+      }
+    }
+
+    const resolveResult = await resolveConversation(
+      inbox.id,
+      orgId,
+      remoteJid,
+      normalizedMessage.phoneNumber,
+      normalizedMessage.pushName,
+      dealContext,
+      contactAssignContext,
+      false,
+    )
+
+    if (resolveResult.isNew) {
+      revalidateTag(`pipeline:${orgId}`)
+      revalidateTag(`deals:${orgId}`)
+      revalidateTag(`contacts:${orgId}`)
+      revalidateTag(`dashboard:${orgId}`)
+    }
+
+    if (resolveResult.nameUpdated) {
+      revalidateTag(`contacts:${orgId}`)
+      revalidateTag(`deals:${orgId}`)
+      revalidateTag(`pipeline:${orgId}`)
+      revalidateTag(`conversations:${orgId}`)
+    }
+
+    const dedupResult = await redis
+      .set(`dedup:${mid}`, '1', 'EX', 300, 'NX')
+      .catch(() => 'redis_error' as const)
+
+    if (dedupResult !== null) {
+      await db.message.create({
+        data: {
+          conversationId: resolveResult.conversationId,
+          role: 'user',
+          content: resolveMessageContent(normalizedMessage) || '[mensagem não suportada]',
+          providerMessageId: mid,
+          metadata: normalizedMessage.media
+            ? ({ media: normalizedMessage.media } as unknown as Prisma.InputJsonValue)
+            : undefined,
+        },
+      })
+
+      await db.conversation.update({
+        where: { id: resolveResult.conversationId },
+        data: {
+          unreadCount: { increment: 1 },
+          lastMessageRole: 'user',
+          nextFollowUpAt: null,
+          followUpCount: 0,
+          lastCustomerMessageAt: new Date(),
+          ...AUTO_REOPEN_FIELDS,
+        },
+      })
+
+      revalidateTag(`conversations:${orgId}`)
+      revalidateTag(`conversation-messages:${resolveResult.conversationId}`)
+    }
+
+    return
+  }
+
+  // Resolver agente standalone ou grupo
+  const preResolveConv = inbox.agentGroupId
+    ? await db.conversation.findFirst({
+        where: { inboxId: inbox.id, remoteJid },
+        select: { id: true, activeAgentId: true },
+      })
+    : null
+
+  const resolvedAgent = await resolveAgentForConversation(inbox, preResolveConv)
+
+  if (!resolvedAgent || !resolvedAgent.isActive) {
+    log('agent_active_check', 'EXIT', { reason: 'agent_inactive_or_unresolved' })
+    return
+  }
+
+  log('agent_active_check', 'PASS', { agentId: resolvedAgent.agentId, requiresRouting: resolvedAgent.requiresRouting })
+
+  // Business hours check
+  if (!resolvedAgent.requiresRouting && resolvedAgent.businessHoursEnabled && resolvedAgent.businessHoursConfig) {
+    const isOpen = checkBusinessHours(
+      resolvedAgent.businessHoursTimezone,
+      resolvedAgent.businessHoursConfig as BusinessHoursConfig,
+    )
+
+    if (!isOpen) {
+      log('business_hours', 'EXIT', { reason: 'outside_business_hours' })
+
+      const oohKey = `ooh-reply:${resolvedAgent.agentId}:${remoteJid}`
+      const alreadyReplied = await redis.set(oohKey, '1', 'EX', 3600, 'NX').catch(() => null)
+
+      const resolveResult = await resolveConversation(
+        inbox.id,
+        orgId,
+        remoteJid,
+        normalizedMessage.phoneNumber,
+        normalizedMessage.pushName,
+        dealContext,
+        contactAssignContext,
+        false,
+      )
+
+      if (resolveResult.isNew) {
+        revalidateTag(`pipeline:${orgId}`)
+        revalidateTag(`deals:${orgId}`)
+        revalidateTag(`contacts:${orgId}`)
+        revalidateTag(`dashboard:${orgId}`)
+      }
+
+      if (resolveResult.nameUpdated) {
+        revalidateTag(`contacts:${orgId}`)
+        revalidateTag(`deals:${orgId}`)
+        revalidateTag(`pipeline:${orgId}`)
+        revalidateTag(`conversations:${orgId}`)
+      }
+
+      const dedupResult = await redis
+        .set(`dedup:${mid}`, '1', 'EX', 300, 'NX')
+        .catch(() => 'redis_error' as const)
+
+      if (dedupResult !== null) {
+        await db.message.create({
+          data: {
+            conversationId: resolveResult.conversationId,
+            role: 'user',
+            content: resolveMessageContent(normalizedMessage) || '[mensagem não suportada]',
+            providerMessageId: mid,
+            metadata: normalizedMessage.media
+              ? ({ media: normalizedMessage.media } as unknown as Prisma.InputJsonValue)
+              : undefined,
+          },
+        })
+
+        await db.conversation.update({
+          where: { id: resolveResult.conversationId },
+          data: {
+            unreadCount: { increment: 1 },
+            lastMessageRole: 'user',
+            nextFollowUpAt: null,
+            followUpCount: 0,
+            lastCustomerMessageAt: new Date(),
+            ...AUTO_REOPEN_FIELDS,
+          },
+        })
+      }
+
+      // OOH auto-reply via Instagram Text — diferente do WhatsApp que usa sendMetaTextMessage
+      const oohMessage = resolvedAgent.outOfHoursMessage
+      const oohIgUserId = inbox.metaIgUserId
+      const oohAccessToken = inbox.metaAccessToken
+      if (oohMessage && alreadyReplied !== null && oohAccessToken && oohIgUserId) {
+        try {
+          const oohIds = await sendInstagramText(
+            oohIgUserId,
+            oohAccessToken,
+            psid,
+            oohMessage,
+          )
+          await Promise.all(
+            oohIds.map((sentId) => redis.set(`dedup:${sentId}`, '1', 'EX', 300).catch(() => {})),
+          )
+        } catch (error) {
+          console.error('[ig-webhook] OOH auto-reply failed:', { mid, error })
+        }
+      }
+
+      revalidateTag(`conversations:${orgId}`)
+      if (dedupResult !== null) {
+        revalidateTag(`conversation-messages:${resolveResult.conversationId}`)
+      }
+
+      return
+    }
+  }
+
+  // Filtrar mensagens de texto vazio
+  if (normalizedMessage.type === 'text' && !normalizedMessage.text) {
+    log('normalize', 'EXIT', { reason: 'empty_text' })
+    return
+  }
+
+  // Dedup + Resolve Conversation em paralelo
+  const [dedupResult, resolveResult] = await Promise.all([
+    redis
+      .set(`dedup:${mid}`, '1', 'EX', 300, 'NX')
+      .catch((error) => {
+        console.warn('[ig-webhook] Redis dedup failed, continuing:', { mid, error })
+        return 'redis_error' as const
+      }),
+    resolveConversation(
+      inbox.id,
+      orgId,
+      remoteJid,
+      normalizedMessage.phoneNumber,
+      normalizedMessage.pushName,
+      dealContext,
+      contactAssignContext,
+      false,
+    ),
+  ])
+
+  if (dedupResult === null) {
+    log('dedup', 'EXIT', { reason: 'duplicate' })
+    return
+  }
+
+  const { conversationId } = resolveResult
+
+  if (resolveResult.isNew) {
+    revalidateTag(`pipeline:${orgId}`)
+    revalidateTag(`deals:${orgId}`)
+    revalidateTag(`contacts:${orgId}`)
+    revalidateTag(`dashboard:${orgId}`)
+  }
+
+  if (resolveResult.nameUpdated) {
+    revalidateTag(`contacts:${orgId}`)
+    revalidateTag(`deals:${orgId}`)
+    revalidateTag(`pipeline:${orgId}`)
+    revalidateTag(`conversations:${orgId}`)
+  }
+
+  // Verificar se IA está pausada
+  const conversation = await db.conversation.findUnique({
+    where: { id: conversationId },
+    select: { aiPaused: true },
+  })
+
+  if (conversation?.aiPaused) {
+    try {
+      await db.message.create({
+        data: {
+          conversationId,
+          role: 'user',
+          content: resolveMessageContent(normalizedMessage),
+          providerMessageId: mid,
+          metadata: normalizedMessage.media
+            ? ({ media: normalizedMessage.media } as unknown as Prisma.InputJsonValue)
+            : undefined,
+        },
+      })
+
+      await db.conversation.update({
+        where: { id: conversationId },
+        data: {
+          unreadCount: { increment: 1 },
+          lastMessageRole: 'user',
+          nextFollowUpAt: null,
+          followUpCount: 0,
+          lastCustomerMessageAt: new Date(),
+          ...AUTO_REOPEN_FIELDS,
+        },
+      })
+
+      revalidateTag(`conversations:${orgId}`)
+      revalidateTag(`conversation-messages:${conversationId}`)
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        'code' in error &&
+        (error as { code: string }).code === 'P2002'
+      ) {
+        log('ai_paused_save', 'SKIP', { reason: 'duplicate_provider_message_id' })
+        return
+      }
+      throw error
+    }
+
+    log('ai_pause_check', 'EXIT', { reason: 'ai_paused', conversationId, ms: Date.now() - t0 })
+    return
+  }
+
+  // Salvar mensagem
+  try {
+    await db.message.create({
+      data: {
+        conversationId,
+        role: 'user',
+        content: resolveMessageContent(normalizedMessage),
+        providerMessageId: mid,
+        metadata: normalizedMessage.media
+          ? ({ media: normalizedMessage.media } as unknown as Prisma.InputJsonValue)
+          : undefined,
+      },
+    })
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      'code' in error &&
+      (error as { code: string }).code === 'P2002'
+    ) {
+      log('save_message', 'SKIP', { reason: 'duplicate_provider_message_id' })
+      return
+    }
+    throw error
+  }
+
+  // Debounce + Dispatch + unreadCount em paralelo
+  const debounceTimestamp = Date.now()
+
+  await Promise.all([
+    db.conversation.update({
+      where: { id: conversationId },
+      data: {
+        unreadCount: { increment: 1 },
+        lastMessageRole: 'user',
+        nextFollowUpAt: null,
+        followUpCount: 0,
+        lastCustomerMessageAt: new Date(),
+        ...AUTO_REOPEN_FIELDS,
+      },
+    }),
+    redis
+      .set(
+        `debounce:${conversationId}`,
+        String(debounceTimestamp),
+        'EX',
+        resolvedAgent.debounceSeconds + 120,
+      )
+      .catch((error) => {
+        console.warn('[ig-webhook] Redis debounce set failed:', { mid, error })
+      }),
+    tasks.trigger<typeof processAgentMessage>(
+      'process-agent-message',
+      {
+        message: normalizedMessage,
+        agentId: resolvedAgent.agentId,
+        conversationId,
+        organizationId: orgId,
+        debounceTimestamp,
+        requiresRouting: resolvedAgent.requiresRouting,
+        groupId: resolvedAgent.groupId,
+      },
+      { delay: `${resolvedAgent.debounceSeconds}s` },
+    ),
+  ])
+
+  if (resolvedAgent.debounceSeconds > 0) {
+    void broadcastAgentStatus({
+      conversationId,
+      organizationId: orgId,
+      state: 'waiting',
+      agentName: resolvedAgent.agentName ?? undefined,
+      updatedAt: new Date().toISOString(),
+    })
+  }
+
+  revalidateTag(`conversations:${orgId}`)
+  revalidateTag(`conversation-messages:${conversationId}`)
+
+  log('dispatched', 'PASS', {
+    conversationId,
+    inboxId: inbox.id,
+    agentId: resolvedAgent.agentId,
+    requiresRouting: resolvedAgent.requiresRouting,
+    debounceSeconds: resolvedAgent.debounceSeconds,
+    totalMs: Date.now() - t0,
+  })
 }
 
 // -----------------------------------------------------------------------------
