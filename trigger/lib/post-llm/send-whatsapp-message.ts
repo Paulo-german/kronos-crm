@@ -1,5 +1,7 @@
 import crypto from 'crypto'
+import { logger } from '@trigger.dev/sdk/v3'
 import { resolveWhatsAppProvider } from '@/_lib/whatsapp/provider'
+import { IG_MAX_TEXT_LENGTH } from '@/_lib/instagram/constants'
 import type { ConnectionType, InboxChannel } from '@prisma/client'
 
 // ---------------------------------------------------------------------------
@@ -64,8 +66,23 @@ export async function sendWhatsappMessage(
     return { sentIds: [`sim_resp_${crypto.randomUUID()}`] }
   }
 
+  // Instagram não suporta chunking — a mensagem já chega inteira ao provider.
+  // Porém a Graph API rejeita textos acima de 1000 chars com erro 400;
+  // truncamos aqui para garantir entrega ao invés de silenciar a resposta.
+  const textToSend =
+    credentials.channel === 'INSTAGRAM_DM' && text.length > IG_MAX_TEXT_LENGTH
+      ? (() => {
+          logger.warn('Instagram message truncated to IG_MAX_TEXT_LENGTH', {
+            originalLength: text.length,
+            truncatedLength: IG_MAX_TEXT_LENGTH,
+            conversationId: ctx.conversationId,
+          })
+          return text.slice(0, IG_MAX_TEXT_LENGTH)
+        })()
+      : text
+
   const provider = resolveWhatsAppProvider(credentials)
-  const sentIds = await provider.sendText(remoteJid, text)
+  const sentIds = await provider.sendText(remoteJid, textToSend)
 
   return { sentIds }
 }

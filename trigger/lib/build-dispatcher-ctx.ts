@@ -369,7 +369,16 @@ export async function buildDispatcherCtx(
       let metaTokenMissing = false
       let resolvedMetaBuffer: Buffer | null = null
 
-      if (message.provider === 'meta_cloud') {
+      if (message.provider === 'instagram_dm') {
+        // Instagram entrega URL pública direta no webhook — fetch sem chamada à Graph API.
+        const audioResponse = await fetch(message.media.url).catch(() => null)
+        if (audioResponse?.ok) {
+          resolvedMetaBuffer = Buffer.from(await audioResponse.arrayBuffer())
+        } else {
+          metaTokenMissing = true
+          log('step:3a audio_transcription', 'SKIP', { reason: 'instagram_audio_fetch_failed' })
+        }
+      } else if (message.provider === 'meta_cloud') {
         const { downloadMetaMedia } = await import('@/_lib/meta/download-meta-media')
         const metaInbox = await db.inbox.findFirst({
           where: { metaPhoneNumberId: message.instanceName },
@@ -463,7 +472,24 @@ export async function buildDispatcherCtx(
         provider: message.provider,
       })
 
-      if (message.provider === 'meta_cloud') {
+      if (message.provider === 'instagram_dm') {
+        // Instagram entrega URL pública direta — reutilizar downloadAndStoreFromUrl
+        // sem chamada intermediária à Graph API (diferente do Meta WhatsApp).
+        const { downloadAndStoreFromUrl } = await import('../utils/download-and-store-media')
+        await downloadAndStoreFromUrl({
+          mediaUrl: message.media.url,
+          providerMessageId: message.messageId,
+          conversationId,
+          organizationId,
+          mimetype: message.media.mimetype,
+          fileName: message.media.fileName,
+        }).catch((error) => {
+          logger.warn('Instagram media download failed (non-fatal)', {
+            ...logCtx,
+            error: error instanceof Error ? error.message : String(error),
+          })
+        })
+      } else if (message.provider === 'meta_cloud') {
         const metaInbox = await db.inbox.findFirst({
           where: { metaPhoneNumberId: message.instanceName },
           select: { metaAccessToken: true },
@@ -550,7 +576,13 @@ export async function buildDispatcherCtx(
         execute: async () => {
           let visionResult: import('../utils/describe-image').VisionResult
 
-          if (message.provider === 'meta_cloud') {
+          if (message.provider === 'instagram_dm') {
+            // Instagram entrega URL pública direta — fetch sem Graph API.
+            const imageResponse = await fetch(message.media!.url)
+            const imageBuffer = Buffer.from(await imageResponse.arrayBuffer())
+            const imageBase64 = imageBuffer.toString('base64')
+            visionResult = await transcribeImage(message.instanceName, message.messageId, imageCaption, { base64: imageBase64, mimetype: imageMimetype })
+          } else if (message.provider === 'meta_cloud') {
             const { downloadMetaMedia } = await import('@/_lib/meta/download-meta-media')
             const metaInboxForImage = await db.inbox.findFirst({
               where: { metaPhoneNumberId: message.instanceName },
@@ -646,7 +678,16 @@ export async function buildDispatcherCtx(
         let base64: string
         let resolvedMimetype: string
 
-        if (message.provider === 'meta_cloud') {
+        if (message.provider === 'instagram_dm') {
+          // Instagram entrega URL pública direta — fetch sem Graph API.
+          const response = await fetch(message.media.url)
+          if (!response.ok) {
+            throw new Error(`Instagram document fetch failed (${response.status})`)
+          }
+          const buffer = Buffer.from(await response.arrayBuffer())
+          base64 = buffer.toString('base64')
+          resolvedMimetype = mimetype
+        } else if (message.provider === 'meta_cloud') {
           const { downloadMetaMedia } = await import('@/_lib/meta/download-meta-media')
           const metaInboxForDocument = await db.inbox.findFirst({
             where: { metaPhoneNumberId: message.instanceName },
