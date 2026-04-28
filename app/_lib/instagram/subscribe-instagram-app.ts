@@ -8,7 +8,7 @@ import { IG_API_VERSION } from './constants'
  * Documentacao: https://developers.facebook.com/docs/messenger-platform/instagram/get-started
  */
 export async function subscribeInstagramApp(igUserId: string, accessToken: string): Promise<void> {
-  const url = `https://graph.facebook.com/${IG_API_VERSION}/${igUserId}/subscribed_apps`
+  const url = `https://graph.instagram.com/${IG_API_VERSION}/${igUserId}/subscribed_apps`
 
   const response = await fetch(url, {
     method: 'POST',

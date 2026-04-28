@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 import { Instagram, Loader2, WifiOff } from 'lucide-react'
@@ -14,15 +14,7 @@ import {
 } from '@/_components/ui/card'
 import { Badge } from '@/_components/ui/badge'
 import ConfirmationDialog from '@/_components/confirmation-dialog'
-import { loadMetaSdk, type FBLoginResponse } from '@/_components/meta-sdk-loader'
-import { connectInstagram } from '@/_actions/inbox/connect-instagram'
 import { disconnectInstagram } from '@/_actions/inbox/disconnect-instagram'
-
-// Campos retornados pelo Meta Embedded Signup para Instagram
-interface InstagramEmbeddedSignupData {
-  ig_user_id?: string
-  page_id?: string
-}
 
 interface ConnectInstagramButtonProps {
   inboxId: string
@@ -33,16 +25,14 @@ interface ConnectInstagramButtonProps {
 }
 
 /**
- * Card de conexão Instagram Direct via Meta Embedded Signup.
+ * Card de conexão Instagram Direct via OAuth redirect-based.
  *
  * Fluxo de conexão:
  * 1. Usuário clica "Conectar com Instagram Business"
- * 2. FB.login() abre o popup do Embedded Signup com config de Instagram
- * 3. O sessionInfoListener captura igUserId + pageId via window.message event
- * 4. O callback do FB.login recebe o authorization code
- * 5. A action connectInstagram troca o code por access_token server-side
- *
- * O useEffect de sincronização com o SDK do Meta é exceção válida à regra de useEffect.
+ * 2. GET /api/integrations/instagram/auth-url?inboxId=<id> retorna a URL de autorização
+ * 3. Usuário é redirecionado para instagram.com/oauth/authorize
+ * 4. Instagram redireciona de volta para /api/integrations/instagram/callback com o code
+ * 5. O callback troca o code por tokens e atualiza o inbox
  */
 const ConnectInstagramButton = ({
   inboxId,
@@ -52,30 +42,34 @@ const ConnectInstagramButton = ({
   igUserId,
 }: ConnectInstagramButtonProps) => {
   const [isDisconnectOpen, setIsDisconnectOpen] = useState(false)
-  const [isAuthPending, setIsAuthPending] = useState(false)
+  const [isRedirecting, setIsRedirecting] = useState(false)
 
-  // Ref para capturar dados do Embedded Signup antes do callback do FB.login.
-  // Precisa ser ref (não state) para evitar stale closure no callback.
-  const sessionDataRef = useRef<InstagramEmbeddedSignupData | null>(null)
+  // Sincroniza com o resultado do redirect OAuth do Instagram
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const connected = params.get('instagram')
+    const error = params.get('instagram_error')
 
-  const { execute: executeConnect, isPending: isConnecting } = useAction(
-    connectInstagram,
-    {
-      onSuccess: ({ data }) => {
-        setIsAuthPending(false)
-        const username = data?.igUsername
-        toast.success(
-          username
-            ? `Instagram @${username} conectado com sucesso!`
-            : 'Instagram conectado com sucesso!',
-        )
-      },
-      onError: ({ error }) => {
-        setIsAuthPending(false)
-        toast.error(error.serverError || 'Erro ao conectar Instagram.')
-      },
-    },
-  )
+    if (!connected && !error) return
+
+    window.history.replaceState({}, '', window.location.pathname)
+
+    if (connected === 'connected') {
+      toast.success('Instagram conectado com sucesso!')
+      return
+    }
+
+    const errorMessages: Record<string, string> = {
+      access_denied: 'Autorização cancelada.',
+      user_mismatch: 'Erro de segurança. Tente novamente.',
+      state_expired: 'Sessão expirada. Tente novamente.',
+      token_exchange_failed: 'Erro ao trocar token de acesso. Tente novamente.',
+      invalid_state: 'Estado inválido. Tente novamente.',
+      inbox_not_found: 'Caixa de entrada não encontrada.',
+      already_connected: 'Esta conta Instagram já está conectada a outra caixa de entrada.',
+    }
+    toast.error(errorMessages[error ?? ''] ?? 'Erro ao conectar Instagram.')
+  }, [])
 
   const { execute: executeDisconnect, isPending: isDisconnecting } = useAction(
     disconnectInstagram,
@@ -90,86 +84,26 @@ const ConnectInstagramButton = ({
     },
   )
 
-  const handleConnectClick = () => {
-    sessionDataRef.current = null
-    setIsAuthPending(true)
-    loadMetaSdk(handleSdkReady)
-  }
+  const handleConnectClick = async () => {
+    setIsRedirecting(true)
+    try {
+      const response = await fetch(
+        `/api/integrations/instagram/auth-url?inboxId=${inboxId}`,
+      )
 
-  const handleSdkReady = () => {
-    if (!window.FB) return
-
-    // Listener para capturar dados de conta do Embedded Signup Instagram.
-    // O Meta envia eventos via window.message durante o fluxo de autorização.
-    const sessionInfoListener = (event: MessageEvent) => {
-      if (!event.origin.endsWith('facebook.com')) return
-
-      try {
-        const data =
-          typeof event.data === 'string' ? JSON.parse(event.data) : event.data
-
-        // Instagram Embedded Signup emite eventos com type 'IG_EMBEDDED_SIGNUP'
-        if (data?.type === 'IG_EMBEDDED_SIGNUP' || data?.type === 'WA_EMBEDDED_SIGNUP') {
-          const finishEvents = [
-            'FINISH',
-            'FINISH_ONLY_WABA',
-            'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING',
-          ]
-          if (finishEvents.includes(data?.event)) {
-            const signupData = data.data as InstagramEmbeddedSignupData
-            sessionDataRef.current = signupData
-            window.removeEventListener('message', sessionInfoListener)
-          }
-        }
-      } catch {
-        // Ignora eventos não JSON ou de outras origens
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null
+        toast.error(body?.error ?? 'Erro ao gerar URL de autorização.')
+        setIsRedirecting(false)
+        return
       }
+
+      const data = (await response.json()) as { url: string }
+      window.location.href = data.url
+    } catch {
+      toast.error('Erro inesperado ao iniciar conexão com Instagram.')
+      setIsRedirecting(false)
     }
-
-    window.addEventListener('message', sessionInfoListener)
-
-    window.FB.login(
-      (response: FBLoginResponse) => {
-        window.removeEventListener('message', sessionInfoListener)
-
-        if (!response.authResponse?.code) {
-          setIsAuthPending(false)
-          if (response.status !== 'unknown') {
-            toast.error('Autorização cancelada ou não completada.')
-          }
-          return
-        }
-
-        const code = response.authResponse.code
-        const signupData = sessionDataRef.current
-        const igUserIdFromSignup = signupData?.ig_user_id
-        const pageIdFromSignup = signupData?.page_id
-
-        if (!igUserIdFromSignup || !pageIdFromSignup) {
-          setIsAuthPending(false)
-          toast.error(
-            'Não foi possível capturar os dados da conta Instagram Business. Tente novamente.',
-          )
-          return
-        }
-
-        executeConnect({
-          inboxId,
-          code,
-          igUserId: igUserIdFromSignup,
-          pageId: pageIdFromSignup,
-        })
-      },
-      {
-        config_id: process.env.NEXT_PUBLIC_META_INSTAGRAM_CONFIG_ID,
-        response_type: 'code',
-        override_default_response_type: true,
-        extras: {
-          sessionInfoVersion: 3,
-          setup: {},
-        },
-      },
-    )
   }
 
   // Estado: Conectado
@@ -257,24 +191,15 @@ const ConnectInstagramButton = ({
             <Instagram className="h-6 w-6 text-muted-foreground" />
           </div>
           <p className="max-w-md text-center text-sm text-muted-foreground">
-            Ao conectar, você será redirecionado para o fluxo de autorização da
-            Meta. Será necessário ter uma conta Instagram Business vinculada a
-            uma Página do Facebook.
+            Ao conectar, você será redirecionado para o fluxo de autorização do
+            Instagram. Será necessário ter uma conta Instagram Business.
           </p>
           {canManage && (
-            <Button
-              onClick={handleConnectClick}
-              disabled={isAuthPending || isConnecting}
-            >
-              {isConnecting ? (
+            <Button onClick={handleConnectClick} disabled={isRedirecting}>
+              {isRedirecting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Salvando conexão...
-                </>
-              ) : isAuthPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Aguardando autorização...
+                  Redirecionando...
                 </>
               ) : (
                 <>

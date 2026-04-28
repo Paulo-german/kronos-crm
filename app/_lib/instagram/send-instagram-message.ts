@@ -2,7 +2,7 @@ import { IG_API_VERSION, IG_MAX_TEXT_LENGTH } from './constants'
 import type { InstagramSendMessageResponse } from './types'
 
 function getGraphApiBaseUrl(): string {
-  return `https://graph.facebook.com/${IG_API_VERSION}`
+  return `https://graph.instagram.com/${IG_API_VERSION}`
 }
 
 interface SendInstagramTextOptions {
