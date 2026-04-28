@@ -40,6 +40,7 @@ interface InboxesCardGridProps {
   agentOptions: AgentOption[]
   orgSlug: string
   withinQuota: boolean
+  isSuperAdmin: boolean
 }
 
 const channelLabels: Record<string, string> = {
@@ -70,6 +71,7 @@ export function InboxesCardGrid({
   agentOptions,
   orgSlug,
   withinQuota,
+  isSuperAdmin,
 }: InboxesCardGridProps) {
   const [editingInbox, setEditingInbox] = useState<InboxListDto | null>(null)
   const [isEditOpen, setIsEditOpen] = useState(false)
@@ -313,6 +315,7 @@ export function InboxesCardGrid({
         <UpsertInboxSheetContent
           setIsOpen={setIsCreateOpen}
           agentOptions={agentOptions}
+          isSuperAdmin={isSuperAdmin}
         />
       </Sheet>
 

@@ -47,6 +47,7 @@ interface UpsertInboxSheetContentProps {
   agentOptions?: AgentOption[]
   onUpdate?: (data: UpdateInboxInput) => void
   isUpdating?: boolean
+  isSuperAdmin?: boolean
 }
 
 const UpsertInboxSheetContent = ({
@@ -55,6 +56,7 @@ const UpsertInboxSheetContent = ({
   agentOptions = [],
   onUpdate,
   isUpdating: isUpdatingProp = false,
+  isSuperAdmin = false,
 }: UpsertInboxSheetContentProps) => {
   const isEditing = !!defaultValues?.id
 
@@ -153,12 +155,14 @@ const UpsertInboxSheetContent = ({
                   <SelectContent>
                     <SelectItem value="WHATSAPP">WhatsApp</SelectItem>
                     <SelectItem value="WEB_CHAT">Web Chat</SelectItem>
-                    <SelectItem value="INSTAGRAM_DM">
-                      <span className="flex items-center gap-2">
-                        <Instagram className="h-4 w-4 text-pink-500" />
-                        Instagram Direct
-                      </span>
-                    </SelectItem>
+                    {isSuperAdmin && (
+                      <SelectItem value="INSTAGRAM_DM">
+                        <span className="flex items-center gap-2">
+                          <Instagram className="h-4 w-4 text-pink-500" />
+                          Instagram Direct
+                        </span>
+                      </SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
                 <FormMessage />

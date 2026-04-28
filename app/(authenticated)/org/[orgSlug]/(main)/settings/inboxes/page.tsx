@@ -3,6 +3,7 @@ import { ArrowLeft } from 'lucide-react'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getInboxes } from '@/_data-access/inbox/get-inboxes'
 import { getAgents } from '@/_data-access/agent/get-agents'
+import { getUserById } from '@/_data-access/user/get-user-by-id'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 import { Button } from '@/_components/ui/button'
 import { InboxesCardGrid } from './_components/inboxes-card-grid'
@@ -23,11 +24,14 @@ const InboxesPage = async ({ params }: InboxesPageProps) => {
   const { orgSlug } = await params
   const ctx = await getOrgContext(orgSlug)
 
-  const [inboxes, agents, quota] = await Promise.all([
+  const [inboxes, agents, quota, user] = await Promise.all([
     getInboxes(ctx.orgId),
     getAgents(ctx.orgId),
     checkPlanQuota(ctx.orgId, 'inbox'),
+    getUserById(ctx.userId),
   ])
+
+  const isSuperAdmin = user?.isSuperAdmin ?? false
 
   const agentOptions = agents.map((agent) => ({
     id: agent.id,
@@ -61,6 +65,7 @@ const InboxesPage = async ({ params }: InboxesPageProps) => {
         agentOptions={agentOptions}
         orgSlug={orgSlug}
         withinQuota={quota.withinQuota}
+        isSuperAdmin={isSuperAdmin}
       />
     </div>
   )
