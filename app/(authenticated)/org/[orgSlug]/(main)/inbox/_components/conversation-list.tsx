@@ -6,6 +6,7 @@ import { ptBR } from 'date-fns/locale'
 import {
   Bot,
   FlaskConical,
+  Instagram,
   Loader2,
   MoreVertical,
   Pause,
@@ -130,6 +131,7 @@ function truncateMessage(content: string, maxLength = 60): string {
 const channelLabels: Record<string, string> = {
   WHATSAPP: 'WhatsApp',
   WEB_CHAT: 'Web Chat',
+  INSTAGRAM_DM: 'Instagram Direct',
 }
 
 // ---------------------------------------------------------------------------
@@ -394,6 +396,10 @@ export function ConversationList({
                             >
                               {conversation.contactName}
                             </span>
+                            {/* Ícone de canal Instagram Direct */}
+                            {conversation.channel === 'INSTAGRAM_DM' && (
+                              <Instagram className="h-3 w-3 shrink-0 text-pink-500" />
+                            )}
                             {/* Badge do simulador — identifica conversas simuladas na lista */}
                             {conversation.inboxConnectionType ===
                               'SIMULATOR' && (
