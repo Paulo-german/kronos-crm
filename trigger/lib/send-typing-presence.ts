@@ -2,7 +2,7 @@ import { logger } from '@trigger.dev/sdk/v3'
 import { sendPresence } from '@/_lib/evolution/send-message'
 import { resolveEvolutionCredentialsByInstanceName } from '@/_lib/evolution/resolve-credentials'
 
-type InboxProvider = 'meta_cloud' | 'z_api' | 'evolution' | 'simulator'
+type InboxProvider = 'meta_cloud' | 'z_api' | 'evolution' | 'simulator' | 'instagram_dm'
 
 interface SendTypingPresenceCtx {
   provider: InboxProvider
@@ -66,6 +66,11 @@ async function sendTypingPresence(ctx: SendTypingPresenceCtx): Promise<void> {
 
     case 'simulator': {
       // Simulator não tem provider externo — typing presence é no-op silencioso
+      break
+    }
+
+    case 'instagram_dm': {
+      // Instagram Direct não suporta composing indicator via API — no-op silencioso
       break
     }
   }
