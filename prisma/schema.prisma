@@ -717,6 +717,10 @@ model Inbox {
   metaPhoneDisplay      String?        @map("meta_phone_display")
   metaPhoneNumberId     String?        @map("meta_phone_number_id")
   metaWabaId            String?        @map("meta_waba_id")
+  // Identificadores Instagram (mutuamente exclusivos com metaPhoneNumberId)
+  metaIgUserId          String?        @unique @map("meta_ig_user_id")
+  metaIgPageId          String?        @map("meta_ig_page_id")
+  metaIgUsername        String?        @map("meta_ig_username")
   zapiInstanceId        String?        @unique @map("zapi_instance_id")
   zapiToken             String?        @map("zapi_token")
   zapiClientToken       String?        @map("zapi_client_token")
@@ -733,6 +737,7 @@ model Inbox {
   @@index([agentGroupId])
   @@index([metaPhoneNumberId])
   @@index([zapiInstanceId])
+  @@index([metaIgUserId])
   @@map("inboxes")
 }
 
@@ -1179,6 +1184,7 @@ enum MessageDeliveryStatus {
 enum InboxChannel {
   WHATSAPP
   WEB_CHAT
+  INSTAGRAM_DM
 }
 
 enum ConversationEventType {
@@ -1414,4 +1420,23 @@ model BusinessReport {
   updatedAt        DateTime @updatedAt      @map("updated_at")
 
   @@map("business_reports")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Meta / Instagram
+// ─────────────────────────────────────────────────────────────
+
+// Registro de auditoria das requisições de data deletion exigidas pela Meta
+// (obrigatório para App Review de apps que acessam dados de usuários via OAuth)
+model MetaDataDeletionRequest {
+  id               String    @id @default(uuid())
+  metaUserId       String    @map("meta_user_id")
+  confirmationCode String    @unique @map("confirmation_code")
+  status           String    @default("RECEIVED")
+  receivedAt       DateTime  @default(now()) @map("received_at")
+  processedAt      DateTime? @map("processed_at")
+  payload          Json?
+
+  @@index([metaUserId])
+  @@map("meta_data_deletion_requests")
 }
