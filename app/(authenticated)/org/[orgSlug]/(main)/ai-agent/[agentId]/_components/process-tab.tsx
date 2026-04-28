@@ -390,7 +390,7 @@ const ProcessTab = ({
         </Alert>
       )}
 
-      <div className="flex min-w-0 flex-col gap-2">
+      <div className="container flex min-w-0 flex-col gap-2">
         {steps.length === 0 && openStepId !== 'new' && (
           <div className="flex items-center justify-center rounded-lg border border-dashed py-10">
             <p className="text-sm text-muted-foreground">
