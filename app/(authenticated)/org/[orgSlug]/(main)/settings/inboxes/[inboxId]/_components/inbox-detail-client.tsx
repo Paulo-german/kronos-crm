@@ -14,6 +14,8 @@ import {
   FileText,
   Users,
   AlertTriangleIcon,
+  Instagram,
+  AtSign,
 } from 'lucide-react'
 import { Badge } from '@/_components/ui/badge'
 import { Button } from '@/_components/ui/button'
@@ -88,6 +90,7 @@ interface InboxDetailClientProps {
 const channelLabels: Record<string, string> = {
   WHATSAPP: 'WhatsApp',
   WEB_CHAT: 'Web Chat',
+  INSTAGRAM_DM: 'Instagram Direct',
 }
 
 const connectionTypeLabels: Record<string, string> = {
@@ -331,7 +334,8 @@ const InboxDetailClient = ({
               (!!inbox.evolutionInstanceName && inbox.evolutionConnected)) ||
             (inbox.connectionType === 'META_CLOUD' &&
               inbox.metaPhoneNumberId) ||
-            (inbox.connectionType === 'Z_API' && inbox.zapiInstanceId) ? (
+            (inbox.connectionType === 'Z_API' && inbox.zapiInstanceId) ||
+            (inbox.channel === 'INSTAGRAM_DM' && !!inbox.metaIgUserId) ? (
               <>
                 <Badge
                   variant="outline"
@@ -340,10 +344,30 @@ const InboxDetailClient = ({
                   <CircleIcon className="h-1.5 w-1.5 fill-current" />
                   Conectado
                 </Badge>
-                <Badge variant="secondary" className="h-6 px-2 text-xs">
-                  {resolveConnectionLabel(inbox.connectionType, isSelfHosted)}
-                </Badge>
+                {inbox.channel === 'INSTAGRAM_DM' ? (
+                  <Badge
+                    variant="secondary"
+                    className="h-6 gap-1.5 px-2 text-xs"
+                  >
+                    <Instagram className="h-3 w-3 text-pink-500" />
+                    {inbox.metaIgUsername
+                      ? `@${inbox.metaIgUsername}`
+                      : 'Instagram Direct'}
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="h-6 px-2 text-xs">
+                    {resolveConnectionLabel(inbox.connectionType, isSelfHosted)}
+                  </Badge>
+                )}
               </>
+            ) : inbox.channel === 'INSTAGRAM_DM' ? (
+              <Badge
+                variant="outline"
+                className="h-6 gap-1.5 px-2 text-xs font-semibold text-destructive border-destructive/30 bg-destructive/10"
+              >
+                <Instagram className="h-3 w-3" />
+                Desconectado
+              </Badge>
             ) : (
               <Badge
                 variant="outline"
@@ -753,6 +777,59 @@ const InboxDetailClient = ({
             {/* Connection Card — roteado por provider */}
             {inbox.channel === 'WHATSAPP' && renderConnectionSection()}
 
+            {/* Instagram Direct — card de status de conexão */}
+            {inbox.channel === 'INSTAGRAM_DM' && (
+              <Card className="border-border/50 bg-secondary/20">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                      <Instagram className="h-5 w-5 text-pink-500" />
+                      Instagram Direct
+                    </CardTitle>
+                    {inbox.metaIgUserId ? (
+                      <Badge
+                        variant="outline"
+                        className="border-kronos-green/20 bg-kronos-green/10 px-2 text-xs font-semibold text-kronos-green"
+                      >
+                        Conectado
+                      </Badge>
+                    ) : (
+                      <Badge
+                        variant="outline"
+                        className="border-destructive/30 bg-destructive/10 px-2 text-xs font-semibold text-destructive"
+                      >
+                        Desconectado
+                      </Badge>
+                    )}
+                  </div>
+                  <CardDescription>
+                    {inbox.metaIgUserId
+                      ? 'Esta caixa de entrada está recebendo mensagens via Instagram Direct.'
+                      : 'Conecte uma conta Instagram Business para receber e enviar mensagens diretas.'}
+                  </CardDescription>
+                </CardHeader>
+                {inbox.metaIgUserId && (
+                  <CardContent>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="flex items-center gap-3 rounded-md border border-border/50 bg-background/70 p-3">
+                        <AtSign className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">
+                            Conta Instagram
+                          </p>
+                          <p className="text-sm font-medium">
+                            {inbox.metaIgUsername
+                              ? `@${inbox.metaIgUsername}`
+                              : 'Não disponível'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                )}
+              </Card>
+            )}
+
             {/* Templates Card — somente para inboxes Meta Cloud conectados */}
             {inbox.connectionType === 'META_CLOUD' && !!inbox.metaWabaId && (
               <Card className="border-border/50 bg-secondary/20">
@@ -789,7 +866,7 @@ const InboxDetailClient = ({
           defaultValues={{
             id: inbox.id,
             name: inbox.name,
-            channel: inbox.channel as 'WHATSAPP' | 'WEB_CHAT',
+            channel: inbox.channel as 'WHATSAPP' | 'WEB_CHAT' | 'INSTAGRAM_DM',
             agentId: inbox.agentId,
           }}
           setIsOpen={setIsEditOpen}

@@ -19,6 +19,9 @@ export interface InboxDetailDto {
   metaWabaId: string | null
   metaPhoneNumberId: string | null
   metaPhoneDisplay: string | null
+  metaIgUserId: string | null
+  metaIgPageId: string | null
+  metaIgUsername: string | null
   zapiInstanceId: string | null
   zapiToken: string | null
   zapiClientToken: string | null
@@ -65,6 +68,9 @@ const fetchInboxByIdFromDb = async (
     metaWabaId: inbox.metaWabaId,
     metaPhoneNumberId: inbox.metaPhoneNumberId,
     metaPhoneDisplay: inbox.metaPhoneDisplay,
+    metaIgUserId: inbox.metaIgUserId,
+    metaIgPageId: inbox.metaIgPageId,
+    metaIgUsername: inbox.metaIgUsername,
     zapiInstanceId: inbox.zapiInstanceId,
     zapiToken: inbox.zapiToken,
     zapiClientToken: inbox.zapiClientToken,

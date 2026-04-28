@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Instagram } from 'lucide-react'
 import {
   SheetContent,
   SheetDescription,
@@ -153,6 +153,12 @@ const UpsertInboxSheetContent = ({
                   <SelectContent>
                     <SelectItem value="WHATSAPP">WhatsApp</SelectItem>
                     <SelectItem value="WEB_CHAT">Web Chat</SelectItem>
+                    <SelectItem value="INSTAGRAM_DM">
+                      <span className="flex items-center gap-2">
+                        <Instagram className="h-4 w-4 text-pink-500" />
+                        Instagram Direct
+                      </span>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
