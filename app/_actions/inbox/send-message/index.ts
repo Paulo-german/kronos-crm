@@ -10,6 +10,8 @@ import { withRetry } from '@/_lib/whatsapp/retry'
 import { parseProviderError } from '@/_lib/whatsapp/parse-provider-error'
 import { AUTO_REOPEN_FIELDS } from '@/_lib/conversation/auto-reopen'
 import { prefixAttendantName } from '@/_lib/inbox/prefix-attendant-name'
+import { sendInstagramText } from '@/_lib/instagram/send-instagram-message'
+import { IG_CONVERSATION_WINDOW_MS, IG_HUMAN_AGENT_WINDOW_MS } from '@/_lib/instagram/constants'
 import { sendMessageSchema } from './schema'
 
 export const sendMessage = orgActionClient
@@ -62,14 +64,64 @@ export const sendMessage = orgActionClient
     const senderName = sender?.fullName || sender?.email || 'Membro'
 
     // 4. Enviar via provider correto (Evolution ou Meta Cloud)
-    const provider = resolveWhatsAppProvider(conversation.inbox)
     const textToSend = prefixAttendantName(data.text, senderName, conversation.inbox.showAttendantName)
     let sendFailed = false
 
+    // Verificação de janela de mensagem para Instagram Direct (regra da Meta Graph API)
+    if (conversation.inbox.channel === 'INSTAGRAM_DM') {
+      const lastCustomerMessageAt = conversation.lastCustomerMessageAt
+
+      if (!lastCustomerMessageAt) {
+        return {
+          success: false,
+          errorMessage: 'Aguarde o cliente enviar uma mensagem para iniciar a conversa.',
+        }
+      }
+
+      const elapsed = Date.now() - lastCustomerMessageAt.getTime()
+      const isWithin24h = elapsed < IG_CONVERSATION_WINDOW_MS
+      const isWithin7d = elapsed < IG_HUMAN_AGENT_WINDOW_MS
+
+      if (!isWithin7d) {
+        return {
+          success: false,
+          errorMessage: 'Não é possível responder. A janela de 7 dias expirou — o cliente precisa enviar uma nova mensagem.',
+        }
+      }
+
+      if (!isWithin24h && !data.useHumanAgentTag) {
+        return {
+          success: false,
+          errorMessage: 'Janela de 24h expirada. Use a opção "Resposta humana" para responder em até 7 dias.',
+        }
+      }
+    }
+
     try {
-      const sentMessageIds = await withRetry(() =>
-        provider.sendText(remoteJid, textToSend),
-      )
+      let sentMessageIds: string[]
+
+      // Instagram Direct requer parâmetros extras (humanAgentTag) que a interface WhatsAppProvider não expõe.
+      // Chamamos sendInstagramText diretamente para evitar estender a abstração genérica apenas por um caso específico.
+      if (conversation.inbox.channel === 'INSTAGRAM_DM') {
+        const igUserId = conversation.inbox.metaIgUserId
+        const accessToken = conversation.inbox.metaAccessToken
+
+        if (!igUserId || !accessToken) {
+          throw new Error('Instagram Direct não configurado corretamente. Reconecte a conta.')
+        }
+
+        const recipientPsid = remoteJid.replace('@instagram', '')
+        sentMessageIds = await withRetry(() =>
+          sendInstagramText(igUserId, accessToken, recipientPsid, textToSend, {
+            humanAgentTag: data.useHumanAgentTag,
+          }),
+        )
+      } else {
+        const provider = resolveWhatsAppProvider(conversation.inbox)
+        sentMessageIds = await withRetry(() =>
+          provider.sendText(remoteJid, textToSend),
+        )
+      }
 
       await Promise.all(
         sentMessageIds.map((sentId) =>
