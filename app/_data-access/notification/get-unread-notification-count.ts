@@ -14,8 +14,7 @@ const fetchUnreadCount = async (userId: string, orgId: string): Promise<number> 
 
 /**
  * Retorna o total de notificacoes nao lidas do usuario na org.
- * Cache curto (30s) para complementar o polling do client.
- * Invalidado por: markAsRead, markAllAsRead, deleteNotification, createNotification.
+ * Invalidado por tag: markAsRead, markAllAsRead, deleteNotification, createNotification.
  */
 export const getUnreadNotificationCount = async (
   userId: string,
@@ -26,7 +25,6 @@ export const getUnreadNotificationCount = async (
     [`notification-unread-count-${userId}-${orgId}`],
     {
       tags: [`notifications:${userId}`],
-      revalidate: 30,
     },
   )
 

@@ -22,7 +22,7 @@ import { markNotificationAsRead } from '@/_actions/notification/mark-as-read'
 import { markAllNotificationsAsRead } from '@/_actions/notification/mark-all-as-read'
 import type { NotificationDto } from '@/_data-access/notification/types'
 
-const POLLING_INTERVAL_MS = 30_000
+const POLLING_INTERVAL_MS = 120_000
 
 interface NotificationBellProps {
   orgSlug: string

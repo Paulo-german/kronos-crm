@@ -78,7 +78,6 @@ export const getPendingInviteNotifications = async (
     [`pending-invite-notifications-${userId}`],
     {
       tags: [`notifications:${userId}`],
-      revalidate: 30,
     },
   )
 
@@ -97,7 +96,6 @@ export const getPendingInviteUnreadCount = async (
     [`pending-invite-unread-count-${userId}`],
     {
       tags: [`notifications:${userId}`],
-      revalidate: 30,
     },
   )
 
