@@ -137,7 +137,7 @@ export const getDealsByPipeline = async (
 
   const getCached = unstable_cache(
     async () => fetchDealsByPipelineFromDb(stageIds, ctx.orgId, ctx.userId, elevated),
-    [`deals-by-pipeline-${ctx.orgId}-${ctx.userId}-${elevated}`],
+    [`deals-by-pipeline-${ctx.orgId}-${ctx.userId}-${elevated}-${[...stageIds].sort().join(',')}`],
     {
       tags: [`deals:${ctx.orgId}`],
       revalidate: 3600,
