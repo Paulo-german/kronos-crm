@@ -50,7 +50,6 @@ export const getNotifications = async (
     [`notifications-${userId}-${orgId}-${options.limit}-${options.offset}`],
     {
       tags: [`notifications:${userId}`],
-      revalidate: 60,
     },
   )
 

@@ -32,8 +32,7 @@ const fetchRecentNotificationsFromDb = async (
 
 /**
  * Busca as 10 notificacoes mais recentes do usuario para o popover do bell icon.
- * Cache curto (30s) alinhado com o TTL do unread count.
- * Invalidada por: markAsRead, markAllAsRead, deleteNotification, createNotification.
+ * Invalidada por tag: markAsRead, markAllAsRead, deleteNotification, createNotification.
  */
 export const getRecentNotifications = async (
   userId: string,
@@ -44,7 +43,6 @@ export const getRecentNotifications = async (
     [`notifications-recent-${userId}-${orgId}`],
     {
       tags: [`notifications:${userId}`],
-      revalidate: 30,
     },
   )
 
