@@ -26,6 +26,8 @@ export const bulkDeleteDeals = orgActionClient
     revalidateTag(`deals-options:${ctx.orgId}`)
     revalidateTag(`dashboard:${ctx.orgId}`)
     revalidateTag(`dashboard-charts:${ctx.orgId}`)
+    revalidateTag(`tasks:${ctx.orgId}`)
+    revalidateTag(`appointments:${ctx.orgId}`)
     revalidatePath('/crm/deals/pipeline')
     revalidatePath('/crm/deals/list')
 

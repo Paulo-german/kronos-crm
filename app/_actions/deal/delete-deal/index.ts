@@ -36,6 +36,8 @@ export const deleteDeal = orgActionClient
     revalidateTag(`deal:${data.id}`)
     revalidateTag(`dashboard:${ctx.orgId}`)
     revalidateTag(`dashboard-charts:${ctx.orgId}`)
+    revalidateTag(`tasks:${ctx.orgId}`)
+    revalidateTag(`appointments:${ctx.orgId}`)
 
     return { success: true }
   })
