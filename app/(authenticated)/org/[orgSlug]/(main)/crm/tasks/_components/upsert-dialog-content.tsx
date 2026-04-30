@@ -19,7 +19,7 @@ import {
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Dispatch, SetStateAction, useState } from 'react'
+import { Dispatch, SetStateAction, useMemo, useState } from 'react'
 import { TaskDto } from '@/_data-access/task/get-tasks'
 
 import {
@@ -110,6 +110,22 @@ export function UpsertTaskDialogContent({
   const isEditing = !!defaultValues
 
   const [openCombobox, setOpenCombobox] = useState(false)
+  const [dealSearch, setDealSearch] = useState('')
+
+  const MIN_SEARCH_CHARS = 3
+
+  const normalize = (str: string) =>
+    str.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+
+  const filteredDeals = useMemo(() => {
+    if (dealSearch.length < MIN_SEARCH_CHARS) return []
+    const query = normalize(dealSearch)
+    return dealOptions.filter(
+      (deal) =>
+        normalize(deal.title).includes(query) ||
+        (deal.contactName ? normalize(deal.contactName).includes(query) : false),
+    )
+  }, [dealOptions, dealSearch])
 
   const { execute: executeCreate, isPending: isCreating } = useAction(
     createTask,
@@ -250,37 +266,49 @@ export function UpsertTaskDialogContent({
                       </FormControl>
                     </PopoverTrigger>
                     <PopoverContent className="w-[300px] p-0">
-                      <Command>
-                        <CommandInput placeholder="Buscar negócio..." />
+                      <Command shouldFilter={false}>
+                        <CommandInput
+                          placeholder="Digite pelo menos 3 caracteres..."
+                          value={dealSearch}
+                          onValueChange={setDealSearch}
+                        />
                         <CommandList>
-                          <CommandEmpty>Nenhum negócio encontrado.</CommandEmpty>
-                          <CommandGroup>
-                            {dealOptions.map((deal) => (
-                              <CommandItem
-                                value={deal.title}
-                                key={deal.id}
-                                onSelect={() => {
-                                  form.setValue('dealId', deal.id)
-                                  setOpenCombobox(false)
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    'mr-2 h-4 w-4',
-                                    deal.id === field.value
-                                      ? 'opacity-100'
-                                      : 'opacity-0',
+                          {dealSearch.length < MIN_SEARCH_CHARS ? (
+                            <div className="py-6 text-center text-sm text-muted-foreground">
+                              Digite pelo menos 3 caracteres
+                            </div>
+                          ) : filteredDeals.length === 0 ? (
+                            <CommandEmpty>Nenhum negócio encontrado.</CommandEmpty>
+                          ) : (
+                            <CommandGroup>
+                              {filteredDeals.map((deal) => (
+                                <CommandItem
+                                  value={deal.id}
+                                  key={deal.id}
+                                  onSelect={() => {
+                                    form.setValue('dealId', deal.id)
+                                    setOpenCombobox(false)
+                                    setDealSearch('')
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      'mr-2 h-4 w-4',
+                                      deal.id === field.value
+                                        ? 'opacity-100'
+                                        : 'opacity-0',
+                                    )}
+                                  />
+                                  {deal.title}
+                                  {deal.contactName && (
+                                    <span className="ml-2 text-xs text-muted-foreground">
+                                      ({deal.contactName})
+                                    </span>
                                   )}
-                                />
-                                {deal.title}
-                                {deal.contactName && (
-                                  <span className="ml-2 text-xs text-muted-foreground">
-                                    ({deal.contactName})
-                                  </span>
-                                )}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          )}
                         </CommandList>
                       </Command>
                     </PopoverContent>
