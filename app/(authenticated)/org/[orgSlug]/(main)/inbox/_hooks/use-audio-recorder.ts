@@ -23,8 +23,10 @@ async function createOggRecorder(stream: MediaStream): Promise<MediaRecorder> {
   // Chrome/Safari: usar polyfill WASM
   const { default: OpusMediaRecorder } = await import('opus-media-recorder')
 
+  // Indirection prevents Turbopack TP1001 — worker is a public asset, not a bundled module
+  const getWorkerUrl = () => '/opus-media-recorder/encoderWorker.umd.js'
   const workerOptions = {
-    encoderWorkerFactory: () => new Worker('/opus-media-recorder/encoderWorker.umd.js'),
+    encoderWorkerFactory: () => new Worker(getWorkerUrl()),
     OggOpusEncoderWasmPath: '/opus-media-recorder/OggOpusEncoder.wasm',
   }
 
