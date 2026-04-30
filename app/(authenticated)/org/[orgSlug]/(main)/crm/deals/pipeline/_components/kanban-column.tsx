@@ -3,7 +3,12 @@
 import { useMemo } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import { Inbox, Plus } from 'lucide-react'
+import {
+  CircleDollarSignIcon,
+  HandshakeIcon,
+  Inbox,
+  Plus,
+} from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import { formatCurrency } from '@/_utils/format-currency'
 import KanbanCard from './kanban-card'
@@ -24,7 +29,6 @@ interface KanbanColumnProps {
 export function KanbanColumn({
   stage,
   deals,
-  totalPipelineValue,
   onAddDeal,
   onDealClick,
   onPriorityClick,
@@ -37,32 +41,22 @@ export function KanbanColumn({
   })
 
   const totalValue = useMemo(
-    () => deals.reduce((sum, deal) => sum + deal.totalValue, 0),
+    () => formatCurrency(deals.reduce((sum, deal) => sum + deal.totalValue, 0)),
     [deals],
   )
-
-  const valuePercentage =
-    totalPipelineValue > 0
-      ? Math.round((totalValue / totalPipelineValue) * 100)
-      : 0
 
   return (
     <div
       className={`flex h-full w-96 shrink-0 flex-col overflow-hidden rounded-xl border transition-all duration-200 ${
         isOver
           ? 'border-primary/50 bg-primary/[0.03] shadow-lg shadow-primary/10 ring-1 ring-primary/20'
-          : 'border-border-strong bg-kanban-column'
+          : 'border-border bg-kanban-column'
       }`}
     >
       {/* Header */}
-      <div className="bg-kanban-column space-y-2.5 border-b border-border-strong p-3">
+      <div className="border-border-strong bg-kanban-c space-y-1 p-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-base font-semibold">{stage.name}</span>
-            <span className="flex size-5 items-center justify-center rounded-lg bg-primary/15 text-[10px] font-bold text-primary">
-              {deals.length}
-            </span>
-          </div>
+          <span className="text-base font-semibold">{stage.name}</span>
           <Button
             variant="ghost"
             size="icon"
@@ -72,37 +66,26 @@ export function KanbanColumn({
             <Plus className="h-4 w-4" />
           </Button>
         </div>
-
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-muted-foreground">
-            {formatCurrency(totalValue)}
+        <p className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <HandshakeIcon className="size-3" />
+            {deals.length} {deals.length === 1 ? 'negociação' : 'negociações'}
           </span>
-          {totalPipelineValue > 0 && (
-            <span className="text-[10px] text-muted-foreground/70">
-              {valuePercentage}%
-            </span>
-          )}
-        </div>
-
-        {totalPipelineValue > 0 && (
-          <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-primary transition-all duration-500 ease-out"
-              style={{
-                width: `${Math.max(valuePercentage, totalValue > 0 ? 3 : 0)}%`,
-              }}
-            />
-          </div>
-        )}
+          <span>·</span>
+          <span className="flex items-center gap-1">
+            <CircleDollarSignIcon className="size-3" />
+            {totalValue}
+          </span>
+        </p>
       </div>
 
       {/* Cards */}
       <div
         ref={setNodeRef}
-        className="bg-kanban-column flex-1 space-y-3 overflow-y-auto p-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border hover:[&::-webkit-scrollbar-thumb]:bg-kronos-purple [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-0.5"
+        className="flex-1 space-y-3 overflow-y-auto bg-kanban-column p-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border hover:[&::-webkit-scrollbar-thumb]:bg-kronos-purple [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-0.5"
       >
         <SortableContext
-          items={deals.map((d) => d.id)}
+          items={deals.map((deal) => deal.id)}
           strategy={verticalListSortingStrategy}
         >
           {deals.map((deal) => (
