@@ -6,7 +6,7 @@ import { format, differenceInDays, isPast } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
-import { Building2, Clock, Pencil, Plus, RefreshCw, Trash2, UserPlus } from 'lucide-react'
+import { Building2, Clock, Loader2, Pencil, Plus, RefreshCw, Send, Trash2, UserPlus, Users, X } from 'lucide-react'
 import {
   Table,
   TableBody,
@@ -35,6 +35,11 @@ import {
   SheetTitle,
 } from '@/_components/ui/sheet'
 import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from '@/_components/ui/avatar'
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -54,8 +59,23 @@ import { syncStripeSubscription } from '@/_actions/admin/sync-stripe-subscriptio
 import { adminInviteOwner } from '@/_actions/admin/admin-invite-owner'
 import { adminUpdateOrganization } from '@/_actions/admin/admin-update-organization'
 import { adminDeleteOrganization } from '@/_actions/admin/admin-delete-organization'
+import { fetchAdminOrganizationMembers } from '@/_actions/admin/fetch-admin-organization-members'
+import { adminUpdateMemberRole } from '@/_actions/admin/admin-update-member-role'
+import { adminRemoveMember } from '@/_actions/admin/admin-remove-member'
+import { adminCancelInvite } from '@/_actions/admin/admin-cancel-invite'
+import { adminResendInvite } from '@/_actions/admin/admin-resend-invite'
 import type { AdminOrganizationDto } from '@/_data-access/admin/types'
 import type { AdminPlanListItem } from '@/_data-access/admin/get-admin-plans-list'
+import type {
+  AdminMemberAcceptedDto,
+  AdminMemberPendingDto,
+} from '@/_data-access/admin/get-admin-organization-members'
+
+const ROLE_LABEL: Record<string, string> = {
+  OWNER: 'Owner',
+  ADMIN: 'Admin',
+  MEMBER: 'Membro',
+}
 
 const STATUS_MAP: Record<string, { label: string; className: string }> = {
   active: {
@@ -131,6 +151,23 @@ export const OrganizationsTable = ({ organizations, plans }: OrganizationsTableP
   const [deleteConfirmName, setDeleteConfirmName] = useState('')
   const [deleteAdminKey, setDeleteAdminKey] = useState('')
 
+  // Members sheet
+  const [membersOrg, setMembersOrg] = useState<AdminOrganizationDto | null>(null)
+  const [membersData, setMembersData] = useState<{
+    accepted: AdminMemberAcceptedDto[]
+    pending: AdminMemberPendingDto[]
+  } | null>(null)
+
+  // Member action dialogs
+  const [roleChangeTarget, setRoleChangeTarget] = useState<{
+    memberId: string
+    email: string
+    newRole: 'ADMIN' | 'MEMBER'
+  } | null>(null)
+  const [removeTarget, setRemoveTarget] = useState<{ memberId: string; email: string } | null>(null)
+  const [cancelTarget, setCancelTarget] = useState<{ memberId: string; email: string } | null>(null)
+  const [memberAdminKey, setMemberAdminKey] = useState('')
+
   const { execute: executeExtend, status: extendStatus } = useAction(extendTrial, {
     onSuccess: () => {
       toast.success('Trial estendido com sucesso.')
@@ -177,6 +214,65 @@ export const OrganizationsTable = ({ organizations, plans }: OrganizationsTableP
     },
     onError: ({ error }) => {
       toast.error(error.serverError ?? 'Erro ao atualizar organização.')
+    },
+  })
+
+  const { execute: executeFetchMembers, status: fetchMembersStatus } = useAction(
+    fetchAdminOrganizationMembers,
+    {
+      onSuccess: ({ data }) => {
+        if (data) setMembersData(data)
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError ?? 'Erro ao carregar membros.')
+      },
+    },
+  )
+
+  const { execute: executeUpdateRole, status: updateRoleStatus } = useAction(adminUpdateMemberRole, {
+    onSuccess: () => {
+      toast.success('Papel atualizado.')
+      setRoleChangeTarget(null)
+      setMemberAdminKey('')
+      if (membersOrg) executeFetchMembers({ organizationId: membersOrg.id })
+      router.refresh()
+    },
+    onError: ({ error }) => {
+      toast.error(error.serverError ?? 'Erro ao atualizar papel.')
+    },
+  })
+
+  const { execute: executeRemoveMember, status: removeMemberStatus } = useAction(adminRemoveMember, {
+    onSuccess: () => {
+      toast.success('Membro removido.')
+      setRemoveTarget(null)
+      setMemberAdminKey('')
+      if (membersOrg) executeFetchMembers({ organizationId: membersOrg.id })
+      router.refresh()
+    },
+    onError: ({ error }) => {
+      toast.error(error.serverError ?? 'Erro ao remover membro.')
+    },
+  })
+
+  const { execute: executeCancelInvite, status: cancelInviteStatus } = useAction(adminCancelInvite, {
+    onSuccess: () => {
+      toast.success('Convite cancelado.')
+      setCancelTarget(null)
+      if (membersOrg) executeFetchMembers({ organizationId: membersOrg.id })
+      router.refresh()
+    },
+    onError: ({ error }) => {
+      toast.error(error.serverError ?? 'Erro ao cancelar convite.')
+    },
+  })
+
+  const { execute: executeResendInvite, status: resendInviteStatus } = useAction(adminResendInvite, {
+    onSuccess: () => {
+      toast.success('Convite reenviado.')
+    },
+    onError: ({ error }) => {
+      toast.error(error.serverError ?? 'Erro ao reenviar convite.')
     },
   })
 
@@ -227,6 +323,12 @@ export const OrganizationsTable = ({ organizations, plans }: OrganizationsTableP
       return
     }
     executeExtend({ organizationId, days })
+  }
+
+  const openMembersSheet = (org: AdminOrganizationDto) => {
+    setMembersOrg(org)
+    setMembersData(null)
+    executeFetchMembers({ organizationId: org.id })
   }
 
   const openEditSheet = (org: AdminOrganizationDto) => {
@@ -516,6 +618,15 @@ export const OrganizationsTable = ({ organizations, plans }: OrganizationsTableP
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => openMembersSheet(org)}
+                      >
+                        <Users className="h-4 w-4" />
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -620,6 +731,283 @@ export const OrganizationsTable = ({ organizations, plans }: OrganizationsTableP
           </SheetFooter>
         </SheetContent>
       </Sheet>
+
+      {/* Sheet de membros */}
+      <Sheet
+        open={membersOrg !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setMembersOrg(null)
+            setMembersData(null)
+          }
+        }}
+      >
+        <SheetContent className="w-full overflow-y-auto sm:max-w-2xl">
+          <SheetHeader>
+            <SheetTitle>Membros — {membersOrg?.name}</SheetTitle>
+          </SheetHeader>
+
+          <div className="mt-6 space-y-6">
+            {fetchMembersStatus === 'executing' && (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            )}
+
+            {membersData && (
+              <>
+                <div className="space-y-3">
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Membros ({membersData.accepted.length})
+                  </p>
+                  {membersData.accepted.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Nenhum membro ativo.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {membersData.accepted.map((member) => (
+                        <div
+                          key={member.id}
+                          className="flex items-center gap-3 rounded-lg border border-border p-3"
+                        >
+                          <Avatar className="h-8 w-8 shrink-0">
+                            <AvatarImage src={member.user?.avatarUrl ?? undefined} />
+                            <AvatarFallback className="text-xs">
+                              {(member.user?.fullName ?? member.email).slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium">
+                              {member.user?.fullName ?? '—'}
+                            </p>
+                            <p className="truncate text-xs text-muted-foreground">{member.email}</p>
+                          </div>
+                          <Badge variant="outline" className="shrink-0 text-xs">
+                            {ROLE_LABEL[member.role] ?? member.role}
+                          </Badge>
+                          {member.role !== 'OWNER' && (
+                            <Select
+                              value={member.role}
+                              onValueChange={(value) => {
+                                setRoleChangeTarget({
+                                  memberId: member.id,
+                                  email: member.email,
+                                  newRole: value as 'ADMIN' | 'MEMBER',
+                                })
+                                setMemberAdminKey('')
+                              }}
+                            >
+                              <SelectTrigger className="h-7 w-24 shrink-0 text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="ADMIN">Admin</SelectItem>
+                                <SelectItem value="MEMBER">Membro</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
+                            disabled={member.role === 'OWNER'}
+                            onClick={() => {
+                              setRemoveTarget({ memberId: member.id, email: member.email })
+                              setMemberAdminKey('')
+                            }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {membersData.pending.length > 0 && (
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Convites pendentes ({membersData.pending.length})
+                    </p>
+                    <div className="space-y-2">
+                      {membersData.pending.map((invite) => (
+                        <div
+                          key={invite.id}
+                          className="flex items-center gap-3 rounded-lg border border-border p-3"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm">{invite.email}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {ROLE_LABEL[invite.role] ?? invite.role} · Convidado em{' '}
+                              {format(new Date(invite.invitedAt), "d 'de' MMM", { locale: ptBR })}
+                            </p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 shrink-0"
+                            disabled={resendInviteStatus === 'executing'}
+                            onClick={() => {
+                              if (!membersOrg) return
+                              executeResendInvite({
+                                organizationId: membersOrg.id,
+                                memberId: invite.id,
+                              })
+                            }}
+                          >
+                            <Send className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
+                            onClick={() =>
+                              setCancelTarget({ memberId: invite.id, email: invite.email })
+                            }
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* AlertDialog: alterar papel */}
+      <AlertDialog
+        open={roleChangeTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRoleChangeTarget(null)
+            setMemberAdminKey('')
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Alterar papel</AlertDialogTitle>
+            <AlertDialogDescription>
+              Alterar o papel de <strong>{roleChangeTarget?.email}</strong> para{' '}
+              <strong>{roleChangeTarget?.newRole === 'ADMIN' ? 'Admin' : 'Membro'}</strong>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-1.5 py-2">
+            <Label htmlFor="role-admin-key">Senha de autorização</Label>
+            <Input
+              id="role-admin-key"
+              type="password"
+              placeholder="••••••••"
+              value={memberAdminKey}
+              onChange={(event) => setMemberAdminKey(event.target.value)}
+              autoComplete="off"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!memberAdminKey || updateRoleStatus === 'executing'}
+              onClick={() => {
+                if (!roleChangeTarget || !membersOrg) return
+                executeUpdateRole({
+                  organizationId: membersOrg.id,
+                  memberId: roleChangeTarget.memberId,
+                  role: roleChangeTarget.newRole,
+                  adminKey: memberAdminKey,
+                })
+              }}
+            >
+              {updateRoleStatus === 'executing' ? 'Salvando...' : 'Confirmar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* AlertDialog: remover membro */}
+      <AlertDialog
+        open={removeTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRemoveTarget(null)
+            setMemberAdminKey('')
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover membro</AlertDialogTitle>
+            <AlertDialogDescription>
+              Remover <strong>{removeTarget?.email}</strong> da organização. O acesso será revogado
+              imediatamente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-1.5 py-2">
+            <Label htmlFor="remove-admin-key">Senha de autorização</Label>
+            <Input
+              id="remove-admin-key"
+              type="password"
+              placeholder="••••••••"
+              value={memberAdminKey}
+              onChange={(event) => setMemberAdminKey(event.target.value)}
+              autoComplete="off"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={!memberAdminKey || removeMemberStatus === 'executing'}
+              onClick={() => {
+                if (!removeTarget || !membersOrg) return
+                executeRemoveMember({
+                  organizationId: membersOrg.id,
+                  memberId: removeTarget.memberId,
+                  adminKey: memberAdminKey,
+                })
+              }}
+            >
+              {removeMemberStatus === 'executing' ? 'Removendo...' : 'Remover'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* AlertDialog: cancelar convite */}
+      <AlertDialog
+        open={cancelTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setCancelTarget(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancelar convite</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cancelar o convite de <strong>{cancelTarget?.email}</strong>. O link de convite
+              deixará de funcionar.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={cancelInviteStatus === 'executing'}
+              onClick={() => {
+                if (!cancelTarget || !membersOrg) return
+                executeCancelInvite({
+                  organizationId: membersOrg.id,
+                  memberId: cancelTarget.memberId,
+                })
+              }}
+            >
+              {cancelInviteStatus === 'executing' ? 'Cancelando...' : 'Cancelar convite'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* AlertDialog de deleção */}
       <AlertDialog
