@@ -93,6 +93,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
         orgName={member.organization.name}
         inviteEmail={member.email}
         currentUserEmail={user.email!}
+        role={member.role}
       />
     </div>
   )

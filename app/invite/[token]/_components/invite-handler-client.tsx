@@ -15,6 +15,13 @@ interface InviteHandlerClientProps {
   orgName: string
   inviteEmail: string
   currentUserEmail: string
+  role: string
+}
+
+const ROLE_LABEL: Record<string, string> = {
+  OWNER: 'proprietário',
+  ADMIN: 'administrador',
+  MEMBER: 'membro',
 }
 
 export function InviteHandlerClient({
@@ -22,6 +29,7 @@ export function InviteHandlerClient({
   orgName,
   inviteEmail,
   currentUserEmail,
+  role,
 }: InviteHandlerClientProps) {
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
@@ -87,7 +95,7 @@ export function InviteHandlerClient({
         ) : (
           <div className="space-y-4">
             <div className="space-y-2">
-              <p>Você foi convidado para colaborar como membro.</p>
+              <p>Você foi convidado para colaborar como <strong>{ROLE_LABEL[role] ?? role.toLowerCase()}</strong>.</p>
               <p className="text-xs text-muted-foreground">
                 Logado como: {currentUserEmail}
               </p>

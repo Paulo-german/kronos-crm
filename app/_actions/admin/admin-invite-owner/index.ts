@@ -13,7 +13,7 @@ export const adminInviteOwner = superAdminActionClient
   .action(async ({ parsedInput: { organizationId, email } }) => {
     const organization = await db.organization.findUniqueOrThrow({
       where: { id: organizationId },
-      select: { id: true, name: true },
+      select: { name: true },
     })
 
     const existingMember = await db.member.findUnique({
