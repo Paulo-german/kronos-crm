@@ -237,14 +237,13 @@ export async function buildTestSystemPrompt(
     '[Modo de Teste]',
     'Você está em um ambiente de TESTE.',
     '- NÃO há dados de contato ou negócio vinculados (use exemplos fictícios quando necessário).',
-    '- As ferramentas de CRM estão registradas e você DEVE chamá-las normalmente',
-    '  (os resultados serão simulados no backend — o usuário verá as ações como cards visuais).',
+    '- As ferramentas de CRM (move_deal, update_contact, create_task, hand_off_to_human, etc.) estão registradas com resultados SIMULADOS — zero efeitos reais no banco de dados. Chame-as normalmente.',
     '- NÃO descreva o que faria em texto — EXECUTE a ferramenta diretamente.',
   ]
 
   if (completedFileCount > 0) {
     testModeLines.push(
-      `- search_knowledge funciona normalmente com a base real de conhecimento (${completedFileCount} arquivo${completedFileCount > 1 ? 's' : ''} indexado${completedFileCount > 1 ? 's' : ''}).`,
+      `- ATENÇÃO: search_knowledge é REAL e consulta a base de conhecimento verdadeira (${completedFileCount} arquivo${completedFileCount > 1 ? 's' : ''} indexado${completedFileCount > 1 ? 's' : ''}). NÃO invente nem assuma informações sobre a empresa — chame search_knowledge ANTES de qualquer resposta sobre produtos, preços, políticas ou procedimentos.`,
     )
   }
 

@@ -182,7 +182,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       ? {
           search_knowledge: tool({
             description:
-              'Busca informações na base de conhecimento do agente. Use quando o usuário perguntar sobre algo que pode estar nos documentos enviados (ex: políticas, preços, procedimentos, informações técnicas).',
+              'OBRIGATÓRIO: busca informações reais na base de conhecimento do agente. DEVE ser chamado antes de qualquer resposta sobre a empresa, produtos, serviços, preços, políticas ou procedimentos. Nunca assuma nem invente essas informações — consulte este tool primeiro.',
             inputSchema: zod.object({
               query: zod
                 .string()
