@@ -37,7 +37,6 @@ const fetchDealsOptionsFromDb = async (
     orderBy: {
       updatedAt: 'desc',
     },
-    take: 50,
   })
 
   return deals.map((deal) => ({
