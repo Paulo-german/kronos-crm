@@ -9,8 +9,13 @@ export async function getAdminOrganizations(): Promise<AdminOrganizationDto[]> {
       id: true,
       name: true,
       slug: true,
+      niche: true,
+      isReadOnly: true,
       trialEndsAt: true,
       createdAt: true,
+      planOverride: {
+        select: { id: true, name: true, slug: true },
+      },
       _count: {
         select: {
           members: { where: { status: 'ACCEPTED' } },
@@ -39,7 +44,10 @@ export async function getAdminOrganizations(): Promise<AdminOrganizationDto[]> {
       id: org.id,
       name: org.name,
       slug: org.slug,
+      niche: org.niche,
+      isReadOnly: org.isReadOnly,
       memberCount: org._count.members,
+      planOverride: org.planOverride ?? null,
       subscription: subscription
         ? {
             status: subscription.status,

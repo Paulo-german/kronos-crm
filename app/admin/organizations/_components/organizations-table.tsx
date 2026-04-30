@@ -6,7 +6,7 @@ import { format, differenceInDays, isPast } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
-import { Building2, Clock, Plus, RefreshCw, UserPlus } from 'lucide-react'
+import { Building2, Clock, Pencil, Plus, RefreshCw, Trash2, UserPlus } from 'lucide-react'
 import {
   Table,
   TableBody,
@@ -18,6 +18,32 @@ import {
 import { Badge } from '@/_components/ui/badge'
 import { Button } from '@/_components/ui/button'
 import { Input } from '@/_components/ui/input'
+import { Label } from '@/_components/ui/label'
+import { Switch } from '@/_components/ui/switch'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/_components/ui/select'
+import {
+  Sheet,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from '@/_components/ui/sheet'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/_components/ui/alert-dialog'
 import {
   Popover,
   PopoverContent,
@@ -26,7 +52,10 @@ import {
 import { extendTrial } from '@/_actions/admin/extend-trial'
 import { syncStripeSubscription } from '@/_actions/admin/sync-stripe-subscription'
 import { adminInviteOwner } from '@/_actions/admin/admin-invite-owner'
+import { adminUpdateOrganization } from '@/_actions/admin/admin-update-organization'
+import { adminDeleteOrganization } from '@/_actions/admin/admin-delete-organization'
 import type { AdminOrganizationDto } from '@/_data-access/admin/types'
+import type { AdminPlanListItem } from '@/_data-access/admin/get-admin-plans-list'
 
 const STATUS_MAP: Record<string, { label: string; className: string }> = {
   active: {
@@ -61,12 +90,23 @@ function getTrialInfo(trialEndsAt: Date | null) {
   return { expired, daysRemaining, endsAt: trialEndsAt }
 }
 
-interface OrganizationsTableProps {
-  organizations: AdminOrganizationDto[]
+interface EditFormState {
+  name: string
+  slug: string
+  niche: string
+  isReadOnly: boolean
+  planOverrideId: string
 }
 
-export const OrganizationsTable = ({ organizations }: OrganizationsTableProps) => {
+interface OrganizationsTableProps {
+  organizations: AdminOrganizationDto[]
+  plans: AdminPlanListItem[]
+}
+
+export const OrganizationsTable = ({ organizations, plans }: OrganizationsTableProps) => {
   const router = useRouter()
+
+  // Popovers existentes
   const [openPopoverId, setOpenPopoverId] = useState<string | null>(null)
   const [daysToAdd, setDaysToAdd] = useState('7')
   const [openSyncPopoverId, setOpenSyncPopoverId] = useState<string | null>(null)
@@ -74,6 +114,22 @@ export const OrganizationsTable = ({ organizations }: OrganizationsTableProps) =
   const [stripeCustomerInput, setStripeCustomerInput] = useState('')
   const [openInvitePopoverId, setOpenInvitePopoverId] = useState<string | null>(null)
   const [inviteEmailInput, setInviteEmailInput] = useState('')
+
+  // Edit sheet
+  const [editOrgId, setEditOrgId] = useState<string | null>(null)
+  const [editForm, setEditForm] = useState<EditFormState>({
+    name: '',
+    slug: '',
+    niche: '',
+    isReadOnly: false,
+    planOverrideId: '',
+  })
+  const [editAdminKey, setEditAdminKey] = useState('')
+
+  // Delete dialog
+  const [deleteOrg, setDeleteOrg] = useState<AdminOrganizationDto | null>(null)
+  const [deleteConfirmName, setDeleteConfirmName] = useState('')
+  const [deleteAdminKey, setDeleteAdminKey] = useState('')
 
   const { execute: executeExtend, status: extendStatus } = useAction(extendTrial, {
     onSuccess: () => {
@@ -99,23 +155,43 @@ export const OrganizationsTable = ({ organizations }: OrganizationsTableProps) =
     },
   })
 
-  const { execute: executeSync, status: syncStatus } = useAction(
-    syncStripeSubscription,
-    {
-      onSuccess: ({ data }) => {
-        toast.success(
-          `Subscription sincronizada (plano: ${data?.planSlug}, status: ${data?.status}).`,
-        )
-        setOpenSyncPopoverId(null)
-        setStripeSubInput('')
-        setStripeCustomerInput('')
-        router.refresh()
-      },
-      onError: ({ error }) => {
-        toast.error(error.serverError ?? 'Erro ao sincronizar subscription.')
-      },
+  const { execute: executeSync, status: syncStatus } = useAction(syncStripeSubscription, {
+    onSuccess: ({ data }) => {
+      toast.success(`Subscription sincronizada (plano: ${data?.planSlug}, status: ${data?.status}).`)
+      setOpenSyncPopoverId(null)
+      setStripeSubInput('')
+      setStripeCustomerInput('')
+      router.refresh()
     },
-  )
+    onError: ({ error }) => {
+      toast.error(error.serverError ?? 'Erro ao sincronizar subscription.')
+    },
+  })
+
+  const { execute: executeUpdate, status: updateStatus } = useAction(adminUpdateOrganization, {
+    onSuccess: () => {
+      toast.success('Organização atualizada com sucesso.')
+      setEditOrgId(null)
+      setEditAdminKey('')
+      router.refresh()
+    },
+    onError: ({ error }) => {
+      toast.error(error.serverError ?? 'Erro ao atualizar organização.')
+    },
+  })
+
+  const { execute: executeDelete, status: deleteStatus } = useAction(adminDeleteOrganization, {
+    onSuccess: () => {
+      toast.success('Organização deletada.')
+      setDeleteOrg(null)
+      setDeleteConfirmName('')
+      setDeleteAdminKey('')
+      router.refresh()
+    },
+    onError: ({ error }) => {
+      toast.error(error.serverError ?? 'Erro ao deletar organização.')
+    },
+  })
 
   const handleSync = (organizationId: string) => {
     const trimmedSub = stripeSubInput.trim()
@@ -153,6 +229,31 @@ export const OrganizationsTable = ({ organizations }: OrganizationsTableProps) =
     executeExtend({ organizationId, days })
   }
 
+  const openEditSheet = (org: AdminOrganizationDto) => {
+    setEditForm({
+      name: org.name,
+      slug: org.slug,
+      niche: org.niche ?? '',
+      isReadOnly: org.isReadOnly,
+      planOverrideId: org.planOverride?.id ?? '',
+    })
+    setEditAdminKey('')
+    setEditOrgId(org.id)
+  }
+
+  const handleUpdate = () => {
+    if (!editOrgId) return
+    executeUpdate({
+      organizationId: editOrgId,
+      adminKey: editAdminKey,
+      name: editForm.name,
+      slug: editForm.slug,
+      niche: editForm.niche || null,
+      isReadOnly: editForm.isReadOnly,
+      planOverrideId: editForm.planOverrideId || null,
+    })
+  }
+
   if (organizations.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground/20 py-16 text-center transition-all duration-200">
@@ -163,232 +264,430 @@ export const OrganizationsTable = ({ organizations }: OrganizationsTableProps) =
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card">
-      <Table>
-        <TableHeader>
-          <TableRow className="hover:bg-transparent">
-            <TableHead>Organização</TableHead>
-            <TableHead>Plano</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Trial</TableHead>
-            <TableHead className="text-right">Membros</TableHead>
-            <TableHead>Criado em</TableHead>
-            <TableHead className="w-[50px]" />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {organizations.map((org) => {
-            const statusInfo = org.subscription
-              ? STATUS_MAP[org.subscription.status] ?? {
-                  label: org.subscription.status,
-                  className: '',
-                }
-              : null
+    <>
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>Organização</TableHead>
+              <TableHead>Plano</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Trial</TableHead>
+              <TableHead className="text-right">Membros</TableHead>
+              <TableHead>Criado em</TableHead>
+              <TableHead className="w-[50px]" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {organizations.map((org) => {
+              const statusInfo = org.subscription
+                ? STATUS_MAP[org.subscription.status] ?? {
+                    label: org.subscription.status,
+                    className: '',
+                  }
+                : null
 
-            const trialInfo = getTrialInfo(org.trialEndsAt)
+              const trialInfo = getTrialInfo(org.trialEndsAt)
 
-            return (
-              <TableRow key={org.id}>
-                <TableCell>
-                  <div>
-                    <p className="font-medium text-foreground">{org.name}</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">{org.slug}</p>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  {org.subscription ? (
-                    <Badge variant="secondary">{org.subscription.planName}</Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-muted-foreground">
-                      Sem plano
-                    </Badge>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {statusInfo ? (
-                    <Badge variant="outline" className={statusInfo.className}>
-                      {statusInfo.label}
-                    </Badge>
-                  ) : org.trialEndsAt ? (
-                    <Badge
-                      variant="outline"
-                      className="border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400"
-                    >
-                      Trial
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-muted-foreground">
-                      Inativo
-                    </Badge>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {trialInfo ? (
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                      {trialInfo.expired ? (
-                        <span className="text-sm text-red-600 dark:text-red-400">Expirado</span>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">
-                          <strong className="text-foreground">{trialInfo.daysRemaining}</strong>{' '}
-                          {trialInfo.daysRemaining === 1 ? 'dia' : 'dias'}
-                        </span>
-                      )}
+              return (
+                <TableRow key={org.id}>
+                  <TableCell>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <p className="font-medium text-foreground">{org.name}</p>
+                        {org.isReadOnly && (
+                          <Badge variant="outline" className="border-orange-500/30 bg-orange-500/10 text-orange-700 dark:text-orange-400 text-[10px] py-0">
+                            Read-only
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{org.slug}</p>
                     </div>
-                  ) : (
-                    <span className="text-sm text-muted-foreground">—</span>
-                  )}
-                </TableCell>
-                <TableCell className="text-right tabular-nums text-muted-foreground">
-                  {org.memberCount}
-                </TableCell>
-                <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
-                  {format(new Date(org.createdAt), "d 'de' MMM, yyyy", { locale: ptBR })}
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center justify-end gap-1">
-                    <Popover
-                      open={openPopoverId === org.id}
-                      onOpenChange={(open) => {
-                        setOpenPopoverId(open ? org.id : null)
-                        if (open) setDaysToAdd('7')
-                      }}
-                    >
-                      <PopoverTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent align="end" className="w-64">
-                        <div className="space-y-3">
-                          <div>
-                            <p className="text-sm font-medium">Estender trial</p>
-                            <p className="text-xs text-muted-foreground">{org.name}</p>
+                  </TableCell>
+                  <TableCell>
+                    {org.planOverride ? (
+                      <Badge variant="secondary" className="border-purple-500/30 bg-purple-500/10 text-purple-700 dark:text-purple-400">
+                        {org.planOverride.name} ↑
+                      </Badge>
+                    ) : org.subscription ? (
+                      <Badge variant="secondary">{org.subscription.planName}</Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-muted-foreground">
+                        Sem plano
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {statusInfo ? (
+                      <Badge variant="outline" className={statusInfo.className}>
+                        {statusInfo.label}
+                      </Badge>
+                    ) : org.trialEndsAt ? (
+                      <Badge
+                        variant="outline"
+                        className="border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                      >
+                        Trial
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-muted-foreground">
+                        Inativo
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {trialInfo ? (
+                      <div className="flex items-center gap-1.5">
+                        <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                        {trialInfo.expired ? (
+                          <span className="text-sm text-red-600 dark:text-red-400">Expirado</span>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">
+                            <strong className="text-foreground">{trialInfo.daysRemaining}</strong>{' '}
+                            {trialInfo.daysRemaining === 1 ? 'dia' : 'dias'}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums text-muted-foreground">
+                    {org.memberCount}
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+                    {format(new Date(org.createdAt), "d 'de' MMM, yyyy", { locale: ptBR })}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center justify-end gap-1">
+                      <Popover
+                        open={openPopoverId === org.id}
+                        onOpenChange={(open) => {
+                          setOpenPopoverId(open ? org.id : null)
+                          if (open) setDaysToAdd('7')
+                        }}
+                      >
+                        <PopoverTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent align="end" className="w-64">
+                          <div className="space-y-3">
+                            <div>
+                              <p className="text-sm font-medium">Estender trial</p>
+                              <p className="text-xs text-muted-foreground">{org.name}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="number"
+                                min={1}
+                                max={365}
+                                value={daysToAdd}
+                                onChange={(event) => setDaysToAdd(event.target.value)}
+                                className="h-8"
+                                placeholder="Dias"
+                              />
+                              <span className="shrink-0 text-sm text-muted-foreground">dias</span>
+                            </div>
+                            {trialInfo && !trialInfo.expired && (
+                              <p className="text-xs text-muted-foreground">
+                                Trial atual até{' '}
+                                {format(new Date(trialInfo.endsAt), "d 'de' MMM", { locale: ptBR })}
+                              </p>
+                            )}
+                            <Button
+                              size="sm"
+                              className="w-full"
+                              disabled={extendStatus === 'executing'}
+                              onClick={() => handleExtendTrial(org.id)}
+                            >
+                              {extendStatus === 'executing' ? 'Estendendo...' : 'Estender'}
+                            </Button>
                           </div>
-                          <div className="flex items-center gap-2">
+                        </PopoverContent>
+                      </Popover>
+
+                      <Popover
+                        open={openSyncPopoverId === org.id}
+                        onOpenChange={(open) => {
+                          setOpenSyncPopoverId(open ? org.id : null)
+                          if (!open) {
+                            setStripeSubInput('')
+                            setStripeCustomerInput('')
+                          }
+                        }}
+                      >
+                        <PopoverTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <RefreshCw className="h-4 w-4" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent align="end" className="w-72">
+                          <div className="space-y-3">
+                            <div>
+                              <p className="text-sm font-medium">Sincronizar Stripe</p>
+                              <p className="text-xs text-muted-foreground">{org.name}</p>
+                            </div>
                             <Input
-                              type="number"
-                              min={1}
-                              max={365}
-                              value={daysToAdd}
-                              onChange={(event) => setDaysToAdd(event.target.value)}
-                              className="h-8"
-                              placeholder="Dias"
+                              placeholder="sub_xxxxxxxxxxxx"
+                              value={stripeSubInput}
+                              onChange={(event) => setStripeSubInput(event.target.value)}
+                              className="h-8 font-mono text-xs"
                             />
-                            <span className="shrink-0 text-sm text-muted-foreground">dias</span>
-                          </div>
-                          {trialInfo && !trialInfo.expired && (
+                            <Input
+                              placeholder="cus_xxxxxxxxxxxx (opcional)"
+                              value={stripeCustomerInput}
+                              onChange={(event) => setStripeCustomerInput(event.target.value)}
+                              className="h-8 font-mono text-xs"
+                            />
                             <p className="text-xs text-muted-foreground">
-                              Trial atual até{' '}
-                              {format(new Date(trialInfo.endsAt), "d 'de' MMM", { locale: ptBR })}
+                              Customer ID opcional — se omitido, é resolvido automaticamente pela subscription.
                             </p>
-                          )}
-                          <Button
-                            size="sm"
-                            className="w-full"
-                            disabled={extendStatus === 'executing'}
-                            onClick={() => handleExtendTrial(org.id)}
-                          >
-                            {extendStatus === 'executing' ? 'Estendendo...' : 'Estender'}
-                          </Button>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-
-                    <Popover
-                      open={openSyncPopoverId === org.id}
-                      onOpenChange={(open) => {
-                        setOpenSyncPopoverId(open ? org.id : null)
-                        if (!open) {
-                          setStripeSubInput('')
-                          setStripeCustomerInput('')
-                        }
-                      }}
-                    >
-                      <PopoverTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <RefreshCw className="h-4 w-4" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent align="end" className="w-72">
-                        <div className="space-y-3">
-                          <div>
-                            <p className="text-sm font-medium">Sincronizar Stripe</p>
-                            <p className="text-xs text-muted-foreground">{org.name}</p>
+                            <Button
+                              size="sm"
+                              className="w-full"
+                              disabled={syncStatus === 'executing'}
+                              onClick={() => handleSync(org.id)}
+                            >
+                              {syncStatus === 'executing' ? 'Sincronizando...' : 'Sincronizar'}
+                            </Button>
                           </div>
-                          <Input
-                            placeholder="sub_xxxxxxxxxxxx"
-                            value={stripeSubInput}
-                            onChange={(event) => setStripeSubInput(event.target.value)}
-                            className="h-8 font-mono text-xs"
-                          />
-                          <Input
-                            placeholder="cus_xxxxxxxxxxxx (opcional)"
-                            value={stripeCustomerInput}
-                            onChange={(event) => setStripeCustomerInput(event.target.value)}
-                            className="h-8 font-mono text-xs"
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            Customer ID opcional — se omitido, é resolvido automaticamente pela subscription.
-                          </p>
-                          <Button
-                            size="sm"
-                            className="w-full"
-                            disabled={syncStatus === 'executing'}
-                            onClick={() => handleSync(org.id)}
-                          >
-                            {syncStatus === 'executing' ? 'Sincronizando...' : 'Sincronizar'}
-                          </Button>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
+                        </PopoverContent>
+                      </Popover>
 
-                    <Popover
-                      open={openInvitePopoverId === org.id}
-                      onOpenChange={(open) => {
-                        setOpenInvitePopoverId(open ? org.id : null)
-                        if (!open) setInviteEmailInput('')
-                      }}
-                    >
-                      <PopoverTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <UserPlus className="h-4 w-4" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent align="end" className="w-72">
-                        <div className="space-y-3">
-                          <div>
-                            <p className="text-sm font-medium">Convidar OWNER</p>
-                            <p className="text-xs text-muted-foreground">{org.name}</p>
-                          </div>
-                          <Input
-                            type="email"
-                            placeholder="email@empresa.com"
-                            value={inviteEmailInput}
-                            onChange={(event) => setInviteEmailInput(event.target.value)}
-                            className="h-8"
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            O usuário receberá um e-mail e ao criar a conta entrará na organização como OWNER.
-                          </p>
-                          <Button
-                            size="sm"
-                            className="w-full"
-                            disabled={inviteStatus === 'executing'}
-                            onClick={() => handleInvite(org.id)}
-                          >
-                            {inviteStatus === 'executing' ? 'Enviando...' : 'Enviar convite'}
+                      <Popover
+                        open={openInvitePopoverId === org.id}
+                        onOpenChange={(open) => {
+                          setOpenInvitePopoverId(open ? org.id : null)
+                          if (!open) setInviteEmailInput('')
+                        }}
+                      >
+                        <PopoverTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <UserPlus className="h-4 w-4" />
                           </Button>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </TableCell>
-              </TableRow>
-            )
-          })}
-        </TableBody>
-      </Table>
-    </div>
+                        </PopoverTrigger>
+                        <PopoverContent align="end" className="w-72">
+                          <div className="space-y-3">
+                            <div>
+                              <p className="text-sm font-medium">Convidar OWNER</p>
+                              <p className="text-xs text-muted-foreground">{org.name}</p>
+                            </div>
+                            <Input
+                              type="email"
+                              placeholder="email@empresa.com"
+                              value={inviteEmailInput}
+                              onChange={(event) => setInviteEmailInput(event.target.value)}
+                              className="h-8"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              O usuário receberá um e-mail e ao criar a conta entrará na organização como OWNER.
+                            </p>
+                            <Button
+                              size="sm"
+                              className="w-full"
+                              disabled={inviteStatus === 'executing'}
+                              onClick={() => handleInvite(org.id)}
+                            >
+                              {inviteStatus === 'executing' ? 'Enviando...' : 'Enviar convite'}
+                            </Button>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => openEditSheet(org)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        onClick={() => {
+                          setDeleteOrg(org)
+                          setDeleteConfirmName('')
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )
+            })}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Sheet de edição */}
+      <Sheet open={editOrgId !== null} onOpenChange={(open) => { if (!open) setEditOrgId(null) }}>
+        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Editar organização</SheetTitle>
+          </SheetHeader>
+
+          <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-name">Nome</Label>
+              <Input
+                id="edit-name"
+                value={editForm.name}
+                onChange={(event) => setEditForm((prev) => ({ ...prev, name: event.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-slug">Slug</Label>
+              <Input
+                id="edit-slug"
+                value={editForm.slug}
+                onChange={(event) => setEditForm((prev) => ({ ...prev, slug: event.target.value }))}
+              />
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                Mudar o slug altera todas as URLs da organização.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-niche">Nicho</Label>
+              <Input
+                id="edit-niche"
+                placeholder="Ex: imobiliária, saúde..."
+                value={editForm.niche}
+                onChange={(event) => setEditForm((prev) => ({ ...prev, niche: event.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-plan-override">Plano forçado</Label>
+              <Select
+                value={editForm.planOverrideId || 'none'}
+                onValueChange={(value) =>
+                  setEditForm((prev) => ({ ...prev, planOverrideId: value === 'none' ? '' : value }))
+                }
+              >
+                <SelectTrigger id="edit-plan-override">
+                  <SelectValue placeholder="Nenhum" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhum</SelectItem>
+                  {plans.map((plan) => (
+                    <SelectItem key={plan.id} value={plan.id}>
+                      {plan.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="col-span-full flex items-center justify-between rounded-lg border border-border p-3">
+              <div>
+                <p className="text-sm font-medium">Read-only</p>
+                <p className="text-xs text-muted-foreground">Bloqueia mutações dentro da organização.</p>
+              </div>
+              <Switch
+                checked={editForm.isReadOnly}
+                onCheckedChange={(checked) => setEditForm((prev) => ({ ...prev, isReadOnly: checked }))}
+              />
+            </div>
+          </div>
+
+          <div className="mt-4 space-y-1.5">
+            <Label htmlFor="edit-admin-key">Senha de autorização</Label>
+            <Input
+              id="edit-admin-key"
+              type="password"
+              placeholder="••••••••"
+              value={editAdminKey}
+              onChange={(event) => setEditAdminKey(event.target.value)}
+              autoComplete="off"
+            />
+          </div>
+
+          <SheetFooter className="mt-6 flex justify-end">
+            <Button
+              disabled={updateStatus === 'executing' || !editAdminKey}
+              onClick={handleUpdate}
+            >
+              {updateStatus === 'executing' ? 'Salvando...' : 'Salvar'}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+
+      {/* AlertDialog de deleção */}
+      <AlertDialog
+        open={deleteOrg !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteOrg(null)
+            setDeleteConfirmName('')
+            setDeleteAdminKey('')
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Deletar organização</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação é <strong>irreversível</strong>. Todos os dados da organização serão
+              permanentemente apagados: membros, deals, contatos, conversas, agentes e subscription.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="delete-admin-key">Senha de autorização</Label>
+              <Input
+                id="delete-admin-key"
+                type="password"
+                placeholder="••••••••"
+                value={deleteAdminKey}
+                onChange={(event) => setDeleteAdminKey(event.target.value)}
+                autoComplete="off"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <p className="text-sm text-muted-foreground">
+                Digite <strong className="text-foreground">{deleteOrg?.name}</strong> para confirmar:
+              </p>
+              <Input
+                value={deleteConfirmName}
+                onChange={(event) => setDeleteConfirmName(event.target.value)}
+                placeholder={deleteOrg?.name}
+              />
+            </div>
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={
+                !deleteAdminKey ||
+                deleteConfirmName !== deleteOrg?.name ||
+                deleteStatus === 'executing'
+              }
+              onClick={() => {
+                if (!deleteOrg) return
+                executeDelete({
+                  organizationId: deleteOrg.id,
+                  adminKey: deleteAdminKey,
+                  confirmName: deleteConfirmName,
+                })
+              }}
+            >
+              {deleteStatus === 'executing' ? 'Deletando...' : 'Deletar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }

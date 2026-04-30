@@ -9,7 +9,10 @@ export interface AdminOrganizationDto {
   id: string
   name: string
   slug: string
+  niche: string | null
+  isReadOnly: boolean
   memberCount: number
+  planOverride: { id: string; name: string; slug: string } | null
   subscription: {
     status: string
     planName: string
