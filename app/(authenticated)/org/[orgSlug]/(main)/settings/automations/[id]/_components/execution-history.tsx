@@ -94,7 +94,7 @@ export function ExecutionHistory({ executions, orgSlug }: ExecutionHistoryProps)
                     </Badge>
                     {execution.deal && (
                       <Link
-                        href={`/org/${orgSlug}/deals/${execution.deal.id}`}
+                        href={`/org/${orgSlug}/crm/deals/${execution.deal.id}`}
                         className="text-sm font-medium hover:underline truncate"
                       >
                         {execution.deal.title}
