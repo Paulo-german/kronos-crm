@@ -6,7 +6,14 @@ import { Card, CardContent } from '@/_components/ui/card'
 import { formatCurrency } from '@/_utils/format-currency'
 import type { DealDto } from '@/_data-access/deal/get-deals-by-pipeline'
 import { Badge } from '@/_components/ui/badge'
-import { Clock, SquareIcon, Flag } from 'lucide-react'
+import {
+  CalendarClock,
+  Clock,
+  MessageCircle,
+  SquareIcon,
+  Flag,
+  SquareCheckBigIcon,
+} from 'lucide-react'
 import { Label } from '@/_components/ui/label'
 import {
   Tooltip,
@@ -139,7 +146,7 @@ const KanbanCard = ({
       style={style}
       {...attributes}
       {...listeners}
-      className={`border-border-strong relative cursor-grab bg-kanban-card shadow-none transition-all ${draggingClass}`}
+      className={`border-border-strong relative cursor-grab border bg-kanban-card shadow-none transition-all ${draggingClass}`}
       onClick={handleCardClick}
     >
       <CardContent className="flex flex-col gap-4 p-3.5">
@@ -167,7 +174,10 @@ const KanbanCard = ({
               className={`flex h-6 w-6 items-center justify-center rounded-md border bg-transparent transition-colors hover:bg-accent ${priorityConfig[priority].color}`}
               onClick={(e) => onPriorityClick?.(deal.id, e.currentTarget)}
             >
-              {(() => { const Icon = priorityConfig[priority].icon; return <Icon className="h-3.5 w-3.5" /> })()}
+              {(() => {
+                const Icon = priorityConfig[priority].icon
+                return <Icon className="h-3.5 w-3.5" />
+              })()}
             </button>
           </div>
         </div>
@@ -223,9 +233,26 @@ const KanbanCard = ({
               </Tooltip>
             </div>
           </div>
+          {/* 3.5 Contadores de atividade */}
+          <p className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <SquareCheckBigIcon className="size-3" />
+              {deal.taskCount}
+            </span>
+            <span>·</span>
+            <span className="flex items-center gap-1">
+              <CalendarClock className="size-3" />
+              {deal.appointmentCount}
+            </span>
+            <span>·</span>
+            <span className="flex items-center gap-1">
+              <MessageCircle className="size-3" />
+              {deal.conversationCount}
+            </span>
+          </p>
         </div>
 
-        {/* 3.5 Indicador de Inatividade */}
+        {/* 3.6 Indicador de Inatividade */}
         {showIdleDays && deal.status !== 'WON' && deal.status !== 'LOST' && (
           <Tooltip>
             <TooltipTrigger asChild>

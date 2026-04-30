@@ -127,6 +127,7 @@ export const updateAppointment = orgActionClient
     revalidateTag(`appointments:${ctx.orgId}`)
     revalidateTag(`deal-appointments:${existing.dealId}`)
     revalidateTag(`deal:${existing.dealId}`)
+    revalidateTag(`deals:${ctx.orgId}`)
 
     // Notificar novo responsável quando há transferência de ownership para outro usuário
     if (

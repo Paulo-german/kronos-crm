@@ -37,6 +37,7 @@ export const deleteTask = orgActionClient
 
     revalidateTag(`tasks:${ctx.orgId}`)
     if (task.dealId) revalidateTag(`deal:${task.dealId}`)
+    revalidateTag(`deals:${ctx.orgId}`)
     revalidatePath('/crm/tasks')
     revalidatePath('/crm/deals/pipeline')
     if (task.dealId) revalidatePath(`/crm/deals/${task.dealId}`)

@@ -43,6 +43,7 @@ export const deleteAppointment = orgActionClient
     revalidateTag(`appointments:${ctx.orgId}`)
     revalidateTag(`deal-appointments:${existing.dealId}`)
     revalidateTag(`deal:${existing.dealId}`)
+    revalidateTag(`deals:${ctx.orgId}`)
 
     return { success: true }
   })

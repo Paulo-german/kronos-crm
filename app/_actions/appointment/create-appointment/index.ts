@@ -71,6 +71,7 @@ export const createAppointment = orgActionClient
     revalidateTag(`appointments:${ctx.orgId}`)
     revalidateTag(`deal-appointments:${data.dealId}`)
     revalidateTag(`deal:${data.dealId}`)
+    revalidateTag(`deals:${ctx.orgId}`)
 
     // Notificar responsável quando o agendamento é atribuído a outro usuário
     if (assignedTo !== ctx.userId) {

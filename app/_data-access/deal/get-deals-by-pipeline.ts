@@ -22,6 +22,9 @@ export interface DealDto {
   assignedTo: string
   createdAt: Date
   lastActivityAt: Date | null
+  taskCount: number
+  appointmentCount: number
+  conversationCount: number
 }
 
 export interface DealsByStageDto {
@@ -67,6 +70,9 @@ const fetchDealsByPipelineFromDb = async (
           discountType: true,
           discountValue: true,
         },
+      },
+      _count: {
+        select: { tasks: true, appointments: true, conversations: true },
       },
       // Última atividade para calcular dias de inatividade no card do Kanban
       activities: {
@@ -116,6 +122,9 @@ const fetchDealsByPipelineFromDb = async (
         assignedTo: deal.assignedTo,
         createdAt: deal.createdAt,
         lastActivityAt: deal.activities[0]?.createdAt ?? null,
+        taskCount: deal._count.tasks,
+        appointmentCount: deal._count.appointments,
+        conversationCount: deal._count.conversations,
       })
     }
   }

@@ -76,6 +76,7 @@ export const updateTask = orgActionClient
 
     revalidateTag(`tasks:${ctx.orgId}`)
     revalidateTag(`deal:${data.dealId}`)
+    revalidateTag(`deals:${ctx.orgId}`)
     if (existingTask.dealId !== data.dealId) {
       revalidateTag(`deal:${existingTask.dealId}`)
     }

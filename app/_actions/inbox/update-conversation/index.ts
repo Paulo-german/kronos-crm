@@ -100,6 +100,7 @@ export const updateConversation = orgActionClient
     if (data.dealId !== undefined) {
       if (oldDealId) revalidateTag(`deal:${oldDealId}`)
       if (data.dealId) revalidateTag(`deal:${data.dealId}`)
+      revalidateTag(`deals:${ctx.orgId}`)
     }
 
     return { success: true }
