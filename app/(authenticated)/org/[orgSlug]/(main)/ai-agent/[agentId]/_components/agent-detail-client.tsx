@@ -104,9 +104,9 @@ const AgentDetailClient = ({
   return (
     <TooltipProvider>
       {/* Layout principal: conteúdo + painel lateral do chat */}
-      <div className="flex flex-1 min-h-0 bg-background">
+      <div className="flex flex-1 min-h-0 min-w-0 bg-background">
         {/* Conteúdo principal — flex-1 para ceder espaço ao painel quando aberto */}
-        <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-6">
+        <div className="flex flex-1 min-w-0 flex-col gap-6 overflow-x-hidden overflow-y-auto p-6">
           {/* Back + Title */}
           <div className="flex flex-col gap-4">
             <Button variant="ghost" size="sm" className="w-fit" asChild>
@@ -274,7 +274,7 @@ const AgentDetailClient = ({
 
         {/* Painel lateral do chat de teste — renderizado apenas quando aberto */}
         {isChatOpen && (
-          <div className="h-full">
+          <div className="h-full shrink-0">
             <TestChatPanel
               agentId={agent.id}
               agentName={agent.name}
