@@ -12,6 +12,7 @@ import { PlansGrid } from './plans-grid'
 import { ComparisonTable } from './comparison-table'
 import { PlansFaq } from './plans-faq'
 import { PlanChangeDialog } from './plan-change-dialog'
+import { RefreshSubscriptionCacheButton } from '@/(authenticated)/org/_components/refresh-subscription-cache-button'
 
 interface PlansPageClientProps {
   currentPlan: PlanType | null
@@ -46,6 +47,11 @@ export function PlansPageClient({
 
   return (
     <div className="mx-auto space-y-12 py-10">
+      {/* Botão de refresh do cache — alinhado à direita, discreto */}
+      <div className="flex justify-end">
+        <RefreshSubscriptionCacheButton orgSlug={orgSlug} />
+      </div>
+
       {/* Badge de contexto trial — só exibe para usuários ainda em trial ativo */}
       {isOnTrial && daysRemaining > 0 && (
         <div className="flex justify-center">

@@ -4,6 +4,7 @@ import { KronosLogo } from '@/_components/icons/kronos-logo'
 import { Button } from '@/_components/ui/button'
 import { CheckoutStepper } from './_components/checkout-stepper'
 import { OrderSummary } from './_components/order-summary'
+import { RefreshSubscriptionCacheButton } from '@/(authenticated)/org/_components/refresh-subscription-cache-button'
 
 interface CheckoutLayoutProps {
   children: React.ReactNode
@@ -25,12 +26,15 @@ export default async function CheckoutLayout({
             <span className="text-xl font-bold tracking-tight">KRONOS</span>
           </div>
 
-          <Button variant="ghost" size="sm" asChild>
-            <Link href={`/org/${orgSlug}/plans`}>
-              <ArrowLeft className="mr-2 size-4" />
-              Voltar
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <RefreshSubscriptionCacheButton orgSlug={orgSlug} />
+            <Button variant="ghost" size="sm" asChild>
+              <Link href={`/org/${orgSlug}/plans`}>
+                <ArrowLeft className="mr-2 size-4" />
+                Voltar
+              </Link>
+            </Button>
+          </div>
         </div>
       </header>
 
