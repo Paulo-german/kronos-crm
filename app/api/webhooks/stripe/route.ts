@@ -3,7 +3,11 @@ import { headers } from 'next/headers'
 import { stripe } from '@/_lib/stripe'
 import { db } from '@/_lib/prisma'
 import { revalidateTag } from 'next/cache'
-import { getSubscriptionPeriodEnd, resolveProductKeyFromPriceId } from '@/_lib/stripe-utils'
+import {
+  getSubscriptionPeriodEnd,
+  mapStripeStatus,
+  resolveProductKey,
+} from '@/_lib/stripe-utils'
 import { notifyOrgAdmins } from '@/_lib/notifications/notify-org-admins'
 import type Stripe from 'stripe'
 
@@ -252,56 +256,3 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
   })
 }
 
-/**
- * Mapeia status do Stripe para o enum SubscriptionStatus do Prisma
- */
-function mapStripeStatus(
-  status: Stripe.Subscription.Status,
-): 'active' | 'past_due' | 'canceled' | 'trialing' | 'incomplete' {
-  const statusMap: Record<string, 'active' | 'past_due' | 'canceled' | 'trialing' | 'incomplete'> = {
-    active: 'active',
-    past_due: 'past_due',
-    canceled: 'canceled',
-    trialing: 'trialing',
-    incomplete: 'incomplete',
-    incomplete_expired: 'canceled',
-    unpaid: 'past_due',
-    paused: 'canceled',
-  }
-
-  return statusMap[status] || 'active'
-}
-
-/**
- * Resolve product_key com cadeia de fallbacks:
- * 1. metadata da subscription (gravado no checkout)
- * 2. metadata do Product no Stripe
- * 3. comparação por Price ID via env vars (legado)
- */
-async function resolveProductKey(subscription: Stripe.Subscription): Promise<string> {
-  const fromMetadata = subscription.metadata?.product_key
-  if (fromMetadata) return fromMetadata
-
-  console.warn(
-    `[billing] product_key missing in subscription metadata (${subscription.id}), falling back to Stripe Product`,
-  )
-
-  const productId = subscription.items.data[0]?.price.product
-  if (productId) {
-    const id = typeof productId === 'string' ? productId : productId.id
-    try {
-      const product = await stripe.products.retrieve(id)
-      const fromProduct = product.metadata?.product_key
-      if (fromProduct) return fromProduct
-    } catch (err) {
-      console.error(`[billing] Failed to retrieve Stripe product ${id}:`, err)
-    }
-  }
-
-  console.warn(
-    `[billing] Falling back to env-based price ID mapping for subscription ${subscription.id}`,
-  )
-
-  const priceId = subscription.items.data[0]?.price.id || ''
-  return resolveProductKeyFromPriceId(priceId)
-}
