@@ -418,7 +418,7 @@ export function KanbanBoard({
             value={sortBy}
             onValueChange={(v) => onSortChange(v as SortOption)}
           >
-            <SelectTrigger className="w-[300px] bg-background">
+            <SelectTrigger className="w-[300px] border-border-strong bg-background">
               <ArrowUpDown className="mr-2 h-4 w-4 text-muted-foreground" />
               <SelectValue placeholder="Ordenar por" />
             </SelectTrigger>
@@ -435,7 +435,7 @@ export function KanbanBoard({
             <PopoverTrigger asChild disabled={isMember}>
               <Button
                 variant="outline"
-                className="relative w-[300px] justify-center border-border bg-background font-normal hover:bg-background/80"
+                className="relative w-[300px] justify-center border-border-strong bg-background font-normal hover:bg-accent"
               >
                 <User className="absolute left-3 h-4 w-4 text-muted-foreground" />
                 {effectiveAssignees.length === 0 ? (
