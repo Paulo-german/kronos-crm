@@ -139,6 +139,7 @@ export function DealDialogContent({
             ? 'Deal e contato criados com sucesso!'
             : 'Deal criado com sucesso!'
         toast.success(message)
+        createForm.reset()
         setIsOpen(false)
       },
       onError: ({ error }) => {
