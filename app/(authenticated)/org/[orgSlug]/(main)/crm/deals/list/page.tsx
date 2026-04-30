@@ -29,12 +29,13 @@ const DealsListPage = async ({ params, searchParams }: DealsListPageProps) => {
 
   const pipeline = pipelineRaw ?? (await createDefaultPipeline({ orgId: ctx.orgId }))
 
-  // Se ?pipelineId=<uuid> aponta para um funil que não existe mais (deletado),
-  // getOrgPipeline retorna null e caímos no fallback createDefaultPipeline.
-  // Neutralizar o pipelineId stale antes de getDealsPaginated para evitar 0 resultados.
-  const effectiveParams = pipelineRaw
-    ? listParams
-    : { ...listParams, pipelineId: undefined }
+  // Garante que effectiveParams sempre carrega um pipelineId resolvido:
+  // - URL sem pipelineId → usa o pipeline default/fallback resolvido
+  // - URL com pipelineId deletado (pipelineRaw null) → neutraliza para evitar 0 resultados
+  const effectiveParams = {
+    ...listParams,
+    pipelineId: pipelineRaw ? (listParams.pipelineId ?? pipeline.id) : undefined,
+  }
 
   const [result, contacts, members, quota, completedTutorialIds] = await Promise.all([
     getDealsPaginated(ctx, effectiveParams),
