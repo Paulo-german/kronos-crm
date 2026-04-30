@@ -16,10 +16,7 @@ import {
   Package,
   Users,
   GitBranch,
-  ArrowUp,
-  ArrowRight,
-  ArrowDown,
-  Zap,
+  Flag,
 } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import {
@@ -71,10 +68,10 @@ const STATUS_OPTIONS = [
 
 // --- Config de Prioridade ---
 const PRIORITY_OPTIONS = [
-  { value: 'low', label: 'Baixa', icon: ArrowDown, className: 'text-slate-400' },
-  { value: 'medium', label: 'Média', icon: ArrowRight, className: 'text-amber-400' },
-  { value: 'high', label: 'Alta', icon: ArrowUp, className: 'text-orange-500' },
-  { value: 'urgent', label: 'Urgente', icon: Zap, className: 'text-red-500' },
+  { value: 'low', label: 'Baixa', icon: Flag, className: 'text-muted-foreground' },
+  { value: 'medium', label: 'Média', icon: Flag, className: 'text-kronos-blue' },
+  { value: 'high', label: 'Alta', icon: Flag, className: 'text-kronos-yellow' },
+  { value: 'urgent', label: 'Urgente', icon: Flag, className: 'text-kronos-red' },
 ] as const
 
 // --- Opções de Inatividade ---
@@ -425,7 +422,7 @@ function StatusFilter({ value, onChange }: StatusFilterProps) {
           variant="outline"
           size="sm"
           className={cn(
-            'h-8 gap-1.5 border border-border bg-input px-2.5 text-xs font-medium hover:bg-input/80',
+            'h-8 w-auto gap-1.5 border border-border-strong px-2.5 text-xs font-medium',
             value.length > 0 && 'border-primary/40 bg-primary/5 text-primary',
           )}
         >
@@ -503,11 +500,11 @@ function PriorityFilter({ value, onChange }: PriorityFilterProps) {
           variant="outline"
           size="sm"
           className={cn(
-            'h-8 gap-1.5 border border-border bg-input px-2.5 text-xs font-medium hover:bg-input/80',
+            'h-8 w-auto gap-1.5 border border-border-strong px-2.5 text-xs font-medium',
             value.length > 0 && 'border-primary/40 bg-primary/5 text-primary',
           )}
         >
-          <ArrowUp className="size-3.5" />
+          <Flag className="size-3.5" />
           Prioridade
           {value.length > 0 && (
             <Badge
