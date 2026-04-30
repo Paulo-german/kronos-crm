@@ -6,7 +6,7 @@ import { format, differenceInDays, isPast } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
-import { Building2, Clock, Plus } from 'lucide-react'
+import { Building2, Clock, Plus, RefreshCw, UserPlus } from 'lucide-react'
 import {
   Table,
   TableBody,
@@ -24,6 +24,8 @@ import {
   PopoverTrigger,
 } from '@/_components/ui/popover'
 import { extendTrial } from '@/_actions/admin/extend-trial'
+import { syncStripeSubscription } from '@/_actions/admin/sync-stripe-subscription'
+import { adminInviteOwner } from '@/_actions/admin/admin-invite-owner'
 import type { AdminOrganizationDto } from '@/_data-access/admin/types'
 
 const STATUS_MAP: Record<string, { label: string; className: string }> = {
@@ -67,6 +69,11 @@ export const OrganizationsTable = ({ organizations }: OrganizationsTableProps) =
   const router = useRouter()
   const [openPopoverId, setOpenPopoverId] = useState<string | null>(null)
   const [daysToAdd, setDaysToAdd] = useState('7')
+  const [openSyncPopoverId, setOpenSyncPopoverId] = useState<string | null>(null)
+  const [stripeSubInput, setStripeSubInput] = useState('')
+  const [stripeCustomerInput, setStripeCustomerInput] = useState('')
+  const [openInvitePopoverId, setOpenInvitePopoverId] = useState<string | null>(null)
+  const [inviteEmailInput, setInviteEmailInput] = useState('')
 
   const { execute: executeExtend, status: extendStatus } = useAction(extendTrial, {
     onSuccess: () => {
@@ -79,6 +86,63 @@ export const OrganizationsTable = ({ organizations }: OrganizationsTableProps) =
       toast.error(error.serverError ?? 'Erro ao estender trial.')
     },
   })
+
+  const { execute: executeInvite, status: inviteStatus } = useAction(adminInviteOwner, {
+    onSuccess: () => {
+      toast.success('Convite enviado com sucesso.')
+      setOpenInvitePopoverId(null)
+      setInviteEmailInput('')
+      router.refresh()
+    },
+    onError: ({ error }) => {
+      toast.error(error.serverError ?? 'Erro ao enviar convite.')
+    },
+  })
+
+  const { execute: executeSync, status: syncStatus } = useAction(
+    syncStripeSubscription,
+    {
+      onSuccess: ({ data }) => {
+        toast.success(
+          `Subscription sincronizada (plano: ${data?.planSlug}, status: ${data?.status}).`,
+        )
+        setOpenSyncPopoverId(null)
+        setStripeSubInput('')
+        setStripeCustomerInput('')
+        router.refresh()
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError ?? 'Erro ao sincronizar subscription.')
+      },
+    },
+  )
+
+  const handleSync = (organizationId: string) => {
+    const trimmedSub = stripeSubInput.trim()
+    if (!trimmedSub.startsWith('sub_')) {
+      toast.error('ID de subscription inválido (esperado sub_xxx).')
+      return
+    }
+    const trimmedCustomer = stripeCustomerInput.trim()
+    if (trimmedCustomer && !trimmedCustomer.startsWith('cus_')) {
+      toast.error('Customer ID inválido (esperado cus_xxx).')
+      return
+    }
+    executeSync({
+      organizationId,
+      stripeSubscriptionId: trimmedSub,
+      stripeCustomerId: trimmedCustomer || undefined,
+    })
+  }
+
+  const handleInvite = (organizationId: string) => {
+    const email = inviteEmailInput.trim()
+    if (!email) {
+      toast.error('Informe um e-mail válido.')
+      return
+    }
+    executeInvite({ organizationId, email })
+  }
 
   const handleExtendTrial = (organizationId: string) => {
     const days = parseInt(daysToAdd, 10)
@@ -182,53 +246,143 @@ export const OrganizationsTable = ({ organizations }: OrganizationsTableProps) =
                   {format(new Date(org.createdAt), "d 'de' MMM, yyyy", { locale: ptBR })}
                 </TableCell>
                 <TableCell>
-                  <Popover
-                    open={openPopoverId === org.id}
-                    onOpenChange={(open) => {
-                      setOpenPopoverId(open ? org.id : null)
-                      if (open) setDaysToAdd('7')
-                    }}
-                  >
-                    <PopoverTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent align="end" className="w-64">
-                      <div className="space-y-3">
-                        <div>
-                          <p className="text-sm font-medium">Estender trial</p>
-                          <p className="text-xs text-muted-foreground">{org.name}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="number"
-                            min={1}
-                            max={365}
-                            value={daysToAdd}
-                            onChange={(event) => setDaysToAdd(event.target.value)}
-                            className="h-8"
-                            placeholder="Dias"
-                          />
-                          <span className="shrink-0 text-sm text-muted-foreground">dias</span>
-                        </div>
-                        {trialInfo && !trialInfo.expired && (
-                          <p className="text-xs text-muted-foreground">
-                            Trial atual até{' '}
-                            {format(new Date(trialInfo.endsAt), "d 'de' MMM", { locale: ptBR })}
-                          </p>
-                        )}
-                        <Button
-                          size="sm"
-                          className="w-full"
-                          disabled={extendStatus === 'executing'}
-                          onClick={() => handleExtendTrial(org.id)}
-                        >
-                          {extendStatus === 'executing' ? 'Estendendo...' : 'Estender'}
+                  <div className="flex items-center justify-end gap-1">
+                    <Popover
+                      open={openPopoverId === org.id}
+                      onOpenChange={(open) => {
+                        setOpenPopoverId(open ? org.id : null)
+                        if (open) setDaysToAdd('7')
+                      }}
+                    >
+                      <PopoverTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <Plus className="h-4 w-4" />
                         </Button>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
+                      </PopoverTrigger>
+                      <PopoverContent align="end" className="w-64">
+                        <div className="space-y-3">
+                          <div>
+                            <p className="text-sm font-medium">Estender trial</p>
+                            <p className="text-xs text-muted-foreground">{org.name}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              min={1}
+                              max={365}
+                              value={daysToAdd}
+                              onChange={(event) => setDaysToAdd(event.target.value)}
+                              className="h-8"
+                              placeholder="Dias"
+                            />
+                            <span className="shrink-0 text-sm text-muted-foreground">dias</span>
+                          </div>
+                          {trialInfo && !trialInfo.expired && (
+                            <p className="text-xs text-muted-foreground">
+                              Trial atual até{' '}
+                              {format(new Date(trialInfo.endsAt), "d 'de' MMM", { locale: ptBR })}
+                            </p>
+                          )}
+                          <Button
+                            size="sm"
+                            className="w-full"
+                            disabled={extendStatus === 'executing'}
+                            onClick={() => handleExtendTrial(org.id)}
+                          >
+                            {extendStatus === 'executing' ? 'Estendendo...' : 'Estender'}
+                          </Button>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+
+                    <Popover
+                      open={openSyncPopoverId === org.id}
+                      onOpenChange={(open) => {
+                        setOpenSyncPopoverId(open ? org.id : null)
+                        if (!open) {
+                          setStripeSubInput('')
+                          setStripeCustomerInput('')
+                        }
+                      }}
+                    >
+                      <PopoverTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <RefreshCw className="h-4 w-4" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent align="end" className="w-72">
+                        <div className="space-y-3">
+                          <div>
+                            <p className="text-sm font-medium">Sincronizar Stripe</p>
+                            <p className="text-xs text-muted-foreground">{org.name}</p>
+                          </div>
+                          <Input
+                            placeholder="sub_xxxxxxxxxxxx"
+                            value={stripeSubInput}
+                            onChange={(event) => setStripeSubInput(event.target.value)}
+                            className="h-8 font-mono text-xs"
+                          />
+                          <Input
+                            placeholder="cus_xxxxxxxxxxxx (opcional)"
+                            value={stripeCustomerInput}
+                            onChange={(event) => setStripeCustomerInput(event.target.value)}
+                            className="h-8 font-mono text-xs"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Customer ID opcional — se omitido, é resolvido automaticamente pela subscription.
+                          </p>
+                          <Button
+                            size="sm"
+                            className="w-full"
+                            disabled={syncStatus === 'executing'}
+                            onClick={() => handleSync(org.id)}
+                          >
+                            {syncStatus === 'executing' ? 'Sincronizando...' : 'Sincronizar'}
+                          </Button>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+
+                    <Popover
+                      open={openInvitePopoverId === org.id}
+                      onOpenChange={(open) => {
+                        setOpenInvitePopoverId(open ? org.id : null)
+                        if (!open) setInviteEmailInput('')
+                      }}
+                    >
+                      <PopoverTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <UserPlus className="h-4 w-4" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent align="end" className="w-72">
+                        <div className="space-y-3">
+                          <div>
+                            <p className="text-sm font-medium">Convidar OWNER</p>
+                            <p className="text-xs text-muted-foreground">{org.name}</p>
+                          </div>
+                          <Input
+                            type="email"
+                            placeholder="email@empresa.com"
+                            value={inviteEmailInput}
+                            onChange={(event) => setInviteEmailInput(event.target.value)}
+                            className="h-8"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            O usuário receberá um e-mail e ao criar a conta entrará na organização como OWNER.
+                          </p>
+                          <Button
+                            size="sm"
+                            className="w-full"
+                            disabled={inviteStatus === 'executing'}
+                            onClick={() => handleInvite(org.id)}
+                          >
+                            {inviteStatus === 'executing' ? 'Enviando...' : 'Enviar convite'}
+                          </Button>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
                 </TableCell>
               </TableRow>
             )
