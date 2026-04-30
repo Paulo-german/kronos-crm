@@ -8,9 +8,67 @@ export const passwordRules = [
   { label: 'Um caractere especial', regex: /[\W_]/ },
 ]
 
+const BLOCKED_COMPANY_NAMES = [
+  'teste',
+  'test',
+  'testing',
+  'pessoal',
+  'particular',
+  'empresa',
+  'minha empresa',
+  'company',
+  'negocio',
+  'negócio',
+  'meu negocio',
+  'meu negócio',
+  'loja',
+  'oi',
+  'aaa',
+  'asdf',
+  'qwerty',
+  'abc',
+  '123',
+  'exemplo',
+  'example',
+]
+
 export const signUpSchema = z.object({
-  fullName: z.string().min(4, 'Você precisa preencher seu nome completo'),
-  companyName: z.string().trim().min(1, 'Nome da empresa é obrigatório').max(100, 'Nome muito longo'),
+  fullName: z
+    .string()
+    .trim()
+    .min(4, 'Você precisa preencher seu nome completo')
+    .refine(
+      (val) => val.trim().split(/\s+/).length >= 2,
+      'Informe seu nome e sobrenome',
+    )
+    .refine(
+      (val) => /^[a-zA-ZÀ-ÿ\s''-]+$/.test(val.trim()),
+      'O nome não pode conter números ou caracteres especiais',
+    ),
+  companyName: z
+    .string()
+    .trim()
+    .min(2, 'Nome da empresa é obrigatório')
+    .max(100, 'Nome muito longo')
+    .refine(
+      (val) => !BLOCKED_COMPANY_NAMES.includes(val.toLowerCase().trim()),
+      'Use o nome real da sua empresa',
+    ),
+  websiteOrInstagram: z
+    .string()
+    .trim()
+    .optional()
+    .refine(
+      (val) => {
+        if (!val) return true
+        const isUrl = /^(https?:\/\/)?[\w-]+(\.[\w-]+)+([/?#]\S*)?$/.test(val)
+        const isInstagram =
+          /^(https?:\/\/)?(www\.)?instagram\.com\/[\w.]+\/?$/.test(val) ||
+          /^@?[\w.][\w.]{2,}$/.test(val)
+        return isUrl || isInstagram
+      },
+      'Informe um site válido ou perfil do Instagram (@usuario)',
+    ),
   phone: z.string().min(10, 'Telefone inválido').max(20, 'Telefone muito longo'),
   email: z.string().email('Por favor, insira um e-mail válido'),
   password: passwordRules.reduce(

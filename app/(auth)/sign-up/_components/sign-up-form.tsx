@@ -35,6 +35,7 @@ const SignUpForm = () => {
     defaultValues: {
       fullName: '',
       companyName: '',
+      websiteOrInstagram: '',
       phone: '',
       email: '',
       password: '',
@@ -85,7 +86,23 @@ const SignUpForm = () => {
             <FormItem>
               <FormLabel>Nome da empresa</FormLabel>
               <FormControl>
-                <Input placeholder="Ex: Minha Empresa" {...field} />
+                <Input placeholder="Ex: Studio Silva & Associados" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="websiteOrInstagram"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Site ou Instagram da empresa <span className="text-muted-foreground font-normal">(opcional)</span></FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="https://suaempresa.com ou @suaempresa"
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>

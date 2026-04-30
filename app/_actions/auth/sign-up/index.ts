@@ -8,11 +8,27 @@ import { redirect } from 'next/navigation'
 import { verifyRecaptchaToken } from '@/_lib/recaptcha'
 import { generateSlug, ensureUniqueSlug } from '@/_lib/slug'
 
+const INSTAGRAM_URL_REGEX = /^(https?:\/\/)?(www\.)?instagram\.com\/([\w.]+)\/?$/
+
+const normalizeWebsite = (input: string): string => {
+  const instagramMatch = input.match(INSTAGRAM_URL_REGEX)
+  if (instagramMatch) {
+    return `https://instagram.com/${instagramMatch[3]}`
+  }
+  if (/^@?[\w.][\w.]{2,}$/.test(input) && !input.includes('.')) {
+    return `https://instagram.com/${input.replace(/^@/, '')}`
+  }
+  if (!/^https?:\/\//.test(input)) {
+    return `https://${input}`
+  }
+  return input
+}
+
 export const signUp = actionClient
   .schema(signUpSchema)
   .action(
     async ({
-      parsedInput: { fullName, companyName, phone, email, password, captchaToken },
+      parsedInput: { fullName, companyName, websiteOrInstagram, phone, email, password, captchaToken },
     }: {
       parsedInput: SignUpSchema
     }) => {
@@ -52,6 +68,10 @@ export const signUp = actionClient
       const baseSlug = generateSlug(companyName)
       const slug = await ensureUniqueSlug(baseSlug)
 
+      const website = websiteOrInstagram
+        ? normalizeWebsite(websiteOrInstagram)
+        : null
+
       // 4. Transação atômica: User local + Organization + Member OWNER + CreditWallet
       await prisma.$transaction(async (tx) => {
         await tx.user.create({
@@ -67,6 +87,7 @@ export const signUp = actionClient
           data: {
             name: companyName,
             slug,
+            website,
           },
         })
 
