@@ -33,7 +33,7 @@ export const createSetupIntent = freeOrgActionClient
 
     const setupIntent = await stripe.setupIntents.create({
       customer: org.stripeCustomerId,
-      payment_method_types: ['card'],
+      automatic_payment_methods: { enabled: true },
       usage: 'off_session',
       metadata: {
         organizationId: ctx.orgId,
