@@ -5,8 +5,17 @@ import { getActiveAutomationsByTrigger } from '@/_data-access/automation/get-act
 import { evaluateConditions } from './evaluate-conditions'
 import { getExecutor } from './executors'
 import { automationConditionSchema } from '@/_actions/automation/create-automation/schema'
-import type { AutomationEvent, DealForEvaluation } from './types'
-import type { Prisma } from '@prisma/client'
+import type {
+  AutomationEvent,
+  DealForEvaluation,
+  DealMovedConfig,
+  DealCreatedConfig,
+  DealStatusChangedConfig,
+  DealStaleConfig,
+  DealIdleInStageConfig,
+  ActivityCreatedConfig,
+} from './types'
+import type { AutomationTrigger, DealStatus, Prisma } from '@prisma/client'
 import { z } from 'zod'
 
 // Janela de deduplicação padrão: 60 minutos
@@ -51,6 +60,74 @@ async function fetchDealForEvaluation(dealId: string): Promise<DealForEvaluation
     // Decimal → number (null-safe); null se o deal não tem valor definido (0 é válido)
     value: deal.value !== null ? Number(deal.value) : null,
   }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Validação do triggerConfig contra o evento real
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Confere se o triggerConfig (gravado na automação) bate com o payload do evento.
+ * Campo `undefined` no config = wildcard (qualquer valor passa).
+ *
+ * Sem isso, automações configuradas para um pipeline específico disparam em
+ * eventos de qualquer pipeline (bug histórico do motor).
+ */
+function triggerConfigMatches(
+  triggerType: AutomationTrigger,
+  triggerConfig: Record<string, unknown>,
+  event: AutomationEvent,
+): boolean {
+  const payload = event.payload
+
+  if (triggerType === 'DEAL_MOVED') {
+    const config = triggerConfig as Partial<DealMovedConfig>
+    if (config.pipelineId && payload.pipelineId !== config.pipelineId) return false
+    if (config.toStageId && payload.toStageId !== config.toStageId) return false
+    if (config.fromStageId && payload.fromStageId !== config.fromStageId) return false
+    return true
+  }
+
+  if (triggerType === 'DEAL_CREATED') {
+    const config = triggerConfig as Partial<DealCreatedConfig>
+    if (config.pipelineId && payload.pipelineId !== config.pipelineId) return false
+    if (config.stageId && payload.stageId !== config.stageId) return false
+    return true
+  }
+
+  if (triggerType === 'DEAL_STATUS_CHANGED') {
+    const config = triggerConfig as Partial<DealStatusChangedConfig>
+    if (config.pipelineId && payload.pipelineId !== config.pipelineId) return false
+    if (config.statuses && config.statuses.length > 0) {
+      const status = payload.status as DealStatus | undefined
+      if (!status || !config.statuses.includes(status)) return false
+    }
+    return true
+  }
+
+  if (triggerType === 'DEAL_STALE') {
+    const config = triggerConfig as Partial<DealStaleConfig>
+    if (config.pipelineId && payload.pipelineId !== config.pipelineId) return false
+    return true
+  }
+
+  if (triggerType === 'DEAL_IDLE_IN_STAGE') {
+    const config = triggerConfig as Partial<DealIdleInStageConfig>
+    if (config.stageId && payload.stageId !== config.stageId) return false
+    return true
+  }
+
+  if (triggerType === 'ACTIVITY_CREATED') {
+    const config = triggerConfig as Partial<ActivityCreatedConfig>
+    if (config.pipelineId && payload.pipelineId !== config.pipelineId) return false
+    if (config.activityTypes && config.activityTypes.length > 0) {
+      const activityType = payload.activityType as string | undefined
+      if (!activityType || !config.activityTypes.includes(activityType)) return false
+    }
+    return true
+  }
+
+  return true
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -123,6 +200,24 @@ export async function evaluateAutomations(event: AutomationEvent): Promise<void>
         continue
       }
       const conditions = conditionsParse.data
+
+      // 0. Validação do triggerConfig contra o payload do evento
+      // event.triggerType é o filtro usado na busca, então é o mesmo da automação.
+      const triggerConfig = (automation.triggerConfig ?? {}) as Record<string, unknown>
+      if (!triggerConfigMatches(event.triggerType, triggerConfig, event)) {
+        await db.automationExecution.create({
+          data: {
+            automationId: automation.id,
+            organizationId: event.orgId,
+            dealId: event.dealId,
+            status: 'SKIPPED',
+            triggerPayload: event.payload as Prisma.InputJsonValue,
+            actionResult: { reason: 'trigger_config_mismatch' } as Prisma.InputJsonValue,
+            durationMs: Date.now() - startedAt,
+          },
+        })
+        continue
+      }
 
       // 1. Avaliação de condições
       const conditionsMet = evaluateConditions(deal, conditions)

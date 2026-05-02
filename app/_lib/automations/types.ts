@@ -88,10 +88,14 @@ export interface MarkDealLostConfig {
   lossReasonId?: string
 }
 
+export type NotifyChannel = 'in_app' | 'whatsapp'
+
 export interface NotifyUserConfig {
   targetType: 'deal_assignee' | 'specific_users' | 'org_admins'
   targetUserIds?: string[]
   messageTemplate: string
+  /** Canais por onde a notificação é entregue. Ausente = ['in_app'] (backwards-compat). */
+  channels?: NotifyChannel[]
 }
 
 export interface UpdateDealPriorityConfig {

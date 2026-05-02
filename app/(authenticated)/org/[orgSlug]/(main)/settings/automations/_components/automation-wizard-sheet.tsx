@@ -350,6 +350,8 @@ function validateActionConfig(
         : []
       if (targetUserIds.length === 0) return 'Selecione ao menos um membro para notificar'
     }
+    const channels = Array.isArray(actionConfig.channels) ? actionConfig.channels : []
+    if (channels.length === 0) return 'Selecione ao menos um canal de notificação'
   }
   if (actionType === 'UPDATE_DEAL_PRIORITY') {
     if (!actionConfig.targetPriority) return 'Selecione a prioridade'

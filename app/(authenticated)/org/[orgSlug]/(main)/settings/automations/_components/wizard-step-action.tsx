@@ -297,6 +297,7 @@ export function WizardStepAction({ stageOptions, members, lossReasons, showConfi
             showConfigErrors &&
             (!getConfigString('targetType') ||
               !getConfigString('messageTemplate') ||
+              getConfigArray('channels').length === 0 ||
               (getConfigString('targetType') === 'specific_users' && getConfigArray('targetUserIds').length === 0))
               ? 'true'
               : undefined
@@ -362,6 +363,54 @@ export function WizardStepAction({ stageOptions, members, lossReasons, showConfi
               )}
             </div>
           )}
+
+          <Separator />
+
+          <div className="space-y-3">
+            <Label>Canais de notificação *</Label>
+            <p className="text-xs text-muted-foreground">
+              WhatsApp envia para o telefone pessoal do membro (cadastrado no perfil) usando o primeiro inbox WhatsApp ativo da organização.
+            </p>
+            {(() => {
+              const channels = getConfigArray('channels')
+              const effective = channels.length > 0 ? channels : ['in_app']
+              const toggleChannel = (value: 'in_app' | 'whatsapp') => {
+                const current = channels.length > 0 ? channels : ['in_app']
+                const next = current.includes(value)
+                  ? current.filter((channel) => channel !== value)
+                  : [...current, value]
+                setActionConfigValue('channels', next)
+                form.clearErrors('actionConfig')
+              }
+              return (
+                <div className="grid grid-cols-1 gap-2">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="channel-in-app"
+                      checked={effective.includes('in_app')}
+                      onCheckedChange={() => toggleChannel('in_app')}
+                    />
+                    <Label htmlFor="channel-in-app" className="cursor-pointer font-normal">
+                      Plataforma (in-app)
+                    </Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="channel-whatsapp"
+                      checked={effective.includes('whatsapp')}
+                      onCheckedChange={() => toggleChannel('whatsapp')}
+                    />
+                    <Label htmlFor="channel-whatsapp" className="cursor-pointer font-normal">
+                      WhatsApp
+                    </Label>
+                  </div>
+                </div>
+              )
+            })()}
+            {showConfigErrors && getConfigArray('channels').length === 0 && (
+              <p className="text-sm text-destructive">Selecione ao menos um canal</p>
+            )}
+          </div>
 
           <Separator />
 

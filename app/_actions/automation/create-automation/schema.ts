@@ -89,6 +89,10 @@ export const notifyUserConfigSchema = z
     targetType: z.enum(['deal_assignee', 'specific_users', 'org_admins']),
     targetUserIds: z.array(z.string().uuid()).optional(),
     messageTemplate: z.string().min(1).max(500),
+    channels: z
+      .array(z.enum(['in_app', 'whatsapp']))
+      .min(1, 'Selecione ao menos um canal de notificação.')
+      .default(['in_app']),
   })
   .superRefine((data, ctx) => {
     // Usuários específicos exigem ao menos um ID selecionado
