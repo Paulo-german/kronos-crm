@@ -2,8 +2,8 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { useAction } from 'next-safe-action/hooks'
+import { useSmartNavigation } from '@/_hooks/use-smart-navigation'
 import { toast } from 'sonner'
 import {
   ArrowLeft,
@@ -58,6 +58,7 @@ interface ContactDetailClientProps {
   currentUserId: string
   userRole: MemberRole
   hidePiiFromMembers: boolean
+  orgSlug: string
 }
 
 const ContactDetailClient = ({
@@ -67,10 +68,11 @@ const ContactDetailClient = ({
   currentUserId,
   userRole,
   hidePiiFromMembers,
+  orgSlug,
 }: ContactDetailClientProps) => {
   // PII restrito: MEMBER + toggle ativo na org
   const isPiiRestricted = userRole === 'MEMBER' && hidePiiFromMembers
-  const router = useRouter()
+  const { handleBack } = useSmartNavigation({ fallbackPath: `/org/${orgSlug}/contacts` })
   const { updateField, isPending } = useContactFieldUpdate({
     contactId: contact.id,
   })
@@ -135,7 +137,7 @@ const ContactDetailClient = ({
         variant="ghost"
         size="sm"
         className="gap-2"
-        onClick={() => router.back()}
+        onClick={handleBack}
       >
         <ArrowLeft className="h-4 w-4" />
         Voltar

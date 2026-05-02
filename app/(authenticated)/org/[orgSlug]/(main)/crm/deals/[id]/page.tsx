@@ -45,6 +45,7 @@ const DealPage = async ({ params }: DealPageProps) => {
         currentUserId={ctx.userId}
         userRole={ctx.userRole}
         lostReasons={lostReasons}
+        orgSlug={orgSlug}
         contactsSlot={
           <Suspense fallback={<ContactWidgetSkeleton />}>
             <ContactWidgetServer deal={deal} ctx={ctx} />

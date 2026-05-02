@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, type ReactNode } from 'react'
-import { useRouter } from 'next/navigation'
 import { useAction } from 'next-safe-action/hooks'
+import { useSmartNavigation } from '@/_hooks/use-smart-navigation'
 import { toast } from 'sonner'
 import {
   ArrowLeft,
@@ -64,6 +64,7 @@ interface DealDetailClientProps {
   productsTabSlot: ReactNode
   tasksTabSlot: ReactNode
   appointmentsTabSlot: ReactNode
+  orgSlug: string
 }
 
 const priorityConfig = {
@@ -130,8 +131,9 @@ const DealDetailClient = ({
   productsTabSlot,
   tasksTabSlot,
   appointmentsTabSlot,
+  orgSlug,
 }: DealDetailClientProps) => {
-  const router = useRouter()
+  const { handleBack } = useSmartNavigation({ fallbackPath: `/org/${orgSlug}/crm/deals/pipeline` })
   const [activeTab, setActiveTab] = useState('summary')
   const { celebrate } = useDealWonCelebration()
 
@@ -268,7 +270,7 @@ const DealDetailClient = ({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.back()}
+            onClick={handleBack}
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Voltar
