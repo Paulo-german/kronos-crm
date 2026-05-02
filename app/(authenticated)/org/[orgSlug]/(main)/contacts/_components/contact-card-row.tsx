@@ -1,7 +1,13 @@
 'use client'
 
 import Link from 'next/link'
-import { MailIcon, PhoneIcon, StarIcon, BriefcaseIcon, MessageCircle } from 'lucide-react'
+import {
+  MailIcon,
+  PhoneIcon,
+  StarIcon,
+  BriefcaseIcon,
+  MessageCircle,
+} from 'lucide-react'
 import { Checkbox } from '@/_components/ui/checkbox'
 import { Badge } from '@/_components/ui/badge'
 import { cn } from '@/_lib/utils'
@@ -66,9 +72,9 @@ export function ContactCardRow({
     <div
       className={cn(
         'flex items-center gap-4 rounded-lg border px-4 py-3 transition-all',
-        'hover:bg-accent/50 hover:shadow-sm',
+        'hover:border-primary/30 hover:bg-primary/10 hover:text-primary hover:shadow-sm',
         isSelected
-          ? 'border-primary/20 bg-primary/5'
+          ? 'border-primary/30 bg-primary/10 text-primary'
           : 'border-border bg-card',
       )}
     >
@@ -114,8 +120,8 @@ export function ContactCardRow({
         </div>
 
         <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5">
-          {contact.email && (
-            isPiiRestricted ? (
+          {contact.email &&
+            (isPiiRestricted ? (
               <span className="flex items-center gap-1 truncate text-xs text-muted-foreground">
                 <MailIcon className="size-3 shrink-0" />
                 {contact.email}
@@ -129,10 +135,9 @@ export function ContactCardRow({
                 <MailIcon className="size-3 shrink-0" />
                 {contact.email}
               </a>
-            )
-          )}
-          {formattedPhone && (
-            isPiiRestricted ? (
+            ))}
+          {formattedPhone &&
+            (isPiiRestricted ? (
               <span className="flex items-center gap-1 text-xs text-muted-foreground">
                 <PhoneIcon className="size-3 shrink-0" />
                 {formattedPhone}
@@ -146,8 +151,7 @@ export function ContactCardRow({
                 <PhoneIcon className="size-3 shrink-0" />
                 {formattedPhone}
               </a>
-            )
-          )}
+            ))}
           {contact.deals.length > 0 && (
             <Badge
               variant="secondary"

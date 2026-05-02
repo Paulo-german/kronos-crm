@@ -63,9 +63,13 @@ export function DealCardRow({
   orgSlug,
 }: DealCardRowProps) {
   const statusOption = STATUS_OPTIONS.find((opt) => opt.value === deal.status)
-  const priorityOption = PRIORITY_OPTIONS.find((opt) => opt.value === deal.priority)
+  const priorityOption = PRIORITY_OPTIONS.find(
+    (opt) => opt.value === deal.priority,
+  )
 
-  const assigneeInitials = deal.assigneeName ? getInitials(deal.assigneeName) : '?'
+  const assigneeInitials = deal.assigneeName
+    ? getInitials(deal.assigneeName)
+    : '?'
   const assigneeColor = deal.assigneeName
     ? getAvatarColor(deal.assigneeName)
     : { bg: 'bg-muted', text: 'text-muted-foreground' }
@@ -82,8 +86,10 @@ export function DealCardRow({
     <div
       className={cn(
         'flex items-center gap-4 rounded-lg border px-4 py-3 transition-all',
-        'hover:bg-accent/50 hover:shadow-sm',
-        isSelected ? 'border-primary/20 bg-primary/5' : 'border-border bg-card',
+        'hover:border-primary/30 hover:bg-primary/10 hover:text-primary hover:shadow-sm',
+        isSelected
+          ? 'border-primary/30 bg-primary/10 text-primary'
+          : 'border-border bg-card',
       )}
     >
       {/* Checkbox de seleção */}

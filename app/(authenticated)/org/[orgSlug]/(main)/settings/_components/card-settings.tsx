@@ -1,10 +1,6 @@
 'use client'
 
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-} from '@/_components/ui/card'
+import { Card, CardHeader, CardTitle } from '@/_components/ui/card'
 import { ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 
@@ -23,7 +19,7 @@ const CardSettings = ({
 }: CardSettingsProps) => {
   return (
     <Link key={href} href={`/org/${orgSlug}/${href}`}>
-      <Card className="rounded-lg bg-muted/30 transition-colors hover:bg-muted/50">
+      <Card className="hover rounded-lg border border-transparent transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary">
         <CardHeader className="py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
