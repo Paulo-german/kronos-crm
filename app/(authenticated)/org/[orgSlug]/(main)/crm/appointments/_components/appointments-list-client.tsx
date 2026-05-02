@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { endOfDay } from 'date-fns'
 import { AppointmentsToolbar } from './appointments-toolbar'
 import { EmptyAppointments } from './empty-appointments'
 import AppointmentsDataTable from './appointments-data-table'
@@ -58,7 +59,7 @@ export function AppointmentsListClient({
     }
 
     if (filters.dateTo) {
-      const dateTo = filters.dateTo
+      const dateTo = endOfDay(filters.dateTo)
       result = result.filter(
         (appointment) => new Date(appointment.startDate) <= dateTo,
       )

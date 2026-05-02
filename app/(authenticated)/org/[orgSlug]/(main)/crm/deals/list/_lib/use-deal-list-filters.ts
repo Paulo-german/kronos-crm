@@ -9,9 +9,15 @@ import {
   parseAsInteger,
 } from 'nuqs'
 import { useCallback, useMemo } from 'react'
+import { format } from 'date-fns'
 import type { DealStatus, DealPriority } from '@prisma/client'
 import type { DealFilters } from '../../_lib/deal-filters'
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from './deal-list-params'
+
+function parseLocalDate(dateStr: string): Date {
+  const [year, month, day] = dateStr.split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
 
 const SORT_OPTIONS = [
   'created-desc',
@@ -63,8 +69,8 @@ export function useDealListFilters() {
     () => ({
       status: filterParams.status as DealStatus[],
       priority: filterParams.priority as DealPriority[],
-      createdAtFrom: filterParams.dateFrom ? new Date(filterParams.dateFrom) : null,
-      createdAtTo: filterParams.dateTo ? new Date(filterParams.dateTo) : null,
+      createdAtFrom: filterParams.dateFrom ? parseLocalDate(filterParams.dateFrom) : null,
+      createdAtTo: filterParams.dateTo ? parseLocalDate(filterParams.dateTo) : null,
       valueMin: filterParams.valueMin,
       valueMax: filterParams.valueMax,
     }),
@@ -79,8 +85,8 @@ export function useDealListFilters() {
       setFilterParams({
         status: merged.status.length > 0 ? merged.status : null,
         priority: merged.priority.length > 0 ? merged.priority : null,
-        dateFrom: merged.createdAtFrom ? merged.createdAtFrom.toISOString().split('T')[0] : null,
-        dateTo: merged.createdAtTo ? merged.createdAtTo.toISOString().split('T')[0] : null,
+        dateFrom: merged.createdAtFrom ? format(merged.createdAtFrom, 'yyyy-MM-dd') : null,
+        dateTo: merged.createdAtTo ? format(merged.createdAtTo, 'yyyy-MM-dd') : null,
         valueMin: merged.valueMin,
         valueMax: merged.valueMax,
       })

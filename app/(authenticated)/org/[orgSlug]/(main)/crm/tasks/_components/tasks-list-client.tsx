@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { endOfDay } from 'date-fns'
 import { TasksToolbar } from './tasks-toolbar'
 import { EmptyTasks } from './empty-tasks'
 import TasksDataTable from './tasks-data-table'
@@ -83,7 +84,7 @@ export function TasksListClient({
 
     // Filtro de período (dateTo)
     if (filters.dateTo) {
-      const dateTo = filters.dateTo
+      const dateTo = endOfDay(filters.dateTo)
       result = result.filter((task) => new Date(task.dueDate) <= dateTo)
     }
 

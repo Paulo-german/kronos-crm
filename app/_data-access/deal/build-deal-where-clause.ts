@@ -1,5 +1,6 @@
 import 'server-only'
 import type { Prisma, DealStatus, DealPriority } from '@prisma/client'
+import { endOfDay } from 'date-fns'
 import { SIMULATOR_CONTACT_PHONE } from '@/_lib/simulator'
 
 interface DealFilterParams {
@@ -78,7 +79,7 @@ export function buildDealWhereClause(params: DealFilterParams): Prisma.DealWhere
       ? {
           createdAt: {
             ...(dateFrom ? { gte: new Date(dateFrom) } : {}),
-            ...(dateTo ? { lte: new Date(dateTo) } : {}),
+            ...(dateTo ? { lte: endOfDay(new Date(dateTo)) } : {}),
           },
         }
       : {}
