@@ -1,9 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Filter, CalendarIcon, X } from 'lucide-react'
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
+import { Filter } from 'lucide-react'
 import { DealStatus, DealPriority } from '@prisma/client'
 import {
   Sheet,
@@ -17,13 +15,8 @@ import {
 import { Button } from '@/_components/ui/button'
 import { Checkbox } from '@/_components/ui/checkbox'
 import { Label } from '@/_components/ui/label'
-import { Calendar } from '@/_components/ui/calendar'
+import { DateRangePicker } from '@/_components/ui/date-range-picker'
 import { CurrencyInput } from '@/_components/form-controls/currency-input'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/_components/ui/popover'
 import { Badge } from '@/_components/ui/badge'
 import { cn } from '@/_lib/utils'
 import {
@@ -160,102 +153,24 @@ export function DealFiltersSheet({
 
           {/* Date Range Filter */}
           <div className="space-y-3">
-            <Label className="text-sm font-semibold">
-              Data de Criação
-            </Label>
-            <div className="grid gap-2">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      'w-full justify-start text-left font-normal',
-                      !localFilters.createdAtFrom &&
-                        'text-muted-foreground',
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {localFilters.createdAtFrom ? (
-                      format(localFilters.createdAtFrom, 'PPP', {
-                        locale: ptBR,
-                      })
-                    ) : (
-                      <span>Data inicial</span>
-                    )}
-                    {localFilters.createdAtFrom && (
-                      <X
-                        className="ml-auto h-4 w-4 opacity-50 hover:opacity-100"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setLocalFilters({
-                            ...localFilters,
-                            createdAtFrom: null,
-                          })
-                        }}
-                      />
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={localFilters.createdAtFrom || undefined}
-                    onSelect={(date) =>
-                      setLocalFilters({
-                        ...localFilters,
-                        createdAtFrom: date || null,
-                      })
+            <Label className="text-sm font-semibold">Data de Criação</Label>
+            <DateRangePicker
+              value={
+                localFilters.createdAtFrom
+                  ? {
+                      from: localFilters.createdAtFrom,
+                      to: localFilters.createdAtTo ?? undefined,
                     }
-                  />
-                </PopoverContent>
-              </Popover>
-
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      'w-full justify-start text-left font-normal',
-                      !localFilters.createdAtTo &&
-                        'text-muted-foreground',
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {localFilters.createdAtTo ? (
-                      format(localFilters.createdAtTo, 'PPP', {
-                        locale: ptBR,
-                      })
-                    ) : (
-                      <span>Data final</span>
-                    )}
-                    {localFilters.createdAtTo && (
-                      <X
-                        className="ml-auto h-4 w-4 opacity-50 hover:opacity-100"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setLocalFilters({
-                            ...localFilters,
-                            createdAtTo: null,
-                          })
-                        }}
-                      />
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={localFilters.createdAtTo || undefined}
-                    onSelect={(date) =>
-                      setLocalFilters({
-                        ...localFilters,
-                        createdAtTo: date || null,
-                      })
-                    }
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
+                  : undefined
+              }
+              onChange={(range) =>
+                setLocalFilters({
+                  ...localFilters,
+                  createdAtFrom: range?.from ?? null,
+                  createdAtTo: range?.to ?? null,
+                })
+              }
+            />
           </div>
 
           {/* Value Range Filter */}
