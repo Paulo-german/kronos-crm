@@ -1,6 +1,12 @@
 'use client'
 
-import { useState, useCallback, useMemo, useOptimistic, useTransition } from 'react'
+import {
+  useState,
+  useCallback,
+  useMemo,
+  useOptimistic,
+  useTransition,
+} from 'react'
 import {
   AlertTriangleIcon,
   CalendarIcon,
@@ -47,20 +53,27 @@ import type { LucideIcon } from 'lucide-react'
 // Mapa de ícones por tipo de tarefa
 // ---------------------------------------------------------------------------
 
-const TASK_TYPE_ICON_MAP: Record<string, { icon: LucideIcon; color: string }> = {
-  TASK: { icon: CheckCircle2, color: 'text-slate-500' },
-  MEETING: { icon: Users, color: 'text-blue-500' },
-  CALL: { icon: Phone, color: 'text-green-500' },
-  WHATSAPP: { icon: MessageCircle, color: 'text-emerald-500' },
-  VISIT: { icon: Briefcase, color: 'text-purple-500' },
-  EMAIL: { icon: Mail, color: 'text-yellow-500' },
-}
+const TASK_TYPE_ICON_MAP: Record<string, { icon: LucideIcon; color: string }> =
+  {
+    TASK: { icon: CheckCircle2, color: 'text-slate-500' },
+    MEETING: { icon: Users, color: 'text-blue-500' },
+    CALL: { icon: Phone, color: 'text-green-500' },
+    WHATSAPP: { icon: MessageCircle, color: 'text-emerald-500' },
+    VISIT: { icon: Briefcase, color: 'text-purple-500' },
+    EMAIL: { icon: Mail, color: 'text-yellow-500' },
+  }
 
 // ---------------------------------------------------------------------------
 // Tipos de seção da timeline
 // ---------------------------------------------------------------------------
 
-type TimelineSectionType = 'overdue' | 'today' | 'tomorrow' | 'this-week' | 'upcoming' | 'completed'
+type TimelineSectionType =
+  | 'overdue'
+  | 'today'
+  | 'tomorrow'
+  | 'this-week'
+  | 'upcoming'
+  | 'completed'
 
 interface TaskTimelineSection {
   label: string
@@ -338,7 +351,9 @@ const TasksDataTable = ({ tasks, dealOptions }: TasksDataTableProps) => {
         {timelineSections.length === 0 && (
           <div className="flex flex-col items-center justify-center gap-2 py-16 text-muted-foreground">
             <CalendarIcon className="h-8 w-8 opacity-40" />
-            <p className="text-sm">Nenhuma tarefa encontrada para os filtros aplicados.</p>
+            <p className="text-sm">
+              Nenhuma tarefa encontrada para os filtros aplicados.
+            </p>
           </div>
         )}
 
@@ -468,9 +483,11 @@ function TimelineTaskRow({
   return (
     <div
       className={cn(
-        'group flex items-center gap-3 rounded-lg border bg-card px-3 py-2.5 transition-all hover:border-primary/20 hover:shadow-sm',
-        isDimmed && 'opacity-60',
-        isOverdueSection && 'border-l-2 border-l-destructive/30',
+        'group flex items-center gap-3 rounded-lg border bg-card px-3 py-2.5 transition-all hover:border-primary/30 hover:bg-primary/10 hover:text-primary hover:shadow-sm',
+        isDimmed &&
+          'border-kronos-green/30 bg-kronos-green/10 opacity-70 hover:border-kronos-green/30 hover:bg-kronos-green/10 hover:text-kronos-green hover:opacity-100',
+        isOverdueSection &&
+          'hover:bg-destructive-15 border border-destructive/30 bg-destructive/10 hover:border-destructive/30 hover:text-destructive',
       )}
     >
       {/* Botão de toggle (círculo/check otimista) */}
@@ -478,12 +495,16 @@ function TimelineTaskRow({
         type="button"
         className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
         onClick={() => onToggle(task.id)}
-        aria-label={task.isCompleted ? 'Marcar como pendente' : 'Marcar como concluída'}
+        aria-label={
+          task.isCompleted ? 'Marcar como pendente' : 'Marcar como concluída'
+        }
       >
         {task.isCompleted ? (
-          <CheckCircle2 className="h-5 w-5 text-green-600" />
+          <CheckCircle2 className="h-5 w-5 text-kronos-green" />
         ) : (
-          <Circle className="h-5 w-5" />
+          <Circle
+            className={cn('h-5 w-5', isOverdueSection && 'text-destructive')}
+          />
         )}
       </button>
 
@@ -516,7 +537,9 @@ function TimelineTaskRow({
       <span
         className={cn(
           'shrink-0 text-xs tabular-nums text-muted-foreground',
-          isOverdueSection && !task.isCompleted && 'font-medium text-destructive',
+          isOverdueSection &&
+            !task.isCompleted &&
+            'font-medium text-destructive',
         )}
       >
         {formattedDate}
