@@ -11,6 +11,35 @@ interface LongLivedTokenResponse {
   expires_in: number
 }
 
+interface InstagramApiErrorBody {
+  error_type?: string
+  error_message?: string
+  code?: number
+  // Graph API errors use a different shape
+  error?: { message?: string; code?: number }
+}
+
+export class InstagramApiError extends Error {
+  readonly apiMessage: string
+  readonly httpStatus: number
+
+  constructor(httpStatus: number, rawBody: string) {
+    let apiMessage = rawBody
+    try {
+      const parsed = JSON.parse(rawBody) as InstagramApiErrorBody
+      apiMessage =
+        parsed.error_message ??
+        parsed.error?.message ??
+        rawBody
+    } catch {
+      // rawBody não é JSON — usa como está
+    }
+    super(`Instagram API error (${httpStatus}): ${apiMessage}`)
+    this.apiMessage = apiMessage
+    this.httpStatus = httpStatus
+  }
+}
+
 /**
  * Troca o authorization code por um short-lived token do Instagram.
  * Endpoint próprio do instagram.com — não usa a Graph API versionada.
@@ -47,9 +76,7 @@ export async function exchangeInstagramCodeForToken(
   })
 
   if (!response.ok) {
-    throw new Error(
-      `Instagram token exchange failed (${response.status}): ${errorBody}`,
-    )
+    throw new InstagramApiError(response.status, errorBody)
   }
 
   let data: ShortLivedTokenResponse | null = null
@@ -81,9 +108,7 @@ export async function getLongLivedInstagramToken(shortLivedToken: string): Promi
 
   if (!response.ok) {
     const errorBody = await response.text().catch(() => 'unknown')
-    throw new Error(
-      `Instagram long-lived token exchange failed (${response.status}): ${errorBody}`,
-    )
+    throw new InstagramApiError(response.status, errorBody)
   }
 
   const data = (await response.json().catch(() => null)) as LongLivedTokenResponse | null

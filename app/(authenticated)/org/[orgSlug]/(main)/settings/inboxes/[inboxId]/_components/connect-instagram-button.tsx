@@ -59,16 +59,22 @@ const ConnectInstagramButton = ({
       return
     }
 
+    const detail = params.get('instagram_error_detail')
+
     const errorMessages: Record<string, string> = {
       access_denied: 'Autorização cancelada.',
       user_mismatch: 'Erro de segurança. Tente novamente.',
       state_expired: 'Sessão expirada. Tente novamente.',
-      token_exchange_failed: 'Erro ao trocar token de acesso. Tente novamente.',
+      short_token_failed: 'Erro ao obter token de acesso.',
+      long_token_failed: 'Erro ao renovar token de acesso.',
+      token_exchange_failed: 'Erro ao trocar token de acesso.',
       invalid_state: 'Estado inválido. Tente novamente.',
       inbox_not_found: 'Caixa de entrada não encontrada.',
       already_connected: 'Esta conta Instagram já está conectada a outra caixa de entrada.',
     }
-    toast.error(errorMessages[error ?? ''] ?? 'Erro ao conectar Instagram.')
+
+    const baseMessage = errorMessages[error ?? ''] ?? 'Erro ao conectar Instagram.'
+    toast.error(baseMessage, { description: detail ?? undefined })
   }, [])
 
   const { execute: executeDisconnect, isPending: isDisconnecting } = useAction(

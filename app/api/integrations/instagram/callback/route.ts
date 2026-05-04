@@ -3,7 +3,7 @@ import { type NextRequest } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import { createClient } from '@/_lib/supabase/server'
 import { db } from '@/_lib/prisma'
-import { exchangeInstagramCodeForToken, getLongLivedInstagramToken } from '@/_lib/instagram/exchange-token'
+import { exchangeInstagramCodeForToken, getLongLivedInstagramToken, InstagramApiError } from '@/_lib/instagram/exchange-token'
 import { subscribeInstagramApp } from '@/_lib/instagram/subscribe-instagram-app'
 import { getInstagramUsername } from '@/_lib/instagram/get-instagram-account'
 
@@ -84,7 +84,11 @@ export async function GET(request: NextRequest) {
     igUserId = result.igUserId
   } catch (err) {
     console.error('[instagram/callback] exchangeInstagramCodeForToken failed:', err)
-    redirect(buildInboxUrl(state.orgSlug, state.inboxId, 'instagram_error=token_exchange_failed'))
+    const detail = err instanceof InstagramApiError ? err.apiMessage : undefined
+    const params = detail
+      ? `instagram_error=short_token_failed&instagram_error_detail=${encodeURIComponent(detail)}`
+      : 'instagram_error=short_token_failed'
+    redirect(buildInboxUrl(state.orgSlug, state.inboxId, params))
   }
 
   // Trocar por long-lived token (60 dias)
@@ -93,7 +97,11 @@ export async function GET(request: NextRequest) {
     longToken = await getLongLivedInstagramToken(shortToken)
   } catch (err) {
     console.error('[instagram/callback] getLongLivedInstagramToken failed:', err)
-    redirect(buildInboxUrl(state.orgSlug, state.inboxId, 'instagram_error=token_exchange_failed'))
+    const detail = err instanceof InstagramApiError ? err.apiMessage : undefined
+    const params = detail
+      ? `instagram_error=long_token_failed&instagram_error_detail=${encodeURIComponent(detail)}`
+      : 'instagram_error=long_token_failed'
+    redirect(buildInboxUrl(state.orgSlug, state.inboxId, params))
   }
 
   // Verificar conflito: igUserId já conectado em outro inbox da plataforma
