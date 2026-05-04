@@ -20,8 +20,10 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/_components/ui/radio-group'
 import { Label } from '@/_components/ui/label'
 import { ACTION_LABELS, REASSIGN_STRATEGY_LABELS, NOTIFY_TARGET_LABELS, PRIORITY_OPTIONS } from './automation-labels'
+import { Badge } from '@/_components/ui/badge'
+import { cn } from '@/_lib/utils'
 import { UserPlus, ArrowRight, XCircle, Bell, AlertTriangle } from 'lucide-react'
-import React from 'react'
+import React, { useRef } from 'react'
 import type { AutomationFormValues } from './wizard-form-types'
 import type { PipelineStageOption } from '@/_data-access/pipeline/get-pipeline-stages'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
@@ -37,12 +39,12 @@ const ACTION_ICONS: Record<AutomationAction, React.ElementType> = {
   UPDATE_DEAL_PRIORITY: AlertTriangle,
 }
 
-const PLACEHOLDER_HINTS = [
-  '{{deal.title}} — Título da negociação',
-  '{{deal.stage}} — Nome do estágio atual',
-  '{{deal.assignee}} — Nome do responsável',
-  '{{deal.value}} — Valor da negociação',
-]
+const MESSAGE_VARIABLES = [
+  { token: '{{deal.title}}',    label: 'Título' },
+  { token: '{{deal.stage}}',    label: 'Estágio' },
+  { token: '{{deal.assignee}}', label: 'Responsável' },
+  { token: '{{deal.value}}',    label: 'Valor' },
+] as const
 
 interface WizardStepActionProps {
   stageOptions: PipelineStageOption[]
@@ -81,6 +83,23 @@ export function WizardStepAction({ stageOptions, members, lossReasons, showConfi
   const getConfigArray = (key: string): string[] => {
     const val = actionConfig[key]
     return Array.isArray(val) ? (val as string[]) : []
+  }
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const insertVariable = (token: string) => {
+    const textarea = textareaRef.current
+    const current = getConfigString('messageTemplate')
+    const start = textarea?.selectionStart ?? current.length
+    const end = textarea?.selectionEnd ?? current.length
+    const next = current.slice(0, start) + token + current.slice(end)
+    setActionConfigValue('messageTemplate', next)
+    requestAnimationFrame(() => {
+      if (!textarea) return
+      textarea.focus()
+      const cursor = start + token.length
+      textarea.setSelectionRange(cursor, cursor)
+    })
   }
 
   const handleMemberToggle = (userId: string) => {
@@ -414,44 +433,55 @@ export function WizardStepAction({ stageOptions, members, lossReasons, showConfi
 
           <Separator />
 
-          <FormField
-            control={form.control}
-            name="actionConfig"
-            render={() => (
-              <FormItem>
-                <FormLabel>Mensagem *</FormLabel>
-                <FormControl>
-                  <Textarea
-                    placeholder="Ex: A negociação {{deal.title}} está parada no estágio {{deal.stage}} há mais de 2 dias."
-                    className={`resize-none ${showConfigErrors && !getConfigString('messageTemplate') ? 'border-destructive' : ''}`}
-                    rows={3}
-                    value={getConfigString('messageTemplate')}
-                    onChange={(event) => {
-                      setActionConfigValue('messageTemplate', event.target.value)
-                      form.clearErrors('actionConfig')
-                    }}
-                  />
-                </FormControl>
-                {showConfigErrors && !getConfigString('messageTemplate') && (
-                  <p className="text-sm text-destructive">Digite a mensagem</p>
+          <div className="space-y-2">
+            <FormLabel>Mensagem *</FormLabel>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">Inserir variável:</span>
+              {MESSAGE_VARIABLES.map((variable) => (
+                <button
+                  key={variable.token}
+                  type="button"
+                  onClick={() => insertVariable(variable.token)}
+                >
+                  <Badge
+                    variant="outline"
+                    className="cursor-pointer font-mono text-xs hover:bg-accent transition-colors"
+                  >
+                    {variable.token}
+                  </Badge>
+                </button>
+              ))}
+            </div>
+            <Textarea
+              ref={textareaRef}
+              placeholder="Ex: A negociação {{deal.title}} está parada no estágio {{deal.stage}} há mais de 2 dias."
+              className={`resize-none ${showConfigErrors && !getConfigString('messageTemplate') ? 'border-destructive' : ''}`}
+              rows={3}
+              maxLength={500}
+              value={getConfigString('messageTemplate')}
+              onChange={(event) => {
+                setActionConfigValue('messageTemplate', event.target.value)
+                form.clearErrors('actionConfig')
+              }}
+            />
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-destructive">
+                {showConfigErrors && !getConfigString('messageTemplate') ? 'Digite a mensagem' : ''}
+              </span>
+              <span
+                className={cn(
+                  'text-xs tabular-nums',
+                  getConfigString('messageTemplate').length > 500
+                    ? 'text-destructive'
+                    : getConfigString('messageTemplate').length > 450
+                      ? 'text-amber-600'
+                      : 'text-muted-foreground',
                 )}
-                <FormMessage />
-                <div className="mt-1 space-y-1">
-                  <p className="text-xs text-muted-foreground font-medium">Variáveis disponíveis:</p>
-                  <ul className="space-y-0.5">
-                    {PLACEHOLDER_HINTS.map((hint) => (
-                      <li key={hint} className="text-xs text-muted-foreground">
-                        <code className="text-xs bg-muted px-1 rounded">
-                          {hint.split(' — ')[0]}
-                        </code>{' '}
-                        — {hint.split(' — ')[1]}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </FormItem>
-            )}
-          />
+              >
+                {getConfigString('messageTemplate').length}/500
+              </span>
+            </div>
+          </div>
         </div>
       )}
 
