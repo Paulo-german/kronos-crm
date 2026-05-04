@@ -12,6 +12,7 @@ export async function getAdminUsers(): Promise<AdminUserDto[]> {
       avatarUrl: true,
       phone: true,
       isSuperAdmin: true,
+      isSupportAgent: true,
       createdAt: true,
       updatedAt: true,
       memberships: {
@@ -36,6 +37,7 @@ export async function getAdminUsers(): Promise<AdminUserDto[]> {
     avatarUrl: user.avatarUrl,
     phone: user.phone,
     isSuperAdmin: user.isSuperAdmin,
+    isSupportAgent: user.isSupportAgent,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
     organizations: user.memberships.map((member) => ({

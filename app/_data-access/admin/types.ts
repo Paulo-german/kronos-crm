@@ -86,6 +86,7 @@ export interface AdminUserDto {
   avatarUrl: string | null
   phone: string | null
   isSuperAdmin: boolean
+  isSupportAgent: boolean
   createdAt: Date
   updatedAt: Date
   organizations: {

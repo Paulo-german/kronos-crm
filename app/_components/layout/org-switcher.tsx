@@ -72,6 +72,7 @@ const roleLabelMap: Record<MemberRole, string> = {
   OWNER: 'Owner',
   ADMIN: 'Admin',
   MEMBER: 'Membro',
+  SUPPORT: 'Suporte',
 }
 
 export function OrgSwitcher({ organizations }: OrgSwitcherProps) {

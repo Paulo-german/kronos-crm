@@ -14,6 +14,7 @@ interface OrganizationContextType {
   userRole: MemberRole
   isOwner: boolean
   isAdmin: boolean
+  isSupport: boolean
 }
 
 const OrganizationContext = createContext<OrganizationContextType | null>(null)
@@ -31,10 +32,11 @@ export function OrganizationProvider({
 }: OrganizationProviderProps) {
   const isOwner = userRole === 'OWNER'
   const isAdmin = userRole === 'ADMIN' || userRole === 'OWNER'
+  const isSupport = userRole === 'SUPPORT'
 
   return (
     <OrganizationContext.Provider
-      value={{ organization, userRole, isOwner, isAdmin }}
+      value={{ organization, userRole, isOwner, isAdmin, isSupport }}
     >
       {children}
     </OrganizationContext.Provider>

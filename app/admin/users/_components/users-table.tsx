@@ -35,6 +35,7 @@ import { Button } from '@/_components/ui/button'
 import { Input } from '@/_components/ui/input'
 import { Label } from '@/_components/ui/label'
 import { toggleSuperAdmin } from '@/_actions/admin/toggle-super-admin'
+import { toggleSupportAgent } from '@/_actions/admin/toggle-support-agent'
 import type { AdminUserDto } from '@/_data-access/admin/types'
 
 const CONFIRMATION_WORD = 'CONFIRMAR'
@@ -71,6 +72,8 @@ interface UsersTableProps {
 
 export const UsersTable = ({ users, isOwner }: UsersTableProps) => {
   const router = useRouter()
+
+  // Estado do dialog de super admin
   const [pendingToggle, setPendingToggle] = useState<{
     userId: string
     userName: string
@@ -78,6 +81,15 @@ export const UsersTable = ({ users, isOwner }: UsersTableProps) => {
   } | null>(null)
   const [adminKey,     setAdminKey]     = useState('')
   const [confirmation, setConfirmation] = useState('')
+
+  // Estado do dialog de agente de suporte
+  const [pendingSupportToggle, setPendingSupportToggle] = useState<{
+    userId: string
+    userName: string
+    newValue: boolean
+  } | null>(null)
+  const [supportAgentKey,      setSupportAgentKey]      = useState('')
+  const [supportConfirmation,  setSupportConfirmation]  = useState('')
 
   const { execute, status } = useAction(toggleSuperAdmin, {
     onSuccess: ({ data }) => {
@@ -94,6 +106,21 @@ export const UsersTable = ({ users, isOwner }: UsersTableProps) => {
     },
   })
 
+  const { execute: executeSupportToggle, status: supportStatus } = useAction(toggleSupportAgent, {
+    onSuccess: ({ data }) => {
+      toast.success(
+        data?.isSupportAgent
+          ? 'Usuário habilitado como agente de suporte.'
+          : 'Acesso de agente de suporte removido.',
+      )
+      closeSupportDialog()
+      router.refresh()
+    },
+    onError: ({ error }) => {
+      toast.error(error.serverError ?? 'Erro ao alterar permissão de suporte.')
+    },
+  })
+
   const openDialog = (userId: string, userName: string, newValue: boolean) => {
     setAdminKey('')
     setConfirmation('')
@@ -105,6 +132,19 @@ export const UsersTable = ({ users, isOwner }: UsersTableProps) => {
     setPendingToggle(null)
     setAdminKey('')
     setConfirmation('')
+  }
+
+  const openSupportDialog = (userId: string, userName: string, newValue: boolean) => {
+    setSupportAgentKey('')
+    setSupportConfirmation('')
+    setPendingSupportToggle({ userId, userName, newValue })
+  }
+
+  const closeSupportDialog = () => {
+    if (supportStatus === 'executing') return
+    setPendingSupportToggle(null)
+    setSupportAgentKey('')
+    setSupportConfirmation('')
   }
 
   const handleConfirm = () => {
@@ -120,6 +160,20 @@ export const UsersTable = ({ users, isOwner }: UsersTableProps) => {
     adminKey.length > 0 &&
     confirmation === CONFIRMATION_WORD &&
     status !== 'executing'
+
+  const handleSupportConfirm = () => {
+    if (!pendingSupportToggle) return
+    executeSupportToggle({
+      userId:       pendingSupportToggle.userId,
+      adminKey:     supportAgentKey,
+      confirmation: supportConfirmation,
+    })
+  }
+
+  const canConfirmSupport =
+    supportAgentKey.length > 0 &&
+    supportConfirmation === CONFIRMATION_WORD &&
+    supportStatus !== 'executing'
 
   if (users.length === 0) {
     return (
@@ -140,6 +194,7 @@ export const UsersTable = ({ users, isOwner }: UsersTableProps) => {
               <TableHead>Telefone</TableHead>
               <TableHead>Organizações</TableHead>
               <TableHead>Super Admin</TableHead>
+              <TableHead>Agente de Suporte</TableHead>
               <TableHead>Último acesso</TableHead>
               <TableHead>Criado em</TableHead>
             </TableRow>
@@ -224,6 +279,30 @@ export const UsersTable = ({ users, isOwner }: UsersTableProps) => {
                     )}
                   </div>
                 </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    {isOwner ? (
+                      <Switch
+                        checked={user.isSupportAgent}
+                        onCheckedChange={(checked) =>
+                          openSupportDialog(
+                            user.id,
+                            user.fullName ?? user.email,
+                            checked,
+                          )
+                        }
+                        disabled={supportStatus === 'executing'}
+                      />
+                    ) : (
+                      user.isSupportAgent && (
+                        <span className="text-xs text-muted-foreground">Agente de Suporte</span>
+                      )
+                    )}
+                    {user.isSupportAgent && (
+                      <Shield className="h-3.5 w-3.5 text-blue-500" />
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
                   <Tooltip delayDuration={0}>
                     <TooltipTrigger>
@@ -302,6 +381,65 @@ export const UsersTable = ({ users, isOwner }: UsersTableProps) => {
               disabled={!canConfirm}
             >
               {status === 'executing' ? 'Processando...' : 'Confirmar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={pendingSupportToggle !== null} onOpenChange={(open) => { if (!open) closeSupportDialog() }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {pendingSupportToggle?.newValue ? 'Habilitar agente de suporte?' : 'Remover acesso de suporte?'}
+            </DialogTitle>
+            <DialogDescription>
+              {pendingSupportToggle?.newValue
+                ? `${pendingSupportToggle.userName} poderá ser convidado como agente de suporte em organizações de clientes.`
+                : `${pendingSupportToggle?.userName} perderá a habilitação de agente de suporte.`}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="support-agent-key">Senha de autorização</Label>
+              <Input
+                id="support-agent-key"
+                type="password"
+                placeholder="••••••••"
+                value={supportAgentKey}
+                onChange={(e) => setSupportAgentKey(e.target.value)}
+                autoComplete="off"
+                disabled={supportStatus === 'executing'}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="support-confirmation">
+                Digite <span className="font-mono font-semibold">{CONFIRMATION_WORD}</span> para prosseguir
+              </Label>
+              <Input
+                id="support-confirmation"
+                placeholder={CONFIRMATION_WORD}
+                value={supportConfirmation}
+                onChange={(e) => setSupportConfirmation(e.target.value)}
+                autoComplete="off"
+                disabled={supportStatus === 'executing'}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={closeSupportDialog}
+              disabled={supportStatus === 'executing'}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSupportConfirm}
+              disabled={!canConfirmSupport}
+            >
+              {supportStatus === 'executing' ? 'Processando...' : 'Confirmar'}
             </Button>
           </DialogFooter>
         </DialogContent>

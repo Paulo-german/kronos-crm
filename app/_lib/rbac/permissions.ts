@@ -14,92 +14,92 @@ import type { RBACEntity, RBACAction } from './types'
  */
 const PERMISSION_MATRIX: Record<RBACEntity, Record<RBACAction, MemberRole[]>> = {
   contact: {
-    create: ['OWNER', 'ADMIN', 'MEMBER'],
-    read: ['OWNER', 'ADMIN', 'MEMBER'], // MEMBER: só próprios (verificado em guards)
-    update: ['OWNER', 'ADMIN', 'MEMBER'], // MEMBER: só próprios (verificado em guards)
-    delete: ['OWNER', 'ADMIN'], // MEMBER não pode deletar
-    transfer: ['OWNER', 'ADMIN'], // Mudar assignedTo
+    create: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'],
+    read: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'], // MEMBER: só próprios (verificado em guards)
+    update: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'], // MEMBER: só próprios (verificado em guards)
+    delete: ['OWNER', 'ADMIN', 'SUPPORT'], // MEMBER não pode deletar
+    transfer: ['OWNER', 'ADMIN', 'SUPPORT'], // Mudar assignedTo
   },
   deal: {
-    create: ['OWNER', 'ADMIN', 'MEMBER'],
-    read: ['OWNER', 'ADMIN', 'MEMBER'], // MEMBER: só próprios
-    update: ['OWNER', 'ADMIN', 'MEMBER'], // MEMBER: só próprios
-    delete: ['OWNER', 'ADMIN'],
-    transfer: ['OWNER', 'ADMIN'],
+    create: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'],
+    read: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'], // MEMBER: só próprios
+    update: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'], // MEMBER: só próprios
+    delete: ['OWNER', 'ADMIN', 'SUPPORT'],
+    transfer: ['OWNER', 'ADMIN', 'SUPPORT'],
   },
   task: {
-    create: ['OWNER', 'ADMIN', 'MEMBER'],
-    read: ['OWNER', 'ADMIN', 'MEMBER'], // MEMBER: só próprias
-    update: ['OWNER', 'ADMIN', 'MEMBER'], // MEMBER: só próprias
-    delete: ['OWNER', 'ADMIN', 'MEMBER'], // MEMBER pode deletar próprias
-    transfer: ['OWNER', 'ADMIN'],
+    create: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'],
+    read: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'], // MEMBER: só próprias
+    update: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'], // MEMBER: só próprias
+    delete: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'], // MEMBER pode deletar próprias
+    transfer: ['OWNER', 'ADMIN', 'SUPPORT'],
   },
   product: {
-    create: ['OWNER', 'ADMIN'],
-    read: ['OWNER', 'ADMIN', 'MEMBER'], // Produtos são globais
-    update: ['OWNER', 'ADMIN'],
-    delete: ['OWNER', 'ADMIN'],
+    create: ['OWNER', 'ADMIN', 'SUPPORT'],
+    read: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'], // Produtos são globais
+    update: ['OWNER', 'ADMIN', 'SUPPORT'],
+    delete: ['OWNER', 'ADMIN', 'SUPPORT'],
     transfer: [], // Produtos não têm ownership
   },
   pipeline: {
-    create: ['OWNER', 'ADMIN'],
-    read: ['OWNER', 'ADMIN', 'MEMBER'], // Pipeline é global
-    update: ['OWNER', 'ADMIN'],
-    delete: ['OWNER', 'ADMIN'],
+    create: ['OWNER', 'ADMIN', 'SUPPORT'],
+    read: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'], // Pipeline é global
+    update: ['OWNER', 'ADMIN', 'SUPPORT'],
+    delete: ['OWNER', 'ADMIN', 'SUPPORT'],
     transfer: [], // Pipeline não tem ownership
   },
   company: {
-    create: ['OWNER', 'ADMIN'], // Empresas são recursos administrativos
-    read: ['OWNER', 'ADMIN', 'MEMBER'], // Todos podem ver (para vincular a contatos/deals)
-    update: ['OWNER', 'ADMIN'],
-    delete: ['OWNER', 'ADMIN'],
+    create: ['OWNER', 'ADMIN', 'SUPPORT'], // Empresas são recursos administrativos
+    read: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'], // Todos podem ver (para vincular a contatos/deals)
+    update: ['OWNER', 'ADMIN', 'SUPPORT'],
+    delete: ['OWNER', 'ADMIN', 'SUPPORT'],
     transfer: [], // Empresas não têm ownership individual
   },
   organization: {
     create: [], // Criação de org é via fluxo separado (authActionClient)
-    read: ['OWNER', 'ADMIN', 'MEMBER'], // Todos podem ver info básica da org
+    read: ['OWNER', 'ADMIN', 'MEMBER'], // SUPPORT não acessa settings da org
     update: ['OWNER', 'ADMIN'], // Configurações, convites, membros
     delete: ['OWNER'], // Apenas OWNER pode deletar a organização
     transfer: ['OWNER'], // Transferir ownership da org
   },
   billing: {
-    create: ['OWNER', 'ADMIN'], // Criar checkout session / assinar plano
-    read: ['OWNER', 'ADMIN', 'MEMBER'], // Ver plano atual
+    create: ['OWNER', 'ADMIN'], // SUPPORT não acessa billing
+    read: ['OWNER', 'ADMIN', 'MEMBER'], // SUPPORT não vê billing
     update: ['OWNER', 'ADMIN'], // Gerenciar assinatura (portal)
     delete: [], // Não se aplica
     transfer: [], // Não se aplica
   },
   appointment: {
-    create: ['OWNER', 'ADMIN', 'MEMBER'],
-    read: ['OWNER', 'ADMIN', 'MEMBER'], // MEMBER: só próprios
-    update: ['OWNER', 'ADMIN', 'MEMBER'], // MEMBER: só próprios
-    delete: ['OWNER', 'ADMIN'],
-    transfer: ['OWNER', 'ADMIN'],
+    create: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'],
+    read: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'], // MEMBER: só próprios
+    update: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'], // MEMBER: só próprios
+    delete: ['OWNER', 'ADMIN', 'SUPPORT'],
+    transfer: ['OWNER', 'ADMIN', 'SUPPORT'],
   },
   agent: {
-    create: ['OWNER', 'ADMIN'],
-    read: ['OWNER', 'ADMIN', 'MEMBER'],
-    update: ['OWNER', 'ADMIN'],
-    delete: ['OWNER', 'ADMIN'],
+    create: ['OWNER', 'ADMIN', 'SUPPORT'],
+    read: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'],
+    update: ['OWNER', 'ADMIN', 'SUPPORT'],
+    delete: ['OWNER', 'ADMIN', 'SUPPORT'],
     transfer: [],
   },
   inbox: {
-    create: ['OWNER', 'ADMIN'],
-    read: ['OWNER', 'ADMIN', 'MEMBER'],
-    update: ['OWNER', 'ADMIN'],
-    delete: ['OWNER', 'ADMIN'],
+    create: ['OWNER', 'ADMIN', 'SUPPORT'],
+    read: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'],
+    update: ['OWNER', 'ADMIN', 'SUPPORT'],
+    delete: ['OWNER', 'ADMIN', 'SUPPORT'],
     transfer: [],
   },
   conversation: {
-    create: ['OWNER', 'ADMIN', 'MEMBER'],
-    read: ['OWNER', 'ADMIN', 'MEMBER'],
-    update: ['OWNER', 'ADMIN', 'MEMBER'],
-    delete: ['OWNER', 'ADMIN'],
+    create: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'],
+    read: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'],
+    update: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'],
+    delete: ['OWNER', 'ADMIN', 'SUPPORT'],
     transfer: [],
   },
   integration: {
-    create: ['OWNER', 'ADMIN', 'MEMBER'],
-    read: ['OWNER', 'ADMIN', 'MEMBER'],
+    create: ['OWNER', 'ADMIN', 'MEMBER'], // SUPPORT não acessa integrações
+    read: ['OWNER', 'ADMIN', 'MEMBER'], // SUPPORT não vê credenciais
     update: ['OWNER', 'ADMIN', 'MEMBER'],
     delete: ['OWNER', 'ADMIN', 'MEMBER'],
     transfer: [],
@@ -108,27 +108,27 @@ const PERMISSION_MATRIX: Record<RBACEntity, Record<RBACAction, MemberRole[]>> = 
     // Criacao e backend-only (helper createNotification, nao exposto ao client)
     create: [],
     // Cada usuario ve apenas as proprias (filtro por userId no data-access)
-    read: ['OWNER', 'ADMIN', 'MEMBER'],
+    read: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'],
     // Marcar como lida
-    update: ['OWNER', 'ADMIN', 'MEMBER'],
+    update: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'],
     // Deletar proprias notificacoes
-    delete: ['OWNER', 'ADMIN', 'MEMBER'],
+    delete: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'],
     // Nao se aplica a notificacoes
     transfer: [],
   },
   automation: {
     // Apenas ADMIN+ pode gerenciar automacoes (recurso estratégico da org)
-    create: ['OWNER', 'ADMIN'],
-    read: ['OWNER', 'ADMIN'],
-    update: ['OWNER', 'ADMIN'],
-    delete: ['OWNER', 'ADMIN'],
+    create: ['OWNER', 'ADMIN', 'SUPPORT'],
+    read: ['OWNER', 'ADMIN', 'SUPPORT'],
+    update: ['OWNER', 'ADMIN', 'SUPPORT'],
+    delete: ['OWNER', 'ADMIN', 'SUPPORT'],
     transfer: [],
   },
   agentGroup: {
-    create: ['OWNER', 'ADMIN'],
-    read: ['OWNER', 'ADMIN', 'MEMBER'],
-    update: ['OWNER', 'ADMIN'],
-    delete: ['OWNER', 'ADMIN'],
+    create: ['OWNER', 'ADMIN', 'SUPPORT'],
+    read: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'],
+    update: ['OWNER', 'ADMIN', 'SUPPORT'],
+    delete: ['OWNER', 'ADMIN', 'SUPPORT'],
     transfer: [],
   },
 }
@@ -150,7 +150,7 @@ export function hasPermission(
  * Roles elevados podem ver/editar todos os registros da organização
  */
 export function isElevated(role: MemberRole): boolean {
-  return role === 'ADMIN' || role === 'OWNER'
+  return role === 'ADMIN' || role === 'OWNER' || role === 'SUPPORT'
 }
 
 /**

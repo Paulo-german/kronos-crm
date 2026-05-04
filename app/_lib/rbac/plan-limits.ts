@@ -132,8 +132,13 @@ async function countRecords(orgId: string, entity: QuotaEntity): Promise<number>
           return db.product.count({ where: { organizationId: orgId } })
         case 'member':
           // Conta ACCEPTED + PENDING para que convites pendentes consumam a quota
+          // SUPPORT não conta — não ocupa seat do plano
           return db.member.count({
-            where: { organizationId: orgId, status: { in: ['ACCEPTED', 'PENDING'] } },
+            where: {
+              organizationId: orgId,
+              status: { in: ['ACCEPTED', 'PENDING'] },
+              role: { not: 'SUPPORT' },
+            },
           })
         case 'agent':
           return db.agent.count({ where: { organizationId: orgId } })

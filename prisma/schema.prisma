@@ -19,6 +19,7 @@ model User {
   phone                   String?
   notificationPreferences Json?             @map("notification_preferences")
   isSuperAdmin            Boolean           @default(false) @map("is_super_admin")
+  isSupportAgent          Boolean           @default(false) @map("is_support_agent")
   activitiesPerformed     Activity[]        @relation("ActivityPerformer")
   announcements           Announcement[]
   appointments            Appointment[]     @relation("AppointmentAssignee")
@@ -1035,6 +1036,7 @@ enum MemberRole {
   OWNER
   ADMIN
   MEMBER
+  SUPPORT
 }
 
 enum MemberStatus {
