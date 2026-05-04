@@ -110,6 +110,7 @@ export function ChatSettingsSheet({
   const updateContactAction = useAction(updateContact, {
     onSuccess: () => {
       toast.success('Nome do contato atualizado.')
+      queryClient.invalidateQueries({ queryKey: inboxKeys.conversations.all() })
     },
     onError: (error) => {
       toast.error(error.error?.serverError ?? 'Erro ao atualizar contato.')
