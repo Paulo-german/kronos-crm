@@ -82,7 +82,8 @@ export async function GET(request: NextRequest) {
     const result = await exchangeInstagramCodeForToken(code)
     shortToken = result.accessToken
     igUserId = result.igUserId
-  } catch {
+  } catch (err) {
+    console.error('[instagram/callback] exchangeInstagramCodeForToken failed:', err)
     redirect(buildInboxUrl(state.orgSlug, state.inboxId, 'instagram_error=token_exchange_failed'))
   }
 
@@ -90,7 +91,8 @@ export async function GET(request: NextRequest) {
   let longToken: string
   try {
     longToken = await getLongLivedInstagramToken(shortToken)
-  } catch {
+  } catch (err) {
+    console.error('[instagram/callback] getLongLivedInstagramToken failed:', err)
     redirect(buildInboxUrl(state.orgSlug, state.inboxId, 'instagram_error=token_exchange_failed'))
   }
 
