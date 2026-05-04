@@ -44,6 +44,13 @@ export async function GET(request: NextRequest) {
   const stateParam = searchParams.get('state')
   const error = searchParams.get('error')
 
+  console.log('[instagram/callback] received:', {
+    has_code: !!code,
+    code_prefix: code?.slice(0, 20),
+    has_state: !!stateParam,
+    has_error: !!error,
+  })
+
   // Tentar decodificar state mesmo em caso de erro (para obter orgSlug e inboxId)
   const state = stateParam ? decodeState(stateParam) : null
 
