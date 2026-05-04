@@ -26,20 +26,34 @@ export async function exchangeInstagramCodeForToken(
     code,
   })
 
+  console.log('[exchange-token] short-lived token request:', {
+    url: 'https://api.instagram.com/oauth/access_token',
+    client_id: process.env.NEXT_PUBLIC_META_INSTAGRAM_APP_ID,
+    redirect_uri: REDIRECT_URI,
+    has_secret: !!process.env.META_INSTAGRAM_APP_SECRET,
+    code_length: code.length,
+  })
+
   const response = await fetch('https://api.instagram.com/oauth/access_token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: body.toString(),
   })
 
+  const errorBody = await response.text().catch(() => 'unknown')
+  console.log('[exchange-token] short-lived token response:', {
+    status: response.status,
+    body: errorBody,
+  })
+
   if (!response.ok) {
-    const errorBody = await response.text().catch(() => 'unknown')
     throw new Error(
       `Instagram token exchange failed (${response.status}): ${errorBody}`,
     )
   }
 
-  const data = (await response.json().catch(() => null)) as ShortLivedTokenResponse | null
+  let data: ShortLivedTokenResponse | null = null
+  try { data = JSON.parse(errorBody) as ShortLivedTokenResponse } catch { data = null }
 
   if (!data?.access_token || !data?.user_id) {
     throw new Error(
