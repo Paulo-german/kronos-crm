@@ -5,6 +5,7 @@ interface SendInviteEmailParams {
   orgName: string
   inviteLink: string
   isReminder?: boolean
+  isSupport?: boolean
 }
 
 export async function sendInviteEmail({
@@ -12,10 +13,23 @@ export async function sendInviteEmail({
   orgName,
   inviteLink,
   isReminder = false,
+  isSupport = false,
 }: SendInviteEmailParams) {
-  const subject = isReminder
-    ? `Lembrete: Você foi convidado para ${orgName}`
-    : `Você foi convidado para ${orgName}`
+  const subject = isSupport
+    ? `Acesso de suporte solicitado em ${orgName}`
+    : isReminder
+      ? `Lembrete: Você foi convidado para ${orgName}`
+      : `Você foi convidado para ${orgName}`
+
+  const heading = isSupport
+    ? 'Acesso de suporte'
+    : isReminder
+      ? 'Lembrete de convite'
+      : 'Você foi convidado!'
+
+  const body = isSupport
+    ? `A organização <strong>${orgName}</strong> solicitou acesso de suporte ao Kronos Hub. Clique abaixo para aceitar e entrar com suas credenciais de agente de suporte.`
+    : `${isReminder ? 'Este é um lembrete: você' : 'Você'} foi convidado para participar da organização <strong>${orgName}</strong> no Kronos Hub.`
 
   const { error } = await resend.emails.send({
     from: 'Kronos Hub <no-reply@kronoshub.com.br>',
@@ -23,13 +37,8 @@ export async function sendInviteEmail({
     subject,
     html: `
       <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 16px;">
-        <h2 style="color: #111; margin-bottom: 16px;">
-          ${isReminder ? 'Lembrete de convite' : 'Você foi convidado!'}
-        </h2>
-        <p style="color: #333; font-size: 16px; line-height: 1.5;">
-          ${isReminder ? 'Este é um lembrete: você' : 'Você'} foi convidado para participar da organização
-          <strong>${orgName}</strong> no Kronos Hub.
-        </p>
+        <h2 style="color: #111; margin-bottom: 16px;">${heading}</h2>
+        <p style="color: #333; font-size: 16px; line-height: 1.5;">${body}</p>
         <p style="margin: 24px 0;">
           <a
             href="${inviteLink}"

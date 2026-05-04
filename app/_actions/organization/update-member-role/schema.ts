@@ -1,9 +1,10 @@
 import { z } from 'zod'
-import { MemberRole } from '@prisma/client'
 
 export const updateMemberRoleSchema = z.object({
   memberId: z.string().uuid(),
-  role: z.nativeEnum(MemberRole),
+  // OWNER e SUPPORT são excluídos intencionalmente:
+  // OWNER só via transferência de propriedade; SUPPORT só via fluxo de convite dedicado
+  role: z.enum(['ADMIN', 'MEMBER']),
 })
 
 export type UpdateMemberRoleSchema = z.infer<typeof updateMemberRoleSchema>

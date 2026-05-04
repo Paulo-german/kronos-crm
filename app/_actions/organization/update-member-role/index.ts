@@ -43,10 +43,10 @@ export const updateMemberRole = orgActionClient
       )
     }
 
-    // Não pode promover para OWNER (apenas transferência)
-    if (role === 'OWNER') {
+    // Não pode alterar role de um agente de SUPPORT — somente via remoção e novo convite
+    if (member.role === 'SUPPORT') {
       throw new Error(
-        'Não é possível promover para OWNER diretamente. Utilize a funcionalidade de transferência de propriedade.',
+        'Não é possível alterar o papel de um agente de suporte. Revogue o acesso e convide novamente se necessário.',
       )
     }
 

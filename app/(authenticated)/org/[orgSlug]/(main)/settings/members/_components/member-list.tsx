@@ -65,6 +65,7 @@ const roleMap: Record<MemberRole, string> = {
   OWNER: 'Dono',
   ADMIN: 'Admin',
   MEMBER: 'Membro',
+  SUPPORT: 'Suporte',
 }
 
 export function MemberList({

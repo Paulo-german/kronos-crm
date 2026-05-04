@@ -15,14 +15,32 @@ export const inviteMember = orgActionClient
     // 0. Verificar permissão (apenas ADMIN/OWNER podem convidar membros)
     requirePermission(canPerformAction(ctx, 'organization', 'update'))
 
-    // 1. Quota Check (CRÍTICO)
-    await requireQuota(ctx.orgId, 'member')
-
-    // 1.1 Validar Role (CRÍTICO) - Ninguém pode ser convidado diretamente como OWNER
+    // 1. Validar Role (CRÍTICO)
     if (data.role === 'OWNER') {
       throw new Error(
         'Não é possível convidar um membro como OWNER. Convide como MEMBER ou ADMIN e transfira a propriedade posteriormente.',
       )
+    }
+
+    // 1.1 Para SUPPORT: busca o usuário e valida isSupportAgent antes de qualquer mutação.
+    // A query é reutilizada para notificação no passo 6, evitando round-trip duplo.
+    const invitedUser =
+      data.role === 'SUPPORT'
+        ? await db.user.findUnique({
+            where: { email: data.email },
+            select: { id: true, isSupportAgent: true },
+          })
+        : null
+
+    if (data.role === 'SUPPORT' && !invitedUser?.isSupportAgent) {
+      throw new Error(
+        'Este e-mail não pertence a um agente de suporte habilitado. Solicite ao time Kronos que habilite o acesso de suporte para este usuário.',
+      )
+    }
+
+    // 1.2 Quota Check — SUPPORT não consome seats
+    if (data.role !== 'SUPPORT') {
+      await requireQuota(ctx.orgId, 'member')
     }
 
     // 2. Verificar se já existe membro com este email na organização
@@ -35,14 +53,14 @@ export const inviteMember = orgActionClient
       },
     })
 
+    if (existingMember?.status === 'ACCEPTED') {
+      throw new Error('Este e-mail já é membro desta organização.')
+    }
+
     if (existingMember) {
-      if (existingMember.status === 'ACCEPTED') {
-        throw new Error('Este e-mail já é membro desta organização.')
-      } else {
-        throw new Error(
-          'Já existe um convite pendente para este e-mail. Cancele o anterior se quiser reenviar.',
-        )
-      }
+      throw new Error(
+        'Já existe um convite pendente para este e-mail. Cancele o anterior se quiser reenviar.',
+      )
     }
 
     // 3. Gerar token de convite
@@ -72,20 +90,24 @@ export const inviteMember = orgActionClient
       to: data.email,
       orgName: organization.name,
       inviteLink: `${appUrl}/invite/${invitationToken}`,
+      isSupport: data.role === 'SUPPORT',
     })
 
     revalidateTag(`org-members:${ctx.orgId}`)
 
-    // 6. Notificar via in-app se o convidado já tem conta no sistema
-    const existingUser = await db.user.findUnique({
-      where: { email: data.email },
-      select: { id: true },
-    })
+    // 6. Notificar via in-app se o convidado já tem conta.
+    // Para roles não-SUPPORT: busca o usuário aqui. Para SUPPORT: já foi buscado no passo 1.1.
+    const userForNotification =
+      invitedUser ??
+      (await db.user.findUnique({
+        where: { email: data.email },
+        select: { id: true },
+      }))
 
-    if (existingUser) {
+    if (userForNotification) {
       scheduleNotification({
         orgId: ctx.orgId,
-        userId: existingUser.id,
+        userId: userForNotification.id,
         type: 'USER_ACTION',
         title: 'Convite para organização',
         body: `Você foi convidado para participar de ${organization.name}.`,

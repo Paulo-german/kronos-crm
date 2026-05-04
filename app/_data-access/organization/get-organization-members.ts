@@ -19,35 +19,45 @@ export interface AcceptedMemberDto {
 export const getOrganizationMembers = cache(async (orgId: string) => {
   const getCachedMembers = unstable_cache(
     async () => {
-      // Buscar membros ACCEPTED
+      const memberSelect = {
+        user: {
+          select: {
+            fullName: true,
+            avatarUrl: true,
+            phone: true,
+          },
+        },
+      }
+
+      // Buscar membros regulares ACCEPTED (excluindo SUPPORT)
       const acceptedMembers = await db.member.findMany({
         where: {
           organizationId: orgId,
           status: 'ACCEPTED',
+          role: { not: 'SUPPORT' },
         },
-        include: {
-          user: {
-            select: {
-              fullName: true,
-              avatarUrl: true,
-              phone: true,
-            },
-          },
-        },
-        orderBy: {
-          createdAt: 'asc',
-        },
+        include: memberSelect,
+        orderBy: { createdAt: 'asc' },
       })
 
-      // Buscar membros PENDING (convites)
+      // Buscar membros regulares PENDING (excluindo SUPPORT)
       const pendingMembers = await db.member.findMany({
         where: {
           organizationId: orgId,
           status: 'PENDING',
+          role: { not: 'SUPPORT' },
         },
-        orderBy: {
-          createdAt: 'desc',
+        orderBy: { createdAt: 'desc' },
+      })
+
+      // Buscar agentes de suporte (ACCEPTED + PENDING)
+      const supportMembers = await db.member.findMany({
+        where: {
+          organizationId: orgId,
+          role: 'SUPPORT',
         },
+        include: memberSelect,
+        orderBy: { createdAt: 'desc' },
       })
 
       return {
@@ -57,7 +67,7 @@ export const getOrganizationMembers = cache(async (orgId: string) => {
           email: m.email,
           role: m.role,
           status: m.status,
-          user: m.user, // Pode ter nome e avatar
+          user: m.user,
           joinedAt: m.updatedAt,
         })),
         pending: pendingMembers.map((m) => ({
@@ -65,6 +75,16 @@ export const getOrganizationMembers = cache(async (orgId: string) => {
           email: m.email,
           role: m.role,
           status: m.status,
+          invitedAt: m.createdAt,
+        })),
+        support: supportMembers.map((m) => ({
+          id: m.id,
+          userId: m.userId,
+          email: m.email,
+          role: m.role,
+          status: m.status,
+          user: m.user ?? null,
+          joinedAt: m.updatedAt,
           invitedAt: m.createdAt,
         })),
       }

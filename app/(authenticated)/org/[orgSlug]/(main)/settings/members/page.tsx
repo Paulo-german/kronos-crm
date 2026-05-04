@@ -7,6 +7,7 @@ import { QuotaHint } from '@/_components/trial/quota-hint'
 import { MemberList } from './_components/member-list'
 import InviteMemberDialog from './_components/invite-member-dialog'
 import { PiiToggleCard } from './_components/pii-toggle-card'
+import { SupportSection } from './_components/support-section'
 import { redirect } from 'next/navigation'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 
@@ -24,7 +25,7 @@ export default async function MembersPage({ params }: MembersPageProps) {
     redirect(`/org/${orgSlug}/home`)
   }
 
-  const [{ accepted, pending }, quota] = await Promise.all([
+  const [{ accepted, pending, support }, quota] = await Promise.all([
     getOrganizationMembers(orgId),
     checkPlanQuota(orgId, 'member'),
   ])
@@ -73,6 +74,8 @@ export default async function MembersPage({ params }: MembersPageProps) {
           />
         )}
       </div>
+
+      <SupportSection members={support} />
     </div>
   )
 }
