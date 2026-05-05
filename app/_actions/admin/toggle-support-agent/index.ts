@@ -8,7 +8,7 @@ const CONFIRMATION_WORD = 'CONFIRMAR'
 
 export const toggleSupportAgent = ownerActionClient
   .schema(toggleSupportAgentSchema)
-  .action(async ({ parsedInput: { userId, adminKey, confirmation }, ctx }) => {
+  .action(async ({ parsedInput: { userId, adminKey, confirmation } }) => {
     const supportAgentKey = process.env.SUPPORT_AGENT_KEY
     if (!supportAgentKey || adminKey !== supportAgentKey) {
       throw new Error('Senha incorreta.')
