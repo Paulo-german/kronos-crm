@@ -83,7 +83,7 @@ export function parseMetaMessage(
     messageId: message.id,
     remoteJid,
     phoneNumber,
-    pushName: contact.profile.name || null,
+    pushName: contact.profile?.name || null,
     fromMe: false, // Meta Cloud NAO envia mensagens fromMe no webhook de messages
     timestamp: Number(message.timestamp),
     type,

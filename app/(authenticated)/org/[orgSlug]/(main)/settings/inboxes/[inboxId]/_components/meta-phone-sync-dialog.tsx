@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 import {
@@ -235,6 +235,12 @@ const MetaPhoneSyncDialogContent = ({
     },
   )
 
+  // Dispara o fetch ao montar — useEffect é o lugar correto para sincronizar com sistema externo
+  useEffect(() => {
+    executeFetch({ inboxId })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const { execute: executeUpdate, isPending: isUpdating } = useAction(
     updateMetaPhoneNumber,
     {
@@ -251,11 +257,6 @@ const MetaPhoneSyncDialogContent = ({
       },
     },
   )
-
-  // Dispara o fetch na primeira vez que o conteudo e montado (open=true)
-  if (!hasLoaded && !isFetching && !hasErrored) {
-    executeFetch({ inboxId })
-  }
 
   const handleRetry = () => {
     reset()
