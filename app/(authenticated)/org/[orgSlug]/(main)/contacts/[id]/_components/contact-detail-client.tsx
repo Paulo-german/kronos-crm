@@ -106,6 +106,7 @@ const ContactDetailClient = ({
   const canTransfer =
     userRole === 'ADMIN' ||
     userRole === 'OWNER' ||
+    userRole === 'SUPPORT' ||
     contact.assignedTo === currentUserId
 
   const handleTransfer = () => {

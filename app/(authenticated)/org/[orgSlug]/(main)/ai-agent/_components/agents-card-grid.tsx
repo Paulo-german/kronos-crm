@@ -57,7 +57,7 @@ export function AgentsCardGrid({
   const [togglingAgentId, setTogglingAgentId] = useState<string | null>(null)
   const router = useRouter()
 
-  const canManage = userRole === 'OWNER' || userRole === 'ADMIN'
+  const canManage = userRole === 'OWNER' || userRole === 'ADMIN' || userRole === 'SUPPORT'
 
   const { execute: executeToggle } = useAction(updateAgent, {
     onSuccess: () => {

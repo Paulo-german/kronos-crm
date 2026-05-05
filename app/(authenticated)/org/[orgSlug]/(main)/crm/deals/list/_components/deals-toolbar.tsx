@@ -80,7 +80,7 @@ export function DealsToolbar({
   isTutorialCompleted,
 }: DealsToolbarProps) {
   const isMember = userRole === 'MEMBER'
-  const isElevated = userRole === 'ADMIN' || userRole === 'OWNER'
+  const isElevated = userRole === 'ADMIN' || userRole === 'OWNER' || userRole === 'SUPPORT'
 
   // Valor local do input de busca com debounce para URL
   const [searchInputValue, setSearchInputValue] = useState(search)

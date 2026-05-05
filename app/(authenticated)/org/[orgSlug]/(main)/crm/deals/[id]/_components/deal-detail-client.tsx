@@ -258,6 +258,7 @@ const DealDetailClient = ({
   const canTransfer =
     userRole === 'ADMIN' ||
     userRole === 'OWNER' ||
+    userRole === 'SUPPORT' ||
     deal.assigneeId === currentUserId
 
   const assignableMembers = members.filter((m) => m.user?.fullName)

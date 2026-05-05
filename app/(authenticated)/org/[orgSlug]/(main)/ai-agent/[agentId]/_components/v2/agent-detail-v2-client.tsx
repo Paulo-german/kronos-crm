@@ -69,7 +69,7 @@ const AgentDetailV2Client = ({
   followUpExhaustedAction,
   followUpExhaustedConfig,
 }: AgentDetailV2ClientProps) => {
-  const canManage = userRole === 'OWNER' || userRole === 'ADMIN'
+  const canManage = userRole === 'OWNER' || userRole === 'ADMIN' || userRole === 'SUPPORT'
 
   const [isActive, setIsActive] = useState(agent.isActive)
 

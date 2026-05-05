@@ -20,7 +20,7 @@ const ProductsPage = async ({ params }: ProductsPageProps) => {
   const { orgId, userRole } = await getOrgContext(orgSlug)
 
   // RBAC: Apenas ADMIN e OWNER podem acessar produtos
-  if (userRole !== 'ADMIN' && userRole !== 'OWNER') {
+  if (userRole !== 'ADMIN' && userRole !== 'OWNER' && userRole !== 'SUPPORT') {
     redirect(`/org/${orgSlug}/settings`)
   }
 

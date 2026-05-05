@@ -80,7 +80,7 @@ export const PipelineClient = ({
     setAssignees,
   } = usePipelineFilters()
 
-  const canManagePipeline = userRole === 'ADMIN' || userRole === 'OWNER'
+  const canManagePipeline = userRole === 'ADMIN' || userRole === 'OWNER' || userRole === 'SUPPORT'
 
   if (!pipeline) {
     return (
