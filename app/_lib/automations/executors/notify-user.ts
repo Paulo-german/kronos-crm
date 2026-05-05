@@ -4,50 +4,9 @@ import { createNotification } from '@/_lib/notifications/create-notification'
 import { getOrgSlug } from '@/_lib/notifications/get-org-slug'
 import { resolveWhatsAppProvider } from '@/_lib/whatsapp/provider'
 import { withRetry } from '@/_lib/whatsapp/retry'
+import { normalizePhoneToJid } from '@/_lib/whatsapp/normalize-phone'
+import { resolveTemplate } from '../template-resolver'
 import type { ExecutorContext, ExecutorResult, NotifyUserConfig, NotifyChannel } from '../types'
-
-const PLACEHOLDER_REGEX = /\{\{deal\.(title|stage|assignee|status|priority)\}\}/g
-
-/**
- * Substitui os placeholders do messageTemplate com dados reais do deal.
- * Placeholders suportados: {{deal.title}}, {{deal.stage}}, {{deal.assignee}},
- * {{deal.status}}, {{deal.priority}}
- */
-function resolveTemplate(
-  template: string,
-  ctx: ExecutorContext,
-  stageName: string,
-  assigneeName: string,
-): string {
-  return template.replace(PLACEHOLDER_REGEX, (_match, field: string) => {
-    switch (field) {
-      case 'title':
-        return ctx.deal.title
-      case 'stage':
-        return stageName
-      case 'assignee':
-        return assigneeName
-      case 'status':
-        return ctx.deal.status
-      case 'priority':
-        return ctx.deal.priority
-      default:
-        return ''
-    }
-  })
-}
-
-/**
- * Normaliza um telefone do User para formato WhatsApp (somente dígitos + sufixo @s.whatsapp.net).
- * Retorna null se o telefone não tiver dígitos suficientes para ser enviável.
- */
-function buildWhatsappJid(rawPhone: string | null): string | null {
-  if (!rawPhone) return null
-  const digits = rawPhone.replace(/\D/g, '')
-  // Mínimo de 10 dígitos (DDD + número) para evitar enviar lixo
-  if (digits.length < 10) return null
-  return `${digits}@s.whatsapp.net`
-}
 
 /**
  * Executor de notificação — execução de sistema, sem RBAC.
@@ -76,7 +35,16 @@ export async function executeNotifyUser(ctx: ExecutorContext): Promise<ExecutorR
   const stageName = stage?.name ?? ctx.deal.stageId
   const assigneeName = assigneeUser?.fullName ?? ctx.deal.assignedTo
 
-  const resolvedBody = resolveTemplate(config.messageTemplate, ctx, stageName, assigneeName)
+  const resolvedBody = resolveTemplate(config.messageTemplate, {
+    deal: {
+      title: ctx.deal.title,
+      stage: stageName,
+      assignee: assigneeName,
+      status: ctx.deal.status,
+      priority: ctx.deal.priority,
+      value: ctx.deal.value != null ? String(ctx.deal.value) : '',
+    },
+  })
 
   // Resolve a lista de destinatários conforme o targetType
   let recipientIds: string[] = []
@@ -177,7 +145,7 @@ export async function executeNotifyUser(ctx: ExecutorContext): Promise<ExecutorR
 
       const results = await Promise.allSettled(
         recipients.map(async (user) => {
-          const jid = buildWhatsappJid(user.phone)
+          const jid = normalizePhoneToJid(user.phone)
           if (!jid) {
             return { skipped: true as const }
           }

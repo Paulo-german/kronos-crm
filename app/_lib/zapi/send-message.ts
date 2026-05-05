@@ -14,6 +14,7 @@ export async function sendZApiTextMessage(
   config: ZApiConfig,
   recipientPhone: string,
   text: string,
+  fetcher: typeof fetch = fetch,
 ): Promise<string[]> {
   await assertZApiConnected(config)
 
@@ -28,7 +29,7 @@ export async function sendZApiTextMessage(
     const response = await zapiPost(config, 'send-text', {
       phone: recipientPhone,
       message: chunks[index],
-    })
+    }, fetcher)
 
     if (!response.ok) {
       const errorBody = await response.text().catch(() => 'unknown')

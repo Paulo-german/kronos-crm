@@ -69,6 +69,11 @@ async function validateCrossEntityReferences(
   if (typeof actionConfig.lossReasonId === 'string') {
     await requireLossReasonInOrg(actionConfig.lossReasonId, orgId)
   }
+
+  // Valida inboxId no actionConfig (SEND_WHATSAPP_FOLLOWUP)
+  if (typeof actionConfig.inboxId === 'string') {
+    await requireWhatsappInboxInOrg(actionConfig.inboxId, orgId)
+  }
 }
 
 async function requireStageInOrg(stageId: string, orgId: string): Promise<void> {
@@ -105,5 +110,29 @@ async function requireLossReasonInOrg(lossReasonId: string, orgId: string): Prom
 
   if (!lossReason) {
     throw new Error('Motivo de perda não encontrado ou inativo.')
+  }
+}
+
+async function requireWhatsappInboxInOrg(inboxId: string, orgId: string): Promise<void> {
+  const inbox = await db.inbox.findFirst({
+    where: { id: inboxId, organizationId: orgId },
+    select: { isActive: true, channel: true, connectionType: true },
+  })
+
+  if (!inbox) {
+    throw new Error('Inbox selecionado não foi encontrado.')
+  }
+
+  if (!inbox.isActive) {
+    throw new Error('Inbox selecionado está inativo.')
+  }
+
+  if (inbox.channel !== 'WHATSAPP') {
+    throw new Error('Inbox selecionado não é um canal WhatsApp.')
+  }
+
+  // Meta Cloud API requer templates pré-aprovados — suporte futuro
+  if (inbox.connectionType === 'META_CLOUD') {
+    throw new Error('Inboxes da API Oficial (Meta) não são suportados nesta ação. Use Evolution ou Z-API.')
   }
 }

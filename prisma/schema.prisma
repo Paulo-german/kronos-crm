@@ -1281,6 +1281,8 @@ enum AutomationAction {
   // Envia notificação in-app
   NOTIFY_USER
   UPDATE_DEAL_PRIORITY
+  // Envia mensagem de follow-up via WhatsApp para o contato principal do deal
+  SEND_WHATSAPP_FOLLOWUP
 }
 
 enum AutomationExecutionStatus {

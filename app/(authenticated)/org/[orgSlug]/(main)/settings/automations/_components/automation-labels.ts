@@ -15,6 +15,7 @@ export const ACTION_LABELS: Record<AutomationAction, string> = {
   MARK_DEAL_LOST: 'Marcar como perdida',
   NOTIFY_USER: 'Enviar notificação',
   UPDATE_DEAL_PRIORITY: 'Alterar prioridade',
+  SEND_WHATSAPP_FOLLOWUP: 'Enviar follow-up no WhatsApp',
 }
 
 export const CONDITION_FIELD_LABELS: Record<string, string> = {

@@ -13,6 +13,7 @@ import {
   markDealLostConfigSchema,
   notifyUserConfigSchema,
   updateDealPriorityConfigSchema,
+  sendWhatsappFollowupConfigSchema,
 } from '../create-automation/schema'
 
 // Re-exporta os sub-schemas para que consumers possam importar daqui
@@ -29,6 +30,7 @@ export {
   markDealLostConfigSchema,
   notifyUserConfigSchema,
   updateDealPriorityConfigSchema,
+  sendWhatsappFollowupConfigSchema,
 }
 
 // ─────────────────────────────────────────────────────────────

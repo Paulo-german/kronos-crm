@@ -20,6 +20,7 @@ export async function sendMetaTextMessage(
   accessToken: string,
   recipientPhone: string,
   text: string,
+  fetcher: typeof fetch = fetch,
 ): Promise<string[]> {
   const baseUrl = getGraphApiBaseUrl()
   await assertMetaConnected(phoneNumberId, accessToken)
@@ -33,7 +34,7 @@ export async function sendMetaTextMessage(
       await new Promise((resolve) => setTimeout(resolve, DELAY_BETWEEN_CHUNKS_MS))
     }
 
-    const response = await fetch(`${baseUrl}/${phoneNumberId}/messages`, {
+    const response = await fetcher(`${baseUrl}/${phoneNumberId}/messages`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

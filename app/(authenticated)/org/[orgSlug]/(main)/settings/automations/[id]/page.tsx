@@ -8,6 +8,7 @@ import { getOrgPipelines } from '@/_data-access/pipeline/get-org-pipelines'
 import { getPipelineStages } from '@/_data-access/pipeline/get-pipeline-stages'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
 import { getDealLostReasons } from '@/_data-access/settings/get-lost-reasons'
+import { getWhatsappInboxesForAutomation } from '@/_data-access/inbox/get-whatsapp-inboxes-for-automation'
 import { Button } from '@/_components/ui/button'
 
 import { AutomationDetailClient } from './_components/automation-detail-client'
@@ -25,11 +26,12 @@ const AutomationDetailPage = async ({ params }: AutomationDetailPageProps) => {
     redirect(`/org/${orgSlug}/settings`)
   }
 
-  const [automation, pipelines, members, lossReasons] = await Promise.all([
+  const [automation, pipelines, members, lossReasons, whatsappInboxes] = await Promise.all([
     getAutomationById(id, ctx),
     getOrgPipelines(ctx.orgId),
     getOrganizationMembers(ctx.orgId),
     getDealLostReasons(ctx.orgId),
+    getWhatsappInboxesForAutomation(ctx.orgId),
   ])
 
   if (!automation) {
@@ -59,6 +61,7 @@ const AutomationDetailPage = async ({ params }: AutomationDetailPageProps) => {
         stageOptions={stageOptions}
         members={members.accepted}
         lossReasons={lossReasons}
+        whatsappInboxes={whatsappInboxes}
       />
     </div>
   )

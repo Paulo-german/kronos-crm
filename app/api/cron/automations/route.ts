@@ -156,6 +156,15 @@ async function buildDealSnapshot(
       status: true,
       value: true,
       stage: { select: { pipelineId: true } },
+      contacts: {
+        select: {
+          id: true,
+          contactId: true,
+          isPrimary: true,
+          contact: { select: { name: true, phone: true } },
+        },
+        orderBy: { isPrimary: 'desc' },
+      },
     },
   })
 
@@ -170,6 +179,7 @@ async function buildDealSnapshot(
     priority: staleData.priority,
     status: deal.status as DealStatus,
     value: deal.value !== null ? Number(deal.value) : null,
+    contacts: deal.contacts,
   }
 }
 

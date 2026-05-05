@@ -35,6 +35,7 @@ import type { OrgPipelineDto } from '@/_data-access/pipeline/get-org-pipelines'
 import type { PipelineStageOption } from '@/_data-access/pipeline/get-pipeline-stages'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import type { DealLostReasonDto } from '@/_data-access/settings/get-lost-reasons'
+import type { WhatsappInboxOption } from '@/_data-access/inbox/get-whatsapp-inboxes-for-automation'
 import { cn } from '@/_lib/utils'
 import {
   automationFormSchema,
@@ -66,6 +67,7 @@ interface AutomationWizardSheetProps {
   stageOptions: PipelineStageOption[]
   members: AcceptedMemberDto[]
   lossReasons: DealLostReasonDto[]
+  whatsappInboxes: WhatsappInboxOption[]
   editingAutomation?: AutomationWizardEditData | null
   onUpdate?: (data: UpdateAutomationInput) => void
   isUpdating?: boolean
@@ -166,6 +168,11 @@ function buildActionDescription(
       names.join(', ') +
       (targetUserIds.length > 2 ? ` +${targetUserIds.length - 2}` : '')
     )
+  }
+
+  const inboxId = typeof actionConfig.inboxId === 'string' ? actionConfig.inboxId : null
+  if (inboxId) {
+    return 'Envio via WhatsApp'
   }
 
   return 'Configurado'
@@ -356,6 +363,11 @@ function validateActionConfig(
   if (actionType === 'UPDATE_DEAL_PRIORITY') {
     if (!actionConfig.targetPriority) return 'Selecione a prioridade'
   }
+  if (actionType === 'SEND_WHATSAPP_FOLLOWUP') {
+    if (!actionConfig.inboxId) return 'Selecione o inbox para enviar o follow-up'
+    if (!actionConfig.messageTemplate) return 'Digite a mensagem do follow-up'
+    if (!actionConfig.noConversationBehavior) return 'Defina o comportamento sem conversa'
+  }
   return null
 }
 
@@ -366,6 +378,7 @@ export function AutomationWizardSheet({
   stageOptions,
   members,
   lossReasons,
+  whatsappInboxes,
   editingAutomation,
   onUpdate,
   isUpdating = false,
@@ -670,6 +683,7 @@ export function AutomationWizardSheet({
                     stageOptions={stageOptions}
                     members={members}
                     lossReasons={lossReasons}
+                    whatsappInboxes={whatsappInboxes}
                     showConfigErrors={showActionConfigErrors}
                   />
                   <WizardSummaryPreview

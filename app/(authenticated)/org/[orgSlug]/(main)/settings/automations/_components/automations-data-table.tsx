@@ -32,6 +32,7 @@ import type { OrgPipelineDto } from '@/_data-access/pipeline/get-org-pipelines'
 import type { PipelineStageOption } from '@/_data-access/pipeline/get-pipeline-stages'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import type { DealLostReasonDto } from '@/_data-access/settings/get-lost-reasons'
+import type { WhatsappInboxOption } from '@/_data-access/inbox/get-whatsapp-inboxes-for-automation'
 import type { AutomationWizardEditData } from './wizard-form-types'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -43,6 +44,7 @@ interface AutomationsDataTableProps {
   stageOptions: PipelineStageOption[]
   members: AcceptedMemberDto[]
   lossReasons: DealLostReasonDto[]
+  whatsappInboxes: WhatsappInboxOption[]
 }
 
 export function AutomationsDataTable({
@@ -52,6 +54,7 @@ export function AutomationsDataTable({
   stageOptions,
   members,
   lossReasons,
+  whatsappInboxes,
 }: AutomationsDataTableProps) {
   const [editingAutomation, setEditingAutomation] = useState<AutomationWizardEditData | null>(null)
   const [isEditSheetOpen, setIsEditSheetOpen] = useState(false)
@@ -320,6 +323,7 @@ export function AutomationsDataTable({
         stageOptions={stageOptions}
         members={members}
         lossReasons={lossReasons}
+        whatsappInboxes={whatsappInboxes}
         editingAutomation={editingAutomation}
         onUpdate={handleUpdate}
         isUpdating={isUpdating}

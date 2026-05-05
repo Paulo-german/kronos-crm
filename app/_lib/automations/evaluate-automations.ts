@@ -44,6 +44,15 @@ async function fetchDealForEvaluation(dealId: string): Promise<DealForEvaluation
       stage: {
         select: { pipelineId: true },
       },
+      contacts: {
+        select: {
+          id: true,
+          contactId: true,
+          isPrimary: true,
+          contact: { select: { name: true, phone: true } },
+        },
+        orderBy: { isPrimary: 'desc' },
+      },
     },
   })
 
@@ -59,6 +68,7 @@ async function fetchDealForEvaluation(dealId: string): Promise<DealForEvaluation
     status: deal.status,
     // Decimal → number (null-safe); null se o deal não tem valor definido (0 é válido)
     value: deal.value !== null ? Number(deal.value) : null,
+    contacts: deal.contacts,
   }
 }
 

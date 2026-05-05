@@ -32,6 +32,15 @@ export interface DealForEvaluation {
   status: DealStatus
   /** Valor do deal em centavos (evita float aritmético) */
   value: number | null
+  contacts: Array<{
+    id: string
+    contactId: string
+    isPrimary: boolean
+    contact: {
+      name: string
+      phone: string | null
+    }
+  }>
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -100,6 +109,12 @@ export interface NotifyUserConfig {
 
 export interface UpdateDealPriorityConfig {
   targetPriority: DealPriority
+}
+
+export interface SendWhatsappFollowupConfig {
+  inboxId: string
+  messageTemplate: string
+  noConversationBehavior: 'create' | 'skip'
 }
 
 // ─────────────────────────────────────────────────────────────

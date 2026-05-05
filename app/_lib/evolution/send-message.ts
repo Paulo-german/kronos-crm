@@ -15,6 +15,7 @@ export async function sendWhatsAppMessage(
   remoteJid: string,
   text: string,
   credentials: EvolutionCredentials,
+  fetcher: typeof fetch = fetch,
 ): Promise<string[]> {
   const { apiUrl, apiKey } = credentials
 
@@ -30,7 +31,7 @@ export async function sendWhatsAppMessage(
       await new Promise((resolve) => setTimeout(resolve, DELAY_BETWEEN_CHUNKS_MS))
     }
 
-    const response = await fetch(
+    const response = await fetcher(
       `${apiUrl}/message/sendText/${instanceName}`,
       {
         method: 'POST',

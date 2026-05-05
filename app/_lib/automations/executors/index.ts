@@ -7,6 +7,7 @@ import { executeMoveDealToStage } from './move-deal-to-stage'
 import { executeMarkDealLost } from './mark-deal-lost'
 import { executeNotifyUser } from './notify-user'
 import { executeUpdateDealPriority } from './update-deal-priority'
+import { executeSendWhatsappFollowup } from './send-whatsapp-followup'
 
 type ExecutorFn = (ctx: ExecutorContext) => Promise<ExecutorResult>
 
@@ -20,6 +21,7 @@ const EXECUTOR_REGISTRY: Record<AutomationAction, ExecutorFn> = {
   MARK_DEAL_LOST: executeMarkDealLost,
   NOTIFY_USER: executeNotifyUser,
   UPDATE_DEAL_PRIORITY: executeUpdateDealPriority,
+  SEND_WHATSAPP_FOLLOWUP: executeSendWhatsappFollowup,
 }
 
 export function getExecutor(actionType: AutomationAction): ExecutorFn {

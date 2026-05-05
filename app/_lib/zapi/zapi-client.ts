@@ -24,8 +24,9 @@ export async function zapiPost(
   config: ZApiConfig,
   endpoint: string,
   body: unknown,
+  fetcher: typeof fetch = fetch,
 ): Promise<Response> {
-  return fetch(buildUrl(config, endpoint), {
+  return fetcher(buildUrl(config, endpoint), {
     method: 'POST',
     headers: buildHeaders(config.clientToken),
     body: JSON.stringify(body),

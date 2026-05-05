@@ -109,6 +109,12 @@ export const updateDealPriorityConfigSchema = z.object({
   targetPriority: z.enum(['low', 'medium', 'high', 'urgent']),
 })
 
+export const sendWhatsappFollowupConfigSchema = z.object({
+  inboxId: z.string().uuid('ID do inbox inválido'),
+  messageTemplate: z.string().trim().min(1, 'Mensagem é obrigatória').max(1000, 'Máximo de 1000 caracteres'),
+  noConversationBehavior: z.enum(['create', 'skip'], { message: 'Comportamento inválido' }),
+})
+
 // ─────────────────────────────────────────────────────────────
 // Schema principal de criação (com validação cross-field via superRefine)
 // ─────────────────────────────────────────────────────────────
@@ -150,6 +156,7 @@ export const createAutomationSchema = z.object({
     [AutomationAction.MARK_DEAL_LOST]: markDealLostConfigSchema,
     [AutomationAction.NOTIFY_USER]: notifyUserConfigSchema,
     [AutomationAction.UPDATE_DEAL_PRIORITY]: updateDealPriorityConfigSchema,
+    [AutomationAction.SEND_WHATSAPP_FOLLOWUP]: sendWhatsappFollowupConfigSchema,
   }
 
   const actionResult = actionValidators[data.actionType].safeParse(data.actionConfig)

@@ -9,6 +9,7 @@ import type { OrgPipelineDto } from '@/_data-access/pipeline/get-org-pipelines'
 import type { PipelineStageOption } from '@/_data-access/pipeline/get-pipeline-stages'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import type { DealLostReasonDto } from '@/_data-access/settings/get-lost-reasons'
+import type { WhatsappInboxOption } from '@/_data-access/inbox/get-whatsapp-inboxes-for-automation'
 
 interface CreateAutomationButtonProps {
   withinQuota?: boolean
@@ -16,6 +17,7 @@ interface CreateAutomationButtonProps {
   stageOptions: PipelineStageOption[]
   members: AcceptedMemberDto[]
   lossReasons: DealLostReasonDto[]
+  whatsappInboxes: WhatsappInboxOption[]
 }
 
 const CreateAutomationButton = ({
@@ -24,6 +26,7 @@ const CreateAutomationButton = ({
   stageOptions,
   members,
   lossReasons,
+  whatsappInboxes,
 }: CreateAutomationButtonProps) => {
   const [isOpen, setIsOpen] = useState(false)
 
@@ -56,6 +59,7 @@ const CreateAutomationButton = ({
         stageOptions={stageOptions}
         members={members}
         lossReasons={lossReasons}
+        whatsappInboxes={whatsappInboxes}
       />
     </>
   )

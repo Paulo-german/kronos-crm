@@ -22,12 +22,13 @@ import { Label } from '@/_components/ui/label'
 import { ACTION_LABELS, REASSIGN_STRATEGY_LABELS, NOTIFY_TARGET_LABELS, PRIORITY_OPTIONS } from './automation-labels'
 import { Badge } from '@/_components/ui/badge'
 import { cn } from '@/_lib/utils'
-import { UserPlus, ArrowRight, XCircle, Bell, AlertTriangle } from 'lucide-react'
+import { UserPlus, ArrowRight, XCircle, Bell, AlertTriangle, MessageCircle } from 'lucide-react'
 import React, { useRef } from 'react'
 import type { AutomationFormValues } from './wizard-form-types'
 import type { PipelineStageOption } from '@/_data-access/pipeline/get-pipeline-stages'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import type { DealLostReasonDto } from '@/_data-access/settings/get-lost-reasons'
+import type { WhatsappInboxOption } from '@/_data-access/inbox/get-whatsapp-inboxes-for-automation'
 import { Separator } from '@/_components/ui/separator'
 import { Checkbox } from '@/_components/ui/checkbox'
 
@@ -37,23 +38,28 @@ const ACTION_ICONS: Record<AutomationAction, React.ElementType> = {
   MARK_DEAL_LOST: XCircle,
   NOTIFY_USER: Bell,
   UPDATE_DEAL_PRIORITY: AlertTriangle,
+  SEND_WHATSAPP_FOLLOWUP: MessageCircle,
 }
 
 const MESSAGE_VARIABLES = [
-  { token: '{{deal.title}}',    label: 'Título' },
-  { token: '{{deal.stage}}',    label: 'Estágio' },
-  { token: '{{deal.assignee}}', label: 'Responsável' },
-  { token: '{{deal.value}}',    label: 'Valor' },
+  { token: '{{deal.title}}',        label: 'Título' },
+  { token: '{{deal.stage}}',        label: 'Estágio' },
+  { token: '{{deal.assignee}}',     label: 'Responsável' },
+  { token: '{{deal.value}}',        label: 'Valor' },
+  { token: '{{contact.name}}',      label: 'Contato' },
+  { token: '{{contact.firstName}}', label: 'Primeiro nome' },
+  { token: '{{user.name}}',         label: 'Meu nome' },
 ] as const
 
 interface WizardStepActionProps {
   stageOptions: PipelineStageOption[]
   members: AcceptedMemberDto[]
   lossReasons: DealLostReasonDto[]
+  whatsappInboxes: WhatsappInboxOption[]
   showConfigErrors?: boolean
 }
 
-export function WizardStepAction({ stageOptions, members, lossReasons, showConfigErrors = false }: WizardStepActionProps) {
+export function WizardStepAction({ stageOptions, members, lossReasons, whatsappInboxes, showConfigErrors = false }: WizardStepActionProps) {
   const form = useFormContext<AutomationFormValues>()
   const actionType = form.watch('actionType')
   const actionConfig = form.watch('actionConfig') as Record<string, unknown>
@@ -86,9 +92,25 @@ export function WizardStepAction({ stageOptions, members, lossReasons, showConfi
   }
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const followupTextareaRef = useRef<HTMLTextAreaElement>(null)
 
   const insertVariable = (token: string) => {
     const textarea = textareaRef.current
+    const current = getConfigString('messageTemplate')
+    const start = textarea?.selectionStart ?? current.length
+    const end = textarea?.selectionEnd ?? current.length
+    const next = current.slice(0, start) + token + current.slice(end)
+    setActionConfigValue('messageTemplate', next)
+    requestAnimationFrame(() => {
+      if (!textarea) return
+      textarea.focus()
+      const cursor = start + token.length
+      textarea.setSelectionRange(cursor, cursor)
+    })
+  }
+
+  const insertFollowupVariable = (token: string) => {
+    const textarea = followupTextareaRef.current
     const current = getConfigString('messageTemplate')
     const start = textarea?.selectionStart ?? current.length
     const end = textarea?.selectionEnd ?? current.length
@@ -479,6 +501,175 @@ export function WizardStepAction({ stageOptions, members, lossReasons, showConfi
                 )}
               >
                 {getConfigString('messageTemplate').length}/500
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SEND_WHATSAPP_FOLLOWUP */}
+      {actionType === AutomationAction.SEND_WHATSAPP_FOLLOWUP && (
+        <div
+          className="space-y-4 rounded-md border bg-muted/30 p-4"
+          data-error={
+            showConfigErrors &&
+            (!getConfigString('inboxId') ||
+              !getConfigString('messageTemplate') ||
+              !getConfigString('noConversationBehavior'))
+              ? 'true'
+              : undefined
+          }
+        >
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            Configuração (Follow-up no WhatsApp)
+          </p>
+
+          {/* Seletor de inbox */}
+          <div className="space-y-2">
+            <Label>Inbox para envio *</Label>
+            <p className="text-xs text-muted-foreground">
+              Apenas inboxes Evolution e Z-API são suportados. A API Oficial (Meta) exige templates pré-aprovados — em breve.
+            </p>
+            <Select
+              value={getConfigString('inboxId')}
+              onValueChange={(val) => {
+                setActionConfigValue('inboxId', val)
+                form.clearErrors('actionConfig')
+              }}
+            >
+              <SelectTrigger className={showConfigErrors && !getConfigString('inboxId') ? 'border-destructive' : ''}>
+                <SelectValue placeholder="Selecione o inbox" />
+              </SelectTrigger>
+              <SelectContent>
+                {whatsappInboxes.length === 0 && (
+                  <div className="px-2 py-3 text-sm text-muted-foreground text-center">
+                    Nenhum inbox WhatsApp encontrado
+                  </div>
+                )}
+                {whatsappInboxes.map((inbox) => {
+                  const isMeta = inbox.connectionType === 'META_CLOUD'
+                  const isInactive = !inbox.isActive
+                  const isDisabled = isMeta || isInactive
+                  return (
+                    <SelectItem
+                      key={inbox.id}
+                      value={inbox.id}
+                      disabled={isDisabled}
+                      className={isDisabled ? 'opacity-50' : ''}
+                    >
+                      <span className="flex items-center gap-2">
+                        {inbox.name}
+                        {isMeta && (
+                          <Badge variant="outline" className="text-[10px] px-1 py-0">
+                            API Oficial — em breve
+                          </Badge>
+                        )}
+                        {isInactive && !isMeta && (
+                          <Badge variant="outline" className="text-[10px] px-1 py-0">
+                            Inativo
+                          </Badge>
+                        )}
+                      </span>
+                    </SelectItem>
+                  )
+                })}
+              </SelectContent>
+            </Select>
+            {showConfigErrors && !getConfigString('inboxId') && (
+              <p className="text-sm text-destructive">Selecione o inbox para envio</p>
+            )}
+          </div>
+
+          <Separator />
+
+          {/* Comportamento sem conversa */}
+          <div className="space-y-3">
+            <Label>Se não houver conversa com o contato *</Label>
+            <RadioGroup
+              value={getConfigString('noConversationBehavior')}
+              onValueChange={(val) => {
+                setActionConfigValue('noConversationBehavior', val)
+                form.clearErrors('actionConfig')
+              }}
+              className="space-y-2"
+            >
+              <div className="flex items-start gap-2">
+                <RadioGroupItem value="create" id="ncb-create" className="mt-0.5" />
+                <div>
+                  <Label htmlFor="ncb-create" className="cursor-pointer font-normal">
+                    Criar conversa e enviar
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Uma nova conversa é aberta no inbox automaticamente.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <RadioGroupItem value="skip" id="ncb-skip" className="mt-0.5" />
+                <div>
+                  <Label htmlFor="ncb-skip" className="cursor-pointer font-normal">
+                    Pular execução
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    A automação é registrada como ignorada (sem erro).
+                  </p>
+                </div>
+              </div>
+            </RadioGroup>
+            {showConfigErrors && !getConfigString('noConversationBehavior') && (
+              <p className="text-sm text-destructive">Defina o comportamento sem conversa</p>
+            )}
+          </div>
+
+          <Separator />
+
+          {/* Template de mensagem */}
+          <div className="space-y-2">
+            <Label>Mensagem *</Label>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">Inserir variável:</span>
+              {MESSAGE_VARIABLES.map((variable) => (
+                <button
+                  key={variable.token}
+                  type="button"
+                  onClick={() => insertFollowupVariable(variable.token)}
+                >
+                  <Badge
+                    variant="outline"
+                    className="cursor-pointer font-mono text-xs hover:bg-accent transition-colors"
+                  >
+                    {variable.token}
+                  </Badge>
+                </button>
+              ))}
+            </div>
+            <Textarea
+              ref={followupTextareaRef}
+              placeholder="Ex: Olá {{contact.firstName}}, tudo bem? Queria retomar a conversa sobre {{deal.title}}."
+              className={`resize-none ${showConfigErrors && !getConfigString('messageTemplate') ? 'border-destructive' : ''}`}
+              rows={4}
+              maxLength={1000}
+              value={getConfigString('messageTemplate')}
+              onChange={(event) => {
+                setActionConfigValue('messageTemplate', event.target.value)
+                form.clearErrors('actionConfig')
+              }}
+            />
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-destructive">
+                {showConfigErrors && !getConfigString('messageTemplate') ? 'Digite a mensagem' : ''}
+              </span>
+              <span
+                className={cn(
+                  'text-xs tabular-nums',
+                  getConfigString('messageTemplate').length > 1000
+                    ? 'text-destructive'
+                    : getConfigString('messageTemplate').length > 900
+                      ? 'text-amber-600'
+                      : 'text-muted-foreground',
+                )}
+              >
+                {getConfigString('messageTemplate').length}/1000
               </span>
             </div>
           </div>
