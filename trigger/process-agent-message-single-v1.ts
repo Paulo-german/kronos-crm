@@ -1,4 +1,4 @@
-import { task, tasks, logger, metadata as triggerMetadata, AbortTaskRunError } from '@trigger.dev/sdk/v3'
+import { task, tasks, logger, metadata as triggerMetadata, AbortTaskRunError, retry } from '@trigger.dev/sdk/v3'
 import { observe, updateActiveTrace } from '@langfuse/tracing'
 import { flushLangfuse, langfuseTracer } from './lib/langfuse'
 import { buildDispatcherCtx } from './lib/build-dispatcher-ctx'
@@ -1254,11 +1254,25 @@ export async function runSingleV1(
   // Roteamento pelo provider: Evolution ou Meta Cloud
   // -----------------------------------------------------------------------
   let sentMessageIds: string[]
+  const sendStart = Date.now()
 
   ctx.log('step:9 whatsapp_sending', 'PASS', {
     provider: ctx.message.provider,
     textLength: textToSend.length,
   })
+
+  const tracedFetch: typeof fetch = (url, init) =>
+    retry.fetch(url as string, {
+      ...init,
+      retry: {
+        byStatus: {
+          '429': { strategy: 'backoff', maxAttempts: 3, factor: 2, minTimeoutInMs: 500, maxTimeoutInMs: 5000, randomize: true },
+          '500-599': { strategy: 'backoff', maxAttempts: 3, factor: 2, minTimeoutInMs: 500, maxTimeoutInMs: 5000, randomize: true },
+        },
+        timeout: { maxAttempts: 3, factor: 1.8, minTimeoutInMs: 500, maxTimeoutInMs: 5000 },
+      },
+      timeoutInMs: 15_000,
+    })
 
   if (ctx.message.provider === 'simulator') {
     // Simulator: a mensagem do assistente já foi salva no banco no step 8.
@@ -1284,6 +1298,7 @@ export async function runSingleV1(
       metaInbox.metaAccessToken,
       ctx.message.remoteJid.replace('@s.whatsapp.net', ''),
       textToSend,
+      tracedFetch,
     )
   } else if (ctx.message.provider === 'z_api') {
     // Para Z-API: buscar credenciais do inbox (per-inbox, nunca no payload)
@@ -1316,6 +1331,7 @@ export async function runSingleV1(
       },
       ctx.message.remoteJid.replace('@s.whatsapp.net', ''),
       textToSend,
+      tracedFetch,
     )
   } else {
     // Provider Evolution (default)
@@ -1327,6 +1343,7 @@ export async function runSingleV1(
       ctx.message.remoteJid,
       textToSend,
       evolutionCredentials,
+      tracedFetch,
     )
   }
 
@@ -1345,6 +1362,7 @@ export async function runSingleV1(
     responseLength: responseText.length,
     sentMessageIds,
     provider: ctx.message.provider,
+    sendDurationMs: Date.now() - sendStart,
   })
   ctx.tracker.addStep({
     type: 'SEND_MESSAGE',
