@@ -1,4 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
+
+export const dynamic = 'force-dynamic'
 import { cookies } from 'next/headers'
 import { createClient } from '@/_lib/supabase/server'
 import { db } from '@/_lib/prisma'
@@ -75,7 +77,7 @@ export async function GET(request: NextRequest) {
 
   const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/instagram/callback`
 
-  const authUrl = new URL('https://api.instagram.com/oauth/authorize')
+  const authUrl = new URL('https://www.instagram.com/oauth/authorize')
   authUrl.searchParams.set('client_id', process.env.NEXT_PUBLIC_META_INSTAGRAM_APP_ID ?? '')
   authUrl.searchParams.set('redirect_uri', redirectUri)
   authUrl.searchParams.set('response_type', 'code')
