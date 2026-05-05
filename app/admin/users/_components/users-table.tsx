@@ -5,7 +5,7 @@ import { useAction } from 'next-safe-action/hooks'
 import { useRouter } from 'next/navigation'
 import { format, formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Users, Shield, Phone } from 'lucide-react'
+import { Users, Shield, Phone, Mail, Loader2, CheckCircle2, Clock } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   Table,
@@ -36,6 +36,7 @@ import { Input } from '@/_components/ui/input'
 import { Label } from '@/_components/ui/label'
 import { toggleSuperAdmin } from '@/_actions/admin/toggle-super-admin'
 import { toggleSupportAgent } from '@/_actions/admin/toggle-support-agent'
+import { resendVerificationEmail } from '@/_actions/admin/resend-verification-email'
 import type { AdminUserDto } from '@/_data-access/admin/types'
 
 const CONFIRMATION_WORD = 'CONFIRMAR'
@@ -90,6 +91,7 @@ export const UsersTable = ({ users, isOwner }: UsersTableProps) => {
   } | null>(null)
   const [supportAgentKey,      setSupportAgentKey]      = useState('')
   const [supportConfirmation,  setSupportConfirmation]  = useState('')
+  const [resendingEmail, setResendingEmail] = useState<string | null>(null)
 
   const { execute, status } = useAction(toggleSuperAdmin, {
     onSuccess: ({ data }) => {
@@ -105,6 +107,22 @@ export const UsersTable = ({ users, isOwner }: UsersTableProps) => {
       toast.error(error.serverError ?? 'Erro ao alterar permissão.')
     },
   })
+
+  const { execute: executeResend } = useAction(resendVerificationEmail, {
+    onSuccess: () => {
+      toast.success('E-mail de verificação reenviado com sucesso.')
+      setResendingEmail(null)
+    },
+    onError: ({ error }) => {
+      toast.error(error.serverError ?? 'Erro ao reenviar e-mail de verificação.')
+      setResendingEmail(null)
+    },
+  })
+
+  const handleResendVerification = (email: string) => {
+    setResendingEmail(email)
+    executeResend({ email })
+  }
 
   const { execute: executeSupportToggle, status: supportStatus } = useAction(toggleSupportAgent, {
     onSuccess: ({ data }) => {
@@ -197,6 +215,7 @@ export const UsersTable = ({ users, isOwner }: UsersTableProps) => {
               <TableHead>Agente de Suporte</TableHead>
               <TableHead>Último acesso</TableHead>
               <TableHead>Criado em</TableHead>
+              <TableHead />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -217,7 +236,23 @@ export const UsersTable = ({ users, isOwner }: UsersTableProps) => {
                       <p className="font-medium text-foreground">
                         {user.fullName ?? '—'}
                       </p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">{user.email}</p>
+                      <div className="mt-0.5 flex items-center gap-1.5">
+                        <p className="text-xs text-muted-foreground">{user.email}</p>
+                        <Tooltip delayDuration={0}>
+                          <TooltipTrigger asChild>
+                            {user.emailVerifiedAt ? (
+                              <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-500" />
+                            ) : (
+                              <Clock className="h-3 w-3 shrink-0 text-amber-500" />
+                            )}
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {user.emailVerifiedAt
+                              ? `Verificado em ${format(user.emailVerifiedAt, "d 'de' MMM, yyyy", { locale: ptBR })}`
+                              : 'Aguardando verificação'}
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
                     </div>
                   </div>
                 </TableCell>
@@ -320,6 +355,25 @@ export const UsersTable = ({ users, isOwner }: UsersTableProps) => {
                 </TableCell>
                 <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
                   {format(new Date(user.createdAt), "d 'de' MMM, yyyy", { locale: ptBR })}
+                </TableCell>
+                <TableCell>
+                  <Tooltip delayDuration={0}>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        disabled={resendingEmail === user.email}
+                        onClick={() => handleResendVerification(user.email)}
+                      >
+                        {resendingEmail === user.email
+                          ? <Loader2 className="h-4 w-4 animate-spin" />
+                          : <Mail className="h-4 w-4 text-muted-foreground" />
+                        }
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Reenviar e-mail de verificação</TooltipContent>
+                  </Tooltip>
                 </TableCell>
               </TableRow>
             ))}

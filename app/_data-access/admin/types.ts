@@ -87,6 +87,7 @@ export interface AdminUserDto {
   phone: string | null
   isSuperAdmin: boolean
   isSupportAgent: boolean
+  emailVerifiedAt: Date | null
   createdAt: Date
   updatedAt: Date
   organizations: {
