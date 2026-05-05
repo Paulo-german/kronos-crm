@@ -35,6 +35,10 @@ export async function executeNotifyUser(ctx: ExecutorContext): Promise<ExecutorR
   const stageName = stage?.name ?? ctx.deal.stageId
   const assigneeName = assigneeUser?.fullName ?? ctx.deal.assignedTo
 
+  const primaryContact = ctx.deal.contacts.find((contact) => contact.isPrimary) ?? ctx.deal.contacts[0]
+  const contactFullName = primaryContact?.contact.name ?? ''
+  const contactFirstName = contactFullName.split(' ')[0] ?? ''
+
   const resolvedBody = resolveTemplate(config.messageTemplate, {
     deal: {
       title: ctx.deal.title,
@@ -44,6 +48,8 @@ export async function executeNotifyUser(ctx: ExecutorContext): Promise<ExecutorR
       priority: ctx.deal.priority,
       value: ctx.deal.value != null ? String(ctx.deal.value) : '',
     },
+    contact: { name: contactFullName, firstName: contactFirstName },
+    user: { name: assigneeName },
   })
 
   // Resolve a lista de destinatários conforme o targetType

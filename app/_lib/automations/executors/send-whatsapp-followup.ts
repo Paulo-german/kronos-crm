@@ -118,8 +118,10 @@ export async function executeSendWhatsappFollowup(ctx: ExecutorContext): Promise
       content: body,
       providerMessageId: lastMessageId,
       deliveryStatus: 'sent',
+      // source: 'follow_up' é obrigatório — o contador de quota follow_up_monthly
+      // filtra por esse valor. Sem ele a cota nunca seria debitada.
       metadata: {
-        source: 'automation',
+        source: 'follow_up',
         automationId: ctx.automationId,
         automationName: ctx.automationName,
       },

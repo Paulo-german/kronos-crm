@@ -22,13 +22,6 @@ export interface TemplateVars {
 const PLACEHOLDER_REGEX =
   /\{\{(deal\.(title|stage|assignee|status|priority|value)|contact\.(name|firstName)|user\.name)\}\}/g
 
-/**
- * Substitui placeholders no template com dados reais do deal/contato/usuário.
- * Placeholders suportados:
- * - {{deal.title}}, {{deal.stage}}, {{deal.assignee}}, {{deal.status}}, {{deal.priority}}, {{deal.value}}
- * - {{contact.name}}, {{contact.firstName}}
- * - {{user.name}} (alias de {{deal.assignee}})
- */
 export function resolveTemplate(template: string, vars: Partial<TemplateVars>): string {
   return template.replace(PLACEHOLDER_REGEX, (match) => {
     if (match === '{{deal.title}}') return vars.deal?.title ?? ''
