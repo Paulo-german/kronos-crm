@@ -382,64 +382,64 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
 
       // Salvar mensagem na conversa para aparecer no inbox, mesmo sem IA ativa
       const normalizedMsgInactive = parseMetaMessage(message, contact, phoneNumberId)
-      if (normalizedMsgInactive.type !== 'text' || normalizedMsgInactive.text) {
-        const resolveResultInactive = await resolveConversation(
-          inbox.id,
-          orgId,
-          normalizedMsgInactive.remoteJid,
-          normalizedMsgInactive.phoneNumber,
-          normalizedMsgInactive.pushName,
-          dealContext,
-          contactAssignContext,
-          false,
-        )
+      if (normalizedMsgInactive.type === 'text' && !normalizedMsgInactive.text) continue
 
-        if (resolveResultInactive.isNew) {
-          revalidateTag(`pipeline:${orgId}`)
-          revalidateTag(`deals:${orgId}`)
-          revalidateTag(`contacts:${orgId}`)
-          revalidateTag(`dashboard:${orgId}`)
-        }
+      const resolveResultInactive = await resolveConversation(
+        inbox.id,
+        orgId,
+        normalizedMsgInactive.remoteJid,
+        normalizedMsgInactive.phoneNumber,
+        normalizedMsgInactive.pushName,
+        dealContext,
+        contactAssignContext,
+        false,
+      )
 
-        if (resolveResultInactive.nameUpdated) {
-          revalidateTag(`contacts:${orgId}`)
-          revalidateTag(`deals:${orgId}`)
-          revalidateTag(`pipeline:${orgId}`)
-          revalidateTag(`conversations:${orgId}`)
-        }
+      if (resolveResultInactive.isNew) {
+        revalidateTag(`pipeline:${orgId}`)
+        revalidateTag(`deals:${orgId}`)
+        revalidateTag(`contacts:${orgId}`)
+        revalidateTag(`dashboard:${orgId}`)
+      }
 
-        const dedupResultInactive = await redis
-          .set(`dedup:${messageId}`, '1', 'EX', 300, 'NX')
-          .catch(() => 'redis_error' as const)
+      if (resolveResultInactive.nameUpdated) {
+        revalidateTag(`contacts:${orgId}`)
+        revalidateTag(`deals:${orgId}`)
+        revalidateTag(`pipeline:${orgId}`)
+        revalidateTag(`conversations:${orgId}`)
+      }
 
-        if (dedupResultInactive !== null) {
-          await db.message.create({
-            data: {
-              conversationId: resolveResultInactive.conversationId,
-              role: 'user',
-              content: resolveMessageContent(normalizedMsgInactive) || '[mensagem não suportada]',
-              providerMessageId: messageId,
-              metadata: normalizedMsgInactive.media
-                ? ({ media: normalizedMsgInactive.media } as unknown as Prisma.InputJsonValue)
-                : undefined,
-            },
-          })
+      const dedupResultInactive = await redis
+        .set(`dedup:${messageId}`, '1', 'EX', 300, 'NX')
+        .catch(() => 'redis_error' as const)
 
-          await db.conversation.update({
-            where: { id: resolveResultInactive.conversationId },
-            data: {
-              unreadCount: { increment: 1 },
-              lastMessageRole: 'user',
-              nextFollowUpAt: null,
-              followUpCount: 0,
-              lastCustomerMessageAt: new Date(),
-              ...AUTO_REOPEN_FIELDS,
-            },
-          })
+      if (dedupResultInactive !== null) {
+        await db.message.create({
+          data: {
+            conversationId: resolveResultInactive.conversationId,
+            role: 'user',
+            content: resolveMessageContent(normalizedMsgInactive) || '[mensagem não suportada]',
+            providerMessageId: messageId,
+            metadata: normalizedMsgInactive.media
+              ? ({ media: normalizedMsgInactive.media } as unknown as Prisma.InputJsonValue)
+              : undefined,
+          },
+        })
 
-          revalidateTag(`conversations:${orgId}`)
-          revalidateTag(`conversation-messages:${resolveResultInactive.conversationId}`)
-        }
+        await db.conversation.update({
+          where: { id: resolveResultInactive.conversationId },
+          data: {
+            unreadCount: { increment: 1 },
+            lastMessageRole: 'user',
+            nextFollowUpAt: null,
+            followUpCount: 0,
+            lastCustomerMessageAt: new Date(),
+            ...AUTO_REOPEN_FIELDS,
+          },
+        })
+
+        revalidateTag(`conversations:${orgId}`)
+        revalidateTag(`conversation-messages:${resolveResultInactive.conversationId}`)
       }
 
       continue
@@ -816,6 +816,7 @@ async function processInstagramMessagingEvent(
       distributionUserIds: true,
       metaAccessToken: true,
       metaIgUserId: true,
+      organization: { select: { name: true, slug: true } },
       channel: true,
       agentId: true,
       agentGroupId: true,
@@ -857,15 +858,21 @@ async function processInstagramMessagingEvent(
   })
 
   if (!inbox) {
-    log('inbox_lookup', 'EXIT', { reason: 'no_inbox_found' })
+    log('step:3 inbox_lookup', 'EXIT', { reason: 'no_inbox_found' })
     return
   }
 
   const orgId = inbox.organizationId
+  const orgName = inbox.organization.name
+  const orgSlug = inbox.organization.slug
+
+  // Redefine log com contexto de org após inbox lookup
+  const logCtx = (step: string, outcome: 'PASS' | 'EXIT' | 'SKIP', extra?: Record<string, unknown>) =>
+    console.log(`[ig-webhook] ${step} → ${outcome}`, { igUserId, psid, mid, org: orgName, orgSlug, ...extra })
 
   const orgHasPlan = await hasActivePlan(orgId)
   if (!orgHasPlan) {
-    log('plan_guard', 'EXIT', { reason: 'no_active_plan', orgId })
+    logCtx('step:3b plan_guard', 'EXIT', { reason: 'no_active_plan' })
     return
   }
 
@@ -882,14 +889,15 @@ async function processInstagramMessagingEvent(
       }
     : undefined
 
-  log('inbox_lookup', 'PASS', { inboxId: inbox.id, orgId, inboxActive: inbox.isActive })
+  logCtx('step:1 message_received', 'PASS', { inboxId: inbox.id, inboxActive: inbox.isActive })
+  logCtx('step:3 inbox_lookup', 'PASS', { inboxId: inbox.id, inboxActive: inbox.isActive })
 
   const remoteJid = normalizedMessage.remoteJid
 
   // Inbox desativada ou sem agente/grupo configurado — salvar mensagem mas não processar com IA
   const hasAiConfigured = !!(inbox.agentId || inbox.agentGroupId)
   if (!inbox.isActive || !hasAiConfigured) {
-    log('agent_active_check', 'EXIT', {
+    logCtx('step:5 agent_active_check', 'EXIT', {
       reason: !inbox.isActive ? 'inbox_inactive' : 'no_ai_configured',
     })
 
@@ -989,11 +997,73 @@ async function processInstagramMessagingEvent(
   const resolvedAgent = await resolveAgentForConversation(inbox, preResolveConv)
 
   if (!resolvedAgent || !resolvedAgent.isActive) {
-    log('agent_active_check', 'EXIT', { reason: 'agent_inactive_or_unresolved' })
+    logCtx('step:5 agent_active_check', 'EXIT', { reason: 'agent_inactive_or_unresolved' })
+
+    // Salvar mensagem na conversa para aparecer no inbox, mesmo sem IA ativa
+    if (normalizedMessage.type === 'text' && !normalizedMessage.text) return
+
+    const resolveInactiveResult = await resolveConversation(
+      inbox.id,
+      orgId,
+      remoteJid,
+      normalizedMessage.phoneNumber,
+      normalizedMessage.pushName,
+      dealContext,
+      contactAssignContext,
+      false,
+    )
+
+    if (resolveInactiveResult.isNew) {
+      revalidateTag(`pipeline:${orgId}`)
+      revalidateTag(`deals:${orgId}`)
+      revalidateTag(`contacts:${orgId}`)
+      revalidateTag(`dashboard:${orgId}`)
+    }
+
+    if (resolveInactiveResult.nameUpdated) {
+      revalidateTag(`contacts:${orgId}`)
+      revalidateTag(`deals:${orgId}`)
+      revalidateTag(`pipeline:${orgId}`)
+      revalidateTag(`conversations:${orgId}`)
+    }
+
+    const dedupInactive = await redis
+      .set(`dedup:${mid}`, '1', 'EX', 300, 'NX')
+      .catch(() => 'redis_error' as const)
+
+    if (dedupInactive !== null) {
+      await db.message.create({
+        data: {
+          conversationId: resolveInactiveResult.conversationId,
+          role: 'user',
+          content: resolveMessageContent(normalizedMessage) || '[mensagem não suportada]',
+          providerMessageId: mid,
+          metadata: normalizedMessage.media
+            ? ({ media: normalizedMessage.media } as unknown as Prisma.InputJsonValue)
+            : undefined,
+        },
+      })
+
+      await db.conversation.update({
+        where: { id: resolveInactiveResult.conversationId },
+        data: {
+          unreadCount: { increment: 1 },
+          lastMessageRole: 'user',
+          nextFollowUpAt: null,
+          followUpCount: 0,
+          lastCustomerMessageAt: new Date(),
+          ...AUTO_REOPEN_FIELDS,
+        },
+      })
+
+      revalidateTag(`conversations:${orgId}`)
+      revalidateTag(`conversation-messages:${resolveInactiveResult.conversationId}`)
+    }
+
     return
   }
 
-  log('agent_active_check', 'PASS', { agentId: resolvedAgent.agentId, requiresRouting: resolvedAgent.requiresRouting })
+  logCtx('step:5 agent_active_check', 'PASS', { agentId: resolvedAgent.agentId, requiresRouting: resolvedAgent.requiresRouting })
 
   // Business hours check
   if (!resolvedAgent.requiresRouting && resolvedAgent.businessHoursEnabled && resolvedAgent.businessHoursConfig) {
@@ -1003,7 +1073,7 @@ async function processInstagramMessagingEvent(
     )
 
     if (!isOpen) {
-      log('business_hours', 'EXIT', { reason: 'outside_business_hours' })
+      logCtx('step:6 business_hours', 'EXIT', { reason: 'outside_business_hours' })
 
       const oohKey = `ooh-reply:${resolvedAgent.agentId}:${remoteJid}`
       const alreadyReplied = await redis.set(oohKey, '1', 'EX', 3600, 'NX').catch(() => null)
@@ -1094,7 +1164,7 @@ async function processInstagramMessagingEvent(
 
   // Filtrar mensagens de texto vazio
   if (normalizedMessage.type === 'text' && !normalizedMessage.text) {
-    log('normalize', 'EXIT', { reason: 'empty_text' })
+    logCtx('step:7 normalize', 'EXIT', { reason: 'empty_text' })
     return
   }
 
@@ -1119,7 +1189,7 @@ async function processInstagramMessagingEvent(
   ])
 
   if (dedupResult === null) {
-    log('dedup', 'EXIT', { reason: 'duplicate' })
+    logCtx('step:8 dedup', 'EXIT', { reason: 'duplicate' })
     return
   }
 
@@ -1179,13 +1249,13 @@ async function processInstagramMessagingEvent(
         'code' in error &&
         (error as { code: string }).code === 'P2002'
       ) {
-        log('ai_paused_save', 'SKIP', { reason: 'duplicate_provider_message_id' })
+        logCtx('step:9 ai_paused_save', 'SKIP', { reason: 'duplicate_provider_message_id' })
         return
       }
       throw error
     }
 
-    log('ai_pause_check', 'EXIT', { reason: 'ai_paused', conversationId, ms: Date.now() - t0 })
+    logCtx('step:9 ai_pause_check', 'EXIT', { reason: 'ai_paused', conversationId, ms: Date.now() - t0 })
     return
   }
 
@@ -1208,7 +1278,7 @@ async function processInstagramMessagingEvent(
       'code' in error &&
       (error as { code: string }).code === 'P2002'
     ) {
-      log('save_message', 'SKIP', { reason: 'duplicate_provider_message_id' })
+      logCtx('step:10 save_message', 'SKIP', { reason: 'duplicate_provider_message_id' })
       return
     }
     throw error
@@ -1267,7 +1337,7 @@ async function processInstagramMessagingEvent(
   revalidateTag(`conversations:${orgId}`)
   revalidateTag(`conversation-messages:${conversationId}`)
 
-  log('dispatched', 'PASS', {
+  logCtx('step:11 dispatched', 'PASS', {
     conversationId,
     inboxId: inbox.id,
     agentId: resolvedAgent.agentId,

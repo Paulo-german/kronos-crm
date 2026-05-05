@@ -427,6 +427,10 @@ export async function POST(req: Request) {
       revalidateTag(`pipeline:${orgId}`); revalidateTag(`deals:${orgId}`)
       revalidateTag(`contacts:${orgId}`); revalidateTag(`dashboard:${orgId}`)
     }
+    if (resolveInactiveResult.nameUpdated) {
+      revalidateTag(`contacts:${orgId}`); revalidateTag(`deals:${orgId}`)
+      revalidateTag(`pipeline:${orgId}`); revalidateTag(`conversations:${orgId}`)
+    }
     const dedupInactive = await redis.set(`dedup:${messageId}`, '1', 'EX', 300, 'NX').catch(() => 'redis_error' as const)
     if (dedupInactive !== null) {
       await db.message.create({
