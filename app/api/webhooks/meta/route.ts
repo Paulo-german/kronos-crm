@@ -379,6 +379,69 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
 
     if (!resolvedAgent || !resolvedAgent.isActive) {
       logMsg('step:5 agent_active_check', 'EXIT', { reason: 'agent_inactive_or_unresolved' })
+
+      // Salvar mensagem na conversa para aparecer no inbox, mesmo sem IA ativa
+      const normalizedMsgInactive = parseMetaMessage(message, contact, phoneNumberId)
+      if (normalizedMsgInactive.type !== 'text' || normalizedMsgInactive.text) {
+        const resolveResultInactive = await resolveConversation(
+          inbox.id,
+          orgId,
+          normalizedMsgInactive.remoteJid,
+          normalizedMsgInactive.phoneNumber,
+          normalizedMsgInactive.pushName,
+          dealContext,
+          contactAssignContext,
+          false,
+        )
+
+        if (resolveResultInactive.isNew) {
+          revalidateTag(`pipeline:${orgId}`)
+          revalidateTag(`deals:${orgId}`)
+          revalidateTag(`contacts:${orgId}`)
+          revalidateTag(`dashboard:${orgId}`)
+        }
+
+        if (resolveResultInactive.nameUpdated) {
+          revalidateTag(`contacts:${orgId}`)
+          revalidateTag(`deals:${orgId}`)
+          revalidateTag(`pipeline:${orgId}`)
+          revalidateTag(`conversations:${orgId}`)
+        }
+
+        const dedupResultInactive = await redis
+          .set(`dedup:${messageId}`, '1', 'EX', 300, 'NX')
+          .catch(() => 'redis_error' as const)
+
+        if (dedupResultInactive !== null) {
+          await db.message.create({
+            data: {
+              conversationId: resolveResultInactive.conversationId,
+              role: 'user',
+              content: resolveMessageContent(normalizedMsgInactive) || '[mensagem não suportada]',
+              providerMessageId: messageId,
+              metadata: normalizedMsgInactive.media
+                ? ({ media: normalizedMsgInactive.media } as unknown as Prisma.InputJsonValue)
+                : undefined,
+            },
+          })
+
+          await db.conversation.update({
+            where: { id: resolveResultInactive.conversationId },
+            data: {
+              unreadCount: { increment: 1 },
+              lastMessageRole: 'user',
+              nextFollowUpAt: null,
+              followUpCount: 0,
+              lastCustomerMessageAt: new Date(),
+              ...AUTO_REOPEN_FIELDS,
+            },
+          })
+
+          revalidateTag(`conversations:${orgId}`)
+          revalidateTag(`conversation-messages:${resolveResultInactive.conversationId}`)
+        }
+      }
+
       continue
     }
 
