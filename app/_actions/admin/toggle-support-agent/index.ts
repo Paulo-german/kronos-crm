@@ -9,10 +9,6 @@ const CONFIRMATION_WORD = 'CONFIRMAR'
 export const toggleSupportAgent = ownerActionClient
   .schema(toggleSupportAgentSchema)
   .action(async ({ parsedInput: { userId, adminKey, confirmation }, ctx }) => {
-    if (userId === ctx.userId) {
-      throw new Error('Você não pode alterar seu próprio status de agente de suporte.')
-    }
-
     const supportAgentKey = process.env.SUPPORT_AGENT_KEY
     if (!supportAgentKey || adminKey !== supportAgentKey) {
       throw new Error('Senha incorreta.')
