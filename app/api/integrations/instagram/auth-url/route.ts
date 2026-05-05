@@ -75,12 +75,6 @@ export async function GET(request: NextRequest) {
 
   const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/instagram/callback`
 
-  console.log('[auth-url] generating Instagram auth URL:', {
-    client_id: process.env.NEXT_PUBLIC_META_INSTAGRAM_APP_ID,
-    redirect_uri: redirectUri,
-    app_url_env: process.env.NEXT_PUBLIC_APP_URL,
-  })
-
   const authUrl = new URL('https://api.instagram.com/oauth/authorize')
   authUrl.searchParams.set('client_id', process.env.NEXT_PUBLIC_META_INSTAGRAM_APP_ID ?? '')
   authUrl.searchParams.set('redirect_uri', redirectUri)
@@ -92,5 +86,10 @@ export async function GET(request: NextRequest) {
   authUrl.searchParams.set('force_reauth', 'true')
   authUrl.searchParams.set('state', state)
 
-  return NextResponse.json({ url: authUrl.toString() })
+  const finalUrl = authUrl.toString()
+  console.log('[auth-url] generated:', finalUrl)
+
+  return NextResponse.json({ url: finalUrl }, {
+    headers: { 'Cache-Control': 'no-store' },
+  })
 }

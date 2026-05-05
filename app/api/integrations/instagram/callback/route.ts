@@ -44,15 +44,16 @@ export async function GET(request: NextRequest) {
   const stateParam = searchParams.get('state')
   const error = searchParams.get('error')
 
+  // Tentar decodificar state mesmo em caso de erro (para obter orgSlug e inboxId)
+  const state = stateParam ? decodeState(stateParam) : null
+
   console.log('[instagram/callback] received:', {
     has_code: !!code,
     code_prefix: code?.slice(0, 20),
     has_state: !!stateParam,
     has_error: !!error,
+    exchange_redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/instagram/callback`,
   })
-
-  // Tentar decodificar state mesmo em caso de erro (para obter orgSlug e inboxId)
-  const state = stateParam ? decodeState(stateParam) : null
 
   // Usuário negou a permissão no Instagram
   if (error) {
