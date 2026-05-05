@@ -168,3 +168,43 @@ export interface MetaTemplateStatusWebhookEntry {
     field: string // "message_template_status_update"
   }>
 }
+
+// -----------------------------------------------------------------------------
+// Meta WABA Phone Numbers (GET /{wabaId}/phone_numbers)
+// -----------------------------------------------------------------------------
+
+/** Shape bruto da resposta da Graph API para numeros de telefone de um WABA */
+export interface MetaWabaPhoneNumber {
+  id: string
+  display_phone_number: string
+  verified_name: string
+  quality_rating: 'GREEN' | 'YELLOW' | 'RED' | 'UNKNOWN'
+  code_verification_status?: 'VERIFIED' | 'NOT_VERIFIED' | 'EXPIRED'
+  platform_type?: 'CLOUD_API' | 'ON_PREMISE'
+}
+
+export interface MetaWabaPhoneNumbersResponse {
+  data: MetaWabaPhoneNumber[]
+  paging?: {
+    cursors: { before: string; after: string }
+    next?: string
+  }
+}
+
+/**
+ * DTO enriquecido retornado ao client pela action fetchMetaPhoneNumbers.
+ * Inclui flags de uso na org para que a UI saiba se o numero esta disponivel.
+ */
+export interface WabaPhoneNumberDto {
+  id: string
+  displayPhoneNumber: string
+  verifiedName: string
+  qualityRating: 'GREEN' | 'YELLOW' | 'RED' | 'UNKNOWN'
+  codeVerificationStatus: 'VERIFIED' | 'NOT_VERIFIED' | 'EXPIRED' | null
+  /** Verdadeiro quando este numero ja e o configurado na inbox sendo inspecionada */
+  isCurrentInbox: boolean
+  /** ID de outra inbox (mesma org) que ja usa este numero; null se livre */
+  inUseByInboxId: string | null
+  /** Nome da inbox que ja usa este numero; null se livre */
+  inUseByInboxName: string | null
+}
