@@ -434,7 +434,7 @@ export function WizardStepAction({ stageOptions, members, lossReasons, showConfi
           <Separator />
 
           <div className="space-y-2">
-            <FormLabel>Mensagem *</FormLabel>
+            <Label>Mensagem *</Label>
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="text-xs text-muted-foreground">Inserir variável:</span>
               {MESSAGE_VARIABLES.map((variable) => (
