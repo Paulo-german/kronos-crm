@@ -29,6 +29,7 @@ import { disconnectMeta } from '@/_actions/inbox/disconnect-meta'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import type { AgentConnectionStats } from '@/_data-access/agent/get-agent-connection-stats'
+import MetaPhoneSyncDialog from './meta-phone-sync-dialog'
 
 interface MetaConnectionCardProps {
   inboxId: string
@@ -67,6 +68,8 @@ const MetaConnectionCard = ({
   const [isDisconnectOpen, setIsDisconnectOpen] = useState(false)
   // Controla estado de loading durante o fluxo de autorizacao (entre clicar e receber code)
   const [isAuthPending, setIsAuthPending] = useState(false)
+  // Display do telefone pode ser atualizado localmente apos troca bem-sucedida de numero
+  const [localPhoneDisplay, setLocalPhoneDisplay] = useState(metaPhoneDisplay)
 
   // Ref para capturar dados do Embedded Signup antes do callback do FB.login.
   // Precisa ser ref (nao state) para evitar stale closure no callback.
@@ -210,12 +213,12 @@ const MetaConnectionCard = ({
           <CardContent className="space-y-6">
             {/* Informacoes da conta */}
             <div className="grid gap-4 sm:grid-cols-2">
-              {metaPhoneDisplay && (
+              {localPhoneDisplay && (
                 <div className="flex items-center gap-3 rounded-md border border-border/50 bg-background/70 p-3">
                   <Phone className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-xs text-muted-foreground">Telefone</p>
-                    <p className="text-sm font-medium">{metaPhoneDisplay}</p>
+                    <p className="text-sm font-medium">{localPhoneDisplay}</p>
                   </div>
                 </div>
               )}
@@ -275,9 +278,13 @@ const MetaConnectionCard = ({
               </div>
             )}
 
-            {/* Botao desconectar */}
+            {/* Acoes de gerenciamento — sync de numero e desconexao */}
             {canManage && (
-              <div className="flex justify-center pt-2">
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <MetaPhoneSyncDialog
+                  inboxId={inboxId}
+                  onSuccess={(newPhoneDisplay) => setLocalPhoneDisplay(newPhoneDisplay)}
+                />
                 <Button
                   variant="destructive"
                   onClick={() => setIsDisconnectOpen(true)}
