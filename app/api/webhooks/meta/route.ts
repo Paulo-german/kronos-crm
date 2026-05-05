@@ -133,9 +133,11 @@ async function processDeliveryStatuses(statuses: MetaMessageStatus[]): Promise<v
           title: error.title,
           message: error.message,
         } : undefined)
-      } else {
-        // sent, delivered, read — atualiza status com protecao contra downgrade
+      } else if (['sent', 'delivered', 'read'].includes(status.status)) {
         result = await updateDeliveryStatus(status.id, status.status)
+      } else {
+        // Status desconhecido (ex: 'played' para audios) — ignorar silenciosamente
+        continue
       }
 
       if (result) {
