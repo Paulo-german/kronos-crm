@@ -214,6 +214,9 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
           },
         },
       },
+      organization: {
+        select: { name: true, slug: true },
+      },
     },
   })
 
@@ -223,12 +226,14 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
   }
 
   const orgId = inbox.organizationId
+  const orgName = inbox.organization.name
+  const orgSlug = inbox.organization.slug
 
   // Plan guard: rejeitar mensagens de orgs sem plano ativo
   // processChange() não retorna Response — o early return aqui é silenciosamente ignorado pelo Promise.allSettled
   const orgHasPlan = await hasActivePlan(orgId)
   if (!orgHasPlan) {
-    log('step:3b plan_guard', 'EXIT', { reason: 'no_active_plan', orgId })
+    log('step:3b plan_guard', 'EXIT', { reason: 'no_active_plan', org: orgName, orgSlug })
     return
   }
 
@@ -245,7 +250,7 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
       }
     : undefined
 
-  log('step:3 inbox_lookup', 'PASS', { inboxId: inbox.id, orgId, inboxActive: inbox.isActive, hasAgentId: !!inbox.agentId, hasGroupId: !!inbox.agentGroupId })
+  log('step:3 inbox_lookup', 'PASS', { inboxId: inbox.id, org: orgName, orgSlug, inboxActive: inbox.isActive, hasAgentId: !!inbox.agentId, hasGroupId: !!inbox.agentGroupId })
 
   // Processar cada mensagem do change (normalmente 1)
   for (const message of value.messages) {
@@ -256,7 +261,13 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
 
     const messageId = message.id
     const logMsg = (step: string, outcome: 'PASS' | 'EXIT' | 'SKIP', extra?: Record<string, unknown>) =>
-      console.log(`[meta-webhook] ${step} → ${outcome}`, { msgId: messageId, phoneNumberId, ...extra })
+      console.log(`[meta-webhook] ${step} → ${outcome}`, { msgId: messageId, phoneNumberId, org: orgName, orgSlug, ...extra })
+
+    logMsg('step:1 message_received', 'PASS', {
+      type: message.type,
+      from: message.from,
+      hasMedia: message.type !== 'text' && message.type !== 'reaction',
+    })
 
     // 6. Inbox desativada ou sem agente/grupo configurado
     const hasAiConfiguredMeta = !!(inbox.agentId || inbox.agentGroupId)
@@ -457,8 +468,9 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
             await Promise.all(
               oohIds.map((sentId) => redis.set(`dedup:${sentId}`, '1', 'EX', 300).catch(() => {})),
             )
+            logMsg('step:6b ooh_auto_reply', 'PASS', { oohIds, ms: Date.now() - t0 })
           } catch (error) {
-            console.error('[meta-webhook] OOH auto-reply failed:', { msgId: messageId, error })
+            console.error('[meta-webhook] OOH auto-reply failed:', { msgId: messageId, org: orgName, error })
           }
         }
 
@@ -479,6 +491,8 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
       logMsg('step:7 normalize', 'EXIT', { reason: 'empty_text' })
       continue
     }
+
+    logMsg('step:7 normalize', 'PASS', { type: normalizedMessage.type })
 
     // 9. Dedup + Resolve Conversation em paralelo
     const [dedupResult, resolveResult] = await Promise.all([
