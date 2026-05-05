@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { parseAsString, useQueryState } from 'nuqs'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 import {
@@ -119,7 +120,12 @@ const InboxDetailClient = ({
   members,
   pipelines,
 }: InboxDetailClientProps) => {
-  const canManage = userRole === 'OWNER' || userRole === 'ADMIN'
+  const canManage = userRole === 'OWNER' || userRole === 'ADMIN' || userRole === 'SUPPORT'
+  const [activeTab, setActiveTab] = useQueryState(
+    'tab',
+    parseAsString.withDefault('general'),
+  )
+
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [evolutionConnectedOverride, setEvolutionConnectedOverride] = useState<
     boolean | null
@@ -392,7 +398,7 @@ const InboxDetailClient = ({
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="general">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid h-12 w-full grid-cols-2 rounded-md border border-border/50">
           <TabsTrigger value="general" className="rounded-md py-2">
             Geral

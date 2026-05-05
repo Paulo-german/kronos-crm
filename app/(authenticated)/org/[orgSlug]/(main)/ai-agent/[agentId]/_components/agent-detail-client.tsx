@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import Link from 'next/link'
+import { parseAsString, useQueryState } from 'nuqs'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 import { ArrowLeft, CircleIcon, MessageSquare, Sparkles } from 'lucide-react'
@@ -73,7 +74,11 @@ const AgentDetailClient = ({
   followUpExhaustedAction,
   followUpExhaustedConfig,
 }: AgentDetailClientProps) => {
-  const canManage = userRole === 'OWNER' || userRole === 'ADMIN'
+  const canManage = userRole === 'OWNER' || userRole === 'ADMIN' || userRole === 'SUPPORT'
+  const [activeTab, setActiveTab] = useQueryState(
+    'tab',
+    parseAsString.withDefault('general'),
+  )
 
   const [isActive, setIsActive] = useState(agent.isActive)
 
@@ -182,7 +187,7 @@ const AgentDetailClient = ({
           </div>
 
           {/* Tabs — grid-cols-5 com a nova tab Follow-ups */}
-          <Tabs defaultValue="general">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList data-tour="agent-tabs" className="grid h-12 w-full grid-cols-5 rounded-md border border-border/50">
               <TabsTrigger
                 value="general"
