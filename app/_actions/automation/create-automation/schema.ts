@@ -109,8 +109,13 @@ export const updateDealPriorityConfigSchema = z.object({
   targetPriority: z.enum(['low', 'medium', 'high', 'urgent']),
 })
 
+export const SENTINEL_DEAL_INBOX = 'deal_inbox' as const
+
 export const sendWhatsappFollowupConfigSchema = z.object({
-  inboxId: z.string().uuid('ID do inbox inválido'),
+  inboxId: z.union([
+    z.literal(SENTINEL_DEAL_INBOX),
+    z.string().uuid('ID do inbox inválido'),
+  ]),
   messageTemplate: z.string().trim().min(1, 'Mensagem é obrigatória').max(1000, 'Máximo de 1000 caracteres'),
   noConversationBehavior: z.enum(['create', 'skip'], { message: 'Comportamento inválido' }),
 })

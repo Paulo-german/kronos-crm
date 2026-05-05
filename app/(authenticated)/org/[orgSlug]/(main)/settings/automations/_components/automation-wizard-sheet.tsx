@@ -26,6 +26,7 @@ import {
 import { createAutomation } from '@/_actions/automation/create-automation'
 import {
   type CreateAutomationInput,
+  SENTINEL_DEAL_INBOX,
 } from '@/_actions/automation/create-automation/schema'
 import type { UpdateAutomationInput } from '@/_actions/automation/update-automation/schema'
 import { WizardStepTrigger } from './wizard-step-trigger'
@@ -171,6 +172,9 @@ function buildActionDescription(
   }
 
   const inboxId = typeof actionConfig.inboxId === 'string' ? actionConfig.inboxId : null
+  if (inboxId === SENTINEL_DEAL_INBOX) {
+    return 'Caixa de entrada existente do contato'
+  }
   if (inboxId) {
     return 'Envio via WhatsApp'
   }

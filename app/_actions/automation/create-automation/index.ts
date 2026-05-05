@@ -5,7 +5,7 @@ import { orgActionClient } from '@/_lib/safe-action'
 import { canPerformAction, requirePermission, requireQuota } from '@/_lib/rbac'
 import { db } from '@/_lib/prisma'
 import type { Prisma } from '@prisma/client'
-import { createAutomationSchema } from './schema'
+import { createAutomationSchema, SENTINEL_DEAL_INBOX } from './schema'
 
 export const createAutomation = orgActionClient
   .schema(createAutomationSchema)
@@ -70,8 +70,8 @@ async function validateCrossEntityReferences(
     await requireLossReasonInOrg(actionConfig.lossReasonId, orgId)
   }
 
-  // Valida inboxId no actionConfig (SEND_WHATSAPP_FOLLOWUP)
-  if (typeof actionConfig.inboxId === 'string') {
+  // Valida inboxId no actionConfig (SEND_WHATSAPP_FOLLOWUP) — pula para o sentinela 'deal_inbox'
+  if (typeof actionConfig.inboxId === 'string' && actionConfig.inboxId !== SENTINEL_DEAL_INBOX) {
     await requireWhatsappInboxInOrg(actionConfig.inboxId, orgId)
   }
 }

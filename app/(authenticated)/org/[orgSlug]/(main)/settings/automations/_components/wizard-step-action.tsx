@@ -29,8 +29,10 @@ import type { PipelineStageOption } from '@/_data-access/pipeline/get-pipeline-s
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import type { DealLostReasonDto } from '@/_data-access/settings/get-lost-reasons'
 import type { WhatsappInboxOption } from '@/_data-access/inbox/get-whatsapp-inboxes-for-automation'
+import { SENTINEL_DEAL_INBOX } from '@/_actions/automation/create-automation/schema'
 import { Separator } from '@/_components/ui/separator'
 import { Checkbox } from '@/_components/ui/checkbox'
+import { SelectSeparator } from '@/_components/ui/select'
 
 const ACTION_ICONS: Record<AutomationAction, React.ElementType> = {
   REASSIGN_DEAL: UserPlus,
@@ -511,115 +513,133 @@ export function WizardStepAction({ stageOptions, members, lossReasons, whatsappI
       {actionType === AutomationAction.SEND_WHATSAPP_FOLLOWUP && (
         <div
           className="space-y-4 rounded-md border bg-muted/30 p-4"
-          data-error={
-            showConfigErrors &&
-            (!getConfigString('inboxId') ||
-              !getConfigString('messageTemplate') ||
-              !getConfigString('noConversationBehavior'))
+          data-error={(() => {
+            if (!showConfigErrors) return undefined
+            const isSentinel = getConfigString('inboxId') === SENTINEL_DEAL_INBOX
+            const missingBehavior = !isSentinel && !getConfigString('noConversationBehavior')
+            return (!getConfigString('inboxId') || !getConfigString('messageTemplate') || missingBehavior)
               ? 'true'
               : undefined
-          }
+          })()}
         >
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
             Configuração (Follow-up no WhatsApp)
           </p>
 
           {/* Seletor de inbox */}
-          <div className="space-y-2">
-            <Label>Inbox para envio *</Label>
-            <p className="text-xs text-muted-foreground">
-              Apenas inboxes Evolution e Z-API são suportados. A API Oficial (Meta) exige templates pré-aprovados — em breve.
-            </p>
-            <Select
-              value={getConfigString('inboxId')}
-              onValueChange={(val) => {
-                setActionConfigValue('inboxId', val)
-                form.clearErrors('actionConfig')
-              }}
-            >
-              <SelectTrigger className={showConfigErrors && !getConfigString('inboxId') ? 'border-destructive' : ''}>
-                <SelectValue placeholder="Selecione o inbox" />
-              </SelectTrigger>
-              <SelectContent>
-                {whatsappInboxes.length === 0 && (
-                  <div className="px-2 py-3 text-sm text-muted-foreground text-center">
-                    Nenhum inbox WhatsApp encontrado
+          {(() => {
+            const isSentinel = getConfigString('inboxId') === SENTINEL_DEAL_INBOX
+            return (
+              <>
+                <div className="space-y-2">
+                  <Label>Inbox para envio *</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Apenas inboxes Evolution e Z-API são suportados. A API Oficial (Meta) exige templates pré-aprovados — em breve.
+                  </p>
+                  <Select
+                    value={getConfigString('inboxId')}
+                    onValueChange={(val) => {
+                      setActionConfigValue('inboxId', val)
+                      form.clearErrors('actionConfig')
+                    }}
+                  >
+                    <SelectTrigger className={showConfigErrors && !getConfigString('inboxId') ? 'border-destructive' : ''}>
+                      <SelectValue placeholder="Selecione o inbox" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {/* Opção sentinela: usa o inbox da conversa existente do contato */}
+                      <SelectItem value={SENTINEL_DEAL_INBOX}>
+                        <span className="flex flex-col">
+                          <span>Caixa de entrada existente do contato</span>
+                          <span className="text-[11px] text-muted-foreground font-normal">
+                            Usa o inbox onde o contato já tem conversa
+                          </span>
+                        </span>
+                      </SelectItem>
+                      {whatsappInboxes.length > 0 && <SelectSeparator />}
+                      {whatsappInboxes.map((inbox) => {
+                        const isMeta = inbox.connectionType === 'META_CLOUD'
+                        const isInactive = !inbox.isActive
+                        const isDisabled = isMeta || isInactive
+                        return (
+                          <SelectItem
+                            key={inbox.id}
+                            value={inbox.id}
+                            disabled={isDisabled}
+                            className={isDisabled ? 'opacity-50' : ''}
+                          >
+                            <span className="flex items-center gap-2">
+                              {inbox.name}
+                              {isMeta && (
+                                <Badge variant="outline" className="text-[10px] px-1 py-0">
+                                  API Oficial — em breve
+                                </Badge>
+                              )}
+                              {isInactive && !isMeta && (
+                                <Badge variant="outline" className="text-[10px] px-1 py-0">
+                                  Inativo
+                                </Badge>
+                              )}
+                            </span>
+                          </SelectItem>
+                        )
+                      })}
+                    </SelectContent>
+                  </Select>
+                  {showConfigErrors && !getConfigString('inboxId') && (
+                    <p className="text-sm text-destructive">Selecione o inbox para envio</p>
+                  )}
+                </div>
+
+                <Separator />
+
+                {/* Comportamento sem conversa — irrelevante no modo sentinela */}
+                {isSentinel ? (
+                  <p className="text-sm text-muted-foreground">
+                    Se o contato não tiver nenhuma conversa, a execução será pulada automaticamente.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    <Label>Se não houver conversa com o contato *</Label>
+                    <RadioGroup
+                      value={getConfigString('noConversationBehavior')}
+                      onValueChange={(val) => {
+                        setActionConfigValue('noConversationBehavior', val)
+                        form.clearErrors('actionConfig')
+                      }}
+                      className="space-y-2"
+                    >
+                      <div className="flex items-start gap-2">
+                        <RadioGroupItem value="create" id="ncb-create" className="mt-0.5" />
+                        <div>
+                          <Label htmlFor="ncb-create" className="cursor-pointer font-normal">
+                            Criar conversa e enviar
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            Uma nova conversa é aberta no inbox automaticamente.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <RadioGroupItem value="skip" id="ncb-skip" className="mt-0.5" />
+                        <div>
+                          <Label htmlFor="ncb-skip" className="cursor-pointer font-normal">
+                            Pular execução
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            A automação é registrada como ignorada (sem erro).
+                          </p>
+                        </div>
+                      </div>
+                    </RadioGroup>
+                    {showConfigErrors && !getConfigString('noConversationBehavior') && (
+                      <p className="text-sm text-destructive">Defina o comportamento sem conversa</p>
+                    )}
                   </div>
                 )}
-                {whatsappInboxes.map((inbox) => {
-                  const isMeta = inbox.connectionType === 'META_CLOUD'
-                  const isInactive = !inbox.isActive
-                  const isDisabled = isMeta || isInactive
-                  return (
-                    <SelectItem
-                      key={inbox.id}
-                      value={inbox.id}
-                      disabled={isDisabled}
-                      className={isDisabled ? 'opacity-50' : ''}
-                    >
-                      <span className="flex items-center gap-2">
-                        {inbox.name}
-                        {isMeta && (
-                          <Badge variant="outline" className="text-[10px] px-1 py-0">
-                            API Oficial — em breve
-                          </Badge>
-                        )}
-                        {isInactive && !isMeta && (
-                          <Badge variant="outline" className="text-[10px] px-1 py-0">
-                            Inativo
-                          </Badge>
-                        )}
-                      </span>
-                    </SelectItem>
-                  )
-                })}
-              </SelectContent>
-            </Select>
-            {showConfigErrors && !getConfigString('inboxId') && (
-              <p className="text-sm text-destructive">Selecione o inbox para envio</p>
-            )}
-          </div>
-
-          <Separator />
-
-          {/* Comportamento sem conversa */}
-          <div className="space-y-3">
-            <Label>Se não houver conversa com o contato *</Label>
-            <RadioGroup
-              value={getConfigString('noConversationBehavior')}
-              onValueChange={(val) => {
-                setActionConfigValue('noConversationBehavior', val)
-                form.clearErrors('actionConfig')
-              }}
-              className="space-y-2"
-            >
-              <div className="flex items-start gap-2">
-                <RadioGroupItem value="create" id="ncb-create" className="mt-0.5" />
-                <div>
-                  <Label htmlFor="ncb-create" className="cursor-pointer font-normal">
-                    Criar conversa e enviar
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    Uma nova conversa é aberta no inbox automaticamente.
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-2">
-                <RadioGroupItem value="skip" id="ncb-skip" className="mt-0.5" />
-                <div>
-                  <Label htmlFor="ncb-skip" className="cursor-pointer font-normal">
-                    Pular execução
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    A automação é registrada como ignorada (sem erro).
-                  </p>
-                </div>
-              </div>
-            </RadioGroup>
-            {showConfigErrors && !getConfigString('noConversationBehavior') && (
-              <p className="text-sm text-destructive">Defina o comportamento sem conversa</p>
-            )}
-          </div>
+              </>
+            )
+          })()}
 
           <Separator />
 
