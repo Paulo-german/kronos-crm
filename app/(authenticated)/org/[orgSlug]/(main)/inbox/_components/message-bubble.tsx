@@ -15,12 +15,12 @@ function formatAudioDuration(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
 
-function AudioPlayer({ src, isUser }: { src: string; isUser: boolean }) {
+function AudioPlayer({ src, isUser, initialDuration = 0 }: { src: string; isUser: boolean; initialDuration?: number }) {
   const audioRef = useRef<HTMLAudioElement>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [hasError, setHasError] = useState(false)
   const [progress, setProgress] = useState(0)
-  const [duration, setDuration] = useState(0)
+  const [duration, setDuration] = useState(initialDuration)
 
   const togglePlay = useCallback(async () => {
     const audio = audioRef.current
@@ -50,12 +50,15 @@ function AudioPlayer({ src, isUser }: { src: string; isUser: boolean }) {
       setProgress(0)
     }
     const handleTimeUpdate = () => {
-      if (audio.duration && isFinite(audio.duration)) {
-        setProgress((audio.currentTime / audio.duration) * 100)
+      const fileDuration = isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 0
+      const effectiveDuration = fileDuration || initialDuration
+      if (effectiveDuration > 0) {
+        setProgress((audio.currentTime / effectiveDuration) * 100)
       }
     }
     const handleLoadedMetadata = () => {
-      if (audio.duration && isFinite(audio.duration)) {
+      // Prefere duração real do arquivo; mantém initialDuration como fallback
+      if (isFinite(audio.duration) && audio.duration > 0) {
         setDuration(audio.duration)
       }
     }
@@ -79,15 +82,17 @@ function AudioPlayer({ src, isUser }: { src: string; isUser: boolean }) {
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata)
       audio.removeEventListener('error', handleError)
     }
-  }, [])
+  }, [initialDuration])
 
   const handleSeek = (event: React.MouseEvent<HTMLDivElement>) => {
     const audio = audioRef.current
-    if (!audio || !audio.duration) return
+    if (!audio) return
+    const seekTarget = isFinite(audio.duration) && audio.duration > 0 ? audio.duration : initialDuration
+    if (!seekTarget) return
 
     const rect = event.currentTarget.getBoundingClientRect()
     const percent = (event.clientX - rect.left) / rect.width
-    audio.currentTime = percent * audio.duration
+    audio.currentTime = percent * seekTarget
   }
 
   if (hasError) {
@@ -356,6 +361,7 @@ export function MessageBubble({ id, conversationId, role, content, metadata, del
           <AudioPlayer
             src={mediaSrc}
             isUser={isUser}
+            initialDuration={typeof media?.seconds === 'number' ? media.seconds : 0}
           />
         )}
 

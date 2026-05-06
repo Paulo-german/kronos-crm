@@ -86,6 +86,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
             'Content-Type': mediaMimetype,
             'Cache-Control': 'private, max-age=3600',
             'Content-Length': String(metaBuffer.length),
+            'Accept-Ranges': 'bytes',
           },
         })
       } catch (metaError) {
@@ -156,6 +157,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
         'Content-Type': mimetype ?? mediaMimetype,
         'Cache-Control': 'private, max-age=3600',
         'Content-Length': String(buffer.length),
+        'Accept-Ranges': 'bytes',
       },
     })
   } catch (error) {
