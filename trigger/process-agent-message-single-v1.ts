@@ -5,7 +5,7 @@ import { buildDispatcherCtx } from './lib/build-dispatcher-ctx'
 import type { ProcessAgentMessagePayload } from './lib/build-dispatcher-ctx'
 import { handleAgentTaskFailure } from './lib/handle-task-failure'
 import { extractErrorMessage } from './lib/retry-helpers'
-import { generateText, stepCountIs, Output, NoOutputGeneratedError } from 'ai'
+import { generateText, stepCountIs, Output, NoOutputGeneratedError, NoObjectGeneratedError } from 'ai'
 import { z } from 'zod'
 import { getModel } from '@/_lib/ai/provider'
 import { SUMMARIZATION_MODEL_ID } from '@/_lib/ai/models'
@@ -627,11 +627,17 @@ export async function runSingleV1(
         },
       })
     } catch (llmError: unknown) {
-      const isNoOutput = NoOutputGeneratedError.isInstance(llmError)
+      // NoObjectGeneratedError é lançado pelo SDK quando Output.object falha ao parsear JSON
+      // (e.g. modelo retornou texto puro, JSON malformado, ou enum inválido).
+      // NoOutputGeneratedError é lançado quando stepCountIs(N) esgota sem output estruturado.
+      // Ambos exigem o mesmo tratamento: fallback sem structured output.
+      const isNoOutput =
+        NoOutputGeneratedError.isInstance(llmError) ||
+        NoObjectGeneratedError.isInstance(llmError)
 
       if (isNoOutput) {
-        // NoOutputGeneratedError: stepCountIs(N) esgotou sem output estruturado.
-        // Ocorre quando tools + Output.object são combinados na mesma chamada.
+        // NoOutputGeneratedError / NoObjectGeneratedError: output estruturado não foi gerado.
+        // Ocorre quando tools + Output.object são combinados, ou quando o JSON retornado é inválido.
         ctx.log('step:5 llm_call', 'EXIT', {
           reason: 'no_output_generated',
           error: llmError instanceof Error ? llmError.message : String(llmError),
