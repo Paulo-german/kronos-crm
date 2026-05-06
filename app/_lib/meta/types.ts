@@ -32,12 +32,20 @@ export interface MetaIncomingMessage {
   from: string
   id: string // wamid.XXX
   timestamp: string
-  type: 'text' | 'image' | 'audio' | 'document' | 'video' | 'reaction' | 'sticker' | 'location' | 'contacts'
+  type: 'text' | 'image' | 'audio' | 'document' | 'video' | 'button' | 'interactive' | 'reaction' | 'sticker' | 'location' | 'contacts'
   text?: { body: string }
   image?: { id: string; mime_type: string; sha256: string; caption?: string }
   audio?: { id: string; mime_type: string }
   document?: { id: string; mime_type: string; filename: string; caption?: string }
   video?: { id: string; mime_type: string; caption?: string }
+  /** Resposta a template com botão quick-reply */
+  button?: { text: string; payload: string }
+  /** Resposta a mensagem interativa (lista ou botões) */
+  interactive?: {
+    type: 'button_reply' | 'list_reply'
+    button_reply?: { id: string; title: string }
+    list_reply?: { id: string; title: string; description?: string }
+  }
 }
 
 export interface MetaMessageStatusError {
@@ -48,7 +56,7 @@ export interface MetaMessageStatusError {
 
 export interface MetaMessageStatus {
   id: string
-  status: 'sent' | 'delivered' | 'read' | 'failed'
+  status: 'sent' | 'delivered' | 'read' | 'failed' | 'played'
   timestamp: string
   recipient_id: string
   errors?: MetaMessageStatusError[]

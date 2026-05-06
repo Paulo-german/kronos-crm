@@ -1,4 +1,5 @@
 import type { MetaPhoneNumberResponse } from './types'
+import { META_API_VERSION } from './constants'
 
 /**
  * Busca o numero de telefone formatado para exibicao na Graph API.
@@ -8,9 +9,7 @@ export async function getMetaPhoneDisplay(
   phoneNumberId: string,
   accessToken: string,
 ): Promise<string> {
-  const apiVersion = process.env.META_API_VERSION ?? 'v25.0'
-
-  const url = new URL(`https://graph.facebook.com/${apiVersion}/${phoneNumberId}`)
+  const url = new URL(`https://graph.facebook.com/${META_API_VERSION}/${phoneNumberId}`)
   url.searchParams.set('fields', 'display_phone_number')
 
   const response = await fetch(url.toString(), {

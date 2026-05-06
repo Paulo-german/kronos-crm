@@ -1,3 +1,5 @@
+import { META_API_VERSION } from './constants'
+
 // Cache curto para evitar health check HTTP em toda request de envio
 const CONNECTION_CACHE_TTL_MS = 30_000
 const connectionCache = new Map<string, { connected: boolean; expiresAt: number }>()
@@ -23,8 +25,7 @@ export async function assertMetaConnected(
     return
   }
 
-  const version = process.env.META_API_VERSION ?? 'v25.0'
-  const url = `https://graph.facebook.com/${version}/${phoneNumberId}?fields=id`
+  const url = `https://graph.facebook.com/${META_API_VERSION}/${phoneNumberId}?fields=id`
 
   try {
     const response = await fetch(url, {
@@ -34,10 +35,7 @@ export async function assertMetaConnected(
 
     if (!response.ok) {
       const errorBody = await response.text().catch(() => 'unknown')
-      connectionCache.set(phoneNumberId, {
-        connected: false,
-        expiresAt: Date.now() + CONNECTION_CACHE_TTL_MS,
-      })
+      // Nao cachear falha — pode ser transitória (5xx) ou token sendo rotacionado
       throw new Error(
         `WhatsApp Business desconectado. Verifique as credenciais Meta Cloud API. (${response.status}: ${errorBody})`,
       )

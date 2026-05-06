@@ -1,4 +1,5 @@
 import type { MetaMediaInfoResponse } from './types'
+import { META_API_VERSION } from './constants'
 
 interface MetaApiError {
   error?: {
@@ -28,11 +29,9 @@ function parseMetaError(raw: string): string {
  * 2. GET {url} com Bearer token -> retorna binario da midia
  */
 export async function downloadMetaMedia(mediaId: string, accessToken: string): Promise<Buffer> {
-  const apiVersion = process.env.META_API_VERSION ?? 'v25.0'
-
   // Passo 1: Obter a URL temporaria da midia
   const infoResponse = await fetch(
-    `https://graph.facebook.com/${apiVersion}/${mediaId}`,
+    `https://graph.facebook.com/${META_API_VERSION}/${mediaId}`,
     {
       method: 'GET',
       headers: {

@@ -1,12 +1,12 @@
+import { META_API_VERSION } from './constants'
+
 /**
  * Inscreve o app Meta na WABA (WhatsApp Business Account) para receber webhooks.
  * Deve ser chamado apos o Embedded Signup para ativar o recebimento de mensagens.
  */
 export async function subscribeMetaApp(wabaId: string, accessToken: string): Promise<void> {
-  const apiVersion = process.env.META_API_VERSION ?? 'v25.0'
-
   const response = await fetch(
-    `https://graph.facebook.com/${apiVersion}/${wabaId}/subscribed_apps`,
+    `https://graph.facebook.com/${META_API_VERSION}/${wabaId}/subscribed_apps`,
     {
       method: 'POST',
       headers: {

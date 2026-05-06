@@ -5,6 +5,7 @@ import type {
   CreateMetaTemplatePayload,
   MetaTemplateSendComponent,
 } from './types'
+import { META_API_VERSION } from './constants'
 
 // Mapeamento de error_subcode do Meta para mensagens legíveis em português
 const META_TEMPLATE_ERROR_MESSAGES: Record<number, string> = {
@@ -44,8 +45,7 @@ function parseMetaTemplateError(responseBody: string, statusCode: number): strin
 }
 
 function getGraphApiBaseUrl(): string {
-  const version = process.env.META_API_VERSION ?? 'v25.0'
-  return `https://graph.facebook.com/${version}`
+  return `https://graph.facebook.com/${META_API_VERSION}`
 }
 
 interface FetchTemplatesOptions {

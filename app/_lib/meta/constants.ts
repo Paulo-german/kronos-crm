@@ -1,3 +1,5 @@
+export const META_API_VERSION = process.env.META_API_VERSION ?? 'v25.0'
+
 /**
  * Lista completa de idiomas suportados pelo WhatsApp Business API para templates.
  * Fonte: https://developers.facebook.com/docs/whatsapp/api/messages/message-templates/

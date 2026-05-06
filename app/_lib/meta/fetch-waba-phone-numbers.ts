@@ -1,4 +1,5 @@
 import type { MetaWabaPhoneNumber, MetaWabaPhoneNumbersResponse } from './types'
+import { META_API_VERSION } from './constants'
 
 const PHONE_FIELDS = [
   'id',
@@ -19,9 +20,7 @@ export async function fetchWabaPhoneNumbers(
   wabaId: string,
   accessToken: string,
 ): Promise<MetaWabaPhoneNumber[]> {
-  const apiVersion = process.env.META_API_VERSION ?? 'v25.0'
-
-  const url = new URL(`https://graph.facebook.com/${apiVersion}/${wabaId}/phone_numbers`)
+  const url = new URL(`https://graph.facebook.com/${META_API_VERSION}/${wabaId}/phone_numbers`)
   url.searchParams.set('fields', PHONE_FIELDS)
 
   const response = await fetch(url.toString(), {

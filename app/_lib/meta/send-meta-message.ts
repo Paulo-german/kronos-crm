@@ -1,13 +1,13 @@
 import type { MetaSendMessageResponse } from './types'
 import { splitIntoParagraphs } from '@/_lib/whatsapp/chunk-text'
 import { assertMetaConnected } from './connection-guard'
+import { META_API_VERSION } from './constants'
 
 const MAX_WHATSAPP_MESSAGE_LENGTH = 4000
 const DELAY_BETWEEN_CHUNKS_MS = 800
 
 function getGraphApiBaseUrl(): string {
-  const version = process.env.META_API_VERSION ?? 'v25.0'
-  return `https://graph.facebook.com/${version}`
+  return `https://graph.facebook.com/${META_API_VERSION}`
 }
 
 /**

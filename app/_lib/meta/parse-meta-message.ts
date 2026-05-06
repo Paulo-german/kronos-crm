@@ -53,6 +53,18 @@ function extractMetaContent(message: MetaIncomingMessage): ExtractedContent {
     }
   }
 
+  // Resposta a template com botão quick-reply
+  if (message.type === 'button' && message.button) {
+    return { type: 'text', text: message.button.text, media: null }
+  }
+
+  // Resposta a mensagem interativa (botão ou lista)
+  if (message.type === 'interactive' && message.interactive) {
+    const reply = message.interactive.button_reply ?? message.interactive.list_reply
+    const text = reply?.title ?? null
+    return { type: 'text', text, media: null }
+  }
+
   // Tipos nao suportados (sticker, reaction, location, contacts) — logar e tratar como texto vazio
   if (['sticker', 'reaction', 'location', 'contacts'].includes(message.type)) {
     console.log(`[parse-meta-message] Unsupported message type ignored: ${message.type}`, { messageId: message.id })

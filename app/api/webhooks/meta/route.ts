@@ -134,7 +134,7 @@ async function processDeliveryStatuses(statuses: MetaMessageStatus[]): Promise<v
           message: error.message,
         } : undefined)
       } else if (['sent', 'delivered', 'read'].includes(status.status)) {
-        result = await updateDeliveryStatus(status.id, status.status)
+        result = await updateDeliveryStatus(status.id, status.status as 'sent' | 'delivered' | 'read')
       } else {
         // Status desconhecido (ex: 'played' para audios) — ignorar silenciosamente
         continue

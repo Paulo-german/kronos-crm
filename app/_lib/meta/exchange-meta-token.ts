@@ -1,3 +1,5 @@
+import { META_API_VERSION } from './constants'
+
 /**
  * Troca o authorization code do Embedded Signup por um access token permanente.
  * SEGURANCA: Meta APP_SECRET nunca sai do servidor — troca feita server-side.
@@ -5,13 +7,12 @@
 export async function exchangeMetaCodeForToken(code: string): Promise<string> {
   const appId = process.env.NEXT_PUBLIC_META_APP_ID
   const appSecret = process.env.META_APP_SECRET
-  const apiVersion = process.env.META_API_VERSION ?? 'v25.0'
 
   if (!appId || !appSecret) {
     throw new Error('NEXT_PUBLIC_META_APP_ID and META_APP_SECRET must be configured')
   }
 
-  const url = new URL(`https://graph.facebook.com/${apiVersion}/oauth/access_token`)
+  const url = new URL(`https://graph.facebook.com/${META_API_VERSION}/oauth/access_token`)
   url.searchParams.set('client_id', appId)
   url.searchParams.set('client_secret', appSecret)
   url.searchParams.set('code', code)
