@@ -223,7 +223,7 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
   })
 
   if (!inbox) {
-    log('step:3 inbox_lookup', 'EXIT', { reason: 'no_inbox_found', phoneNumberId })
+    log('step:1 inbox_lookup', 'EXIT', { reason: 'no_inbox_found', phoneNumberId })
     return
   }
 
@@ -235,7 +235,7 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
   // processChange() não retorna Response — o early return aqui é silenciosamente ignorado pelo Promise.allSettled
   const orgHasPlan = await hasActivePlan(orgId)
   if (!orgHasPlan) {
-    log('step:3b plan_guard', 'EXIT', { reason: 'no_active_plan', org: orgName, orgSlug })
+    log('step:2 plan_guard', 'EXIT', { reason: 'no_active_plan', org: orgName, orgSlug })
     return
   }
 
@@ -252,7 +252,7 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
       }
     : undefined
 
-  log('step:3 inbox_lookup', 'PASS', { inboxId: inbox.id, org: orgName, orgSlug, inboxActive: inbox.isActive, hasAgentId: !!inbox.agentId, hasGroupId: !!inbox.agentGroupId })
+  log('step:1 inbox_lookup', 'PASS', { inboxId: inbox.id, org: orgName, orgSlug, inboxActive: inbox.isActive, hasAgentId: !!inbox.agentId, hasGroupId: !!inbox.agentGroupId })
 
   // Processar cada mensagem do change (normalmente 1)
   for (const message of value.messages) {
@@ -265,7 +265,7 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
     const logMsg = (step: string, outcome: 'PASS' | 'EXIT' | 'SKIP', extra?: Record<string, unknown>) =>
       console.log(`[meta-webhook] ${step} → ${outcome}`, { msgId: messageId, phoneNumberId, org: orgName, orgSlug, ...extra })
 
-    logMsg('step:1 message_received', 'PASS', {
+    logMsg('step:3 message_received', 'PASS', {
       type: message.type,
       from: message.from,
       hasMedia: message.type !== 'text' && message.type !== 'reaction',
@@ -860,7 +860,7 @@ async function processInstagramMessagingEvent(
   })
 
   if (!inbox) {
-    log('step:3 inbox_lookup', 'EXIT', { reason: 'no_inbox_found' })
+    log('step:1 inbox_lookup', 'EXIT', { reason: 'no_inbox_found' })
     return
   }
 
@@ -874,7 +874,7 @@ async function processInstagramMessagingEvent(
 
   const orgHasPlan = await hasActivePlan(orgId)
   if (!orgHasPlan) {
-    logCtx('step:3b plan_guard', 'EXIT', { reason: 'no_active_plan' })
+    logCtx('step:2 plan_guard', 'EXIT', { reason: 'no_active_plan' })
     return
   }
 
@@ -891,8 +891,8 @@ async function processInstagramMessagingEvent(
       }
     : undefined
 
-  logCtx('step:1 message_received', 'PASS', { inboxId: inbox.id, inboxActive: inbox.isActive })
-  logCtx('step:3 inbox_lookup', 'PASS', { inboxId: inbox.id, inboxActive: inbox.isActive })
+  logCtx('step:1 inbox_lookup', 'PASS', { inboxId: inbox.id, inboxActive: inbox.isActive })
+  logCtx('step:3 message_received', 'PASS', { inboxId: inbox.id, inboxActive: inbox.isActive })
 
   const remoteJid = normalizedMessage.remoteJid
 
