@@ -652,23 +652,13 @@ export async function runSingleV1(
         })
         ctx.traceTags.push('no_output_generated')
 
-        // Filtra o `tools` JÁ configurado — não adiciona tools novas ao agente.
-        const fallbackTools = tools
-          ? (Object.fromEntries(
-              Object.entries(tools).filter(([name]) =>
-                FALLBACK_TOOL_NAMES.includes(name as never),
-              ),
-            ) as typeof tools)
-          : undefined
-        const hasFallbackTools =
-          fallbackTools && Object.keys(fallbackTools).length > 0
-
+        // Fallback sem tools: forçar resposta em texto puro (1 step, sem tool calls)
+        // para garantir que result.text não fique vazio.
         const fallbackResult = await generateText({
           model: getModel(promptContext.modelId),
           messages: llmMessages,
-          tools: hasFallbackTools ? fallbackTools : undefined,
           temperature: LLM_TEMPERATURE,
-          stopWhen: stepCountIs(2),
+          stopWhen: stepCountIs(1),
           maxOutputTokens: MAX_OUTPUT_TOKENS,
           experimental_telemetry: {
             isEnabled: true,
@@ -693,16 +683,21 @@ export async function runSingleV1(
           return null
         })
 
-        if (fallbackResult?.text) {
+        // Extrai texto do resultado ou de qualquer step intermediário com conteúdo
+        const fallbackText =
+          fallbackResult?.text?.trim() ||
+          fallbackResult?.steps?.findLast((step) => step.text?.trim())?.text?.trim()
+
+        if (fallbackText) {
           ctx.traceTags.push('no_output_fallback_recovered')
 
           // Result sintético: steps vazio (sem tool events) e output undefined (sem avanço de step).
           return {
-            text: fallbackResult.text,
+            text: fallbackText,
             steps: [] as never[],
-            usage: fallbackResult.usage,
-            response: { messages: fallbackResult.response.messages },
-            finishReason: fallbackResult.finishReason,
+            usage: fallbackResult!.usage,
+            response: { messages: fallbackResult!.response.messages },
+            finishReason: fallbackResult!.finishReason,
             output: undefined,
           }
         }
