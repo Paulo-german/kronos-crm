@@ -18,12 +18,13 @@ function formatAudioDuration(seconds: number): string {
 function AudioPlayer({ src, isUser }: { src: string; isUser: boolean }) {
   const audioRef = useRef<HTMLAudioElement>(null)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [hasError, setHasError] = useState(false)
   const [progress, setProgress] = useState(0)
   const [duration, setDuration] = useState(0)
 
   const togglePlay = useCallback(async () => {
     const audio = audioRef.current
-    if (!audio) return
+    if (!audio || hasError) return
 
     if (isPlaying) {
       audio.pause()
@@ -33,9 +34,10 @@ function AudioPlayer({ src, isUser }: { src: string; isUser: boolean }) {
     try {
       await audio.play()
     } catch {
+      setHasError(true)
       toast.error('Não foi possível reproduzir o áudio.')
     }
-  }, [isPlaying])
+  }, [isPlaying, hasError])
 
   useEffect(() => {
     const audio = audioRef.current
@@ -57,8 +59,9 @@ function AudioPlayer({ src, isUser }: { src: string; isUser: boolean }) {
         setDuration(audio.duration)
       }
     }
+    // Erro ao carregar (disparado pelo play, não pelo preload — preload="none")
     const handleError = () => {
-      toast.error('Não foi possível carregar o áudio.')
+      setHasError(true)
     }
 
     audio.addEventListener('play', handlePlay)
@@ -85,6 +88,22 @@ function AudioPlayer({ src, isUser }: { src: string; isUser: boolean }) {
     const rect = event.currentTarget.getBoundingClientRect()
     const percent = (event.clientX - rect.left) / rect.width
     audio.currentTime = percent * audio.duration
+  }
+
+  if (hasError) {
+    return (
+      <div
+        className={cn(
+          'mb-1 flex min-w-[220px] items-center gap-2 rounded-lg px-3 py-2',
+          isUser ? 'bg-secondary/40' : 'bg-white/10',
+        )}
+      >
+        <AlertTriangle className={cn('h-4 w-4 shrink-0', isUser ? 'text-muted-foreground' : 'text-white/60')} />
+        <span className={cn('text-xs', isUser ? 'text-muted-foreground' : 'text-white/60')}>
+          Áudio indisponível
+        </span>
+      </div>
+    )
   }
 
   return (
@@ -138,7 +157,7 @@ function AudioPlayer({ src, isUser }: { src: string; isUser: boolean }) {
         {duration > 0 ? formatAudioDuration(duration) : '0:00'}
       </span>
 
-      <audio ref={audioRef} src={src} preload="metadata" />
+      <audio ref={audioRef} src={src} preload="none" />
     </div>
   )
 }
