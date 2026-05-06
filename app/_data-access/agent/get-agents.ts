@@ -8,6 +8,7 @@ export interface AgentDto {
   name: string
   isActive: boolean
   modelId: string
+  agentVersion: string
   pipelineIds: string[]
   inboxCount: number
   stepsCount: number
@@ -35,6 +36,7 @@ const fetchAgentsFromDb = async (orgId: string): Promise<AgentDto[]> => {
     name: agent.name,
     isActive: agent.isActive,
     modelId: agent.modelId,
+    agentVersion: agent.agentVersion,
     pipelineIds: agent.pipelineIds,
     inboxCount: agent._count.inboxes,
     stepsCount: agent._count.steps,
