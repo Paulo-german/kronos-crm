@@ -30,7 +30,8 @@ function isMessageEditable(msg: EditableMessageShape, canEditMessages: boolean):
     : null
   if (meta?.media) return false
   if (meta?.template) return false
-  if (meta?.sentFrom !== 'inbox') return false
+  // Bloquear apenas echoes do celular; IA não tem sentFrom e também deve ser editável
+  if (meta?.sentFrom === 'whatsapp_phone') return false
   const ageMs = Date.now() - new Date(msg.createdAt).getTime()
   if (ageMs > FIFTEEN_MINUTES_MS) return false
   return true

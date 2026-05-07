@@ -80,8 +80,9 @@ export const editMessage = orgActionClient
 
     const meta = (message.metadata as Record<string, unknown> | null) ?? {}
 
-    if (meta.sentFrom !== 'inbox') {
-      throw new Error('Apenas mensagens enviadas pela plataforma podem ser editadas.')
+    // Bloquear apenas echoes do celular; IA não tem sentFrom e também deve ser editável
+    if (meta.sentFrom === 'whatsapp_phone') {
+      throw new Error('Mensagens enviadas pelo celular não podem ser editadas pela plataforma.')
     }
 
     if (meta.media) {
