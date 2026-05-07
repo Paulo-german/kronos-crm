@@ -30,11 +30,11 @@ import type {
   InfoSubtype,
   ProcessingErrorSubtype,
 } from '@/_lib/conversation-events/types'
-import { AUTO_REOPEN_FIELDS } from '@/_lib/conversation/auto-reopen'
 import { prefixAttendantName } from '@/_lib/inbox/prefix-attendant-name'
 import { getFollowUpsForStep } from '@/_data-access/follow-up/get-follow-ups-for-step'
 import { revalidateConversationCache } from './lib/revalidate-cache'
 import { emitAgentStatus } from './lib/emit-agent-status'
+import { saveAgentResponseSent, saveAgentResponseFailed } from './lib/save-agent-response'
 import type { ToolContext } from './tools/types'
 import type { DispatcherCtx } from './dispatcher-types'
 
@@ -1153,7 +1153,7 @@ export async function runSingleV1(
   ctx.tracker.addStep({ type: 'PAUSE_CHECK', status: 'PASSED' })
 
   // -----------------------------------------------------------------------
-  // 8. Salvar resposta no banco + atualizar lastMessageRole na conversa
+  // 8. Preparar texto — salvar no banco ocorre após confirmação do envio
   // -----------------------------------------------------------------------
   const textToSend = prefixAttendantName(
     responseText,
@@ -1161,29 +1161,7 @@ export async function runSingleV1(
     conversation.inbox?.showAttendantName ?? false,
   )
 
-  await db.message.create({
-    data: {
-      conversationId: ctx.conversationId,
-      role: 'assistant',
-      content: textToSend,
-      inputTokens: result.usage?.inputTokens ?? null,
-      outputTokens: result.usage?.outputTokens ?? null,
-      metadata: {
-        model: promptContext.modelId,
-        llmDurationMs,
-      },
-    },
-  })
-
-  // Denormalizar role da última mensagem para viabilizar filtro "não respondidos"
-  await db.conversation.update({
-    where: { id: ctx.conversationId },
-    data: { lastMessageRole: 'assistant', ...AUTO_REOPEN_FIELDS },
-  })
-
-  ctx.log('step:7 response_saved', 'PASS')
-
-  await revalidateConversationCache(ctx.conversationId, ctx.organizationId)
+  ctx.log('step:7 response_prepared', 'PASS')
 
   // -----------------------------------------------------------------------
   // 9. Ajuste de créditos (refund se custo real < estimado, debit extra se >)
@@ -1251,8 +1229,8 @@ export async function runSingleV1(
   }
 
   // -----------------------------------------------------------------------
-  // 10. Send WhatsApp message + pre-register dedup keys
-  // Roteamento pelo provider: Evolution ou Meta Cloud
+  // 10. Send WhatsApp message + salvar resultado (sent ou failed) no banco
+  // Roteamento pelo provider: simulator, Meta Cloud, Z-API ou Evolution
   // -----------------------------------------------------------------------
   let sentMessageIds: string[]
   const sendStart = Date.now()
@@ -1275,104 +1253,167 @@ export async function runSingleV1(
       timeoutInMs: 15_000,
     })
 
-  if (ctx.message.provider === 'simulator') {
-    // Simulator: a mensagem do assistente já foi salva no banco no step 8.
-    // Não há provider externo — gerar ID fictício apenas para manter consistência
-    // com o fluxo de dedup e logging que espera sentMessageIds preenchido.
-    sentMessageIds = [`sim_resp_${crypto.randomUUID()}`]
-    ctx.log('step:9 simulator_send', 'PASS', { textLength: textToSend.length })
-  } else if (ctx.message.provider === 'meta_cloud') {
-    // Para Meta Cloud: buscar metaAccessToken do inbox (nunca vem no payload por seguranca)
-    const metaInbox = await db.inbox.findFirst({
-      where: { metaPhoneNumberId: ctx.message.instanceName },
-      select: { metaAccessToken: true },
-    })
+  try {
+    if (ctx.message.provider === 'simulator') {
+      // Simulator: não há provider externo — gerar ID fictício para manter
+      // consistência com o fluxo de dedup e logging
+      sentMessageIds = [`sim_resp_${crypto.randomUUID()}`]
+      ctx.log('step:9 simulator_send', 'PASS', { textLength: textToSend.length })
+    } else if (ctx.message.provider === 'meta_cloud') {
+      // Para Meta Cloud: buscar metaAccessToken do inbox (nunca vem no payload por seguranca)
+      const metaInbox = await db.inbox.findFirst({
+        where: { metaPhoneNumberId: ctx.message.instanceName },
+        select: { metaAccessToken: true },
+      })
 
-    if (!metaInbox?.metaAccessToken) {
-      throw new Error(
-        `Meta access token not found for phoneNumberId: ${ctx.message.instanceName}`,
+      if (!metaInbox?.metaAccessToken) {
+        throw new Error(
+          `Meta access token not found for phoneNumberId: ${ctx.message.instanceName}`,
+        )
+      }
+
+      sentMessageIds = await sendMetaTextMessage(
+        ctx.message.instanceName,
+        metaInbox.metaAccessToken,
+        ctx.message.remoteJid.replace('@s.whatsapp.net', ''),
+        textToSend,
+        tracedFetch,
+      )
+    } else if (ctx.message.provider === 'z_api') {
+      // Para Z-API: buscar credenciais do inbox (per-inbox, nunca no payload)
+      const zapiInbox = await db.inbox.findFirst({
+        where: { zapiInstanceId: ctx.message.instanceName },
+        select: {
+          zapiInstanceId: true,
+          zapiToken: true,
+          zapiClientToken: true,
+        },
+      })
+
+      if (
+        !zapiInbox?.zapiToken ||
+        !zapiInbox?.zapiClientToken ||
+        !zapiInbox?.zapiInstanceId
+      ) {
+        throw new Error(
+          `Z-API credentials not found for instanceId: ${ctx.message.instanceName}`,
+        )
+      }
+
+      const { sendZApiTextMessage } = await import('@/_lib/zapi/send-message')
+      sentMessageIds = await sendZApiTextMessage(
+        {
+          instanceId: zapiInbox.zapiInstanceId,
+          token: zapiInbox.zapiToken,
+          clientToken: zapiInbox.zapiClientToken,
+        },
+        ctx.message.remoteJid.replace('@s.whatsapp.net', ''),
+        textToSend,
+        tracedFetch,
+      )
+    } else {
+      // Provider Evolution (default)
+      const evolutionCredentials = await resolveEvolutionCredentialsByInstanceName(
+        ctx.message.instanceName,
+      )
+      sentMessageIds = await sendWhatsAppMessage(
+        ctx.message.instanceName,
+        ctx.message.remoteJid,
+        textToSend,
+        evolutionCredentials,
+        tracedFetch,
       )
     }
 
-    sentMessageIds = await sendMetaTextMessage(
-      ctx.message.instanceName,
-      metaInbox.metaAccessToken,
-      ctx.message.remoteJid.replace('@s.whatsapp.net', ''),
-      textToSend,
-      tracedFetch,
-    )
-  } else if (ctx.message.provider === 'z_api') {
-    // Para Z-API: buscar credenciais do inbox (per-inbox, nunca no payload)
-    const zapiInbox = await db.inbox.findFirst({
-      where: { zapiInstanceId: ctx.message.instanceName },
-      select: {
-        zapiInstanceId: true,
-        zapiToken: true,
-        zapiClientToken: true,
-      },
-    })
-
-    if (
-      !zapiInbox?.zapiToken ||
-      !zapiInbox?.zapiClientToken ||
-      !zapiInbox?.zapiInstanceId
-    ) {
-      throw new Error(
-        `Z-API credentials not found for instanceId: ${ctx.message.instanceName}`,
+    // Sucesso: pré-registrar dedup keys para que o webhook fromMe ignore estas mensagens
+    // (evita duplicata no banco + auto-pause da IA)
+    // Simulator não tem webhook — IDs fictícios não precisam ser registrados no Redis
+    if (ctx.message.provider !== 'simulator') {
+      await Promise.all(
+        sentMessageIds.map((sentId) =>
+          redis.set(`dedup:${sentId}`, '1', 'EX', 300).catch(() => {}),
+        ),
       )
     }
 
-    const { sendZApiTextMessage } =
-      await import('@/_lib/zapi/send-message')
-    sentMessageIds = await sendZApiTextMessage(
-      {
-        instanceId: zapiInbox.zapiInstanceId,
-        token: zapiInbox.zapiToken,
-        clientToken: zapiInbox.zapiClientToken,
-      },
-      ctx.message.remoteJid.replace('@s.whatsapp.net', ''),
+    await saveAgentResponseSent({
+      conversationId: ctx.conversationId,
       textToSend,
-      tracedFetch,
-    )
-  } else {
-    // Provider Evolution (default)
-    const evolutionCredentials = await resolveEvolutionCredentialsByInstanceName(
-      ctx.message.instanceName,
-    )
-    sentMessageIds = await sendWhatsAppMessage(
-      ctx.message.instanceName,
-      ctx.message.remoteJid,
-      textToSend,
-      evolutionCredentials,
-      tracedFetch,
-    )
-  }
+      providerMessageId: sentMessageIds.at(-1) ?? null,
+      inputTokens: result.usage?.inputTokens ?? null,
+      outputTokens: result.usage?.outputTokens ?? null,
+      modelId: promptContext.modelId,
+      llmDurationMs,
+    })
 
-  // Pré-registrar dedup keys para que o webhook fromMe ignore estas mensagens
-  // (evita duplicata no banco + auto-pause da IA)
-  // Simulator não tem webhook — IDs fictícios não precisam ser registrados no Redis
-  if (ctx.message.provider !== 'simulator') {
-    await Promise.all(
-      sentMessageIds.map((sentId) =>
-        redis.set(`dedup:${sentId}`, '1', 'EX', 300).catch(() => {}),
-      ),
-    )
-  }
+    await revalidateConversationCache(ctx.conversationId, ctx.organizationId)
 
-  ctx.log('step:9 whatsapp_sent', 'PASS', {
-    responseLength: responseText.length,
-    sentMessageIds,
-    provider: ctx.message.provider,
-    sendDurationMs: Date.now() - sendStart,
-  })
-  ctx.tracker.addStep({
-    type: 'SEND_MESSAGE',
-    status: 'PASSED',
-    output: {
+    ctx.log('step:7 response_saved', 'PASS')
+    ctx.log('step:9 whatsapp_sent', 'PASS', {
       responseLength: responseText.length,
+      sentMessageIds,
       provider: ctx.message.provider,
-    },
-  })
+      sendDurationMs: Date.now() - sendStart,
+    })
+    ctx.tracker.addStep({
+      type: 'SEND_MESSAGE',
+      status: 'PASSED',
+      output: {
+        responseLength: responseText.length,
+        provider: ctx.message.provider,
+      },
+    })
+  } catch (sendError) {
+    // Envio falhou — salvar mensagem com deliveryStatus 'failed' e abortar
+    // sem retry do pipeline (AbortTaskRunError impede retentativas do Trigger.dev)
+    const parsedSendError = await saveAgentResponseFailed({
+      conversationId: ctx.conversationId,
+      textToSend,
+      inputTokens: result.usage?.inputTokens ?? null,
+      outputTokens: result.usage?.outputTokens ?? null,
+      modelId: promptContext.modelId,
+      llmDurationMs,
+      error: sendError,
+    })
+
+    await revalidateConversationCache(ctx.conversationId, ctx.organizationId)
+
+    await createConversationEvent({
+      conversationId: ctx.conversationId,
+      type: 'PROCESSING_ERROR',
+      content: parsedSendError.userMessage ?? 'Falha na entrega da mensagem.',
+      metadata: {
+        subtype: 'SEND_FAILED' satisfies ProcessingErrorSubtype,
+        provider: ctx.message.provider,
+      },
+    })
+
+    ctx.log('step:9 whatsapp_send_failed', 'EXIT', {
+      provider: ctx.message.provider,
+      error: sendError instanceof Error ? sendError.message : String(sendError),
+      sendDurationMs: Date.now() - sendStart,
+    })
+    ctx.tracker.addStep({
+      type: 'SEND_MESSAGE',
+      status: 'FAILED',
+      output: {
+        provider: ctx.message.provider,
+        error: sendError instanceof Error ? sendError.message : String(sendError),
+      },
+    })
+
+    await emitAgentStatus({
+      conversationId: ctx.conversationId,
+      organizationId: ctx.organizationId,
+      state: 'idle',
+      agentName: promptContext.agentName,
+      terminalReason: 'failed',
+    })
+
+    throw new AbortTaskRunError(
+      `Send failed (${ctx.message.provider}): ${sendError instanceof Error ? sendError.message : String(sendError)}`,
+    )
+  }
 
   // -----------------------------------------------------------------------
   // 10b. Schedule follow-up (se agente tem regras de FUP para o step atual)

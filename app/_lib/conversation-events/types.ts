@@ -47,6 +47,7 @@ export type ProcessingErrorSubtype =
   | 'NO_CREDITS'
   | 'LLM_ERROR'
   | 'ROUTER_FAILED' // Router LLM falhou (ex: modelo inválido no OpenRouter)
+  | 'SEND_FAILED' // Envio ao provider WhatsApp falhou após geração do LLM
 
 export type InfoSubtype =
   | 'AI_PAUSED_DURING_GENERATION'

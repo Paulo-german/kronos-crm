@@ -1,4 +1,4 @@
-import { task, logger, metadata as triggerMetadata } from '@trigger.dev/sdk/v3'
+import { task, logger, metadata as triggerMetadata, AbortTaskRunError } from '@trigger.dev/sdk/v3'
 import { observe, updateActiveTrace } from '@langfuse/tracing'
 import { flushLangfuse, langfuseTracer } from './lib/langfuse'
 import { buildDispatcherCtx } from './lib/build-dispatcher-ctx'
@@ -31,11 +31,11 @@ import type {
   InfoSubtype,
   ProcessingErrorSubtype,
 } from '@/_lib/conversation-events/types'
-import { AUTO_REOPEN_FIELDS } from '@/_lib/conversation/auto-reopen'
 import { prefixAttendantName } from '@/_lib/inbox/prefix-attendant-name'
 import { getFollowUpsForStep } from '@/_data-access/follow-up/get-follow-ups-for-step'
 import { revalidateConversationCache } from './lib/revalidate-cache'
 import { emitAgentStatus } from './lib/emit-agent-status'
+import { saveAgentResponseSent, saveAgentResponseFailed } from './lib/save-agent-response'
 import type { ToolContext } from './tools/types'
 import type { DispatcherCtx } from './dispatcher-types'
 import { GENERIC_SAFE_FALLBACK } from './lib/two-phase-types'
@@ -1243,7 +1243,7 @@ export async function runSingleV2(
   ctx.tracker.addStep({ type: 'PAUSE_CHECK', status: 'PASSED' })
 
   // -----------------------------------------------------------------------
-  // 8. Salvar resposta no banco + atualizar lastMessageRole na conversa
+  // 8. Preparar texto — salvar no banco ocorre após confirmação do envio
   // -----------------------------------------------------------------------
   const textToSend = prefixAttendantName(
     responseText,
@@ -1251,29 +1251,7 @@ export async function runSingleV2(
     conversation.inbox?.showAttendantName ?? false,
   )
 
-  await db.message.create({
-    data: {
-      conversationId: ctx.conversationId,
-      role: 'assistant',
-      content: textToSend,
-      inputTokens: totalUsage.inputTokens ?? null,
-      outputTokens: totalUsage.outputTokens ?? null,
-      metadata: {
-        model: promptContext.modelId,
-        llmDurationMs,
-      },
-    },
-  })
-
-  // Denormalizar role da última mensagem para viabilizar filtro "não respondidos"
-  await db.conversation.update({
-    where: { id: ctx.conversationId },
-    data: { lastMessageRole: 'assistant', ...AUTO_REOPEN_FIELDS },
-  })
-
-  ctx.log('step:7 response_saved', 'PASS')
-
-  await revalidateConversationCache(ctx.conversationId, ctx.organizationId)
+  ctx.log('step:7 response_prepared', 'PASS')
 
   // -----------------------------------------------------------------------
   // 9. Ajuste de créditos (refund se custo real < estimado, debit extra se >)
@@ -1302,7 +1280,7 @@ export async function runSingleV2(
   })
 
   // -----------------------------------------------------------------------
-  // 10. Send WhatsApp message + pre-register dedup keys
+  // 10. Send WhatsApp message + salvar resultado (sent ou failed) no banco
   // Delegado ao helper sendOutboundMessage que centraliza routing e dedup
   // -----------------------------------------------------------------------
   ctx.log('step:9 whatsapp_sending', 'PASS', {
@@ -1316,65 +1294,134 @@ export async function runSingleV2(
     )
   }
 
-  if (useOverhaul) {
-    // Fase 4: extrair blocos de mídia inline e enviar separadamente
-    const inlineResult = await extractAndSendInlineMedia(textToSend, {
-      conversationId: ctx.conversationId,
-      organizationId: ctx.organizationId,
-      remoteJid: ctx.message.remoteJid,
-      inboxProvider: conversation.inbox,
-      credentials: conversation.inbox,
-    })
+  let lastSentId: string | null = null
 
-    logger.info('single-v2 inline media send completed', {
-      conversationId: ctx.conversationId,
-      blocksSent: inlineResult.blocksSent,
-      blocksSkipped: inlineResult.blocksSkipped,
-      ssrfBlockedCount: inlineResult.ssrfBlockedUrls.length,
-    })
+  try {
+    if (useOverhaul) {
+      // Fase 4: extrair blocos de mídia inline e enviar separadamente
+      const inlineResult = await extractAndSendInlineMedia(textToSend, {
+        conversationId: ctx.conversationId,
+        organizationId: ctx.organizationId,
+        remoteJid: ctx.message.remoteJid,
+        inboxProvider: conversation.inbox,
+        credentials: conversation.inbox,
+      })
 
-    triggerMetadata.set('ssrfBlockedCount', inlineResult.ssrfBlockedUrls.length)
+      logger.info('single-v2 inline media send completed', {
+        conversationId: ctx.conversationId,
+        blocksSent: inlineResult.blocksSent,
+        blocksSkipped: inlineResult.blocksSkipped,
+        ssrfBlockedCount: inlineResult.ssrfBlockedUrls.length,
+      })
 
-    ctx.log('step:9 whatsapp_sent', 'PASS', {
-      responseLength: responseText.length,
-      blocksSent: inlineResult.blocksSent,
-      blocksSkipped: inlineResult.blocksSkipped,
-      ssrfBlockedCount: inlineResult.ssrfBlockedUrls.length,
-      provider: ctx.message.provider,
-    })
-    ctx.tracker.addStep({
-      type: 'SEND_MESSAGE',
-      status: 'PASSED',
-      output: {
+      triggerMetadata.set('ssrfBlockedCount', inlineResult.ssrfBlockedUrls.length)
+
+      ctx.log('step:9 whatsapp_sent', 'PASS', {
         responseLength: responseText.length,
         blocksSent: inlineResult.blocksSent,
         blocksSkipped: inlineResult.blocksSkipped,
+        ssrfBlockedCount: inlineResult.ssrfBlockedUrls.length,
+        provider: ctx.message.provider,
+      })
+      ctx.tracker.addStep({
+        type: 'SEND_MESSAGE',
+        status: 'PASSED',
+        output: {
+          responseLength: responseText.length,
+          blocksSent: inlineResult.blocksSent,
+          blocksSkipped: inlineResult.blocksSkipped,
+          provider: ctx.message.provider,
+        },
+      })
+    } else {
+      // Path legado (single-v1): mensagem única sem extração de mídia inline
+      const { sentIds: sentMessageIds } = await sendOutboundMessage({
+        conversationId: ctx.conversationId,
+        organizationId: ctx.organizationId,
+        credentials: conversation.inbox,
+        remoteJid: ctx.message.remoteJid,
+        text: textToSend,
+      })
+
+      lastSentId = sentMessageIds.at(-1) ?? null
+
+      ctx.log('step:9 whatsapp_sent', 'PASS', {
+        responseLength: responseText.length,
+        sentMessageIds,
+        provider: ctx.message.provider,
+      })
+      ctx.tracker.addStep({
+        type: 'SEND_MESSAGE',
+        status: 'PASSED',
+        output: {
+          responseLength: responseText.length,
+          provider: ctx.message.provider,
+        },
+      })
+    }
+
+    // Sucesso: salvar mensagem com deliveryStatus 'sent'
+    await saveAgentResponseSent({
+      conversationId: ctx.conversationId,
+      textToSend,
+      providerMessageId: lastSentId,
+      inputTokens: totalUsage.inputTokens ?? null,
+      outputTokens: totalUsage.outputTokens ?? null,
+      modelId: promptContext.modelId,
+      llmDurationMs,
+    })
+
+    await revalidateConversationCache(ctx.conversationId, ctx.organizationId)
+    ctx.log('step:7 response_saved', 'PASS')
+  } catch (sendError) {
+    // Envio falhou — salvar mensagem com deliveryStatus 'failed' e abortar
+    // sem retry do pipeline (AbortTaskRunError impede retentativas do Trigger.dev)
+    const parsedSendError = await saveAgentResponseFailed({
+      conversationId: ctx.conversationId,
+      textToSend,
+      inputTokens: totalUsage.inputTokens ?? null,
+      outputTokens: totalUsage.outputTokens ?? null,
+      modelId: promptContext.modelId,
+      llmDurationMs,
+      error: sendError,
+    })
+
+    await revalidateConversationCache(ctx.conversationId, ctx.organizationId)
+
+    await createConversationEvent({
+      conversationId: ctx.conversationId,
+      type: 'PROCESSING_ERROR',
+      content: parsedSendError.userMessage ?? 'Falha na entrega da mensagem.',
+      metadata: {
+        subtype: 'SEND_FAILED' satisfies ProcessingErrorSubtype,
         provider: ctx.message.provider,
       },
     })
-  } else {
-    // Path legado (single-v1): mensagem única sem extração de mídia inline
-    const { sentIds: sentMessageIds } = await sendOutboundMessage({
-      conversationId: ctx.conversationId,
-      organizationId: ctx.organizationId,
-      credentials: conversation.inbox,
-      remoteJid: ctx.message.remoteJid,
-      text: textToSend,
-    })
 
-    ctx.log('step:9 whatsapp_sent', 'PASS', {
-      responseLength: responseText.length,
-      sentMessageIds,
+    ctx.log('step:9 whatsapp_send_failed', 'EXIT', {
       provider: ctx.message.provider,
+      error: sendError instanceof Error ? sendError.message : String(sendError),
     })
     ctx.tracker.addStep({
       type: 'SEND_MESSAGE',
-      status: 'PASSED',
+      status: 'FAILED',
       output: {
-        responseLength: responseText.length,
         provider: ctx.message.provider,
+        error: sendError instanceof Error ? sendError.message : String(sendError),
       },
     })
+
+    await emitAgentStatus({
+      conversationId: ctx.conversationId,
+      organizationId: ctx.organizationId,
+      state: 'idle',
+      agentName: promptContext.agentName,
+      terminalReason: 'failed',
+    })
+
+    throw new AbortTaskRunError(
+      `Send failed (${ctx.message.provider}): ${sendError instanceof Error ? sendError.message : String(sendError)}`,
+    )
   }
 
   // -----------------------------------------------------------------------
