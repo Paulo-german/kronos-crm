@@ -44,6 +44,7 @@ import { triggerHumanHandoff } from './lib/trigger-human-handoff'
 import { runSingleFallback } from './agent/single-fallback'
 import { runSingleGuard } from './agent/single-guard'
 import { getProductCatalogForGuard } from './lib/product-catalog-cache'
+import { createRetryableFetch } from './lib/retryable-fetch'
 
 // Limite de mensagens carregadas no histórico para context LLM
 const MESSAGE_HISTORY_LIMIT = 50
@@ -1470,6 +1471,9 @@ export async function runSingleV2(
     )
   }
 
+  // retry.fetch do Trigger.dev: retenta 429/5xx no nível HTTP sem re-executar o pipeline
+  const fetcher = createRetryableFetch()
+
   let lastSentId: string | null = null
 
   try {
@@ -1481,6 +1485,7 @@ export async function runSingleV2(
         remoteJid: ctx.message.remoteJid,
         inboxProvider: conversation.inbox,
         credentials: conversation.inbox,
+        fetcher,
       })
 
       logger.info('single-v2 inline media send completed', {
@@ -1517,6 +1522,7 @@ export async function runSingleV2(
         credentials: conversation.inbox,
         remoteJid: ctx.message.remoteJid,
         text: textToSend,
+        fetcher,
       })
 
       lastSentId = sentMessageIds.at(-1) ?? null

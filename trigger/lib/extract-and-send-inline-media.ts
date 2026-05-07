@@ -26,6 +26,7 @@ export interface SendInlineMediaCtx {
   // Credenciais necessárias para sendOutboundMessage (blocos de texto)
   credentials: InboxCredentials
   dedupTtlSeconds?: number
+  fetcher?: typeof fetch
 }
 
 export interface SendInlineMediaResult {
@@ -182,6 +183,7 @@ export async function extractAndSendInlineMedia(
           remoteJid: ctx.remoteJid,
           text,
           dedupTtlSeconds: ctx.dedupTtlSeconds,
+          fetcher: ctx.fetcher,
         })
         blocksSent++
       } catch (error) {

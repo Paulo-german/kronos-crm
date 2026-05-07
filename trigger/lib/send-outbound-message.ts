@@ -15,6 +15,7 @@ interface SendOutboundMessageCtx {
   remoteJid: string
   text: string
   dedupTtlSeconds?: number // default 300
+  fetcher?: typeof fetch
 }
 
 interface SendOutboundMessageResult {
@@ -49,6 +50,7 @@ export async function sendOutboundMessage(
     remoteJid,
     text,
     dedupTtlSeconds = DEFAULT_DEDUP_TTL_SECONDS,
+    fetcher,
   } = ctx
 
   const messageId = conversationId
@@ -59,6 +61,7 @@ export async function sendOutboundMessage(
     credentials,
     remoteJid,
     text,
+    fetcher,
   })
 
   const { sentIds } = result

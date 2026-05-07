@@ -57,8 +57,11 @@ interface InboxProviderContext {
 /**
  * Retorna o provider correto com base no connectionType do Inbox.
  * Lanca erro se dados insuficientes para o provider selecionado.
+ *
+ * @param fetcher - fetch customizado com retry (ex: retry.fetch do Trigger.dev).
+ *   Default: fetch global. Callers fora do Trigger.dev omitem este param.
  */
-export function resolveWhatsAppProvider(inbox: InboxProviderContext): WhatsAppProvider {
+export function resolveWhatsAppProvider(inbox: InboxProviderContext, fetcher: typeof fetch = fetch): WhatsAppProvider {
   // Branch Instagram Direct — deve vir antes do branch META_CLOUD generico
   if (inbox.connectionType === 'META_CLOUD' && inbox.channel === 'INSTAGRAM_DM') {
     if (!inbox.metaIgUserId || !inbox.metaAccessToken) {
@@ -93,7 +96,7 @@ export function resolveWhatsAppProvider(inbox: InboxProviderContext): WhatsAppPr
 
     return {
       sendText: (recipientPhone: string, text: string) =>
-        sendMetaTextMessage(phoneNumberId, accessToken, recipientPhone.replace('@s.whatsapp.net', ''), text),
+        sendMetaTextMessage(phoneNumberId, accessToken, recipientPhone.replace('@s.whatsapp.net', ''), text, fetcher),
       sendAudio: (recipientPhone: string, audioBase64: string) =>
         sendMetaAudioMessage(phoneNumberId, accessToken, recipientPhone.replace('@s.whatsapp.net', ''), audioBase64),
       sendMedia: (recipientPhone: string, mediaBase64: string, mimetype: string, mediatype: 'image' | 'document' | 'video', fileName?: string, caption?: string) =>
@@ -118,7 +121,7 @@ export function resolveWhatsAppProvider(inbox: InboxProviderContext): WhatsAppPr
 
     return {
       sendText: (recipientPhone: string, text: string) =>
-        sendZApiTextMessage(config, recipientPhone.replace('@s.whatsapp.net', ''), text),
+        sendZApiTextMessage(config, recipientPhone.replace('@s.whatsapp.net', ''), text, fetcher),
       sendAudio: (recipientPhone: string, audioBase64: string) =>
         sendZApiAudio(config, recipientPhone.replace('@s.whatsapp.net', ''), audioBase64),
       sendMedia: (recipientPhone: string, _mediaBase64: string, mimetype: string, mediatype: 'image' | 'document' | 'video', fileName?: string, caption?: string, mediaUrl?: string) => {
@@ -153,7 +156,7 @@ export function resolveWhatsAppProvider(inbox: InboxProviderContext): WhatsAppPr
 
   return {
     sendText: (recipientPhone: string, text: string) =>
-      sendWhatsAppMessage(instanceName, recipientPhone, text, credentials),
+      sendWhatsAppMessage(instanceName, recipientPhone, text, credentials, fetcher),
     sendAudio: (recipientPhone: string, audioBase64: string) =>
       sendWhatsAppAudio(instanceName, recipientPhone, audioBase64, credentials),
     sendMedia: (recipientPhone: string, _mediaBase64: string, mimetype: string, mediatype: 'image' | 'document' | 'video', fileName?: string, caption?: string, mediaUrl?: string) => {

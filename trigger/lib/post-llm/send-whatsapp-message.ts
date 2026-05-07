@@ -32,6 +32,7 @@ export interface SendWhatsappMessageCtx {
   credentials: InboxCredentials
   remoteJid: string
   text: string
+  fetcher?: typeof fetch
 }
 
 export interface SendWhatsappMessageResult {
@@ -56,7 +57,7 @@ export interface SendWhatsappMessageResult {
 export async function sendWhatsappMessage(
   ctx: SendWhatsappMessageCtx,
 ): Promise<SendWhatsappMessageResult> {
-  const { credentials, remoteJid, text } = ctx
+  const { credentials, remoteJid, text, fetcher } = ctx
 
   // SIMULATOR: nunca enviar para provider real — credenciais são fictícias.
   // Retorna ID sintético para preservar dedup/logging do caller. Sem este guard,
@@ -81,7 +82,7 @@ export async function sendWhatsappMessage(
         })()
       : text
 
-  const provider = resolveWhatsAppProvider(credentials)
+  const provider = resolveWhatsAppProvider(credentials, fetcher)
   const sentIds = await provider.sendText(remoteJid, textToSend)
 
   return { sentIds }

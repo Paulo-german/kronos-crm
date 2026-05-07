@@ -1,4 +1,4 @@
-import { task, tasks, logger, metadata as triggerMetadata, AbortTaskRunError, retry } from '@trigger.dev/sdk/v3'
+import { task, tasks, logger, metadata as triggerMetadata, AbortTaskRunError } from '@trigger.dev/sdk/v3'
 import { observe, updateActiveTrace } from '@langfuse/tracing'
 import { flushLangfuse, langfuseTracer } from './lib/langfuse'
 import { buildDispatcherCtx } from './lib/build-dispatcher-ctx'
@@ -19,6 +19,7 @@ import {
 } from '@/_lib/evolution/send-message'
 import { resolveEvolutionCredentialsByInstanceName } from '@/_lib/evolution/resolve-credentials'
 import { sendMetaTextMessage } from '@/_lib/meta/send-meta-message'
+import { createRetryableFetch } from './lib/retryable-fetch'
 import { buildSystemPrompt } from './build-system-prompt'
 import { buildToolSet } from './tools'
 import type { GroupToolConfig } from './tools'
@@ -1240,18 +1241,7 @@ export async function runSingleV1(
     textLength: textToSend.length,
   })
 
-  const tracedFetch: typeof fetch = (url, init) =>
-    retry.fetch(url as string, {
-      ...init,
-      retry: {
-        byStatus: {
-          '429': { strategy: 'backoff', maxAttempts: 3, factor: 2, minTimeoutInMs: 500, maxTimeoutInMs: 5000, randomize: true },
-          '500-599': { strategy: 'backoff', maxAttempts: 3, factor: 2, minTimeoutInMs: 500, maxTimeoutInMs: 5000, randomize: true },
-        },
-        timeout: { maxAttempts: 3, factor: 1.8, minTimeoutInMs: 500, maxTimeoutInMs: 5000 },
-      },
-      timeoutInMs: 15_000,
-    })
+  const tracedFetch = createRetryableFetch()
 
   try {
     if (ctx.message.provider === 'simulator') {
