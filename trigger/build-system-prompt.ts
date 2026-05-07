@@ -265,9 +265,9 @@ export const TOOL_PROMPT_DESCRIPTIONS: Record<string, { label: string; descripti
   send_media: {
     label: 'Enviar Midia',
     description:
-      'Envia uma imagem, video ou documento de uma URL publica diretamente ao cliente via WhatsApp. ' +
+      'Envia uma imagem, video, audio ou documento de uma URL publica diretamente ao cliente via WhatsApp. ' +
       'Use quando encontrar URLs de arquivos na base de conhecimento ou em informacoes do contexto. ' +
-      'Para imagens (.jpg, .png, .webp), videos (.mp4) e documentos (.pdf), informe a URL. ' +
+      'Para imagens (.jpg, .png, .webp), videos (.mp4), audios (.mp3, .ogg, .wav, .m4a) e documentos (.pdf), informe a URL. ' +
       'Para links de redes sociais (Instagram, YouTube, etc.), inclua o link na mensagem de texto — nao use send_media.',
   },
   transfer_to_agent: {

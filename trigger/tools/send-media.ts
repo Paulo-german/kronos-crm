@@ -11,7 +11,7 @@ interface SendMediaResult {
 }
 
 // Mapa de extensão para tipo de mídia suportado pelo WhatsApp
-const EXTENSION_TO_MEDIA_TYPE: Record<string, 'image' | 'video' | 'document'> = {
+const EXTENSION_TO_MEDIA_TYPE: Record<string, 'image' | 'video' | 'document' | 'audio'> = {
   // Imagens
   jpg: 'image',
   jpeg: 'image',
@@ -32,6 +32,14 @@ const EXTENSION_TO_MEDIA_TYPE: Record<string, 'image' | 'video' | 'document'> = 
   pptx: 'document',
   csv: 'document',
   txt: 'document',
+  // Áudios
+  mp3: 'audio',
+  ogg: 'audio',
+  oga: 'audio',
+  opus: 'audio',
+  wav: 'audio',
+  m4a: 'audio',
+  aac: 'audio',
 }
 
 // Mapa de extensão para MIME type (necessário para provider.sendMedia())
@@ -53,13 +61,21 @@ const EXTENSION_TO_MIME_TYPE: Record<string, string> = {
   pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
   csv: 'text/csv',
   txt: 'text/plain',
+  mp3: 'audio/mpeg',
+  ogg: 'audio/ogg',
+  oga: 'audio/ogg',
+  opus: 'audio/ogg; codecs=opus',
+  wav: 'audio/wav',
+  m4a: 'audio/mp4',
+  aac: 'audio/aac',
 }
 
 // Fallbacks de MIME type por categoria (usado quando extensão não está no mapa)
-const MEDIA_TYPE_FALLBACK_MIME: Record<'image' | 'video' | 'document', string> = {
+const MEDIA_TYPE_FALLBACK_MIME: Record<'image' | 'video' | 'document' | 'audio', string> = {
   image: 'image/jpeg',
   video: 'video/mp4',
   document: 'application/octet-stream',
+  audio: 'audio/ogg',
 }
 
 const RETRY_DELAY_MS = 1000
@@ -85,22 +101,22 @@ function sanitizeUrl(url: string): string {
 export function createSendMediaTool(ctx: ToolContext) {
   return tool({
     description:
-      'Envia uma imagem, video ou documento de uma URL publica diretamente ao cliente via WhatsApp. ' +
+      'Envia uma imagem, video, audio ou documento de uma URL publica diretamente ao cliente via WhatsApp. ' +
       'Use quando encontrar URLs de arquivos na base de conhecimento ou em informacoes do contexto. ' +
-      'Para imagens (.jpg, .png, .webp), videos (.mp4) e documentos (.pdf), informe a URL. ' +
+      'Para imagens (.jpg, .png, .webp), videos (.mp4), audios (.mp3, .ogg, .wav, .m4a) e documentos (.pdf), informe a URL. ' +
       'Para links de redes sociais (Instagram, YouTube, etc.), inclua o link na mensagem de texto — nao use send_media.',
     inputSchema: z.object({
       url: z
         .string()
         .url()
         .describe(
-          'URL publica da midia a ser enviada (imagem, video ou documento). Deve ser uma URL acessivel publicamente.',
+          'URL publica da midia a ser enviada (imagem, video, audio ou documento). Deve ser uma URL acessivel publicamente.',
         ),
       type: z
-        .enum(['image', 'video', 'document'])
+        .enum(['image', 'video', 'document', 'audio'])
         .optional()
         .describe(
-          'Tipo da midia. Se nao informado, sera inferido pela extensao da URL (.jpg/.png/.webp → image, .mp4 → video, .pdf → document).',
+          'Tipo da midia. Se nao informado, sera inferido pela extensao da URL (.jpg/.png/.webp → image, .mp4 → video, .mp3/.ogg/.wav/.m4a → audio, .pdf → document).',
         ),
       caption: z
         .string()
@@ -137,7 +153,7 @@ export function createSendMediaTool(ctx: ToolContext) {
         const pathname = new URL(targetUrl).pathname
         const extension = pathname.split('.').pop()?.toLowerCase() ?? ''
 
-        const resolvedType: 'image' | 'video' | 'document' | undefined =
+        const resolvedType: 'image' | 'video' | 'document' | 'audio' | undefined =
           type ?? EXTENSION_TO_MEDIA_TYPE[extension]
 
         if (!resolvedType) {
@@ -159,7 +175,20 @@ export function createSendMediaTool(ctx: ToolContext) {
 
         let sentId: string
 
-        if (ctx.inboxProvider!.connectionType === 'META_CLOUD') {
+        if (resolvedType === 'audio') {
+          // Áudio: todos os providers exigem base64 — download sempre necessário
+          const response = await fetch(targetUrl)
+          if (!response.ok) {
+            return {
+              success: false,
+              message: 'Nao foi possivel fazer o download do audio para envio. Verifique se a URL e publica.',
+            }
+          }
+          const buffer = Buffer.from(await response.arrayBuffer())
+          const base64 = buffer.toString('base64')
+
+          sentId = await provider.sendAudio(remoteJid, base64)
+        } else if (ctx.inboxProvider!.connectionType === 'META_CLOUD') {
           // Meta Cloud: download → base64 → upload via Media API
           const response = await fetch(targetUrl)
           if (!response.ok) {
