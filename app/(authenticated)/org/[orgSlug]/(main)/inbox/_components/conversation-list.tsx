@@ -375,7 +375,7 @@ export function ConversationList({
                       className={cn(
                         'flex w-full items-start gap-3 border-l-2 border-l-transparent p-3 text-left transition-colors duration-200 hover:bg-accent/30',
                         isSelected && 'border-l-primary bg-accent/50',
-                        !isSelected && hasUnread && 'bg-primary/[0.03]',
+                        !isSelected && hasUnread && 'bg-primary/[0.07]',
                       )}
                     >
                       <Avatar className="h-10 w-10 shrink-0">

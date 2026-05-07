@@ -49,7 +49,7 @@ export function ChatMessageList({
       {/* Background pattern sutil — bolinhas em grade de 20px */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-[0.035] dark:opacity-[0.05]"
+        className="pointer-events-none absolute inset-0 opacity-[0.07] dark:opacity-[0.05]"
         style={{
           backgroundImage: 'radial-gradient(circle, currentColor 1.5px, transparent 1.5px)',
           backgroundSize: '20px 20px',
