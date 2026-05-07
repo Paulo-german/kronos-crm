@@ -328,6 +328,7 @@ export function MessageBubble({ id, conversationId, role, content, metadata, del
     /^\[(Áudio \d+s|Imagem[^\]]*|Documento[^\]]*)\]$/.test(content)
   const timestamp = format(new Date(createdAt), 'HH:mm')
   const isFromInbox = meta?.sentFrom === 'inbox'
+  const isFromPhone = meta?.sentFrom === 'whatsapp_phone'
   const isAiMessage = isAiGenerated
   const isTemplateMessage = !!meta?.template
 
@@ -445,6 +446,12 @@ export function MessageBubble({ id, conversationId, role, content, metadata, del
             <span className="ml-1 flex items-center gap-0.5 text-white/50">
               <UserRound className="h-3 w-3" />
               {meta?.sentByName ?? 'via inbox'}
+            </span>
+          )}
+          {isFromPhone && (
+            <span className="ml-1 flex items-center gap-0.5 text-white/50">
+              <UserRound className="h-3 w-3" />
+              via celular
             </span>
           )}
         </div>
