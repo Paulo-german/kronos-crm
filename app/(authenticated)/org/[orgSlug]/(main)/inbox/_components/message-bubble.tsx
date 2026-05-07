@@ -4,9 +4,16 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { cn } from '@/_lib/utils'
-import { AlertTriangle, Bot, Check, CheckCheck, Copy, FileDown, FileText, Loader2, Pause, Play, RotateCw, UserRound, X } from 'lucide-react'
+import { AlertTriangle, Bot, Check, CheckCheck, Copy, FileDown, FileText, Loader2, MoreVertical, Pause, Pencil, Play, RotateCw, UserRound, X } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import { Badge } from '@/_components/ui/badge'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/_components/ui/dropdown-menu'
+import { Textarea } from '@/_components/ui/textarea'
 import { renderWhatsappText } from './whatsapp-text'
 
 function formatAudioDuration(seconds: number): string {
@@ -197,6 +204,7 @@ interface MessageMetadata {
   sentFrom?: string
   template?: TemplateMetadata
   deliveryError?: DeliveryError
+  editedAt?: string
   [key: string]: unknown
 }
 
@@ -307,9 +315,12 @@ interface MessageBubbleProps {
   isAiGenerated: boolean
   onRetry?: (messageId: string) => void
   isRetrying?: boolean
+  canEdit?: boolean
+  onEdit?: (messageId: string, conversationId: string, newText: string) => void
+  isEditing?: boolean
 }
 
-export function MessageBubble({ id, conversationId, role, content, metadata, deliveryStatus, createdAt, isAiGenerated, onRetry, isRetrying }: MessageBubbleProps) {
+export function MessageBubble({ id, conversationId, role, content, metadata, deliveryStatus, createdAt, isAiGenerated, onRetry, isRetrying, canEdit, onEdit, isEditing }: MessageBubbleProps) {
   const isUser = role === 'user'
   const meta = metadata as MessageMetadata | null
   const media = meta?.media
@@ -332,6 +343,22 @@ export function MessageBubble({ id, conversationId, role, content, metadata, del
   const isAiMessage = isAiGenerated
   const isTemplateMessage = !!meta?.template
 
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [draft, setDraft] = useState(content)
+
+  // Sincronizar draft e fechar modo de edição quando content mudar externamente
+  // (refetch pós-edição bem-sucedida traz o novo conteúdo — esse é o sinal de fechamento)
+  const prevContentRef = useRef(content)
+  useEffect(() => {
+    if (prevContentRef.current !== content) {
+      prevContentRef.current = content
+      if (isEditMode) {
+        setIsEditMode(false)
+      }
+      setDraft(content)
+    }
+  }, [content, isEditMode])
+
   const handleCopy = useCallback(async () => {
     if (!content || isMediaPlaceholder) return
     try {
@@ -342,6 +369,25 @@ export function MessageBubble({ id, conversationId, role, content, metadata, del
     }
   }, [content, isMediaPlaceholder])
 
+  const handleStartEdit = useCallback(() => {
+    setDraft(content)
+    setIsEditMode(true)
+  }, [content])
+
+  const handleCancelEdit = useCallback(() => {
+    setIsEditMode(false)
+    setDraft(content)
+  }, [content])
+
+  const handleSaveEdit = useCallback(() => {
+    const trimmed = draft.trim()
+    if (!trimmed || trimmed === content) {
+      setIsEditMode(false)
+      return
+    }
+    onEdit?.(id, conversationId, trimmed)
+  }, [draft, content, id, conversationId, onEdit])
+
   return (
     <div
       className={cn(
@@ -349,7 +395,7 @@ export function MessageBubble({ id, conversationId, role, content, metadata, del
         isUser ? 'justify-start' : 'justify-end',
       )}
     >
-      {/* Botão copy no hover — aparece ao lado da bolha (lado esquerdo para user, direito para assistant) */}
+      {/* Menu de ações no hover — aparece ao lado da bolha (lado esquerdo para user, direito para assistant) */}
       {!isMediaPlaceholder && (
         <div
           className={cn(
@@ -357,15 +403,31 @@ export function MessageBubble({ id, conversationId, role, content, metadata, del
             isUser ? 'order-last pl-1' : 'order-first pr-1',
           )}
         >
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={handleCopy}
-            className="h-6 w-6 text-muted-foreground/60 hover:text-foreground"
-          >
-            <Copy className="h-3.5 w-3.5" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="Ações da mensagem"
+                className="h-6 w-6 text-muted-foreground/60 hover:text-foreground"
+              >
+                <MoreVertical className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align={isUser ? 'start' : 'end'} className="w-36">
+              <DropdownMenuItem onClick={handleCopy}>
+                <Copy className="mr-2 h-3.5 w-3.5" />
+                Copiar
+              </DropdownMenuItem>
+              {canEdit && (
+                <DropdownMenuItem onClick={handleStartEdit}>
+                  <Pencil className="mr-2 h-3.5 w-3.5" />
+                  Editar
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       )}
       <div
@@ -439,10 +501,61 @@ export function MessageBubble({ id, conversationId, role, content, metadata, del
 
         {/* Texto — esconde placeholder de áudio quando o player está visível */}
         {!isMediaPlaceholder && (
-          <p className={cn(
-            'whitespace-pre-wrap text-sm',
-            hasAudio && 'italic opacity-80',
-          )}>{renderWhatsappText(content)}</p>
+          isEditMode ? (
+            <div className="flex flex-col gap-2">
+              <Textarea
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault()
+                    handleSaveEdit()
+                  }
+                  if (event.key === 'Escape') {
+                    handleCancelEdit()
+                  }
+                }}
+                className={cn(
+                  'min-h-[60px] resize-none border-0 bg-transparent p-0 text-sm shadow-none focus-visible:ring-0',
+                  !isUser && 'text-white placeholder:text-white/50',
+                )}
+                autoFocus
+                disabled={isEditing}
+              />
+              <div className="flex justify-end gap-1.5">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCancelEdit}
+                  disabled={isEditing}
+                  className={cn(
+                    'h-6 px-2 text-xs',
+                    !isUser && 'text-white/70 hover:bg-white/10 hover:text-white',
+                  )}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleSaveEdit}
+                  disabled={isEditing || !draft.trim() || draft.trim() === content}
+                  className={cn(
+                    'h-6 px-2 text-xs',
+                    !isUser && 'bg-white/20 text-white hover:bg-white/30',
+                  )}
+                >
+                  {isEditing ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Salvar'}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <p className={cn(
+              'whitespace-pre-wrap text-sm',
+              hasAudio && 'italic opacity-80',
+            )}>{renderWhatsappText(content)}</p>
+          )
         )}
 
         {/* Banner de erro para mensagens falhadas */}
@@ -462,6 +575,9 @@ export function MessageBubble({ id, conversationId, role, content, metadata, del
           )}
         >
           <span>{timestamp}</span>
+          {meta?.editedAt && (
+            <span className="opacity-70">(editada)</span>
+          )}
           {!isUser && deliveryStatus && (
             <DeliveryStatusIcon status={deliveryStatus} />
           )}

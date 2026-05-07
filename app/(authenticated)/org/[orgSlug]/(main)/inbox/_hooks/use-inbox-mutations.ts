@@ -17,6 +17,7 @@ import { toggleAiPause } from '@/_actions/inbox/toggle-ai-pause'
 import { toggleConversationLabel } from '@/_actions/inbox/toggle-conversation-label'
 import { updateConversation } from '@/_actions/inbox/update-conversation'
 import { retryFailedMessage } from '@/_actions/inbox/retry-failed-message'
+import { editMessage } from '@/_actions/inbox/edit-message'
 import { sendSimulatorMessage } from '@/_actions/inbox/send-simulator-message'
 import { resetSimulatorConversation } from '@/_actions/inbox/reset-simulator-conversation'
 import { endSimulatorConversation } from '@/_actions/inbox/end-simulator-conversation'
@@ -273,6 +274,14 @@ export function useInboxMutations({ availableLabels, members, statusFilter }: Us
     },
   })
 
+  const editMessageMutation = useMutation({
+    mutationFn: (input: { messageId: string; conversationId: string; newText: string }) =>
+      editMessage({ messageId: input.messageId, newText: input.newText }),
+    onSettled: (_data, _err, variables) => {
+      queryClient.invalidateQueries({ queryKey: inboxKeys.messages.byConversation(variables.conversationId) })
+    },
+  })
+
   // Sem optimistic update — aguarda o pipeline do agente processar a mensagem simulada
   const sendSimulatorMessageMutation = useMutation({
     mutationFn: (input: { conversationId: string; text: string }) =>
@@ -315,6 +324,7 @@ export function useInboxMutations({ availableLabels, members, statusFilter }: Us
     toggleLabel: toggleLabelMutation,
     assignConversation: assignConversationMutation,
     retryFailedMessage: retryFailedMessageMutation,
+    editMessage: editMessageMutation,
     sendSimulatorMessage: sendSimulatorMessageMutation,
     resetSimulator: resetSimulatorMutation,
     endSimulator: endSimulatorMutation,

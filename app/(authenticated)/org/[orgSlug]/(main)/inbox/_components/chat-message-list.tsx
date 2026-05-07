@@ -10,6 +10,32 @@ import { MessageBubble } from './message-bubble'
 import { ConversationEventBubble } from './conversation-event-bubble'
 import type { TimelineItem } from './chat-types'
 
+const FIFTEEN_MINUTES_MS = 15 * 60 * 1000
+
+interface EditableMessageShape {
+  role: string
+  deliveryStatus: string | null
+  metadata: unknown
+  createdAt: Date | string
+}
+
+function isMessageEditable(msg: EditableMessageShape, canEditMessages: boolean): boolean {
+  if (!canEditMessages) return false
+  if (msg.role !== 'assistant') return false
+  const allowedStatuses = ['sent', 'delivered', 'read']
+  if (!allowedStatuses.includes(msg.deliveryStatus ?? '')) return false
+  // Narrow metadata para acessar campos com segurança
+  const meta = msg.metadata !== null && typeof msg.metadata === 'object'
+    ? msg.metadata as Record<string, unknown>
+    : null
+  if (meta?.media) return false
+  if (meta?.template) return false
+  if (meta?.sentFrom !== 'inbox') return false
+  const ageMs = Date.now() - new Date(msg.createdAt).getTime()
+  if (ageMs > FIFTEEN_MINUTES_MS) return false
+  return true
+}
+
 function formatDayLabel(dateKey: string): string {
   const date = new Date(dateKey + 'T12:00:00')
   if (isToday(date)) return 'Hoje'
@@ -29,6 +55,9 @@ interface ChatMessageListProps {
   onLoadMore: () => void
   onRetryMessage?: (messageId: string) => void
   retryingMessageId?: string | null
+  canEditMessages: boolean
+  onEditMessage?: (messageId: string, conversationId: string, newText: string) => void
+  editingMessageId?: string | null
 }
 
 export function ChatMessageList({
@@ -43,6 +72,9 @@ export function ChatMessageList({
   onLoadMore,
   onRetryMessage,
   retryingMessageId,
+  canEditMessages,
+  onEditMessage,
+  editingMessageId,
 }: ChatMessageListProps) {
   return (
     <div className="relative flex-1 min-h-0">
@@ -114,6 +146,14 @@ export function ChatMessageList({
               isAiGenerated={item.data.isAiGenerated}
               onRetry={onRetryMessage}
               isRetrying={retryingMessageId === item.data.id}
+              canEdit={
+                // Chunks de IA têm id no formato `${originalId}-${index}` com segmentos extras
+                !item.data.isAiGenerated || item.data.id.split('-').length <= 5
+                  ? isMessageEditable(item.data, canEditMessages)
+                  : false
+              }
+              onEdit={onEditMessage}
+              isEditing={editingMessageId === item.data.id}
             />
           ),
         )}

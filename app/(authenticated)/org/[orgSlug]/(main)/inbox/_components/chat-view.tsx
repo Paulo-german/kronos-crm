@@ -54,6 +54,7 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
   const [mediaPreviewUrl, setMediaPreviewUrl] = useState<string | null>(null)
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false)
   const [retryingMessageId, setRetryingMessageId] = useState<string | null>(null)
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
   // Controla se o envio para Instagram usará a tag HUMAN_AGENT (janela 24h–7d)
   const [useHumanAgentTag, setUseHumanAgentTag] = useState(true)
 
@@ -63,6 +64,11 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
   const isInstagramDm = conversation.channel === 'INSTAGRAM_DM'
   // Simulador: usa pipeline diferente de envio, esconde controles específicos de WhatsApp
   const isSimulator = conversation.inboxConnectionType === 'SIMULATOR'
+
+  // Inboxes suportados para edição de mensagem (Meta Cloud e Instagram não suportam)
+  const canEditMessages =
+    (conversation.inboxConnectionType === 'EVOLUTION' || conversation.inboxConnectionType === 'Z_API') &&
+    conversation.channel !== 'INSTAGRAM_DM'
 
   // Lógica de janela de tempo para Instagram Direct
   const instagramElapsed =
@@ -130,6 +136,27 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
     setSelectedFile(null)
     setMediaPreviewUrl(null)
     mediaPreviewUrlRef.current = null
+  }
+
+  const handleEditMessage = (messageId: string, conversationId: string, newText: string) => {
+    setEditingMessageId(messageId)
+    mutations.editMessage.mutate(
+      { messageId, conversationId, newText },
+      {
+        onSuccess: (result) => {
+          setEditingMessageId(null)
+          if (result?.data?.success === false) {
+            toast.error(result.data.errorMessage ?? 'Não foi possível editar a mensagem.')
+            return
+          }
+          toast.success('Mensagem editada.')
+        },
+        onError: () => {
+          setEditingMessageId(null)
+          toast.error('Erro ao editar mensagem.')
+        },
+      },
+    )
   }
 
   const handleRetryMessage = (messageId: string) => {
@@ -390,6 +417,9 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
           onLoadMore={loadOlderMessages}
           onRetryMessage={handleRetryMessage}
           retryingMessageId={retryingMessageId}
+          canEditMessages={canEditMessages}
+          onEditMessage={handleEditMessage}
+          editingMessageId={editingMessageId}
         />
         <Separator />
         <ConversationWindowBanner
