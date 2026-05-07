@@ -199,6 +199,29 @@ export interface MetaWabaPhoneNumbersResponse {
   }
 }
 
+// -----------------------------------------------------------------------------
+// Meta smb_message_echoes — mensagens enviadas do celular em modo coexistência
+// -----------------------------------------------------------------------------
+
+export interface MetaMessageEcho {
+  from: string // business phone (E.164 sem +)
+  to: string   // customer phone (E.164 sem +)
+  id: string   // wamid
+  timestamp: string
+  type: MetaIncomingMessage['type']
+  text?: MetaIncomingMessage['text']
+  image?: MetaIncomingMessage['image']
+  audio?: MetaIncomingMessage['audio']
+  document?: MetaIncomingMessage['document']
+  video?: MetaIncomingMessage['video']
+}
+
+export interface MetaWebhookEchoValue {
+  messaging_product: string
+  metadata: { display_phone_number: string; phone_number_id: string }
+  message_echoes: MetaMessageEcho[]
+}
+
 /**
  * DTO enriquecido retornado ao client pela action fetchMetaPhoneNumbers.
  * Inclui flags de uso na org para que a UI saiba se o numero esta disponivel.

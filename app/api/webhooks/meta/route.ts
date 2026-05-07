@@ -4,7 +4,7 @@ import type { Prisma } from '@prisma/client'
 import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
 import { verifyMetaWebhookSignature } from '@/_lib/meta/verify-webhook-signature'
-import { parseMetaMessage } from '@/_lib/meta/parse-meta-message'
+import { parseMetaMessage, extractMetaContent } from '@/_lib/meta/parse-meta-message'
 import { sendMetaTextMessage } from '@/_lib/meta/send-meta-message'
 import { sendInstagramText } from '@/_lib/instagram/send-instagram-message'
 import { parseInstagramMessage } from '@/_lib/instagram/parse-instagram-message'
@@ -15,7 +15,7 @@ import { scheduleNotifyOrgAdmins } from '@/_lib/notifications/notify-org-admins'
 import { resolveAgentForConversation } from '@/../trigger/lib/resolve-agent'
 import { tasks } from '@trigger.dev/sdk/v3'
 import type { processAgentMessage } from '@/../../trigger/process-agent-message'
-import type { MetaWebhookPayload, MetaWebhookValue, MetaTemplateStatusUpdate, MetaMessageStatus } from '@/_lib/meta/types'
+import type { MetaWebhookPayload, MetaWebhookValue, MetaTemplateStatusUpdate, MetaMessageStatus, MetaWebhookEchoValue } from '@/_lib/meta/types'
 import { updateDeliveryStatus, updateDeliveryStatusFailed } from '@/_lib/message-delivery-status'
 import type { BusinessHoursConfig } from '@/_actions/agent/update-agent/schema'
 import type { NormalizedWhatsAppMessage } from '@/_lib/evolution/types'
@@ -76,6 +76,9 @@ export async function POST(req: Request) {
             entry.id,
             change.value as unknown as MetaTemplateStatusUpdate,
           )
+        }
+        if (change.field === 'smb_message_echoes') {
+          return processMessageEchoes(change.value as unknown as MetaWebhookEchoValue, t0)
         }
         return processChange(change.value, t0)
       }),
@@ -735,6 +738,127 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
       debounceSeconds: resolvedAgent.debounceSeconds,
       totalMs: Date.now() - t0,
     })
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Processa echos de mensagens enviadas do celular em modo coexistencia (field = "smb_message_echoes")
+// Aparece quando o operador digita diretamente no WhatsApp Business App linkado ao numero Meta Cloud.
+// Salva como role='assistant' com dedup — nao duplica se a mensagem foi enviada pela plataforma.
+// -----------------------------------------------------------------------------
+async function processMessageEchoes(value: MetaWebhookEchoValue, t0: number): Promise<void> {
+  const phoneNumberId = value.metadata.phone_number_id
+
+  const inbox = await db.inbox.findFirst({
+    where: { metaPhoneNumberId: phoneNumberId },
+    select: {
+      id: true,
+      organizationId: true,
+      autoCreateDeal: true,
+      pipelineId: true,
+      distributionUserIds: true,
+      organization: { select: { name: true, slug: true } },
+    },
+  })
+
+  if (!inbox) {
+    console.log('[meta-webhook] echo step:1 inbox_lookup → EXIT', { phoneNumberId, reason: 'no_inbox_found' })
+    return
+  }
+
+  const orgId = inbox.organizationId
+  const orgName = inbox.organization.name
+  const orgSlug = inbox.organization.slug
+
+  const orgHasPlan = await hasActivePlan(orgId)
+  if (!orgHasPlan) {
+    console.log('[meta-webhook] echo step:2 plan_guard → EXIT', { phoneNumberId, org: orgName, orgSlug, reason: 'no_active_plan' })
+    return
+  }
+
+  const dealContext = inbox.autoCreateDeal
+    ? { pipelineId: inbox.pipelineId, distributionUserIds: inbox.distributionUserIds, inboxId: inbox.id }
+    : undefined
+
+  const contactAssignContext = { distributionUserIds: inbox.distributionUserIds, inboxId: inbox.id }
+
+  for (const echo of value.message_echoes) {
+    const logEcho = (step: string, outcome: 'PASS' | 'EXIT' | 'SKIP', extra?: Record<string, unknown>) =>
+      console.log(`[meta-webhook] echo ${step} → ${outcome}`, { msgId: echo.id, phoneNumberId, org: orgName, orgSlug, to: echo.to, ...extra })
+
+    logEcho('step:1 echo_received', 'PASS', { type: echo.type })
+
+    const { type, text, media } = extractMetaContent(echo)
+
+    if (type === 'text' && !text) {
+      logEcho('step:2 content', 'EXIT', { reason: 'empty_text' })
+      continue
+    }
+
+    // Dedup: send-message seta sem NX; webhook echo usa NX — se ID ja existe, e duplicata da plataforma
+    const remoteJid = `${echo.to}@s.whatsapp.net`
+
+    const [dedupResult, resolveResult] = await Promise.all([
+      redis
+        .set(`dedup:${echo.id}`, '1', 'EX', 300, 'NX')
+        .catch(() => 'redis_error' as const),
+      resolveConversation(
+        inbox.id,
+        orgId,
+        remoteJid,
+        echo.to,
+        null,
+        dealContext,
+        contactAssignContext,
+        true,
+      ),
+    ])
+
+    if (dedupResult === null) {
+      logEcho('step:3 dedup', 'SKIP', { reason: 'duplicate_platform_send' })
+      continue
+    }
+
+    const { conversationId } = resolveResult
+
+    if (resolveResult.isNew) {
+      revalidateTag(`pipeline:${orgId}`)
+      revalidateTag(`deals:${orgId}`)
+      revalidateTag(`contacts:${orgId}`)
+      revalidateTag(`dashboard:${orgId}`)
+    }
+
+    const mediaMetadata = media
+      ? { media: { ...media, url: echo.audio?.id ?? echo.image?.id ?? echo.document?.id ?? echo.video?.id ?? media.url } }
+      : {}
+
+    await db.message.create({
+      data: {
+        conversationId,
+        role: 'assistant',
+        content: text || '[mensagem não suportada]',
+        providerMessageId: echo.id,
+        deliveryStatus: 'sent',
+        metadata: { sentFrom: 'whatsapp_phone', ...mediaMetadata } as unknown as Prisma.InputJsonValue,
+      },
+    })
+
+    await db.conversation.update({
+      where: { id: conversationId },
+      data: {
+        aiPaused: true,
+        pausedAt: new Date(),
+        lastMessageRole: 'assistant',
+        nextFollowUpAt: null,
+        followUpCount: 0,
+        ...AUTO_REOPEN_FIELDS,
+      },
+    })
+
+    revalidateTag(`conversations:${orgId}`)
+    revalidateTag(`conversation-messages:${conversationId}`)
+
+    logEcho('step:4 saved', 'PASS', { conversationId, ms: Date.now() - t0 })
   }
 }
 

@@ -7,7 +7,7 @@ interface ExtractedContent {
   media: NormalizedMediaInfo | null
 }
 
-function extractMetaContent(message: MetaIncomingMessage): ExtractedContent {
+export function extractMetaContent(message: MetaIncomingMessage): ExtractedContent {
   if (message.type === 'audio' && message.audio) {
     return {
       type: 'audio',
@@ -96,7 +96,7 @@ export function parseMetaMessage(
     remoteJid,
     phoneNumber,
     pushName: contact.profile?.name || null,
-    fromMe: false, // Meta Cloud NAO envia mensagens fromMe no webhook de messages
+    fromMe: false, // mensagens fromMe chegam via smb_message_echoes, nao via messages
     timestamp: Number(message.timestamp),
     type,
     text,
