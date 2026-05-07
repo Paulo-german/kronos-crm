@@ -1303,7 +1303,6 @@ export async function runSingleV2(
 
   // Create tool events from LLM steps
   if (result.steps?.length) {
-    await createToolEvents(ctx.conversationId, result.steps)
     const usedToolNames = result.steps.flatMap(
       (step) => step.toolCalls?.map((tc) => tc.toolName) ?? [],
     )
@@ -1554,6 +1553,12 @@ export async function runSingleV2(
     })
 
     await revalidateConversationCache(ctx.conversationId, ctx.organizationId)
+
+    // Salvar eventos de tool apenas após envio bem-sucedido
+    if (result.steps?.length) {
+      await createToolEvents(ctx.conversationId, result.steps)
+    }
+
     ctx.log('step:7 response_saved', 'PASS')
   } catch (sendError) {
     // Envio falhou — salvar mensagem com deliveryStatus 'failed' e abortar
