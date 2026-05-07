@@ -358,6 +358,7 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
     <TooltipProvider>
       <div className="flex h-full flex-col">
         <ChatHeader
+          conversationId={conversation.id}
           contactName={conversation.contactName}
           contactPhone={conversation.contactPhone}
           agentName={conversation.agentName}

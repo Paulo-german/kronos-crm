@@ -47,6 +47,7 @@ import {
 } from '@/_components/ui/tooltip'
 
 interface ChatHeaderProps {
+  conversationId: string
   contactName: string
   contactPhone: string | null
   agentName: string | null
@@ -71,6 +72,7 @@ interface ChatHeaderProps {
 }
 
 export function ChatHeader({
+  conversationId,
   contactName,
   contactPhone,
   agentName,
@@ -134,7 +136,7 @@ export function ChatHeader({
           }}
         >
           <Avatar className="h-10 w-10 shrink-0">
-            <AvatarImage />
+            <AvatarImage src={`/api/inbox/${conversationId}/contact-avatar`} />
             <AvatarFallback className="bg-primary/10 text-xs font-medium text-primary">
               {initials}
             </AvatarFallback>
