@@ -339,7 +339,7 @@ export function ConversationList({
         {isLoading ? (
           <LoadingSkeleton />
         ) : (
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col">
             {conversations.length === 0 && (
               <div className="p-4 text-center text-sm text-muted-foreground">
                 {emptyMessage(filter, search)}
@@ -379,7 +379,7 @@ export function ConversationList({
                       )}
                     >
                       <Avatar className="h-10 w-10 shrink-0">
-                        <AvatarImage />
+                        <AvatarImage src={`/api/inbox/${conversation.id}/contact-avatar`} />
                         <AvatarFallback className="bg-primary/10 text-xs font-medium text-primary">
                           {getInitials(conversation.contactName)}
                         </AvatarFallback>

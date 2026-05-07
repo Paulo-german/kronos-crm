@@ -4,7 +4,7 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { cn } from '@/_lib/utils'
-import { AlertTriangle, Bot, Check, CheckCheck, FileDown, FileText, Loader2, Pause, Play, RotateCw, UserRound, X } from 'lucide-react'
+import { AlertTriangle, Bot, Check, CheckCheck, Copy, FileDown, FileText, Loader2, Pause, Play, RotateCw, UserRound, X } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import { Badge } from '@/_components/ui/badge'
 import { renderWhatsappText } from './whatsapp-text'
@@ -332,13 +332,42 @@ export function MessageBubble({ id, conversationId, role, content, metadata, del
   const isAiMessage = isAiGenerated
   const isTemplateMessage = !!meta?.template
 
+  const handleCopy = useCallback(async () => {
+    if (!content || isMediaPlaceholder) return
+    try {
+      await navigator.clipboard.writeText(content)
+      toast.success('Mensagem copiada')
+    } catch {
+      toast.error('Erro ao copiar')
+    }
+  }, [content, isMediaPlaceholder])
+
   return (
     <div
       className={cn(
-        'flex w-full',
+        'group/bubble flex w-full',
         isUser ? 'justify-start' : 'justify-end',
       )}
     >
+      {/* Botão copy no hover — aparece ao lado da bolha (lado esquerdo para user, direito para assistant) */}
+      {!isMediaPlaceholder && (
+        <div
+          className={cn(
+            'flex shrink-0 items-end pb-2 opacity-0 transition-opacity duration-150 group-hover/bubble:opacity-100',
+            isUser ? 'order-last pl-1' : 'order-first pr-1',
+          )}
+        >
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={handleCopy}
+            className="h-6 w-6 text-muted-foreground/60 hover:text-foreground"
+          >
+            <Copy className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      )}
       <div
         className={cn(
           'max-w-[75%] rounded-2xl px-4 py-2',

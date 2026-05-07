@@ -45,8 +45,18 @@ export function ChatMessageList({
   retryingMessageId,
 }: ChatMessageListProps) {
   return (
-    <ScrollArea className="flex-1 px-4" ref={scrollAreaRef}>
-      <div className="space-y-3 py-4">
+    <div className="relative flex-1 min-h-0">
+      {/* Background pattern sutil — bolinhas em grade de 20px */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-[0.035] dark:opacity-[0.05]"
+        style={{
+          backgroundImage: 'radial-gradient(circle, currentColor 1.5px, transparent 1.5px)',
+          backgroundSize: '20px 20px',
+        }}
+      />
+      <ScrollArea className="h-full px-4" ref={scrollAreaRef}>
+        <div className="space-y-3 py-4">
         {isLoadingMessages && (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -77,12 +87,10 @@ export function ChatMessageList({
 
         {displayTimeline.map((item) =>
           item.kind === 'day-separator' ? (
-            <div key={`day-${item.date}`} className="flex items-center gap-3 py-2">
-              <div className="h-px flex-1 bg-border/30" />
-              <span className="shrink-0 text-[11px] font-medium text-muted-foreground">
+            <div key={`day-${item.date}`} className="flex items-center justify-center py-3">
+              <span className="rounded-full border border-border/40 bg-background/80 px-3 py-0.5 text-[11px] font-medium text-muted-foreground shadow-sm backdrop-blur-sm">
                 {formatDayLabel(item.date)}
               </span>
-              <div className="h-px flex-1 bg-border/30" />
             </div>
           ) : item.kind === 'event' ? (
             <ConversationEventBubble
@@ -110,8 +118,9 @@ export function ChatMessageList({
           ),
         )}
 
-        <div ref={scrollRef} />
-      </div>
-    </ScrollArea>
+          <div ref={scrollRef} />
+        </div>
+      </ScrollArea>
+    </div>
   )
 }

@@ -103,8 +103,8 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
     const anyPending = isSendPending || isAudioPending || isMediaPending
 
     return (
-      <div className="p-4">
-        <div className={`flex flex-col gap-1 rounded-xl border border-border/50 bg-card p-2 transition-opacity${windowClosed ? ' opacity-60' : ''}`}>
+      <div className="px-3 pb-3 pt-1.5">
+        <div className={`flex flex-col gap-1 rounded-xl border border-border/60 bg-card p-2 shadow-md ring-1 ring-border/20 transition-opacity${windowClosed ? ' opacity-60' : ''}`}>
           {selectedFile && (
             <MediaPreview
               file={selectedFile}
