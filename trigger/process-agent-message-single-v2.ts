@@ -5,6 +5,7 @@ import { buildDispatcherCtx } from './lib/build-dispatcher-ctx'
 import type { ProcessAgentMessagePayload } from './lib/build-dispatcher-ctx'
 import { handleAgentTaskFailure } from './lib/handle-task-failure'
 import { generateText, generateObject, stepCountIs } from 'ai'
+import type { ModelMessage } from 'ai'
 import { z } from 'zod'
 import { getModel } from '@/_lib/ai/provider'
 import { db } from '@/_lib/prisma'
@@ -74,6 +75,163 @@ const IDEMPOTENT_TOOL_NAMES = [
   'transfer_to_agent',
 ] as const
 
+// Action tools: efeito colateral — Call 2 só precisa saber que foram executadas.
+const ACTION_TOOL_LABELS: Record<string, string> = {
+  hand_off_to_human: 'Notificação de atendente humano enviada',
+  move_deal: 'Negócio movido no pipeline',
+  update_deal: 'Dados do negócio atualizados',
+  update_contact: 'Dados do contato atualizados',
+  create_task: 'Tarefa criada',
+  create_event: 'Evento criado na agenda',
+  update_event: 'Evento atualizado na agenda',
+  transfer_to_agent: 'Transferência para agente iniciada',
+  send_media: 'Mídia enviada',
+  send_product_media: 'Mídia de produto enviada',
+}
+
+// Query tools: retornam conteúdo que o Call 2 precisa para gerar a resposta.
+// O resultado é formatado como texto legível em vez de ser descartado.
+const QUERY_TOOL_NAMES = new Set(['search_products', 'search_knowledge', 'list_availability'])
+
+function formatQueryToolResult(toolName: string, outputValue: unknown): string | null {
+  if (toolName === 'search_products') {
+    const val = outputValue as Record<string, unknown> | null
+    if (!val || typeof val !== 'object') return null
+    const products = val.products
+    if (!Array.isArray(products) || products.length === 0) {
+      return 'Nenhum produto encontrado para esta busca.'
+    }
+    const lines = products.map((p: unknown) => {
+      const product = p as Record<string, unknown>
+      const name = typeof product.name === 'string' ? product.name : '?'
+      const price = typeof product.price === 'number'
+        ? `R$ ${product.price.toFixed(2).replace('.', ',')}`
+        : null
+      const description = typeof product.description === 'string' && product.description
+        ? product.description
+        : null
+      const parts = [name, price].filter(Boolean).join(': ')
+      return description ? `- ${parts} — ${description}` : `- ${parts}`
+    })
+    return `Produtos encontrados:\n${lines.join('\n')}`
+  }
+
+  if (toolName === 'search_knowledge') {
+    const val = outputValue as Record<string, unknown> | null
+    if (!val || typeof val !== 'object') return null
+    const results = val.results
+    if (!Array.isArray(results) || results.length === 0) {
+      return 'Nenhum resultado encontrado na base de conhecimento.'
+    }
+    const contents = results
+      .map((r: unknown) => {
+        const result = r as Record<string, unknown>
+        return typeof result.content === 'string' ? result.content.trim() : ''
+      })
+      .filter(Boolean)
+    return `Informações da base de conhecimento:\n${contents.join('\n\n')}`
+  }
+
+  if (toolName === 'list_availability') {
+    const val = outputValue as Record<string, unknown> | null
+    if (!val || typeof val !== 'object') return null
+    const message = typeof val.message === 'string' ? val.message : ''
+    const slots = val.slots
+    if (!Array.isArray(slots) || slots.length === 0) {
+      return message || 'Nenhum horário disponível.'
+    }
+    const lines = slots.map((s: unknown) => {
+      const slot = s as Record<string, unknown>
+      const dayOfWeek = typeof slot.dayOfWeek === 'string' ? slot.dayOfWeek : ''
+      const date = typeof slot.date === 'string' ? slot.date : ''
+      const startTime = typeof slot.startTime === 'string' ? slot.startTime : ''
+      const endTime = typeof slot.endTime === 'string' ? slot.endTime : ''
+      return `- ${dayOfWeek}, ${date} às ${startTime}–${endTime}`
+    })
+    return `${message}\n${lines.join('\n')}`
+  }
+
+  return null
+}
+
+/**
+ * Converte as mensagens brutas do Call 1 (tool calls / tool results) em texto
+ * legível antes de passá-las ao Call 2.
+ *
+ * Action tools → label simples (Call 2 só precisa saber que foram executadas).
+ * Query tools → conteúdo formatado preservado (Call 2 precisa dos dados para responder).
+ * Texto puro do assistant → mantido intacto.
+ */
+function sanitizeToolMessages(messages: ModelMessage[]): ModelMessage[] {
+  return messages.map((message) => {
+    // Mensagens assistant podem conter tool calls no content array
+    if (message.role === 'assistant' && Array.isArray(message.content)) {
+      const textParts: string[] = []
+
+      for (const part of message.content) {
+        if (part.type === 'text') {
+          if (part.text.trim()) {
+            textParts.push(part.text.trim())
+          }
+        } else if (part.type === 'tool-call') {
+          const label = ACTION_TOOL_LABELS[part.toolName]
+          // Query tools: Call 2 verá o resultado completo na mensagem tool abaixo
+          if (!label && !QUERY_TOOL_NAMES.has(part.toolName)) {
+            textParts.push(`[Ação executada: ${part.toolName}]`)
+          } else if (label) {
+            textParts.push(`[Ação executada: ${label}]`)
+          }
+        }
+      }
+
+      if (textParts.length === 0) {
+        return message
+      }
+
+      return { role: 'assistant', content: textParts.join('\n') } as ModelMessage
+    }
+
+    // Mensagens tool contêm os resultados das ferramentas
+    if (message.role === 'tool' && Array.isArray(message.content)) {
+      const summaryParts: string[] = []
+
+      for (const part of message.content) {
+        if (part.type !== 'tool-result') continue
+
+        const outputValue = part.output.type === 'json' ? part.output.value : null
+
+        if (QUERY_TOOL_NAMES.has(part.toolName)) {
+          // Query tools: preservar conteúdo em formato legível
+          const formatted = formatQueryToolResult(part.toolName, outputValue)
+          if (formatted) {
+            summaryParts.push(formatted)
+          }
+          continue
+        }
+
+        // Action tools: só indicar que foi executada se houver output significativo
+        if (
+          outputValue &&
+          typeof outputValue === 'object' &&
+          !Array.isArray(outputValue) &&
+          Object.keys(outputValue as object).length > 0
+        ) {
+          const label = ACTION_TOOL_LABELS[part.toolName] ?? part.toolName
+          summaryParts.push(`[Resultado: ${label}]`)
+        }
+      }
+
+      if (summaryParts.length === 0) {
+        return { role: 'assistant', content: '' } as ModelMessage
+      }
+
+      return { role: 'assistant', content: summaryParts.join('\n\n') } as ModelMessage
+    }
+
+    return message
+  })
+}
+
 /**
  * Strip JSON tool calls que o LLM vazou como texto puro.
  * Alguns modelos (ex: Gemini) geram `{"tool":"update_deal","title":"..."}` inline
@@ -100,6 +258,21 @@ function stripLeakedToolCalls(text: string): string {
       }
       return match
     },
+  )
+
+  // Padrão 3: formato {"recipientname":"functions.handofftohuman","parameters":{...}}
+  // Alguns modelos emitem tool calls em texto puro com esta estrutura em vez de usar
+  // o mecanismo estruturado do SDK. Suporta um nível de aninhamento em "parameters".
+  cleaned = cleaned.replace(
+    /\{[^{}]*"recipientname"\s*:\s*"functions\.[^"]*"[^{}]*(?:\{[^{}]*\}[^{}]*)?\}/g,
+    '',
+  )
+
+  // Padrão 4: `currentStep` <uuid> — campo do generateObject vazado dentro do campo message.
+  // O LLM às vezes inclui a classificação de step como texto livre no campo message.
+  cleaned = cleaned.replace(
+    /\n?`currentStep`\s+[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\n?/g,
+    '',
   )
 
   return cleaned
@@ -529,20 +702,23 @@ export async function runSingleV2(
         message: z
           .string()
           .describe(
-            'Sua resposta ao cliente. Texto natural que será enviado diretamente ao lead.',
+            'Sua resposta ao cliente. Texto natural que será enviado diretamente ao lead. ' +
+            'NUNCA inclua JSONs, nomes de ferramentas, UUIDs, IDs de steps ou qualquer metadado técnico neste campo.',
           ),
         currentStep: z
           .enum(stepIds as [string, ...string[]])
           .nullable()
           .describe(
-            'UUID exato da etapa atual, escolhido entre os IDs do Processo de Atendimento. Só avança, nunca retrocede.',
+            'UUID exato da etapa atual, escolhido entre os IDs do Processo de Atendimento. Só avança, nunca retrocede. ' +
+            'Coloque APENAS o UUID aqui, nunca dentro do campo message.',
           ),
       })
     : z.object({
         message: z
           .string()
           .describe(
-            'Sua resposta ao cliente. Texto natural que será enviado diretamente ao lead.',
+            'Sua resposta ao cliente. Texto natural que será enviado diretamente ao lead. ' +
+            'NUNCA inclua JSONs, nomes de ferramentas, UUIDs ou qualquer metadado técnico neste campo.',
           ),
       })
 
@@ -554,7 +730,7 @@ export async function runSingleV2(
       // System prompt original + histórico + trajetória do turno (tool-calls/results)
       messages: [
         ...llmMessages,
-        ...result.response.messages,
+        ...sanitizeToolMessages(result.response.messages),
       ],
       schema: responderSchema,
       temperature: LLM_TEMPERATURE,
@@ -642,7 +818,7 @@ export async function runSingleV2(
       // Sem result.response.messages o fallback gerava resposta sem contexto das ações.
       const fallbackMessages = [
         ...llmMessages,
-        ...result.response.messages,
+        ...sanitizeToolMessages(result.response.messages),
         {
           role: 'system' as const,
           content:
