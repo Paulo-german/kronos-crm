@@ -14,6 +14,7 @@ export interface MessageMetadataDto {
   sentFrom?: string
   template?: unknown
   deliveryError?: unknown
+  editedAt?: string
 }
 
 export interface MessageDto {
@@ -44,6 +45,8 @@ export interface ConversationDetailDto {
 }
 
 const DEFAULT_MESSAGE_LIMIT = 30
+// Limite para a função de cache sem paginação — carrega contexto suficiente para a UI inicial
+const CACHED_MESSAGE_LIMIT = 100
 
 // Filtra metadata para expor apenas campos seguros ao frontend.
 // Campos como model, llmDurationMs e agentTrajectory são internos e nunca devem
@@ -58,6 +61,7 @@ function toSafeMetadata(raw: unknown): MessageMetadataDto | null {
     sentFrom: typeof meta.sentFrom === 'string' ? meta.sentFrom : undefined,
     template: meta.template,
     deliveryError: meta.deliveryError,
+    editedAt: typeof meta.editedAt === 'string' ? meta.editedAt : undefined,
   }
 }
 
@@ -71,7 +75,7 @@ const fetchMessagesFromDb = async (
       isArchived: false,
     },
     orderBy: { createdAt: 'asc' },
-    take: 100,
+    take: CACHED_MESSAGE_LIMIT,
     select: {
       id: true,
       role: true,

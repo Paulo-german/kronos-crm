@@ -1,10 +1,12 @@
 import { sendWhatsAppMessage } from '@/_lib/evolution/send-message'
 import { sendWhatsAppAudio } from '@/_lib/evolution/send-audio'
 import { sendWhatsAppMedia } from '@/_lib/evolution/send-media'
+import { editWhatsAppMessage } from '@/_lib/evolution/edit-message'
 import { sendMetaTextMessage, sendMetaAudioMessage, sendMetaMediaMessage } from '@/_lib/meta/send-meta-message'
 import { sendZApiTextMessage } from '@/_lib/zapi/send-message'
 import { sendZApiAudio } from '@/_lib/zapi/send-audio'
 import { sendZApiMedia } from '@/_lib/zapi/send-media'
+import { editZApiTextMessage } from '@/_lib/zapi/edit-message'
 import { sendMetaTemplateMessage } from '@/_lib/meta/template-api'
 import { sendInstagramText, sendInstagramAudio, sendInstagramMedia } from '@/_lib/instagram/send-instagram-message'
 import type { ZApiConfig } from '@/_lib/zapi/types'
@@ -38,6 +40,11 @@ export interface WhatsAppProvider {
     language: string,
     components?: MetaTemplateSendComponent[],
   ): Promise<string>
+  /**
+   * Edita o texto de uma mensagem ja enviada.
+   * Suportado apenas para Evolution e Z-API — Meta Cloud e Instagram lancam erro.
+   */
+  editText(recipientPhone: string, providerMessageId: string, newText: string): Promise<void>
 }
 
 interface InboxProviderContext {
@@ -81,6 +88,7 @@ export function resolveWhatsAppProvider(inbox: InboxProviderContext, fetcher: ty
         return sendInstagramMedia(igUserId, accessToken, recipientJid.replace('@instagram', ''), mediaUrl, mimetype, mediatype, caption)
       },
       sendTemplate: () => Promise.reject(new Error('Templates não suportados no Instagram Direct.')),
+      editText: () => Promise.reject(new Error('Edição não suportada no Instagram Direct.')),
     }
   }
 
@@ -103,6 +111,7 @@ export function resolveWhatsAppProvider(inbox: InboxProviderContext, fetcher: ty
         sendMetaMediaMessage(phoneNumberId, accessToken, recipientPhone.replace('@s.whatsapp.net', ''), mediaBase64, mimetype, mediatype, fileName, caption),
       sendTemplate: (recipientPhone: string, templateName: string, language: string, components?: MetaTemplateSendComponent[]) =>
         sendMetaTemplateMessage(phoneNumberId, accessToken, recipientPhone.replace('@s.whatsapp.net', ''), templateName, language, components),
+      editText: () => Promise.reject(new Error('Edição não suportada pela Meta Cloud API.')),
     }
   }
 
@@ -131,6 +140,8 @@ export function resolveWhatsAppProvider(inbox: InboxProviderContext, fetcher: ty
       sendTemplate: () => {
         return Promise.reject(new Error('Templates não suportados pelo provedor Z-API.'))
       },
+      editText: (recipientPhone: string, providerMessageId: string, newText: string) =>
+        editZApiTextMessage(config, recipientPhone.replace('@s.whatsapp.net', ''), providerMessageId, newText),
     }
   }
 
@@ -166,5 +177,7 @@ export function resolveWhatsAppProvider(inbox: InboxProviderContext, fetcher: ty
     sendTemplate: () => {
       return Promise.reject(new Error('Templates não suportados pelo provedor Evolution API.'))
     },
+    editText: (recipientPhone: string, providerMessageId: string, newText: string) =>
+      editWhatsAppMessage(instanceName, recipientPhone, providerMessageId, newText, credentials),
   }
 }
