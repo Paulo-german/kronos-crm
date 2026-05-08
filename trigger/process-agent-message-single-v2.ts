@@ -4,10 +4,11 @@ import { flushLangfuse, langfuseTracer } from './lib/langfuse'
 import { buildDispatcherCtx } from './lib/build-dispatcher-ctx'
 import type { ProcessAgentMessagePayload } from './lib/build-dispatcher-ctx'
 import { handleAgentTaskFailure } from './lib/handle-task-failure'
-import { generateText, generateObject, stepCountIs } from 'ai'
+import { generateText, generateObject, Output, stepCountIs } from 'ai'
 import type { ModelMessage } from 'ai'
 import { z } from 'zod'
 import { getModel } from '@/_lib/ai/provider'
+import { STEP_CLASSIFIER_MODEL_ID } from '@/_lib/ai/models'
 import { db } from '@/_lib/prisma'
 import { estimateMaxCost } from '@/_lib/ai/pricing'
 import { debitCredits } from '@/_lib/billing/credit-utils'
@@ -80,6 +81,14 @@ const IDEMPOTENT_TOOL_NAMES = [
 const MAX_OUTPUT_TOKENS = 3072
 const LLM_TEMPERATURE = 0.4
 
+// Quantas mensagens recentes vão ao classificador. 6 cobre 3 turnos de
+// conversa (user→assistant), suficiente para inferir a etapa atual sem
+// inflar o prompt.
+const CLASSIFIER_HISTORY_TURNS = 6
+
+// Classificador só precisa devolver um UUID — 64 tokens é mais do que suficiente.
+const CLASSIFIER_MAX_OUTPUT_TOKENS = 64
+
 // Action tools: efeito colateral — Call 2 só precisa saber que foram executadas.
 const ACTION_TOOL_LABELS: Record<string, string> = {
   hand_off_to_human: 'Notificação de atendente humano enviada',
@@ -97,6 +106,79 @@ const ACTION_TOOL_LABELS: Record<string, string> = {
 // Query tools: retornam conteúdo que o Call 2 precisa para gerar a resposta.
 // O resultado é formatado como texto legível em vez de ser descartado.
 const QUERY_TOOL_NAMES = new Set(['search_products', 'search_knowledge', 'list_availability'])
+
+// ---------------------------------------------------------------------------
+// Interfaces e helpers do Step Classifier (Call 3)
+// ---------------------------------------------------------------------------
+
+interface ClassifierResult {
+  classifiedId: string | undefined
+  usage: { inputTokens: number; outputTokens: number }
+}
+
+interface ResponderResult {
+  message: string
+  usage: { inputTokens: number; outputTokens: number }
+}
+
+interface BuildClassifierMessagesArgs {
+  steps: Array<{ id: string; order: number; name: string }>
+  // O system prompt completo NÃO é repassado — só o que o classificador precisa.
+  // Reutiliza as mensagens já normalizadas (sem o system prompt do agente).
+  recentHistory: Array<{ role: 'user' | 'assistant'; content: string }>
+  contactName: string
+}
+
+function buildClassifierMessages(args: BuildClassifierMessagesArgs): ModelMessage[] {
+  const { steps, recentHistory, contactName } = args
+
+  const sortedSteps = [...steps].sort((a, b) => a.order - b.order)
+  const stepsBlock = sortedSteps
+    .map((step, index) => `${index + 1}. ${step.name} — id: \`${step.id}\``)
+    .join('\n')
+
+  return [
+    {
+      role: 'system',
+      content:
+        'Sua única função é classificar em qual etapa do funil de atendimento a conversa se encontra. ' +
+        'Regras: (1) a etapa só avança, nunca retrocede; (2) retorne null se nenhuma etapa se aplica claramente; ' +
+        `(3) o contato se chama "${contactName}".`,
+    },
+    {
+      role: 'system',
+      content: `Etapas do funil (em ordem):\n${stepsBlock}`,
+    },
+    ...recentHistory.map((msg) => ({
+      role: msg.role,
+      content: msg.content,
+    })),
+  ] as ModelMessage[]
+}
+
+function buildClassifierSchema(stepIds: [string, ...string[]]) {
+  return z.object({
+    currentStep: z
+      .enum(stepIds)
+      .nullable()
+      .describe(
+        'UUID exato da etapa atual após esta interação. Só avança, nunca retrocede. ' +
+        'Retorne null se nenhuma das etapas se aplica.',
+      ),
+  })
+}
+
+// Combina message + currentStep — mesmo shape do responderSchema antigo (pré-split).
+// Pode ter os dois campos porque o fallback não tem tools, eliminando o conflito
+// tools+Output.object que motivou a separação Call 1 / Call 2 na v2.
+function buildFallbackSchema(stepIds: [string, ...string[]] | null) {
+  const base = { message: z.string() }
+  if (!stepIds) return z.object(base)
+  return z.object({
+    ...base,
+    currentStep: z.enum(stepIds).nullable(),
+  })
+}
 
 function formatQueryToolResult(toolName: string, outputValue: unknown): string | null {
   if (toolName === 'search_products') {
@@ -1006,110 +1088,144 @@ export async function runSingleV2(
   // result.text descartado — alguns modelos vazam "thinking" como texto; responseText vem do Call 2.
   let responseText = ''
 
-  // Zeros iniciais garantem que totalUsage seja tipado mesmo se Call 2 falhar.
-  let responderUsage = { inputTokens: 0, outputTokens: 0 }
+  // Call 2 (texto) e Call 3 (step classifier) rodam em paralelo — independentes.
+  // Cada uma tem try/catch próprio para que falha isolada não derrube a outra.
 
-  // Call 2: generateObject sem tools — classifica step e gera mensagem sem o bug tools+Output.
-  const stepIds = promptContext.steps.map((step) => step.id)
-  const responderSchema = hasSteps
-    ? z.object({
-        message: z
-          .string()
-          .describe(
-            'Sua resposta ao cliente. Texto natural que será enviado diretamente ao lead. ' +
-            'NUNCA inclua JSONs, nomes de ferramentas, UUIDs, IDs de steps ou qualquer metadado técnico neste campo.',
-          ),
-        currentStep: z
-          .enum(stepIds as [string, ...string[]])
-          .nullable()
-          .describe(
-            'UUID exato da etapa atual, escolhido entre os IDs do Processo de Atendimento. Só avança, nunca retrocede. ' +
-            'Coloque APENAS o UUID aqui, nunca dentro do campo message.',
-          ),
-      })
-    : z.object({
-        message: z
-          .string()
-          .describe(
-            'Sua resposta ao cliente. Texto natural que será enviado diretamente ao lead. ' +
-            'NUNCA inclua JSONs, nomes de ferramentas, UUIDs ou qualquer metadado técnico neste campo.',
-          ),
-      })
+  const responderSchema = z.object({
+    message: z
+      .string()
+      .describe(
+        'Sua resposta ao cliente. Texto natural que será enviado diretamente ao lead. ' +
+        'NUNCA inclua JSONs, nomes de ferramentas, UUIDs ou qualquer metadado técnico neste campo.',
+      ),
+  })
 
-  let classifiedId: string | undefined
+  // Filtra apenas mensagens user/assistant para o classificador — sem system prompt do agente
+  // e sem tool messages, que o classificador não precisa ver.
+  const recentHistory = llmMessages
+    .filter((msg) => msg.role === 'user' || msg.role === 'assistant')
+    .slice(-CLASSIFIER_HISTORY_TURNS) as Array<{ role: 'user' | 'assistant'; content: string }>
 
-  try {
-    const responderResult = await generateObject({
-      model: getModel(promptContext.modelId),
-      // System prompt original + histórico + trajetória do turno (tool-calls/results)
-      messages: [
-        ...llmMessages,
-        ...sanitizeToolMessages(result.response.messages),
-      ],
-      schema: responderSchema,
-      temperature: LLM_TEMPERATURE,
-      maxOutputTokens: MAX_OUTPUT_TOKENS,
-      experimental_telemetry: {
-        isEnabled: true,
-        tracer: langfuseTracer,
-        functionId: 'chat-completion-responder',
-        metadata: {
-          agentId: ctx.effectiveAgentId,
-          conversationId: ctx.conversationId,
-          model: promptContext.modelId,
-          stage: 'responder',
+  const runResponder = async (): Promise<ResponderResult | null> => {
+    try {
+      const responderResult = await generateObject({
+        model: getModel(promptContext.modelId),
+        // System prompt original + histórico + trajetória do turno (tool-calls/results)
+        messages: [
+          ...llmMessages,
+          ...sanitizeToolMessages(result.response.messages),
+        ],
+        schema: responderSchema,
+        temperature: LLM_TEMPERATURE,
+        maxOutputTokens: MAX_OUTPUT_TOKENS,
+        experimental_telemetry: {
+          isEnabled: true,
+          tracer: langfuseTracer,
+          functionId: 'chat-completion-responder',
+          metadata: {
+            agentId: ctx.effectiveAgentId,
+            conversationId: ctx.conversationId,
+            model: promptContext.modelId,
+            stage: 'responder',
+          },
         },
-      },
-    })
-
-    // [CRÍTICO] Capturar usage do Call 2 para agregação em totalUsage
-    responderUsage = {
-      inputTokens: responderResult.usage?.inputTokens ?? 0,
-      outputTokens: responderResult.usage?.outputTokens ?? 0,
+      })
+      return {
+        message: responderResult.object.message ?? '',
+        usage: {
+          inputTokens: responderResult.usage?.inputTokens ?? 0,
+          outputTokens: responderResult.usage?.outputTokens ?? 0,
+        },
+      }
+    } catch (responderError) {
+      // Falha graceful: responseText permanece vazio → cai no tool_only_fallback.
+      logger.warn('Responder (Call 2) failed — falling back', {
+        conversationId: ctx.conversationId,
+        organizationId: ctx.organizationId,
+        error: responderError instanceof Error ? responderError.message : String(responderError),
+      })
+      ctx.traceTags.push('responder_failed')
+      return null
     }
-
-    responseText = responderResult.object.message ?? ''
-    classifiedId = hasSteps
-      ? (responderResult.object as unknown as { currentStep: string | null }).currentStep ?? undefined
-      : undefined
-  } catch (responderError) {
-    // Falha graceful: deixa responseText vazio → cai no tool_only_fallback
-    // (que continua rodando como safety net com generateText sem tools).
-    logger.warn('Responder (Call 2) failed — falling back', {
-      conversationId: ctx.conversationId,
-      organizationId: ctx.organizationId,
-      error:
-        responderError instanceof Error
-          ? responderError.message
-          : String(responderError),
-    })
-    ctx.traceTags.push('responder_failed')
   }
 
-  // Agregação de tokens do Call 1 + Call 2 para accounting correto.
+  const runStepClassifier = async (): Promise<ClassifierResult | null> => {
+    if (!hasSteps) return null
+
+    const stepIds = promptContext.steps.map((step) => step.id) as [string, ...string[]]
+    const classifierSchema = buildClassifierSchema(stepIds)
+
+    try {
+      const classifierResult = await generateObject({
+        model: getModel(STEP_CLASSIFIER_MODEL_ID),
+        messages: buildClassifierMessages({
+          steps: promptContext.steps,
+          recentHistory,
+          contactName: promptContext.contactName,
+        }),
+        schema: classifierSchema,
+        temperature: 0, // determinístico — classificação enum, não há criatividade necessária
+        maxOutputTokens: CLASSIFIER_MAX_OUTPUT_TOKENS,
+        experimental_telemetry: {
+          isEnabled: true,
+          tracer: langfuseTracer,
+          functionId: 'chat-completion-step-classifier',
+          metadata: {
+            agentId: ctx.effectiveAgentId,
+            conversationId: ctx.conversationId,
+            model: STEP_CLASSIFIER_MODEL_ID,
+            stage: 'step-classifier',
+            stepCount: promptContext.steps.length,
+            historySize: recentHistory.length,
+          },
+        },
+      })
+      return {
+        classifiedId: classifierResult.object.currentStep ?? undefined,
+        usage: {
+          inputTokens: classifierResult.usage?.inputTokens ?? 0,
+          outputTokens: classifierResult.usage?.outputTokens ?? 0,
+        },
+      }
+    } catch (classifierError) {
+      // Falha graceful: mantém promptContext.currentStepOrder — sem regressão de step.
+      logger.warn('Step classifier (Call 3) failed — keeping current step', {
+        conversationId: ctx.conversationId,
+        organizationId: ctx.organizationId,
+        currentStepOrder: promptContext.currentStepOrder,
+        error: classifierError instanceof Error ? classifierError.message : String(classifierError),
+      })
+      ctx.traceTags.push('step_classifier_failed')
+      return null
+    }
+  }
+
+  const [responder, classifier] = await Promise.all([runResponder(), runStepClassifier()])
+
+  responseText = responder?.message ?? ''
+
+  // Agregação de tokens do Call 1 + Call 2 + Call 3 para accounting correto.
   // totalUsage substitui result.usage em TODOS os pontos downstream.
   // Padrão idêntico ao de crew-v1 (trigger/process-agent-message-crew-v1.ts:594-597).
+  // O classificador usa modelo diferente mas a agregação é simples — sobrecusto
+  // desprezível dado o tamanho mínimo do prompt do classificador (~64 tokens out).
+  const responderUsage = responder?.usage ?? { inputTokens: 0, outputTokens: 0 }
+  const classifierUsage = classifier?.usage ?? { inputTokens: 0, outputTokens: 0 }
+
   const totalUsage = {
     inputTokens:
-      (result.usage?.inputTokens ?? 0) + responderUsage.inputTokens,
+      (result.usage?.inputTokens ?? 0)
+      + responderUsage.inputTokens
+      + classifierUsage.inputTokens,
     outputTokens:
-      (result.usage?.outputTokens ?? 0) + responderUsage.outputTokens,
+      (result.usage?.outputTokens ?? 0)
+      + responderUsage.outputTokens
+      + classifierUsage.outputTokens,
   }
 
-  // Guard de monotonicidade: step só avança, nunca regride.
-  // O Call 2 retorna o UUID do step — convertemos para `order` via lookup no context.
-  // Math.max previne regressão; Math.min previne avanço além do último step.
-  const classifiedStep = classifiedId
-    ? promptContext.steps.find((step) => step.id === classifiedId)?.order
-    : undefined
-  const newStepOrder =
-    classifiedStep !== undefined
-      ? Math.max(
-          promptContext.currentStepOrder,
-          Math.min(classifiedStep, promptContext.totalSteps - 1),
-        )
-      : promptContext.currentStepOrder
-  const stepAdvanced = newStepOrder > promptContext.currentStepOrder
+  // classifiedId é let porque o fallback pode sobrescrever quando Call 3 falhou
+  // mas o fallback conseguiu classificar via Output.object.
+  let classifiedId = classifier?.classifiedId
 
   // Se o LLM gastou todos os steps em tool calls e não gerou texto,
   // faz uma chamada extra SEM tools para gerar a resposta ao cliente.
@@ -1142,9 +1258,18 @@ export async function runSingleV2(
         },
       ]
 
+      const fallbackStepIds = hasSteps
+        ? (promptContext.steps.map((step) => step.id) as [string, ...string[]])
+        : null
+      const fallbackSchema = buildFallbackSchema(fallbackStepIds)
+
+      // Output.object funciona aqui porque o fallback não tem tools — é exatamente
+      // a ausência de tools que permite combinar Output.object com generateText
+      // (foi esse conflito que motivou a separação Call 1 / Call 2 na v2).
       const fallbackResult = await generateText({
         model: getModel(promptContext.modelId),
         messages: fallbackMessages,
+        output: hasSteps ? Output.object({ schema: fallbackSchema }) : undefined,
         temperature: LLM_TEMPERATURE,
         maxOutputTokens: MAX_OUTPUT_TOKENS,
         experimental_telemetry: {
@@ -1160,16 +1285,29 @@ export async function runSingleV2(
       }).catch((fallbackError) => {
         logger.warn('Tool-only fallback LLM call failed', {
           conversationId: ctx.conversationId,
-          error:
-            fallbackError instanceof Error
-              ? fallbackError.message
-              : String(fallbackError),
+          organizationId: ctx.organizationId,
+          error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
         })
         return null
       })
 
-      if (fallbackResult?.text) {
-        responseText = fallbackResult.text
+      // Output.object garante extração tipada — sem risco de JSON cru ao cliente.
+      // Para o branch sem steps (output undefined), usa .text como fallback.
+      // O cast para o shape ampliado é seguro: buildFallbackSchema inclui currentStep
+      // quando hasSteps=true — o mesmo flag que controla qual schema foi passado.
+      const fallbackOutput = fallbackResult?.output as
+        | { message: string; currentStep?: string | null }
+        | undefined
+
+      responseText = fallbackOutput?.message ?? fallbackResult?.text ?? ''
+
+      // Recuperação: se Call 3 falhou mas o fallback classificou, adota o valor.
+      // Nunca sobrescreve uma classificação já bem-sucedida da Call 3.
+      if (fallbackOutput?.currentStep) {
+        classifiedId = fallbackOutput.currentStep
+      }
+
+      if (responseText) {
         ctx.log('step:5b tool_only_fallback', 'PASS', {
           responseLength: responseText.length,
         })
@@ -1181,6 +1319,21 @@ export async function runSingleV2(
       }
     }
   }
+
+  // Guard de monotonicidade: step só avança, nunca regride.
+  // Calculado APÓS o fallback para capturar classifiedId atualizado pelo fallback.
+  // Math.max previne regressão; Math.min previne avanço além do último step.
+  const classifiedStep = classifiedId
+    ? promptContext.steps.find((step) => step.id === classifiedId)?.order
+    : undefined
+  const newStepOrder =
+    classifiedStep !== undefined
+      ? Math.max(
+          promptContext.currentStepOrder,
+          Math.min(classifiedStep, promptContext.totalSteps - 1),
+        )
+      : promptContext.currentStepOrder
+  const stepAdvanced = newStepOrder > promptContext.currentStepOrder
 
   // Strip tool calls vazados como texto puro pelo LLM (ex: Gemini)
   // Deve rodar ANTES da checagem de vazio para que, se tudo era tool JSON,

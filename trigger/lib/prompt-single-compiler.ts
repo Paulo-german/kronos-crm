@@ -256,13 +256,6 @@ function buildFunnelSection(base: PromptBaseContext): string {
     '- Quando uma etapa tiver um template de mensagem, você DEVE usá-lo como base da sua resposta, adaptando com os dados reais do cliente. Não ignore os templates.',
   )
 
-  lines.push('')
-  lines.push('**Classificação de etapa (obrigatório no output estruturado):**')
-  lines.push(
-    'Classifique o campo `currentStep` no output com o ID exato (UUID entre crases) da etapa em que a conversa se encontra após esta interação. Use apenas IDs que aparecem na lista abaixo.',
-  )
-  lines.push('O campo `message` deve conter sua resposta ao cliente.')
-
   for (const step of base.steps) {
     lines.push('')
     // Mantém formato 1-indexed (order + 1) do buildSystemPrompt legado.

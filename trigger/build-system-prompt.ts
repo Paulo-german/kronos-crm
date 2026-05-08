@@ -629,15 +629,6 @@ export async function buildSystemPrompt(
       '- Quando uma etapa tiver um template de mensagem, você DEVE usá-lo como base da sua resposta, adaptando com os dados reais do cliente. Não ignore os templates.',
     )
 
-    // O LLM deve inferir o step atual pelo histórico — não informamos explicitamente para
-    // evitar que ele fique preso em um step que já foi superado na conversa.
-    lines.push('')
-    lines.push('**Classificação de etapa (obrigatório no output estruturado):**')
-    lines.push(
-      'Classifique o campo `currentStep` no output com o ID exato (UUID entre crases) da etapa em que a conversa se encontra após esta interação. Use apenas IDs que aparecem na lista abaixo.',
-    )
-    lines.push('O campo `message` deve conter sua resposta ao cliente.')
-
     for (const step of agent.steps) {
       lines.push('')
       lines.push(`**${step.order + 1}. ${step.name}** (id: \`${step.id}\`)`)

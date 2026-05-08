@@ -144,6 +144,16 @@ export type AnyModelId = AgentModelId | RouterModelId
 export const SUMMARIZATION_MODEL_ID = 'openai/gpt-4o-mini' satisfies AnyModelId
 
 // ---------------------------------------------------------------------------
+// Modelo fixo para o Step Classifier (Call 3 do agente single-v2)
+// ---------------------------------------------------------------------------
+// Classifica em qual etapa do funil a conversa está após a interação.
+// Tarefa simples (enum sobre UUIDs), prompt mínimo (~6 mensagens recentes +
+// lista de steps), sem system prompt completo. Modelo barato e rápido evita
+// que falhas de schema rich-output do modelo principal derrubem a resposta
+// ao cliente. Não aparece em picker — escolha de infraestrutura.
+export const STEP_CLASSIFIER_MODEL_ID = 'openai/gpt-4o-mini' satisfies AnyModelId
+
+// ---------------------------------------------------------------------------
 // Modelo fixo para o Leak Guardrail (Agent 3 da pipeline v2)
 // ---------------------------------------------------------------------------
 // Validador de vazamento roda sempre com Gemini 2.5 Flash — rápido (~500ms p95),
