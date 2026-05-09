@@ -1088,6 +1088,12 @@ export async function runSingleV2(
   // result.text descartado — alguns modelos vazam "thinking" como texto; responseText vem do Call 2.
   let responseText = ''
 
+  // Capturam a mensagem dos erros para propagação às 3 camadas de observabilidade
+  // (Trigger.dev step output, Langfuse trace metadata, plataforma conversation event).
+  let responderErrorMsg: string | undefined
+  let classifierErrorMsg: string | undefined
+  let fallbackErrorMsg: string | undefined
+
   // Call 2 (texto) e Call 3 (step classifier) rodam em paralelo — independentes.
   // Cada uma tem try/catch próprio para que falha isolada não derrube a outra.
 
@@ -1139,10 +1145,11 @@ export async function runSingleV2(
       }
     } catch (responderError) {
       // Falha graceful: responseText permanece vazio → cai no tool_only_fallback.
+      responderErrorMsg = responderError instanceof Error ? responderError.message : String(responderError)
       logger.warn('Responder (Call 2) failed — falling back', {
         conversationId: ctx.conversationId,
         organizationId: ctx.organizationId,
-        error: responderError instanceof Error ? responderError.message : String(responderError),
+        error: responderErrorMsg,
       })
       ctx.traceTags.push('responder_failed')
       return null
@@ -1189,11 +1196,12 @@ export async function runSingleV2(
       }
     } catch (classifierError) {
       // Falha graceful: mantém promptContext.currentStepOrder — sem regressão de step.
+      classifierErrorMsg = classifierError instanceof Error ? classifierError.message : String(classifierError)
       logger.warn('Step classifier (Call 3) failed — keeping current step', {
         conversationId: ctx.conversationId,
         organizationId: ctx.organizationId,
         currentStepOrder: promptContext.currentStepOrder,
-        error: classifierError instanceof Error ? classifierError.message : String(classifierError),
+        error: classifierErrorMsg,
       })
       ctx.traceTags.push('step_classifier_failed')
       return null
@@ -1283,10 +1291,11 @@ export async function runSingleV2(
           },
         },
       }).catch((fallbackError) => {
+        fallbackErrorMsg = fallbackError instanceof Error ? fallbackError.message : String(fallbackError)
         logger.warn('Tool-only fallback LLM call failed', {
           conversationId: ctx.conversationId,
           organizationId: ctx.organizationId,
-          error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
+          error: fallbackErrorMsg,
         })
         return null
       })
@@ -1399,21 +1408,45 @@ export async function runSingleV2(
         conversationId: ctx.conversationId,
       },
     })
+    // Plataforma: evento genérico EMPTY_RESPONSE sempre criado (compatibilidade)
     await createConversationEvent({
       conversationId: ctx.conversationId,
       type: 'INFO',
       content: 'A IA não gerou uma resposta para esta mensagem.',
       metadata: { subtype: 'EMPTY_RESPONSE' satisfies InfoSubtype },
     })
+    // Plataforma: se houve falha explícita de LLM, cria evento PROCESSING_ERROR visível ao operador
+    if (responderErrorMsg || fallbackErrorMsg) {
+      await createConversationEvent({
+        conversationId: ctx.conversationId,
+        type: 'PROCESSING_ERROR',
+        content: 'Falha ao gerar resposta — Responder e fallback retornaram erro.',
+        visibleToUser: false,
+        metadata: {
+          subtype: 'LLM_ERROR' satisfies ProcessingErrorSubtype,
+          ...(responderErrorMsg && { responderError: responderErrorMsg }),
+          ...(fallbackErrorMsg && { fallbackError: fallbackErrorMsg }),
+          ...(classifierErrorMsg && { classifierError: classifierErrorMsg }),
+        },
+      })
+    }
     await revalidateConversationCache(ctx.conversationId, ctx.organizationId)
     ctx.traceTags.push('empty_response')
     triggerMetadata.set('model', promptContext.modelId)
+    // Trigger.dev: set na run metadata para visibilidade no painel sem precisar baixar log
+    if (responderErrorMsg) triggerMetadata.set('responderError', responderErrorMsg)
+    if (fallbackErrorMsg) triggerMetadata.set('fallbackError', fallbackErrorMsg)
+    if (classifierErrorMsg) triggerMetadata.set('classifierError', classifierErrorMsg)
+    // Langfuse: inclui mensagens de erro na metadata do trace para diagnóstico sem download
     ctx.finalizeTrace('empty_response', {
       metadata: {
         finishReason: result.finishReason,
         creditsCost: emptyActualCost,
         resultTextLength: result.text?.length ?? 0,
         responderMessageLength: responseText.length,
+        ...(responderErrorMsg && { responderError: responderErrorMsg }),
+        ...(fallbackErrorMsg && { fallbackError: fallbackErrorMsg }),
+        ...(classifierErrorMsg && { classifierError: classifierErrorMsg }),
       },
     })
     ctx.log('step:5 llm_call', 'EXIT', {
@@ -1426,6 +1459,7 @@ export async function runSingleV2(
       resultTextLength: result.text?.length ?? 0,
       responderMessageLength: responseText.length,
     })
+    // Trigger.dev: erros de LLM visíveis no step output da UI (sem precisar baixar log)
     ctx.tracker.addStep({
       type: 'LLM_CALL',
       status: 'FAILED',
@@ -1443,6 +1477,9 @@ export async function runSingleV2(
           (step) => step.toolCalls?.map((tc) => tc.toolName) ?? [],
         ) ?? [],
         fallbackAttempted: hadToolCalls,
+        ...(responderErrorMsg && { responderError: responderErrorMsg }),
+        ...(fallbackErrorMsg && { fallbackError: fallbackErrorMsg }),
+        ...(classifierErrorMsg && { classifierError: classifierErrorMsg }),
       },
     })
     await ctx.tracker.skip({
@@ -1456,6 +1493,9 @@ export async function runSingleV2(
         resultText: result.text ?? null,
         stepsCount: result.steps?.length ?? 0,
         fallbackAttempted: hadToolCalls,
+        ...(responderErrorMsg && { responderError: responderErrorMsg }),
+        ...(fallbackErrorMsg && { fallbackError: fallbackErrorMsg }),
+        ...(classifierErrorMsg && { classifierError: classifierErrorMsg }),
       },
     })
     await emitAgentStatus({
