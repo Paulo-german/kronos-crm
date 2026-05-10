@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, CircleIcon, Mail } from 'lucide-react'
+import { ArrowLeft, CircleIcon } from 'lucide-react'
 import { parseAsString, useQueryState } from 'nuqs'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
@@ -10,13 +10,11 @@ import type { MemberRole } from '@prisma/client'
 
 import { Badge } from '@/_components/ui/badge'
 import { Button } from '@/_components/ui/button'
-import { Dialog, DialogTrigger } from '@/_components/ui/dialog'
 import { Switch } from '@/_components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/_components/ui/tabs'
 import { updateProfessional } from '@/_actions/professional/update-professional'
 import type { ProfessionalDetailDto } from '@/_data-access/professional/get-professional-by-id'
 import type { ServiceDto } from '@/_data-access/service/get-services'
-import InviteProfessionalDialogContent from '../../_components/invite-professional-dialog-content'
 
 import GeneralTab from './general-tab'
 import ServicesTab from './services-tab'
@@ -43,7 +41,6 @@ const ProfessionalDetailClient = ({
 
   const canManage = userRole === 'OWNER' || userRole === 'ADMIN' || userRole === 'SUPPORT'
   const [isActive, setIsActive] = useState(professional.isActive)
-  const [inviteOpen, setInviteOpen] = useState(false)
 
   const { execute: executeToggle, isPending: isTogglingActive } = useAction(updateProfessional, {
     onSuccess: () => {
@@ -92,21 +89,6 @@ const ProfessionalDetailClient = ({
               onCheckedChange={handleToggleActive}
               disabled={isTogglingActive}
             />
-          )}
-          {canManage && !professional.userId && (
-            <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" className="ml-auto">
-                  <Mail className="mr-2 h-4 w-4" />
-                  Convidar
-                </Button>
-              </DialogTrigger>
-              <InviteProfessionalDialogContent
-                professional={professional}
-                defaultEmail={professional.email}
-                onClose={() => setInviteOpen(false)}
-              />
-            </Dialog>
           )}
         </div>
 

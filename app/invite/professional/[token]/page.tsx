@@ -18,6 +18,7 @@ export default async function ProfessionalInvitePage({
     select: {
       id: true,
       name: true,
+      email: true,
       userId: true,
       inviteExpiresAt: true,
       organization: {
@@ -68,6 +69,23 @@ export default async function ProfessionalInvitePage({
   } = await supabase.auth.getUser()
 
   if (!user) {
+    // Só redireciona para /register se o professional tem email cadastrado
+    if (professional.email) {
+      const existingUser = await db.user.findUnique({
+        where: { email: professional.email },
+        select: { id: true },
+      })
+
+      const returnUrl = `/invite/professional/${token}`
+
+      if (existingUser) {
+        redirect(`/login?next=${encodeURIComponent(returnUrl)}`)
+      }
+
+      redirect(`/invite/professional/${token}/register`)
+    }
+
+    // Sem email cadastrado → só pode aceitar logado
     const returnUrl = `/invite/professional/${token}`
     redirect(`/login?next=${encodeURIComponent(returnUrl)}`)
   }
@@ -79,6 +97,8 @@ export default async function ProfessionalInvitePage({
         professionalName={professional.name}
         orgName={professional.organization.name}
         orgSlug={professional.organization.slug}
+        inviteEmail={professional.email}
+        currentUserEmail={user.email!}
       />
     </div>
   )

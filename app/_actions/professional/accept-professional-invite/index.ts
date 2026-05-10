@@ -13,6 +13,7 @@ export const acceptProfessionalInvite = authActionClient
       where: { inviteToken: data.token },
       select: {
         id: true,
+        email: true,
         userId: true,
         organizationId: true,
         inviteExpiresAt: true,
@@ -34,7 +35,21 @@ export const acceptProfessionalInvite = authActionClient
       throw new Error('Este convite já foi utilizado.')
     }
 
-    // 4. Vincular userId e limpar token
+    // 4. Validar correspondência de email (se professional.email existe)
+    if (professional.email) {
+      const currentUser = await db.user.findUnique({
+        where: { id: ctx.userId },
+        select: { email: true },
+      })
+
+      if (!currentUser || currentUser.email !== professional.email) {
+        throw new Error(
+          'O e-mail da sua conta não corresponde ao e-mail do convite.',
+        )
+      }
+    }
+
+    // 5. Vincular userId e limpar token
     await db.professional.update({
       where: { id: professional.id },
       data: {
@@ -44,7 +59,7 @@ export const acceptProfessionalInvite = authActionClient
       },
     })
 
-    // 5. Invalidar caches relevantes
+    // 6. Invalidar caches relevantes
     revalidateTag(`professional:${professional.id}`)
     revalidateTag(`professionals:${professional.organizationId}`)
 

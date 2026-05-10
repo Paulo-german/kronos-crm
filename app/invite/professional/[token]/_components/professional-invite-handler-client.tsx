@@ -6,6 +6,7 @@ import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react'
 import { acceptProfessionalInvite } from '@/_actions/professional/accept-professional-invite'
+import { createClient } from '@/_lib/supabase/client'
 import { Button } from '@/_components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 
@@ -14,6 +15,8 @@ interface ProfessionalInviteHandlerClientProps {
   professionalName: string
   orgName: string
   orgSlug: string
+  inviteEmail: string | null
+  currentUserEmail: string
 }
 
 export function ProfessionalInviteHandlerClient({
@@ -21,6 +24,8 @@ export function ProfessionalInviteHandlerClient({
   professionalName,
   orgName,
   orgSlug,
+  inviteEmail,
+  currentUserEmail,
 }: ProfessionalInviteHandlerClientProps) {
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
@@ -38,12 +43,39 @@ export function ProfessionalInviteHandlerClient({
     },
   )
 
-  if (hasSucceeded) {
+  const isEmailMismatch =
+    inviteEmail !== null && inviteEmail !== currentUserEmail
+
+  if (isEmailMismatch) {
     return (
       <Card className="w-full max-w-md">
-        <CardContent className="space-y-4 pt-6 text-center">
-          <CheckCircle2 className="mx-auto h-12 w-12 text-green-500" />
-          <p>Redirecionando...</p>
+        <CardHeader className="text-center">
+          <CardTitle>Convite para agenda</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 text-center">
+          <XCircle className="mx-auto h-12 w-12 text-red-500" />
+          <div className="space-y-2">
+            <p className="font-medium text-red-500">E-mail Incorreto</p>
+            <p className="text-sm text-muted-foreground">
+              O convite foi enviado para{' '}
+              <span className="font-bold">{inviteEmail}</span>, mas você está
+              logado como{' '}
+              <span className="font-bold">{currentUserEmail}</span>.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={async () => {
+              const supabase = createClient()
+              await supabase.auth.signOut()
+              router.push(
+                `/login?next=${encodeURIComponent(`/invite/professional/${token}`)}`,
+              )
+            }}
+          >
+            Sair e entrar com outra conta
+          </Button>
         </CardContent>
       </Card>
     )
@@ -55,9 +87,20 @@ export function ProfessionalInviteHandlerClient({
         <CardContent className="space-y-4 pt-6 text-center">
           <XCircle className="mx-auto h-12 w-12 text-red-500" />
           <p className="text-sm text-red-500">{error}</p>
-          <Button variant="outline" onClick={() => router.push('/org')}>
-            Voltar ao início
+          <Button variant="outline" onClick={() => router.back()}>
+            Voltar
           </Button>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (hasSucceeded) {
+    return (
+      <Card className="w-full max-w-md">
+        <CardContent className="space-y-4 pt-6 text-center">
+          <CheckCircle2 className="mx-auto h-12 w-12 text-green-500" />
+          <p>Redirecionando...</p>
         </CardContent>
       </Card>
     )
@@ -74,6 +117,9 @@ export function ProfessionalInviteHandlerClient({
             Você foi convidado para acessar a agenda de{' '}
             <strong>{orgName}</strong> como profissional{' '}
             <strong>{professionalName}</strong>.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Logado como: {currentUserEmail}
           </p>
         </div>
         <Button
