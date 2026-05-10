@@ -36,3 +36,32 @@ export async function getAppointmentsByDateRange(
     orderBy: { startDate: 'asc' },
   })
 }
+
+/**
+ * Retorna todos os appointments ATIVOS (excluindo CANCELED e NO_SHOW) de um
+ * profissional em um range de datas.
+ *
+ * Usada pelo booking core (findNextAvailableSlots, getSlotsByDate) para detectar
+ * conflitos por professionalId — diferente da função acima que filtra por assignedTo (User).
+ */
+export async function getAppointmentsByDateRangeForProfessional(
+  organizationId: string,
+  professionalId: string,
+  startDate: Date,
+  endDate: Date,
+): Promise<AppointmentSlotDto[]> {
+  return db.appointment.findMany({
+    where: {
+      organizationId,
+      professionalId,
+      status: { notIn: ['CANCELED', 'NO_SHOW'] },
+      startDate: { lt: endDate },
+      endDate: { gt: startDate },
+    },
+    select: {
+      startDate: true,
+      endDate: true,
+    },
+    orderBy: { startDate: 'asc' },
+  })
+}
