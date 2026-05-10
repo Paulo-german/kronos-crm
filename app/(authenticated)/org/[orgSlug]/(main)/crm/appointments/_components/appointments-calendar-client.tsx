@@ -5,24 +5,27 @@ import { AppointmentsToolbar } from './appointments-toolbar'
 import { CalendarView } from './calendar-view'
 import { useAppointmentFilters } from '../_lib/use-appointment-filters'
 import type { AppointmentDto } from '@/_data-access/appointment/get-appointments'
-import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
+import type { ContactOptionDto } from '@/_data-access/contact/get-contacts-options'
+import type { ServiceDto } from '@/_data-access/service/get-services'
 import type { MemberRole } from '@prisma/client'
 
 interface AppointmentsCalendarClientProps {
   appointments: AppointmentDto[]
-  dealOptions: DealOptionDto[]
   members: AcceptedMemberDto[]
   currentUserId: string
   userRole: MemberRole
+  contactOptions: ContactOptionDto[]
+  services: ServiceDto[]
 }
 
 export function AppointmentsCalendarClient({
   appointments,
-  dealOptions,
   members,
   currentUserId,
   userRole,
+  contactOptions,
+  services,
 }: AppointmentsCalendarClientProps) {
   const { filters, setFilters, clearFilters, activeFilterCount, hasActiveFilters } =
     useAppointmentFilters()
@@ -70,7 +73,6 @@ export function AppointmentsCalendarClient({
     <div className="flex flex-col gap-4">
       <AppointmentsToolbar
         activeView="calendar"
-        dealOptions={dealOptions}
         members={members}
         currentUserId={currentUserId}
         userRole={userRole}
@@ -81,11 +83,14 @@ export function AppointmentsCalendarClient({
         hasActiveFilters={hasActiveFilters}
         assigneeFilter={assigneeFilter}
         onAssigneeFilterChange={setAssigneeFilter}
+        contactOptions={contactOptions}
+        services={services}
       />
       <CalendarView
         appointments={filteredAppointments}
-        dealOptions={dealOptions}
         members={members}
+        contactOptions={contactOptions}
+        services={services}
       />
     </div>
   )

@@ -31,8 +31,9 @@ import { UpsertAppointmentDialogContent } from './upsert-dialog-content'
 import AppointmentTableDropdownMenu from './table-dropdown-menu'
 import ConfirmationDialog from '@/_components/confirmation-dialog'
 import type { AppointmentDto } from '@/_data-access/appointment/get-appointments'
-import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
+import type { ContactOptionDto } from '@/_data-access/contact/get-contacts-options'
+import type { ServiceDto } from '@/_data-access/service/get-services'
 import type { AppointmentStatus } from '@prisma/client'
 import { formatDuration } from '@/_lib/appointment-utils'
 import { Button } from '@/_components/ui/button'
@@ -42,8 +43,9 @@ const SAO_PAULO_TZ = 'America/Sao_Paulo'
 
 interface AppointmentsDataTableProps {
   appointments: AppointmentDto[]
-  dealOptions: DealOptionDto[]
   members: AcceptedMemberDto[]
+  contactOptions: ContactOptionDto[]
+  services: ServiceDto[]
 }
 
 // Tipo da seção (determina visual e comportamento)
@@ -156,7 +158,8 @@ function groupAppointmentsBySection(appointments: AppointmentDto[]): DayGroup[] 
   // 3 + 4. Hoje e Próximos (agrupados por dia, ordenados cronologicamente)
   const sortedDayKeys = Array.from(scheduledByDay.keys()).sort()
   for (const dayKey of sortedDayKeys) {
-    const dayAppointments = scheduledByDay.get(dayKey)!
+    // Iterando sobre chaves do próprio Map — valor é garantidamente presente
+    const dayAppointments = scheduledByDay.get(dayKey) ?? []
     const isToday = dayKey === todayKey
     result.push({
       label: getDayGroupLabel(dayKey),
@@ -181,8 +184,9 @@ function groupAppointmentsBySection(appointments: AppointmentDto[]): DayGroup[] 
 
 const AppointmentsDataTable = ({
   appointments,
-  dealOptions,
   members,
+  contactOptions,
+  services,
 }: AppointmentsDataTableProps) => {
   // Estado do Sheet de edição (elevado para sobreviver ao re-render)
   const [editingAppointment, setEditingAppointment] =
@@ -294,8 +298,9 @@ const AppointmentsDataTable = ({
           <UpsertAppointmentDialogContent
             key={editingAppointment.id}
             defaultValues={editingAppointment}
-            dealOptions={dealOptions}
             members={members}
+            contactOptions={contactOptions}
+            services={services}
             setIsOpen={setIsEditSheetOpen}
             onUpdate={(data) => executeUpdate(data)}
             isUpdating={isUpdating}

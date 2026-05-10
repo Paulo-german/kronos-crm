@@ -13,13 +13,13 @@ import { AppointmentFiltersSheet } from './appointment-filters-sheet'
 import { AppointmentFilterBadges } from './appointment-filter-badges'
 import CreateAppointmentButton from './create-appointment-button'
 import type { AppointmentFilters } from '../_lib/appointment-filters'
-import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
+import type { ContactOptionDto } from '@/_data-access/contact/get-contacts-options'
+import type { ServiceDto } from '@/_data-access/service/get-services'
 import type { MemberRole } from '@prisma/client'
 
 interface AppointmentsToolbarProps {
   activeView: 'list' | 'calendar'
-  dealOptions: DealOptionDto[]
   members: AcceptedMemberDto[]
   currentUserId: string
   userRole: MemberRole
@@ -30,11 +30,12 @@ interface AppointmentsToolbarProps {
   hasActiveFilters: boolean
   assigneeFilter: string
   onAssigneeFilterChange: (value: string) => void
+  contactOptions: ContactOptionDto[]
+  services: ServiceDto[]
 }
 
 export function AppointmentsToolbar({
   activeView,
-  dealOptions,
   members,
   currentUserId,
   userRole,
@@ -45,6 +46,8 @@ export function AppointmentsToolbar({
   hasActiveFilters,
   assigneeFilter,
   onAssigneeFilterChange,
+  contactOptions,
+  services,
 }: AppointmentsToolbarProps) {
   const isMember = userRole === 'MEMBER'
 
@@ -54,7 +57,7 @@ export function AppointmentsToolbar({
       <div className="flex items-center gap-2">
         <AppointmentViewToggle activeView={activeView} />
         <div className="flex-1" />
-        <CreateAppointmentButton dealOptions={dealOptions} members={members} />
+        <CreateAppointmentButton members={members} contactOptions={contactOptions} services={services} />
       </div>
 
       {/* Linha 2: Select de responsável + Sheet de filtros + Badges */}

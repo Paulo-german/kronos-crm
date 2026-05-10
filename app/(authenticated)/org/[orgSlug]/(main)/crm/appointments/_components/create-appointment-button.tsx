@@ -6,17 +6,20 @@ import { Button } from '@/_components/ui/button'
 import { Sheet, SheetTrigger } from '@/_components/ui/sheet'
 import { UpsertAppointmentDialogContent } from './upsert-dialog-content'
 
-import { DealOptionDto } from '@/_data-access/deal/get-deals-options'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
+import type { ContactOptionDto } from '@/_data-access/contact/get-contacts-options'
+import type { ServiceDto } from '@/_data-access/service/get-services'
 
 interface CreateAppointmentButtonProps {
-  dealOptions: DealOptionDto[]
   members: AcceptedMemberDto[]
+  contactOptions: ContactOptionDto[]
+  services: ServiceDto[]
 }
 
 const CreateAppointmentButton = ({
-  dealOptions,
   members,
+  contactOptions,
+  services,
 }: CreateAppointmentButtonProps) => {
   const [isOpen, setIsOpen] = useState(false)
 
@@ -30,8 +33,9 @@ const CreateAppointmentButton = ({
       </SheetTrigger>
       <UpsertAppointmentDialogContent
         setIsOpen={setIsOpen}
-        dealOptions={dealOptions}
         members={members}
+        contactOptions={contactOptions}
+        services={services}
       />
     </Sheet>
   )

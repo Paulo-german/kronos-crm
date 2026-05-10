@@ -1,7 +1,7 @@
 import type { DealDetailsDto } from '@/_data-access/deal/get-deal-details'
 import type { RBACContext } from '@/_lib/rbac/types'
 import { getDealAppointments } from '@/_data-access/appointment/get-deal-appointments'
-import { getDealsOptions } from '@/_data-access/deal/get-deals-options'
+import { getContactsOptions } from '@/_data-access/contact/get-contacts-options'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import TabAppointments from './tab-appointments'
 
@@ -16,9 +16,9 @@ const TabAppointmentsServer = async ({
   ctx,
   members,
 }: TabAppointmentsServerProps) => {
-  const [appointments, dealOptions] = await Promise.all([
+  const [appointments, contactOptions] = await Promise.all([
     getDealAppointments(deal.id, ctx.orgId),
-    getDealsOptions(ctx),
+    getContactsOptions(ctx),
   ])
 
   return (
@@ -26,7 +26,8 @@ const TabAppointmentsServer = async ({
       deal={deal}
       appointments={appointments}
       members={members}
-      dealOptions={dealOptions}
+      contactOptions={contactOptions}
+      services={[]}
     />
   )
 }

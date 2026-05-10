@@ -5,17 +5,20 @@ import { CalendarIcon, PlusIcon } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import { Sheet, SheetTrigger } from '@/_components/ui/sheet'
 import { UpsertAppointmentDialogContent } from './upsert-dialog-content'
-import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
+import type { ContactOptionDto } from '@/_data-access/contact/get-contacts-options'
+import type { ServiceDto } from '@/_data-access/service/get-services'
 
 interface EmptyAppointmentsProps {
-  dealOptions: DealOptionDto[]
   members: AcceptedMemberDto[]
+  contactOptions: ContactOptionDto[]
+  services: ServiceDto[]
 }
 
 export function EmptyAppointments({
-  dealOptions,
   members,
+  contactOptions,
+  services,
 }: EmptyAppointmentsProps) {
   const [isOpen, setIsOpen] = useState(false)
 
@@ -47,8 +50,9 @@ export function EmptyAppointments({
         </SheetTrigger>
         <UpsertAppointmentDialogContent
           setIsOpen={setIsOpen}
-          dealOptions={dealOptions}
           members={members}
+          contactOptions={contactOptions}
+          services={services}
         />
       </Sheet>
     </div>

@@ -46,8 +46,9 @@ import { toast } from 'sonner'
 import { updateAppointment } from '@/_actions/appointment/update-appointment'
 import { UpsertAppointmentDialogContent } from './upsert-dialog-content'
 import type { AppointmentDto } from '@/_data-access/appointment/get-appointments'
-import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
+import type { ContactOptionDto } from '@/_data-access/contact/get-contacts-options'
+import type { ServiceDto } from '@/_data-access/service/get-services'
 import type { AppointmentStatus } from '@prisma/client'
 import { STATUS_CALENDAR_COLORS } from '../_lib/appointment-filters'
 import { STATUS_CONFIG, formatDuration } from '@/_lib/appointment-utils'
@@ -118,8 +119,9 @@ const RESOLUTION_ACTIONS: Array<{
 
 interface CalendarViewProps {
   appointments: AppointmentDto[]
-  dealOptions: DealOptionDto[]
   members: AcceptedMemberDto[]
+  contactOptions: ContactOptionDto[]
+  services: ServiceDto[]
 }
 
 // ---------------------------------------------------------------------------
@@ -505,8 +507,9 @@ function DayDots({ appointments, statusOverrides }: DayDotsProps) {
 
 export function CalendarView({
   appointments,
-  dealOptions,
   members,
+  contactOptions,
+  services,
 }: CalendarViewProps) {
   const [currentMonth, setCurrentMonth] = useState(() => new Date())
   const [editingAppointment, setEditingAppointment] =
@@ -817,8 +820,9 @@ export function CalendarView({
           <UpsertAppointmentDialogContent
             key={editingAppointment.id}
             defaultValues={editingAppointment}
-            dealOptions={dealOptions}
             members={members}
+            contactOptions={contactOptions}
+            services={services}
             setIsOpen={setIsEditSheetOpen}
             onUpdate={(data) => executeUpdate(data)}
             isUpdating={isUpdating}
@@ -855,8 +859,9 @@ export function CalendarView({
               createdAt: new Date(),
               updatedAt: new Date(),
             }}
-            dealOptions={dealOptions}
             members={members}
+            contactOptions={contactOptions}
+            services={services}
             setIsOpen={setIsCreateSheetOpen}
           />
         )}

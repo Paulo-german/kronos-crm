@@ -7,24 +7,27 @@ import { EmptyAppointments } from './empty-appointments'
 import AppointmentsDataTable from './appointments-data-table'
 import { useAppointmentFilters } from '../_lib/use-appointment-filters'
 import type { AppointmentDto } from '@/_data-access/appointment/get-appointments'
-import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
+import type { ContactOptionDto } from '@/_data-access/contact/get-contacts-options'
+import type { ServiceDto } from '@/_data-access/service/get-services'
 import type { MemberRole } from '@prisma/client'
 
 interface AppointmentsListClientProps {
   appointments: AppointmentDto[]
-  dealOptions: DealOptionDto[]
   members: AcceptedMemberDto[]
   currentUserId: string
   userRole: MemberRole
+  contactOptions: ContactOptionDto[]
+  services: ServiceDto[]
 }
 
 export function AppointmentsListClient({
   appointments,
-  dealOptions,
   members,
   currentUserId,
   userRole,
+  contactOptions,
+  services,
 }: AppointmentsListClientProps) {
   const { filters, setFilters, clearFilters, activeFilterCount, hasActiveFilters } =
     useAppointmentFilters()
@@ -73,14 +76,13 @@ export function AppointmentsListClient({
     appointments.length === 0 && !hasActiveFilters && assigneeFilter === 'all'
 
   if (showEmptyState) {
-    return <EmptyAppointments dealOptions={dealOptions} members={members} />
+    return <EmptyAppointments members={members} contactOptions={contactOptions} services={services} />
   }
 
   return (
     <div className="flex flex-col gap-4">
       <AppointmentsToolbar
         activeView="list"
-        dealOptions={dealOptions}
         members={members}
         currentUserId={currentUserId}
         userRole={userRole}
@@ -91,11 +93,14 @@ export function AppointmentsListClient({
         hasActiveFilters={hasActiveFilters}
         assigneeFilter={assigneeFilter}
         onAssigneeFilterChange={setAssigneeFilter}
+        contactOptions={contactOptions}
+        services={services}
       />
       <AppointmentsDataTable
         appointments={filteredAppointments}
-        dealOptions={dealOptions}
         members={members}
+        contactOptions={contactOptions}
+        services={services}
       />
     </div>
   )

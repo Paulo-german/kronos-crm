@@ -43,8 +43,9 @@ import AppointmentTableDropdownMenu from '../../../appointments/_components/tabl
 
 import type { DealDetailsDto } from '@/_data-access/deal/get-deal-details'
 import type { AppointmentDto } from '@/_data-access/appointment/get-appointments'
-import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
+import type { ContactOptionDto } from '@/_data-access/contact/get-contacts-options'
+import type { ServiceDto } from '@/_data-access/service/get-services'
 import type { AppointmentStatus } from '@prisma/client'
 import { STATUS_CONFIG, formatDuration } from '@/_lib/appointment-utils'
 
@@ -54,14 +55,16 @@ interface TabAppointmentsProps {
   deal: DealDetailsDto
   appointments: AppointmentDto[]
   members: AcceptedMemberDto[]
-  dealOptions: DealOptionDto[]
+  contactOptions: ContactOptionDto[]
+  services: ServiceDto[]
 }
 
 const TabAppointments = ({
   deal,
   appointments,
   members,
-  dealOptions,
+  contactOptions,
+  services,
 }: TabAppointmentsProps) => {
   const [editingAppointment, setEditingAppointment] =
     useState<AppointmentDto | null>(null)
@@ -154,8 +157,9 @@ const TabAppointments = ({
             <UpsertAppointmentDialogContent
               key={editingAppointment.id}
               defaultValues={editingAppointment}
-              dealOptions={dealOptions}
               members={members}
+              contactOptions={contactOptions}
+              services={services}
               setIsOpen={setIsSheetOpen}
               onUpdate={(data) => executeUpdate(data)}
               isUpdating={isUpdating}
@@ -164,8 +168,9 @@ const TabAppointments = ({
           ) : (
             <UpsertAppointmentDialogContent
               key="new"
-              dealOptions={dealOptions}
               members={members}
+              contactOptions={contactOptions}
+              services={services}
               setIsOpen={setIsSheetOpen}
               fixedDealId={deal.id}
             />

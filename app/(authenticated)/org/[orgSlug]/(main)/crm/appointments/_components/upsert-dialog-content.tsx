@@ -4,14 +4,31 @@ import { useAction } from 'next-safe-action/hooks'
 import { useForm } from 'react-hook-form'
 import { Label } from '@/_components/ui/label'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Loader2, CalendarIcon, Check, ChevronsUpDown } from 'lucide-react'
+import {
+  Loader2,
+  CalendarIcon,
+  Check,
+  ChevronsUpDown,
+  UserIcon,
+  BriefcaseIcon,
+  ScissorsIcon,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { formatInTimeZone, fromZonedTime } from 'date-fns-tz'
 import { ptBR } from 'date-fns/locale'
-
-const SAO_PAULO_TZ = 'America/Sao_Paulo'
-import { Dispatch, SetStateAction, useCallback, useEffect, useRef, useState } from 'react'
+import {
+  Dispatch,
+  SetStateAction,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react'
 import type { AppointmentDto } from '@/_data-access/appointment/get-appointments'
+import type { ContactOptionDto } from '@/_data-access/contact/get-contacts-options'
+import type { ServiceDto } from '@/_data-access/service/get-services'
+import type { AvailableProfessionalDto } from '@/_data-access/professional/get-available-professionals'
+import { getAvailableProfessionalsAction } from '@/_actions/professional/get-available-professionals'
 
 import {
   SheetContent,
@@ -54,7 +71,6 @@ import {
   CreateAppointmentInput,
 } from '@/_actions/appointment/create-appointment/schema'
 import type { UpdateAppointmentInput } from '@/_actions/appointment/update-appointment/schema'
-import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import {
   Select,
@@ -64,10 +80,13 @@ import {
   SelectValue,
 } from '@/_components/ui/select'
 
+const SAO_PAULO_TZ = 'America/Sao_Paulo'
+
 interface UpsertAppointmentDialogContentProps {
   defaultValues?: AppointmentDto
-  dealOptions?: DealOptionDto[]
   members: AcceptedMemberDto[]
+  contactOptions: ContactOptionDto[]
+  services: ServiceDto[]
   setIsOpen: Dispatch<SetStateAction<boolean>>
   onUpdate?: (data: UpdateAppointmentInput) => void
   isUpdating?: boolean
@@ -81,20 +100,44 @@ export function UpsertAppointmentDialogContent({
   onUpdate,
   isUpdating: isUpdatingProp = false,
   fixedDealId,
+  contactOptions,
+  services,
 }: UpsertAppointmentDialogContentProps) {
   const isEditing = !!defaultValues
 
-  const [openCombobox, setOpenCombobox] = useState(false)
+  // --------------------------------------------------------------------------
+  // Estado: busca de negócio (deal) com debounce
+  // --------------------------------------------------------------------------
+  const [openDealCombobox, setOpenDealCombobox] = useState(false)
   const [dealSearch, setDealSearch] = useState('')
   const [selectedDealTitle, setSelectedDealTitle] = useState<string | null>(
     defaultValues?.dealTitle ?? null,
   )
   const [dealResults, setDealResults] = useState<
-    Array<{ id: string; title: string; contactName: string | null }>
+    Array<{ id: string; title: string; contactId: string | null; contactName: string | null }>
   >([])
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // --------------------------------------------------------------------------
+  // Estado: comboboxes de contato, serviço e profissional
+  // --------------------------------------------------------------------------
+  const [openContactCombobox, setOpenContactCombobox] = useState(false)
+  const [contactSearch, setContactSearch] = useState('')
+  const [openServiceCombobox, setOpenServiceCombobox] = useState(false)
+  const [openProfessionalCombobox, setOpenProfessionalCombobox] = useState(false)
+
+  // --------------------------------------------------------------------------
+  // Estado: lista de profissionais disponíveis (carregada via action)
+  // --------------------------------------------------------------------------
+  const [availableProfessionals, setAvailableProfessionals] = useState<
+    AvailableProfessionalDto[]
+  >([])
+
   const MIN_SEARCH_CHARS = 3
+
+  // --------------------------------------------------------------------------
+  // Actions
+  // --------------------------------------------------------------------------
 
   const { execute: executeSearch, isPending: isSearching } = useAction(
     searchDeals,
@@ -104,6 +147,14 @@ export function UpsertAppointmentDialogContent({
       },
     },
   )
+
+  const { execute: fetchProfessionals, isPending: isFetchingProfessionals } =
+    useAction(getAvailableProfessionalsAction, {
+      onSuccess: ({ data }) => {
+        if (data) setAvailableProfessionals(data)
+      },
+      onError: () => setAvailableProfessionals([]),
+    })
 
   const handleDealSearchChange = useCallback(
     (value: string) => {
@@ -146,7 +197,11 @@ export function UpsertAppointmentDialogContent({
 
   const isExecuting = isCreating || isUpdatingProp
 
-  const assignableMembers = members.filter((member) => member.user?.fullName)
+  // Garante userId não-nulo antes de usar como value no Select (membros PENDING podem ter userId null)
+  const assignableMembers = members.filter(
+    (member): member is typeof member & { userId: string } =>
+      member.userId !== null && !!member.user?.fullName,
+  )
 
   const defaultValuesParsed: CreateAppointmentInput = defaultValues
     ? {
@@ -157,8 +212,10 @@ export function UpsertAppointmentDialogContent({
         title: defaultValues.title,
         description: defaultValues.description ?? undefined,
         startDate: new Date(defaultValues.startDate),
-        endDate: new Date(defaultValues.endDate),
+        endDate: defaultValues.endDate ? new Date(defaultValues.endDate) : undefined,
         dealId: defaultValues.dealId ?? undefined,
+        serviceId: defaultValues.serviceId ?? undefined,
+        professionalId: defaultValues.professionalId ?? undefined,
         assignedTo: defaultValues.assignedTo,
       }
     : {
@@ -169,13 +226,42 @@ export function UpsertAppointmentDialogContent({
         startDate: new Date(),
         endDate: new Date(Date.now() + 60 * 60 * 1000), // +1h
         dealId: fixedDealId || undefined,
-        assignedTo: '',
+        assignedTo: undefined,
       }
 
   const form = useForm<CreateAppointmentInput>({
     resolver: zodResolver(createAppointmentFormSchema),
     defaultValues: defaultValuesParsed,
   })
+
+  // --------------------------------------------------------------------------
+  // Watch reativo para campos que disparam lógica condicional
+  // --------------------------------------------------------------------------
+  const watchedType = form.watch('type')
+  const watchedServiceId = form.watch('serviceId')
+  const watchedStartDate = form.watch('startDate')
+
+  // --------------------------------------------------------------------------
+  // useEffect: busca profissionais disponíveis quando serviceId + startDate mudam
+  // Único useEffect legítimo — sincroniza com sistema externo (server action)
+  // --------------------------------------------------------------------------
+  useEffect(() => {
+    if (watchedType !== 'SERVICE' || !watchedServiceId || !watchedStartDate) {
+      setAvailableProfessionals([])
+      return
+    }
+
+    // Extrai hora em UTC para comparar com jornadas armazenadas em UTC
+    const startTime = `${String(watchedStartDate.getUTCHours()).padStart(2, '0')}:${String(watchedStartDate.getUTCMinutes()).padStart(2, '0')}`
+
+    fetchProfessionals({
+      serviceId: watchedServiceId,
+      startDate: watchedStartDate,
+      startTime,
+      contactId: form.getValues('contactId') || undefined,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchedType, watchedServiceId, watchedStartDate])
 
   const onSubmit = (data: CreateAppointmentInput) => {
     // superRefine garante contactId presente — guard para narrowing de tipo
@@ -189,6 +275,42 @@ export function UpsertAppointmentDialogContent({
       executeCreate({ ...data, contactId })
     }
   }
+
+  // --------------------------------------------------------------------------
+  // Derivados: agrupamento de serviços por categoria
+  // --------------------------------------------------------------------------
+  const servicesByCategory = services.reduce<Record<string, ServiceDto[]>>(
+    (accumulator, service) => {
+      const category = service.categoryName
+      const existing = accumulator[category] ?? []
+      existing.push(service)
+      return { ...accumulator, [category]: existing }
+    },
+    {},
+  )
+
+  // Contato selecionado (para exibir no trigger do combobox)
+  const selectedContactId = form.watch('contactId')
+  const selectedContact = contactOptions.find(
+    (contact) => contact.id === selectedContactId,
+  )
+
+  // Serviço selecionado (para exibir no trigger do combobox)
+  const selectedServiceId = form.watch('serviceId')
+  const selectedService = services.find(
+    (service) => service.id === selectedServiceId,
+  )
+
+  // Profissional selecionado (para exibir no trigger do combobox)
+  const selectedProfessionalId = form.watch('professionalId')
+  const selectedProfessional = availableProfessionals.find(
+    (professional) => professional.id === selectedProfessionalId,
+  )
+
+  // Contatos filtrados client-side pela busca
+  const filteredContacts = contactOptions.filter((contact) =>
+    contact.name.toLowerCase().includes(contactSearch.toLowerCase()),
+  )
 
   return (
     <SheetContent className="overflow-y-auto sm:max-w-lg">
@@ -205,25 +327,54 @@ export function UpsertAppointmentDialogContent({
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          {/* TÍTULO */}
-          <FormField<CreateAppointmentInput, 'title'>
+
+          {/* TIPO DE AGENDAMENTO */}
+          <FormField<CreateAppointmentInput, 'type'>
             control={form.control}
-            name="title"
+            name="type"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="flex items-center gap-1">
-                  Título <span className="text-destructive">*</span>
-                </FormLabel>
+                <FormLabel>Tipo de agendamento</FormLabel>
                 <FormControl>
-                  <Input placeholder="Ex: Reunião com cliente..." {...field} />
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant={field.value === 'COMMERCIAL' ? 'default' : 'outline'}
+                      size="sm"
+                      className="flex-1 gap-2"
+                      onClick={() => {
+                        field.onChange('COMMERCIAL')
+                        form.setValue('professionalId', undefined)
+                        form.setValue('serviceId', undefined)
+                        setAvailableProfessionals([])
+                      }}
+                    >
+                      <BriefcaseIcon className="h-3.5 w-3.5" />
+                      Comercial
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={field.value === 'SERVICE' ? 'default' : 'outline'}
+                      size="sm"
+                      className="flex-1 gap-2"
+                      onClick={() => {
+                        field.onChange('SERVICE')
+                        form.setValue('dealId', undefined)
+                        form.setValue('endDate', undefined)
+                      }}
+                    >
+                      <ScissorsIcon className="h-3.5 w-3.5" />
+                      Serviço
+                    </Button>
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
 
-          {/* NEGÓCIO */}
-          {!fixedDealId && (
+          {/* NEGÓCIO — apenas COMMERCIAL e sem fixedDealId */}
+          {watchedType === 'COMMERCIAL' && !fixedDealId && (
             <FormField<CreateAppointmentInput, 'dealId'>
               control={form.control}
               name="dealId"
@@ -232,7 +383,10 @@ export function UpsertAppointmentDialogContent({
                   <FormLabel className="flex items-center gap-1">
                     Negócio <span className="text-destructive">*</span>
                   </FormLabel>
-                  <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
+                  <Popover
+                    open={openDealCombobox}
+                    onOpenChange={setOpenDealCombobox}
+                  >
                     <PopoverTrigger asChild>
                       <FormControl>
                         <Button
@@ -241,8 +395,7 @@ export function UpsertAppointmentDialogContent({
                           className={cn(
                             'w-full justify-between',
                             !field.value && 'text-muted-foreground',
-                            form.formState.errors.dealId &&
-                              'border-destructive',
+                            form.formState.errors.dealId && 'border-destructive',
                           )}
                         >
                           {field.value
@@ -281,9 +434,17 @@ export function UpsertAppointmentDialogContent({
                                   onSelect={() => {
                                     form.setValue('dealId', deal.id)
                                     setSelectedDealTitle(deal.title)
-                                    setOpenCombobox(false)
+                                    setOpenDealCombobox(false)
                                     setDealSearch('')
                                     setDealResults([])
+                                    // Auto-preencher contato do negócio se ainda não selecionado
+                                    if (deal.contactId && !form.getValues('contactId')) {
+                                      form.setValue('contactId', deal.contactId)
+                                      const contactOption = contactOptions.find(
+                                        (option) => option.id === deal.contactId,
+                                      )
+                                      if (contactOption) setContactSearch(contactOption.name)
+                                    }
                                   }}
                                 >
                                   <Check
@@ -314,50 +475,338 @@ export function UpsertAppointmentDialogContent({
             />
           )}
 
-          {/* RESPONSÁVEL */}
-          <FormField<CreateAppointmentInput, 'assignedTo'>
+          {/* CONTATO — obrigatório para ambos os tipos */}
+          <FormField<CreateAppointmentInput, 'contactId'>
             control={form.control}
-            name="assignedTo"
+            name="contactId"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Responsável</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  value={field.value ?? undefined}
+              <FormItem className="flex flex-col">
+                <FormLabel className="flex items-center gap-1">
+                  Contato <span className="text-destructive">*</span>
+                </FormLabel>
+                <Popover
+                  open={openContactCombobox}
+                  onOpenChange={setOpenContactCombobox}
                 >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um responsável..." />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {assignableMembers.map((member) => (
-                      <SelectItem
-                        key={member.id}
-                        value={member.userId as string}
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        className={cn(
+                          'w-full justify-between',
+                          !field.value && 'text-muted-foreground',
+                          form.formState.errors.contactId && 'border-destructive',
+                        )}
                       >
-                        {member.user?.fullName} ({member.email})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                        <span className="flex items-center gap-2 truncate">
+                          <UserIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                          {selectedContact
+                            ? selectedContact.name
+                            : 'Selecione um contato...'}
+                        </span>
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                    <Command shouldFilter={false}>
+                      <CommandInput
+                        placeholder="Buscar contato..."
+                        value={contactSearch}
+                        onValueChange={setContactSearch}
+                      />
+                      <CommandList>
+                        {filteredContacts.length === 0 ? (
+                          <CommandEmpty>Nenhum contato encontrado.</CommandEmpty>
+                        ) : (
+                          <CommandGroup>
+                            {filteredContacts.map((contact) => (
+                              <CommandItem
+                                key={contact.id}
+                                value={contact.id}
+                                onSelect={() => {
+                                  form.setValue('contactId', contact.id)
+                                  setOpenContactCombobox(false)
+                                  setContactSearch('')
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    'mr-2 h-4 w-4',
+                                    contact.id === field.value
+                                      ? 'opacity-100'
+                                      : 'opacity-0',
+                                  )}
+                                />
+                                <span className="flex-1">{contact.name}</span>
+                                {contact.phone && (
+                                  <span className="ml-2 text-xs text-muted-foreground">
+                                    {contact.phone}
+                                  </span>
+                                )}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        )}
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
                 <FormMessage />
               </FormItem>
             )}
           />
 
-          {/* DATAS */}
-          <div className="grid grid-cols-2 gap-4">
-            {/* DATA DE INÍCIO */}
-            <DateTimeField
-              form={form}
-              name="startDate"
-              label="Data de Início"
+          {/* SERVIÇO — apenas SERVICE */}
+          {watchedType === 'SERVICE' && (
+            <FormField<CreateAppointmentInput, 'serviceId'>
+              control={form.control}
+              name="serviceId"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel className="flex items-center gap-1">
+                    Serviço <span className="text-destructive">*</span>
+                  </FormLabel>
+                  <Popover
+                    open={openServiceCombobox}
+                    onOpenChange={setOpenServiceCombobox}
+                  >
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          className={cn(
+                            'w-full justify-between',
+                            !field.value && 'text-muted-foreground',
+                            form.formState.errors.serviceId && 'border-destructive',
+                          )}
+                        >
+                          <span className="truncate">
+                            {selectedService
+                              ? `${selectedService.name} (${selectedService.duration} min)`
+                              : 'Selecione um serviço...'}
+                          </span>
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                      <Command>
+                        <CommandInput placeholder="Buscar serviço..." />
+                        <CommandList>
+                          {services.length === 0 ? (
+                            <CommandEmpty>
+                              Nenhum serviço cadastrado.
+                            </CommandEmpty>
+                          ) : (
+                            Object.entries(servicesByCategory).map(
+                              ([categoryName, categoryServices]) => (
+                                <CommandGroup
+                                  key={categoryName}
+                                  heading={categoryName}
+                                >
+                                  {categoryServices.map((service) => (
+                                    <CommandItem
+                                      key={service.id}
+                                      value={`${service.name} ${categoryName}`}
+                                      onSelect={() => {
+                                        form.setValue('serviceId', service.id)
+                                        // Auto-fill do título se estiver vazio
+                                        if (!form.getValues('title')) {
+                                          form.setValue('title', service.name)
+                                        }
+                                        // Limpa profissional ao trocar serviço
+                                        form.setValue('professionalId', undefined)
+                                        setAvailableProfessionals([])
+                                        setOpenServiceCombobox(false)
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          'mr-2 h-4 w-4',
+                                          service.id === field.value
+                                            ? 'opacity-100'
+                                            : 'opacity-0',
+                                        )}
+                                      />
+                                      <span className="flex-1">{service.name}</span>
+                                      <span className="ml-2 text-xs text-muted-foreground">
+                                        {service.duration} min
+                                      </span>
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              ),
+                            )
+                          )}
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
+          )}
 
-            {/* DATA DE FIM */}
+          {/* DATA DE INÍCIO — sempre visível */}
+          <DateTimeField
+            form={form}
+            name="startDate"
+            label="Data de Início"
+          />
+
+          {/* DATA DE FIM — apenas COMMERCIAL */}
+          {watchedType === 'COMMERCIAL' && (
             <DateTimeField form={form} name="endDate" label="Data de Fim" />
-          </div>
+          )}
+
+          {/* PROFISSIONAL — apenas SERVICE, após serviceId + startDate preenchidos */}
+          {watchedType === 'SERVICE' && (
+            <FormField<CreateAppointmentInput, 'professionalId'>
+              control={form.control}
+              name="professionalId"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel className="flex items-center gap-1">
+                    Profissional <span className="text-destructive">*</span>
+                  </FormLabel>
+                  <Popover
+                    open={openProfessionalCombobox}
+                    onOpenChange={setOpenProfessionalCombobox}
+                  >
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          disabled={isFetchingProfessionals || (!watchedServiceId || !watchedStartDate)}
+                          className={cn(
+                            'w-full justify-between',
+                            !field.value && 'text-muted-foreground',
+                            form.formState.errors.professionalId &&
+                              'border-destructive',
+                          )}
+                        >
+                          {isFetchingProfessionals ? (
+                            <span className="flex items-center gap-2">
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              Buscando disponibilidade...
+                            </span>
+                          ) : selectedProfessional ? (
+                            selectedProfessional.name
+                          ) : !watchedServiceId || !watchedStartDate ? (
+                            'Selecione o serviço e data primeiro'
+                          ) : (
+                            'Selecione um profissional...'
+                          )}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                      <Command>
+                        <CommandList>
+                          {isFetchingProfessionals ? (
+                            <div className="flex items-center justify-center py-6">
+                              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                            </div>
+                          ) : availableProfessionals.length === 0 ? (
+                            <CommandEmpty>
+                              Nenhum profissional disponível neste horário.
+                            </CommandEmpty>
+                          ) : (
+                            <CommandGroup>
+                              {availableProfessionals.map((professional) => (
+                                <CommandItem
+                                  key={professional.id}
+                                  value={professional.id}
+                                  onSelect={() => {
+                                    form.setValue(
+                                      'professionalId',
+                                      professional.id,
+                                    )
+                                    setOpenProfessionalCombobox(false)
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      'mr-2 h-4 w-4',
+                                      professional.id === field.value
+                                        ? 'opacity-100'
+                                        : 'opacity-0',
+                                    )}
+                                  />
+                                  <UserIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
+                                  {professional.name}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          )}
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+
+          {/* TÍTULO */}
+          <FormField<CreateAppointmentInput, 'title'>
+            control={form.control}
+            name="title"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="flex items-center gap-1">
+                  Título <span className="text-destructive">*</span>
+                </FormLabel>
+                <FormControl>
+                  <Input placeholder="Ex: Reunião com cliente..." {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* RESPONSÁVEL — apenas COMMERCIAL (SERVICE resolve via ctx.userId no servidor) */}
+          {watchedType === 'COMMERCIAL' && (
+            <FormField<CreateAppointmentInput, 'assignedTo'>
+              control={form.control}
+              name="assignedTo"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    Responsável <span className="text-destructive">*</span>
+                  </FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value ?? undefined}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um responsável..." />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {assignableMembers.map((member) => (
+                        <SelectItem
+                          key={member.id}
+                          value={member.userId}
+                        >
+                          {member.user?.fullName} ({member.email})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
 
           {/* DESCRIÇÃO */}
           <FormField<CreateAppointmentInput, 'description'>
