@@ -4,9 +4,14 @@ import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import { Sheet } from '@/_components/ui/sheet'
+import type { ServiceDto } from '@/_data-access/service/get-services'
 import UpsertProfessionalDialogContent from './upsert-professional-dialog-content'
 
-const CreateProfessionalButton = () => {
+interface CreateProfessionalButtonProps {
+  services: ServiceDto[]
+}
+
+const CreateProfessionalButton = ({ services }: CreateProfessionalButtonProps) => {
   const [isOpen, setIsOpen] = useState(false)
 
   return (
@@ -17,7 +22,11 @@ const CreateProfessionalButton = () => {
       </Button>
 
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        <UpsertProfessionalDialogContent setIsOpen={setIsOpen} isOpen={isOpen} />
+        <UpsertProfessionalDialogContent
+          setIsOpen={setIsOpen}
+          isOpen={isOpen}
+          services={services}
+        />
       </Sheet>
     </>
   )

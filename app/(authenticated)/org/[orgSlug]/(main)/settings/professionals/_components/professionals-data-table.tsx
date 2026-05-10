@@ -218,9 +218,16 @@ export function ProfessionalsDataTable({
                           {getInitials(professional.name)}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="font-medium hover:underline">
-                        {professional.name}
-                      </span>
+                      <div className="flex flex-col">
+                        <span className="font-medium hover:underline">
+                          {professional.name}
+                        </span>
+                        {professional.email && (
+                          <span className="text-xs text-muted-foreground">
+                            {professional.email}
+                          </span>
+                        )}
+                      </div>
                     </Link>
                   </TableCell>
 

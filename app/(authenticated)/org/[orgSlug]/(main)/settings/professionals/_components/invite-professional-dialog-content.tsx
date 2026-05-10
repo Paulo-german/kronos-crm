@@ -26,7 +26,6 @@ import {
 import { Input } from '@/_components/ui/input'
 
 import { inviteProfessional } from '@/_actions/professional/invite-professional'
-import type { ProfessionalDto } from '@/_data-access/professional/get-professionals'
 
 const formSchema = z.object({
   email: z.string().trim().email('E-mail inválido'),
@@ -35,7 +34,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>
 
 interface InviteProfessionalDialogContentProps {
-  professional: ProfessionalDto
+  professional: { id: string; name: string }
   onClose: () => void
 }
 
