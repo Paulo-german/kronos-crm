@@ -144,6 +144,11 @@ function getEntityLabel(entity: RBACEntity): string {
     notification: 'notificações',
     automation: 'automações',
     agentGroup: 'equipes de agentes',
+    // Scheduling v2
+    professional: 'profissionais',
+    service: 'serviços',
+    serviceCategory: 'categorias de serviço',
+    workingHours: 'jornada de trabalho',
   }
   return labels[entity]
 }

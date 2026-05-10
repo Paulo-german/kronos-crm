@@ -31,6 +31,11 @@ export type RBACEntity =
   | 'notification'
   | 'automation'
   | 'agentGroup'
+  // Scheduling v2
+  | 'professional'
+  | 'service'
+  | 'serviceCategory'
+  | 'workingHours'
 
 /**
  * Ações possíveis em cada entidade

@@ -132,7 +132,7 @@ export async function findConversationWithRBAC(
 export async function findAppointmentWithRBAC(
   appointmentId: string,
   ctx: PermissionContext
-): Promise<{ id: string; assignedTo: string; dealId: string; status: AppointmentStatus; title: string }> {
+): Promise<{ id: string; assignedTo: string; dealId: string | null; status: AppointmentStatus; title: string }> {
   const appointment = await db.appointment.findFirst({
     where: {
       id: appointmentId,

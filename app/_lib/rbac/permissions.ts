@@ -71,8 +71,8 @@ const PERMISSION_MATRIX: Record<RBACEntity, Record<RBACAction, MemberRole[]>> = 
   },
   appointment: {
     create: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'],
-    read: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'], // MEMBER: só próprios
-    update: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'], // MEMBER: só próprios
+    read: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'],
+    update: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'],
     delete: ['OWNER', 'ADMIN', 'SUPPORT'],
     transfer: ['OWNER', 'ADMIN', 'SUPPORT'],
   },
@@ -125,6 +125,35 @@ const PERMISSION_MATRIX: Record<RBACEntity, Record<RBACAction, MemberRole[]>> = 
     transfer: [],
   },
   agentGroup: {
+    create: ['OWNER', 'ADMIN', 'SUPPORT'],
+    read: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'],
+    update: ['OWNER', 'ADMIN', 'SUPPORT'],
+    delete: ['OWNER', 'ADMIN', 'SUPPORT'],
+    transfer: [],
+  },
+  // Scheduling v2
+  professional: {
+    create: ['OWNER', 'ADMIN', 'SUPPORT'],
+    read: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'],
+    update: ['OWNER', 'ADMIN', 'SUPPORT'],
+    delete: ['OWNER', 'ADMIN'],
+    transfer: [],
+  },
+  service: {
+    create: ['OWNER', 'ADMIN', 'SUPPORT'],
+    read: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'],
+    update: ['OWNER', 'ADMIN', 'SUPPORT'],
+    delete: ['OWNER', 'ADMIN'],
+    transfer: [],
+  },
+  serviceCategory: {
+    create: ['OWNER', 'ADMIN', 'SUPPORT'],
+    read: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'],
+    update: ['OWNER', 'ADMIN', 'SUPPORT'],
+    delete: ['OWNER', 'ADMIN'],
+    transfer: [],
+  },
+  workingHours: {
     create: ['OWNER', 'ADMIN', 'SUPPORT'],
     read: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'],
     update: ['OWNER', 'ADMIN', 'SUPPORT'],
