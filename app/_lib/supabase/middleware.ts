@@ -136,12 +136,12 @@ export async function updateSession(request: NextRequest) {
       maxAge: 60 * 60 * 24 * 30, // 30 dias
     })
 
-    // Rotas /org/[slug]/agenda/* — marcadas para verificação de Professional Access.
+    // Rotas /org/[slug]/professional-portal/* — marcadas para verificação de Professional Access.
     // A verificação de membership de profissional (query ao banco) é feita no Server
     // Component via requireProfessionalContext, pois o middleware não tem acesso
     // ao banco Prisma. O header x-user-id facilita rastreamento downstream.
-    const isAgendaRoute = pathname.match(/^\/org\/[^/]+\/agenda(\/|$)/)
-    if (isAgendaRoute) {
+    const isProfessionalPortalRoute = pathname.match(/^\/org\/[^/]+\/professional-portal(\/|$)/)
+    if (isProfessionalPortalRoute) {
       supabaseResponse.headers.set('x-user-id', user.id)
       supabaseResponse.headers.set('x-org-slug', orgSlug)
     }

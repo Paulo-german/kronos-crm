@@ -2,7 +2,6 @@ import 'server-only'
 import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 import type { AppointmentStatus, AppointmentType, PaymentStatus } from '@prisma/client'
-import type { RBACContext } from '@/_lib/rbac'
 
 export interface ProfessionalAppointmentDto {
   id: string
@@ -68,11 +67,11 @@ const fetchProfessionalAppointmentsFromDb = async (
  */
 export const getProfessionalAppointments = async (
   professionalId: string,
-  ctx: RBACContext,
+  orgId: string,
 ): Promise<ProfessionalAppointmentDto[]> => {
   const getCached = unstable_cache(
-    async () => fetchProfessionalAppointmentsFromDb(professionalId, ctx.orgId),
-    [`professional-appointments-${professionalId}-${ctx.orgId}`],
+    async () => fetchProfessionalAppointmentsFromDb(professionalId, orgId),
+    [`professional-appointments-${professionalId}-${orgId}`],
     {
       tags: [`professional-appointments:${professionalId}`],
       revalidate: 300,
