@@ -13,6 +13,16 @@ export interface ServiceDto {
   isActive: boolean
   createdAt: Date
   updatedAt: Date
+  professionalServices: Array<{
+    id: string
+    professionalId: string
+    professional: {
+      id: string
+      name: string
+      avatarUrl: string | null
+      isActive: boolean
+    }
+  }>
 }
 
 const fetchServicesFromDb = async (
@@ -27,6 +37,13 @@ const fetchServicesFromDb = async (
     include: {
       category: {
         select: { id: true, name: true },
+      },
+      professionalServices: {
+        include: {
+          professional: {
+            select: { id: true, name: true, avatarUrl: true, isActive: true },
+          },
+        },
       },
     },
     orderBy: [{ category: { name: 'asc' } }, { name: 'asc' }],
@@ -43,6 +60,11 @@ const fetchServicesFromDb = async (
     isActive: service.isActive,
     createdAt: service.createdAt,
     updatedAt: service.updatedAt,
+    professionalServices: service.professionalServices.map((ps) => ({
+      id: ps.id,
+      professionalId: ps.professionalId,
+      professional: ps.professional,
+    })),
   }))
 }
 
