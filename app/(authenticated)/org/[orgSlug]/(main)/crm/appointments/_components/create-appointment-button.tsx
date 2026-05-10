@@ -22,9 +22,16 @@ const CreateAppointmentButton = ({
   services,
 }: CreateAppointmentButtonProps) => {
   const [isOpen, setIsOpen] = useState(false)
+  const [formKey, setFormKey] = useState(0)
 
   return (
-    <Sheet open={isOpen} onOpenChange={setIsOpen}>
+    <Sheet
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) setFormKey((prev) => prev + 1)
+        setIsOpen(open)
+      }}
+    >
       <SheetTrigger asChild>
         <Button className="gap-2">
           <PlusIcon className="h-4 w-4" />
@@ -32,6 +39,7 @@ const CreateAppointmentButton = ({
         </Button>
       </SheetTrigger>
       <UpsertAppointmentDialogContent
+        key={formKey}
         setIsOpen={setIsOpen}
         members={members}
         contactOptions={contactOptions}

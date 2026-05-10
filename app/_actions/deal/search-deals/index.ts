@@ -15,7 +15,7 @@ export const searchDeals = orgActionClient
     const deals = await db.deal.findMany({
       where: {
         organizationId: ctx.orgId,
-        status: { notIn: ['WON', 'LOST'] },
+        status: { in: ['OPEN', 'IN_PROGRESS'] },
         ...(elevated ? {} : { assignedTo: ctx.userId }),
         title: { contains: query, mode: 'insensitive' },
       },
