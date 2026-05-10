@@ -1,5 +1,4 @@
 import 'server-only'
-import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 
@@ -38,7 +37,7 @@ const fetchServiceCategoriesFromDb = async (orgId: string): Promise<ServiceCateg
 /**
  * Lista todas as categorias de serviço da organização (Cacheado)
  */
-export const getServiceCategories = cache(async (orgId: string): Promise<ServiceCategoryDto[]> => {
+export const getServiceCategories = async (orgId: string): Promise<ServiceCategoryDto[]> => {
   const getCached = unstable_cache(
     async () => fetchServiceCategoriesFromDb(orgId),
     [`service-categories-${orgId}`],
@@ -49,4 +48,4 @@ export const getServiceCategories = cache(async (orgId: string): Promise<Service
   )
 
   return getCached()
-})
+}

@@ -1,5 +1,4 @@
 import 'server-only'
-import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 import type { AppointmentStatus, AppointmentType, PaymentStatus } from '@prisma/client'
@@ -66,7 +65,7 @@ const fetchProfessionalAppointmentsFromDb = async (
 /**
  * Lista agendamentos de um profissional (Cacheado)
  */
-export const getProfessionalAppointments = cache(async (
+export const getProfessionalAppointments = async (
   professionalId: string,
   orgId: string,
 ): Promise<ProfessionalAppointmentDto[]> => {
@@ -80,4 +79,4 @@ export const getProfessionalAppointments = cache(async (
   )
 
   return getCached()
-})
+}
