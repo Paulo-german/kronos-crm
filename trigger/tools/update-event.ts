@@ -61,7 +61,9 @@ export function createUpdateEventTool(ctx: ToolContext) {
         }
       }
 
-      if (!ctx.pipelineIds.includes(appointment.deal.stage.pipelineId)) {
+      // deal pode ser null se o appointment foi criado como SERVICE (não deveria acontecer
+      // neste tool de contexto COMMERCIAL, mas o tipo é nullable desde a Fase A)
+      if (!appointment.deal || !ctx.pipelineIds.includes(appointment.deal.stage.pipelineId)) {
         return { success: false, message: 'Sem permissão para este pipeline.' }
       }
 

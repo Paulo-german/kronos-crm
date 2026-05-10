@@ -154,7 +154,7 @@ export function UpsertAppointmentDialogContent({
         description: defaultValues.description ?? undefined,
         startDate: new Date(defaultValues.startDate),
         endDate: new Date(defaultValues.endDate),
-        dealId: defaultValues.dealId,
+        dealId: defaultValues.dealId ?? undefined,
         assignedTo: defaultValues.assignedTo,
       }
     : {

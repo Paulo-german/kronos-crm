@@ -108,8 +108,8 @@ export const updateAppointment = orgActionClient
       data: updateData,
     })
 
-    // 7. Activity se status mudou
-    if (data.status !== undefined && data.status !== existing.status) {
+    // 7. Activity se status mudou — apenas para COMMERCIAL (dealId obrigatório para Activity)
+    if (data.status !== undefined && data.status !== existing.status && existing.dealId) {
       const activityType =
         data.status === 'CANCELED' ? 'appointment_canceled' : 'appointment_updated'
 
@@ -125,9 +125,11 @@ export const updateAppointment = orgActionClient
 
     // 8. Invalidar cache
     revalidateTag(`appointments:${ctx.orgId}`)
-    revalidateTag(`deal-appointments:${existing.dealId}`)
-    revalidateTag(`deal:${existing.dealId}`)
     revalidateTag(`deals:${ctx.orgId}`)
+    if (existing.dealId) {
+      revalidateTag(`deal-appointments:${existing.dealId}`)
+      revalidateTag(`deal:${existing.dealId}`)
+    }
 
     // Notificar novo responsável quando há transferência de ownership para outro usuário
     if (

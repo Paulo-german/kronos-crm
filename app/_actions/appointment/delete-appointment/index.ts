@@ -24,15 +24,17 @@ export const deleteAppointment = orgActionClient
       throw new Error('Apenas agendamentos cancelados podem ser excluídos.')
     }
 
-    // 4. Registrar atividade antes de deletar
-    await db.activity.create({
-      data: {
-        type: 'appointment_deleted',
-        content: existing.title,
-        dealId: existing.dealId,
-        performedBy: ctx.userId,
-      },
-    })
+    // 4. Registrar atividade apenas para agendamentos COMMERCIAL (dealId obrigatório para Activity)
+    if (existing.dealId) {
+      await db.activity.create({
+        data: {
+          type: 'appointment_deleted',
+          content: existing.title,
+          dealId: existing.dealId,
+          performedBy: ctx.userId,
+        },
+      })
+    }
 
     // 5. Deletar
     await db.appointment.delete({
@@ -41,8 +43,10 @@ export const deleteAppointment = orgActionClient
 
     // 6. Invalidar cache
     revalidateTag(`appointments:${ctx.orgId}`)
-    revalidateTag(`deal-appointments:${existing.dealId}`)
-    revalidateTag(`deal:${existing.dealId}`)
+    if (existing.dealId) {
+      revalidateTag(`deal-appointments:${existing.dealId}`)
+      revalidateTag(`deal:${existing.dealId}`)
+    }
     revalidateTag(`deals:${ctx.orgId}`)
 
     return { success: true }

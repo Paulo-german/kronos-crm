@@ -25,10 +25,12 @@ export const createAppointment = orgActionClient
     // 3. Ownership: MEMBER forçado para si mesmo
     const assignedTo = resolveAssignedTo(ctx, data.assignedTo)
 
-    // 4. Cross-entity: verificar se deal existe e pertence à org
-    await findDealWithRBAC(data.dealId, ctx)
+    // 4. Cross-entity: verificar se deal existe e pertence à org (apenas para COMMERCIAL)
+    if (data.dealId) {
+      await findDealWithRBAC(data.dealId, ctx)
+    }
 
-    // 5. Overlapping check: verificar conflito de horário
+    // 5. Overlapping check: verificar conflito de horário por assignedTo
     const overlapping = await db.appointment.findFirst({
       where: {
         assignedTo,
@@ -57,21 +59,25 @@ export const createAppointment = orgActionClient
       },
     })
 
-    // 7. Activity na timeline do deal
-    await db.activity.create({
-      data: {
-        type: 'appointment_created',
-        content: data.title,
-        dealId: data.dealId,
-        performedBy: ctx.userId,
-      },
-    })
+    // 7. Activity na timeline do deal — apenas para COMMERCIAL (dealId obrigatório para Activity)
+    if (data.dealId) {
+      await db.activity.create({
+        data: {
+          type: 'appointment_created',
+          content: data.title,
+          dealId: data.dealId,
+          performedBy: ctx.userId,
+        },
+      })
+    }
 
     // 8. Invalidar cache
     revalidateTag(`appointments:${ctx.orgId}`)
-    revalidateTag(`deal-appointments:${data.dealId}`)
-    revalidateTag(`deal:${data.dealId}`)
     revalidateTag(`deals:${ctx.orgId}`)
+    if (data.dealId) {
+      revalidateTag(`deal-appointments:${data.dealId}`)
+      revalidateTag(`deal:${data.dealId}`)
+    }
 
     // Notificar responsável quando o agendamento é atribuído a outro usuário
     if (assignedTo !== ctx.userId) {

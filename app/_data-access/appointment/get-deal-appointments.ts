@@ -43,7 +43,7 @@ const fetchDealAppointmentsFromDb = async (
     assignedTo: appointment.assignedTo,
     assigneeName: appointment.user?.fullName ?? null,
     dealId: appointment.dealId,
-    dealTitle: appointment.deal.title,
+    dealTitle: appointment.deal?.title ?? null,
     createdAt: appointment.createdAt,
     updatedAt: appointment.updatedAt,
   }))

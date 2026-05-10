@@ -10,7 +10,8 @@ export const createAppointmentFormSchema = z
       .transform((val) => (val === '' ? undefined : val)),
     startDate: z.date({ message: 'Data de início é obrigatória' }),
     endDate: z.date({ message: 'Data de fim é obrigatória' }),
-    dealId: z.string().uuid('Negociação é obrigatória'),
+    // dealId é opcional desde a Fase A do scheduling v2 (obrigatório apenas para COMMERCIAL)
+    dealId: z.string().uuid().optional(),
     assignedTo: z.string().uuid('Responsável é obrigatório'),
   })
   .refine((data) => data.endDate > data.startDate, {
@@ -28,7 +29,8 @@ export const createAppointmentSchema = z
       .transform((val) => (val === '' ? undefined : val)),
     startDate: z.coerce.date({ message: 'Data de início é obrigatória' }),
     endDate: z.coerce.date({ message: 'Data de fim é obrigatória' }),
-    dealId: z.string().uuid('Negociação é obrigatória'),
+    // dealId é opcional desde a Fase A do scheduling v2 (obrigatório apenas para COMMERCIAL)
+    dealId: z.string().uuid().optional(),
     assignedTo: z.string().uuid('Responsável é obrigatório'),
   })
   .refine((data) => data.endDate > data.startDate, {

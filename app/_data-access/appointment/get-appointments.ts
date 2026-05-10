@@ -14,8 +14,9 @@ export interface AppointmentDto {
   status: AppointmentStatus
   assignedTo: string
   assigneeName: string | null
-  dealId: string
-  dealTitle: string
+  // dealId é opcional desde a Fase A do scheduling v2 (SERVICE appointments não têm deal)
+  dealId: string | null
+  dealTitle: string | null
   createdAt: Date
   updatedAt: Date
 }
@@ -61,7 +62,7 @@ const fetchAppointmentsFromDb = async (
     assignedTo: appointment.assignedTo,
     assigneeName: appointment.user?.fullName ?? null,
     dealId: appointment.dealId,
-    dealTitle: appointment.deal.title,
+    dealTitle: appointment.deal?.title ?? null,
     createdAt: appointment.createdAt,
     updatedAt: appointment.updatedAt,
   }))
