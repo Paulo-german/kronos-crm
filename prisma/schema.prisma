@@ -1096,6 +1096,7 @@ model Professional {
   userId          String?   @unique @map("user_id")
   name            String
   phone           String?
+  email           String?   @map("email")
   bio             String?
   avatarUrl       String?   @map("avatar_url")
   isActive        Boolean   @default(true) @map("is_active")

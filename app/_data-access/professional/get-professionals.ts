@@ -8,6 +8,7 @@ export interface ProfessionalDto {
   userId: string | null
   name: string
   phone: string | null
+  email: string | null
   bio: string | null
   avatarUrl: string | null
   isActive: boolean
@@ -29,6 +30,7 @@ const fetchProfessionalsFromDb = async (
     userId: professional.userId,
     name: professional.name,
     phone: professional.phone,
+    email: professional.email,
     bio: professional.bio,
     avatarUrl: professional.avatarUrl,
     isActive: professional.isActive,
