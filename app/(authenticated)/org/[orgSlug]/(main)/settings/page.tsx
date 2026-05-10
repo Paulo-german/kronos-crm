@@ -1,6 +1,7 @@
 import {
   Ban,
   Building2,
+  CalendarDays,
   CreditCard,
   FunnelIcon,
   Mail,
@@ -10,6 +11,7 @@ import {
   Tag,
   UserIcon,
   Users,
+  Wrench,
   Zap,
 } from 'lucide-react'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
@@ -116,6 +118,31 @@ const SettingsPage = async ({ params }: SettingsPageProps) => {
                   orgSlug={orgSlug}
                 >
                   <Ban size={20} />
+                </CardSettings>
+              </div>
+            </section>
+          )}
+
+          {/* Agendamentos — apenas admin */}
+          {isAdmin && (
+            <section className="space-y-3">
+              <h2 className="text-base font-semibold text-foreground">Agendamentos</h2>
+              <div className="grid gap-3">
+                <CardSettings
+                  title="Profissionais"
+
+                  href="settings/professionals"
+                  orgSlug={orgSlug}
+                >
+                  <CalendarDays size={20} />
+                </CardSettings>
+                <CardSettings
+                  title="Serviços"
+
+                  href="settings/services"
+                  orgSlug={orgSlug}
+                >
+                  <Wrench size={20} />
                 </CardSettings>
               </div>
             </section>
