@@ -39,19 +39,17 @@ const ProfessionalsPage = async ({ params }: ProfessionalsPageProps) => {
         </Button>
       </div>
 
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <h1 className="text-2xl font-bold">Profissionais</h1>
-            <p className="text-muted-foreground">
-              Gerencie os profissionais da sua equipe de atendimento.
-            </p>
-          </div>
-          <CreateProfessionalButton />
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-bold tracking-tight">Profissionais</h1>
+          <p className="text-muted-foreground">
+            Gerencie os profissionais da sua equipe de atendimento.
+          </p>
         </div>
-
-        <ProfessionalsDataTable professionals={professionals} />
+        <CreateProfessionalButton />
       </div>
+
+      <ProfessionalsDataTable professionals={professionals} orgSlug={orgSlug} />
     </div>
   )
 }
