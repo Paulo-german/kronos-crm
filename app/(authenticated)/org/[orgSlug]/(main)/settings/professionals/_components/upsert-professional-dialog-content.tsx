@@ -17,17 +17,17 @@ import { Label } from '@/_components/ui/label'
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from '@/_components/ui/form'
 import { Input } from '@/_components/ui/input'
-import { Textarea } from '@/_components/ui/textarea'
 import { Button } from '@/_components/ui/button'
 import { Switch } from '@/_components/ui/switch'
 import { Badge } from '@/_components/ui/badge'
+import { Avatar, AvatarFallback, AvatarImage } from '@/_components/ui/avatar'
+import { Tabs, TabsList, TabsTrigger } from '@/_components/ui/tabs'
 import {
   Popover,
   PopoverContent,
@@ -43,7 +43,6 @@ import {
 } from '@/_components/ui/command'
 import { cn } from '@/_lib/utils'
 import { createProfessional } from '@/_actions/professional/create-professional'
-import { inviteProfessional } from '@/_actions/professional/invite-professional'
 import {
   createProfessionalSchema,
   type CreateProfessionalInput,
@@ -51,6 +50,7 @@ import {
 import type { UpdateProfessionalInput } from '@/_actions/professional/update-professional/schema'
 import type { ProfessionalDto } from '@/_data-access/professional/get-professionals'
 import type { ServiceDto } from '@/_data-access/service/get-services'
+import type { MemberForProfessionalDto } from '@/_data-access/professional/get-accepted-members-without-professional'
 
 // ---------------------------------------------------------------------------
 // Constantes de jornada
@@ -76,6 +76,12 @@ const buildDefaultWorkingHours = () =>
     endTime: '18:00',
   }))
 
+const getInitials = (name: string): string => {
+  const parts = name.trim().split(' ')
+  if (parts.length === 1) return (parts[0]?.[0] ?? '?').toUpperCase()
+  return ((parts[0]?.[0] ?? '') + (parts[parts.length - 1]?.[0] ?? '')).toUpperCase()
+}
+
 // ---------------------------------------------------------------------------
 // Props
 // ---------------------------------------------------------------------------
@@ -87,6 +93,7 @@ interface UpsertProfessionalDialogContentProps {
   onUpdate?: (data: UpdateProfessionalInput) => void
   isUpdating?: boolean
   services?: ServiceDto[]
+  members?: MemberForProfessionalDto[]
 }
 
 // ---------------------------------------------------------------------------
@@ -100,6 +107,7 @@ const UpsertProfessionalDialogContent = ({
   onUpdate,
   isUpdating: isUpdatingProp = false,
   services,
+  members,
 }: UpsertProfessionalDialogContentProps) => {
   const isEditing = !!defaultValues?.id
 
@@ -107,7 +115,9 @@ const UpsertProfessionalDialogContent = ({
   const params = useParams<{ orgSlug: string }>()
 
   const [servicePopoverOpen, setServicePopoverOpen] = useState(false)
-  const [sendInvite, setSendInvite] = useState(false)
+  const [memberPopoverOpen, setMemberPopoverOpen] = useState(false)
+  const [mode, setMode] = useState<'new' | 'member'>('new')
+  const [selectedMember, setSelectedMember] = useState<MemberForProfessionalDto | null>(null)
 
   const form = useForm<CreateProfessionalInput>({
     resolver: zodResolver(createProfessionalSchema),
@@ -115,12 +125,10 @@ const UpsertProfessionalDialogContent = ({
       ? {
           name: defaultValues?.name ?? '',
           email: defaultValues?.email ?? '',
-          bio: defaultValues?.bio ?? '',
         }
       : {
           name: '',
           email: '',
-          bio: '',
           serviceIds: [],
           workingHours: buildDefaultWorkingHours(),
         },
@@ -133,38 +141,25 @@ const UpsertProfessionalDialogContent = ({
         form.reset({
           name: defaultValues?.name ?? '',
           email: defaultValues?.email ?? '',
-          bio: defaultValues?.bio ?? '',
         })
       } else {
         form.reset({
           name: '',
           email: '',
-          bio: '',
           serviceIds: [],
           workingHours: buildDefaultWorkingHours(),
         })
-        setSendInvite(false)
+        setMode('new')
+        setSelectedMember(null)
       }
     }
   }, [isOpen, form, defaultValues, isEditing])
-
-  const { execute: executeInvite } = useAction(inviteProfessional, {
-    onSuccess: () => toast.success('Convite enviado com sucesso!'),
-    onError: ({ error }) =>
-      toast.error(error.serverError ?? 'Erro ao enviar convite.'),
-  })
 
   const { execute: executeCreate, isPending: isCreating } = useAction(
     createProfessional,
     {
       onSuccess: ({ data }) => {
         toast.success('Profissional criado com sucesso!')
-        if (sendInvite && data?.professionalId) {
-          executeInvite({
-            professionalId: data.professionalId,
-            email: form.getValues('email'),
-          })
-        }
         setIsOpen(false)
         if (data?.professionalId) {
           router.push(
@@ -184,7 +179,7 @@ const UpsertProfessionalDialogContent = ({
         id: defaultValues.id,
         name: data.name,
         email: data.email ?? null,
-        bio: data.bio ?? null,
+        bio: null,
       })
       return
     }
@@ -198,7 +193,29 @@ const UpsertProfessionalDialogContent = ({
     ? (form.watch('serviceIds') ?? [])
     : []
 
-  const watchedEmail = form.watch('email')
+  const handleModeChange = (value: string) => {
+    setMode(value as 'new' | 'member')
+    setSelectedMember(null)
+    form.setValue('userId', undefined)
+    form.setValue('name', '')
+    form.setValue('email', '')
+  }
+
+  const handleSelectMember = (member: MemberForProfessionalDto) => {
+    form.setValue('name', member.name)
+    form.setValue('email', member.email)
+    form.setValue('userId', member.userId)
+    setSelectedMember(member)
+    setMemberPopoverOpen(false)
+  }
+
+  const sheetDescription = isEditing
+    ? 'Atualize as informações do profissional.'
+    : mode === 'new'
+      ? 'Preencha os dados e enviaremos um convite por e-mail para o profissional acessar a agenda.'
+      : 'Selecione um membro da equipe para adicioná-lo como profissional.'
+
+  const submitLabel = isEditing || mode === 'member' ? 'Salvar' : 'Criar e Convidar'
 
   return (
     <SheetContent className="overflow-y-auto sm:max-w-xl">
@@ -206,11 +223,7 @@ const UpsertProfessionalDialogContent = ({
         <SheetTitle>
           {isEditing ? 'Editar Profissional' : 'Novo Profissional'}
         </SheetTitle>
-        <SheetDescription>
-          {isEditing
-            ? 'Atualize as informações do profissional.'
-            : 'Adicione um novo profissional à sua equipe.'}
-        </SheetDescription>
+        <SheetDescription>{sheetDescription}</SheetDescription>
       </SheetHeader>
 
       <Form {...form}>
@@ -218,6 +231,92 @@ const UpsertProfessionalDialogContent = ({
           onSubmit={form.handleSubmit(onSubmit)}
           className="mt-6 space-y-5"
         >
+          {/* Seletor de modo — apenas no modo criação */}
+          {!isEditing && (
+            <Tabs value={mode} onValueChange={handleModeChange}>
+              <TabsList className="grid h-12 w-full grid-cols-2 rounded-md border border-border/50 bg-tab/30">
+                <TabsTrigger value="new" className="rounded-md py-2 data-[state=active]:bg-card/80">
+                  Nova pessoa
+                </TabsTrigger>
+                <TabsTrigger value="member" className="rounded-md py-2 data-[state=active]:bg-card/80">
+                  Membro da equipe
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          )}
+
+          {/* Seletor de membro — apenas em modo member e no modo criação */}
+          {!isEditing && mode === 'member' && (
+            <div className="space-y-2">
+              <Label>Membro da equipe</Label>
+              <Popover open={memberPopoverOpen} onOpenChange={setMemberPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    role="combobox"
+                    className="w-full justify-between"
+                  >
+                    {selectedMember ? (
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-5 w-5">
+                          <AvatarImage src={selectedMember.avatarUrl ?? undefined} alt={selectedMember.name} />
+                          <AvatarFallback className="text-[10px]">
+                            {getInitials(selectedMember.name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span>{selectedMember.name}</span>
+                      </div>
+                    ) : (
+                      'Selecionar membro'
+                    )}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0">
+                  <Command>
+                    <CommandInput placeholder="Buscar membro..." />
+                    <CommandList>
+                      <CommandEmpty>
+                        {members && members.length === 0
+                          ? 'Todos os membros já são profissionais.'
+                          : 'Nenhum membro encontrado.'}
+                      </CommandEmpty>
+                      <CommandGroup>
+                        {members?.map((member) => (
+                          <CommandItem
+                            key={member.userId}
+                            value={`${member.name} ${member.email}`}
+                            onSelect={() => handleSelectMember(member)}
+                          >
+                            <Avatar className="mr-2 h-6 w-6">
+                              <AvatarImage src={member.avatarUrl ?? undefined} alt={member.name} />
+                              <AvatarFallback className="text-xs">
+                                {getInitials(member.name)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{member.name}</span>
+                              <span className="text-xs text-muted-foreground">{member.email}</span>
+                            </div>
+                            <Check
+                              className={cn(
+                                'ml-auto h-4 w-4',
+                                selectedMember?.userId === member.userId
+                                  ? 'opacity-100'
+                                  : 'opacity-0',
+                              )}
+                            />
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
+
           {/* Dados básicos */}
           <div className="grid gap-4 md:grid-cols-2">
             <FormField
@@ -247,30 +346,6 @@ const UpsertProfessionalDialogContent = ({
                       {...field}
                     />
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="bio"
-              render={({ field }) => (
-                <FormItem className="md:col-span-2">
-                  <FormLabel>Bio</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Breve descrição do profissional..."
-                      className="resize-none"
-                      maxLength={500}
-                      rows={3}
-                      {...field}
-                      value={field.value ?? ''}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    {(field.value ?? '').length}/500 caracteres
-                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -478,26 +553,6 @@ const UpsertProfessionalDialogContent = ({
             </div>
           )}
 
-          {/* Toggle de convite — apenas no modo criação */}
-          {!isEditing && (
-            <div className="border-t pt-4">
-              <div className="flex flex-row items-center justify-between rounded-lg border p-4">
-                <div className="space-y-0.5">
-                  <Label>Convidar ao criar</Label>
-                  <p className="text-sm text-muted-foreground">
-                    {sendInvite && watchedEmail
-                      ? `Convite será enviado para ${watchedEmail}`
-                      : 'Enviar convite de acesso agora'}
-                  </p>
-                </div>
-                <Switch
-                  checked={sendInvite}
-                  onCheckedChange={setSendInvite}
-                />
-              </div>
-            </div>
-          )}
-
           <div className="flex justify-end gap-2 pt-2">
             <Button
               type="button"
@@ -513,7 +568,7 @@ const UpsertProfessionalDialogContent = ({
                   Salvando...
                 </div>
               ) : (
-                'Salvar'
+                submitLabel
               )}
             </Button>
           </div>

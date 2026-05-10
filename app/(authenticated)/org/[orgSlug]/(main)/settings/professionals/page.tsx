@@ -5,6 +5,7 @@ import { ArrowLeft } from 'lucide-react'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getProfessionals } from '@/_data-access/professional/get-professionals'
 import { getServices } from '@/_data-access/service/get-services'
+import { getAcceptedMembersWithoutProfessional } from '@/_data-access/professional/get-accepted-members-without-professional'
 import { Button } from '@/_components/ui/button'
 
 import { ProfessionalsDataTable } from './_components/professionals-data-table'
@@ -27,9 +28,10 @@ const ProfessionalsPage = async ({ params }: ProfessionalsPageProps) => {
     redirect(`/org/${orgSlug}/crm/appointments`)
   }
 
-  const [professionals, services] = await Promise.all([
+  const [professionals, services, members] = await Promise.all([
     getProfessionals(ctx.orgId),
     getServices(ctx.orgId),
+    getAcceptedMembersWithoutProfessional(ctx.orgId),
   ])
 
   return (
@@ -50,7 +52,7 @@ const ProfessionalsPage = async ({ params }: ProfessionalsPageProps) => {
             Gerencie os profissionais da sua equipe de atendimento.
           </p>
         </div>
-        <CreateProfessionalButton services={services} />
+        <CreateProfessionalButton services={services} members={members} />
       </div>
 
       <ProfessionalsDataTable professionals={professionals} orgSlug={orgSlug} />

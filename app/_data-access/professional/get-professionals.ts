@@ -12,6 +12,7 @@ export interface ProfessionalDto {
   bio: string | null
   avatarUrl: string | null
   isActive: boolean
+  inviteExpiresAt: Date | null
   createdAt: Date
   updatedAt: Date
 }
@@ -34,6 +35,7 @@ const fetchProfessionalsFromDb = async (
     bio: professional.bio,
     avatarUrl: professional.avatarUrl,
     isActive: professional.isActive,
+    inviteExpiresAt: professional.inviteExpiresAt,
     createdAt: professional.createdAt,
     updatedAt: professional.updatedAt,
   }))

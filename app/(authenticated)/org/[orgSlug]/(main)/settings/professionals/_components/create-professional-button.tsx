@@ -5,13 +5,15 @@ import { Plus } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import { Sheet } from '@/_components/ui/sheet'
 import type { ServiceDto } from '@/_data-access/service/get-services'
+import type { MemberForProfessionalDto } from '@/_data-access/professional/get-accepted-members-without-professional'
 import UpsertProfessionalDialogContent from './upsert-professional-dialog-content'
 
 interface CreateProfessionalButtonProps {
   services: ServiceDto[]
+  members: MemberForProfessionalDto[]
 }
 
-const CreateProfessionalButton = ({ services }: CreateProfessionalButtonProps) => {
+const CreateProfessionalButton = ({ services, members }: CreateProfessionalButtonProps) => {
   const [isOpen, setIsOpen] = useState(false)
 
   return (
@@ -26,6 +28,7 @@ const CreateProfessionalButton = ({ services }: CreateProfessionalButtonProps) =
           setIsOpen={setIsOpen}
           isOpen={isOpen}
           services={services}
+          members={members}
         />
       </Sheet>
     </>
