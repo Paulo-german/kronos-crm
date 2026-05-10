@@ -27,61 +27,61 @@ export function createUpdateEventTool(ctx: ToolContext) {
     }),
     execute: async ({ appointmentId, newStartDate }): Promise<UpdateEventResult> => {
       try {
-      if (!ctx.dealId) {
-        return {
-          success: false,
-          message: 'Nenhum negócio vinculado a esta conversa.',
+        if (!ctx.dealId) {
+          return {
+            success: false,
+            message: 'Nenhum negócio vinculado a esta conversa.',
+          }
         }
-      }
 
-      // Buscar appointment validando que pertence à org e ao deal do contexto
-      const appointment = await db.appointment.findFirst({
-        where: {
-          id: appointmentId,
-          organizationId: ctx.organizationId,
-          dealId: ctx.dealId,
-        },
-        select: {
-          id: true,
-          title: true,
-          status: true,
-          startDate: true,
-          endDate: true,
-          assignedTo: true,
-          deal: {
-            select: { stage: { select: { pipelineId: true } } },
+        // Buscar appointment validando que pertence à org e ao deal do contexto
+        const appointment = await db.appointment.findFirst({
+          where: {
+            id: appointmentId,
+            organizationId: ctx.organizationId,
+            dealId: ctx.dealId,
           },
-        },
-      })
+          select: {
+            id: true,
+            title: true,
+            status: true,
+            startDate: true,
+            endDate: true,
+            assignedTo: true,
+            deal: {
+              select: { stage: { select: { pipelineId: true } } },
+            },
+          },
+        })
 
-      if (!appointment) {
-        return {
-          success: false,
-          message: 'Evento não encontrado ou não pertence a este negócio.',
+        if (!appointment) {
+          return {
+            success: false,
+            message: 'Evento não encontrado ou não pertence a este negócio.',
+          }
         }
-      }
 
-      // deal pode ser null se o appointment foi criado como SERVICE (não deveria acontecer
-      // neste tool de contexto COMMERCIAL, mas o tipo é nullable desde a Fase A)
-      if (!appointment.deal || !ctx.pipelineIds.includes(appointment.deal.stage.pipelineId)) {
-        return { success: false, message: 'Sem permissão para este pipeline.' }
-      }
-
-      // Só permite reagendar eventos com status SCHEDULED
-      if (appointment.status !== 'SCHEDULED') {
-        return {
-          success: false,
-          message: `Não é possível reagendar um evento com status "${appointment.status}". Apenas eventos agendados podem ser alterados.`,
+        // deal pode ser null se o appointment foi criado como SERVICE (não deveria acontecer
+        // neste tool de contexto COMMERCIAL, mas o tipo é nullable desde a Fase A)
+        if (!appointment.deal || !ctx.pipelineIds.includes(appointment.deal.stage.pipelineId)) {
+          return { success: false, message: 'Sem permissão para este pipeline.' }
         }
-      }
 
-      const parsedNewStart = new Date(newStartDate)
+        // Só permite reagendar eventos com status SCHEDULED
+        if (appointment.status !== 'SCHEDULED') {
+          return {
+            success: false,
+            message: `Não é possível reagendar um evento com status "${appointment.status}". Apenas eventos agendados podem ser alterados.`,
+          }
+        }
 
-      if (isNaN(parsedNewStart.getTime())) {
-        return { success: false, message: 'Nova data de início inválida.' }
-      }
+        const parsedNewStart = new Date(newStartDate)
 
-      // Preservar a duração original do evento ao reagendar
+        if (isNaN(parsedNewStart.getTime())) {
+          return { success: false, message: 'Nova data de início inválida.' }
+        }
+
+        // Preservar a duração original do evento ao reagendar
         const originalDurationMs = appointment.endDate.getTime() - appointment.startDate.getTime()
         const newEndDate = new Date(parsedNewStart.getTime() + originalDurationMs)
 
