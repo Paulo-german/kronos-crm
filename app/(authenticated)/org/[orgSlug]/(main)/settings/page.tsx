@@ -46,7 +46,6 @@ const SettingsPage = async ({ params }: SettingsPageProps) => {
             <div className="grid gap-3">
               <CardSettings
                 title="Meu Perfil"
-
                 href="settings/profile"
                 orgSlug={orgSlug}
               >
@@ -57,12 +56,13 @@ const SettingsPage = async ({ params }: SettingsPageProps) => {
 
           {/* Conversas */}
           <section className="space-y-3">
-            <h2 className="text-base font-semibold text-foreground">Conversas</h2>
+            <h2 className="text-base font-semibold text-foreground">
+              Conversas
+            </h2>
             <div className="grid gap-3">
               {isAdmin && (
                 <CardSettings
                   title="Canais de Atendimento"
-
                   href="settings/inboxes"
                   orgSlug={orgSlug}
                 >
@@ -71,41 +71,30 @@ const SettingsPage = async ({ params }: SettingsPageProps) => {
               )}
               <CardSettings
                 title="Etiquetas"
-
                 href="settings/labels"
                 orgSlug={orgSlug}
               >
                 <Tag size={20} />
               </CardSettings>
-              {isAdmin && (
-                <CardSettings
-                  title="Automações"
-
-                  href="settings/automations"
-                  orgSlug={orgSlug}
-                >
-                  <Zap size={20} />
-                </CardSettings>
-              )}
             </div>
           </section>
 
           {/* Vendas — apenas admin */}
           {isAdmin && (
             <section className="space-y-3">
-              <h2 className="text-base font-semibold text-foreground">Vendas</h2>
+              <h2 className="text-base font-semibold text-foreground">
+                Vendas
+              </h2>
               <div className="grid gap-3">
                 <CardSettings
                   title="Funil de Vendas"
-
                   href="settings/pipelines"
                   orgSlug={orgSlug}
                 >
                   <FunnelIcon size={20} />
                 </CardSettings>
                 <CardSettings
-                  title="Catálogo de Produtos"
-
+                  title="Produtos"
                   href="settings/products"
                   orgSlug={orgSlug}
                 >
@@ -113,7 +102,6 @@ const SettingsPage = async ({ params }: SettingsPageProps) => {
                 </CardSettings>
                 <CardSettings
                   title="Motivos de Perda"
-
                   href="settings/loss-reasons"
                   orgSlug={orgSlug}
                 >
@@ -126,11 +114,12 @@ const SettingsPage = async ({ params }: SettingsPageProps) => {
           {/* Agendamentos — apenas admin */}
           {isAdmin && (
             <section className="space-y-3">
-              <h2 className="text-base font-semibold text-foreground">Agendamentos</h2>
+              <h2 className="text-base font-semibold text-foreground">
+                Agendamentos
+              </h2>
               <div className="grid gap-3">
                 <CardSettings
                   title="Profissionais"
-
                   href="settings/professionals"
                   orgSlug={orgSlug}
                 >
@@ -138,7 +127,6 @@ const SettingsPage = async ({ params }: SettingsPageProps) => {
                 </CardSettings>
                 <CardSettings
                   title="Serviços"
-
                   href="settings/services"
                   orgSlug={orgSlug}
                 >
@@ -154,11 +142,12 @@ const SettingsPage = async ({ params }: SettingsPageProps) => {
           {/* Organização — apenas admin */}
           {isAdmin && (
             <section className="space-y-3">
-              <h2 className="text-base font-semibold text-foreground">Organização</h2>
+              <h2 className="text-base font-semibold text-foreground">
+                Organização
+              </h2>
               <div className="grid gap-3">
                 <CardSettings
                   title="Dados da Empresa"
-
                   href="settings/organization"
                   orgSlug={orgSlug}
                 >
@@ -166,7 +155,6 @@ const SettingsPage = async ({ params }: SettingsPageProps) => {
                 </CardSettings>
                 <CardSettings
                   title="Equipe"
-
                   href="settings/members"
                   orgSlug={orgSlug}
                 >
@@ -174,12 +162,20 @@ const SettingsPage = async ({ params }: SettingsPageProps) => {
                 </CardSettings>
                 <CardSettings
                   title="Integrações"
-
                   href="settings/integrations"
                   orgSlug={orgSlug}
                 >
                   <Plug size={20} />
                 </CardSettings>
+                {isAdmin && (
+                  <CardSettings
+                    title="Automações"
+                    href="settings/automations"
+                    orgSlug={orgSlug}
+                  >
+                    <Zap size={20} />
+                  </CardSettings>
+                )}
               </div>
             </section>
           )}
@@ -187,11 +183,12 @@ const SettingsPage = async ({ params }: SettingsPageProps) => {
           {/* Financeiro — apenas admin */}
           {isAdmin && (
             <section className="space-y-3">
-              <h2 className="text-base font-semibold text-foreground">Financeiro</h2>
+              <h2 className="text-base font-semibold text-foreground">
+                Financeiro
+              </h2>
               <div className="grid gap-3">
                 <CardSettings
                   title="Plano e Pagamento"
-
                   href="settings/billing"
                   orgSlug={orgSlug}
                 >
@@ -199,7 +196,6 @@ const SettingsPage = async ({ params }: SettingsPageProps) => {
                 </CardSettings>
                 <CardSettings
                   title="Créditos IA"
-
                   href="settings/credits"
                   orgSlug={orgSlug}
                 >
