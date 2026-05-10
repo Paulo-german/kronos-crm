@@ -15,7 +15,7 @@ export const searchDeals = orgActionClient
     const deals = await db.deal.findMany({
       where: {
         organizationId: ctx.orgId,
-        status: { in: ['OPEN', 'IN_PROGRESS'] },
+        status: { notIn: ['WON', 'LOST'] },
         ...(elevated ? {} : { assignedTo: ctx.userId }),
         title: { contains: query, mode: 'insensitive' },
       },
@@ -25,7 +25,7 @@ export const searchDeals = orgActionClient
         contacts: {
           select: {
             contact: {
-              select: { name: true },
+              select: { id: true, name: true },
             },
           },
         },
@@ -37,6 +37,7 @@ export const searchDeals = orgActionClient
     return deals.map((deal) => ({
       id: deal.id,
       title: deal.title,
+      contactId: deal.contacts?.[0]?.contact?.id ?? null,
       contactName: deal.contacts?.[0]?.contact?.name ?? null,
     }))
   })

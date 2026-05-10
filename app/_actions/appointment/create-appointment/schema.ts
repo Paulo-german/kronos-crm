@@ -22,7 +22,7 @@ export const createAppointmentFormSchema = z
     startDate: z.date({ message: 'Data de início é obrigatória' }),
     // Para COMMERCIAL: obrigatório. Para SERVICE: calculado server-side a partir de service.duration
     endDate: z.date().optional(),
-    assignedTo: z.string().uuid('Responsável é obrigatório'),
+    assignedTo: z.string().uuid().optional(),
   })
   .superRefine((data, ctx) => {
     if (!data.contactId) {
@@ -60,6 +60,14 @@ export const createAppointmentFormSchema = z
         path: ['serviceId'],
       })
     }
+    // Responsável obrigatório apenas para COMMERCIAL (SERVICE defaulta para ctx.userId no servidor)
+    if (data.type === 'COMMERCIAL' && !data.assignedTo) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Responsável é obrigatório para agendamentos comerciais',
+        path: ['assignedTo'],
+      })
+    }
   })
 
 /** Schema para a server action (usa z.coerce.date()) */
@@ -82,7 +90,7 @@ export const createAppointmentSchema = z
     startDate: z.coerce.date({ message: 'Data de início é obrigatória' }),
     // Para COMMERCIAL: obrigatório. Para SERVICE: calculado server-side a partir de service.duration
     endDate: z.coerce.date().optional(),
-    assignedTo: z.string().uuid('Responsável é obrigatório'),
+    assignedTo: z.string().uuid().optional(),
   })
   .superRefine((data, ctx) => {
     if (data.type === 'COMMERCIAL' && !data.dealId) {
@@ -111,6 +119,17 @@ export const createAppointmentSchema = z
         code: z.ZodIssueCode.custom,
         message: 'serviceId obrigatório para SERVICE',
         path: ['serviceId'],
+      })
+    }
+    // Espelha a validação do form schema: MEMBER que chama a action diretamente
+    // sem assignedTo em COMMERCIAL receberia ctx.userId via resolveAssignedTo, mas
+    // ADMIN/OWNER passando intencionalmente um assignedTo inválido seria silencioso.
+    // O guard aqui garante que a invariante vale independente do caller.
+    if (data.type === 'COMMERCIAL' && !data.assignedTo) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Responsável é obrigatório para agendamentos comerciais',
+        path: ['assignedTo'],
       })
     }
   })
