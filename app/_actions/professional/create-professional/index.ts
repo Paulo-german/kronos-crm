@@ -41,13 +41,54 @@ export const createProfessional = orgActionClient
         userId: data.userId ?? null,
         name: data.name,
         phone: data.phone ?? null,
+        email: data.email ?? null,
         bio: data.bio ?? null,
         avatarUrl: data.avatarUrl ?? null,
       },
     })
 
-    // 5. Invalidar cache
+    // 5. Vincular serviços ao profissional (se fornecidos)
+    if (data.serviceIds && data.serviceIds.length > 0) {
+      // Garantir que todos os serviceIds pertencem à org (prevenção de cross-org injection)
+      const validServices = await db.service.findMany({
+        where: { id: { in: data.serviceIds }, organizationId: ctx.orgId },
+        select: { id: true },
+      })
+
+      if (validServices.length !== data.serviceIds.length) {
+        throw new Error('Um ou mais serviços não pertencem à organização.')
+      }
+
+      await db.professionalService.createMany({
+        data: data.serviceIds.map((serviceId) => ({
+          organizationId: ctx.orgId,
+          professionalId: professional.id,
+          serviceId,
+        })),
+        skipDuplicates: true,
+      })
+    }
+
+    // 6. Criar jornada inicial (apenas dias habilitados)
+    if (data.workingHours) {
+      const enabledDays = data.workingHours.filter((day) => day.enabled)
+      if (enabledDays.length > 0) {
+        await db.workingHours.createMany({
+          data: enabledDays.map((day) => ({
+            organizationId: ctx.orgId,
+            professionalId: professional.id,
+            dayOfWeek: day.dayOfWeek,
+            startTime: day.startTime,
+            endTime: day.endTime,
+          })),
+        })
+      }
+      revalidateTag(`working-hours:${professional.id}`)
+    }
+
+    // 7. Invalidar cache do profissional e dos serviços (vínculo mudou)
     revalidateTag(`professionals:${ctx.orgId}`)
+    revalidateTag(`services:${ctx.orgId}`)
 
     return { success: true, professionalId: professional.id }
   })
