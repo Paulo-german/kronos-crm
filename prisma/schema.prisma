@@ -35,6 +35,7 @@ model User {
   userProfiles            UserProfile[]
   tutorialCompletions     TutorialCompletion[]
   changelogEntries        ChangelogEntry[]
+  professional            Professional?     @relation("ProfessionalUser")
 
   @@map("users")
 }
@@ -92,12 +93,19 @@ model Organization {
   subscriptions          Subscription[]
   tasks                  Task[]
   userIntegrations       UserIntegration[]
-  followUps              FollowUp[]
-  automations            Automation[]
-  automationExecutions   AutomationExecution[]
-  conversationLabels     ConversationLabel[]
-  userProfiles           UserProfile[]
-  tutorialCompletions    TutorialCompletion[]
+  followUps                    FollowUp[]
+  automations                  Automation[]
+  automationExecutions         AutomationExecution[]
+  conversationLabels           ConversationLabel[]
+  userProfiles                 UserProfile[]
+  tutorialCompletions          TutorialCompletion[]
+  // Scheduling v2
+  distributionModel            DistributionModel  @default(UTILIZATION) @map("distribution_model")
+  secondaryDistributionModel   DistributionModel? @map("secondary_distribution_model")
+  professionals                Professional[]
+  serviceCategories            ServiceCategory[]
+  services                     Service[]
+  manualProfessionalOrders     ManualProfessionalOrder[]
 
   @@map("organizations")
 }
@@ -177,6 +185,7 @@ model Contact {
   organization    Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   conversations   Conversation[]
   deals           DealContact[]
+  appointments    Appointment[]
 
   @@index([organizationId, assignedTo, createdAt(sort: Desc)])
   @@index([organizationId, name])
@@ -290,25 +299,45 @@ model Activity {
 }
 
 model Appointment {
-  id             String                @id @default(uuid())
-  organizationId String                @map("organization_id")
+  id             String            @id @default(uuid())
+  organizationId String            @map("organization_id")
+  // Discrimina o tipo de agendamento: COMMERCIAL (legado, deal-based) ou SERVICE (novo, profissional-based)
+  type           AppointmentType   @default(COMMERCIAL) @map("type")
   title          String
   description    String?
-  startDate      DateTime              @map("start_date")
-  endDate        DateTime              @map("end_date")
-  status         AppointmentStatus     @default(SCHEDULED)
-  assignedTo     String                @map("assigned_to")
-  dealId         String                @map("deal_id")
-  createdAt      DateTime              @default(now()) @map("created_at")
-  updatedAt      DateTime              @updatedAt @map("updated_at")
-  user           User                  @relation("AppointmentAssignee", fields: [assignedTo], references: [id])
-  deal           Deal                  @relation(fields: [dealId], references: [id], onDelete: Cascade)
-  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  syncMappings   CalendarSyncMapping[]
+  notes          String?
+  startDate      DateTime          @map("start_date")
+  endDate        DateTime          @map("end_date")
+  status         AppointmentStatus @default(SCHEDULED)
+  assignedTo     String            @map("assigned_to")
+  // dealId virou opcional: obrigatório apenas para COMMERCIAL, enforced na application layer
+  dealId         String?           @map("deal_id")
+  // Novos campos de scheduling v2 — nullable permanentemente (obrigatoriedade na app layer)
+  professionalId String?           @map("professional_id")
+  serviceId      String?           @map("service_id")
+  // contactId nullable nesta Fase A — será NOT NULL após backfill (Fase C)
+  contactId      String?           @map("contact_id")
+  // Snapshot do preço no momento do agendamento (apenas SERVICE)
+  priceSnapshot  Decimal?          @map("price_snapshot") @db.Decimal(15, 2)
+  paymentStatus  PaymentStatus?    @map("payment_status")
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
 
-  @@index([organizationId])
+  user         User                  @relation("AppointmentAssignee", fields: [assignedTo], references: [id])
+  // dealId: SetNull para não quebrar ao deletar deal órfão
+  deal         Deal?                 @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  professional Professional?         @relation(fields: [professionalId], references: [id])
+  service      Service?              @relation(fields: [serviceId], references: [id])
+  contact      Contact?              @relation(fields: [contactId], references: [id])
+  organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  syncMappings CalendarSyncMapping[]
+
+  // Índice composto substitui [organizationId] isolado — mais seletivo para queries de agenda
+  @@index([organizationId, startDate])
+  @@index([professionalId, startDate])
   @@index([assignedTo])
   @@index([dealId])
+  @@index([contactId])
   @@map("appointments")
 }
 
@@ -1030,6 +1059,171 @@ model Notification {
   @@index([userId, readAt, createdAt(sort: Desc)])
   @@index([organizationId, userId, createdAt(sort: Desc)])
   @@map("notifications")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Scheduling v2 — Profissionais, Serviços, Disponibilidade
+// ─────────────────────────────────────────────────────────────
+
+enum WorkingHoursExceptionType {
+  OFF
+  CUSTOM_HOURS
+}
+
+enum AppointmentType {
+  COMMERCIAL
+  SERVICE
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  WAIVED
+}
+
+enum DistributionModel {
+  UTILIZATION
+  ROUND_ROBIN
+  FIRST_AVAILABLE
+  LOYALTY
+  MANUAL
+}
+
+model Professional {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  // userId é opcional: profissional pode existir sem login no sistema
+  userId         String?  @unique @map("user_id")
+  name           String
+  phone          String?
+  bio            String?
+  avatarUrl      String?  @map("avatar_url")
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization           Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user                   User?                     @relation("ProfessionalUser", fields: [userId], references: [id], onDelete: SetNull)
+  workingHours           WorkingHours[]
+  workingHoursExceptions WorkingHoursException[]
+  appointments           Appointment[]
+  professionalServices   ProfessionalService[]
+  // Unique por (organizationId, professionalId) — 1 entrada por org, mas Prisma trata como 1:many
+  manualOrders           ManualProfessionalOrder[]
+
+  @@index([organizationId, isActive])
+  @@map("professionals")
+}
+
+model ServiceCategory {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  name           String
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  services     Service[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId, isActive])
+  @@map("service_categories")
+}
+
+model Service {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  categoryId     String   @map("category_id")
+  name           String
+  // Duração em minutos — granularidade mínima de agendamento
+  duration       Int
+  price          Decimal  @db.Decimal(15, 2)
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization         Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  category             ServiceCategory       @relation(fields: [categoryId], references: [id])
+  professionalServices ProfessionalService[]
+  appointments         Appointment[]
+
+  @@index([organizationId, isActive])
+  @@index([categoryId])
+  @@map("services")
+}
+
+model ProfessionalService {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  professionalId String   @map("professional_id")
+  serviceId      String   @map("service_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  professional Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  service      Service      @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([professionalId, serviceId])
+  @@index([serviceId])
+  @@index([organizationId])
+  @@map("professional_services")
+}
+
+model WorkingHours {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  professionalId String   @map("professional_id")
+  // 0 = domingo, 6 = sábado (alinhado com Date.getDay() do JS)
+  dayOfWeek      Int      @map("day_of_week")
+  // Strings "HH:mm" — armazenamento em string evita timezone drift
+  startTime      String   @map("start_time")
+  endTime        String   @map("end_time")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  professional Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  @@unique([professionalId, dayOfWeek])
+  @@index([organizationId])
+  @@map("working_hours")
+}
+
+model WorkingHoursException {
+  id             String                    @id @default(uuid())
+  organizationId String                    @map("organization_id")
+  professionalId String                    @map("professional_id")
+  // Data da exceção (apenas DATE, sem horário)
+  date           DateTime                  @db.Date
+  type           WorkingHoursExceptionType
+  // Quando type = CUSTOM_HOURS, ambos preenchidos. Quando OFF, ambos null.
+  startTime      String?                   @map("start_time")
+  endTime        String?                   @map("end_time")
+  createdAt      DateTime                  @default(now()) @map("created_at")
+  updatedAt      DateTime                  @updatedAt @map("updated_at")
+
+  professional Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  @@unique([professionalId, date])
+  @@index([organizationId, date])
+  @@map("working_hours_exceptions")
+}
+
+model ManualProfessionalOrder {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  professionalId String   @map("professional_id")
+  // Posição na fila (1 = primeiro)
+  order          Int
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  professional Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, professionalId])
+  @@unique([organizationId, order])
+  @@map("manual_professional_orders")
 }
 
 enum MemberRole {
