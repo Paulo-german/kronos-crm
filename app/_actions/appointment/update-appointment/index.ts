@@ -5,6 +5,7 @@ import { orgActionClient } from '@/_lib/safe-action'
 import { updateAppointmentSchema } from './schema'
 import { db } from '@/_lib/prisma'
 import { revalidateTag } from 'next/cache'
+import type { Prisma } from '@prisma/client'
 import {
   canPerformAction,
   canTransferOwnership,
@@ -93,15 +94,14 @@ export const updateAppointment = orgActionClient
     }
 
     // 6. Build update data com conditional spread
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const updateData: Record<string, any> = {}
-
-    if (data.title !== undefined) updateData.title = data.title
-    if (data.description !== undefined) updateData.description = data.description
-    if (data.startDate !== undefined) updateData.startDate = data.startDate
-    if (data.endDate !== undefined) updateData.endDate = data.endDate
-    if (data.status !== undefined) updateData.status = data.status
-    if (data.assignedTo !== undefined) updateData.assignedTo = data.assignedTo
+    const updateData: Prisma.AppointmentUpdateInput = {
+      ...(data.title !== undefined ? { title: data.title } : {}),
+      ...(data.description !== undefined ? { description: data.description } : {}),
+      ...(data.startDate !== undefined ? { startDate: data.startDate } : {}),
+      ...(data.endDate !== undefined ? { endDate: data.endDate } : {}),
+      ...(data.status !== undefined ? { status: data.status } : {}),
+      ...(data.assignedTo !== undefined ? { assignedTo: data.assignedTo } : {}),
+    }
 
     await db.appointment.update({
       where: { id: data.id },
