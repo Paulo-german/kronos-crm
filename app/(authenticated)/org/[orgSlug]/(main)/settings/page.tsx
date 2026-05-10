@@ -7,6 +7,7 @@ import {
   Mail,
   Package,
   Plug,
+  Settings2,
   Sparkles,
   Tag,
   UserIcon,
@@ -131,6 +132,13 @@ const SettingsPage = async ({ params }: SettingsPageProps) => {
                   orgSlug={orgSlug}
                 >
                   <Wrench size={20} />
+                </CardSettings>
+                <CardSettings
+                  title="Distribuição"
+                  href="settings/scheduling"
+                  orgSlug={orgSlug}
+                >
+                  <Settings2 size={20} />
                 </CardSettings>
               </div>
             </section>
