@@ -1,4 +1,5 @@
 import 'server-only'
+import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 
@@ -123,7 +124,7 @@ const fetchProfessionalByIdFromDb = async (
  * Busca profissional por ID com dados completos (Cacheado)
  * Inclui jornada de trabalho, exceções, serviços e ordem manual
  */
-export const getProfessionalById = async (
+export const getProfessionalById = cache(async (
   id: string,
   orgId: string,
 ): Promise<ProfessionalDetailDto | null> => {
@@ -137,4 +138,4 @@ export const getProfessionalById = async (
   )
 
   return getCached()
-}
+})

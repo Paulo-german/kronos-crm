@@ -26,7 +26,7 @@ const ProfessionalsPage = async ({ params }: ProfessionalsPageProps) => {
     redirect(`/org/${orgSlug}/crm/appointments`)
   }
 
-  const professionals = await getProfessionals(ctx)
+  const professionals = await getProfessionals(ctx.orgId)
 
   return (
     <div className="container mx-auto space-y-6 py-6">

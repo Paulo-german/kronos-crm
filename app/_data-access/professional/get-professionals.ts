@@ -1,7 +1,7 @@
 import 'server-only'
+import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
-import type { RBACContext } from '@/_lib/rbac'
 
 export interface ProfessionalDto {
   id: string
@@ -41,15 +41,15 @@ const fetchProfessionalsFromDb = async (
 /**
  * Lista profissionais da organização (Cacheado)
  */
-export const getProfessionals = async (ctx: RBACContext): Promise<ProfessionalDto[]> => {
+export const getProfessionals = cache(async (orgId: string): Promise<ProfessionalDto[]> => {
   const getCached = unstable_cache(
-    async () => fetchProfessionalsFromDb(ctx.orgId),
-    [`professionals-${ctx.orgId}`],
+    async () => fetchProfessionalsFromDb(orgId),
+    [`professionals-${orgId}`],
     {
-      tags: [`professionals:${ctx.orgId}`],
+      tags: [`professionals:${orgId}`],
       revalidate: 3600,
     },
   )
 
   return getCached()
-}
+})

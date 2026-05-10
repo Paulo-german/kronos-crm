@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { Plus, PencilIcon, CheckIcon, XIcon, TrashIcon, TagIcon } from 'lucide-react'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
@@ -33,9 +33,6 @@ const ManageCategoriesSheet = ({ categories }: ManageCategoriesSheetProps) => {
   // Rastreamento da categoria sendo editada inline
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingName, setEditingName] = useState('')
-
-  // Ref para o input de nova categoria para focar ao abrir
-  const newCategoryInputRef = useRef<HTMLInputElement>(null)
 
   const { execute: executeCreate, isPending: isCreating } = useAction(
     createServiceCategory,
@@ -137,7 +134,6 @@ const ManageCategoriesSheet = ({ categories }: ManageCategoriesSheetProps) => {
             <p className="text-sm font-medium">Nova Categoria</p>
             <div className="flex gap-2">
               <Input
-                ref={newCategoryInputRef}
                 placeholder="Nome da categoria"
                 value={newCategoryName}
                 onChange={(event) => setNewCategoryName(event.target.value)}

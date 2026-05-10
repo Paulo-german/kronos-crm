@@ -1,4 +1,5 @@
 import 'server-only'
+import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 
@@ -50,7 +51,7 @@ const fetchServicesFromDb = async (
  * Lista serviços da organização com categoria embutida (Cacheado)
  * Por padrão filtra apenas serviços ativos — passar includeInactive=true para incluir inativos
  */
-export const getServices = async (
+export const getServices = cache(async (
   orgId: string,
   includeInactive = false,
 ): Promise<ServiceDto[]> => {
@@ -64,4 +65,4 @@ export const getServices = async (
   )
 
   return getCached()
-}
+})
