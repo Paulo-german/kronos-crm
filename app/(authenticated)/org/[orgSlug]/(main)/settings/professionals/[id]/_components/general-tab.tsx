@@ -38,6 +38,7 @@ const GeneralTab = ({ professional }: GeneralTabProps) => {
     defaultValues: {
       id: professional.id,
       name: professional.name,
+      email: professional.email ?? '',
       phone: professional.phone ?? '',
       bio: professional.bio ?? '',
       avatarUrl: professional.avatarUrl ?? '',
@@ -90,6 +91,25 @@ const GeneralTab = ({ professional }: GeneralTabProps) => {
                     <FormControl>
                       <Input
                         placeholder="(11) 99999-9999"
+                        {...field}
+                        value={field.value ?? ''}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem className="md:col-span-2">
+                    <FormLabel>E-mail</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="email"
+                        placeholder="profissional@email.com"
                         {...field}
                         value={field.value ?? ''}
                       />

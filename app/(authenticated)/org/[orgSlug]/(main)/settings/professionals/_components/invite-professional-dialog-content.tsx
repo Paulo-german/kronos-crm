@@ -35,16 +35,18 @@ type FormValues = z.infer<typeof formSchema>
 
 interface InviteProfessionalDialogContentProps {
   professional: { id: string; name: string }
+  defaultEmail?: string | null
   onClose: () => void
 }
 
 const InviteProfessionalDialogContent = ({
   professional,
+  defaultEmail,
   onClose,
 }: InviteProfessionalDialogContentProps) => {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: { email: '' },
+    defaultValues: { email: defaultEmail ?? '' },
   })
 
   const { execute, isPending } = useAction(inviteProfessional, {
@@ -66,8 +68,9 @@ const InviteProfessionalDialogContent = ({
       <DialogHeader>
         <DialogTitle>Convidar {professional.name}</DialogTitle>
         <DialogDescription>
-          Envie um convite por e-mail para que o profissional acesse a própria
-          agenda no Kronos Hub.
+          {defaultEmail
+            ? `Um convite de acesso será enviado para o e-mail abaixo. Confirme ou altere antes de enviar.`
+            : 'Envie um convite por e-mail para que o profissional acesse a própria agenda no Kronos Hub.'}
         </DialogDescription>
       </DialogHeader>
 

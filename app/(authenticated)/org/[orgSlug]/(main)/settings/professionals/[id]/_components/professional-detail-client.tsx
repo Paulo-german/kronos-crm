@@ -96,13 +96,14 @@ const ProfessionalDetailClient = ({
           {canManage && !professional.userId && (
             <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="ml-auto">
+                <Button size="sm" className="ml-auto">
                   <Mail className="mr-2 h-4 w-4" />
                   Convidar
                 </Button>
               </DialogTrigger>
               <InviteProfessionalDialogContent
                 professional={professional}
+                defaultEmail={professional.email}
                 onClose={() => setInviteOpen(false)}
               />
             </Dialog>
