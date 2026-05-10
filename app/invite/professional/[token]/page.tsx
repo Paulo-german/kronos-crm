@@ -42,7 +42,7 @@ export default async function ProfessionalInvitePage({
   // Convite já aceito (userId preenchido e token limpo não chegaria aqui,
   // mas guarda contra inconsistências)
   if (professional.userId !== null) {
-    redirect(`/org/${professional.organization.slug}/agenda`)
+    redirect(`/org/${professional.organization.slug}/professional-portal`)
   }
 
   // Verificar expiração

@@ -29,8 +29,8 @@ export function ProfessionalInviteHandlerClient({
     acceptProfessionalInvite,
     {
       onSuccess: () => {
-        toast.success(`Bem-vindo à agenda de ${orgName}!`)
-        router.push(`/org/${orgSlug}/agenda`)
+        toast.success(`Bem-vindo ao portal de ${orgName}!`)
+        router.push(`/org/${orgSlug}/professional-portal`)
       },
       onError: ({ error: actionError }) => {
         setError(actionError.serverError ?? 'Erro ao aceitar convite.')

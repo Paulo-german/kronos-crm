@@ -1,8 +1,9 @@
+import 'server-only'
 import { db } from '@/_lib/prisma'
 
 /**
  * Verifica se o usuário autenticado é um profissional ativo da org.
- * Lança erro se não for — para proteger rotas /agenda/*.
+ * Lança erro se não for — para proteger rotas /professional-portal/*.
  *
  * O guard deliberadamente não usa o RBAC de membros (roles CRM) porque
  * profissionais operam num sistema paralelo independente: podem ser

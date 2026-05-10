@@ -1,5 +1,5 @@
-import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
+import { createClient } from '@/_lib/supabase/server'
 import { requireProfessionalContext } from '@/_lib/rbac'
 import { getProfessionalById } from '@/_data-access/professional/get-professional-by-id'
 import { getProfessionalAppointments } from '@/_data-access/professional/get-professional-appointments'
@@ -12,11 +12,13 @@ interface ProfessionalPortalPageProps {
 
 const ProfessionalPortalPage = async ({ params }: ProfessionalPortalPageProps) => {
   const { orgSlug } = await params
-  const requestHeaders = await headers()
 
-  const userId = requestHeaders.get('x-user-id')
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (!userId) {
+  if (!user) {
     redirect(`/login?next=/org/${orgSlug}/professional-portal`)
   }
 
@@ -26,19 +28,17 @@ const ProfessionalPortalPage = async ({ params }: ProfessionalPortalPageProps) =
     redirect('/org')
   }
 
-  const orgId = org.id
-
   let professionalId: string
   try {
-    const ctx = await requireProfessionalContext(userId, orgId)
+    const ctx = await requireProfessionalContext(user.id, org.id)
     professionalId = ctx.professionalId
   } catch {
     redirect(`/org/${orgSlug}/home`)
   }
 
   const [professional, appointments] = await Promise.all([
-    getProfessionalById(professionalId, orgId),
-    getProfessionalAppointments(professionalId, orgId),
+    getProfessionalById(professionalId, org.id),
+    getProfessionalAppointments(professionalId, org.id),
   ])
 
   if (!professional) {
