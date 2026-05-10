@@ -49,7 +49,6 @@ const ProfessionalPortalPage = async ({ params }: ProfessionalPortalPageProps) =
     <ProfessionalPortalView
       professional={professional}
       appointments={appointments}
-      orgSlug={orgSlug}
     />
   )
 }

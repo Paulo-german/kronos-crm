@@ -30,7 +30,6 @@ const timeFormatter = new Intl.DateTimeFormat('pt-BR', {
 interface ProfessionalPortalViewProps {
   professional: ProfessionalDetailDto
   appointments: ProfessionalAppointmentDto[]
-  orgSlug: string
 }
 
 export function ProfessionalPortalView({
@@ -48,7 +47,6 @@ export function ProfessionalPortalView({
         .slice(-10)
         .reverse(),
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appointments])
 
   const initials = professional.name
