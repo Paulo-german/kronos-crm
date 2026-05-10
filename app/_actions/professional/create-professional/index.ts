@@ -8,6 +8,8 @@ import { revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 import { resend } from '@/_lib/resend'
 
+const INVITE_EXPIRATION_HOURS = 72
+
 export const createProfessional = orgActionClient
   .schema(createProfessionalSchema)
   .action(async ({ parsedInput: data, ctx }) => {
@@ -95,7 +97,7 @@ export const createProfessional = orgActionClient
     // 8. Enviar convite por e-mail para profissionais sem userId vinculado
     if (!data.userId && data.email) {
       const inviteToken = randomUUID()
-      const inviteExpiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000)
+      const inviteExpiresAt = new Date(Date.now() + INVITE_EXPIRATION_HOURS * 60 * 60 * 1000)
 
       await db.professional.update({
         where: { id: professional.id },
@@ -128,7 +130,7 @@ export const createProfessional = orgActionClient
                   </a>
                 </p>
                 <p style="color: #666; font-size: 14px; line-height: 1.5;">
-                  Este link expira em 72 horas. Se você não esperava este convite, pode ignorar este e-mail.
+                  Este link expira em ${INVITE_EXPIRATION_HOURS} horas. Se você não esperava este convite, pode ignorar este e-mail.
                 </p>
                 <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
                 <p style="color: #999; font-size: 12px;">Kronos Hub</p>
