@@ -839,13 +839,17 @@ export function CalendarView({
             key={`create-${createDefaultDates.startDate.toISOString()}`}
             defaultValues={{
               id: '',
+              type: 'COMMERCIAL',
               title: '',
               description: null,
               startDate: createDefaultDates.startDate,
               endDate: createDefaultDates.endDate,
               status: 'SCHEDULED',
+              contactId: null,
               dealId: '',
               dealTitle: '',
+              professionalId: null,
+              serviceId: null,
               assignedTo: '',
               assigneeName: null,
               createdAt: new Date(),

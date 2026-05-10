@@ -150,6 +150,10 @@ export function UpsertAppointmentDialogContent({
 
   const defaultValuesParsed: CreateAppointmentInput = defaultValues
     ? {
+        // Agendamentos legados sem type explícito são tratados como COMMERCIAL
+        type: (defaultValues.type as 'COMMERCIAL' | 'SERVICE') ?? 'COMMERCIAL',
+        // contactId null indica registro legado pré-backfill — tratado como não preenchido no form
+        contactId: defaultValues.contactId ?? undefined,
         title: defaultValues.title,
         description: defaultValues.description ?? undefined,
         startDate: new Date(defaultValues.startDate),
@@ -158,11 +162,13 @@ export function UpsertAppointmentDialogContent({
         assignedTo: defaultValues.assignedTo,
       }
     : {
+        type: 'COMMERCIAL',
+        contactId: undefined,
         title: '',
         description: '',
         startDate: new Date(),
         endDate: new Date(Date.now() + 60 * 60 * 1000), // +1h
-        dealId: fixedDealId || '',
+        dealId: fixedDealId || undefined,
         assignedTo: '',
       }
 
@@ -172,10 +178,15 @@ export function UpsertAppointmentDialogContent({
   })
 
   const onSubmit = (data: CreateAppointmentInput) => {
+    // superRefine garante contactId presente — guard para narrowing de tipo
+    if (!data.contactId) return
+
+    const contactId = data.contactId
+
     if (isEditing && defaultValues?.id) {
       onUpdate?.({ ...data, id: defaultValues.id })
     } else {
-      executeCreate(data)
+      executeCreate({ ...data, contactId })
     }
   }
 
