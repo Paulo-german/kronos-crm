@@ -14,6 +14,9 @@ export const updateAppointmentSchema = z
     endDate: z.coerce.date().optional(),
     status: z.nativeEnum(AppointmentStatus).optional(),
     assignedTo: z.string().uuid().optional(),
+    contactId: z.string().uuid().optional(),
+    professionalId: z.string().uuid().optional(),
+    serviceId: z.string().uuid().optional(),
   })
   .refine(
     (data) => {
@@ -24,7 +27,10 @@ export const updateAppointmentSchema = z
         data.startDate !== undefined ||
         data.endDate !== undefined ||
         data.status !== undefined ||
-        data.assignedTo !== undefined
+        data.assignedTo !== undefined ||
+        data.contactId !== undefined ||
+        data.professionalId !== undefined ||
+        data.serviceId !== undefined
       )
     },
     { message: 'Ao menos um campo deve ser fornecido para atualização' },

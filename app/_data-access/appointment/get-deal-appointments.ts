@@ -15,12 +15,16 @@ const fetchDealAppointmentsFromDb = async (
     orderBy: { startDate: 'desc' },
     select: {
       id: true,
+      type: true,
       title: true,
       description: true,
       startDate: true,
       endDate: true,
       status: true,
       assignedTo: true,
+      contactId: true,
+      professionalId: true,
+      serviceId: true,
       user: {
         select: { fullName: true },
       },
@@ -35,6 +39,7 @@ const fetchDealAppointmentsFromDb = async (
 
   return appointments.map((appointment) => ({
     id: appointment.id,
+    type: appointment.type,
     title: appointment.title,
     description: appointment.description,
     startDate: appointment.startDate,
@@ -42,8 +47,11 @@ const fetchDealAppointmentsFromDb = async (
     status: appointment.status,
     assignedTo: appointment.assignedTo,
     assigneeName: appointment.user?.fullName ?? null,
+    contactId: appointment.contactId,
     dealId: appointment.dealId,
     dealTitle: appointment.deal?.title ?? null,
+    professionalId: appointment.professionalId,
+    serviceId: appointment.serviceId,
     createdAt: appointment.createdAt,
     updatedAt: appointment.updatedAt,
   }))

@@ -3,10 +3,11 @@ import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 import type { RBACContext } from '@/_lib/rbac'
 import { isElevated } from '@/_lib/rbac'
-import type { AppointmentStatus } from '@prisma/client'
+import type { AppointmentStatus, AppointmentType } from '@prisma/client'
 
 export interface AppointmentDto {
   id: string
+  type: AppointmentType
   title: string
   description: string | null
   startDate: Date
@@ -14,9 +15,13 @@ export interface AppointmentDto {
   status: AppointmentStatus
   assignedTo: string
   assigneeName: string | null
+  // contactId é obrigatório para ambos os tipos (pode ser null em registros legados pré-backfill)
+  contactId: string | null
   // dealId é opcional desde a Fase A do scheduling v2 (SERVICE appointments não têm deal)
   dealId: string | null
   dealTitle: string | null
+  professionalId: string | null
+  serviceId: string | null
   createdAt: Date
   updatedAt: Date
 }
@@ -34,13 +39,17 @@ const fetchAppointmentsFromDb = async (
     orderBy: { startDate: 'desc' },
     select: {
       id: true,
+      type: true,
       title: true,
       description: true,
       startDate: true,
       endDate: true,
       status: true,
       assignedTo: true,
+      contactId: true,
       dealId: true,
+      professionalId: true,
+      serviceId: true,
       deal: {
         select: { title: true },
       },
@@ -54,6 +63,7 @@ const fetchAppointmentsFromDb = async (
 
   return appointments.map((appointment) => ({
     id: appointment.id,
+    type: appointment.type,
     title: appointment.title,
     description: appointment.description,
     startDate: appointment.startDate,
@@ -61,8 +71,11 @@ const fetchAppointmentsFromDb = async (
     status: appointment.status,
     assignedTo: appointment.assignedTo,
     assigneeName: appointment.user?.fullName ?? null,
+    contactId: appointment.contactId,
     dealId: appointment.dealId,
     dealTitle: appointment.deal?.title ?? null,
+    professionalId: appointment.professionalId,
+    serviceId: appointment.serviceId,
     createdAt: appointment.createdAt,
     updatedAt: appointment.updatedAt,
   }))

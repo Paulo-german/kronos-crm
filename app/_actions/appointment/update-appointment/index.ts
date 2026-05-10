@@ -22,7 +22,7 @@ export const updateAppointment = orgActionClient
     // 1. RBAC: permissão base
     requirePermission(canPerformAction(ctx, 'appointment', 'update'))
 
-    // 2. Buscar agendamento existente
+    // 2. Buscar agendamento existente — inclui type e professionalId para overlap condicional
     const existing = await findAppointmentWithRBAC(data.id, ctx)
 
     // 3. Bloqueio de status: não permite editar agendamentos finalizados
@@ -47,7 +47,7 @@ export const updateAppointment = orgActionClient
       requirePermission(canTransferOwnership(ctx))
     }
 
-    // 5. Overlapping check se datas ou assignedTo mudaram
+    // 5. Overlapping check diferenciado por type (COMMERCIAL vs SERVICE)
     const effectiveAssignedTo = data.assignedTo ?? existing.assignedTo
     const effectiveStartDate = data.startDate
     const effectiveEndDate = data.endDate
@@ -55,9 +55,9 @@ export const updateAppointment = orgActionClient
     if (
       data.startDate !== undefined ||
       data.endDate !== undefined ||
-      data.assignedTo !== undefined
+      data.assignedTo !== undefined ||
+      data.professionalId !== undefined
     ) {
-      // Precisamos das datas completas para o check — buscar do banco se não fornecidas
       let startForCheck = effectiveStartDate
       let endForCheck = effectiveEndDate
 
@@ -73,22 +73,47 @@ export const updateAppointment = orgActionClient
       }
 
       if (startForCheck && endForCheck) {
-        const overlapping = await db.appointment.findFirst({
-          where: {
-            id: { not: data.id },
-            assignedTo: effectiveAssignedTo,
-            organizationId: ctx.orgId,
-            status: { notIn: ['CANCELED', 'NO_SHOW'] },
-            startDate: { lt: endForCheck },
-            endDate: { gt: startForCheck },
-          },
-          select: { id: true },
-        })
+        if (existing.type === 'SERVICE') {
+          // Overlap por professionalId — usa o novo professionalId se estiver sendo alterado,
+          // senão usa o profissional existente do agendamento
+          const effectiveProfessionalId = data.professionalId ?? existing.professionalId
 
-        if (overlapping) {
-          throw new Error(
-            'O responsável já possui um agendamento neste período.',
-          )
+          if (effectiveProfessionalId) {
+            const overlapping = await db.appointment.findFirst({
+              where: {
+                id: { not: data.id },
+                professionalId: effectiveProfessionalId,
+                organizationId: ctx.orgId,
+                status: { notIn: ['CANCELED', 'NO_SHOW'] },
+                startDate: { lt: endForCheck },
+                endDate: { gt: startForCheck },
+              },
+              select: { id: true },
+            })
+
+            if (overlapping) {
+              throw new Error('Profissional já possui um agendamento neste período.')
+            }
+          }
+        } else {
+          // COMMERCIAL: overlap por assignedTo — NULL = NULL é FALSE em SQL,
+          // então usar professionalId (null) invalidaria o check para COMMERCIAL
+          const overlapping = await db.appointment.findFirst({
+            where: {
+              id: { not: data.id },
+              assignedTo: effectiveAssignedTo,
+              organizationId: ctx.orgId,
+              type: 'COMMERCIAL',
+              status: { notIn: ['CANCELED', 'NO_SHOW'] },
+              startDate: { lt: endForCheck },
+              endDate: { gt: startForCheck },
+            },
+            select: { id: true },
+          })
+
+          if (overlapping) {
+            throw new Error('O responsável já possui um agendamento neste período.')
+          }
         }
       }
     }
@@ -101,6 +126,9 @@ export const updateAppointment = orgActionClient
       ...(data.endDate !== undefined ? { endDate: data.endDate } : {}),
       ...(data.status !== undefined ? { status: data.status } : {}),
       ...(data.assignedTo !== undefined ? { assignedTo: data.assignedTo } : {}),
+      ...(data.contactId !== undefined ? { contactId: data.contactId } : {}),
+      ...(data.professionalId !== undefined ? { professionalId: data.professionalId } : {}),
+      ...(data.serviceId !== undefined ? { serviceId: data.serviceId } : {}),
     }
 
     await db.appointment.update({
@@ -123,12 +151,16 @@ export const updateAppointment = orgActionClient
       })
     }
 
-    // 8. Invalidar cache
+    // 8. Invalidar cache — inclui professional-appointments quando aplicável
     revalidateTag(`appointments:${ctx.orgId}`)
     revalidateTag(`deals:${ctx.orgId}`)
     if (existing.dealId) {
       revalidateTag(`deal-appointments:${existing.dealId}`)
       revalidateTag(`deal:${existing.dealId}`)
+    }
+    const effectiveProfessionalId = data.professionalId ?? existing.professionalId
+    if (effectiveProfessionalId) {
+      revalidateTag(`professional-appointments:${effectiveProfessionalId}`)
     }
 
     // Notificar novo responsável quando há transferência de ownership para outro usuário
