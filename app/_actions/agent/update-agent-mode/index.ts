@@ -19,6 +19,34 @@ export const updateAgentMode = orgActionClient
       throw new Error('Agente não encontrado.')
     }
 
+    // Crew validation: agentes no mesmo AgentGroup devem operar no mesmo modo
+    const agentMemberships = await db.agentGroupMember.findMany({
+      where: { agentId: data.agentId },
+      select: { groupId: true },
+    })
+
+    if (agentMemberships.length > 0) {
+      const groupIds = agentMemberships.map((membership) => membership.groupId)
+
+      const conflictingMember = await db.agentGroupMember.findFirst({
+        where: {
+          groupId: { in: groupIds },
+          agentId: { not: data.agentId },
+          agent: { agentMode: { not: data.agentMode } },
+        },
+        select: {
+          agent: { select: { name: true } },
+          group: { select: { name: true } },
+        },
+      })
+
+      if (conflictingMember) {
+        throw new Error(
+          `Todos os agentes da crew devem operar no mesmo modo. O agente "${conflictingMember.agent.name}" na crew "${conflictingMember.group.name}" usa um modo diferente.`,
+        )
+      }
+    }
+
     await db.agent.update({
       where: { id: data.agentId },
       data: { agentMode: data.agentMode },

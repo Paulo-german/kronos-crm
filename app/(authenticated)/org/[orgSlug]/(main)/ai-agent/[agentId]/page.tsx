@@ -9,6 +9,7 @@ import { getEvolutionInstanceInfo } from '@/_lib/evolution/instance-management'
 import { resolveEvolutionCredentials } from '@/_lib/evolution/resolve-credentials'
 import { getFollowUps } from '@/_data-access/follow-up/get-follow-ups'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
+import { getServices } from '@/_data-access/service/get-services'
 import { resolveCanonicalAgentVersion } from '@/_lib/agent/agent-version'
 import AgentDetailClient from './_components/agent-detail-client'
 import AgentDetailV2Client from './_components/v2/agent-detail-v2-client'
@@ -21,12 +22,13 @@ const AgentDetailPage = async ({ params }: AgentDetailPageProps) => {
   const { orgSlug, agentId } = await params
   const ctx = await getOrgContext(orgSlug)
 
-  const [agent, pipelines, inboxes, followUps, followUpQuota] = await Promise.all([
+  const [agent, pipelines, inboxes, followUps, followUpQuota, services] = await Promise.all([
     getAgentById(agentId, ctx.orgId),
     getOrgPipelines(ctx.orgId),
     getInboxes(ctx.orgId),
     getFollowUps(agentId, ctx.orgId),
     checkPlanQuota(ctx.orgId, 'follow_up'),
+    getServices(ctx.orgId),
   ])
 
   if (!agent) notFound()
@@ -72,6 +74,7 @@ const AgentDetailPage = async ({ params }: AgentDetailPageProps) => {
     inboxConnectionData,
     followUps,
     followUpQuota,
+    hasActiveServices: services.length > 0,
   }
 
   if (resolveCanonicalAgentVersion(agent.agentVersion) === 'single-v2') {

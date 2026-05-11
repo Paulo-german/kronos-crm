@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
-import { TrendingUp, CalendarCheck } from 'lucide-react'
+import { TrendingUp, CalendarCheck, AlertTriangle } from 'lucide-react'
 import {
   Card,
   CardContent,
@@ -13,6 +13,7 @@ import {
 } from '@/_components/ui/card'
 import { RadioGroup, RadioGroupItem } from '@/_components/ui/radio-group'
 import { Label } from '@/_components/ui/label'
+import { Alert, AlertDescription } from '@/_components/ui/alert'
 import { cn } from '@/_lib/utils'
 import { updateAgentMode } from '@/_actions/agent/update-agent-mode'
 
@@ -20,6 +21,7 @@ interface AgentModeSectionProps {
   agentId: string
   agentMode: 'PIPELINE' | 'BOOKING'
   canManage: boolean
+  hasActiveServices: boolean
 }
 
 const OPTIONS = [
@@ -41,6 +43,7 @@ export const AgentModeSection = ({
   agentId,
   agentMode,
   canManage,
+  hasActiveServices,
 }: AgentModeSectionProps) => {
   const [currentMode, setCurrentMode] = useState(agentMode)
 
@@ -109,6 +112,16 @@ export const AgentModeSection = ({
             )
           })}
         </RadioGroup>
+
+        {currentMode === 'BOOKING' && !hasActiveServices && (
+          <Alert variant="warning" className="mt-4">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              Você ainda não tem serviços cadastrados. Cadastre em{' '}
+              <strong>Settings → Serviços</strong> para que este agente funcione corretamente.
+            </AlertDescription>
+          </Alert>
+        )}
       </CardContent>
     </Card>
   )

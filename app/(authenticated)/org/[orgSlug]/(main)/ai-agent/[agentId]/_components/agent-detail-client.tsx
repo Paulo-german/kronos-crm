@@ -59,6 +59,7 @@ interface AgentDetailClientProps {
   followUpQuota?: { withinQuota: boolean; current: number; limit: number }
   followUpExhaustedAction?: 'NONE' | 'NOTIFY_HUMAN' | 'MOVE_DEAL_STAGE'
   followUpExhaustedConfig?: ExhaustedConfig | null
+  hasActiveServices: boolean
 }
 
 const AgentDetailClient = ({
@@ -73,6 +74,7 @@ const AgentDetailClient = ({
   followUpQuota,
   followUpExhaustedAction,
   followUpExhaustedConfig,
+  hasActiveServices,
 }: AgentDetailClientProps) => {
   const canManage = userRole === 'OWNER' || userRole === 'ADMIN' || userRole === 'SUPPORT'
   const [activeTab, setActiveTab] = useQueryState(
@@ -231,6 +233,7 @@ const AgentDetailClient = ({
                 pipelines={pipelines}
                 canManage={canManage}
                 onSaveSuccess={handleConfigSaved}
+                hasActiveServices={hasActiveServices}
               />
             </TabsContent>
 

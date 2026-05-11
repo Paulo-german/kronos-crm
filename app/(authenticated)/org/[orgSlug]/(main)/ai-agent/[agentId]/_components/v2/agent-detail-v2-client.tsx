@@ -54,6 +54,7 @@ interface AgentDetailV2ClientProps {
   followUpQuota?: { withinQuota: boolean; current: number; limit: number }
   followUpExhaustedAction?: 'NONE' | 'NOTIFY_HUMAN' | 'MOVE_DEAL_STAGE'
   followUpExhaustedConfig?: ExhaustedConfig | null
+  hasActiveServices: boolean
 }
 
 const AgentDetailV2Client = ({
@@ -68,6 +69,7 @@ const AgentDetailV2Client = ({
   followUpQuota,
   followUpExhaustedAction,
   followUpExhaustedConfig,
+  hasActiveServices,
 }: AgentDetailV2ClientProps) => {
   const canManage = userRole === 'OWNER' || userRole === 'ADMIN' || userRole === 'SUPPORT'
 
@@ -190,6 +192,7 @@ const AgentDetailV2Client = ({
                 pipelines={pipelines}
                 canManage={canManage}
                 onSaveSuccess={handleConfigSaved}
+                hasActiveServices={hasActiveServices}
               />
             </TabsContent>
 

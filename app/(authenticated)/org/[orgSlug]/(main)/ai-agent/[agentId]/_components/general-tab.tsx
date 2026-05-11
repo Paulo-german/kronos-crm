@@ -46,9 +46,10 @@ interface GeneralTabProps {
   pipelines: OrgPipelineDto[]
   canManage: boolean
   onSaveSuccess?: () => void
+  hasActiveServices: boolean
 }
 
-const GeneralTab = ({ agent, pipelines, canManage, onSaveSuccess }: GeneralTabProps) => {
+const GeneralTab = ({ agent, pipelines, canManage, onSaveSuccess, hasActiveServices }: GeneralTabProps) => {
   const form = useForm<GeneralTabFormValues>({
     resolver: zodResolver(generalTabSchema),
     defaultValues: {
@@ -90,6 +91,7 @@ const GeneralTab = ({ agent, pipelines, canManage, onSaveSuccess }: GeneralTabPr
         agentId={agent.id}
         agentMode={agent.agentMode}
         canManage={canManage}
+        hasActiveServices={hasActiveServices}
       />
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
