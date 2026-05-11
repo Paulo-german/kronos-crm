@@ -580,6 +580,7 @@ model Agent {
   followUpExhaustedAction          String                  @default("NONE") @map("follow_up_exhausted_action")
   followUpExhaustedConfig          Json?                   @map("follow_up_exhausted_config")
   globalTools                      Json?                   @map("global_tools")
+  agentMode                        AgentMode               @default(PIPELINE) @map("agent_mode")
   executions            AgentExecution[]
   groupMemberships      AgentGroupMember[]
   knowledgeChunks       AgentKnowledgeChunk[]
@@ -1425,6 +1426,11 @@ enum NotificationType {
   SYSTEM
   USER_ACTION
   PLATFORM_ANNOUNCEMENT
+}
+
+enum AgentMode {
+  PIPELINE
+  BOOKING
 }
 
 enum AgentExecutionStatus {
