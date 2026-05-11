@@ -1136,16 +1136,19 @@ model ServiceCategory {
 }
 
 model Service {
-  id             String   @id @default(uuid())
-  organizationId String   @map("organization_id")
-  categoryId     String   @map("category_id")
+  id             String                 @id @default(uuid())
+  organizationId String                 @map("organization_id")
+  categoryId     String                 @map("category_id")
   name           String
   // Duração em minutos — granularidade mínima de agendamento
   duration       Int
-  price          Decimal  @db.Decimal(15, 2)
-  isActive       Boolean  @default(true) @map("is_active")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  price          Decimal                @db.Decimal(15, 2)
+  isActive       Boolean                @default(true) @map("is_active")
+  // Embedding pgvector (1536 dims, text-embedding-3-small) — gerado a partir do name
+  // para busca semântica via tool search_service do agente IA.
+  embedding      Unsupported("vector")? @map("embedding")
+  createdAt      DateTime               @default(now()) @map("created_at")
+  updatedAt      DateTime               @updatedAt @map("updated_at")
 
   organization         Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   category             ServiceCategory       @relation(fields: [categoryId], references: [id])
