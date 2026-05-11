@@ -363,7 +363,7 @@ export async function buildSystemPrompt(
 ): Promise<SingleSystemPrompt> {
   const now = new Date()
 
-  const [agent, conversation, completedFileCount, lossReasons, recentToolEvents, activeProductMediaCount, activeProductCount, activeServiceCount] = await Promise.all([
+  const [agent, conversation, completedFileCount, lossReasons, recentToolEvents, activeProductMediaCount, activeProductCount] = await Promise.all([
     db.agent.findUniqueOrThrow({
       where: { id: agentId },
       select: {
@@ -372,6 +372,7 @@ export async function buildSystemPrompt(
         promptConfig: true,
         modelId: true,
         pipelineIds: true,
+        agentMode: true,
         steps: {
           orderBy: { order: 'asc' },
           select: {
@@ -471,12 +472,6 @@ export async function buildSystemPrompt(
       },
     }),
     db.product.count({
-      where: {
-        organizationId,
-        isActive: true,
-      },
-    }),
-    db.service.count({
       where: {
         organizationId,
         isActive: true,
@@ -838,7 +833,7 @@ export async function buildSystemPrompt(
     hasActiveProducts: activeProductCount > 0,
     hasActiveProductsWithMedia: activeProductMediaCount > 0,
     hasKnowledgeBase: completedFileCount > 0,
-    hasActiveServices: activeServiceCount > 0,
+    agentMode: agent.agentMode,
     currentStepOrder: conversation.currentStepOrder,
     totalSteps: agent.steps.length,
     hasSteps: agent.steps.length > 0,

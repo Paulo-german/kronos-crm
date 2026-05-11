@@ -523,7 +523,7 @@ export async function runSingleV1(
       hasActiveProducts: promptContext.hasActiveProducts,
       hasActiveProductsWithMedia: promptContext.hasActiveProductsWithMedia,
       hasKnowledgeBase: promptContext.hasKnowledgeBase,
-      hasActiveServices: promptContext.hasActiveServices,
+      agentMode: promptContext.agentMode,
     },
     groupToolConfig,
   )

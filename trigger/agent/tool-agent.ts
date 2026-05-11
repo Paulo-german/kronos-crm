@@ -116,7 +116,7 @@ export const toolAgent = schemaTask({
         hasKnowledgeBase: promptBaseContext.hasKnowledgeBase,
         hasActiveProducts: promptBaseContext.hasActiveProducts,
         hasActiveProductsWithMedia: promptBaseContext.hasActiveProductsWithMedia,
-        hasActiveServices: promptBaseContext.hasActiveServices,
+        agentMode: promptBaseContext.agentMode,
       }
 
       // Config do grupo para a tool transfer_to_agent — presente apenas quando
