@@ -84,6 +84,7 @@ export interface AgentDetailDto {
   steps: AgentStepDto[]
   knowledgeFiles: AgentKnowledgeFileDto[]
   globalTools: GlobalTool[]
+  agentMode: 'PIPELINE' | 'BOOKING'
   groupMemberships: AgentGroupMembershipDto[]
   createdAt: Date
   updatedAt: Date
@@ -154,6 +155,7 @@ const fetchAgentByIdFromDb = async (
     outOfHoursMessage: agent.outOfHoursMessage,
     agentVersion: resolveCanonicalAgentVersion(agent.agentVersion),
     globalTools: parsedGlobalTools.success ? parsedGlobalTools.data : [],
+    agentMode: agent.agentMode as 'PIPELINE' | 'BOOKING',
     followUpBusinessHoursEnabled: agent.followUpBusinessHoursEnabled,
     followUpBusinessHoursTimezone: agent.followUpBusinessHoursTimezone,
     followUpBusinessHoursConfig:

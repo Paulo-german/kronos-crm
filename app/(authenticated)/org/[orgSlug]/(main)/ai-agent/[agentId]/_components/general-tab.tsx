@@ -22,6 +22,7 @@ import { ModelBehaviorSection } from './general-tab/model-behavior-section'
 import { PipelinesSection } from './general-tab/pipelines-section'
 import { BusinessHoursSection } from './general-tab/business-hours-section'
 import { AdvancedSection } from './general-tab/advanced-section'
+import { AgentModeSection } from './general-tab/agent-mode-section'
 import type { AgentDetailDto } from '@/_data-access/agent/get-agent-by-id'
 import type { OrgPipelineDto } from '@/_data-access/pipeline/get-org-pipelines'
 
@@ -84,30 +85,37 @@ const GeneralTab = ({ agent, pipelines, canManage, onSaveSuccess }: GeneralTabPr
   }
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <IdentitySection form={form} canManage={canManage} />
-        <CompanySection form={form} canManage={canManage} />
-        <CommunicationSection form={form} canManage={canManage} />
-        <RulesSection form={form} canManage={canManage} />
-        <ModelBehaviorSection form={form} canManage={canManage} />
-        <PipelinesSection form={form} canManage={canManage} pipelines={pipelines} />
-        <BusinessHoursSection form={form} canManage={canManage} />
-        <AdvancedSection form={form} canManage={canManage} />
+    <div className="space-y-6">
+      <AgentModeSection
+        agentId={agent.id}
+        agentMode={agent.agentMode}
+        canManage={canManage}
+      />
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <IdentitySection form={form} canManage={canManage} />
+          <CompanySection form={form} canManage={canManage} />
+          <CommunicationSection form={form} canManage={canManage} />
+          <RulesSection form={form} canManage={canManage} />
+          <ModelBehaviorSection form={form} canManage={canManage} />
+          <PipelinesSection form={form} canManage={canManage} pipelines={pipelines} />
+          <BusinessHoursSection form={form} canManage={canManage} />
+          <AdvancedSection form={form} canManage={canManage} />
 
-        {canManage && (
-          <div className="sticky bottom-0 flex justify-end pb-2">
-            <Button
-              type="submit"
-              disabled={isPending || !form.formState.isDirty}
-            >
-              <Brain className={cn('mr-2 h-4 w-4', isPending && 'animate-pulse')} />
-              {isPending ? 'Treinando...' : 'Treinar Agente'}
-            </Button>
-          </div>
-        )}
-      </form>
-    </Form>
+          {canManage && (
+            <div className="sticky bottom-0 flex justify-end pb-2">
+              <Button
+                type="submit"
+                disabled={isPending || !form.formState.isDirty}
+              >
+                <Brain className={cn('mr-2 h-4 w-4', isPending && 'animate-pulse')} />
+                {isPending ? 'Treinando...' : 'Treinar Agente'}
+              </Button>
+            </div>
+          )}
+        </form>
+      </Form>
+    </div>
   )
 }
 
