@@ -3,6 +3,7 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { GripVertical } from 'lucide-react'
+import { cn } from '@/_lib/utils'
 
 interface SortableProfessionalRowProps {
   professional: { id: string; name: string }
@@ -30,9 +31,10 @@ export function SortableProfessionalRow({
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-3 rounded-md border bg-card p-3 ${
-        isDragging ? 'shadow-lg ring-2 ring-primary' : ''
-      }`}
+      className={cn(
+        'flex items-center gap-3 rounded-md border bg-card p-3',
+        isDragging && 'shadow-lg ring-2 ring-primary',
+      )}
     >
       <button
         type="button"

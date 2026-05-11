@@ -4,6 +4,7 @@ import { Fragment } from 'react'
 import { cn } from '@/_lib/utils'
 import { ArrowRight, Calendar, Clock } from 'lucide-react'
 import type { DistributionModel } from '@prisma/client'
+import { Badge } from '@/_components/ui/badge'
 
 interface DistributionModelPreviewProps {
   model: DistributionModel
@@ -28,18 +29,15 @@ const PROS = [
   { initial: 'D', name: 'Diego', color: 'bg-amber-500' },
 ]
 
-function Avatar({
-  initial,
-  color,
-  active = false,
-  size = 'md',
-}: AvatarProps) {
+function Avatar({ initial, color, active = false, size = 'md' }: AvatarProps) {
   return (
     <div
       className={cn(
         'flex items-center justify-center rounded-full font-semibold transition-all',
         size === 'md' ? 'h-9 w-9 text-sm' : 'h-7 w-7 text-xs',
-        active ? `${color} text-white ring-2 ring-offset-2 ring-offset-background ring-primary` : 'bg-muted text-muted-foreground',
+        active
+          ? `${color} text-white ring-2 ring-primary ring-offset-2 ring-offset-background`
+          : 'bg-muted text-muted-foreground',
       )}
     >
       {initial}
@@ -54,7 +52,8 @@ function Chip({ children, variant = 'default' }: ChipProps) {
         'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium',
         variant === 'primary' && 'bg-primary/15 text-primary',
         variant === 'muted' && 'bg-muted text-muted-foreground',
-        variant === 'default' && 'bg-muted/60 text-muted-foreground border border-border',
+        variant === 'default' &&
+          'border border-border bg-muted/60 text-muted-foreground',
       )}
     >
       {children}
@@ -81,9 +80,7 @@ function UtilizationPreview() {
 
           return (
             <div key={pro.name} className="flex flex-col items-center gap-2">
-              {isWinner && (
-                <Chip variant="primary">{load}%</Chip>
-              )}
+              {isWinner && <Chip variant="primary">{load}%</Chip>}
               {!isWinner && (
                 <span className="text-xs text-muted-foreground">{load}%</span>
               )}
@@ -98,8 +95,20 @@ function UtilizationPreview() {
                 />
               </div>
 
-              <Avatar initial={pro.initial} color={pro.color} active={isWinner} size="md" />
-              <span className={cn('text-xs', isWinner ? 'font-semibold text-primary' : 'text-muted-foreground')}>
+              <Avatar
+                initial={pro.initial}
+                color={pro.color}
+                active={isWinner}
+                size="md"
+              />
+              <span
+                className={cn(
+                  'text-xs',
+                  isWinner
+                    ? 'font-semibold text-primary'
+                    : 'text-muted-foreground',
+                )}
+              >
                 {pro.name}
               </span>
             </div>
@@ -128,14 +137,27 @@ function RoundRobinPreview() {
 
           return (
             <div key={pro.name} className="flex flex-col items-center gap-1.5">
-              <span className={cn(
-                'text-xs font-semibold',
-                isNext ? 'text-primary' : 'text-muted-foreground/50',
-              )}>
+              <span
+                className={cn(
+                  'text-xs font-semibold',
+                  isNext ? 'text-primary' : 'text-muted-foreground/50',
+                )}
+              >
                 {index + 1}
               </span>
-              <Avatar initial={pro.initial} color={pro.color} active={isNext} size="md" />
-              <span className={cn('text-xs', isNext && 'text-primary font-medium', isLast && 'text-muted-foreground/50')}>
+              <Avatar
+                initial={pro.initial}
+                color={pro.color}
+                active={isNext}
+                size="md"
+              />
+              <span
+                className={cn(
+                  'text-xs',
+                  isNext && 'font-medium text-primary',
+                  isLast && 'text-muted-foreground/50',
+                )}
+              >
                 {isNext ? 'próximo' : isLast ? 'último' : ''}
               </span>
             </div>
@@ -145,14 +167,37 @@ function RoundRobinPreview() {
 
       <div className="flex items-center gap-1.5 rounded-full bg-muted/60 px-3 py-1.5 text-xs text-muted-foreground">
         <span>Após</span>
-        <Avatar initial={PROS[lastIndex].initial} color={PROS[lastIndex].color} size="sm" />
+        <Avatar
+          initial={PROS[lastIndex].initial}
+          color={PROS[lastIndex].color}
+          size="sm"
+        />
         <span className="font-medium">{PROS[lastIndex].name}</span>
         <ArrowRight className="h-3 w-3" />
-        <Avatar initial={PROS[(lastIndex + 1) % 4].initial} color={PROS[(lastIndex + 1) % 4].color} active size="sm" />
-        <span className="font-medium text-primary">{PROS[(lastIndex + 1) % 4].name}</span>
+        <Avatar
+          initial={PROS[(lastIndex + 1) % 4].initial}
+          color={PROS[(lastIndex + 1) % 4].color}
+          active
+          size="sm"
+        />
+        <span className="font-medium text-primary">
+          {PROS[(lastIndex + 1) % 4].name}
+        </span>
       </div>
     </div>
   )
+}
+
+function findFirstFreeSlot(
+  schedule: boolean[][],
+  timeCount: number,
+): { row: number; col: number } | null {
+  for (let col = 0; col < timeCount; col++) {
+    for (let row = 0; row < schedule.length; row++) {
+      if (!schedule[row][col]) return { row, col }
+    }
+  }
+  return null
 }
 
 function FirstAvailablePreview() {
@@ -164,18 +209,7 @@ function FirstAvailablePreview() {
   ]
   const times = ['09:00', '10:00', '11:00', '14:00']
 
-  // First free slot across all pros
-  let firstFreeRow = -1
-  let firstFreeCol = -1
-  outer: for (let col = 0; col < times.length; col++) {
-    for (let row = 0; row < schedule.length; row++) {
-      if (!schedule[row][col]) {
-        firstFreeRow = row
-        firstFreeCol = col
-        break outer
-      }
-    }
-  }
+  const firstFree = findFirstFreeSlot(schedule, times.length)
 
   return (
     <div className="flex flex-col items-center gap-3">
@@ -185,11 +219,17 @@ function FirstAvailablePreview() {
       </div>
 
       <div className="overflow-hidden rounded-md border border-border">
-        <div className="grid" style={{ gridTemplateColumns: `5rem repeat(${times.length}, 1fr)` }}>
+        <div
+          className="grid"
+          style={{ gridTemplateColumns: `5rem repeat(${times.length}, 1fr)` }}
+        >
           {/* Header */}
           <div className="border-b border-r border-border bg-muted/40 px-2 py-1.5 text-xs font-medium text-muted-foreground" />
           {times.map((time) => (
-            <div key={time} className="border-b border-r border-border bg-muted/40 px-2 py-1.5 text-center text-xs text-muted-foreground last:border-r-0">
+            <div
+              key={time}
+              className="border-b border-r border-border bg-muted/40 px-2 py-1.5 text-center text-xs text-muted-foreground last:border-r-0"
+            >
               {time}
             </div>
           ))}
@@ -199,11 +239,16 @@ function FirstAvailablePreview() {
             <Fragment key={pro.name}>
               <div className="flex items-center gap-1.5 border-b border-r border-border px-2 py-2 last:border-b-0">
                 <Avatar initial={pro.initial} color={pro.color} size="sm" />
-                <span className="text-xs text-muted-foreground">{pro.name}</span>
+                <span className="text-xs text-muted-foreground">
+                  {pro.name}
+                </span>
               </div>
               {times.map((time, colIndex) => {
                 const isBusy = schedule[rowIndex][colIndex]
-                const isFirstFree = rowIndex === firstFreeRow && colIndex === firstFreeCol
+                const isFirstFree =
+                  firstFree !== null &&
+                  rowIndex === firstFree.row &&
+                  colIndex === firstFree.col
 
                 return (
                   <div
@@ -212,14 +257,19 @@ function FirstAvailablePreview() {
                       'border-b border-r border-border px-1 py-2 last:border-r-0',
                     )}
                   >
-                    <div className={cn(
-                      'mx-auto h-6 w-full rounded-sm transition-all',
-                      isBusy && 'bg-muted-foreground/20',
-                      isFirstFree && 'animate-pulse bg-primary/30 ring-1 ring-primary',
-                    )}>
+                    <div
+                      className={cn(
+                        'mx-auto h-6 w-full rounded-sm transition-all',
+                        isBusy && 'bg-muted-foreground/20',
+                        isFirstFree &&
+                          'animate-pulse bg-primary/30 ring-1 ring-primary',
+                      )}
+                    >
                       {isFirstFree && (
                         <div className="flex h-full items-center justify-center">
-                          <span className="text-[10px] font-bold text-primary">✓</span>
+                          <span className="text-[10px] font-bold text-primary">
+                            ✓
+                          </span>
                         </div>
                       )}
                     </div>
@@ -255,7 +305,9 @@ function LoyaltyPreview() {
 
           <div className="flex flex-1 flex-col items-center gap-0.5 px-3">
             <div className="h-px w-full border-t border-dashed border-primary/50" />
-            <span className="text-[10px] text-muted-foreground">3 visitas anteriores</span>
+            <span className="text-[10px] text-muted-foreground">
+              3 visitas anteriores
+            </span>
           </div>
 
           <div className="flex flex-col items-center gap-1">
@@ -266,7 +318,9 @@ function LoyaltyPreview() {
 
         {/* Fallback */}
         <div className="flex items-center gap-2 rounded-md bg-muted/40 px-3 py-2">
-          <span className="text-[11px] text-muted-foreground">Se Ana indisponível:</span>
+          <span className="text-[11px] text-muted-foreground">
+            Se Ana indisponível:
+          </span>
           <ArrowRight className="h-3 w-3 text-muted-foreground" />
           <Chip variant="muted">fallback configurado</Chip>
         </div>
@@ -296,20 +350,39 @@ function ManualPreview() {
             key={pro.name}
             className={cn(
               'flex items-center gap-3 rounded-md border px-3 py-2',
-              index === 0 ? 'border-primary/40 bg-primary/5' : 'border-border bg-muted/20',
+              index === 0
+                ? 'border-primary/40 bg-primary/5'
+                : 'border-border bg-muted/20',
             )}
           >
-            <span className={cn(
-              'text-xs font-bold tabular-nums',
-              index === 0 ? 'text-primary' : 'text-muted-foreground',
-            )}>
+            <span
+              className={cn(
+                'text-xs font-bold tabular-nums',
+                index === 0 ? 'text-primary' : 'text-muted-foreground',
+              )}
+            >
               {index + 1}
             </span>
-            <Avatar initial={pro.initial} color={pro.color} active={index === 0} size="sm" />
-            <span className={cn('flex-1 text-xs font-medium', index === 0 ? 'text-foreground' : 'text-muted-foreground')}>
+            <Avatar
+              initial={pro.initial}
+              color={pro.color}
+              active={index === 0}
+              size="sm"
+            />
+            <span
+              className={cn(
+                'flex-1 text-xs font-medium',
+                index === 0 ? 'text-foreground' : 'text-muted-foreground',
+              )}
+            >
               {pro.name}
             </span>
-            <span className={cn('text-[10px]', index === 0 ? 'text-primary' : 'text-muted-foreground/50')}>
+            <span
+              className={cn(
+                'text-[10px]',
+                index === 0 ? 'text-primary' : 'text-muted-foreground/50',
+              )}
+            >
               {pro.priority}
             </span>
             <div className="flex flex-col gap-0.5 opacity-40">
@@ -333,21 +406,24 @@ const PREVIEW_MAP: Record<DistributionModel, React.ComponentType> = {
 }
 
 const PREVIEW_TITLES: Record<DistributionModel, string> = {
-  UTILIZATION: 'Como funciona: Maior disponibilidade',
-  ROUND_ROBIN: 'Como funciona: Rotação sequencial',
-  FIRST_AVAILABLE: 'Como funciona: Primeiro disponível',
-  LOYALTY: 'Como funciona: Fidelização',
-  MANUAL: 'Como funciona: Ordem manual',
+  UTILIZATION: 'Maior disponibilidade',
+  ROUND_ROBIN: 'Rotação sequencial',
+  FIRST_AVAILABLE: 'Primeiro disponível',
+  LOYALTY: 'Fidelização',
+  MANUAL: 'Ordem manual',
 }
 
-export function DistributionModelPreview({ model }: DistributionModelPreviewProps) {
+export function DistributionModelPreview({
+  model,
+}: DistributionModelPreviewProps) {
   const Preview = PREVIEW_MAP[model]
 
   return (
-    <div className="rounded-lg border border-border/60 bg-muted/10 p-4">
-      <p className="mb-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-        {PREVIEW_TITLES[model]}
+    <div className="rounded-lg border border-border bg-input p-4">
+      <p className="mb-4 text-xs font-medium tracking-wider text-foreground">
+        COMO FUNCIONA: <Badge>{PREVIEW_TITLES[model]}</Badge>
       </p>
+
       <Preview />
     </div>
   )

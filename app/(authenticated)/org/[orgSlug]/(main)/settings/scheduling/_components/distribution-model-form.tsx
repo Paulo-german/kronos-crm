@@ -27,6 +27,8 @@ import {
   FormLabel,
   FormMessage,
 } from '@/_components/ui/form'
+import { RadioGroup, RadioGroupItem } from '@/_components/ui/radio-group'
+import { Label } from '@/_components/ui/label'
 import { Button } from '@/_components/ui/button'
 import { updateDistributionModel } from '@/_actions/scheduling/update-distribution-model'
 import {
@@ -45,35 +47,40 @@ interface ModelOption {
   icon: LucideIcon
 }
 
-const PRIMARY_MODEL_OPTIONS: ModelOption[] = [
+export const PRIMARY_MODEL_OPTIONS: ModelOption[] = [
   {
     value: 'UTILIZATION',
     label: 'Maior disponibilidade',
-    description: 'Prioriza quem tem menos agendamentos na semana, distribuindo a carga igualmente.',
+    description:
+      'Prioriza quem tem menos agendamentos na semana, distribuindo a carga igualmente.',
     icon: BarChart2,
   },
   {
     value: 'ROUND_ROBIN',
     label: 'Rotação sequencial',
-    description: 'Cada agendamento vai para o próximo da fila, independente da carga atual.',
+    description:
+      'Cada agendamento vai para o próximo da fila, independente da carga atual.',
     icon: RotateCcw,
   },
   {
     value: 'FIRST_AVAILABLE',
     label: 'Primeiro disponível',
-    description: 'Seleciona o slot mais próximo no tempo, sem preferência por profissional.',
+    description:
+      'Seleciona o slot mais próximo no tempo, sem preferência por profissional.',
     icon: Zap,
   },
   {
     value: 'LOYALTY',
     label: 'Fidelização',
-    description: 'Prioriza o profissional que já atendeu o contato antes. Ideal para salões e clínicas.',
+    description:
+      'Prioriza o profissional que já atendeu o contato antes. Ideal para salões e clínicas.',
     icon: Heart,
   },
   {
     value: 'MANUAL',
     label: 'Ordem manual',
-    description: 'Você define a prioridade dos profissionais arrastando a lista abaixo.',
+    description:
+      'Você define a prioridade dos profissionais arrastando a lista abaixo.',
     icon: ListOrdered,
   },
 ]
@@ -105,13 +112,19 @@ interface DistributionModelFormProps {
 }
 
 type SecondaryModel = 'UTILIZATION' | 'ROUND_ROBIN' | 'FIRST_AVAILABLE'
-const VALID_SECONDARY: SecondaryModel[] = ['UTILIZATION', 'ROUND_ROBIN', 'FIRST_AVAILABLE']
+const VALID_SECONDARY: SecondaryModel[] = [
+  'UTILIZATION',
+  'ROUND_ROBIN',
+  'FIRST_AVAILABLE',
+]
 
 export function DistributionModelForm({
   settings,
   allProfessionals,
 }: DistributionModelFormProps) {
-  const secondaryDefault = VALID_SECONDARY.includes(settings.secondaryDistributionModel as SecondaryModel)
+  const secondaryDefault = VALID_SECONDARY.includes(
+    settings.secondaryDistributionModel as SecondaryModel,
+  )
     ? (settings.secondaryDistributionModel as SecondaryModel)
     : undefined
 
@@ -145,9 +158,12 @@ export function DistributionModelForm({
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Modelo de distribuição</CardTitle>
+              <CardTitle className="text-base">
+                Modelo de distribuição
+              </CardTitle>
               <CardDescription>
-                Define como os agendamentos são atribuídos automaticamente quando o cliente não especifica um profissional.
+                Define como os agendamentos são atribuídos automaticamente
+                quando o cliente não especifica um profissional.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -157,47 +173,64 @@ export function DistributionModelForm({
                 render={({ field }) => (
                   <FormItem className="space-y-3">
                     <FormLabel className="sr-only">Modelo principal</FormLabel>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <RadioGroup
+                      value={field.value}
+                      onValueChange={(value) => {
+                        field.onChange(value)
+                        if (value !== 'LOYALTY') {
+                          form.setValue('secondaryDistributionModel', undefined)
+                        }
+                      }}
+                      className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
+                    >
                       {PRIMARY_MODEL_OPTIONS.map((option) => {
                         const Icon = option.icon
                         const isSelected = field.value === option.value
 
                         return (
-                          <button
+                          <Label
                             key={option.value}
-                            type="button"
-                            onClick={() => {
-                              field.onChange(option.value)
-                              if (option.value !== 'LOYALTY') {
-                                form.setValue('secondaryDistributionModel', undefined)
-                              }
-                            }}
+                            htmlFor={`distribution-model-${option.value}`}
                             className={cn(
-                              'flex flex-col gap-3 rounded-lg border p-4 text-left transition-all',
+                              'flex cursor-pointer flex-col gap-3 rounded-lg border p-4 transition-all',
                               'hover:border-primary/40 hover:bg-primary/5',
                               isSelected
                                 ? 'border-primary bg-primary/5 ring-1 ring-primary'
                                 : 'border-border bg-card',
                             )}
                           >
-                            <div className={cn(
-                              'flex h-9 w-9 items-center justify-center rounded-md',
-                              isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground',
-                            )}>
+                            <RadioGroupItem
+                              id={`distribution-model-${option.value}`}
+                              value={option.value}
+                              className="sr-only"
+                            />
+                            <div
+                              className={cn(
+                                'flex h-9 w-9 items-center justify-center rounded-md',
+                                isSelected
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'bg-muted text-muted-foreground',
+                              )}
+                            >
                               <Icon className="h-4 w-4" />
                             </div>
                             <div className="space-y-1">
-                              <p className={cn('text-sm font-semibold', isSelected && 'text-primary')}>
+                              <p
+                                className={cn(
+                                  'text-sm font-semibold',
+                                  isSelected && 'text-primary',
+                                )}
+                              >
                                 {option.label}
                               </p>
                               <p className="text-xs leading-relaxed text-muted-foreground">
                                 {option.description}
                               </p>
                             </div>
-                          </button>
+                          </Label>
                         )
                       })}
-                    </div>
+                    </RadioGroup>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -214,43 +247,63 @@ export function DistributionModelForm({
                       <div className="space-y-0.5">
                         <FormLabel>Fallback de fidelização</FormLabel>
                         <p className="text-xs text-muted-foreground">
-                          Usado quando o profissional fiel não está disponível no horário.
+                          Usado quando o profissional fiel não está disponível
+                          no horário.
                         </p>
                       </div>
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                      <RadioGroup
+                        value={field.value ?? ''}
+                        onValueChange={(value) => field.onChange(value)}
+                        className="grid grid-cols-1 gap-3 sm:grid-cols-3"
+                      >
                         {SECONDARY_MODEL_OPTIONS.map((option) => {
                           const Icon = option.icon
                           const isSelected = field.value === option.value
 
                           return (
-                            <button
+                            <Label
                               key={option.value}
-                              type="button"
-                              onClick={() => field.onChange(option.value)}
+                              htmlFor={`secondary-model-${option.value}`}
                               className={cn(
-                                'flex items-center gap-3 rounded-lg border p-3 text-left transition-all',
+                                'flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-all',
                                 'hover:border-primary/40 hover:bg-primary/5',
                                 isSelected
                                   ? 'border-primary bg-primary/5 ring-1 ring-primary'
                                   : 'border-border bg-card',
                               )}
                             >
-                              <div className={cn(
-                                'flex h-7 w-7 shrink-0 items-center justify-center rounded-md',
-                                isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground',
-                              )}>
+                              <RadioGroupItem
+                                id={`secondary-model-${option.value}`}
+                                value={option.value}
+                                className="sr-only"
+                              />
+                              <div
+                                className={cn(
+                                  'flex h-7 w-7 shrink-0 items-center justify-center rounded-md',
+                                  isSelected
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'bg-muted text-muted-foreground',
+                                )}
+                              >
                                 <Icon className="h-3.5 w-3.5" />
                               </div>
                               <div>
-                                <p className={cn('text-xs font-semibold', isSelected && 'text-primary')}>
+                                <p
+                                  className={cn(
+                                    'text-xs font-semibold',
+                                    isSelected && 'text-primary',
+                                  )}
+                                >
                                   {option.label}
                                 </p>
-                                <p className="text-xs text-muted-foreground">{option.description}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {option.description}
+                                </p>
                               </div>
-                            </button>
+                            </Label>
                           )
                         })}
-                      </div>
+                      </RadioGroup>
                       <FormMessage />
                     </FormItem>
                   )}
