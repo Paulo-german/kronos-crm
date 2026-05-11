@@ -14,6 +14,10 @@ import { createSearchProductsTool } from './search-products'
 import { createSendProductMediaTool } from './send-product-media'
 import { createSendMediaTool } from './send-media'
 import { createTransferToAgentTool } from './transfer-to-agent'
+import { createGetServicesTool } from './get-services'
+import { createSearchServiceTool } from './search-service'
+import { createSearchProfessionalTool } from './search-professional'
+import { createCreateAppointmentTool } from './create-appointment'
 import { getRuntimeToolName } from './lib/runtime-tool-name'
 import type { GroupToolConfig } from './transfer-to-agent'
 
@@ -25,6 +29,10 @@ export interface GlobalToolFlags {
   hasActiveProducts: boolean
   hasActiveProductsWithMedia: boolean
   hasKnowledgeBase: boolean // true quando completedFileCount > 0
+  // Ativa o tooling de scheduling v2 (SERVICE): get_services, search_service,
+  // search_professional e create_appointment. Resolvido a partir da contagem
+  // de Service ativos da org no build do tool set.
+  hasActiveServices: boolean
 }
 
 // Registry de tools simples que suportam triggerHint (recebem ctx + opts opcionais).
@@ -76,6 +84,10 @@ export function buildToolSet(
     | ReturnType<typeof createSendProductMediaTool>
     | ReturnType<typeof createSendMediaTool>
     | ReturnType<typeof createTransferToAgentTool>
+    | ReturnType<typeof createGetServicesTool>
+    | ReturnType<typeof createSearchServiceTool>
+    | ReturnType<typeof createSearchProfessionalTool>
+    | ReturnType<typeof createCreateAppointmentTool>
   > = {}
 
   const stepActionsByType = groupActionsByType(stepActions)
@@ -173,6 +185,16 @@ export function buildToolSet(
   // Tools globais — ativadas por flags, não por step actions
   if (globalFlags?.hasActiveProducts) {
     tools['search_products'] = createSearchProductsTool(ctx)
+  }
+
+  // Scheduling v2 (SERVICE) — ativa automaticamente quando a org possui
+  // serviços ativos. Estas tools coexistem com create_event (COMMERCIAL) e
+  // habilitam o fluxo completo de agendamento de serviços via agente.
+  if (globalFlags?.hasActiveServices) {
+    tools['get_services'] = createGetServicesTool(ctx)
+    tools['search_service'] = createSearchServiceTool(ctx)
+    tools['search_professional'] = createSearchProfessionalTool(ctx)
+    tools['create_appointment'] = createCreateAppointmentTool(ctx)
   }
 
   // Tools de mídia legadas — omitidas no single-v2 que usa detecção inline de URL

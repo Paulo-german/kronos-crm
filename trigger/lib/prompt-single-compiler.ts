@@ -31,6 +31,7 @@ export interface SingleSystemPrompt {
   hasActiveProducts: boolean
   hasActiveProductsWithMedia: boolean
   hasKnowledgeBase: boolean
+  hasActiveServices: boolean
   pipelineIds: string[]
   summary: string | null
   estimatedTokens: number
@@ -561,6 +562,7 @@ export function compileSingleSystemPrompt(
     hasActiveProducts: base.hasActiveProducts,
     hasActiveProductsWithMedia: base.hasActiveProductsWithMedia,
     hasKnowledgeBase: base.hasKnowledgeBase,
+    hasActiveServices: base.hasActiveServices,
     pipelineIds: base.pipelineIds,
     summary: extra.summary,
     estimatedTokens,

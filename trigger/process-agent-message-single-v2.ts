@@ -951,6 +951,7 @@ export async function runSingleV2(
       hasActiveProducts: promptContext.hasActiveProducts,
       hasActiveProductsWithMedia: promptContext.hasActiveProductsWithMedia,
       hasKnowledgeBase: promptContext.hasKnowledgeBase,
+      hasActiveServices: promptContext.hasActiveServices,
     },
     groupToolConfig,
     /* omitLegacyMediaTools */ useOverhaul,

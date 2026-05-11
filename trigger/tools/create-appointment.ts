@@ -11,139 +11,342 @@ interface CreateAppointmentResult {
   message: string
 }
 
+const inputSchema = z
+  .object({
+    type: z
+      .enum(['COMMERCIAL', 'SERVICE'])
+      .describe(
+        'Tipo do agendamento: COMMERCIAL para reuniões/demos vinculadas a um negócio, SERVICE para serviços agendados (profissional + serviço).',
+      ),
+    title: z.string().describe('Título do compromisso (ex: "Reunião de apresentação")'),
+    description: z.string().optional().describe('Descrição ou pauta do compromisso'),
+    startDate: z
+      .string()
+      .describe(
+        'Data/hora início ISO 8601 com fuso horário de Brasília (ex: 2026-03-10T14:00:00-03:00).',
+      ),
+    endDate: z
+      .string()
+      .optional()
+      .describe(
+        'Data/hora término ISO 8601. Obrigatório para COMMERCIAL. Para SERVICE é calculado automaticamente a partir do duration do serviço.',
+      ),
+    serviceId: z
+      .string()
+      .optional()
+      .describe('ID do serviço — obrigatório para SERVICE.'),
+    professionalId: z
+      .string()
+      .optional()
+      .describe('ID do profissional — obrigatório para SERVICE.'),
+  })
+  .superRefine((data, issueCtx) => {
+    if (data.type === 'SERVICE') {
+      if (!data.serviceId) {
+        issueCtx.addIssue({
+          code: 'custom',
+          message: 'serviceId obrigatório para SERVICE',
+          path: ['serviceId'],
+        })
+      }
+      if (!data.professionalId) {
+        issueCtx.addIssue({
+          code: 'custom',
+          message: 'professionalId obrigatório para SERVICE',
+          path: ['professionalId'],
+        })
+      }
+    }
+    if (data.type === 'COMMERCIAL' && !data.endDate) {
+      issueCtx.addIssue({
+        code: 'custom',
+        message: 'endDate obrigatório para COMMERCIAL',
+        path: ['endDate'],
+      })
+    }
+  })
+
 export function createCreateAppointmentTool(ctx: ToolContext) {
   return tool({
     description:
-      'Agenda um compromisso (reunião, demo, visita) vinculado ao negócio. Use quando combinar um encontro ou chamada com o cliente.',
-    inputSchema: z.object({
-      title: z
-        .string()
-        .describe('Título do compromisso (ex: "Reunião de apresentação")'),
-      description: z
-        .string()
-        .optional()
-        .describe('Descrição ou pauta do compromisso'),
-      startDate: z
-        .string()
-        .describe(
-          'Data/hora início ISO 8601 com fuso horário de Brasília (ex: 2026-03-10T14:00:00-03:00)',
-        ),
-      endDate: z
-        .string()
-        .describe(
-          'Data/hora término ISO 8601 com fuso horário de Brasília (ex: 2026-03-10T15:00:00-03:00)',
-        ),
-    }),
-    execute: async ({
-      title,
-      description,
-      startDate,
-      endDate,
-    }): Promise<CreateAppointmentResult> => {
+      'Cria um agendamento. Dois tipos suportados: COMMERCIAL (reunião/demo vinculada a um negócio) e SERVICE (serviço agendado com profissional). ' +
+      'Use SERVICE quando o cliente quer marcar um serviço da empresa. Use COMMERCIAL para conversas comerciais vinculadas a um negócio.',
+    inputSchema,
+    execute: async (input): Promise<CreateAppointmentResult> => {
       try {
-      if (!ctx.dealId) {
-        return {
-          success: false,
-          message: 'Nenhum negócio vinculado a esta conversa.',
+        if (input.type === 'SERVICE') {
+          return await runServiceCreation(ctx, input)
         }
-      }
-
-      const deal = await db.deal.findFirst({
-        where: {
-          id: ctx.dealId,
-          organizationId: ctx.organizationId,
-        },
-        select: { assignedTo: true, stage: { select: { pipelineId: true } } },
-      })
-
-      if (!deal) {
-        return { success: false, message: 'Negócio não encontrado.' }
-      }
-
-      if (!ctx.pipelineIds.includes(deal.stage.pipelineId)) {
-        return { success: false, message: 'Sem permissão para este pipeline.' }
-      }
-
-      const parsedStart = new Date(startDate)
-      const parsedEnd = new Date(endDate)
-
-      if (isNaN(parsedStart.getTime()) || isNaN(parsedEnd.getTime())) {
-        return { success: false, message: 'Data(s) inválida(s).' }
-      }
-
-      if (parsedEnd <= parsedStart) {
-        return {
-          success: false,
-          message: 'A data de término deve ser posterior à data de início.',
-        }
-      }
-
-        await withRetry(
-          () =>
-            db.appointment.create({
-              data: {
-                organizationId: ctx.organizationId,
-                title,
-                description: description ?? null,
-                startDate: parsedStart,
-                endDate: parsedEnd,
-                status: 'SCHEDULED',
-                assignedTo: deal.assignedTo,
-                dealId: ctx.dealId!,
-              },
-            }),
-          'db.appointment.create',
-        )
-
-        await safeBestEffort(
-          () =>
-            db.activity.create({
-              data: {
-                type: 'appointment_created',
-                content: `Compromisso agendado: ${title}`,
-                dealId: ctx.dealId!,
-                performedBy: null,
-                metadata: { agentId: ctx.agentId, agentName: ctx.agentName },
-              },
-            }),
-          'activity.create',
-        )
-
-        const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
-          timeZone: 'America/Sao_Paulo',
-          dateStyle: 'short',
-          timeStyle: 'short',
-        })
-
-        await safeBestEffort(
-          () =>
-            revalidateTags([
-              `appointments:${ctx.organizationId}`,
-              `deal-appointments:${ctx.dealId}`,
-              `deal:${ctx.dealId}`,
-            ]),
-          'revalidateTags',
-        )
-
-        logger.info('Tool create_appointment executed', {
-          title,
-          startDate,
-          endDate,
-          dealId: ctx.dealId,
-          conversationId: ctx.conversationId,
-        })
-
-        return {
-          success: true,
-          message: `Compromisso "${title}" agendado para ${dateFormatter.format(parsedStart)}.`,
-        }
+        return await runCommercialCreation(ctx, input)
       } catch (error) {
         logger.error('Tool create_appointment failed', { error })
         return {
           success: false,
-          message: 'Erro interno ao criar compromisso. Tente novamente.',
+          message: 'Erro interno ao criar agendamento. Tente novamente.',
         }
       }
     },
   })
 }
+
+async function runCommercialCreation(
+  ctx: ToolContext,
+  input: z.infer<typeof inputSchema>,
+): Promise<CreateAppointmentResult> {
+  if (!ctx.dealId) {
+    return {
+      success: false,
+      message: 'Nenhum negócio vinculado a esta conversa.',
+    }
+  }
+
+  // endDate é garantido para COMMERCIAL pelo superRefine, mas o tipo Zod ainda o trata como opcional
+  if (!input.endDate) {
+    return { success: false, message: 'endDate obrigatório para COMMERCIAL.' }
+  }
+
+  const deal = await db.deal.findFirst({
+    where: { id: ctx.dealId, organizationId: ctx.organizationId },
+    select: { assignedTo: true, stage: { select: { pipelineId: true } } },
+  })
+
+  if (!deal) {
+    return { success: false, message: 'Negócio não encontrado.' }
+  }
+
+  if (!ctx.pipelineIds.includes(deal.stage.pipelineId)) {
+    return { success: false, message: 'Sem permissão para este pipeline.' }
+  }
+
+  const parsedStart = new Date(input.startDate)
+  const parsedEnd = new Date(input.endDate)
+
+  if (isNaN(parsedStart.getTime()) || isNaN(parsedEnd.getTime())) {
+    return { success: false, message: 'Data(s) inválida(s).' }
+  }
+
+  if (parsedEnd <= parsedStart) {
+    return {
+      success: false,
+      message: 'A data de término deve ser posterior à data de início.',
+    }
+  }
+
+  const dealId = ctx.dealId
+
+  await withRetry(
+    () =>
+      db.appointment.create({
+        data: {
+          organizationId: ctx.organizationId,
+          type: 'COMMERCIAL',
+          title: input.title,
+          description: input.description ?? null,
+          startDate: parsedStart,
+          endDate: parsedEnd,
+          status: 'SCHEDULED',
+          assignedTo: deal.assignedTo,
+          dealId,
+        },
+      }),
+    'db.appointment.create',
+  )
+
+  await safeBestEffort(
+    () =>
+      db.activity.create({
+        data: {
+          type: 'appointment_created',
+          content: `Compromisso agendado: ${input.title}`,
+          dealId,
+          performedBy: null,
+          metadata: { agentId: ctx.agentId, agentName: ctx.agentName },
+        },
+      }),
+    'activity.create',
+  )
+
+  await safeBestEffort(
+    () =>
+      revalidateTags([
+        `appointments:${ctx.organizationId}`,
+        `deal-appointments:${dealId}`,
+        `deal:${dealId}`,
+      ]),
+    'revalidateTags',
+  )
+
+  const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    dateStyle: 'short',
+    timeStyle: 'short',
+  })
+
+  logger.info('Tool create_appointment executed (COMMERCIAL)', {
+    title: input.title,
+    startDate: input.startDate,
+    endDate: input.endDate,
+    dealId,
+    conversationId: ctx.conversationId,
+  })
+
+  return {
+    success: true,
+    message: `Compromisso "${input.title}" agendado para ${dateFormatter.format(parsedStart)}.`,
+  }
+}
+
+async function runServiceCreation(
+  ctx: ToolContext,
+  input: z.infer<typeof inputSchema>,
+): Promise<CreateAppointmentResult> {
+  if (!input.serviceId || !input.professionalId) {
+    return {
+      success: false,
+      message: 'serviceId e professionalId são obrigatórios para SERVICE.',
+    }
+  }
+
+  const parsedStart = new Date(input.startDate)
+  if (isNaN(parsedStart.getTime())) {
+    return { success: false, message: 'Data de início inválida.' }
+  }
+
+  const professional = await db.professional.findFirst({
+    where: {
+      id: input.professionalId,
+      organizationId: ctx.organizationId,
+      isActive: true,
+    },
+    select: { id: true, userId: true, name: true },
+  })
+
+  if (!professional) {
+    return {
+      success: false,
+      message: 'Profissional não encontrado ou inativo.',
+    }
+  }
+
+  const service = await db.service.findFirst({
+    where: {
+      id: input.serviceId,
+      organizationId: ctx.organizationId,
+      isActive: true,
+    },
+    select: { id: true, duration: true, price: true, name: true },
+  })
+
+  if (!service) {
+    return { success: false, message: 'Serviço não encontrado ou inativo.' }
+  }
+
+  // Garante que o profissional atende este serviço
+  const offersService = await db.professionalService.findFirst({
+    where: { professionalId: professional.id, serviceId: service.id },
+    select: { id: true },
+  })
+
+  if (!offersService) {
+    return {
+      success: false,
+      message: 'Este profissional não atende o serviço informado.',
+    }
+  }
+
+  const parsedEnd = new Date(parsedStart.getTime() + service.duration * 60_000)
+
+  const overlapping = await db.appointment.findFirst({
+    where: {
+      professionalId: professional.id,
+      organizationId: ctx.organizationId,
+      status: { notIn: ['CANCELED', 'NO_SHOW'] },
+      startDate: { lt: parsedEnd },
+      endDate: { gt: parsedStart },
+    },
+    select: { id: true, title: true, startDate: true, endDate: true },
+  })
+
+  if (overlapping) {
+    const fmt = new Intl.DateTimeFormat('pt-BR', {
+      timeZone: 'America/Sao_Paulo',
+      dateStyle: 'short',
+      timeStyle: 'short',
+    })
+    return {
+      success: false,
+      message: `Já existe um agendamento neste horário para ${professional.name}: "${overlapping.title}" (${fmt.format(overlapping.startDate)} – ${fmt.format(overlapping.endDate)}). Escolha outro horário.`,
+    }
+  }
+
+  // assignedTo: prioriza o User do profissional; senão, owner da organização
+  let resolvedUserId: string | null = professional.userId
+  if (!resolvedUserId) {
+    const owner = await db.member.findFirst({
+      where: {
+        organizationId: ctx.organizationId,
+        role: 'OWNER',
+        userId: { not: null },
+      },
+      select: { userId: true },
+    })
+    if (!owner?.userId) {
+      return {
+        success: false,
+        message: 'Não foi possível determinar o responsável pelo agendamento.',
+      }
+    }
+    resolvedUserId = owner.userId
+  }
+  const assignedTo = resolvedUserId
+
+  await withRetry(
+    () =>
+      db.appointment.create({
+        data: {
+          organizationId: ctx.organizationId,
+          type: 'SERVICE',
+          title: input.title,
+          description: input.description ?? null,
+          startDate: parsedStart,
+          endDate: parsedEnd,
+          status: 'SCHEDULED',
+          assignedTo,
+          professionalId: professional.id,
+          serviceId: service.id,
+          contactId: ctx.contactId,
+          priceSnapshot: service.price,
+        },
+      }),
+    'db.appointment.create',
+  )
+
+  await safeBestEffort(
+    () => revalidateTags([`appointments:${ctx.organizationId}`]),
+    'revalidateTags',
+  )
+
+  const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    dateStyle: 'short',
+    timeStyle: 'short',
+  })
+
+  logger.info('Tool create_appointment executed (SERVICE)', {
+    title: input.title,
+    startDate: input.startDate,
+    serviceId: service.id,
+    professionalId: professional.id,
+    contactId: ctx.contactId,
+    organizationId: ctx.organizationId,
+    conversationId: ctx.conversationId,
+  })
+
+  return {
+    success: true,
+    message: `Agendamento "${service.name}" criado com ${professional.name} para ${dateFormatter.format(parsedStart)}.`,
+  }
+}
+
+// Tipo exportado para narrowing externo se necessário (mantém parity com convenção do projeto)
+export type CreateAppointmentInput = z.infer<typeof inputSchema>

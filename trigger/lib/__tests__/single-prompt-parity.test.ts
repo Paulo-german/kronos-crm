@@ -129,6 +129,7 @@ const BASE_FIXTURE: PromptBaseContext = {
   hasKnowledgeBase: false,
   hasActiveProducts: false,
   hasActiveProductsWithMedia: false,
+  hasActiveServices: false,
   recentToolEvents: [],
   lossReasonNames: [],
   toolsEnabled: ['move_deal', 'update_contact', 'hand_off_to_human'],
@@ -148,6 +149,7 @@ const FIXTURE_WITH_PRODUCTS: PromptBaseContext = {
   hasKnowledgeBase: true,
   hasActiveProducts: true,
   hasActiveProductsWithMedia: true,
+  hasActiveServices: false,
   toolsEnabled: ['search_products', 'search_knowledge', 'hand_off_to_human'],
   deal: {
     title: 'Negócio Teste',
