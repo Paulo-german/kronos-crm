@@ -5,6 +5,8 @@ import { createServiceSchema } from './schema'
 import { db } from '@/_lib/prisma'
 import { revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
+import { embed } from 'ai'
+import { getEmbeddingModel } from '@/_lib/ai/provider'
 
 export const createService = orgActionClient
   .schema(createServiceSchema)
@@ -24,19 +26,38 @@ export const createService = orgActionClient
       throw new Error('Categoria não encontrada ou não pertence à organização.')
     }
 
-    // 4. Criar o serviço
-    const service = await db.service.create({
-      data: {
-        organizationId: ctx.orgId,
-        categoryId: data.categoryId,
-        name: data.name,
-        duration: data.duration,
-        price: data.price,
-        isActive: data.isActive,
-      },
+    // 4. Gerar embedding antes da transaction — API externa não pode ficar dentro de tx
+    const { embedding } = await embed({
+      model: getEmbeddingModel(),
+      value: data.name,
+    })
+    const embeddingStr = `[${embedding.join(',')}]`
+
+    // 5. Criar serviço e salvar embedding atomicamente — evita serviço órfão sem vetor
+    const service = await db.$transaction(async (tx) => {
+      const created = await tx.service.create({
+        data: {
+          organizationId: ctx.orgId,
+          categoryId: data.categoryId,
+          name: data.name,
+          duration: data.duration,
+          price: data.price,
+          isActive: data.isActive,
+        },
+      })
+
+      // Prisma não suporta o tipo vector nativamente — precisa de raw SQL
+      await tx.$executeRaw`
+        UPDATE services
+        SET embedding = ${embeddingStr}::vector
+        WHERE id = ${created.id}
+          AND organization_id = ${ctx.orgId}
+      `
+
+      return created
     })
 
-    // 5. Invalidar cache
+    // 6. Invalidar cache
     revalidateTag(`services:${ctx.orgId}`)
 
     return { success: true, serviceId: service.id }

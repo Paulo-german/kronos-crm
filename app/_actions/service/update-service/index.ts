@@ -5,6 +5,8 @@ import { updateServiceSchema } from './schema'
 import { db } from '@/_lib/prisma'
 import { revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
+import { embed } from 'ai'
+import { getEmbeddingModel } from '@/_lib/ai/provider'
 
 export const updateService = orgActionClient
   .schema(updateServiceSchema)
@@ -13,9 +15,10 @@ export const updateService = orgActionClient
     requirePermission(canPerformAction(ctx, 'service', 'update'))
 
     // 2. Verificar que o serviço pertence à org
+    // Selecionamos `name` para detectar mudança e decidir se re-gera embedding
     const service = await db.service.findFirst({
       where: { id: data.id, organizationId: ctx.orgId },
-      select: { id: true },
+      select: { id: true, name: true },
     })
 
     if (!service) {
@@ -46,7 +49,26 @@ export const updateService = orgActionClient
       },
     })
 
-    // 5. Invalidar cache
+    // 5. Re-gerar embedding inline apenas se o nome mudou — search_service depende dele.
+    // Falha aqui aborta a action para não deixar o vetor stale em silêncio.
+    if (data.name !== undefined && data.name !== service.name) {
+      const { embedding } = await embed({
+        model: getEmbeddingModel(),
+        value: data.name,
+      })
+
+      const embeddingStr = `[${embedding.join(',')}]`
+
+      // Prisma não suporta o tipo vector nativamente — precisa de raw SQL
+      await db.$executeRaw`
+        UPDATE services
+        SET embedding = ${embeddingStr}::vector
+        WHERE id = ${data.id}
+          AND organization_id = ${ctx.orgId}
+      `
+    }
+
+    // 6. Invalidar cache
     revalidateTag(`services:${ctx.orgId}`)
     revalidateTag(`service:${data.id}`)
 
