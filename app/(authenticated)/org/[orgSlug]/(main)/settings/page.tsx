@@ -5,14 +5,13 @@ import {
   CreditCard,
   FunnelIcon,
   Mail,
-  Package,
+  LayoutGrid,
   Plug,
   Settings2,
   Sparkles,
   Tag,
   UserIcon,
   Users,
-  Wrench,
   Zap,
 } from 'lucide-react'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
@@ -95,11 +94,11 @@ const SettingsPage = async ({ params }: SettingsPageProps) => {
                   <FunnelIcon size={20} />
                 </CardSettings>
                 <CardSettings
-                  title="Produtos"
-                  href="settings/products"
+                  title="Catálogo"
+                  href="settings/catalog"
                   orgSlug={orgSlug}
                 >
-                  <Package size={20} />
+                  <LayoutGrid size={20} />
                 </CardSettings>
                 <CardSettings
                   title="Motivos de Perda"
@@ -125,13 +124,6 @@ const SettingsPage = async ({ params }: SettingsPageProps) => {
                   orgSlug={orgSlug}
                 >
                   <CalendarDays size={20} />
-                </CardSettings>
-                <CardSettings
-                  title="Serviços"
-                  href="settings/services"
-                  orgSlug={orgSlug}
-                >
-                  <Wrench size={20} />
                 </CardSettings>
                 <CardSettings
                   title="Distribuição"
