@@ -281,7 +281,9 @@ export function UpsertAppointmentDialogContent({
   // --------------------------------------------------------------------------
   const servicesByCategory = services.reduce<Record<string, ServiceDto[]>>(
     (accumulator, service) => {
-      const category = service.categoryName
+      // Serviços sem categoria são agrupados sob "Sem categoria" — bucket único
+      // para não quebrar render quando categoryName é null.
+      const category = service.categoryName ?? 'Sem categoria'
       const existing = accumulator[category] ?? []
       existing.push(service)
       return { ...accumulator, [category]: existing }

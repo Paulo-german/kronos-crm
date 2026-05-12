@@ -1215,7 +1215,7 @@ model ServiceCategory {
 model Service {
   id             String                 @id @default(uuid())
   organizationId String                 @map("organization_id")
-  categoryId     String                 @map("category_id")
+  categoryId     String?                @map("category_id")
   name           String
   // Duração em minutos — granularidade mínima de agendamento
   duration       Int
@@ -1228,7 +1228,7 @@ model Service {
   updatedAt      DateTime               @updatedAt @map("updated_at")
 
   organization         Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  category             ServiceCategory       @relation(fields: [categoryId], references: [id])
+  category             ServiceCategory?      @relation(fields: [categoryId], references: [id])
   professionalServices ProfessionalService[]
   appointments         Appointment[]
   dealLineItems        DealLineItem[]

@@ -62,7 +62,7 @@ const fetchServicesPaginatedFromDb = async (
     id: service.id,
     organizationId: service.organizationId,
     categoryId: service.categoryId,
-    categoryName: service.category.name,
+    categoryName: service.category?.name ?? null,
     name: service.name,
     duration: service.duration,
     price: service.price.toString(),

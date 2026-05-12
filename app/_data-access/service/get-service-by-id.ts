@@ -5,8 +5,8 @@ import { db } from '@/_lib/prisma'
 export interface ServiceDetailDto {
   id: string
   organizationId: string
-  categoryId: string
-  category: { id: string; name: string; isActive: boolean }
+  categoryId: string | null
+  category: { id: string; name: string; isActive: boolean } | null
   name: string
   duration: number
   price: string

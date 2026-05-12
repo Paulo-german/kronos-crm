@@ -36,8 +36,8 @@ export interface ProfessionalDetailDto {
       duration: number
       price: string
       isActive: boolean
-      categoryId: string
-      category: { id: string; name: string }
+      categoryId: string | null
+      category: { id: string; name: string } | null
     }
   }>
   manualOrders: Array<{

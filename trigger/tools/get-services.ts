@@ -12,7 +12,7 @@ interface GetServicesResult {
     name: string
     duration: number
     price: number
-    category: string
+    category: string | null
   }>
 }
 
@@ -53,7 +53,7 @@ export function createGetServicesTool(ctx: ToolContext) {
             name: service.name,
             duration: service.duration,
             price: Number(service.price),
-            category: service.category.name,
+            category: service.category?.name ?? null,
           })),
         }
       } catch (error) {

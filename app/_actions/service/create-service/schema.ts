@@ -4,7 +4,7 @@ const MAX_SERVICE_DURATION_MINUTES = 720
 
 export const createServiceSchema = z.object({
   name: z.string().trim().min(2, 'Nome deve ter ao menos 2 caracteres'),
-  categoryId: z.string().uuid('ID de categoria inválido'),
+  categoryId: z.string().uuid('ID de categoria inválido').optional(),
   // Duração em minutos — máximo 12h (720 min)
   duration: z
     .number()

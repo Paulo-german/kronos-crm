@@ -5,8 +5,8 @@ import { db } from '@/_lib/prisma'
 export interface ServiceDto {
   id: string
   organizationId: string
-  categoryId: string
-  categoryName: string
+  categoryId: string | null
+  categoryName: string | null
   name: string
   duration: number
   price: string
@@ -53,7 +53,7 @@ const fetchServicesFromDb = async (
     id: service.id,
     organizationId: service.organizationId,
     categoryId: service.categoryId,
-    categoryName: service.category.name,
+    categoryName: service.category?.name ?? null,
     name: service.name,
     duration: service.duration,
     price: service.price.toString(),

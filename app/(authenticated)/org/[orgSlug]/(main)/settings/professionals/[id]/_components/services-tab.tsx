@@ -204,9 +204,11 @@ const ServicesTab = ({ professional, allServices }: ServicesTabProps) => {
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{service.name}</span>
-                        <Badge variant="outline" className="text-xs">
-                          {service.category.name}
-                        </Badge>
+                        {service.category ? (
+                          <Badge variant="outline" className="text-xs">
+                            {service.category.name}
+                          </Badge>
+                        ) : null}
                         {!service.isActive && (
                           <Badge variant="secondary" className="text-xs">
                             Inativo

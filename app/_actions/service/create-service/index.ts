@@ -16,14 +16,16 @@ export const createService = orgActionClient
 
     // 2. Sem quota no v1
 
-    // 3. Verificar que a categoria pertence à org
-    const category = await db.serviceCategory.findFirst({
-      where: { id: data.categoryId, organizationId: ctx.orgId },
-      select: { id: true },
-    })
+    // 3. Se categoria fornecida, verificar que pertence à org
+    if (data.categoryId) {
+      const category = await db.serviceCategory.findFirst({
+        where: { id: data.categoryId, organizationId: ctx.orgId },
+        select: { id: true },
+      })
 
-    if (!category) {
-      throw new Error('Categoria não encontrada ou não pertence à organização.')
+      if (!category) {
+        throw new Error('Categoria não encontrada ou não pertence à organização.')
+      }
     }
 
     // 4. Gerar embedding antes da transaction — API externa não pode ficar dentro de tx
@@ -38,7 +40,7 @@ export const createService = orgActionClient
       const created = await tx.service.create({
         data: {
           organizationId: ctx.orgId,
-          categoryId: data.categoryId,
+          categoryId: data.categoryId ?? null,
           name: data.name,
           duration: data.duration,
           price: data.price,
