@@ -156,19 +156,20 @@ export function parseProviderError(error: unknown): ProviderDeliveryError {
     return { message: msg, userMessage: msg }
   }
 
-  // --- 1b. Erros de rede/timeout sem status HTTP (ex: retry.fetch esgotou tentativas) ---
-  if (msg.toLowerCase() === 'fetch error' || msg.toLowerCase().includes('network error')) {
+  // --- 2. Erros de rede/timeout sem status HTTP (ex: retry.fetch esgotou tentativas) ---
+  const msgLower = msg.toLowerCase()
+  if (msgLower === 'fetch error' || msgLower.includes('network error')) {
     return {
       message: msg,
       userMessage: 'Tempo de conexão esgotado com o WhatsApp. Tente novamente.',
     }
   }
 
-  // --- 2. Extrair HTTP status code do padrão "(NNN)" ---
+  // --- 3. Extrair HTTP status code do padrão "(NNN)" ---
   const statusMatch = msg.match(/\((\d{3})\)/)
   const statusCode = statusMatch ? parseInt(statusMatch[1], 10) : undefined
 
-  // --- 3. Tentar parsear JSON body ---
+  // --- 4. Tentar parsear JSON body ---
   const jsonMatch = msg.match(/:\s*(\{[\s\S]+\})\s*$/)
   let parsedBody: Record<string, unknown> | null = null
   if (jsonMatch) {
@@ -179,7 +180,7 @@ export function parseProviderError(error: unknown): ProviderDeliveryError {
     }
   }
 
-  // --- 4. Meta Graph API: JSON com error.code numérico ---
+  // --- 5. Meta Graph API: JSON com error.code numérico ---
   if (parsedBody?.error && typeof (parsedBody.error as Record<string, unknown>).code === 'number') {
     const metaError = parsedBody.error as Record<string, unknown>
     const code = metaError.code as number
@@ -193,12 +194,12 @@ export function parseProviderError(error: unknown): ProviderDeliveryError {
     }
   }
 
-  // --- 5. Determinar provider pelo prefixo da mensagem ---
+  // --- 6. Determinar provider pelo prefixo da mensagem ---
   const isEvolution = msg.startsWith('Evolution API')
   const isZApi = msg.startsWith('Z-API')
   const bodyText = extractBodyText(msg)
 
-  // --- 6. Pattern matching por status code + body ---
+  // --- 7. Pattern matching por status code + body ---
   const userMessage = matchProviderError(statusCode, bodyText, isEvolution, isZApi)
 
   return {
