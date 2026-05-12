@@ -113,7 +113,7 @@ const UpsertServiceDialogContent = ({
     resolver: zodResolver(createServiceSchema),
     defaultValues: {
       name: defaultValues?.name ?? '',
-      categoryId: defaultValues?.categoryId ?? '',
+      categoryId: defaultValues?.categoryId ?? undefined,
       duration: defaultValues?.duration ?? undefined,
       price: defaultValues?.price ? parseFloat(defaultValues.price) : undefined,
       isActive: defaultValues?.isActive ?? true,
@@ -139,7 +139,7 @@ const UpsertServiceDialogContent = ({
     if (isOpen) {
       form.reset({
         name: defaultValues?.name ?? '',
-        categoryId: defaultValues?.categoryId ?? '',
+        categoryId: defaultValues?.categoryId ?? undefined,
         duration: defaultValues?.duration ?? undefined,
         price: defaultValues?.price
           ? parseFloat(defaultValues.price)
@@ -153,7 +153,16 @@ const UpsertServiceDialogContent = ({
   const { execute: executeCreate, isPending: isCreating } = useAction(
     createService,
     {
-      onSuccess: () => {
+      onSuccess: async ({ data }) => {
+        // Após criar, vincula os profissionais pré-selecionados (se houver)
+        const serviceId = data?.serviceId
+        if (serviceId && assignedProfessionals.length > 0) {
+          await Promise.allSettled(
+            assignedProfessionals.map((ap) =>
+              assignServiceToProfessional({ professionalId: ap.professionalId, serviceId }),
+            ),
+          )
+        }
         toast.success('Serviço criado com sucesso!')
         setIsOpen(false)
       },
@@ -186,12 +195,9 @@ const UpsertServiceDialogContent = ({
   )
 
   const handleAssign = (professionalId: string) => {
-    if (!defaultValues?.id) return
-
     const foundProfessional = professionals.find((prof) => prof.id === professionalId)
     if (!foundProfessional) return
 
-    // Atualização otimista
     setAssignedProfessionals((prev) => [
       ...prev,
       {
@@ -207,23 +213,26 @@ const UpsertServiceDialogContent = ({
     ])
     setComboboxOpen(false)
 
-    executeAssign({ professionalId, serviceId: defaultValues.id })
+    // No modo edição faz o vínculo imediatamente; na criação o vínculo ocorre após salvar
+    if (defaultValues?.id) {
+      executeAssign({ professionalId, serviceId: defaultValues.id })
+    }
   }
 
   const handleRemoveConfirmed = () => {
-    if (!defaultValues?.id || !removeConfirm.professionalId) return
+    if (!removeConfirm.professionalId) return
 
-    // Atualização otimista
     setAssignedProfessionals((prev) =>
-      prev.filter(
-        (ap) => ap.professionalId !== removeConfirm.professionalId,
-      ),
+      prev.filter((ap) => ap.professionalId !== removeConfirm.professionalId),
     )
 
-    executeRemove({
-      professionalId: removeConfirm.professionalId,
-      serviceId: defaultValues.id,
-    })
+    // No modo edição remove imediatamente; na criação basta remover do estado local
+    if (defaultValues?.id) {
+      executeRemove({
+        professionalId: removeConfirm.professionalId,
+        serviceId: defaultValues.id,
+      })
+    }
     setRemoveConfirm({ isOpen: false, professionalId: '', professionalName: '' })
   }
 
@@ -240,7 +249,9 @@ const UpsertServiceDialogContent = ({
       onUpdate?.({
         id: defaultValues.id,
         name: data.name,
-        categoryId: data.categoryId,
+        // undefined no form significa que o usuário limpou a categoria (ou ela nunca existiu);
+        // passamos null para que a action sinalize remoção explícita no banco
+        categoryId: data.categoryId ?? null,
         duration: data.duration,
         price: data.price,
         isActive: data.isActive ?? true,
@@ -293,10 +304,10 @@ const UpsertServiceDialogContent = ({
                 name="categoryId"
                 render={({ field }) => (
                   <FormItem className="md:col-span-2">
-                    <FormLabel>Categoria *</FormLabel>
+                    <FormLabel>Categoria</FormLabel>
                     <Select
-                      onValueChange={field.onChange}
-                      value={field.value ?? ''}
+                      onValueChange={(val) => field.onChange(val === 'none' ? undefined : val)}
+                      value={field.value ?? 'none'}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -304,6 +315,7 @@ const UpsertServiceDialogContent = ({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        <SelectItem value="none">Sem categoria</SelectItem>
                         {categories.map((category) => (
                           <SelectItem key={category.id} value={category.id}>
                             {category.name}
@@ -393,10 +405,9 @@ const UpsertServiceDialogContent = ({
               />
             </div>
 
-            {isEditing && (
-              <>
-                <Separator />
-                <div className="space-y-3">
+            <>
+              <Separator />
+              <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium">Profissionais</p>
@@ -503,9 +514,8 @@ const UpsertServiceDialogContent = ({
                       )}
                     </div>
                   )}
-                </div>
-              </>
-            )}
+              </div>
+            </>
 
             <div className="flex justify-end gap-2 pt-2">
               <Button

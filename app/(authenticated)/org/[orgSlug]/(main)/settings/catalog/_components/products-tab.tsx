@@ -1,27 +1,24 @@
-'use client'
-
 import type { ProductDto } from '@/_data-access/product/get-products'
-import { ProductsDataTable } from '../../products/_components/products-data-table'
-import CreateProductButton from '../../products/_components/create-product-button'
+import { ProductsListClient } from './product/products-list-client'
 
 interface ProductsTabProps {
   products: ProductDto[]
   withinQuota: boolean
+  page: number
+  pageSize: number
+  total: number
+  totalPages: number
 }
 
-export function ProductsTab({ products, withinQuota }: ProductsTabProps) {
+export function ProductsTab({ products, withinQuota, page, pageSize, total, totalPages }: ProductsTabProps) {
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">Produtos</h2>
-          <p className="text-sm text-muted-foreground">
-            Gerencie seu catálogo de produtos.
-          </p>
-        </div>
-        <CreateProductButton withinQuota={withinQuota} />
-      </div>
-      <ProductsDataTable products={products} />
-    </div>
+    <ProductsListClient
+      products={products}
+      withinQuota={withinQuota}
+      page={page}
+      pageSize={pageSize}
+      total={total}
+      totalPages={totalPages}
+    />
   )
 }

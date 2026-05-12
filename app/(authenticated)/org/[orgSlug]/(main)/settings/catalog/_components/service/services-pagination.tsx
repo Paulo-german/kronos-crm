@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/_components/ui/select'
-import { PAGE_SIZE_OPTIONS } from '../_lib/service-list-params'
+import { PAGE_SIZE_OPTIONS } from '../../_lib/service-list-params'
 
 interface ServicesPaginationProps {
   page: number

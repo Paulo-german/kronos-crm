@@ -14,6 +14,10 @@ import { PromotionsTab } from './promotions-tab'
 
 interface CatalogTabsProps {
   products: ProductDto[]
+  productsPage: number
+  productsPageSize: number
+  productsTotal: number
+  productsTotalPages: number
   services: ServiceDto[]
   servicesPage: number
   servicesPageSize: number
@@ -22,11 +26,19 @@ interface CatalogTabsProps {
   categories: ServiceCategoryDto[]
   professionals: ProfessionalDto[]
   promotions: PromotionDto[]
+  promotionsPage: number
+  promotionsPageSize: number
+  promotionsTotal: number
+  promotionsTotalPages: number
   productQuota: boolean
 }
 
 export function CatalogTabs({
   products,
+  productsPage,
+  productsPageSize,
+  productsTotal,
+  productsTotalPages,
   services,
   servicesPage,
   servicesPageSize,
@@ -35,6 +47,10 @@ export function CatalogTabs({
   categories,
   professionals,
   promotions,
+  promotionsPage,
+  promotionsPageSize,
+  promotionsTotal,
+  promotionsTotalPages,
   productQuota,
 }: CatalogTabsProps) {
   const router = useRouter()
@@ -46,11 +62,19 @@ export function CatalogTabs({
   const handleTabChange = (value: string) => {
     const params = new URLSearchParams(searchParams.toString())
     params.set('tab', value)
-    // Limpa parâmetros de paginação ao trocar de tab
+    // Limpa todos os params de paginação/filtro ao trocar de tab
     params.delete('page')
     params.delete('search')
     params.delete('categoryId')
     params.delete('status')
+    params.delete('p_page')
+    params.delete('p_pageSize')
+    params.delete('p_search')
+    params.delete('p_status')
+    params.delete('pr_page')
+    params.delete('pr_pageSize')
+    params.delete('pr_search')
+    params.delete('pr_status')
     router.push(`${pathname}?${params.toString()}`)
   }
 
@@ -78,7 +102,14 @@ export function CatalogTabs({
       </TabsList>
 
       <TabsContent value="products" className="mt-6">
-        <ProductsTab products={products} withinQuota={productQuota} />
+        <ProductsTab
+          products={products}
+          withinQuota={productQuota}
+          page={productsPage}
+          pageSize={productsPageSize}
+          total={productsTotal}
+          totalPages={productsTotalPages}
+        />
       </TabsContent>
 
       <TabsContent value="services" className="mt-6">
@@ -94,7 +125,15 @@ export function CatalogTabs({
       </TabsContent>
 
       <TabsContent value="promotions" className="mt-6">
-        <PromotionsTab promotions={promotions} products={products} services={services} />
+        <PromotionsTab
+          promotions={promotions}
+          products={products}
+          services={services}
+          page={promotionsPage}
+          pageSize={promotionsPageSize}
+          total={promotionsTotal}
+          totalPages={promotionsTotalPages}
+        />
       </TabsContent>
     </Tabs>
   )

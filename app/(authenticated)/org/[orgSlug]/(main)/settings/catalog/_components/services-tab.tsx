@@ -3,7 +3,7 @@
 import type { ServiceDto } from '@/_data-access/service/get-services'
 import type { ServiceCategoryDto } from '@/_data-access/service/get-service-categories'
 import type { ProfessionalDto } from '@/_data-access/professional/get-professionals'
-import { ServicesListClient } from '../../services/_components/services-list-client'
+import { ServicesListClient } from './service/services-list-client'
 
 interface ServicesTabProps {
   services: ServiceDto[]

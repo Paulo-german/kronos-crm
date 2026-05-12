@@ -54,7 +54,8 @@ export function ServiceCardRow({
   onEdit,
   onDelete,
 }: ServiceCardRowProps) {
-  const overflowCount = service.professionalServices.length - MAX_VISIBLE_PROFESSIONALS
+  const overflowCount =
+    service.professionalServices.length - MAX_VISIBLE_PROFESSIONALS
 
   return (
     <div
@@ -75,7 +76,7 @@ export function ServiceCardRow({
       {/* Nome + categoria */}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="truncate font-medium">{service.name}</span>
+          <span className="truncate text-sm font-medium">{service.name}</span>
           {service.categoryName && (
             <Badge variant="outline" className="shrink-0 text-xs">
               {service.categoryName}
@@ -135,7 +136,9 @@ export function ServiceCardRow({
             )}
           </div>
         ) : (
-          <span className="text-xs text-muted-foreground">Sem profissional</span>
+          <span className="text-xs text-muted-foreground">
+            Sem profissional
+          </span>
         )}
       </div>
 
