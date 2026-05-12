@@ -162,6 +162,7 @@ export function createCreateEventTool(ctx: ToolContext, config: CreateEventConfi
             db.appointment.create({
               data: {
                 organizationId: ctx.organizationId,
+                type: 'MEETING',
                 title,
                 description: description ?? null,
                 startDate: parsedStart,
@@ -169,6 +170,7 @@ export function createCreateEventTool(ctx: ToolContext, config: CreateEventConfi
                 status: 'SCHEDULED',
                 assignedTo: deal.assignedTo,
                 dealId: ctx.dealId!,
+                contactId: ctx.contactId,
               },
             }),
           'db.appointment.create',
