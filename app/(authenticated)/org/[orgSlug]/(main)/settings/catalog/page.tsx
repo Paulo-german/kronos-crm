@@ -3,15 +3,17 @@ import { redirect } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
-import { getProducts } from '@/_data-access/product/get-products'
+import { getProductsPaginated } from '@/_data-access/product/get-products-paginated'
 import { getServicesPaginated } from '@/_data-access/service/get-services-paginated'
+import { getPromotionsPaginated } from '@/_data-access/promotion/get-promotions-paginated'
 import { getServiceCategories } from '@/_data-access/service/get-service-categories'
 import { getProfessionals } from '@/_data-access/professional/get-professionals'
-import { getPromotions } from '@/_data-access/promotion/get-promotions'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 import { Button } from '@/_components/ui/button'
 import { QuotaHint } from '@/_components/trial/quota-hint'
 
+import { parseProductListParams } from './_lib/product-list-params'
+import { parsePromotionListParams } from './_lib/promotion-list-params'
 import { CatalogTabs } from './_components/catalog-tabs'
 
 interface CatalogPageProps {
@@ -24,7 +26,6 @@ const CatalogPage = async ({ params, searchParams }: CatalogPageProps) => {
   const resolvedSearchParams = await searchParams
   const ctx = await getOrgContext(orgSlug)
 
-  // RBAC: apenas ADMIN, OWNER e SUPPORT acessam o catálogo
   if (
     ctx.userRole !== 'ADMIN' &&
     ctx.userRole !== 'OWNER' &&
@@ -33,7 +34,7 @@ const CatalogPage = async ({ params, searchParams }: CatalogPageProps) => {
     redirect(`/org/${orgSlug}/settings`)
   }
 
-  // Parâmetros de paginação de serviços com defaults
+  // Parâmetros de serviços (sem prefixo — legado)
   const rawPage = resolvedSearchParams['page']
   const rawSearch = resolvedSearchParams['search']
   const rawCategoryId = resolvedSearchParams['categoryId']
@@ -49,13 +50,16 @@ const CatalogPage = async ({ params, searchParams }: CatalogPageProps) => {
     ) as 'all' | 'active' | 'inactive',
   }
 
-  const [products, servicesResult, categories, professionals, promotions, productQuota] =
+  const productParams = parseProductListParams(resolvedSearchParams)
+  const promotionParams = parsePromotionListParams(resolvedSearchParams)
+
+  const [productsResult, servicesResult, promotionsResult, categories, professionals, productQuota] =
     await Promise.all([
-      getProducts(ctx.orgId),
+      getProductsPaginated(ctx.orgId, productParams),
       getServicesPaginated(ctx.orgId, serviceParams),
+      getPromotionsPaginated(ctx.orgId, promotionParams),
       getServiceCategories(ctx.orgId),
       getProfessionals(ctx.orgId),
-      getPromotions(ctx.orgId),
       checkPlanQuota(ctx.orgId, 'product'),
     ])
 
@@ -83,7 +87,11 @@ const CatalogPage = async ({ params, searchParams }: CatalogPageProps) => {
       </div>
 
       <CatalogTabs
-        products={products}
+        products={productsResult.data}
+        productsPage={productsResult.page}
+        productsPageSize={productsResult.pageSize}
+        productsTotal={productsResult.total}
+        productsTotalPages={productsResult.totalPages}
         services={servicesResult.data}
         servicesPage={servicesResult.page}
         servicesPageSize={servicesResult.pageSize}
@@ -91,7 +99,11 @@ const CatalogPage = async ({ params, searchParams }: CatalogPageProps) => {
         servicesTotalPages={servicesResult.totalPages}
         categories={categories}
         professionals={professionals}
-        promotions={promotions}
+        promotions={promotionsResult.data}
+        promotionsPage={promotionsResult.page}
+        promotionsPageSize={promotionsResult.pageSize}
+        promotionsTotal={promotionsResult.total}
+        promotionsTotalPages={promotionsResult.totalPages}
         productQuota={productQuota.withinQuota}
       />
     </div>
