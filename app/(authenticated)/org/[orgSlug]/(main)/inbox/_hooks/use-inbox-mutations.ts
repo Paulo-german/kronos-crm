@@ -267,8 +267,11 @@ export function useInboxMutations({ availableLabels, members, statusFilter }: Us
 
   const retryFailedMessageMutation = useMutation({
     // conversationId é passado junto apenas para saber qual query de mensagens invalidar
-    mutationFn: (input: { messageId: string; conversationId: string }) =>
-      retryFailedMessage({ messageId: input.messageId }),
+    mutationFn: async (input: { messageId: string; conversationId: string }) => {
+      const result = await retryFailedMessage({ messageId: input.messageId })
+      if (result?.serverError) throw new Error(result.serverError)
+      return result
+    },
     onSettled: (_data, _err, variables) => {
       queryClient.invalidateQueries({ queryKey: inboxKeys.messages.byConversation(variables.conversationId) })
     },

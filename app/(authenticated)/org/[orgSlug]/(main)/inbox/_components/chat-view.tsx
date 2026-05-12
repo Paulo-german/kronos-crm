@@ -168,9 +168,9 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
           setRetryingMessageId(null)
           toast.success('Mensagem reenviada.')
         },
-        onError: () => {
+        onError: (error) => {
           setRetryingMessageId(null)
-          toast.error('Erro ao reenviar mensagem.')
+          toast.error(error.message || 'Erro ao reenviar mensagem.')
         },
       },
     )
