@@ -1,7 +1,8 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
-import { Check, CheckCircle2, Mail, MailOpen, Pin, RotateCcw, Settings2, Tag, UserCog } from 'lucide-react'
+import { Check, CheckCircle2, Clipboard, ClipboardCheck, Mail, MailOpen, Pin, RotateCcw, Settings2, Tag, UserCog } from 'lucide-react'
 import { cn } from '@/_lib/utils'
 import { getLabelColor } from '@/_lib/constants/label-colors'
 import {
@@ -72,6 +73,19 @@ export function ConversationMenuItems({
   isPending,
   variant,
 }: ConversationMenuItemsProps) {
+  const [copied, setCopied] = useState(false)
+
+  async function handleCopyId(event: React.MouseEvent) {
+    event.stopPropagation()
+    try {
+      await navigator.clipboard.writeText(conversation.id)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // clipboard indisponível (contexto não-HTTPS ou permissão negada) — ignora silenciosamente
+    }
+  }
+
   const isUnread = conversation.unreadCount > 0
   const label = isUnread ? 'Marcar como lida' : 'Marcar como não lida'
   const Icon = isUnread ? MailOpen : Mail
@@ -184,6 +198,15 @@ export function ConversationMenuItems({
           <span className="ml-auto text-[10px] text-muted-foreground/60">
             Em breve
           </span>
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem onClick={handleCopyId} className="gap-2">
+          {copied ? (
+            <ClipboardCheck className="h-3.5 w-3.5 text-green-500" />
+          ) : (
+            <Clipboard className="h-3.5 w-3.5" />
+          )}
+          {copied ? 'ID copiado!' : 'Copiar ID da conversa'}
         </ContextMenuItem>
       </>
     )
@@ -319,6 +342,15 @@ export function ConversationMenuItems({
         <span className="ml-auto text-[10px] text-muted-foreground/60">
           Em breve
         </span>
+      </DropdownMenuItem>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem onClick={handleCopyId} className="gap-2">
+        {copied ? (
+          <ClipboardCheck className="h-3.5 w-3.5 text-green-500" />
+        ) : (
+          <Clipboard className="h-3.5 w-3.5" />
+        )}
+        {copied ? 'ID copiado!' : 'Copiar ID da conversa'}
       </DropdownMenuItem>
     </>
   )
