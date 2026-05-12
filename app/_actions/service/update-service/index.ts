@@ -25,7 +25,7 @@ export const updateService = orgActionClient
       throw new Error('Serviço não encontrado.')
     }
 
-    // 3. Se nova categoria fornecida, verificar que pertence à org
+    // 3. Se nova categoria fornecida (não null), verificar que pertence à org
     if (data.categoryId) {
       const category = await db.serviceCategory.findFirst({
         where: { id: data.categoryId, organizationId: ctx.orgId },
@@ -38,11 +38,12 @@ export const updateService = orgActionClient
     }
 
     // 4. Atualizar apenas campos fornecidos
+    //    categoryId: null significa limpeza explícita; undefined significa sem alteração
     await db.service.update({
       where: { id: data.id },
       data: {
         ...(data.name !== undefined ? { name: data.name } : {}),
-        ...(data.categoryId !== undefined ? { categoryId: data.categoryId } : {}),
+        ...(data.categoryId !== undefined ? { categoryId: data.categoryId ?? null } : {}),
         ...(data.duration !== undefined ? { duration: data.duration } : {}),
         ...(data.price !== undefined ? { price: data.price } : {}),
         ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
