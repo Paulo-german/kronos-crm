@@ -80,29 +80,45 @@ const ACTION_TYPE_LABELS: Record<string, string> = {
   list_availability: 'Listar agenda',
   create_event: 'Criar evento',
   update_contact: 'Atualizar contato',
+  create_appointment: 'Agendar Serviço',
+}
+
+const PRODUCT_ONLY_TOOL_TYPES = new Set(['list_availability', 'create_event'])
+const SERVICE_ONLY_TOOL_TYPES = new Set(['create_appointment'])
+
+const isToolIncompatible = (type: string, agentMode?: 'PRODUCT' | 'SERVICE' | 'HYBRID'): boolean => {
+  if (!agentMode || agentMode === 'HYBRID') return false
+  if (agentMode === 'PRODUCT') return SERVICE_ONLY_TOOL_TYPES.has(type)
+  return PRODUCT_ONLY_TOOL_TYPES.has(type)
 }
 
 interface ActionBadgesProps {
   actions: StepAction[]
+  agentMode?: 'PRODUCT' | 'SERVICE' | 'HYBRID'
 }
 
-const ActionBadges = ({ actions }: ActionBadgesProps) => {
+const ActionBadges = ({ actions, agentMode }: ActionBadgesProps) => {
   const visible = actions.slice(0, 3)
   const overflow = actions.length - visible.length
   return (
     <div className="hidden items-center gap-1 sm:flex">
-      {visible.map((action, index) => (
-        <Badge
-          key={index}
-          variant="secondary"
-          className={cn(
-            'px-1.5 py-0 text-[10px] font-medium',
-            ACTION_TYPE_COLORS[action.type],
-          )}
-        >
-          {ACTION_TYPE_LABELS[action.type] ?? action.type}
-        </Badge>
-      ))}
+      {visible.map((action, index) => {
+        const incompatible = isToolIncompatible(action.type, agentMode)
+        return (
+          <Badge
+            key={index}
+            variant="secondary"
+            className={cn(
+              'px-1.5 py-0 text-[10px] font-medium',
+              incompatible
+                ? 'bg-muted text-muted-foreground/50 line-through'
+                : ACTION_TYPE_COLORS[action.type],
+            )}
+          >
+            {ACTION_TYPE_LABELS[action.type] ?? action.type}
+          </Badge>
+        )
+      })}
       {overflow > 0 && (
         <Badge
           variant="secondary"
@@ -202,7 +218,7 @@ const SortableStepCard = ({
               )}
             </span>
             {!isOpen && step.actions.length > 0 && (
-              <ActionBadges actions={step.actions} />
+              <ActionBadges actions={step.actions} agentMode={agentMode} />
             )}
             <ChevronDown
               className={cn(

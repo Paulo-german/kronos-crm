@@ -289,6 +289,14 @@ const StepActionBuilder = ({
     )
   }
 
+  const PRODUCT_ONLY = new Set(['list_availability', 'create_event'])
+  const SERVICE_ONLY = new Set(['create_appointment'])
+  const isIncompatibleWithMode = (type: string): boolean => {
+    if (agentMode === 'HYBRID') return false
+    if (agentMode === 'PRODUCT') return SERVICE_ONLY.has(type)
+    return PRODUCT_ONLY.has(type)
+  }
+
   const globalToolTypes = new Set(GLOBAL_TOOL_OPTIONS.map((option) => option.value))
 
   // Permite adicionar qualquer tool sem restrição de duplicata (multi-instância).
@@ -324,6 +332,7 @@ const StepActionBuilder = ({
         {valueWithIds.map((action, index) => {
           const toolOption = TOOL_OPTIONS.find((tool) => tool.value === action.type)
           const isGlobalTool = excludeGlobalTools && globalToolTypes.has(action.type)
+          const isInactive = !isGlobalTool && isIncompatibleWithMode(action.type)
           const actionId = action.id!
           const isOpen = expandedIds.has(actionId)
           const summary = getActionSummary(action, pipelineStages)
@@ -343,6 +352,8 @@ const StepActionBuilder = ({
               <Card className={cn(
                 isGlobalTool
                   ? 'border-amber-500/40 bg-amber-500/5'
+                  : isInactive
+                  ? 'border-zinc-400/30 bg-muted/30'
                   : 'border-primary/30 bg-primary/5',
               )}>
                 <CardContent className="p-0">
@@ -371,10 +382,19 @@ const StepActionBuilder = ({
                                 Global
                               </span>
                             )}
+                            {isInactive && (
+                              <span className="rounded-full border border-zinc-400/40 bg-zinc-400/10 px-2 py-0.5 text-[10px] font-medium text-zinc-500 dark:text-zinc-400">
+                                Inativa
+                              </span>
+                            )}
                           </div>
                           {isGlobalTool ? (
                             <span className="block text-xs text-amber-600/70">
                               Configurada na aba Ferramentas Globais
+                            </span>
+                          ) : isInactive ? (
+                            <span className="block text-xs text-muted-foreground/50">
+                              Inativa neste modo de operação
                             </span>
                           ) : (
                             !isOpen && (
