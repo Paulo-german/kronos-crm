@@ -135,7 +135,7 @@ const InfoPiece = ({
 
 const Dot = () => <span className="text-muted-foreground/40">·</span>
 
-const getActionSummary = (action: StepAction, pipelineStages: PipelineStageOption[]): ActionSummary => {
+const getActionSummary = (action: StepAction, pipelineStages: PipelineStageOption[], agentMode?: 'PRODUCT' | 'SERVICE' | 'HYBRID'): ActionSummary => {
   const trigger = action.trigger || null
 
   switch (action.type) {
@@ -173,6 +173,12 @@ const getActionSummary = (action: StepAction, pipelineStages: PipelineStageOptio
       }
     }
     case 'list_availability':
+      if (agentMode === 'SERVICE') {
+        return {
+          trigger,
+          config: <InfoPiece icon={CalendarDays} text={`${action.daysAhead} dias`} />,
+        }
+      }
       return {
         trigger,
         config: (
@@ -289,7 +295,7 @@ const StepActionBuilder = ({
     )
   }
 
-  const PRODUCT_ONLY = new Set(['list_availability', 'create_event'])
+  const PRODUCT_ONLY = new Set(['create_event'])
   const SERVICE_ONLY = new Set(['create_appointment'])
   const isIncompatibleWithMode = (type: string): boolean => {
     if (agentMode === 'HYBRID') return false
@@ -304,7 +310,7 @@ const StepActionBuilder = ({
   const availableToAdd = TOOL_OPTIONS.filter((tool) => {
     if (excludeGlobalTools && globalToolTypes.has(tool.value)) return false
     if (tool.value === 'create_appointment' && agentMode === 'PRODUCT') return false
-    if ((tool.value === 'list_availability' || tool.value === 'create_event') && agentMode === 'SERVICE') return false
+    if (tool.value === 'create_event' && agentMode === 'SERVICE') return false
     return true
   })
 
@@ -335,7 +341,7 @@ const StepActionBuilder = ({
           const isInactive = !isGlobalTool && isIncompatibleWithMode(action.type)
           const actionId = action.id!
           const isOpen = expandedIds.has(actionId)
-          const summary = getActionSummary(action, pipelineStages)
+          const summary = getActionSummary(action, pipelineStages, agentMode)
 
           // Badge de índice (#1, #2) aparece somente quando há mais de uma
           // instância do mesmo type, para distinguir visualmente as instâncias.
@@ -535,8 +541,34 @@ const StepActionBuilder = ({
                         />
                       )}
 
-                      {/* list_availability: janela de busca de disponibilidade */}
-                      {action.type === 'list_availability' && (
+                      {/* list_availability: em SERVICE os campos de slot/janela vêm do serviço/profissional */}
+                      {action.type === 'list_availability' && agentMode === 'SERVICE' && (
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Dias para frente *</Label>
+                          <p className="text-[11px] text-muted-foreground">
+                            Janela de horário e duração do slot são definidas pelo serviço e profissional cadastrados.
+                          </p>
+                          <Select
+                            value={String(action.daysAhead)}
+                            onValueChange={(val) =>
+                              updateAction(actionId, { daysAhead: parseInt(val, 10) })
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {DAYS_AHEAD_OPTIONS.map((option) => (
+                                <SelectItem key={option.value} value={String(option.value)}>
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {action.type === 'list_availability' && agentMode !== 'SERVICE' && (
                         <div className="grid grid-cols-2 gap-3">
                           <div className="space-y-1.5">
                             <Label className="text-xs">Dias para frente *</Label>

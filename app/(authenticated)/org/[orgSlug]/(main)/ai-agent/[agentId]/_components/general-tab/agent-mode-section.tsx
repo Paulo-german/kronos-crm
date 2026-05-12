@@ -62,7 +62,7 @@ const TOOL_LABELS: Record<string, string> = {
   create_appointment: 'Agendar Serviço',
 }
 
-const PRODUCT_ONLY_TOOLS = new Set(['list_availability', 'create_event'])
+const PRODUCT_ONLY_TOOLS = new Set(['create_event'])
 const SERVICE_ONLY_TOOLS = new Set(['create_appointment'])
 
 export const AgentModeSection = ({

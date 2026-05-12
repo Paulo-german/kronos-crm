@@ -83,7 +83,7 @@ const ACTION_TYPE_LABELS: Record<string, string> = {
   create_appointment: 'Agendar Serviço',
 }
 
-const PRODUCT_ONLY_TOOL_TYPES = new Set(['list_availability', 'create_event'])
+const PRODUCT_ONLY_TOOL_TYPES = new Set(['create_event'])
 const SERVICE_ONLY_TOOL_TYPES = new Set(['create_appointment'])
 
 const isToolIncompatible = (type: string, agentMode?: 'PRODUCT' | 'SERVICE' | 'HYBRID'): boolean => {
