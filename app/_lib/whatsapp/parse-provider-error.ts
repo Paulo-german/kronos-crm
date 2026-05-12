@@ -96,6 +96,9 @@ function matchProviderError(
       if (bodyLower.includes('exists":false') || /exists.*false/.test(bodyLower)) {
         return 'Número não está no WhatsApp. Verifique o telefone do contato.'
       }
+      if (bodyLower.includes('sessionerror') || bodyLower.includes('no sessions')) {
+        return 'WhatsApp desconectado. Reconecte o WhatsApp via QR Code nas configurações da caixa de entrada.'
+      }
       if (bodyLower.includes('media') || bodyLower.includes('file')) {
         return 'Arquivo não suportado ou corrompido. Tente outro formato.'
       }
