@@ -121,7 +121,8 @@ export const promptBaseContextSchema = z.object({
   hasKnowledgeBase: z.boolean(),
   hasActiveProducts: z.boolean(),
   hasActiveProductsWithMedia: z.boolean(),
-  agentMode: z.enum(['PIPELINE', 'BOOKING']),
+  hasActiveServicesWithProfessionals: z.boolean(),
+  agentMode: z.enum(['PRODUCT', 'SERVICE', 'HYBRID']),
 
   // Snapshot determinístico de eventos de tool — retry re-usa exatamente os mesmos dados
   recentToolEvents: z.array(toolEventSchema),
@@ -181,6 +182,7 @@ export async function buildPromptBaseContext(
     recentToolEvents,
     activeProductMediaCount,
     activeProductCount,
+    activeServicesWithProfessionalsCount,
   ] = await Promise.all([
     db.agent.findUniqueOrThrow({
       where: { id: agentId },
@@ -295,6 +297,19 @@ export async function buildPromptBaseContext(
       where: {
         organizationId,
         isActive: true,
+      },
+    }),
+    db.service.count({
+      where: {
+        organizationId,
+        isActive: true,
+        professionalServices: {
+          some: {
+            professional: {
+              workingHours: { some: {} },
+            },
+          },
+        },
       },
     }),
   ])
@@ -438,6 +453,7 @@ export async function buildPromptBaseContext(
     hasKnowledgeBase: completedFileCount > 0,
     hasActiveProducts: activeProductCount > 0,
     hasActiveProductsWithMedia: activeProductMediaCount > 0,
+    hasActiveServicesWithProfessionals: activeServicesWithProfessionalsCount > 0,
     agentMode: agent.agentMode,
     recentToolEvents: serializedToolEvents,
     lossReasonNames: lossReasons.map((reason) => reason.name),

@@ -129,7 +129,8 @@ const BASE_FIXTURE: PromptBaseContext = {
   hasKnowledgeBase: false,
   hasActiveProducts: false,
   hasActiveProductsWithMedia: false,
-  agentMode: 'PIPELINE',
+  hasActiveServicesWithProfessionals: false,
+  agentMode: 'PRODUCT',
   recentToolEvents: [],
   lossReasonNames: [],
   toolsEnabled: ['move_deal', 'update_contact', 'hand_off_to_human'],
@@ -149,7 +150,8 @@ const FIXTURE_WITH_PRODUCTS: PromptBaseContext = {
   hasKnowledgeBase: true,
   hasActiveProducts: true,
   hasActiveProductsWithMedia: true,
-  agentMode: 'PIPELINE',
+  hasActiveServicesWithProfessionals: false,
+  agentMode: 'PRODUCT',
   toolsEnabled: ['search_products', 'search_knowledge', 'hand_off_to_human'],
   deal: {
     title: 'Negócio Teste',
@@ -274,6 +276,9 @@ function runScenario(name: string, fixture: PromptBaseContext): ScenarioResult {
   }
   if (result.hasActiveProducts !== fixture.hasActiveProducts) {
     errors.push(`hasActiveProducts: esperado=${fixture.hasActiveProducts} recebido=${result.hasActiveProducts}`)
+  }
+  if (result.hasActiveServicesWithProfessionals !== fixture.hasActiveServicesWithProfessionals) {
+    errors.push(`hasActiveServicesWithProfessionals: esperado=${fixture.hasActiveServicesWithProfessionals} recebido=${result.hasActiveServicesWithProfessionals}`)
   }
   if (result.contactName !== fixture.contact.name) {
     errors.push(`contactName: esperado="${fixture.contact.name}" recebido="${result.contactName}"`)

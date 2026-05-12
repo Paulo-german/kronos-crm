@@ -30,8 +30,9 @@ export interface SingleSystemPrompt {
   globalTools: GlobalTool[]
   hasActiveProducts: boolean
   hasActiveProductsWithMedia: boolean
+  hasActiveServicesWithProfessionals: boolean
   hasKnowledgeBase: boolean
-  agentMode: 'PIPELINE' | 'BOOKING'
+  agentMode: 'PRODUCT' | 'SERVICE' | 'HYBRID'
   pipelineIds: string[]
   summary: string | null
   estimatedTokens: number
@@ -561,6 +562,7 @@ export function compileSingleSystemPrompt(
     globalTools: base.globalTools,
     hasActiveProducts: base.hasActiveProducts,
     hasActiveProductsWithMedia: base.hasActiveProductsWithMedia,
+    hasActiveServicesWithProfessionals: base.hasActiveServicesWithProfessionals,
     hasKnowledgeBase: base.hasKnowledgeBase,
     agentMode: base.agentMode,
     pipelineIds: base.pipelineIds,
