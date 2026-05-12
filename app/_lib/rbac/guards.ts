@@ -149,6 +149,8 @@ function getEntityLabel(entity: RBACEntity): string {
     service: 'serviços',
     serviceCategory: 'categorias de serviço',
     workingHours: 'jornada de trabalho',
+    // Catálogo
+    promotion: 'promoções',
   }
   return labels[entity]
 }

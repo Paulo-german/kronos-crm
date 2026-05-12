@@ -36,6 +36,8 @@ export type RBACEntity =
   | 'service'
   | 'serviceCategory'
   | 'workingHours'
+  // Catálogo
+  | 'promotion'
 
 /**
  * Ações possíveis em cada entidade
