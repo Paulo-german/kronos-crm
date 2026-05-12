@@ -16,6 +16,19 @@ export interface DealProductDto {
   subtotal: number
 }
 
+export interface DealLineItemDto {
+  id: string
+  itemType: 'PRODUCT' | 'SERVICE' | 'PROMOTION'
+  product?: { id: string; name: string }
+  service?: { id: string; name: string; duration: number }
+  promotion?: { id: string; name: string }
+  quantity: number
+  unitPrice: number
+  discountType: 'percentage' | 'fixed'
+  discountValue: number
+  subtotal: number
+}
+
 export interface DealActivityDto {
   id: string
   type: string
@@ -79,6 +92,7 @@ export interface DealDetailsDto {
   assigneeName: string | null
   totalValue: number
   products: DealProductDto[]
+  lineItems: DealLineItemDto[]
   activities: DealActivityDto[]
   totalActivities: number
   tasks: DealTaskDto[]
@@ -134,6 +148,13 @@ const fetchDealDetailsFromDb = async (
           product: true,
         },
       },
+      lineItems: {
+        include: {
+          product: { select: { id: true, name: true } },
+          service: { select: { id: true, name: true, duration: true } },
+          promotion: { select: { id: true, name: true } },
+        },
+      },
       activities: {
         orderBy: { createdAt: 'desc' },
         take: 5,
@@ -184,7 +205,30 @@ const fetchDealDetailsFromDb = async (
     }
   })
 
-  const totalValue = products.reduce((sum, p) => sum + p.subtotal, 0)
+  const lineItems: DealLineItemDto[] = deal.lineItems.map((item) => {
+    const gross = Number(item.unitPrice) * item.quantity
+    const discount =
+      item.discountType === 'percentage'
+        ? gross * (Number(item.discountValue) / 100)
+        : Number(item.discountValue)
+
+    return {
+      id: item.id,
+      itemType: item.itemType,
+      product: item.product ?? undefined,
+      service: item.service ?? undefined,
+      promotion: item.promotion ?? undefined,
+      quantity: item.quantity,
+      unitPrice: Number(item.unitPrice),
+      discountType: item.discountType as 'percentage' | 'fixed',
+      discountValue: Number(item.discountValue),
+      subtotal: gross - discount,
+    }
+  })
+
+  const totalValue =
+    products.reduce((sum, product) => sum + product.subtotal, 0) +
+    lineItems.reduce((sum, item) => sum + item.subtotal, 0)
 
   return {
     id: deal.id,
@@ -224,6 +268,7 @@ const fetchDealDetailsFromDb = async (
     assigneeName: deal.assignee?.fullName ?? null,
     totalValue,
     products,
+    lineItems,
     activities: deal.activities.map((a) => ({
       id: a.id,
       type: a.type,
