@@ -156,6 +156,14 @@ export function parseProviderError(error: unknown): ProviderDeliveryError {
     return { message: msg, userMessage: msg }
   }
 
+  // --- 1b. Erros de rede/timeout sem status HTTP (ex: retry.fetch esgotou tentativas) ---
+  if (msg.toLowerCase() === 'fetch error' || msg.toLowerCase().includes('network error')) {
+    return {
+      message: msg,
+      userMessage: 'Tempo de conexão esgotado com o WhatsApp. Tente novamente.',
+    }
+  }
+
   // --- 2. Extrair HTTP status code do padrão "(NNN)" ---
   const statusMatch = msg.match(/\((\d{3})\)/)
   const statusCode = statusMatch ? parseInt(statusMatch[1], 10) : undefined
