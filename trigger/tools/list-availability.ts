@@ -450,7 +450,7 @@ interface RunCommercialFlowParams {
 }
 
 /**
- * Fluxo legado deal-based (COMMERCIAL) — mantém a lógica original:
+ * Fluxo legado deal-based (MEETING) — mantém a lógica original:
  * gera slots da janela config.startTime/endTime do responsável do deal.
  */
 async function runCommercialFlow(
@@ -538,7 +538,7 @@ async function runCommercialFlow(
     ? `no dia ${date}`
     : `nos próximos ${config.daysAhead} dias`
 
-  logger.info('Tool list_availability executed (COMMERCIAL)', {
+  logger.info('Tool list_availability executed (MEETING)', {
     dealId: ctx.dealId,
     conversationId: ctx.conversationId,
     daysAhead: config.daysAhead,

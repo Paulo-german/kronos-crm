@@ -187,8 +187,8 @@ export function buildToolSet(
     tools['search_products'] = createSearchProductsTool(ctx)
   }
 
-  // Scheduling v2 (SERVICE) — ativa quando o agente está em modo BOOKING.
-  // Estas tools coexistem com create_event (COMMERCIAL) e habilitam o fluxo
+  // Scheduling v2 (BOOKING) — ativa quando o agente está em modo BOOKING (AgentMode).
+  // Estas tools coexistem com create_event (MEETING) e habilitam o fluxo
   // completo de agendamento de serviços via agente.
   if (globalFlags?.agentMode === 'BOOKING') {
     tools['get_services'] = createGetServicesTool(ctx)

@@ -843,7 +843,7 @@ export function CalendarView({
             key={`create-${createDefaultDates.startDate.toISOString()}`}
             defaultValues={{
               id: '',
-              type: 'COMMERCIAL',
+              type: 'MEETING',
               title: '',
               description: null,
               startDate: createDefaultDates.startDate,

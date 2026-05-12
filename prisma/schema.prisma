@@ -301,8 +301,8 @@ model Activity {
 model Appointment {
   id             String            @id @default(uuid())
   organizationId String            @map("organization_id")
-  // Discrimina o tipo de agendamento: COMMERCIAL (legado, deal-based) ou SERVICE (novo, profissional-based)
-  type           AppointmentType   @default(COMMERCIAL) @map("type")
+  // Discrimina o tipo de agendamento: MEETING (deal-based, agenda comercial) ou BOOKING (profissional-based, agenda de entrega)
+  type           AppointmentType   @default(MEETING) @map("type")
   title          String
   description    String?
   notes          String?
@@ -310,7 +310,7 @@ model Appointment {
   endDate        DateTime          @map("end_date")
   status         AppointmentStatus @default(SCHEDULED)
   assignedTo     String            @map("assigned_to")
-  // dealId virou opcional: obrigatório apenas para COMMERCIAL, enforced na application layer
+  // dealId virou opcional: obrigatório apenas para MEETING, enforced na application layer
   dealId         String?           @map("deal_id")
   // Novos campos de scheduling v2 — nullable permanentemente (obrigatoriedade na app layer)
   professionalId String?           @map("professional_id")
@@ -1072,8 +1072,8 @@ enum WorkingHoursExceptionType {
 }
 
 enum AppointmentType {
-  COMMERCIAL
-  SERVICE
+  MEETING
+  BOOKING
 }
 
 enum PaymentStatus {

@@ -26,23 +26,23 @@ export const createAppointment = orgActionClient
     // 3. Ownership: MEMBER forçado para si mesmo
     const assignedTo = resolveAssignedTo(ctx, data.assignedTo)
 
-    // 4. Cross-entity: deal apenas para COMMERCIAL
-    if (data.type === 'COMMERCIAL' && data.dealId) {
+    // 4. Cross-entity: deal apenas para MEETING
+    if (data.type === 'MEETING' && data.dealId) {
       await findDealWithRBAC(data.dealId, ctx)
     }
 
-    // 5. Validações específicas de SERVICE e cálculo de endDate
-    // Para COMMERCIAL, endDate vem do input validado pelo schema (superRefine garante presença)
-    if (data.type === 'COMMERCIAL' && !data.endDate) {
+    // 5. Validações específicas de BOOKING e cálculo de endDate
+    // Para MEETING, endDate vem do input validado pelo schema (superRefine garante presença)
+    if (data.type === 'MEETING' && !data.endDate) {
       throw new Error('Data de fim é obrigatória para agendamentos comerciais.')
     }
 
     let computedEndDate: Date = data.endDate ?? new Date()
 
-    if (data.type === 'SERVICE') {
+    if (data.type === 'BOOKING') {
       // 5a. Garantir que professionalId e serviceId estão presentes (já validado no schema, mas narrowing para TS)
       if (!data.professionalId || !data.serviceId) {
-        throw new Error('professionalId e serviceId são obrigatórios para SERVICE.')
+        throw new Error('professionalId e serviceId são obrigatórios para BOOKING.')
       }
 
       const professionalId = data.professionalId
@@ -122,8 +122,8 @@ export const createAppointment = orgActionClient
       // 5f. Calcular endDate a partir da duração do serviço (em minutos)
       computedEndDate = new Date(data.startDate.getTime() + service.duration * 60 * 1000)
 
-      // 6. Overlap check por professionalId para SERVICE
-      // NULL = NULL é FALSE em SQL, então usar professionalId em overlap de COMMERCIAL
+      // 6. Overlap check por professionalId para BOOKING
+      // NULL = NULL é FALSE em SQL, então usar professionalId em overlap de MEETING
       // silenciaria o check — por isso o overlap é condicional por type
       const overlapping = await db.appointment.findFirst({
         where: {
@@ -140,7 +140,7 @@ export const createAppointment = orgActionClient
         throw new Error('Profissional já possui um agendamento neste período.')
       }
 
-      // 7. Criar agendamento SERVICE com priceSnapshot reutilizando a query do step 5c
+      // 7. Criar agendamento BOOKING com priceSnapshot reutilizando a query do step 5c
       const appointment = await db.appointment.create({
         data: {
           organizationId: ctx.orgId,
@@ -159,7 +159,7 @@ export const createAppointment = orgActionClient
         },
       })
 
-      // 8. SERVICE não gera Activity — sem dealId para registrar no timeline
+      // 8. BOOKING não gera Activity — sem dealId para registrar no timeline
       // Activity própria de serviços planejada para v2
 
       // 9. Invalidar cache
@@ -185,13 +185,13 @@ export const createAppointment = orgActionClient
       return { success: true }
     }
 
-    // Fluxo COMMERCIAL: overlap por assignedTo (comportamento legado preservado)
+    // Fluxo MEETING: overlap por assignedTo (comportamento legado preservado)
     // computedEndDate já possui o valor de data.endDate (garantido pelo guard acima)
     const overlapping = await db.appointment.findFirst({
       where: {
         assignedTo,
         organizationId: ctx.orgId,
-        type: 'COMMERCIAL',
+        type: 'MEETING',
         status: { notIn: ['CANCELED', 'NO_SHOW'] },
         startDate: { lt: computedEndDate },
         endDate: { gt: data.startDate },
@@ -221,7 +221,7 @@ export const createAppointment = orgActionClient
       },
     })
 
-    // Activity na timeline do deal — apenas COMMERCIAL com dealId
+    // Activity na timeline do deal — apenas MEETING com dealId
     if (data.dealId) {
       await db.activity.create({
         data: {
@@ -233,7 +233,7 @@ export const createAppointment = orgActionClient
       })
     }
 
-    // Invalidar cache COMMERCIAL
+    // Invalidar cache MEETING
     revalidateTag(`appointments:${ctx.orgId}`)
     revalidateTag(`deals:${ctx.orgId}`)
     if (data.dealId) {

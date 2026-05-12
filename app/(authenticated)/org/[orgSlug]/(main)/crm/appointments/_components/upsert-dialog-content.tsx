@@ -205,8 +205,8 @@ export function UpsertAppointmentDialogContent({
 
   const defaultValuesParsed: CreateAppointmentInput = defaultValues
     ? {
-        // Agendamentos legados sem type explícito são tratados como COMMERCIAL
-        type: (defaultValues.type as 'COMMERCIAL' | 'SERVICE') ?? 'COMMERCIAL',
+        // Agendamentos legados sem type explícito são tratados como MEETING
+        type: (defaultValues.type as 'MEETING' | 'BOOKING') ?? 'MEETING',
         // contactId null indica registro legado pré-backfill — tratado como não preenchido no form
         contactId: defaultValues.contactId ?? undefined,
         title: defaultValues.title,
@@ -219,7 +219,7 @@ export function UpsertAppointmentDialogContent({
         assignedTo: defaultValues.assignedTo,
       }
     : {
-        type: 'COMMERCIAL',
+        type: 'MEETING',
         contactId: undefined,
         title: '',
         description: '',
@@ -246,7 +246,7 @@ export function UpsertAppointmentDialogContent({
   // Único useEffect legítimo — sincroniza com sistema externo (server action)
   // --------------------------------------------------------------------------
   useEffect(() => {
-    if (watchedType !== 'SERVICE' || !watchedServiceId || !watchedStartDate) {
+    if (watchedType !== 'BOOKING' || !watchedServiceId || !watchedStartDate) {
       setAvailableProfessionals([])
       return
     }
@@ -339,11 +339,11 @@ export function UpsertAppointmentDialogContent({
                   <div className="flex gap-2">
                     <Button
                       type="button"
-                      variant={field.value === 'COMMERCIAL' ? 'default' : 'outline'}
+                      variant={field.value === 'MEETING' ? 'default' : 'outline'}
                       size="sm"
                       className="flex-1 gap-2"
                       onClick={() => {
-                        field.onChange('COMMERCIAL')
+                        field.onChange('MEETING')
                         form.setValue('professionalId', undefined)
                         form.setValue('serviceId', undefined)
                         setAvailableProfessionals([])
@@ -354,11 +354,11 @@ export function UpsertAppointmentDialogContent({
                     </Button>
                     <Button
                       type="button"
-                      variant={field.value === 'SERVICE' ? 'default' : 'outline'}
+                      variant={field.value === 'BOOKING' ? 'default' : 'outline'}
                       size="sm"
                       className="flex-1 gap-2"
                       onClick={() => {
-                        field.onChange('SERVICE')
+                        field.onChange('BOOKING')
                         form.setValue('dealId', undefined)
                         form.setValue('endDate', undefined)
                       }}
@@ -373,8 +373,8 @@ export function UpsertAppointmentDialogContent({
             )}
           />
 
-          {/* NEGÓCIO — apenas COMMERCIAL e sem fixedDealId */}
-          {watchedType === 'COMMERCIAL' && !fixedDealId && (
+          {/* NEGÓCIO — apenas MEETING e sem fixedDealId */}
+          {watchedType === 'MEETING' && !fixedDealId && (
             <FormField<CreateAppointmentInput, 'dealId'>
               control={form.control}
               name="dealId"
@@ -558,8 +558,8 @@ export function UpsertAppointmentDialogContent({
             )}
           />
 
-          {/* SERVIÇO — apenas SERVICE */}
-          {watchedType === 'SERVICE' && (
+          {/* SERVIÇO — apenas BOOKING */}
+          {watchedType === 'BOOKING' && (
             <FormField<CreateAppointmentInput, 'serviceId'>
               control={form.control}
               name="serviceId"
@@ -658,13 +658,13 @@ export function UpsertAppointmentDialogContent({
             label="Data de Início"
           />
 
-          {/* DATA DE FIM — apenas COMMERCIAL */}
-          {watchedType === 'COMMERCIAL' && (
+          {/* DATA DE FIM — apenas MEETING */}
+          {watchedType === 'MEETING' && (
             <DateTimeField form={form} name="endDate" label="Data de Fim" />
           )}
 
-          {/* PROFISSIONAL — apenas SERVICE, após serviceId + startDate preenchidos */}
-          {watchedType === 'SERVICE' && (
+          {/* PROFISSIONAL — apenas BOOKING, após serviceId + startDate preenchidos */}
+          {watchedType === 'BOOKING' && (
             <FormField<CreateAppointmentInput, 'professionalId'>
               control={form.control}
               name="professionalId"
@@ -772,8 +772,8 @@ export function UpsertAppointmentDialogContent({
             )}
           />
 
-          {/* RESPONSÁVEL — apenas COMMERCIAL (SERVICE resolve via ctx.userId no servidor) */}
-          {watchedType === 'COMMERCIAL' && (
+          {/* RESPONSÁVEL — apenas MEETING (BOOKING resolve via ctx.userId no servidor) */}
+          {watchedType === 'MEETING' && (
             <FormField<CreateAppointmentInput, 'assignedTo'>
               control={form.control}
               name="assignedTo"

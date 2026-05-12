@@ -24,7 +24,7 @@ export const deleteAppointment = orgActionClient
       throw new Error('Apenas agendamentos cancelados podem ser excluídos.')
     }
 
-    // 4. Registrar atividade apenas para agendamentos COMMERCIAL (dealId obrigatório para Activity)
+    // 4. Registrar atividade apenas para agendamentos MEETING (dealId obrigatório para Activity)
     if (existing.dealId) {
       await db.activity.create({
         data: {

@@ -47,7 +47,7 @@ export const updateAppointment = orgActionClient
       requirePermission(canTransferOwnership(ctx))
     }
 
-    // 5. Overlapping check diferenciado por type (COMMERCIAL vs SERVICE)
+    // 5. Overlapping check diferenciado por type (MEETING vs BOOKING)
     const effectiveAssignedTo = data.assignedTo ?? existing.assignedTo
     const effectiveStartDate = data.startDate
     const effectiveEndDate = data.endDate
@@ -73,7 +73,7 @@ export const updateAppointment = orgActionClient
       }
 
       if (startForCheck && endForCheck) {
-        if (existing.type === 'SERVICE') {
+        if (existing.type === 'BOOKING') {
           // Overlap por professionalId — usa o novo professionalId se estiver sendo alterado,
           // senão usa o profissional existente do agendamento
           const effectiveProfessionalId = data.professionalId ?? existing.professionalId
@@ -96,14 +96,14 @@ export const updateAppointment = orgActionClient
             }
           }
         } else {
-          // COMMERCIAL: overlap por assignedTo — NULL = NULL é FALSE em SQL,
-          // então usar professionalId (null) invalidaria o check para COMMERCIAL
+          // MEETING: overlap por assignedTo — NULL = NULL é FALSE em SQL,
+          // então usar professionalId (null) invalidaria o check para MEETING
           const overlapping = await db.appointment.findFirst({
             where: {
               id: { not: data.id },
               assignedTo: effectiveAssignedTo,
               organizationId: ctx.orgId,
-              type: 'COMMERCIAL',
+              type: 'MEETING',
               status: { notIn: ['CANCELED', 'NO_SHOW'] },
               startDate: { lt: endForCheck },
               endDate: { gt: startForCheck },
@@ -136,7 +136,7 @@ export const updateAppointment = orgActionClient
       data: updateData,
     })
 
-    // 7. Activity se status mudou — apenas para COMMERCIAL (dealId obrigatório para Activity)
+    // 7. Activity se status mudou — apenas para MEETING (dealId obrigatório para Activity)
     if (data.status !== undefined && data.status !== existing.status && existing.dealId) {
       const activityType =
         data.status === 'CANCELED' ? 'appointment_canceled' : 'appointment_updated'

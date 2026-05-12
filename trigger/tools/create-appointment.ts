@@ -14,9 +14,9 @@ interface CreateAppointmentResult {
 const inputSchema = z
   .object({
     type: z
-      .enum(['COMMERCIAL', 'SERVICE'])
+      .enum(['MEETING', 'BOOKING'])
       .describe(
-        'Tipo do agendamento: COMMERCIAL para reuniões/demos vinculadas a um negócio, SERVICE para serviços agendados (profissional + serviço).',
+        'Tipo do agendamento: MEETING para reuniões/demos vinculadas a um negócio, BOOKING para serviços agendados (profissional + serviço).',
       ),
     title: z.string().describe('Título do compromisso (ex: "Reunião de apresentação")'),
     description: z.string().optional().describe('Descrição ou pauta do compromisso'),
@@ -29,38 +29,38 @@ const inputSchema = z
       .string()
       .optional()
       .describe(
-        'Data/hora término ISO 8601. Obrigatório para COMMERCIAL. Para SERVICE é calculado automaticamente a partir do duration do serviço.',
+        'Data/hora término ISO 8601. Obrigatório para MEETING. Para BOOKING é calculado automaticamente a partir do duration do serviço.',
       ),
     serviceId: z
       .string()
       .optional()
-      .describe('ID do serviço — obrigatório para SERVICE.'),
+      .describe('ID do serviço — obrigatório para BOOKING.'),
     professionalId: z
       .string()
       .optional()
-      .describe('ID do profissional — obrigatório para SERVICE.'),
+      .describe('ID do profissional — obrigatório para BOOKING.'),
   })
   .superRefine((data, issueCtx) => {
-    if (data.type === 'SERVICE') {
+    if (data.type === 'BOOKING') {
       if (!data.serviceId) {
         issueCtx.addIssue({
           code: 'custom',
-          message: 'serviceId obrigatório para SERVICE',
+          message: 'serviceId obrigatório para BOOKING',
           path: ['serviceId'],
         })
       }
       if (!data.professionalId) {
         issueCtx.addIssue({
           code: 'custom',
-          message: 'professionalId obrigatório para SERVICE',
+          message: 'professionalId obrigatório para BOOKING',
           path: ['professionalId'],
         })
       }
     }
-    if (data.type === 'COMMERCIAL' && !data.endDate) {
+    if (data.type === 'MEETING' && !data.endDate) {
       issueCtx.addIssue({
         code: 'custom',
-        message: 'endDate obrigatório para COMMERCIAL',
+        message: 'endDate obrigatório para MEETING',
         path: ['endDate'],
       })
     }
@@ -69,12 +69,12 @@ const inputSchema = z
 export function createCreateAppointmentTool(ctx: ToolContext) {
   return tool({
     description:
-      'Cria um agendamento. Dois tipos suportados: COMMERCIAL (reunião/demo vinculada a um negócio) e SERVICE (serviço agendado com profissional). ' +
-      'Use SERVICE quando o cliente quer marcar um serviço da empresa. Use COMMERCIAL para conversas comerciais vinculadas a um negócio.',
+      'Cria um agendamento. Dois tipos suportados: MEETING (reunião/demo vinculada a um negócio) e BOOKING (serviço agendado com profissional). ' +
+      'Use BOOKING quando o cliente quer marcar um serviço da empresa. Use MEETING para conversas comerciais vinculadas a um negócio.',
     inputSchema,
     execute: async (input): Promise<CreateAppointmentResult> => {
       try {
-        if (input.type === 'SERVICE') {
+        if (input.type === 'BOOKING') {
           return await runServiceCreation(ctx, input)
         }
         return await runCommercialCreation(ctx, input)
@@ -100,9 +100,9 @@ async function runCommercialCreation(
     }
   }
 
-  // endDate é garantido para COMMERCIAL pelo superRefine, mas o tipo Zod ainda o trata como opcional
+  // endDate é garantido para MEETING pelo superRefine, mas o tipo Zod ainda o trata como opcional
   if (!input.endDate) {
-    return { success: false, message: 'endDate obrigatório para COMMERCIAL.' }
+    return { success: false, message: 'endDate obrigatório para MEETING.' }
   }
 
   const deal = await db.deal.findFirst({
@@ -139,7 +139,7 @@ async function runCommercialCreation(
       db.appointment.create({
         data: {
           organizationId: ctx.organizationId,
-          type: 'COMMERCIAL',
+          type: 'MEETING',
           title: input.title,
           description: input.description ?? null,
           startDate: parsedStart,
@@ -182,7 +182,7 @@ async function runCommercialCreation(
     timeStyle: 'short',
   })
 
-  logger.info('Tool create_appointment executed (COMMERCIAL)', {
+  logger.info('Tool create_appointment executed (MEETING)', {
     title: input.title,
     startDate: input.startDate,
     endDate: input.endDate,
@@ -305,7 +305,7 @@ async function runServiceCreation(
       db.appointment.create({
         data: {
           organizationId: ctx.organizationId,
-          type: 'SERVICE',
+          type: 'BOOKING',
           title: input.title,
           description: input.description ?? null,
           startDate: parsedStart,
