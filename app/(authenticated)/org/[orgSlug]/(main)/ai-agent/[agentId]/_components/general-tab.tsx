@@ -92,6 +92,7 @@ const GeneralTab = ({ agent, pipelines, canManage, onSaveSuccess, hasActiveServi
         agentMode={agent.agentMode}
         canManage={canManage}
         hasActiveServices={hasActiveServices}
+        stepActionTypes={agent.steps.flatMap((step) => step.actions.map((action) => action.type))}
       />
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">

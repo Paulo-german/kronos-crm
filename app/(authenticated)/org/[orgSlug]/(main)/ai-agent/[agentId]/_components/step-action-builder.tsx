@@ -53,6 +53,7 @@ interface StepActionBuilderProps {
   onChange: (actions: StepAction[]) => void
   pipelineStages: PipelineStageOption[]
   excludeGlobalTools?: boolean
+  agentMode?: 'PRODUCT' | 'SERVICE' | 'HYBRID'
 }
 
 const TRIGGER_PLACEHOLDERS: Record<string, string> = {
@@ -63,6 +64,7 @@ const TRIGGER_PLACEHOLDERS: Record<string, string> = {
   list_availability: 'Ex: Quando o lead quiser agendar uma reunião',
   create_event: 'Ex: Quando o lead confirmar o horário do evento',
   hand_off_to_human: 'Ex: Se necessário atendimento humano',
+  create_appointment: 'Ex: Quando o cliente confirmar o serviço',
 }
 
 const buildDefaultAction = (type: string): StepAction => {
@@ -98,6 +100,8 @@ const buildDefaultAction = (type: string): StepAction => {
       }
     case 'hand_off_to_human':
       return { type: 'hand_off_to_human', trigger: '', notifyTarget: 'none' as const }
+    case 'create_appointment':
+      return { type: 'create_appointment', trigger: '' }
     default:
       return { type: 'update_contact', trigger: '' }
   }
@@ -210,6 +214,16 @@ const getActionSummary = (action: StepAction, pipelineStages: PipelineStageOptio
       }
       return { trigger, config: <InfoPiece icon={BellOff} text="Sem notificação" /> }
     }
+    case 'create_appointment': {
+      const parts = []
+      if (action.startTime && action.endTime) {
+        parts.push(<InfoPiece key="time" icon={Clock} text={`${action.startTime}–${action.endTime}`} />)
+      }
+      return {
+        trigger,
+        config: parts.length > 0 ? <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5">{parts}</span> : 'Sem janela de horário definida',
+      }
+    }
   }
 }
 
@@ -218,6 +232,7 @@ const StepActionBuilder = ({
   onChange,
   pipelineStages,
   excludeGlobalTools = false,
+  agentMode = 'PRODUCT',
 }: StepActionBuilderProps) => {
   // Indexado por id de instância (não por type) para permitir abrir/fechar
   // cards individuais quando há múltiplas instâncias do mesmo type.
@@ -280,6 +295,8 @@ const StepActionBuilder = ({
   // Apenas tools globais são bloqueadas quando excludeGlobalTools está ativo.
   const availableToAdd = TOOL_OPTIONS.filter((tool) => {
     if (excludeGlobalTools && globalToolTypes.has(tool.value)) return false
+    if (tool.value === 'create_appointment' && agentMode === 'PRODUCT') return false
+    if ((tool.value === 'list_availability' || tool.value === 'create_event') && agentMode === 'SERVICE') return false
     return true
   })
 

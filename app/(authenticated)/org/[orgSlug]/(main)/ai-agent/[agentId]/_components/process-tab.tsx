@@ -127,6 +127,7 @@ interface SortableStepCardProps {
   onDeleteSuccess: (id: string) => void
   onSaveSuccess?: () => void
   excludeGlobalTools?: boolean
+  agentMode?: 'PRODUCT' | 'SERVICE' | 'HYBRID'
 }
 
 const SortableStepCard = ({
@@ -141,6 +142,7 @@ const SortableStepCard = ({
   onDeleteSuccess,
   onSaveSuccess,
   excludeGlobalTools,
+  agentMode,
 }: SortableStepCardProps) => {
   const {
     attributes,
@@ -221,6 +223,7 @@ const SortableStepCard = ({
               onDeleteSuccess={() => onDeleteSuccess(step.id)}
               onSaveSuccess={onSaveSuccess}
               excludeGlobalTools={excludeGlobalTools}
+              agentMode={agentMode}
             />
           </div>
         </CollapsibleContent>
@@ -361,6 +364,7 @@ const ProcessTab = ({
       onDeleteSuccess={handleDeleteSuccess}
       onSaveSuccess={onSaveSuccess}
       excludeGlobalTools={excludeGlobalTools}
+      agentMode={agent.agentMode}
     />
   ))
 
@@ -443,6 +447,7 @@ const ProcessTab = ({
               onDeleteSuccess={() => setOpenStepId(null)}
               onSaveSuccess={onSaveSuccess}
               excludeGlobalTools={excludeGlobalTools}
+              agentMode={agent.agentMode}
             />
           </div>
         )}

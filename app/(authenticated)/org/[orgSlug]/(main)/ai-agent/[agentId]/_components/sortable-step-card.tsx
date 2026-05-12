@@ -20,6 +20,7 @@ interface SortableStepCardProps {
   agentId: string
   canManage: boolean
   pipelineStages: PipelineStageOption[]
+  agentMode?: 'PRODUCT' | 'SERVICE' | 'HYBRID'
 }
 
 const SortableStepCard = ({
@@ -27,6 +28,7 @@ const SortableStepCard = ({
   agentId,
   canManage,
   pipelineStages,
+  agentMode,
 }: SortableStepCardProps) => {
   const actions = step.actions ?? []
   const [isEditOpen, setIsEditOpen] = useState(false)
@@ -134,6 +136,7 @@ const SortableStepCard = ({
         agentId={agentId}
         defaultValues={step}
         pipelineStages={pipelineStages}
+        agentMode={agentMode}
       />
 
       {/* Delete Confirmation */}

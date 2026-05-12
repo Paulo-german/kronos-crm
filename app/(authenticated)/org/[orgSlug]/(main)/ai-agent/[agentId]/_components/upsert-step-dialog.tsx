@@ -41,6 +41,7 @@ interface UpsertStepDialogProps {
   agentId: string
   defaultValues?: AgentStepDto
   pipelineStages: PipelineStageOption[]
+  agentMode?: 'PRODUCT' | 'SERVICE' | 'HYBRID'
 }
 
 const UpsertStepDialog = ({
@@ -49,6 +50,7 @@ const UpsertStepDialog = ({
   agentId,
   defaultValues,
   pipelineStages,
+  agentMode,
 }: UpsertStepDialogProps) => {
   const isEditing = !!defaultValues?.id
 
@@ -174,6 +176,7 @@ const UpsertStepDialog = ({
               value={(form.watch('actions') ?? []) as StepAction[]}
               onChange={(actions) => form.setValue('actions', actions)}
               pipelineStages={pipelineStages}
+              agentMode={agentMode}
             />
 
             <FormField

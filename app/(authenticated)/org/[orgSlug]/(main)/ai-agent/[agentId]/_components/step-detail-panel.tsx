@@ -41,6 +41,7 @@ interface StepDetailPanelProps {
   onDeleteSuccess: () => void
   onSaveSuccess?: () => void
   excludeGlobalTools?: boolean
+  agentMode?: 'PRODUCT' | 'SERVICE' | 'HYBRID'
 }
 
 const StepDetailPanel = ({
@@ -52,6 +53,7 @@ const StepDetailPanel = ({
   onDeleteSuccess,
   onSaveSuccess,
   excludeGlobalTools = false,
+  agentMode,
 }: StepDetailPanelProps) => {
   const isEditing = !!step?.id
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
@@ -199,6 +201,7 @@ const StepDetailPanel = ({
                 }
                 pipelineStages={pipelineStages}
                 excludeGlobalTools={excludeGlobalTools}
+                agentMode={agentMode}
               />
             )}
 
