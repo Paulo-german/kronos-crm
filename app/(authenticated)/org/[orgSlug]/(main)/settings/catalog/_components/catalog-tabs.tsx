@@ -94,7 +94,7 @@ export function CatalogTabs({
       </TabsContent>
 
       <TabsContent value="promotions" className="mt-6">
-        <PromotionsTab promotions={promotions} />
+        <PromotionsTab promotions={promotions} products={products} services={services} />
       </TabsContent>
     </Tabs>
   )
