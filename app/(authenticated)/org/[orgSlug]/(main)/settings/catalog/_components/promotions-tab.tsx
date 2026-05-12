@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useForm, useFieldArray } from 'react-hook-form'
+import { useForm, useFieldArray, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { ColumnDef } from '@tanstack/react-table'
 import {
@@ -123,6 +123,9 @@ function UpsertPromotionSheet({
 }: UpsertPromotionSheetProps) {
   const isEditing = !!defaultValues?.id
 
+  // Tipo da promoção: todos os itens são do mesmo tipo (PRODUCT ou SERVICE)
+  const [catalogType, setCatalogType] = useState<'PRODUCT' | 'SERVICE'>('PRODUCT')
+
   const form = useForm<CreatePromotionInput>({
     resolver: zodResolver(createPromotionSchema),
     defaultValues: {
@@ -139,9 +142,12 @@ function UpsertPromotionSheet({
     name: 'items',
   })
 
+  const watchedItems = useWatch({ control: form.control, name: 'items' })
+
   // Reseta o form ao abrir com novos valores
   useEffect(() => {
     if (open) {
+      setCatalogType('PRODUCT')
       form.reset({
         name: defaultValues?.name ?? '',
         description: defaultValues?.description ?? '',
@@ -151,6 +157,17 @@ function UpsertPromotionSheet({
       })
     }
   }, [open, defaultValues, form])
+
+  const handleCatalogTypeChange = (type: 'PRODUCT' | 'SERVICE') => {
+    setCatalogType(type)
+    form.setValue('items', [])
+  }
+
+  const handleAddItem = () => {
+    append({ productId: undefined, serviceId: undefined, quantity: 1 })
+  }
+
+  const catalog = catalogType === 'PRODUCT' ? products : services
 
   const { execute: executeCreate, isPending: isCreating } = useAction(
     createPromotion,
@@ -231,7 +248,7 @@ function UpsertPromotionSheet({
             name="price"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Preço (R$) *</FormLabel>
+                <FormLabel>Preço promocional (R$) *</FormLabel>
                 <FormControl>
                   <CurrencyInput
                     placeholder="R$ 0,00"
@@ -245,6 +262,115 @@ function UpsertPromotionSheet({
               </FormItem>
             )}
           />
+
+          {/* Tipo do catálogo — define se os itens são produtos ou serviços */}
+          <div className="space-y-2">
+            <p className="text-sm font-medium leading-none">Tipo de catálogo</p>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant={catalogType === 'PRODUCT' ? 'default' : 'outline'}
+                size="sm"
+                className="flex-1"
+                onClick={() => handleCatalogTypeChange('PRODUCT')}
+              >
+                Produtos
+              </Button>
+              <Button
+                type="button"
+                variant={catalogType === 'SERVICE' ? 'default' : 'outline'}
+                size="sm"
+                className="flex-1"
+                onClick={() => handleCatalogTypeChange('SERVICE')}
+              >
+                Serviços
+              </Button>
+            </div>
+          </div>
+
+          {/* Itens da promoção — sempre do tipo selecionado acima */}
+          <div className="border-t pt-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium leading-none">
+                {catalogType === 'PRODUCT' ? 'Produtos incluídos' : 'Serviços incluídos'}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAddItem}
+                disabled={catalog.length === 0}
+              >
+                <PlusCircle className="mr-1 h-3.5 w-3.5" />
+                Adicionar
+              </Button>
+            </div>
+
+            {catalog.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                Nenhum {catalogType === 'PRODUCT' ? 'produto' : 'serviço'} cadastrado no catálogo.
+              </p>
+            )}
+
+            {fields.length === 0 && catalog.length > 0 && (
+              <p className="text-sm text-muted-foreground">Nenhum item adicionado.</p>
+            )}
+
+            {fields.map((field, index) => {
+              const currentItem = watchedItems?.[index]
+              const selectedId = catalogType === 'PRODUCT'
+                ? (currentItem?.productId ?? '')
+                : (currentItem?.serviceId ?? '')
+
+              return (
+                <div key={field.id} className="flex gap-2 items-center">
+                  <Select
+                    value={selectedId}
+                    onValueChange={(id) => {
+                      if (catalogType === 'PRODUCT') {
+                        form.setValue(`items.${index}.productId`, id)
+                        form.setValue(`items.${index}.serviceId`, undefined)
+                      } else {
+                        form.setValue(`items.${index}.serviceId`, id)
+                        form.setValue(`items.${index}.productId`, undefined)
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue
+                        placeholder={catalogType === 'PRODUCT' ? 'Selecione um produto' : 'Selecione um serviço'}
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {catalog.map((item) => (
+                        <SelectItem key={item.id} value={item.id}>
+                          {item.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <Input
+                    type="number"
+                    min={1}
+                    className="w-20 shrink-0"
+                    {...form.register(`items.${index}.quantity`, { valueAsNumber: true })}
+                  />
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0"
+                    onClick={() => remove(index)}
+                  >
+                    <X className="h-4 w-4" />
+                    <span className="sr-only">Remover item</span>
+                  </Button>
+                </div>
+              )
+            })}
+          </div>
 
           <div className="border-t pt-4">
             <FormField
@@ -267,127 +393,6 @@ function UpsertPromotionSheet({
                 </FormItem>
               )}
             />
-          </div>
-
-          {/* Seção de itens da promoção */}
-          <div className="border-t pt-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium leading-none">Itens da promoção</p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => append({ productId: undefined, serviceId: undefined, quantity: 1 })}
-              >
-                <PlusCircle className="mr-1 h-3.5 w-3.5" />
-                Adicionar item
-              </Button>
-            </div>
-
-            {fields.length === 0 && (
-              <p className="text-sm text-muted-foreground">Nenhum item adicionado.</p>
-            )}
-
-            {fields.map((field, index) => {
-              // Observa os valores atuais do item para controle do tipo (PRODUCT/SERVICE)
-              const watchedItems = form.watch('items')
-              const currentItem = watchedItems?.[index]
-              const selectedType: 'product' | 'service' | '' =
-                currentItem?.productId ? 'product' : currentItem?.serviceId ? 'service' : ''
-
-              return (
-                <div key={field.id} className="flex gap-2 items-start">
-                  {/* Select de tipo: Produto ou Serviço */}
-                  <div className="flex-1 flex gap-2">
-                    <Select
-                      value={selectedType}
-                      onValueChange={(type: 'product' | 'service') => {
-                        // Limpa o campo anterior ao trocar o tipo
-                        form.setValue(`items.${index}.productId`, undefined)
-                        form.setValue(`items.${index}.serviceId`, undefined)
-                      }}
-                    >
-                      <SelectTrigger className="w-[120px] shrink-0">
-                        <SelectValue placeholder="Tipo" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="product">Produto</SelectItem>
-                        <SelectItem value="service">Serviço</SelectItem>
-                      </SelectContent>
-                    </Select>
-
-                    {/* Select do item específico */}
-                    {selectedType === 'product' && (
-                      <Select
-                        value={currentItem?.productId ?? ''}
-                        onValueChange={(productId) => {
-                          form.setValue(`items.${index}.productId`, productId)
-                          form.setValue(`items.${index}.serviceId`, undefined)
-                        }}
-                      >
-                        <SelectTrigger className="flex-1">
-                          <SelectValue placeholder="Selecione um produto" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {products.map((product) => (
-                            <SelectItem key={product.id} value={product.id}>
-                              {product.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-
-                    {selectedType === 'service' && (
-                      <Select
-                        value={currentItem?.serviceId ?? ''}
-                        onValueChange={(serviceId) => {
-                          form.setValue(`items.${index}.serviceId`, serviceId)
-                          form.setValue(`items.${index}.productId`, undefined)
-                        }}
-                      >
-                        <SelectTrigger className="flex-1">
-                          <SelectValue placeholder="Selecione um serviço" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {services.map((service) => (
-                            <SelectItem key={service.id} value={service.id}>
-                              {service.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-
-                    {selectedType === '' && (
-                      <div className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm text-muted-foreground">
-                        Selecione o tipo primeiro
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Input de quantidade */}
-                  <Input
-                    type="number"
-                    min={1}
-                    className="w-20 shrink-0"
-                    {...form.register(`items.${index}.quantity`, { valueAsNumber: true })}
-                  />
-
-                  {/* Botão remover */}
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="shrink-0"
-                    onClick={() => remove(index)}
-                  >
-                    <X className="h-4 w-4" />
-                    <span className="sr-only">Remover item</span>
-                  </Button>
-                </div>
-              )
-            })}
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
