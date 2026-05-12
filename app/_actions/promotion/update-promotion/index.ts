@@ -35,6 +35,8 @@ export const updatePromotion = orgActionClient
           name: data.name,
           description: data.description ?? null,
           price: data.price,
+          discountType: data.discountType,
+          discountValue: data.discountValue,
           isActive: data.isActive,
         },
       })

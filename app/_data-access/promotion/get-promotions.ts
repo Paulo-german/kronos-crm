@@ -3,13 +3,23 @@ import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 
+export interface PromotionItemDto {
+  id: string
+  quantity: number
+  productId: string | null
+  serviceId: string | null
+}
+
 export interface PromotionDto {
   id: string
   name: string
   description: string | null
   price: number
+  discountType: string
+  discountValue: number
   isActive: boolean
   itemCount: number
+  items: PromotionItemDto[]
   createdAt: Date
 }
 
@@ -23,10 +33,20 @@ const fetchPromotionsFromDb = async (orgId: string): Promise<PromotionDto[]> => 
       name: true,
       description: true,
       price: true,
+      discountType: true,
+      discountValue: true,
       isActive: true,
       createdAt: true,
       _count: {
         select: { items: true },
+      },
+      items: {
+        select: {
+          id: true,
+          quantity: true,
+          productId: true,
+          serviceId: true,
+        },
       },
     },
     orderBy: {
@@ -39,8 +59,11 @@ const fetchPromotionsFromDb = async (orgId: string): Promise<PromotionDto[]> => 
     name: promotion.name,
     description: promotion.description,
     price: Number(promotion.price),
+    discountType: promotion.discountType,
+    discountValue: Number(promotion.discountValue),
     isActive: promotion.isActive,
     itemCount: promotion._count.items,
+    items: promotion.items,
     createdAt: promotion.createdAt,
   }))
 }

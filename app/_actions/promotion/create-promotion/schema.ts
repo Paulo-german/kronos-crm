@@ -20,6 +20,8 @@ export const createPromotionSchema = z.object({
   name: z.string().trim().min(1, 'Nome é obrigatório'),
   description: z.string().optional(),
   price: z.number().min(0),
+  discountType: z.enum(['PERCENTAGE', 'FIXED']).default('PERCENTAGE'),
+  discountValue: z.number().min(0).default(0),
   isActive: z.boolean().default(true),
   items: z.array(promotionItemSchema).default([]),
 })

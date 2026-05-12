@@ -442,6 +442,9 @@ model Promotion {
   description    String?
   // Preço definido pelo org — pode ser menor que a soma dos itens
   price          Decimal  @db.Decimal(15, 2)
+  // Desconto aplicado sobre o subtotal dos itens
+  discountType   String   @default("PERCENTAGE") @map("discount_type")
+  discountValue  Decimal  @default(0) @db.Decimal(15, 2) @map("discount_value")
   isActive       Boolean  @default(true) @map("is_active")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
