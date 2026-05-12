@@ -50,6 +50,17 @@ export interface DealTaskDto {
   dealId: string
 }
 
+export interface DealAppointmentDto {
+  id: string
+  title: string
+  type: 'MEETING' | 'BOOKING'
+  startDate: Date
+  endDate: Date
+  status: string
+  professional?: { id: string; name: string }
+  service?: { id: string; name: string }
+}
+
 export interface PipelineStageDto {
   id: string
   name: string
@@ -96,6 +107,7 @@ export interface DealDetailsDto {
   activities: DealActivityDto[]
   totalActivities: number
   tasks: DealTaskDto[]
+  appointments: DealAppointmentDto[]
 }
 
 const fetchDealDetailsFromDb = async (
@@ -173,6 +185,20 @@ const fetchDealDetailsFromDb = async (
       tasks: {
         orderBy: { dueDate: 'asc' },
       },
+      appointments: {
+        where: { dealId: { not: null } },
+        orderBy: { startDate: 'desc' },
+        select: {
+          id: true,
+          title: true,
+          type: true,
+          startDate: true,
+          endDate: true,
+          status: true,
+          professional: { select: { id: true, name: true } },
+          service: { select: { id: true, name: true } },
+        },
+      },
       lossReason: {
         select: {
           id: true,
@@ -230,6 +256,21 @@ const fetchDealDetailsFromDb = async (
     products.reduce((sum, product) => sum + product.subtotal, 0) +
     lineItems.reduce((sum, item) => sum + item.subtotal, 0)
 
+  const appointments: DealAppointmentDto[] = deal.appointments.map((appt) => ({
+    id: appt.id,
+    title: appt.title,
+    type: appt.type as 'MEETING' | 'BOOKING',
+    startDate: appt.startDate,
+    endDate: appt.endDate,
+    status: appt.status,
+    professional: appt.professional
+      ? { id: appt.professional.id, name: appt.professional.name }
+      : undefined,
+    service: appt.service
+      ? { id: appt.service.id, name: appt.service.name }
+      : undefined,
+  }))
+
   return {
     id: deal.id,
     title: deal.title,
@@ -286,6 +327,7 @@ const fetchDealDetailsFromDb = async (
       isCompleted: t.isCompleted,
       dealId: deal.id,
     })),
+    appointments,
   }
 }
 

@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
+import { format } from 'date-fns'
 import {
   Plus,
   CircleIcon,
@@ -14,13 +15,16 @@ import {
   UserIcon,
   TimerIcon,
   TrashIcon,
+  Link2Icon,
+  UnlinkIcon,
+  Loader2,
 } from 'lucide-react'
 import { formatInTimeZone } from 'date-fns-tz'
 import { ptBR } from 'date-fns/locale'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import { Button } from '@/_components/ui/button'
-import { Sheet } from '@/_components/ui/sheet'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/_components/ui/sheet'
 import {
   Table,
   TableBody,
@@ -34,10 +38,19 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/_components/ui/popover'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/_components/ui/select'
 import ConfirmationDialog from '@/_components/confirmation-dialog'
 
 import { updateAppointment } from '@/_actions/appointment/update-appointment'
 import { deleteAppointment } from '@/_actions/appointment/delete-appointment'
+import { linkAppointmentToDeal } from '@/_actions/appointment/link-appointment-to-deal'
+import { unlinkAppointmentFromDeal } from '@/_actions/appointment/unlink-appointment-from-deal'
 import { UpsertAppointmentDialogContent } from '../../../appointments/_components/upsert-dialog-content'
 import AppointmentTableDropdownMenu from '../../../appointments/_components/table-dropdown-menu'
 
@@ -57,6 +70,7 @@ interface TabAppointmentsProps {
   members: AcceptedMemberDto[]
   contactOptions: ContactOptionDto[]
   services: ServiceDto[]
+  linkableAppointments: AppointmentDto[]
 }
 
 const TabAppointments = ({
@@ -65,6 +79,7 @@ const TabAppointments = ({
   members,
   contactOptions,
   services,
+  linkableAppointments,
 }: TabAppointmentsProps) => {
   const [editingAppointment, setEditingAppointment] =
     useState<AppointmentDto | null>(null)
@@ -78,6 +93,14 @@ const TabAppointments = ({
   const [statusOverrides, setStatusOverrides] = useState<
     Record<string, AppointmentStatus>
   >({})
+
+  const [isLinkSheetOpen, setIsLinkSheetOpen] = useState(false)
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState<
+    string | undefined
+  >(undefined)
+
+  const [unlinkingAppointment, setUnlinkingAppointment] =
+    useState<AppointmentDto | null>(null)
 
   const { execute: executeUpdate, isPending: isUpdating } = useAction(
     updateAppointment,
@@ -98,7 +121,6 @@ const TabAppointments = ({
       toast.success('Status atualizado com sucesso.')
     },
     onError: ({ error, input }) => {
-      // Rollback optimistic update
       setStatusOverrides((prev) => {
         const next = { ...prev }
         delete next[input.id]
@@ -131,9 +153,41 @@ const TabAppointments = ({
     },
   )
 
+  const { execute: executeLink, isPending: isLinking } = useAction(
+    linkAppointmentToDeal,
+    {
+      onSuccess: () => {
+        toast.success('Agendamento vinculado com sucesso.')
+        setIsLinkSheetOpen(false)
+        setSelectedAppointmentId(undefined)
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError || 'Erro ao vincular agendamento.')
+      },
+    },
+  )
+
+  const { execute: executeUnlink, isPending: isUnlinking } = useAction(
+    unlinkAppointmentFromDeal,
+    {
+      onSuccess: () => {
+        toast.success('Agendamento desvinculado com sucesso.')
+        setUnlinkingAppointment(null)
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError || 'Erro ao desvincular agendamento.')
+      },
+    },
+  )
+
   const handleEdit = (appointment: AppointmentDto) => {
     setEditingAppointment(appointment)
     setIsSheetOpen(true)
+  }
+
+  const handleLinkConfirm = () => {
+    if (!selectedAppointmentId) return
+    executeLink({ appointmentId: selectedAppointmentId, dealId: deal.id })
   }
 
   return (
@@ -141,41 +195,52 @@ const TabAppointments = ({
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-lg">Agendamentos</CardTitle>
 
-        <Sheet
-          open={isSheetOpen}
-          onOpenChange={(open) => {
-            setIsSheetOpen(open)
-            if (!open) setEditingAppointment(null)
-          }}
-        >
-          <Button size="sm" onClick={() => setIsSheetOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Novo Agendamento
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setIsLinkSheetOpen(true)}
+          >
+            <Link2Icon className="mr-2 h-4 w-4" />
+            Vincular existente
           </Button>
 
-          {editingAppointment ? (
-            <UpsertAppointmentDialogContent
-              key={editingAppointment.id}
-              defaultValues={editingAppointment}
-              members={members}
-              contactOptions={contactOptions}
-              services={services}
-              setIsOpen={setIsSheetOpen}
-              onUpdate={(data) => executeUpdate(data)}
-              isUpdating={isUpdating}
-              fixedDealId={deal.id}
-            />
-          ) : (
-            <UpsertAppointmentDialogContent
-              key="new"
-              members={members}
-              contactOptions={contactOptions}
-              services={services}
-              setIsOpen={setIsSheetOpen}
-              fixedDealId={deal.id}
-            />
-          )}
-        </Sheet>
+          <Sheet
+            open={isSheetOpen}
+            onOpenChange={(open) => {
+              setIsSheetOpen(open)
+              if (!open) setEditingAppointment(null)
+            }}
+          >
+            <Button size="sm" onClick={() => setIsSheetOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Novo Agendamento
+            </Button>
+
+            {editingAppointment ? (
+              <UpsertAppointmentDialogContent
+                key={editingAppointment.id}
+                defaultValues={editingAppointment}
+                members={members}
+                contactOptions={contactOptions}
+                services={services}
+                setIsOpen={setIsSheetOpen}
+                onUpdate={(data) => executeUpdate(data)}
+                isUpdating={isUpdating}
+                fixedDealId={deal.id}
+              />
+            ) : (
+              <UpsertAppointmentDialogContent
+                key="new"
+                members={members}
+                contactOptions={contactOptions}
+                services={services}
+                setIsOpen={setIsSheetOpen}
+                fixedDealId={deal.id}
+              />
+            )}
+          </Sheet>
+        </div>
       </CardHeader>
 
       <CardContent>
@@ -228,7 +293,7 @@ const TabAppointments = ({
                       <span>Criado em</span>
                     </div>
                   </TableHead>
-                  <TableHead className="w-[50px]" />
+                  <TableHead className="w-[80px]" />
                 </TableRow>
               </TableHeader>
               <TableBody className="bg-card">
@@ -241,12 +306,10 @@ const TabAppointments = ({
 
                   return (
                     <TableRow key={appointment.id}>
-                      {/* Título */}
                       <TableCell className="font-medium">
                         {appointment.title}
                       </TableCell>
 
-                      {/* Status com Popover inline */}
                       <TableCell>
                         <Popover
                           open={isStatusOpen}
@@ -295,7 +358,6 @@ const TabAppointments = ({
                         </Popover>
                       </TableCell>
 
-                      {/* Responsável */}
                       <TableCell>
                         {appointment.assigneeName ? (
                           <span className="text-sm">
@@ -308,7 +370,6 @@ const TabAppointments = ({
                         )}
                       </TableCell>
 
-                      {/* Período */}
                       <TableCell>
                         <div className="flex items-center gap-1.5 text-sm">
                           <span>
@@ -331,7 +392,6 @@ const TabAppointments = ({
                         </div>
                       </TableCell>
 
-                      {/* Duração */}
                       <TableCell>
                         <span className="text-sm">
                           {formatDuration(
@@ -341,7 +401,6 @@ const TabAppointments = ({
                         </span>
                       </TableCell>
 
-                      {/* Criado em */}
                       <TableCell>
                         <span className="text-sm text-muted-foreground">
                           {formatInTimeZone(
@@ -353,16 +412,27 @@ const TabAppointments = ({
                         </span>
                       </TableCell>
 
-                      {/* Actions */}
                       <TableCell>
-                        <AppointmentTableDropdownMenu
-                          status={appointment.status}
-                          onEdit={() => handleEdit(appointment)}
-                          onDelete={() => {
-                            setDeletingAppointment(appointment)
-                            setIsDeleteDialogOpen(true)
-                          }}
-                        />
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Desvincular"
+                            onClick={() =>
+                              setUnlinkingAppointment(appointment)
+                            }
+                          >
+                            <UnlinkIcon className="h-4 w-4" />
+                          </Button>
+                          <AppointmentTableDropdownMenu
+                            status={appointment.status}
+                            onEdit={() => handleEdit(appointment)}
+                            onDelete={() => {
+                              setDeletingAppointment(appointment)
+                              setIsDeleteDialogOpen(true)
+                            }}
+                          />
+                        </div>
                       </TableCell>
                     </TableRow>
                   )
@@ -373,6 +443,85 @@ const TabAppointments = ({
         )}
       </CardContent>
 
+      {/* Sheet: vincular agendamento existente */}
+      <Sheet
+        open={isLinkSheetOpen}
+        onOpenChange={(open) => {
+          setIsLinkSheetOpen(open)
+          if (!open) setSelectedAppointmentId(undefined)
+        }}
+      >
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Vincular agendamento existente</SheetTitle>
+          </SheetHeader>
+
+          <div className="mt-6 flex flex-col gap-6 px-1">
+            {linkableAppointments.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Não há agendamentos sem negócio disponíveis.
+              </p>
+            ) : (
+              <Select
+                value={selectedAppointmentId}
+                onValueChange={setSelectedAppointmentId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecionar agendamento..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {linkableAppointments.map((appt) => (
+                    <SelectItem key={appt.id} value={appt.id}>
+                      {appt.title} —{' '}
+                      {format(new Date(appt.startDate), 'dd/MM/yyyy')}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            <Button
+              disabled={!selectedAppointmentId || isLinking}
+              onClick={handleLinkConfirm}
+            >
+              {isLinking ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Link2Icon className="mr-2 h-4 w-4" />
+              )}
+              Vincular
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Dialog: confirmar desvínculo */}
+      <ConfirmationDialog
+        open={unlinkingAppointment !== null}
+        onOpenChange={(open) => {
+          if (!open) setUnlinkingAppointment(null)
+        }}
+        title="Desvincular agendamento?"
+        description={
+          <p>
+            O agendamento{' '}
+            <span className="font-bold text-foreground">
+              {unlinkingAppointment?.title}
+            </span>{' '}
+            será desvinculado deste negócio, mas não será excluído.
+          </p>
+        }
+        icon={<UnlinkIcon />}
+        variant="default"
+        onConfirm={() => {
+          if (unlinkingAppointment)
+            executeUnlink({ appointmentId: unlinkingAppointment.id })
+        }}
+        isLoading={isUnlinking}
+        confirmLabel="Desvincular"
+      />
+
+      {/* Dialog: confirmar exclusão */}
       <ConfirmationDialog
         open={isDeleteDialogOpen}
         onOpenChange={(open) => {
