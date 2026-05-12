@@ -11,6 +11,38 @@ interface CreateAppointmentResult {
   message: string
 }
 
+export interface CreateAppointmentConfig {
+  startTime?: string  // "HH:MM" — horário mínimo permitido
+  endTime?: string    // "HH:MM" — horário máximo permitido
+  triggerHint?: string
+}
+
+function timeToMinutes(time: string): number {
+  const [hours, minutes] = time.split(':').map(Number)
+  return (hours ?? 0) * 60 + (minutes ?? 0)
+}
+
+function extractLocalTime(date: Date): string {
+  const parts = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(date)
+  const hour = parts.find((p) => p.type === 'hour')?.value ?? '00'
+  const minute = parts.find((p) => p.type === 'minute')?.value ?? '00'
+  return `${hour}:${minute}`
+}
+
+function validateTimeWindow(date: Date, startTime: string, endTime: string): string | null {
+  const local = extractLocalTime(date)
+  const eventMinutes = timeToMinutes(local)
+  if (eventMinutes < timeToMinutes(startTime) || eventMinutes >= timeToMinutes(endTime)) {
+    return `Horário fora da janela permitida. Agende entre ${startTime} e ${endTime} (horário de Brasília).`
+  }
+  return null
+}
+
 const inputSchema = z
   .object({
     type: z
@@ -66,18 +98,30 @@ const inputSchema = z
     }
   })
 
-export function createCreateAppointmentTool(ctx: ToolContext) {
+export function createCreateAppointmentTool(ctx: ToolContext, config: CreateAppointmentConfig = {}) {
+  const timeWindowHint =
+    config.startTime && config.endTime
+      ? ` Somente agende horários entre ${config.startTime} e ${config.endTime} (horário de Brasília).`
+      : ''
+
+  const baseDescription =
+    'Cria um agendamento. Dois tipos suportados: MEETING (reunião/demo vinculada a um negócio) e BOOKING (serviço agendado com profissional). ' +
+    'Use BOOKING quando o cliente quer marcar um serviço da empresa. Use MEETING para conversas comerciais vinculadas a um negócio.' +
+    timeWindowHint
+
+  const description = config.triggerHint
+    ? `${baseDescription}\n\nQuando usar esta instância: ${config.triggerHint}`
+    : baseDescription
+
   return tool({
-    description:
-      'Cria um agendamento. Dois tipos suportados: MEETING (reunião/demo vinculada a um negócio) e BOOKING (serviço agendado com profissional). ' +
-      'Use BOOKING quando o cliente quer marcar um serviço da empresa. Use MEETING para conversas comerciais vinculadas a um negócio.',
+    description,
     inputSchema,
     execute: async (input): Promise<CreateAppointmentResult> => {
       try {
         if (input.type === 'BOOKING') {
-          return await runServiceCreation(ctx, input)
+          return await runServiceCreation(ctx, input, config)
         }
-        return await runCommercialCreation(ctx, input)
+        return await runCommercialCreation(ctx, input, config)
       } catch (error) {
         logger.error('Tool create_appointment failed', { error })
         return {
@@ -92,6 +136,7 @@ export function createCreateAppointmentTool(ctx: ToolContext) {
 async function runCommercialCreation(
   ctx: ToolContext,
   input: z.infer<typeof inputSchema>,
+  config: CreateAppointmentConfig,
 ): Promise<CreateAppointmentResult> {
   if (!ctx.dealId) {
     return {
@@ -132,6 +177,34 @@ async function runCommercialCreation(
     }
   }
 
+  if (config.startTime && config.endTime) {
+    const windowError = validateTimeWindow(parsedStart, config.startTime, config.endTime)
+    if (windowError) return { success: false, message: windowError }
+  }
+
+  const overlapping = await db.appointment.findFirst({
+    where: {
+      assignedTo: deal.assignedTo,
+      organizationId: ctx.organizationId,
+      status: { notIn: ['CANCELED', 'NO_SHOW'] },
+      startDate: { lt: parsedEnd },
+      endDate: { gt: parsedStart },
+    },
+    select: { id: true, title: true, startDate: true, endDate: true },
+  })
+
+  if (overlapping) {
+    const fmt = new Intl.DateTimeFormat('pt-BR', {
+      timeZone: 'America/Sao_Paulo',
+      dateStyle: 'short',
+      timeStyle: 'short',
+    })
+    return {
+      success: false,
+      message: `Já existe um compromisso neste horário: "${overlapping.title}" (${fmt.format(overlapping.startDate)} – ${fmt.format(overlapping.endDate)}). Escolha outro horário.`,
+    }
+  }
+
   const dealId = ctx.dealId
 
   await withRetry(
@@ -147,6 +220,7 @@ async function runCommercialCreation(
           status: 'SCHEDULED',
           assignedTo: deal.assignedTo,
           dealId,
+          contactId: ctx.contactId,
         },
       }),
     'db.appointment.create',
@@ -199,6 +273,7 @@ async function runCommercialCreation(
 async function runServiceCreation(
   ctx: ToolContext,
   input: z.infer<typeof inputSchema>,
+  config: CreateAppointmentConfig,
 ): Promise<CreateAppointmentResult> {
   if (!input.serviceId || !input.professionalId) {
     return {
@@ -210,6 +285,11 @@ async function runServiceCreation(
   const parsedStart = new Date(input.startDate)
   if (isNaN(parsedStart.getTime())) {
     return { success: false, message: 'Data de início inválida.' }
+  }
+
+  if (config.startTime && config.endTime) {
+    const windowError = validateTimeWindow(parsedStart, config.startTime, config.endTime)
+    if (windowError) return { success: false, message: windowError }
   }
 
   const professional = await db.professional.findFirst({

@@ -129,6 +129,20 @@ export function buildToolSet(
       continue
     }
 
+    if (toolName === 'create_appointment') {
+      const configs = stepActionsByType.get('create_appointment') ?? []
+      configs.forEach((config, indexInGroup) => {
+        if (config.type !== 'create_appointment') return
+        const runtimeName = getRuntimeToolName('create_appointment', indexInGroup, configs.length)
+        tools[runtimeName] = createCreateAppointmentTool(ctx, {
+          startTime: config.startTime,
+          endTime: config.endTime,
+          triggerHint: config.trigger,
+        })
+      })
+      continue
+    }
+
     if (toolName === 'hand_off_to_human') {
       // Unir instâncias globais e de step para indexação conjunta com naming determinístico
       const globalConfigs = globalTools.filter((tool) => tool.type === 'hand_off_to_human')
@@ -185,14 +199,12 @@ export function buildToolSet(
     tools['search_products'] = createSearchProductsTool(ctx)
   }
 
-  // Scheduling v2 (BOOKING) — ativa quando o agente está em modo SERVICE (AgentMode).
-  // Estas tools coexistem com create_event (MEETING) e habilitam o fluxo
-  // completo de agendamento de serviços via agente.
+  // Scheduling v2 — ativa quando o agente está em modo SERVICE (AgentMode).
+  // create_appointment é step-configurada (loop acima) — não injetada aqui.
   if (globalFlags?.agentMode === 'SERVICE') {
     tools['get_services'] = createGetServicesTool(ctx)
     tools['search_service'] = createSearchServiceTool(ctx)
     tools['search_professional'] = createSearchProfessionalTool(ctx)
-    tools['create_appointment'] = createCreateAppointmentTool(ctx)
   }
 
   // Tools de mídia legadas — omitidas no single-v2 que usa detecção inline de URL

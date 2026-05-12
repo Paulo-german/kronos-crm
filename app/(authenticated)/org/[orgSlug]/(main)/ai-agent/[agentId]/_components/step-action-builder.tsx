@@ -722,6 +722,46 @@ const StepActionBuilder = ({
                         </>
                       )}
 
+                      {/* create_appointment: janela de horário (duração vem do serviço no DB) */}
+                      {action.type === 'create_appointment' && (
+                        <div className="space-y-2">
+                          <div>
+                            <Label className="text-xs">Janela de tempo para agendamentos</Label>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                              A IA só poderá agendar dentro deste horário
+                            </p>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                              <Label className="text-xs text-muted-foreground">Início</Label>
+                              <Input
+                                placeholder="08:00"
+                                pattern="\d{2}:\d{2}"
+                                value={action.startTime ?? ''}
+                                onChange={(event) =>
+                                  updateAction(actionId, {
+                                    startTime: event.target.value || undefined,
+                                  })
+                                }
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs text-muted-foreground">Fim</Label>
+                              <Input
+                                placeholder="18:00"
+                                pattern="\d{2}:\d{2}"
+                                value={action.endTime ?? ''}
+                                onChange={(event) =>
+                                  updateAction(actionId, {
+                                    endTime: event.target.value || undefined,
+                                  })
+                                }
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       {/* hand_off_to_human: notificação ao atendente via WhatsApp */}
                       {action.type === 'hand_off_to_human' && (
                         <HandOffConfig
