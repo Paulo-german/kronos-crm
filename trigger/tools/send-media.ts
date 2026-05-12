@@ -1,8 +1,10 @@
 import { tool } from 'ai'
 import { z } from 'zod'
 import { logger } from '@trigger.dev/sdk/v3'
+import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
 import { resolveWhatsAppProvider } from '@/_lib/whatsapp/provider'
+import { AUTO_REOPEN_FIELDS } from '@/_lib/conversation/auto-reopen'
 import type { ToolContext } from './types'
 
 interface SendMediaResult {
@@ -223,6 +225,42 @@ export function createSendMediaTool(ctx: ToolContext) {
 
         // 6. Dedup Redis (TTL 5 min)
         await redis.set(`dedup:${sentId}`, '1', 'EX', 300).catch(() => {})
+
+        // 7. Salvar mensagem no banco — webhook foi bloqueado pelo dedup, então
+        //    sem este registro a mídia chega no WhatsApp mas não aparece no inbox
+        const messageContent = caption ?? (() => {
+          switch (resolvedType) {
+            case 'image': return '[Imagem]'
+            case 'video': return '[Vídeo]'
+            case 'document': return `[Documento: ${fileName}]`
+            case 'audio': return '[Áudio]'
+          }
+        })()
+
+        // Non-fatal: send já aconteceu e dedup está no Redis — falha de persistência
+        // não deve reverter o envio nem disparar retry com a URL sanitizada
+        await Promise.all([
+          db.message.create({
+            data: {
+              conversationId: ctx.conversationId,
+              role: 'assistant',
+              content: messageContent,
+              providerMessageId: sentId,
+              deliveryStatus: 'sent',
+              metadata: { tool: 'send_media', mediaType: resolvedType },
+            },
+          }),
+          db.conversation.update({
+            where: { id: ctx.conversationId },
+            data: { lastMessageRole: 'assistant', ...AUTO_REOPEN_FIELDS },
+          }),
+        ]).catch((dbError) => {
+          logger.error('send_media: failed to persist message after send', {
+            conversationId: ctx.conversationId,
+            sentId,
+            error: dbError instanceof Error ? dbError.message : String(dbError),
+          })
+        })
 
         return { success: true, message: 'Midia enviada com sucesso.' }
       }

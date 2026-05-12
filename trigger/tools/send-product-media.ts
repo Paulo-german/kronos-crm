@@ -4,6 +4,7 @@ import { logger } from '@trigger.dev/sdk/v3'
 import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
 import { resolveWhatsAppProvider } from '@/_lib/whatsapp/provider'
+import { AUTO_REOPEN_FIELDS } from '@/_lib/conversation/auto-reopen'
 import type { ToolContext } from './types'
 
 interface SendProductMediaResult {
@@ -122,7 +123,27 @@ export function createSendProductMediaTool(ctx: ToolContext) {
             // 5. Registrar dedup key no Redis para evitar loop de webhook (TTL 5 min)
             await redis.set(`dedup:${sentId}`, '1', 'EX', 300).catch(() => {})
 
+            // Contabilizar envio antes do DB write — falha de persistência não
+            // deve reverter a contagem (a mídia foi enviada ao WhatsApp)
             sentCount++
+
+            // 6. Salvar mensagem no banco — non-fatal pelo mesmo motivo
+            await db.message.create({
+              data: {
+                conversationId: ctx.conversationId,
+                role: 'assistant',
+                content: media.product.name,
+                providerMessageId: sentId,
+                deliveryStatus: 'sent',
+                metadata: { tool: 'send_product_media', mediaType: media.type.toLowerCase() },
+              },
+            }).catch((dbError) => {
+              logger.warn('send_product_media: failed to persist message', {
+                mediaId: media.id,
+                conversationId: ctx.conversationId,
+                error: dbError instanceof Error ? dbError.message : String(dbError),
+              })
+            })
           } catch (mediaError) {
             logger.warn('Tool send_product_media: failed to send individual media', {
               mediaId: media.id,
@@ -138,6 +159,12 @@ export function createSendProductMediaTool(ctx: ToolContext) {
             message: 'Nao foi possivel enviar nenhuma midia. Tente novamente.',
           }
         }
+
+        // Atualizar conversa uma vez após enviar todas as mídias
+        await db.conversation.update({
+          where: { id: ctx.conversationId },
+          data: { lastMessageRole: 'assistant', ...AUTO_REOPEN_FIELDS },
+        })
 
         logger.info('Tool send_product_media executed', {
           productId,
