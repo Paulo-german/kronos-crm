@@ -522,6 +522,7 @@ export async function runSingleV1(
     {
       hasActiveProducts: promptContext.hasActiveProducts,
       hasActiveProductsWithMedia: promptContext.hasActiveProductsWithMedia,
+      hasActiveServicesWithProfessionals: promptContext.hasActiveServicesWithProfessionals,
       hasKnowledgeBase: promptContext.hasKnowledgeBase,
       agentMode: promptContext.agentMode,
     },

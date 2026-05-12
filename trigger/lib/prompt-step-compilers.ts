@@ -187,6 +187,11 @@ function compileActionLine(action: StepAction, runtimeName: string): string {
       return lines.join('\n')
     }
 
+    case 'create_appointment': {
+      const window = action.startTime && action.endTime ? ` (janela: ${action.startTime}–${action.endTime})` : ''
+      return `* ${trigger} → execute \`${runtimeName}\`${window} para agendar o serviço com o profissional disponível.`
+    }
+
     default: {
       // Garante exaustividade — TypeScript captura se um novo type for adicionado ao schema
       const _exhaustive: never = action

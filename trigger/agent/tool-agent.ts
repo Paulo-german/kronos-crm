@@ -116,6 +116,7 @@ export const toolAgent = schemaTask({
         hasKnowledgeBase: promptBaseContext.hasKnowledgeBase,
         hasActiveProducts: promptBaseContext.hasActiveProducts,
         hasActiveProductsWithMedia: promptBaseContext.hasActiveProductsWithMedia,
+        hasActiveServicesWithProfessionals: promptBaseContext.hasActiveServicesWithProfessionals,
         agentMode: promptBaseContext.agentMode,
       }
 

@@ -37,6 +37,11 @@ export const TOOL_OPTIONS = [
     label: 'Envolver Humano',
     description: 'Notifica o responsável. A IA decide se transfere (pausa) ou apenas notifica (continua atendendo).',
   },
+  {
+    value: 'create_appointment',
+    label: 'Agendar Serviço',
+    description: 'Agenda um serviço com profissional disponível. Disponível nos modos Serviço e Híbrido.',
+  },
 ] as const
 
 export const GLOBAL_TOOL_OPTIONS = TOOL_OPTIONS.filter((tool) =>

@@ -28,11 +28,9 @@ export type { GroupToolConfig }
 export interface GlobalToolFlags {
   hasActiveProducts: boolean
   hasActiveProductsWithMedia: boolean
-  hasKnowledgeBase: boolean // true quando completedFileCount > 0
-  // Modo de operação do agente. Em BOOKING, o tooling de scheduling v2 (SERVICE)
-  // é ativado: get_services, search_service, search_professional e create_appointment.
-  // Em PIPELINE (default), o agente segue o fluxo padrão sem essas tools.
-  agentMode: 'PIPELINE' | 'BOOKING'
+  hasActiveServicesWithProfessionals: boolean
+  hasKnowledgeBase: boolean
+  agentMode: 'PRODUCT' | 'SERVICE' | 'HYBRID'
 }
 
 // Registry de tools simples que suportam triggerHint (recebem ctx + opts opcionais).
@@ -187,10 +185,10 @@ export function buildToolSet(
     tools['search_products'] = createSearchProductsTool(ctx)
   }
 
-  // Scheduling v2 (BOOKING) — ativa quando o agente está em modo BOOKING (AgentMode).
+  // Scheduling v2 (BOOKING) — ativa quando o agente está em modo SERVICE (AgentMode).
   // Estas tools coexistem com create_event (MEETING) e habilitam o fluxo
   // completo de agendamento de serviços via agente.
-  if (globalFlags?.agentMode === 'BOOKING') {
+  if (globalFlags?.agentMode === 'SERVICE') {
     tools['get_services'] = createGetServicesTool(ctx)
     tools['search_service'] = createSearchServiceTool(ctx)
     tools['search_professional'] = createSearchProfessionalTool(ctx)

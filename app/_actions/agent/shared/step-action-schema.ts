@@ -102,6 +102,20 @@ export const stepActionSchema = z.discriminatedUnion('type', [
     specificPhone: z.string().optional(),
     notificationMessage: z.string().optional(),
   }),
+
+  // Agenda um serviço com profissional — disponível apenas quando agentMode = SERVICE | HYBRID
+  z.object({
+    ...baseFields,
+    type: z.literal('create_appointment'),
+    startTime: z
+      .string()
+      .regex(/^\d{2}:\d{2}$/)
+      .optional(),
+    endTime: z
+      .string()
+      .regex(/^\d{2}:\d{2}$/)
+      .optional(),
+  }),
 ])
 
 export type StepAction = z.infer<typeof stepActionSchema>

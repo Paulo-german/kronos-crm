@@ -193,6 +193,10 @@ export function compileStepActions(actions: StepAction[]): string[] {
         }
         return lines.join('\n')
       }
+      case 'create_appointment': {
+        const window = action.startTime && action.endTime ? ` (janela: ${action.startTime}–${action.endTime})` : ''
+        return `* ${trigger} → execute \`${runtimeName}\`${window} para agendar o serviço com o profissional disponível.`
+      }
       default: {
         const _exhaustive: never = action
         throw new Error(`Tipo de ação desconhecido: ${(_exhaustive as StepAction).type}`)
@@ -363,7 +367,7 @@ export async function buildSystemPrompt(
 ): Promise<SingleSystemPrompt> {
   const now = new Date()
 
-  const [agent, conversation, completedFileCount, lossReasons, recentToolEvents, activeProductMediaCount, activeProductCount] = await Promise.all([
+  const [agent, conversation, completedFileCount, lossReasons, recentToolEvents, activeProductMediaCount, activeProductCount, activeServicesWithProfessionalsCount] = await Promise.all([
     db.agent.findUniqueOrThrow({
       where: { id: agentId },
       select: {
@@ -475,6 +479,19 @@ export async function buildSystemPrompt(
       where: {
         organizationId,
         isActive: true,
+      },
+    }),
+    db.service.count({
+      where: {
+        organizationId,
+        isActive: true,
+        professionalServices: {
+          some: {
+            professional: {
+              workingHours: { some: {} },
+            },
+          },
+        },
       },
     }),
   ])
@@ -832,6 +849,7 @@ export async function buildSystemPrompt(
     globalTools: [],
     hasActiveProducts: activeProductCount > 0,
     hasActiveProductsWithMedia: activeProductMediaCount > 0,
+    hasActiveServicesWithProfessionals: activeServicesWithProfessionalsCount > 0,
     hasKnowledgeBase: completedFileCount > 0,
     agentMode: agent.agentMode,
     currentStepOrder: conversation.currentStepOrder,
