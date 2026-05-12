@@ -1,5 +1,6 @@
 import 'server-only'
 
+import { CatalogItemType } from '@prisma/client'
 import { SIMULATOR_CONTACT_PHONE } from '@/_lib/simulator'
 import type { DashboardFilters } from './types'
 
@@ -42,7 +43,7 @@ export function buildDashboardWhere(
       ? { priority: { in: filters.priority } }
       : {}),
     ...(filters.productId
-      ? { dealProducts: { some: { productId: filters.productId } } }
+      ? { lineItems: { some: { productId: filters.productId, itemType: CatalogItemType.PRODUCT } } }
       : {}),
     ...(!options?.ignoreInactiveDays && filters.inactiveDays
       ? {

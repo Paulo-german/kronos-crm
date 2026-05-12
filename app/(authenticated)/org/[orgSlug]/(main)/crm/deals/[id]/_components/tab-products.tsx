@@ -34,7 +34,6 @@ import {
 import { Label } from '@/_components/ui/label'
 import { Input } from '@/_components/ui/input'
 import ConfirmationDialog from '@/_components/confirmation-dialog'
-import { removeDealProduct } from '@/_actions/deal/remove-deal-product'
 import { addDealLineItem } from '@/_actions/deal/add-deal-line-item'
 import { updateDealLineItem } from '@/_actions/deal/update-deal-line-item'
 import { removeDealLineItem } from '@/_actions/deal/remove-deal-line-item'
@@ -67,21 +66,6 @@ const getLineItemName = (item: DealLineItemDto): string =>
   item.product?.name ?? item.service?.name ?? item.promotion?.name ?? '—'
 
 const TabProducts = ({ deal, products, services, promotions }: TabProductsProps) => {
-  const [deletingProduct, setDeletingProduct] = useState<DealDetailsDto['products'][0] | null>(null)
-
-  const { execute: executeRemoveLegacy, isPending: isRemovingLegacy } = useAction(
-    removeDealProduct,
-    {
-      onSuccess: () => {
-        toast.success('Produto removido com sucesso!')
-        setDeletingProduct(null)
-      },
-      onError: ({ error }) => {
-        toast.error(error.serverError || 'Erro ao remover produto.')
-      },
-    },
-  )
-
   const [isLineItemSheetOpen, setIsLineItemSheetOpen] = useState(false)
   const [addItemType, setAddItemType] = useState<ItemType>('PRODUCT')
   const [addItemId, setAddItemId] = useState<string>('')
@@ -215,93 +199,6 @@ const TabProducts = ({ deal, products, services, promotions }: TabProductsProps)
 
   return (
     <div className="flex flex-col gap-4">
-      {deal.products.length > 0 && (
-        <Card className="border-border/50 bg-card opacity-80">
-          <CardHeader className="flex flex-row items-center gap-3 pb-3">
-            <CardTitle className="text-lg">Produtos</CardTitle>
-            <Badge variant="outline" className="text-xs text-muted-foreground">
-              Legado — somente leitura
-            </Badge>
-            <p className="ml-auto text-xs text-muted-foreground">
-              Para adicionar novos itens, use &quot;Itens do Negócio&quot; abaixo.
-            </p>
-          </CardHeader>
-
-          <CardContent>
-            <div className="overflow-hidden rounded-md border border-border/50">
-              <Table className="bg-secondary/20">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Produto</TableHead>
-                    <TableHead className="text-right">Qtd</TableHead>
-                    <TableHead className="text-right">Preço Unit.</TableHead>
-                    <TableHead className="text-right">Desconto</TableHead>
-                    <TableHead className="text-right">Subtotal</TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody className="bg-card">
-                  {deal.products.map((product) => (
-                    <TableRow key={product.id}>
-                      <TableCell className="font-medium">{product.productName}</TableCell>
-                      <TableCell className="text-right">{product.quantity}</TableCell>
-                      <TableCell className="text-right">
-                        {formatCurrency(product.unitPrice)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {product.discountType === 'percentage'
-                          ? `${product.discountValue}%`
-                          : formatCurrency(product.discountValue)}
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatCurrency(product.subtotal)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex justify-end">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setDeletingProduct(product)}
-                            title="Remover produto legado"
-                          >
-                            <TrashIcon className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <ConfirmationDialog
-        open={!!deletingProduct}
-        onOpenChange={(open) => {
-          if (!open) setDeletingProduct(null)
-        }}
-        title="Remover produto?"
-        description={
-          <p>
-            Esta ação não pode ser desfeita. O produto{' '}
-            <strong className="font-semibold text-foreground">
-              {deletingProduct?.productName}
-            </strong>{' '}
-            será removido deste negócio.
-          </p>
-        }
-        icon={<TrashIcon />}
-        variant="destructive"
-        onConfirm={() => {
-          if (deletingProduct)
-            executeRemoveLegacy({ dealProductId: deletingProduct.id })
-        }}
-        isLoading={isRemovingLegacy}
-        confirmLabel="Confirmar Exclusão"
-      />
-
       <Card className="border-border/50 bg-card">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-lg">Itens do Negócio</CardTitle>

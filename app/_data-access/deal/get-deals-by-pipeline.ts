@@ -63,14 +63,6 @@ const fetchDealsByPipelineFromDb = async (
       company: {
         select: { name: true },
       },
-      dealProducts: {
-        select: {
-          unitPrice: true,
-          quantity: true,
-          discountType: true,
-          discountValue: true,
-        },
-      },
       _count: {
         select: { tasks: true, appointments: true, conversations: true },
       },
@@ -87,19 +79,7 @@ const fetchDealsByPipelineFromDb = async (
   })
 
   for (const deal of deals) {
-    const totalValue = deal.dealProducts.reduce((sum, dp) => {
-      const subtotal = Number(dp.unitPrice) * dp.quantity
-      let discount = 0
-
-      if (dp.discountValue) {
-        discount =
-          dp.discountType === 'percentage'
-            ? subtotal * (Number(dp.discountValue) / 100)
-            : Number(dp.discountValue)
-      }
-
-      return sum + (subtotal - discount)
-    }, 0)
+    const totalValue = Number(deal.value ?? 0)
 
     const primaryLink = deal.contacts[0]
     const contactName = primaryLink?.contact?.name ?? null

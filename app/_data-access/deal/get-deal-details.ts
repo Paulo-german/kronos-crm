@@ -5,17 +5,6 @@ import type { RBACContext } from '@/_lib/rbac'
 import { isElevated } from '@/_lib/rbac'
 import { maskEmail, maskPhone } from '@/_lib/pii-mask'
 
-export interface DealProductDto {
-  id: string
-  productId: string
-  productName: string
-  quantity: number
-  unitPrice: number
-  discountType: 'percentage' | 'fixed'
-  discountValue: number
-  subtotal: number
-}
-
 export interface DealLineItemDto {
   id: string
   itemType: 'PRODUCT' | 'SERVICE' | 'PROMOTION'
@@ -102,7 +91,6 @@ export interface DealDetailsDto {
   assigneeId: string
   assigneeName: string | null
   totalValue: number
-  products: DealProductDto[]
   lineItems: DealLineItemDto[]
   activities: DealActivityDto[]
   totalActivities: number
@@ -153,11 +141,6 @@ const fetchDealDetailsFromDb = async (
       assignee: {
         select: {
           fullName: true,
-        },
-      },
-      dealProducts: {
-        include: {
-          product: true,
         },
       },
       lineItems: {
@@ -212,25 +195,6 @@ const fetchDealDetailsFromDb = async (
 
   const masked = !elevated && hidePiiFromMembers
 
-  const products: DealProductDto[] = deal.dealProducts.map((dp) => {
-    const subtotal = Number(dp.unitPrice) * dp.quantity
-    const discount =
-      dp.discountType === 'percentage'
-        ? subtotal * (Number(dp.discountValue) / 100)
-        : Number(dp.discountValue)
-
-    return {
-      id: dp.id,
-      productId: dp.productId,
-      productName: dp.product.name,
-      quantity: dp.quantity,
-      unitPrice: Number(dp.unitPrice),
-      discountType: dp.discountType as 'percentage' | 'fixed',
-      discountValue: Number(dp.discountValue),
-      subtotal: subtotal - discount,
-    }
-  })
-
   const lineItems: DealLineItemDto[] = deal.lineItems.map((item) => {
     const gross = Number(item.unitPrice) * item.quantity
     const discount =
@@ -252,9 +216,7 @@ const fetchDealDetailsFromDb = async (
     }
   })
 
-  const totalValue =
-    products.reduce((sum, product) => sum + product.subtotal, 0) +
-    lineItems.reduce((sum, item) => sum + item.subtotal, 0)
+  const totalValue = lineItems.reduce((sum, item) => sum + item.subtotal, 0)
 
   const appointments: DealAppointmentDto[] = deal.appointments.map((appt) => ({
     id: appt.id,
@@ -308,7 +270,6 @@ const fetchDealDetailsFromDb = async (
     assigneeId: deal.assignedTo,
     assigneeName: deal.assignee?.fullName ?? null,
     totalValue,
-    products,
     lineItems,
     activities: deal.activities.map((a) => ({
       id: a.id,
