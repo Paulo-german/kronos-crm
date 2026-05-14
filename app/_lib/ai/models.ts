@@ -23,7 +23,7 @@ export const AI_MODELS: ReadonlyArray<AiModel> = [
     label: 'GPT 5.2',
     description: 'Mais inteligente da OpenAI. Maior custo por mensagem.',
     provider: 'openai',
-    tokensPerCredit: 220,
+    tokensPerCredit: 440,
     costUsdPerMillion: { input: 1.75, output: 14 },
     availableFor: ['agent'],
   },
@@ -32,7 +32,7 @@ export const AI_MODELS: ReadonlyArray<AiModel> = [
     label: 'Gemini 2.5 Pro',
     description: 'Alta capacidade do Google. Bom equilíbrio custo/qualidade.',
     provider: 'google',
-    tokensPerCredit: 280,
+    tokensPerCredit: 560,
     costUsdPerMillion: { input: 1.25, output: 10 },
     availableFor: ['agent'],
     recommendedFor: ['agent'],
@@ -151,7 +151,8 @@ export const SUMMARIZATION_MODEL_ID = 'openai/gpt-4o-mini' satisfies AnyModelId
 // lista de steps), sem system prompt completo. Modelo barato e rápido evita
 // que falhas de schema rich-output do modelo principal derrubem a resposta
 // ao cliente. Não aparece em picker — escolha de infraestrutura.
-export const STEP_CLASSIFIER_MODEL_ID = 'openai/gpt-4o-mini' satisfies AnyModelId
+export const STEP_CLASSIFIER_MODEL_ID =
+  'openai/gpt-4o-mini' satisfies AnyModelId
 
 // ---------------------------------------------------------------------------
 // Modelo fixo para o Leak Guardrail (Agent 3 da pipeline v2)

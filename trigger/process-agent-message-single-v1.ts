@@ -797,7 +797,9 @@ export async function runSingleV1(
 
   // Se o LLM gastou todos os steps em tool calls e não gerou texto,
   // faz uma chamada extra SEM tools para gerar a resposta ao cliente.
-  if (!responseText) {
+  // Com hasSteps ativo o output.message vazio é intencional (step de execução pura),
+  // não deve disparar o fallback.
+  if (!responseText && !hasSteps) {
     const hasToolCalls = result.steps?.some(
       (step) => step.toolCalls && step.toolCalls.length > 0,
     )
