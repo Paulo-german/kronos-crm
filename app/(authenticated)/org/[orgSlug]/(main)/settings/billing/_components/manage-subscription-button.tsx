@@ -18,7 +18,7 @@ export function ManageSubscriptionButton() {
         return
       }
 
-      toast.error('Não foi possível abrir o portal de assinatura. Tente novamente.')
+      toast.error(result?.serverError ?? 'Não foi possível abrir o portal de assinatura. Tente novamente.')
     })
   }
 

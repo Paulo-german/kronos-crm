@@ -83,7 +83,7 @@ export function PlanChangeDialog({ open, onOpenChange, targetPlan, interval }: P
         if (result?.data) {
           setPreview(result.data)
         } else {
-          toast.error('Não foi possível carregar o preview da mudança de plano.')
+          toast.error(result?.serverError ?? 'Não foi possível carregar o preview da mudança de plano.')
           onOpenChange(false)
         }
       })
