@@ -3,7 +3,6 @@ import Header, {
   HeaderTitle,
   HeaderSubTitle,
 } from '@/_components/header'
-import { Badge } from '@/_components/ui/badge'
 import { Skeleton } from '@/_components/ui/skeleton'
 
 const GroupsLoading = () => {
@@ -14,9 +13,6 @@ const GroupsLoading = () => {
         <HeaderLeft>
           <HeaderTitle>
             Equipes de Agentes
-            <Badge variant="outline" className="ml-2 border-amber-500/30 bg-amber-500/10 px-1.5 py-0 text-[10px] font-medium text-amber-600 dark:text-amber-400">
-              Beta
-            </Badge>
           </HeaderTitle>
           <HeaderSubTitle>
             Organize agentes em equipes com roteamento inteligente de conversas.

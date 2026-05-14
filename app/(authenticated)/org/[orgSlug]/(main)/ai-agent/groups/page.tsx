@@ -3,7 +3,6 @@ import Header, {
   HeaderTitle,
   HeaderSubTitle,
 } from '@/_components/header'
-import { Badge } from '@/_components/ui/badge'
 import { QuotaHint } from '@/_components/trial/quota-hint'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getAgentGroups } from '@/_data-access/agent-group/get-agent-groups'
@@ -31,12 +30,6 @@ const GroupsPage = async ({ params }: GroupsPageProps) => {
         <HeaderLeft>
           <HeaderTitle>
             Equipes de Agentes
-            <Badge
-              variant="outline"
-              className="ml-2 h-5 border-amber-500/30 bg-amber-500/10 px-1.5 py-0 text-[10px] font-medium text-amber-600 dark:text-amber-400"
-            >
-              Beta
-            </Badge>
           </HeaderTitle>
           <HeaderSubTitle>
             Organize agentes em equipes com roteamento inteligente de conversas.

@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { BotIcon, UsersIcon, LockIcon } from 'lucide-react'
-import { Badge } from '@/_components/ui/badge'
 import {
   Tooltip,
   TooltipContent,
@@ -65,12 +64,6 @@ export function AgentTabsNav({ orgSlug, canAccessGroups }: AgentTabsNavProps) {
           >
             <UsersIcon className="h-4 w-4" />
             Equipes
-            <Badge
-              variant="outline"
-              className="ml-1.5 border-amber-500/30 bg-amber-500/10 px-1.5 py-0 text-[10px] font-medium text-amber-600 dark:text-amber-400"
-            >
-              Beta
-            </Badge>
           </Link>
         ) : (
           <Tooltip delayDuration={0}>
@@ -81,12 +74,6 @@ export function AgentTabsNav({ orgSlug, canAccessGroups }: AgentTabsNavProps) {
               >
                 <UsersIcon className="h-4 w-4" />
                 Equipes
-                <Badge
-                  variant="outline"
-                  className="ml-1.5 border-amber-500/30 bg-amber-500/10 px-1.5 py-0 text-[10px] font-medium text-amber-600 dark:text-amber-400"
-                >
-                  Beta
-                </Badge>
                 <LockIcon className="h-3 w-3" />
               </span>
             </TooltipTrigger>

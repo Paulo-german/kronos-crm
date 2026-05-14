@@ -10,7 +10,6 @@ import { getOrganizationMembers } from '@/_data-access/organization/get-organiza
 import { getDealLostReasons } from '@/_data-access/settings/get-lost-reasons'
 import { getWhatsappInboxesForAutomation } from '@/_data-access/inbox/get-whatsapp-inboxes-for-automation'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
-import { Badge } from '@/_components/ui/badge'
 import { Button } from '@/_components/ui/button'
 import { QuotaHint } from '@/_components/trial/quota-hint'
 import Header, {
@@ -67,12 +66,6 @@ const AutomationsPage = async ({ params }: AutomationsPageProps) => {
         <HeaderLeft>
           <HeaderTitle>
             Automações
-            <Badge
-              variant="outline"
-              className="ml-1.5 h-5 border-amber-500/30 bg-amber-500/10 px-1.5 py-0 text-[10px] font-medium text-amber-600 dark:text-amber-400"
-            >
-              Beta
-            </Badge>
           </HeaderTitle>
           <HeaderSubTitle>
             Crie regras para automatizar ações no seu funil.

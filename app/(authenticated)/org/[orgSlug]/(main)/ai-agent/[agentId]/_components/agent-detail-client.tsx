@@ -221,9 +221,6 @@ const AgentDetailClient = ({
                 className="rounded-md py-2"
               >
                 Follow-ups
-                <Badge variant="outline" className="ml-1.5 border-amber-500/30 bg-amber-500/10 px-1.5 py-0 text-[10px] font-medium text-amber-600 dark:text-amber-400">
-                  Beta
-                </Badge>
               </TabsTrigger>
             </TabsList>
 

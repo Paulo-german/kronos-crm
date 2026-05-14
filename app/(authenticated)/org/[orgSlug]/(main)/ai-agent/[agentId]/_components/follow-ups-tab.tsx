@@ -590,9 +590,6 @@ const FollowUpsTab = ({
         <div>
           <div className="flex items-center gap-2">
             <h3 className="text-base font-semibold">Follow-ups</h3>
-            <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 px-1.5 py-0 text-[10px] font-medium text-amber-600 dark:text-amber-400">
-              Beta
-            </Badge>
           </div>
           {followUpQuota && followUpQuota.limit > 0 && (
             <p
