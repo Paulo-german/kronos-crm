@@ -38,13 +38,13 @@ export const PLANS: PlanInfo[] = [
     id: 'light',
     name: 'Light',
     description: 'Para profissionais solo que querem organizar seu pipeline.',
-    price: 147,
-    priceLabel: 'R$ 147/mês',
+    price: 247,
+    priceLabel: 'R$ 247/mês',
     usersLabel: 'Para 1 usuário',
     cta: 'Assinar Light',
     stripePriceId: process.env.NEXT_PUBLIC_STRIPE_LIGHT_PRICE_ID,
     stripePriceIdAnnual: process.env.NEXT_PUBLIC_STRIPE_LIGHT_ANNUAL_PRICE_ID,
-    annualTotalPrice: 1367.9, // TODO: valor total do ano em reais (ex: 1970)
+    annualTotalPrice: 1997,
     features: [
       { name: '1 agente IA', included: true },
       { name: '10.000 créditos IA', included: true, badge: 'Até 90 atendimentos/mês' },
