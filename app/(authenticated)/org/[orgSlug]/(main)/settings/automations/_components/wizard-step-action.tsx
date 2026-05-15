@@ -19,10 +19,10 @@ import {
 } from '@/_components/ui/select'
 import { RadioGroup, RadioGroupItem } from '@/_components/ui/radio-group'
 import { Label } from '@/_components/ui/label'
-import { ACTION_LABELS, REASSIGN_STRATEGY_LABELS, NOTIFY_TARGET_LABELS, PRIORITY_OPTIONS } from './automation-labels'
+import { ACTION_LABELS, REASSIGN_STRATEGY_LABELS, NOTIFY_TARGET_LABELS, PRIORITY_OPTIONS, LIFECYCLE_STAGE_OPTIONS } from './automation-labels'
 import { Badge } from '@/_components/ui/badge'
 import { cn } from '@/_lib/utils'
-import { UserPlus, ArrowRight, XCircle, Bell, AlertTriangle, MessageCircle } from 'lucide-react'
+import { UserPlus, ArrowRight, XCircle, Bell, AlertTriangle, MessageCircle, UserCheck } from 'lucide-react'
 import React, { useRef } from 'react'
 import type { AutomationFormValues } from './wizard-form-types'
 import type { PipelineStageOption } from '@/_data-access/pipeline/get-pipeline-stages'
@@ -41,6 +41,7 @@ const ACTION_ICONS: Record<AutomationAction, React.ElementType> = {
   NOTIFY_USER: Bell,
   UPDATE_DEAL_PRIORITY: AlertTriangle,
   SEND_WHATSAPP_FOLLOWUP: MessageCircle,
+  UPDATE_CONTACT_LIFECYCLE: UserCheck,
 }
 
 const MESSAGE_VARIABLES = [
@@ -727,6 +728,48 @@ export function WizardStepAction({ stageOptions, members, lossReasons, whatsappI
             </Select>
             {showConfigErrors && !getConfigString('targetPriority') && (
               <p className="text-sm text-destructive">Selecione a prioridade</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* UPDATE_CONTACT_LIFECYCLE */}
+      {actionType === AutomationAction.UPDATE_CONTACT_LIFECYCLE && (
+        <div
+          className="space-y-4 rounded-md border bg-muted/30 p-4"
+          data-error={showConfigErrors && !getConfigString('targetStage') ? 'true' : undefined}
+        >
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            Configuração (Avançar lifecycle do contato)
+          </p>
+          <div className="space-y-2">
+            <Label>Avançar para o estágio *</Label>
+            <Select
+              value={getConfigString('targetStage')}
+              onValueChange={(val) => {
+                setActionConfigValue('targetStage', val)
+                form.clearErrors('actionConfig')
+              }}
+            >
+              <SelectTrigger className={showConfigErrors && !getConfigString('targetStage') ? 'border-destructive' : ''}>
+                <SelectValue placeholder="Selecione o estágio" />
+              </SelectTrigger>
+              <SelectContent>
+                {LIFECYCLE_STAGE_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    <div className="flex flex-col">
+                      <span>{option.label}</span>
+                      <span className="text-xs text-muted-foreground">{option.description}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              O avanço é monotônico — contatos já no estágio selecionado ou acima não regridem.
+            </p>
+            {showConfigErrors && !getConfigString('targetStage') && (
+              <p className="text-sm text-destructive">Selecione o estágio</p>
             )}
           </div>
         </div>

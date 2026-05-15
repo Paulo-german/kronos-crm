@@ -16,6 +16,7 @@ export const ACTION_LABELS: Record<AutomationAction, string> = {
   NOTIFY_USER: 'Enviar notificação',
   UPDATE_DEAL_PRIORITY: 'Alterar prioridade',
   SEND_WHATSAPP_FOLLOWUP: 'Enviar follow-up no WhatsApp',
+  UPDATE_CONTACT_LIFECYCLE: 'Avançar lifecycle do contato',
 }
 
 export const CONDITION_FIELD_LABELS: Record<string, string> = {
@@ -79,3 +80,9 @@ export const NOTIFY_TARGET_LABELS: Record<string, string> = {
   specific_users: 'Usuários específicos',
   org_admins: 'Gestores da organização',
 }
+
+export const LIFECYCLE_STAGE_OPTIONS: { label: string; value: string; description: string }[] = [
+  { label: 'Qualificado', value: 'QUALIFIED', description: 'Demonstrou interesse e fit' },
+  { label: 'Oportunidade', value: 'OPPORTUNITY', description: 'Em negociação ativa' },
+  { label: 'Cliente', value: 'CUSTOMER', description: 'Conversão realizada' },
+]
