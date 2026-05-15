@@ -118,6 +118,7 @@ model Organization {
   captureEvents                CaptureEvent[]
   lifecycleHistory             ContactLifecycleHistory[]
   scoreHistory                 ContactScoreHistory[]
+  companyContacts              CompanyContact[]
 
   @@map("organizations")
 }
@@ -176,6 +177,7 @@ model Company {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   contacts       Contact[]
   deals          Deal[]
+  companyContacts CompanyContact[]
 
   @@index([organizationId, name])
   @@index([organizationId, cnpj])
@@ -217,6 +219,7 @@ model Contact {
   referrals       CaptureEvent[] @relation("ReferredByContact")
   lifecycleHistory ContactLifecycleHistory[]
   scoreHistory     ContactScoreHistory[]
+  companies        CompanyContact[]
 
   @@index([organizationId, assignedTo, createdAt(sort: Desc)])
   @@index([organizationId, name])
@@ -338,6 +341,7 @@ model CaptureEvent {
   source       CaptureSource @relation(fields: [sourceId],        references: [id], onDelete: Restrict)
   campaign     Campaign?     @relation(fields: [campaignId],      references: [id])
   referredBy   Contact?      @relation("ReferredByContact",       fields: [referredByContactId], references: [id], onDelete: SetNull)
+  deals        DealCaptureEvent[]
 
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -388,6 +392,51 @@ model ContactScoreHistory {
   @@map("contact_score_history")
 }
 
+model CompanyContact {
+  id             String   @id @default(uuid())
+  companyId      String   @map("company_id")
+  contactId      String   @map("contact_id")
+  organizationId String   @map("organization_id")
+
+  role      String?
+  isPrimary Boolean   @default(false) @map("is_primary")
+  startDate DateTime? @map("start_date")
+  endDate   DateTime? @map("end_date")
+
+  company      Company      @relation(fields: [companyId],      references: [id], onDelete: Cascade)
+  contact      Contact      @relation(fields: [contactId],      references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  @@index([companyId, isPrimary])
+  @@index([contactId, endDate])
+  @@index([organizationId, companyId])
+  @@map("company_contacts")
+}
+
+model DealCaptureEvent {
+  id             String          @id @default(uuid())
+  dealId         String          @map("deal_id")
+  captureEventId String          @map("capture_event_id")
+
+  attribution DealAttribution
+  weight      Float?
+
+  removedAt DateTime? @map("removed_at")
+
+  deal         Deal         @relation(fields: [dealId],         references: [id], onDelete: Cascade)
+  captureEvent CaptureEvent @relation(fields: [captureEventId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([dealId, captureEventId])
+  @@index([dealId, attribution])
+  @@index([captureEventId])
+  @@map("deal_capture_events")
+}
+
 model PipelineStage {
   id         String   @id @default(uuid())
   pipelineId String   @map("pipeline_id")
@@ -432,6 +481,7 @@ model Deal {
   stage                PipelineStage   @relation(fields: [pipelineStageId], references: [id])
   tasks                Task[]
   automationExecutions AutomationExecution[]
+  captureEvents        DealCaptureEvent[]
 
   @@index([organizationId, pipelineStageId, assignedTo])
   @@index([organizationId, pipelineStageId, createdAt(sort: Desc)])
@@ -2005,6 +2055,13 @@ enum LifecycleCauseType {
   AI_QUALIFICATION
 
   @@map("lifecycle_cause_type")
+}
+
+enum DealAttribution {
+  PRIMARY
+  INFLUENCING
+
+  @@map("deal_attribution")
 }
 
 enum RecurrenceType {
