@@ -74,6 +74,7 @@ model Organization {
   hidePiiFromMembers     Boolean                 @default(false) @map("hide_pii_from_members")
   businessModel      BusinessModel @default(B2C) @map("business_model")
   dormantAfterMonths Int           @default(12)  @map("dormant_after_months")
+  bookingAutoDeal    Boolean       @default(false) @map("booking_auto_deal")
   agentExecutions        AgentExecution[]
   agentGroups            AgentGroup[]
   agentTestConversations AgentTestConversation[]
@@ -417,6 +418,7 @@ model Deal {
   organizationId    String          @map("organization_id")
   lossReasonId      String?         @map("loss_reason_id")
   value             Decimal         @default(0) @db.Decimal(15, 2)
+  mrr               Decimal         @default(0) @map("mrr") @db.Decimal(15, 2)
   activities           Activity[]
   appointments         Appointment[]
   conversations        Conversation[]
@@ -520,20 +522,23 @@ model Appointment {
 }
 
 model Product {
-  id             String                @id @default(uuid())
-  name           String
-  description    String?
-  price          Decimal               @db.Decimal(15, 2)
-  isActive       Boolean               @default(true) @map("is_active")
-  createdAt      DateTime              @default(now()) @map("created_at")
-  updatedAt      DateTime              @updatedAt @map("updated_at")
-  organizationId String                @map("organization_id")
-  embedding      Unsupported("vector")? @map("embedding")
-  dealProducts   DealProduct[]
-  dealLineItems  DealLineItem[]
-  promotionItems PromotionItem[]
-  media          ProductMedia[]
-  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id               String                 @id @default(uuid())
+  name             String
+  description      String?
+  price            Decimal                @db.Decimal(15, 2)
+  isActive         Boolean                @default(true) @map("is_active")
+  createdAt        DateTime               @default(now()) @map("created_at")
+  updatedAt        DateTime               @updatedAt @map("updated_at")
+  organizationId   String                 @map("organization_id")
+  embedding        Unsupported("vector")? @map("embedding")
+  recurrenceType   RecurrenceType         @default(ONE_TIME) @map("recurrence_type")
+  billingCycle     BillingCycle?          @map("billing_cycle")
+  contractDuration Int?                   @map("contract_duration")
+  dealProducts     DealProduct[]
+  dealLineItems    DealLineItem[]
+  promotionItems   PromotionItem[]
+  media            ProductMedia[]
+  organization     Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
   @@map("products")
@@ -583,20 +588,26 @@ model DealProduct {
 }
 
 model DealLineItem {
-  id             String          @id @default(uuid())
-  dealId         String          @map("deal_id")
-  organizationId String          @map("organization_id")
-  itemType       CatalogItemType @map("item_type")
+  id               String          @id @default(uuid())
+  dealId           String          @map("deal_id")
+  organizationId   String          @map("organization_id")
+  itemType         CatalogItemType @map("item_type")
   // Exatamente um dos três FKs será preenchido — enforced na application layer
-  productId      String?         @map("product_id")
-  serviceId      String?         @map("service_id")
-  promotionId    String?         @map("promotion_id")
-  quantity       Int             @default(1)
-  unitPrice      Decimal         @map("unit_price") @db.Decimal(15, 2)
-  discountType   DiscountType    @default(percentage) @map("discount_type")
-  discountValue  Decimal         @default(0) @map("discount_value") @db.Decimal(15, 2)
-  createdAt      DateTime        @default(now()) @map("created_at")
-  updatedAt      DateTime        @updatedAt @map("updated_at")
+  productId        String?         @map("product_id")
+  serviceId        String?         @map("service_id")
+  promotionId      String?         @map("promotion_id")
+  quantity         Int             @default(1)
+  unitPrice        Decimal         @map("unit_price") @db.Decimal(15, 2)
+  discountType     DiscountType    @default(percentage) @map("discount_type")
+  discountValue    Decimal         @default(0) @map("discount_value") @db.Decimal(15, 2)
+  recurrenceType   RecurrenceType  @default(ONE_TIME) @map("recurrence_type")
+  billingCycle     BillingCycle?   @map("billing_cycle")
+  contractDuration Int?            @map("contract_duration")
+  contractEndDate  DateTime?       @map("contract_end_date")
+  startedAt        DateTime?       @map("started_at")
+  cancelledAt      DateTime?       @map("cancelled_at")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
 
   deal         Deal         @relation(fields: [dealId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -1994,4 +2005,19 @@ enum LifecycleCauseType {
   AI_QUALIFICATION
 
   @@map("lifecycle_cause_type")
+}
+
+enum RecurrenceType {
+  ONE_TIME
+  RECURRING_OPEN
+  RECURRING_CONTRACT
+
+  @@map("recurrence_type")
+}
+
+enum BillingCycle {
+  MONTHLY
+  ANNUAL
+
+  @@map("billing_cycle")
 }

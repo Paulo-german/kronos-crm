@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "deals" ADD COLUMN     "mrr" DECIMAL(15,2) NOT NULL DEFAULT 0;
