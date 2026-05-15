@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import type { Prisma } from '@prisma/client'
+import { SalesDistributionModel } from '@prisma/client'
 import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
 import { parseZApiMessage } from '@/_lib/zapi/parse-message'
@@ -127,9 +128,17 @@ export async function POST(req: Request) {
       ? { instanceId: inbox.zapiInstanceId, token: inbox.zapiToken, clientToken: inbox.zapiClientToken }
       : null
 
+  const org = await db.organization.findUnique({
+    where: { id: orgId },
+    select: { salesDistributionModel: true },
+  })
+  const salesDistributionModel =
+    org?.salesDistributionModel ?? SalesDistributionModel.ROUND_ROBIN
+
   const contactAssignContext = {
     distributionUserIds: inbox.distributionUserIds,
     inboxId: inbox.id,
+    salesDistributionModel,
   }
 
   const dealContext = inbox.autoCreateDeal
@@ -137,6 +146,7 @@ export async function POST(req: Request) {
         pipelineId: inbox.pipelineId,
         distributionUserIds: inbox.distributionUserIds,
         inboxId: inbox.id,
+        salesDistributionModel,
       }
     : undefined
   log('step:3 inbox_lookup', 'PASS', { inboxId: inbox.id, orgId, inboxActive: inbox.isActive, hasAgentId: !!inbox.agentId, hasGroupId: !!inbox.agentGroupId })

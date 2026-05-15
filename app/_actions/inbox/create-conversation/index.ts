@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidateTag } from 'next/cache'
+import { SalesDistributionModel } from '@prisma/client'
 import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { canPerformAction, requirePermission, isElevated } from '@/_lib/rbac'
@@ -103,7 +104,15 @@ export const createConversation = orgActionClient
       throw error
     }
 
-    // 5. Criar deal automaticamente (se inbox configurada para isso)
+    // 5. Resolver modelo de distribuição da org (default ROUND_ROBIN)
+    const org = await db.organization.findUnique({
+      where: { id: ctx.orgId },
+      select: { salesDistributionModel: true },
+    })
+    const salesDistributionModel =
+      org?.salesDistributionModel ?? SalesDistributionModel.ROUND_ROBIN
+
+    // 6. Criar deal automaticamente (se inbox configurada para isso)
     if (inbox.autoCreateDeal) {
       await createDealForNewConversation(
         ctx.orgId,
@@ -114,6 +123,8 @@ export const createConversation = orgActionClient
           pipelineId: inbox.pipelineId,
           distributionUserIds: inbox.distributionUserIds,
           inboxId: inbox.id,
+          salesDistributionModel,
+          contactCurrentAssignedTo: contact.assignedTo,
         },
       )
     } else if (!contact.assignedTo) {
@@ -121,7 +132,12 @@ export const createConversation = orgActionClient
       await assignContactOwner(
         ctx.orgId,
         contact.id,
-        { distributionUserIds: inbox.distributionUserIds, inboxId: inbox.id },
+        {
+          distributionUserIds: inbox.distributionUserIds,
+          inboxId: inbox.id,
+          salesDistributionModel,
+          contactCurrentAssignedTo: contact.assignedTo,
+        },
         conversation.id,
       )
     }

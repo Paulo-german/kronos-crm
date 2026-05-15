@@ -1,15 +1,20 @@
 import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
+import { SalesDistributionModel } from '@prisma/client'
 
 interface DealCreationContext {
   pipelineId: string | null
   distributionUserIds: string[]
   inboxId: string
+  salesDistributionModel: SalesDistributionModel
+  contactCurrentAssignedTo?: string | null
 }
 
 interface ContactAssignContext {
   distributionUserIds: string[]
   inboxId: string
+  salesDistributionModel: SalesDistributionModel
+  contactCurrentAssignedTo?: string | null
 }
 
 interface ResolveResult {
@@ -110,17 +115,22 @@ export async function resolveConversation(
   })
 
   // 4. Criar Deal automaticamente para nova conversa (se dealContext presente)
+  // Injeta assignedTo atual do contato para suportar modelo LOYALTY sem expor ao webhook
   if (dealContext) {
     await createDealForNewConversation(
       orgId,
       contact.id,
       contact.name,
       conversation.id,
-      dealContext,
+      { ...dealContext, contactCurrentAssignedTo: contact.assignedTo },
     )
   } else if (isNewContact && contactAssignContext) {
-    // Sem deal, mas atribuir contact e conversa ao round-robin
-    await assignContactOwner(orgId, contact.id, contactAssignContext, conversation.id)
+    await assignContactOwner(
+      orgId,
+      contact.id,
+      { ...contactAssignContext, contactCurrentAssignedTo: contact.assignedTo },
+      conversation.id,
+    )
   }
 
   return { conversationId: conversation.id, isNew: true }
@@ -133,7 +143,13 @@ export async function assignContactOwner(
   conversationId?: string,
 ): Promise<void> {
   try {
-    const assignedTo = await resolveAssignedTo(orgId, context.distributionUserIds, context.inboxId)
+    const assignedTo = await resolveAssignedTo(
+      orgId,
+      context.distributionUserIds,
+      context.inboxId,
+      context.salesDistributionModel,
+      context.contactCurrentAssignedTo,
+    )
     if (!assignedTo) return
 
     // Atualizar contato (apenas se ainda nao tem responsavel)
@@ -169,11 +185,13 @@ export async function createDealForNewConversation(
       return
     }
 
-    // 2. Resolver assignedTo via round-robin
+    // 2. Resolver assignedTo conforme o modelo de distribuição da org
     const assignedTo = await resolveAssignedTo(
       orgId,
       dealContext.distributionUserIds,
       dealContext.inboxId,
+      dealContext.salesDistributionModel,
+      dealContext.contactCurrentAssignedTo,
     )
     if (!assignedTo) {
       console.warn('[resolveConversation] Nenhum assignee encontrado para criar deal', { orgId })
@@ -251,8 +269,41 @@ async function resolveAssignedTo(
   orgId: string,
   distributionUserIds?: string[],
   inboxId?: string,
+  salesDistributionModel?: SalesDistributionModel,
+  contactCurrentAssignedTo?: string | null,
 ): Promise<string | null> {
-  // Round-robin: usar Redis counter atômico
+  const model = salesDistributionModel ?? SalesDistributionModel.ROUND_ROBIN
+
+  if (model === SalesDistributionModel.MANUAL) {
+    return null
+  }
+
+  if (model === SalesDistributionModel.LOYALTY) {
+    if (contactCurrentAssignedTo) return contactCurrentAssignedTo
+    // Fallback para round-robin se ainda não há dono
+    return resolveRoundRobin(orgId, distributionUserIds, inboxId)
+  }
+
+  if (model === SalesDistributionModel.UTILIZATION) {
+    if (distributionUserIds && distributionUserIds.length > 0) {
+      return resolveByUtilization(orgId, distributionUserIds)
+    }
+    return resolveOrgOwner(orgId)
+  }
+
+  if (model === SalesDistributionModel.PERFORMANCE_WEIGHTED) {
+    console.warn('[resolveConversation] PERFORMANCE_WEIGHTED not implemented, falling back to ROUND_ROBIN', { orgId })
+  }
+
+  // Default: ROUND_ROBIN
+  return resolveRoundRobin(orgId, distributionUserIds, inboxId)
+}
+
+async function resolveRoundRobin(
+  orgId: string,
+  distributionUserIds?: string[],
+  inboxId?: string,
+): Promise<string | null> {
   if (distributionUserIds && distributionUserIds.length > 0 && inboxId) {
     try {
       const counter = await redis.incr(`distribution:${inboxId}:index`)
@@ -263,8 +314,37 @@ async function resolveAssignedTo(
       return distributionUserIds[0]
     }
   }
+  return resolveOrgOwner(orgId)
+}
 
-  // Fallback: OWNER da org
+async function resolveByUtilization(orgId: string, userIds: string[]): Promise<string | null> {
+  const openDealCounts = await db.deal.groupBy({
+    by: ['assignedTo'],
+    where: {
+      organizationId: orgId,
+      assignedTo: { in: userIds },
+      status: 'OPEN',
+    },
+    _count: { id: true },
+  })
+
+  const countMap = new Map(openDealCounts.map((row) => [row.assignedTo, row._count.id]))
+
+  let minCount = Infinity
+  let selectedUser = userIds[0]
+
+  for (const userId of userIds) {
+    const count = countMap.get(userId) ?? 0
+    if (count < minCount) {
+      minCount = count
+      selectedUser = userId
+    }
+  }
+
+  return selectedUser
+}
+
+async function resolveOrgOwner(orgId: string): Promise<string | null> {
   const ownerMember = await db.member.findFirst({
     where: {
       organizationId: orgId,
@@ -273,6 +353,5 @@ async function resolveAssignedTo(
     },
     select: { userId: true },
   })
-
   return ownerMember?.userId ?? null
 }

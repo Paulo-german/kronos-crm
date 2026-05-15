@@ -6,6 +6,7 @@ import { db } from '@/_lib/prisma'
 import { revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 import { requireQuota, checkPlanQuota } from '@/_lib/rbac/plan-limits'
+import { inferCaptureChannelFromInboxChannel } from '@/_lib/lifecycle/infer-capture-channel'
 
 export const createInbox = orgActionClient
   .schema(createInboxSchema)
@@ -59,18 +60,31 @@ export const createInbox = orgActionClient
       }
     }
 
-    // 4. Criar inbox
-    const inbox = await db.inbox.create({
-      data: {
-        organizationId: ctx.orgId,
-        name: data.name,
-        channel: data.channel,
-        isActive: true,
-        agentId: data.agentId ?? null,
-        ...(data.autoCreateDeal !== undefined && { autoCreateDeal: data.autoCreateDeal }),
-        ...(data.pipelineId !== undefined && { pipelineId: data.pipelineId }),
-        ...(data.distributionUserIds !== undefined && { distributionUserIds: data.distributionUserIds }),
-      },
+    // 4. Criar CaptureSource + Inbox atomicamente (captureSourceId já linkado na criação)
+    const captureChannel = inferCaptureChannelFromInboxChannel(data.channel)
+    const inbox = await db.$transaction(async (tx) => {
+      const captureSource = await tx.captureSource.create({
+        data: {
+          organizationId: ctx.orgId,
+          channel: captureChannel,
+          name: data.name,
+          isActive: true,
+          isAdHoc: false,
+        },
+      })
+      return tx.inbox.create({
+        data: {
+          organizationId: ctx.orgId,
+          name: data.name,
+          channel: data.channel,
+          isActive: true,
+          agentId: data.agentId ?? null,
+          captureSourceId: captureSource.id,
+          ...(data.autoCreateDeal !== undefined && { autoCreateDeal: data.autoCreateDeal }),
+          ...(data.pipelineId !== undefined && { pipelineId: data.pipelineId }),
+          ...(data.distributionUserIds !== undefined && { distributionUserIds: data.distributionUserIds }),
+        },
+      })
     })
 
     // 5. Invalidar cache

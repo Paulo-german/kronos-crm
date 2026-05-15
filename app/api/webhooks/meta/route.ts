@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import type { Prisma } from '@prisma/client'
+import { SalesDistributionModel } from '@prisma/client'
 import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
 import { verifyMetaWebhookSignature } from '@/_lib/meta/verify-webhook-signature'
@@ -242,9 +243,17 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
     return
   }
 
+  const org = await db.organization.findUnique({
+    where: { id: orgId },
+    select: { salesDistributionModel: true },
+  })
+  const salesDistributionModel =
+    org?.salesDistributionModel ?? SalesDistributionModel.ROUND_ROBIN
+
   const contactAssignContext = {
     distributionUserIds: inbox.distributionUserIds,
     inboxId: inbox.id,
+    salesDistributionModel,
   }
 
   const dealContext = inbox.autoCreateDeal
@@ -252,6 +261,7 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
         pipelineId: inbox.pipelineId,
         distributionUserIds: inbox.distributionUserIds,
         inboxId: inbox.id,
+        salesDistributionModel,
       }
     : undefined
 
@@ -776,11 +786,18 @@ async function processMessageEchoes(value: MetaWebhookEchoValue, t0: number): Pr
     return
   }
 
+  const org = await db.organization.findUnique({
+    where: { id: orgId },
+    select: { salesDistributionModel: true },
+  })
+  const salesDistributionModel =
+    org?.salesDistributionModel ?? SalesDistributionModel.ROUND_ROBIN
+
   const dealContext = inbox.autoCreateDeal
-    ? { pipelineId: inbox.pipelineId, distributionUserIds: inbox.distributionUserIds, inboxId: inbox.id }
+    ? { pipelineId: inbox.pipelineId, distributionUserIds: inbox.distributionUserIds, inboxId: inbox.id, salesDistributionModel }
     : undefined
 
-  const contactAssignContext = { distributionUserIds: inbox.distributionUserIds, inboxId: inbox.id }
+  const contactAssignContext = { distributionUserIds: inbox.distributionUserIds, inboxId: inbox.id, salesDistributionModel }
 
   for (const echo of value.message_echoes) {
     const logEcho = (step: string, outcome: 'PASS' | 'EXIT' | 'SKIP', extra?: Record<string, unknown>) =>
@@ -1002,9 +1019,17 @@ async function processInstagramMessagingEvent(
     return
   }
 
+  const org = await db.organization.findUnique({
+    where: { id: orgId },
+    select: { salesDistributionModel: true },
+  })
+  const salesDistributionModel =
+    org?.salesDistributionModel ?? SalesDistributionModel.ROUND_ROBIN
+
   const contactAssignContext = {
     distributionUserIds: inbox.distributionUserIds,
     inboxId: inbox.id,
+    salesDistributionModel,
   }
 
   const dealContext = inbox.autoCreateDeal
@@ -1012,6 +1037,7 @@ async function processInstagramMessagingEvent(
         pipelineId: inbox.pipelineId,
         distributionUserIds: inbox.distributionUserIds,
         inboxId: inbox.id,
+        salesDistributionModel,
       }
     : undefined
 
