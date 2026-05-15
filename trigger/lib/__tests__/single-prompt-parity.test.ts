@@ -102,6 +102,8 @@ const BASE_FIXTURE: PromptBaseContext = {
       actions: [],
       keyQuestion: 'Qual é o principal desafio da sua equipe hoje?',
       messageTemplate: null,
+      lifecycleTrigger: null,
+      lifecycleDealPipelineId: null,
     },
     {
       id: '00000000-0000-0000-0000-000000000011',
@@ -117,6 +119,8 @@ const BASE_FIXTURE: PromptBaseContext = {
       ],
       keyQuestion: null,
       messageTemplate: 'Que tal agendar uma demo de 30 minutos esta semana?',
+      lifecycleTrigger: null,
+      lifecycleDealPipelineId: null,
     },
   ],
   contact: {
@@ -140,6 +144,7 @@ const BASE_FIXTURE: PromptBaseContext = {
   pipelineIds: ['00000000-0000-0000-0000-000000000030'],
   nowIso: '2026-04-20T12:00:00.000Z',
   timezone: 'America/Sao_Paulo',
+  conversationContactId: '00000000-0000-0000-0000-000000000040',
 }
 
 // Cenário B: sem steps, com produtos com mídia, com knowledge base

@@ -24,6 +24,7 @@ import { buildToolSet } from './tools'
 import { isSingleV2OverhaulEnabled } from './lib/feature-flags'
 import { buildPromptBaseContext } from './lib/prompt-base-context'
 import { compileSingleSystemPrompt } from './lib/prompt-single-compiler'
+import { applyLifecycleTrigger } from './lib/apply-lifecycle-trigger'
 import type { GroupToolConfig } from './tools'
 import {
   createConversationEvent,
@@ -1917,6 +1918,25 @@ export async function runSingleV2(
         classifiedId,
         classifiedStep,
       })
+
+      // Lifecycle trigger — non-fatal, não bloqueia step advance nem FUP
+      const newStep = promptContext.steps[newStepOrder]
+      if (newStep?.lifecycleTrigger && promptContext.conversationContactId) {
+        try {
+          await applyLifecycleTrigger({
+            conversationId: ctx.conversationId,
+            organizationId: ctx.organizationId,
+            contactId: promptContext.conversationContactId,
+            toStage: newStep.lifecycleTrigger,
+            dealPipelineId: newStep.lifecycleDealPipelineId,
+          })
+        } catch (lifecycleErr) {
+          logger.error('lifecycle:trigger_failed', {
+            conversationId: ctx.conversationId,
+            error: lifecycleErr instanceof Error ? lifecycleErr.message : String(lifecycleErr),
+          })
+        }
+      }
     }
 
     // newStepOrder já tem o valor correto (currentStepOrder ou avançado)

@@ -36,6 +36,7 @@ import { getFollowUpsForStep } from '@/_data-access/follow-up/get-follow-ups-for
 import { revalidateConversationCache } from './lib/revalidate-cache'
 import { emitAgentStatus } from './lib/emit-agent-status'
 import { saveAgentResponseSent, saveAgentResponseFailed } from './lib/save-agent-response'
+import { applyLifecycleTrigger } from './lib/apply-lifecycle-trigger'
 import type { ToolContext } from './tools/types'
 import type { DispatcherCtx } from './dispatcher-types'
 
@@ -1447,6 +1448,25 @@ export async function runSingleV1(
         classifiedId,
         classifiedStep,
       })
+
+      // Lifecycle trigger — non-fatal, não bloqueia step advance nem FUP
+      const newStep = promptContext.steps[newStepOrder]
+      if (newStep?.lifecycleTrigger && promptContext.conversationContactId) {
+        try {
+          await applyLifecycleTrigger({
+            conversationId: ctx.conversationId,
+            organizationId: ctx.organizationId,
+            contactId: promptContext.conversationContactId,
+            toStage: newStep.lifecycleTrigger,
+            dealPipelineId: newStep.lifecycleDealPipelineId,
+          })
+        } catch (lifecycleErr) {
+          logger.error('lifecycle:trigger_failed', {
+            conversationId: ctx.conversationId,
+            error: lifecycleErr instanceof Error ? lifecycleErr.message : String(lifecycleErr),
+          })
+        }
+      }
     }
 
     // newStepOrder já tem o valor correto (currentStepOrder ou avançado)

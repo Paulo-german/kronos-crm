@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { LifecycleStage } from '@prisma/client'
 import { db } from '@/_lib/prisma'
 import { promptConfigSchema } from '@/_actions/agent/shared/prompt-config-schema'
 import { stepActionSchema } from '@/_actions/agent/shared/step-action-schema'
@@ -72,6 +73,8 @@ const agentStepSchema = z.object({
   actions: z.array(stepActionSchema),
   keyQuestion: z.string().nullable(),
   messageTemplate: z.string().nullable(),
+  lifecycleTrigger: z.nativeEnum(LifecycleStage).nullable(),
+  lifecycleDealPipelineId: z.string().uuid().nullable(),
 })
 
 const toolEventSchema = z.object({
@@ -149,6 +152,9 @@ export const promptBaseContextSchema = z.object({
   // Momento único do build — ÚNICO ponto onde new Date() é chamado
   nowIso: z.string(),
   timezone: z.string(),
+
+  // ContactId da conversa — necessário para avançar lifecycle quando step dispara
+  conversationContactId: z.string().uuid(),
 })
 
 export type PromptBaseContext = z.infer<typeof promptBaseContextSchema>
@@ -206,6 +212,8 @@ export async function buildPromptBaseContext(
             actions: true,
             keyQuestion: true,
             messageTemplate: true,
+            lifecycleTrigger: true,
+            lifecycleDealPipelineId: true,
           },
         },
       },
@@ -214,6 +222,7 @@ export async function buildPromptBaseContext(
       where: { id: conversationId },
       select: {
         currentStepOrder: true,
+        contactId: true,
         contact: {
           select: {
             name: true,
@@ -355,6 +364,8 @@ export async function buildPromptBaseContext(
       actions: parsedActions.success ? parsedActions.data : [],
       keyQuestion: step.keyQuestion ?? null,
       messageTemplate: step.messageTemplate ?? null,
+      lifecycleTrigger: step.lifecycleTrigger ?? null,
+      lifecycleDealPipelineId: step.lifecycleDealPipelineId ?? null,
     }
   })
 
@@ -464,5 +475,6 @@ export async function buildPromptBaseContext(
     pipelineIds: agent.pipelineIds,
     nowIso,
     timezone: agent.businessHoursTimezone,
+    conversationContactId: conversation.contactId,
   }
 }

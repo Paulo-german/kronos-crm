@@ -387,6 +387,8 @@ export async function buildSystemPrompt(
             actions: true,
             keyQuestion: true,
             messageTemplate: true,
+            lifecycleTrigger: true,
+            lifecycleDealPipelineId: true,
           },
         },
       },
@@ -396,6 +398,7 @@ export async function buildSystemPrompt(
       select: {
         summary: true,
         currentStepOrder: true,
+        contactId: true,
         contact: {
           select: {
             name: true,
@@ -859,6 +862,9 @@ export async function buildSystemPrompt(
       id: step.id,
       order: step.order,
       name: step.name,
+      lifecycleTrigger: step.lifecycleTrigger,
+      lifecycleDealPipelineId: step.lifecycleDealPipelineId,
     })),
+    conversationContactId: conversation.contactId,
   } satisfies SingleSystemPrompt
 }

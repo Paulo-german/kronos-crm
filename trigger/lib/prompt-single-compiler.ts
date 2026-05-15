@@ -1,5 +1,6 @@
 import type { PromptBaseContext } from './prompt-base-context'
 import type { StepAction } from '@/_actions/agent/shared/step-action-schema'
+import type { LifecycleStage } from '@prisma/client'
 import {
   ROLE_LABELS,
   TONE_INSTRUCTIONS,
@@ -21,7 +22,13 @@ export interface SingleSystemPrompt {
   modelId: string
   agentName: string
   /** Usado para montar o enum de structured output */
-  steps: Array<{ id: string; order: number; name: string }>
+  steps: Array<{
+    id: string
+    order: number
+    name: string
+    lifecycleTrigger: LifecycleStage | null
+    lifecycleDealPipelineId: string | null
+  }>
   currentStepOrder: number
   totalSteps: number
   hasSteps: boolean
@@ -37,6 +44,8 @@ export interface SingleSystemPrompt {
   summary: string | null
   estimatedTokens: number
   contactName: string
+  /** ContactId da conversa — usado pelo hook de lifecycle trigger ao avançar de step */
+  conversationContactId: string
 }
 
 // ---------------------------------------------------------------------------
@@ -553,6 +562,8 @@ export function compileSingleSystemPrompt(
       id: step.id,
       order: step.order,
       name: step.name,
+      lifecycleTrigger: step.lifecycleTrigger,
+      lifecycleDealPipelineId: step.lifecycleDealPipelineId,
     })),
     currentStepOrder: base.currentStepOrder,
     totalSteps: base.steps.length,
@@ -569,5 +580,6 @@ export function compileSingleSystemPrompt(
     summary: extra.summary,
     estimatedTokens,
     contactName: base.contact.name,
+    conversationContactId: base.conversationContactId,
   }
 }
