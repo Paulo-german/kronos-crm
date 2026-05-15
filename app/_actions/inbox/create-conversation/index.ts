@@ -142,14 +142,14 @@ export const createConversation = orgActionClient
       )
     }
 
-    // 6. Invalidar caches
+    // 7. Invalidar caches
     revalidateTag(`conversations:${ctx.orgId}`)
     revalidateTag(`pipeline:${ctx.orgId}`)
     revalidateTag(`deals:${ctx.orgId}`)
     revalidateTag(`contacts:${ctx.orgId}`)
     revalidateTag(`dashboard:${ctx.orgId}`)
 
-    // 7. Retornar DTO
+    // 8. Retornar DTO
     const dto = await getConversationAsDto(ctx.orgId, conversation.id, elevated, hidePii)
     return { conversation: dto }
   })
