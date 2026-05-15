@@ -75,6 +75,9 @@ model Organization {
   businessModel      BusinessModel @default(B2C) @map("business_model")
   dormantAfterMonths Int           @default(12)  @map("dormant_after_months")
   bookingAutoDeal    Boolean       @default(false) @map("booking_auto_deal")
+  facilitatorDealWonToCustomer  Boolean                @default(true) @map("facilitator_deal_won_to_customer")
+  facilitatorDealCreatedToOppty Boolean                @default(true) @map("facilitator_deal_created_to_oppty")
+  salesDistributionModel        SalesDistributionModel @default(ROUND_ROBIN) @map("sales_distribution_model")
   agentExecutions        AgentExecution[]
   agentGroups            AgentGroup[]
   agentTestConversations AgentTestConversation[]
@@ -289,6 +292,7 @@ model CaptureSource {
 
   organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   events       CaptureEvent[]
+  inboxes      Inbox[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt      @map("updated_at")
@@ -1070,10 +1074,12 @@ model Inbox {
   showAttendantName     Boolean        @default(false) @map("show_attendant_name")
   // Modo grupo (mutuamente exclusivo com agentId — validado na action)
   agentGroupId          String?        @map("agent_group_id")
+  captureSourceId       String?        @map("capture_source_id")
   conversations         Conversation[]
   agent                 Agent?         @relation(fields: [agentId], references: [id], onDelete: SetNull)
   agentGroup            AgentGroup?    @relation(fields: [agentGroupId], references: [id], onDelete: SetNull)
   organization          Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  captureSource         CaptureSource? @relation(fields: [captureSourceId], references: [id], onDelete: SetNull)
 
   @@index([organizationId])
   @@index([agentId])
@@ -1081,6 +1087,7 @@ model Inbox {
   @@index([metaPhoneNumberId])
   @@index([zapiInstanceId])
   @@index([metaIgUserId])
+  @@index([captureSourceId])
   @@map("inboxes")
 }
 
@@ -2077,4 +2084,14 @@ enum BillingCycle {
   ANNUAL
 
   @@map("billing_cycle")
+}
+
+enum SalesDistributionModel {
+  ROUND_ROBIN
+  LOYALTY
+  MANUAL
+  UTILIZATION
+  PERFORMANCE_WEIGHTED
+
+  @@map("sales_distribution_model")
 }
