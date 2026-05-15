@@ -14,6 +14,9 @@ import {
 import { createNotification } from '@/_lib/notifications/create-notification'
 import { getOrgSlug } from '@/_lib/notifications/get-org-slug'
 import { evaluateAutomations } from '@/_lib/automations/evaluate-automations'
+import { advanceContactLifecycle } from '@/_lib/lifecycle/advance-contact-lifecycle'
+import { ensureDealHasPrimaryCaptureEvent } from '@/_lib/lifecycle/ensure-deal-capture-event'
+import { LifecycleCauseType, LifecycleStage } from '@prisma/client'
 
 export const createDeal = orgActionClient
   .schema(createDealSchema)
@@ -122,6 +125,26 @@ export const createDeal = orgActionClient
         assignedTo,
       },
     }))
+
+    if (data.contactId) {
+      after(async () => {
+        const org = await db.organization.findUnique({
+          where: { id: ctx.orgId },
+          select: { facilitatorDealCreatedToOppty: true },
+        })
+
+        if (!org?.facilitatorDealCreatedToOppty) return
+
+        await ensureDealHasPrimaryCaptureEvent({ dealId: deal.id, organizationId: ctx.orgId })
+        await advanceContactLifecycle({
+          contactId: data.contactId!,
+          organizationId: ctx.orgId,
+          toStage: LifecycleStage.OPPORTUNITY,
+          causeType: LifecycleCauseType.DEAL_CREATED,
+          causeRefId: deal.id,
+        })
+      })
+    }
 
     return { success: true, dealId: deal.id }
   })

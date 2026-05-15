@@ -5,13 +5,15 @@ import { orgActionClient } from '@/_lib/safe-action'
 import { markDealWonSchema } from './schema'
 import { db } from '@/_lib/prisma'
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { ActivityType } from '@prisma/client'
+import { ActivityType, LifecycleCauseType, LifecycleStage } from '@prisma/client'
 import {
   findDealWithRBAC,
   canPerformAction,
   requirePermission,
 } from '@/_lib/rbac'
 import { evaluateAutomations } from '@/_lib/automations/evaluate-automations'
+import { advanceContactLifecycle } from '@/_lib/lifecycle/advance-contact-lifecycle'
+import { ensureDealHasPrimaryCaptureEvent } from '@/_lib/lifecycle/ensure-deal-capture-event'
 
 export const markDealWon = orgActionClient
   .schema(markDealWonSchema)
@@ -55,6 +57,31 @@ export const markDealWon = orgActionClient
       dealId: data.dealId,
       payload: { status: 'WON' },
     }))
+
+    after(async () => {
+      const org = await db.organization.findUnique({
+        where: { id: ctx.orgId },
+        select: { facilitatorDealWonToCustomer: true },
+      })
+
+      if (!org?.facilitatorDealWonToCustomer) return
+
+      const primaryContact = await db.dealContact.findFirst({
+        where: { dealId: data.dealId, isPrimary: true },
+        select: { contactId: true },
+      })
+
+      if (!primaryContact) return
+
+      await ensureDealHasPrimaryCaptureEvent({ dealId: data.dealId, organizationId: ctx.orgId })
+      await advanceContactLifecycle({
+        contactId: primaryContact.contactId,
+        organizationId: ctx.orgId,
+        toStage: LifecycleStage.CUSTOMER,
+        causeType: LifecycleCauseType.DEAL_WON,
+        causeRefId: data.dealId,
+      })
+    })
 
     return { success: true }
   })
