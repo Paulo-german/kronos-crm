@@ -115,6 +115,8 @@ model Organization {
   captureSources               CaptureSource[]
   campaigns                    Campaign[]
   captureEvents                CaptureEvent[]
+  lifecycleHistory             ContactLifecycleHistory[]
+  scoreHistory                 ContactScoreHistory[]
 
   @@map("organizations")
 }
@@ -193,6 +195,17 @@ model Contact {
   updatedAt       DateTime       @updatedAt @map("updated_at")
   organizationId  String         @map("organization_id")
   assignedTo      String?        @map("assigned_to")
+  lifecycleStage      LifecycleStage  @default(LEAD)         @map("lifecycle_stage")
+  customerStatus      CustomerStatus  @default(NEVER_BOUGHT) @map("customer_status")
+  firstCaptureChannel CaptureChannel? @map("first_capture_channel")
+  firstCaptureAt      DateTime?       @map("first_capture_at")
+  lastCaptureChannel  CaptureChannel? @map("last_capture_channel")
+  lastCaptureAt       DateTime?       @map("last_capture_at")
+  healthScore         Float?          @map("health_score")
+  scoredAt            DateTime?       @map("scored_at")
+  qualifiedAt         DateTime?       @map("qualified_at")
+  becameOpportunityAt DateTime?       @map("became_opportunity_at")
+  becameCustomerAt    DateTime?       @map("became_customer_at")
   assignee        User?          @relation("ContactAssignee", fields: [assignedTo], references: [id])
   company         Company?       @relation(fields: [companyId], references: [id])
   organization    Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -201,12 +214,18 @@ model Contact {
   appointments    Appointment[]
   captureEvents   CaptureEvent[] @relation("ContactCaptureEvents")
   referrals       CaptureEvent[] @relation("ReferredByContact")
+  lifecycleHistory ContactLifecycleHistory[]
+  scoreHistory     ContactScoreHistory[]
 
   @@index([organizationId, assignedTo, createdAt(sort: Desc)])
   @@index([organizationId, name])
   @@index([organizationId, email])
   @@index([organizationId, phone])
   @@index([companyId, organizationId])
+  @@index([organizationId, lifecycleStage, updatedAt(sort: Desc)])
+  @@index([organizationId, customerStatus])
+  @@index([organizationId, healthScore(sort: Desc)])
+  @@index([organizationId, lastCaptureAt(sort: Desc)])
   @@map("contacts")
 }
 
@@ -327,6 +346,45 @@ model CaptureEvent {
   @@index([organizationId, sourceId])
   @@index([organizationId, createdAt(sort: Desc)])
   @@map("capture_events")
+}
+
+model ContactLifecycleHistory {
+  id             String             @id @default(uuid())
+  contactId      String             @map("contact_id")
+  organizationId String             @map("organization_id")
+
+  fromStage       LifecycleStage?    @map("from_stage")
+  toStage         LifecycleStage     @map("to_stage")
+  causeType       LifecycleCauseType @map("cause_type")
+  causeRefId      String?            @map("cause_ref_id")
+  changedByUserId String?            @map("changed_by_user_id")
+
+  contact      Contact      @relation(fields: [contactId],      references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([contactId, createdAt(sort: Desc)])
+  @@index([organizationId, toStage, createdAt(sort: Desc)])
+  @@map("contact_lifecycle_history")
+}
+
+model ContactScoreHistory {
+  id             String   @id @default(uuid())
+  contactId      String   @map("contact_id")
+  organizationId String   @map("organization_id")
+
+  score    Float
+  snapshot Json  @default("{}")
+
+  contact      Contact      @relation(fields: [contactId],      references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([contactId, createdAt(sort: Desc)])
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@map("contact_score_history")
 }
 
 model PipelineStage {
@@ -840,6 +898,8 @@ model AgentStep {
   actions               Json?                     @map("actions")
   keyQuestion           String?                   @map("key_question")
   messageTemplate       String?                   @map("message_template")
+  lifecycleTrigger        LifecycleStage? @map("lifecycle_trigger")
+  lifecycleDealPipelineId String?         @map("lifecycle_deal_pipeline_id")
   agent                 Agent                     @relation(fields: [agentId], references: [id], onDelete: Cascade)
   followUpLinks         FollowUpAgentStep[]
 
@@ -1903,4 +1963,35 @@ enum CaptureChannel {
   UNKNOWN
 
   @@map("capture_channel")
+}
+
+enum LifecycleStage {
+  LEAD
+  QUALIFIED
+  OPPORTUNITY
+  CUSTOMER
+
+  @@map("lifecycle_stage")
+}
+
+enum CustomerStatus {
+  NEVER_BOUGHT
+  ACTIVE
+  DORMANT
+  CHURNED
+
+  @@map("customer_status")
+}
+
+enum LifecycleCauseType {
+  AGENT_STEP_ADVANCED
+  DEAL_CREATED
+  DEAL_WON
+  DEAL_LOST
+  MANUAL
+  INACTIVITY
+  BACKFILL
+  AI_QUALIFICATION
+
+  @@map("lifecycle_cause_type")
 }
