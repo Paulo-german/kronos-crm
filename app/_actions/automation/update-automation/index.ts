@@ -21,6 +21,7 @@ import {
   notifyUserConfigSchema,
   updateDealPriorityConfigSchema,
   sendWhatsappFollowupConfigSchema,
+  updateContactLifecycleConfigSchema,
 } from './schema'
 
 const TRIGGER_VALIDATORS: Record<AutomationTrigger, z.ZodTypeAny> = {
@@ -39,6 +40,7 @@ const ACTION_VALIDATORS: Record<AutomationAction, z.ZodTypeAny> = {
   [AutomationAction.NOTIFY_USER]: notifyUserConfigSchema,
   [AutomationAction.UPDATE_DEAL_PRIORITY]: updateDealPriorityConfigSchema,
   [AutomationAction.SEND_WHATSAPP_FOLLOWUP]: sendWhatsappFollowupConfigSchema,
+  [AutomationAction.UPDATE_CONTACT_LIFECYCLE]: updateContactLifecycleConfigSchema,
 }
 
 export const updateAutomation = orgActionClient

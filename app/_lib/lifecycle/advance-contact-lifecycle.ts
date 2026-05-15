@@ -18,7 +18,9 @@ interface AdvanceLifecycleParams {
   changedByUserId?: string
 }
 
-export async function advanceContactLifecycle(params: AdvanceLifecycleParams): Promise<void> {
+export async function advanceContactLifecycle(
+  params: AdvanceLifecycleParams,
+): Promise<{ applied: boolean }> {
   const { contactId, organizationId, toStage, causeType, causeRefId, changedByUserId } = params
 
   const contact = await db.contact.findUnique({
@@ -26,10 +28,10 @@ export async function advanceContactLifecycle(params: AdvanceLifecycleParams): P
     select: { lifecycleStage: true },
   })
 
-  if (!contact) return
+  if (!contact) return { applied: false }
 
   // Monotonicity guard: só avança, nunca regride
-  if (STAGE_ORDER[toStage] <= STAGE_ORDER[contact.lifecycleStage]) return
+  if (STAGE_ORDER[toStage] <= STAGE_ORDER[contact.lifecycleStage]) return { applied: false }
 
   const now = new Date()
   const timestampField = {
@@ -61,4 +63,6 @@ export async function advanceContactLifecycle(params: AdvanceLifecycleParams): P
   ])
 
   revalidateLifecycleCache(organizationId, contactId)
+
+  return { applied: true }
 }

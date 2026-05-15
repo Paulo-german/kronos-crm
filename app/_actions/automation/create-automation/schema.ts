@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { ActivityType, AutomationTrigger, AutomationAction } from '@prisma/client'
+import { ActivityType, AutomationTrigger, AutomationAction, LifecycleStage } from '@prisma/client'
 
 // ─────────────────────────────────────────────────────────────
 // Schemas para condições
@@ -120,6 +120,10 @@ export const sendWhatsappFollowupConfigSchema = z.object({
   noConversationBehavior: z.enum(['create', 'skip'], { message: 'Comportamento inválido' }),
 })
 
+export const updateContactLifecycleConfigSchema = z.object({
+  targetStage: z.nativeEnum(LifecycleStage),
+})
+
 // ─────────────────────────────────────────────────────────────
 // Schema principal de criação (com validação cross-field via superRefine)
 // ─────────────────────────────────────────────────────────────
@@ -162,6 +166,7 @@ export const createAutomationSchema = z.object({
     [AutomationAction.NOTIFY_USER]: notifyUserConfigSchema,
     [AutomationAction.UPDATE_DEAL_PRIORITY]: updateDealPriorityConfigSchema,
     [AutomationAction.SEND_WHATSAPP_FOLLOWUP]: sendWhatsappFollowupConfigSchema,
+    [AutomationAction.UPDATE_CONTACT_LIFECYCLE]: updateContactLifecycleConfigSchema,
   }
 
   const actionResult = actionValidators[data.actionType].safeParse(data.actionConfig)

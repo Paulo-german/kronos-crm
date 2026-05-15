@@ -1,5 +1,5 @@
 import 'server-only'
-import type { AutomationTrigger, DealPriority, DealStatus } from '@prisma/client'
+import type { AutomationTrigger, DealPriority, DealStatus, LifecycleStage } from '@prisma/client'
 import type { AutomationCondition } from '@/_actions/automation/create-automation/schema'
 
 // Re-exporta para que os executors e o evaluator usem a mesma fonte de verdade
@@ -109,6 +109,10 @@ export interface NotifyUserConfig {
 
 export interface UpdateDealPriorityConfig {
   targetPriority: DealPriority
+}
+
+export interface UpdateContactLifecycleConfig {
+  targetStage: LifecycleStage
 }
 
 export interface SendWhatsappFollowupConfig {

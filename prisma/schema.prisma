@@ -1817,6 +1817,8 @@ enum AutomationAction {
   UPDATE_DEAL_PRIORITY
   // Envia mensagem de follow-up via WhatsApp para o contato principal do deal
   SEND_WHATSAPP_FOLLOWUP
+  // Avança o lifecycle stage dos contatos vinculados ao deal (monotônico)
+  UPDATE_CONTACT_LIFECYCLE
 }
 
 enum AutomationExecutionStatus {
