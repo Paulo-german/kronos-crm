@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidateTag } from 'next/cache'
+import { after } from 'next/server'
 import { SalesDistributionModel } from '@prisma/client'
 import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
@@ -10,6 +11,8 @@ import {
   createDealForNewConversation,
   assignContactOwner,
 } from '@/_lib/evolution/resolve-conversation'
+import { inferCaptureChannelFromInboxChannel } from '@/_lib/lifecycle/infer-capture-channel'
+import { matchCaptureEventToCampaign } from '@/_lib/lifecycle/match-capture-event-to-campaign'
 import { createConversationSchema } from './schema'
 
 export const createConversation = orgActionClient
@@ -24,7 +27,13 @@ export const createConversation = orgActionClient
     // 2. Validar contato pertence à org e tem telefone
     const contact = await db.contact.findFirst({
       where: { id: data.contactId, organizationId: ctx.orgId },
-      select: { id: true, name: true, phone: true, assignedTo: true },
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        assignedTo: true,
+        firstCaptureAt: true,
+      },
     })
 
     if (!contact) {
@@ -46,6 +55,8 @@ export const createConversation = orgActionClient
         autoCreateDeal: true,
         pipelineId: true,
         distributionUserIds: true,
+        channel: true,
+        captureSourceId: true,
       },
     })
 
@@ -102,6 +113,55 @@ export const createConversation = orgActionClient
         }
       }
       throw error
+    }
+
+    // 4b. Registrar CaptureEvent (capturedAutomatically=false — conversa criada manualmente)
+    // Bloco non-fatal: falha aqui não pode bloquear a criação da conversa
+    try {
+      if (inbox.captureSourceId) {
+        const captureChannel = inferCaptureChannelFromInboxChannel(inbox.channel)
+        const captureEvent = await db.captureEvent.create({
+          data: {
+            contactId: contact.id,
+            organizationId: ctx.orgId,
+            channel: captureChannel,
+            sourceId: inbox.captureSourceId,
+            capturedAutomatically: false,
+            metadata: {
+              conversationId: conversation.id,
+              inboxId: inbox.id,
+            },
+          },
+          select: { id: true, createdAt: true },
+        })
+
+        const isFirstCapture = contact.firstCaptureAt === null
+        await db.contact.update({
+          where: { id: contact.id },
+          data: {
+            ...(isFirstCapture && {
+              firstCaptureChannel: captureChannel,
+              firstCaptureAt: captureEvent.createdAt,
+            }),
+            lastCaptureChannel: captureChannel,
+            lastCaptureAt: captureEvent.createdAt,
+          },
+        })
+
+        after(() => matchCaptureEventToCampaign(captureEvent.id, ctx.orgId))
+      } else {
+        console.warn('[createConversation] Inbox sem captureSourceId — pulando CaptureEvent', {
+          inboxId: inbox.id,
+          orgId: ctx.orgId,
+        })
+      }
+    } catch (captureError) {
+      console.warn('[createConversation] Falha ao registrar CaptureEvent:', {
+        orgId: ctx.orgId,
+        contactId: contact.id,
+        conversationId: conversation.id,
+        error: captureError instanceof Error ? captureError.message : String(captureError),
+      })
     }
 
     // 5. Resolver modelo de distribuição da org (default ROUND_ROBIN)

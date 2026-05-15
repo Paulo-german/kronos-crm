@@ -1,6 +1,10 @@
+import 'server-only'
+import { after } from 'next/server'
 import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
 import { SalesDistributionModel } from '@prisma/client'
+import { inferCaptureChannelFromInboxChannel } from '@/_lib/lifecycle/infer-capture-channel'
+import { matchCaptureEventToCampaign } from '@/_lib/lifecycle/match-capture-event-to-campaign'
 
 interface DealCreationContext {
   pipelineId: string | null
@@ -84,7 +88,8 @@ export async function resolveConversation(
   let contact = await db.contact.findFirst({
     where: { organizationId: orgId, phone: phoneNumber },
     // Incluir assignedTo para herdar o responsavel na criacao da conversa
-    select: { id: true, name: true, assignedTo: true },
+    // firstCaptureAt diferencia first-touch de last-touch no bloco de captura
+    select: { id: true, name: true, assignedTo: true, firstCaptureAt: true },
   })
 
   const isNewContact = !contact
@@ -96,7 +101,7 @@ export async function resolveConversation(
         name: effectiveName,
         phone: phoneNumber,
       },
-      select: { id: true, name: true, assignedTo: true },
+      select: { id: true, name: true, assignedTo: true, firstCaptureAt: true },
     })
   }
 
@@ -133,7 +138,85 @@ export async function resolveConversation(
     )
   }
 
+  // 5. Registrar captura — apenas para mensagens inbound (fromMe=false).
+  // fromMe=true significa que a empresa iniciou a conversa; não é captura de lead.
+  if (!fromMe) {
+    await recordInboundCaptureEvent({
+      inboxId,
+      orgId,
+      contactId: contact.id,
+      conversationId: conversation.id,
+      contactFirstCaptureAt: contact.firstCaptureAt,
+    })
+  }
+
   return { conversationId: conversation.id, isNew: true }
+}
+
+interface RecordInboundCaptureInput {
+  inboxId: string
+  orgId: string
+  contactId: string
+  conversationId: string
+  contactFirstCaptureAt: Date | null
+}
+
+// Cria CaptureEvent e atualiza denorms (first/last touch) do Contact quando uma
+// nova conversa nasce via webhook. Bloco non-fatal: erros aqui só viram log.
+async function recordInboundCaptureEvent(input: RecordInboundCaptureInput): Promise<void> {
+  try {
+    const inbox = await db.inbox.findUnique({
+      where: { id: input.inboxId },
+      select: { channel: true, captureSourceId: true },
+    })
+
+    if (!inbox?.captureSourceId) {
+      console.warn('[resolveConversation] Inbox sem captureSourceId — pulando CaptureEvent', {
+        inboxId: input.inboxId,
+        orgId: input.orgId,
+      })
+      return
+    }
+
+    const channel = inferCaptureChannelFromInboxChannel(inbox.channel)
+
+    const captureEvent = await db.captureEvent.create({
+      data: {
+        contactId: input.contactId,
+        organizationId: input.orgId,
+        channel,
+        sourceId: inbox.captureSourceId,
+        capturedAutomatically: true,
+        metadata: {
+          conversationId: input.conversationId,
+          inboxId: input.inboxId,
+        },
+      },
+      select: { id: true, createdAt: true },
+    })
+
+    const isFirstCapture = input.contactFirstCaptureAt === null
+    await db.contact.update({
+      where: { id: input.contactId },
+      data: {
+        ...(isFirstCapture && {
+          firstCaptureChannel: channel,
+          firstCaptureAt: captureEvent.createdAt,
+        }),
+        lastCaptureChannel: channel,
+        lastCaptureAt: captureEvent.createdAt,
+      },
+    })
+
+    after(() => matchCaptureEventToCampaign(captureEvent.id, input.orgId))
+  } catch (captureError) {
+    console.warn('[resolveConversation] Falha ao registrar CaptureEvent:', {
+      orgId: input.orgId,
+      contactId: input.contactId,
+      conversationId: input.conversationId,
+      error: captureError instanceof Error ? captureError.message : String(captureError),
+    })
+  }
 }
 
 export async function assignContactOwner(
