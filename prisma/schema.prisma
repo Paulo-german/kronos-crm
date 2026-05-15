@@ -36,6 +36,7 @@ model User {
   tutorialCompletions     TutorialCompletion[]
   changelogEntries        ChangelogEntry[]
   professional            Professional?     @relation("ProfessionalUser")
+  goals                   Goal[]
 
   @@map("users")
 }
@@ -71,6 +72,8 @@ model Organization {
   niche                  String?                 @map("niche")
   onboardingCompleted    Boolean                 @default(false) @map("onboarding_completed")
   hidePiiFromMembers     Boolean                 @default(false) @map("hide_pii_from_members")
+  businessModel      BusinessModel @default(B2C) @map("business_model")
+  dormantAfterMonths Int           @default(12)  @map("dormant_after_months")
   agentExecutions        AgentExecution[]
   agentGroups            AgentGroup[]
   agentTestConversations AgentTestConversation[]
@@ -88,6 +91,7 @@ model Organization {
   notifications          Notification[]
   planOverride           Plan?                   @relation("PlanOverride", fields: [planOverrideId], references: [id])
   pipelines              Pipeline[]
+  goals                  Goal[]
   products               Product[]
   productMedia           ProductMedia[]
   subscriptions          Subscription[]
@@ -155,6 +159,8 @@ model Company {
   id             String       @id @default(uuid())
   name           String
   domain         String?
+  cnpj           String?
+  segment        String?
   industry       String?
   size           CompanySize?
   address        String?
@@ -166,6 +172,8 @@ model Company {
   deals          Deal[]
 
   @@index([organizationId, name])
+  @@index([organizationId, cnpj])
+  @@index([organizationId, domain])
   @@map("companies")
 }
 
@@ -207,9 +215,38 @@ model Pipeline {
   updatedAt      DateTime        @updatedAt @map("updated_at")
   stages         PipelineStage[]
   organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  goals          Goal[]
 
   @@index([organizationId])
   @@map("pipelines")
+}
+
+model Goal {
+  id             String     @id @default(uuid())
+  organizationId String     @map("organization_id")
+
+  type        GoalType
+  scope       GoalScope
+  period      GoalPeriod
+  periodStart DateTime   @map("period_start")
+  periodEnd   DateTime   @map("period_end")
+
+  targetUserId     String?  @map("target_user_id")
+  targetPipelineId String?  @map("target_pipeline_id")
+
+  targetValue Decimal  @db.Decimal(15, 2) @map("target_value")
+  createdBy   String   @map("created_by")
+
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  targetUser     User?         @relation(fields: [targetUserId], references: [id], onDelete: SetNull)
+  targetPipeline Pipeline?     @relation(fields: [targetPipelineId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  @@index([organizationId, type, periodStart, periodEnd])
+  @@index([organizationId, scope, targetUserId, targetPipelineId])
+  @@map("goals")
 }
 
 model PipelineStage {
@@ -1720,6 +1757,14 @@ model BusinessReport {
 // Meta / Instagram
 // ─────────────────────────────────────────────────────────────
 
+enum BusinessModel {
+  B2C
+  B2B
+  BOTH
+
+  @@map("business_model")
+}
+
 // Registro de auditoria das requisições de data deletion exigidas pela Meta
 // (obrigatório para App Review de apps que acessam dados de usuários via OAuth)
 model MetaDataDeletionRequest {
@@ -1733,4 +1778,31 @@ model MetaDataDeletionRequest {
 
   @@index([metaUserId])
   @@map("meta_data_deletion_requests")
+}
+
+enum GoalType {
+  REVENUE
+  DEALS_CLOSED
+  DEALS_OPENED
+  ACTIVITIES
+  CONVERSATIONS
+
+  @@map("goal_type")
+}
+
+enum GoalScope {
+  ORG
+  PIPELINE
+  MEMBER
+
+  @@map("goal_scope")
+}
+
+enum GoalPeriod {
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+
+  @@map("goal_period")
 }
