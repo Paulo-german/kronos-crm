@@ -190,35 +190,35 @@ const AgentDetailClient = ({
 
           {/* Tabs — grid-cols-5 com a nova tab Follow-ups */}
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList data-tour="agent-tabs" className="grid h-12 w-full grid-cols-5 rounded-md border border-border/50">
+            <TabsList data-tour="agent-tabs" className="grid h-12 w-full grid-cols-5 rounded-md border border-border/50 bg-tab/30">
               <TabsTrigger
                 value="general"
-                className="rounded-md py-2"
+                className="rounded-md py-2 data-[state=active]:bg-card/80"
               >
                 Geral
               </TabsTrigger>
               <TabsTrigger
                 value="process"
-                className="rounded-md py-2"
+                className="rounded-md py-2 data-[state=active]:bg-card/80"
               >
                 Processo
               </TabsTrigger>
               <TabsTrigger
                 value="knowledge"
                 data-tour="agent-knowledge"
-                className="rounded-md py-2"
+                className="rounded-md py-2 data-[state=active]:bg-card/80"
               >
                 Conhecimento
               </TabsTrigger>
               <TabsTrigger
                 value="connection"
-                className="rounded-md py-2"
+                className="rounded-md py-2 data-[state=active]:bg-card/80"
               >
                 Conexão
               </TabsTrigger>
               <TabsTrigger
                 value="follow-ups"
-                className="rounded-md py-2"
+                className="rounded-md py-2 data-[state=active]:bg-card/80"
               >
                 Follow-ups
               </TabsTrigger>
@@ -239,6 +239,7 @@ const AgentDetailClient = ({
                 agent={agent}
                 canManage={canManage}
                 pipelineStages={pipelineStages}
+                pipelines={pipelines}
                 onSaveSuccess={handleConfigSaved}
               />
             </TabsContent>

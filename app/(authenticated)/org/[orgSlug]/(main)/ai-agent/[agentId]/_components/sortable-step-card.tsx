@@ -6,6 +6,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 import { GripVertical, Pencil, Trash2 } from 'lucide-react'
+import { cn } from '@/_lib/utils'
 import { Button } from '@/_components/ui/button'
 import { Badge } from '@/_components/ui/badge'
 import ConfirmationDialog from '@/_components/confirmation-dialog'
@@ -14,12 +15,14 @@ import { deleteStep } from '@/_actions/agent/delete-step'
 import { TOOL_OPTIONS } from './constants'
 import type { AgentStepDto } from '@/_data-access/agent/get-agent-by-id'
 import type { PipelineStageOption } from '@/_data-access/pipeline/get-pipeline-stages'
+import type { OrgPipelineDto } from '@/_data-access/pipeline/get-org-pipelines'
 
 interface SortableStepCardProps {
   step: AgentStepDto
   agentId: string
   canManage: boolean
   pipelineStages: PipelineStageOption[]
+  pipelines: OrgPipelineDto[]
   agentMode?: 'PRODUCT' | 'SERVICE' | 'HYBRID'
 }
 
@@ -28,6 +31,7 @@ const SortableStepCard = ({
   agentId,
   canManage,
   pipelineStages,
+  pipelines,
   agentMode,
 }: SortableStepCardProps) => {
   const actions = step.actions ?? []
@@ -67,9 +71,10 @@ const SortableStepCard = ({
       <div
         ref={setNodeRef}
         style={style}
-        className={`flex items-start gap-3 rounded-md border border-border/50 bg-card p-4 ${
-          isDragging ? 'shadow-lg ring-2 ring-primary' : ''
-        }`}
+        className={cn(
+          'flex items-start gap-3 rounded-md border border-border/50 bg-card p-4',
+          isDragging && 'shadow-lg ring-2 ring-primary',
+        )}
       >
         {/* Drag handle */}
         {canManage && (
@@ -136,6 +141,7 @@ const SortableStepCard = ({
         agentId={agentId}
         defaultValues={step}
         pipelineStages={pipelineStages}
+        pipelines={pipelines}
         agentMode={agentMode}
       />
 

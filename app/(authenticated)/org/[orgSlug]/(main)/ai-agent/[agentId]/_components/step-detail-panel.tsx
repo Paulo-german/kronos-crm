@@ -1,11 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 import { Brain, Trash2 } from 'lucide-react'
+import { LifecycleStage } from '@prisma/client'
 import { Button } from '@/_components/ui/button'
 import { cn } from '@/_lib/utils'
 import { useTrainingProgress } from '../_hooks/use-training-progress'
@@ -17,6 +18,13 @@ import {
   FormLabel,
   FormMessage,
 } from '@/_components/ui/form'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/_components/ui/select'
 import { Input } from '@/_components/ui/input'
 import { Textarea } from '@/_components/ui/textarea'
 import ConfirmationDialog from '@/_components/confirmation-dialog'
@@ -31,12 +39,14 @@ import {
 import type { StepAction } from '@/_actions/agent/shared/step-action-schema'
 import type { AgentStepDto } from '@/_data-access/agent/get-agent-by-id'
 import type { PipelineStageOption } from '@/_data-access/pipeline/get-pipeline-stages'
+import type { OrgPipelineDto } from '@/_data-access/pipeline/get-org-pipelines'
 
 interface StepDetailPanelProps {
   step?: AgentStepDto
   agentId: string
   canManage: boolean
   pipelineStages: PipelineStageOption[]
+  pipelines: OrgPipelineDto[]
   onCreateSuccess: () => void
   onDeleteSuccess: () => void
   onSaveSuccess?: () => void
@@ -49,6 +59,7 @@ const StepDetailPanel = ({
   agentId,
   canManage,
   pipelineStages,
+  pipelines,
   onCreateSuccess,
   onDeleteSuccess,
   onSaveSuccess,
@@ -69,7 +80,19 @@ const StepDetailPanel = ({
       actions: step?.actions ?? [],
       keyQuestion: step?.keyQuestion ?? '',
       messageTemplate: step?.messageTemplate ?? '',
+      lifecycleTrigger: step?.lifecycleTrigger ?? null,
+      lifecycleDealPipelineId: step?.lifecycleDealPipelineId ?? null,
     },
+  })
+
+  const watchedLifecycleTrigger = useWatch({
+    control: form.control,
+    name: 'lifecycleTrigger',
+  })
+
+  const watchedActions = useWatch({
+    control: form.control,
+    name: 'actions',
   })
 
   const { execute: executeCreate, isPending: isCreating } = useAction(
@@ -136,6 +159,8 @@ const StepDetailPanel = ({
         actions: data.actions ?? [],
         keyQuestion: data.keyQuestion,
         messageTemplate: data.messageTemplate,
+        lifecycleTrigger: data.lifecycleTrigger,
+        lifecycleDealPipelineId: data.lifecycleDealPipelineId,
       })
     } else {
       executeCreate(data)
@@ -195,7 +220,7 @@ const StepDetailPanel = ({
 
             {canManage && (
               <StepActionBuilder
-                value={(form.watch('actions') ?? []) as StepAction[]}
+                value={(watchedActions ?? []) as StepAction[]}
                 onChange={(actions) =>
                   form.setValue('actions', actions, { shouldDirty: true })
                 }
@@ -244,6 +269,95 @@ const StepDetailPanel = ({
                 </FormItem>
               )}
             />
+
+            <div className="space-y-3 rounded-lg border border-border/50 bg-muted/30 p-4">
+              <p className="text-sm font-medium">Avançar lifecycle ao atingir esta etapa</p>
+              <FormField
+                control={form.control}
+                name="lifecycleTrigger"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Estágio de destino</FormLabel>
+                    <Select
+                      disabled={!canManage}
+                      onValueChange={(value) =>
+                        field.onChange(value === 'none' ? null : value)
+                      }
+                      value={field.value ?? 'none'}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Nenhum" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhum</SelectItem>
+                        <SelectItem value={LifecycleStage.QUALIFIED}>
+                          Qualificado
+                        </SelectItem>
+                        <SelectItem value={LifecycleStage.OPPORTUNITY}>
+                          Oportunidade
+                        </SelectItem>
+                        <SelectItem value={LifecycleStage.CUSTOMER}>
+                          Cliente
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {watchedLifecycleTrigger === LifecycleStage.OPPORTUNITY && (
+                <FormField
+                  control={form.control}
+                  name="lifecycleDealPipelineId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Pipeline para criação do deal{' '}
+                        <span className="font-normal text-muted-foreground">
+                          (opcional)
+                        </span>
+                      </FormLabel>
+                      <Select
+                        disabled={!canManage}
+                        onValueChange={(value) =>
+                          field.onChange(value === 'default' ? null : value)
+                        }
+                        value={field.value ?? 'default'}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Pipeline padrão da organização" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="default">
+                            Pipeline padrão da organização
+                          </SelectItem>
+                          {pipelines.map((pipeline) => (
+                            <SelectItem key={pipeline.id} value={pipeline.id}>
+                              {pipeline.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Se não selecionado, será usado o pipeline padrão da
+                        organização.
+                      </p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              <p className="text-xs text-muted-foreground">
+                O contato avançará para este estágio automaticamente quando a
+                conversa atingir esta etapa.
+              </p>
+            </div>
           </div>
 
           {/* Rodapé fixo com ações */}

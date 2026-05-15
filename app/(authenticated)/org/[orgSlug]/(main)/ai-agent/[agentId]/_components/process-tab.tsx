@@ -46,6 +46,7 @@ import type {
 } from '@/_data-access/agent/get-agent-by-id'
 import type { GlobalToolType } from '@/_actions/agent/shared/global-tool-schema'
 import type { PipelineStageOption } from '@/_data-access/pipeline/get-pipeline-stages'
+import type { OrgPipelineDto } from '@/_data-access/pipeline/get-org-pipelines'
 import type { StepAction } from '@/_actions/agent/shared/step-action-schema'
 
 const GLOBAL_TOOL_TYPES: GlobalToolType[] = [
@@ -139,6 +140,7 @@ interface SortableStepCardProps {
   onToggle: (id: string) => void
   agentId: string
   pipelineStages: PipelineStageOption[]
+  pipelines: OrgPipelineDto[]
   onCreateSuccess: () => void
   onDeleteSuccess: (id: string) => void
   onSaveSuccess?: () => void
@@ -154,6 +156,7 @@ const SortableStepCard = ({
   onToggle,
   agentId,
   pipelineStages,
+  pipelines,
   onCreateSuccess,
   onDeleteSuccess,
   onSaveSuccess,
@@ -235,6 +238,7 @@ const SortableStepCard = ({
               agentId={agentId}
               canManage={canManage}
               pipelineStages={pipelineStages}
+              pipelines={pipelines}
               onCreateSuccess={onCreateSuccess}
               onDeleteSuccess={() => onDeleteSuccess(step.id)}
               onSaveSuccess={onSaveSuccess}
@@ -252,6 +256,7 @@ interface ProcessTabProps {
   agent: AgentDetailDto
   canManage: boolean
   pipelineStages: PipelineStageOption[]
+  pipelines: OrgPipelineDto[]
   onSaveSuccess?: () => void
   excludeGlobalTools?: boolean
 }
@@ -260,6 +265,7 @@ const ProcessTab = ({
   agent,
   canManage,
   pipelineStages,
+  pipelines,
   onSaveSuccess,
   excludeGlobalTools = false,
 }: ProcessTabProps) => {
@@ -376,6 +382,7 @@ const ProcessTab = ({
       onToggle={handleToggleStep}
       agentId={agent.id}
       pipelineStages={pipelineStages}
+      pipelines={pipelines}
       onCreateSuccess={handleCreateSuccess}
       onDeleteSuccess={handleDeleteSuccess}
       onSaveSuccess={onSaveSuccess}
@@ -459,6 +466,7 @@ const ProcessTab = ({
               agentId={agent.id}
               canManage={canManage}
               pipelineStages={pipelineStages}
+              pipelines={pipelines}
               onCreateSuccess={handleCreateSuccess}
               onDeleteSuccess={() => setOpenStepId(null)}
               onSaveSuccess={onSaveSuccess}
