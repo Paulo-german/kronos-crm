@@ -112,6 +112,9 @@ model Organization {
   manualProfessionalOrders     ManualProfessionalOrder[]
   promotions                   Promotion[]
   dealLineItems                DealLineItem[]
+  captureSources               CaptureSource[]
+  campaigns                    Campaign[]
+  captureEvents                CaptureEvent[]
 
   @@map("organizations")
 }
@@ -196,6 +199,8 @@ model Contact {
   conversations   Conversation[]
   deals           DealContact[]
   appointments    Appointment[]
+  captureEvents   CaptureEvent[] @relation("ContactCaptureEvents")
+  referrals       CaptureEvent[] @relation("ReferredByContact")
 
   @@index([organizationId, assignedTo, createdAt(sort: Desc)])
   @@index([organizationId, name])
@@ -247,6 +252,81 @@ model Goal {
   @@index([organizationId, type, periodStart, periodEnd])
   @@index([organizationId, scope, targetUserId, targetPipelineId])
   @@map("goals")
+}
+
+model CaptureSource {
+  id              String         @id @default(uuid())
+  organizationId  String         @map("organization_id")
+  channel         CaptureChannel
+  name            String
+  isActive        Boolean        @default(true)  @map("is_active")
+  isAdHoc         Boolean        @default(false) @map("is_ad_hoc")
+  createdByUserId String?        @map("created_by_user_id")
+  deactivatedAt   DateTime?      @map("deactivated_at")
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  events       CaptureEvent[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  @@index([organizationId, channel, isActive])
+  @@index([organizationId, isAdHoc])
+  @@map("capture_sources")
+}
+
+model Campaign {
+  id               String         @id @default(uuid())
+  organizationId   String         @map("organization_id")
+  name             String
+  channel          CaptureChannel
+  utmCampaign      String?        @map("utm_campaign")
+  externalId       String?        @map("external_id")
+  externalPlatform String?        @map("external_platform")
+  budget           Decimal?       @db.Decimal(15, 2)
+  startDate        DateTime?      @map("start_date")
+  endDate          DateTime?      @map("end_date")
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  events       CaptureEvent[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  @@index([organizationId, channel])
+  @@index([organizationId, utmCampaign])
+  @@map("campaigns")
+}
+
+model CaptureEvent {
+  id                    String         @id @default(uuid())
+  contactId             String         @map("contact_id")
+  organizationId        String         @map("organization_id")
+  channel               CaptureChannel
+  sourceId              String         @map("source_id")
+  sourceUrl             String?        @map("source_url")
+  utmSource             String?        @map("utm_source")
+  utmMedium             String?        @map("utm_medium")
+  utmCampaign           String?        @map("utm_campaign")
+  campaignId            String?        @map("campaign_id")
+  referredByContactId   String?        @map("referred_by_contact_id")
+  capturedAutomatically Boolean        @map("captured_automatically")
+  metadata              Json           @default("{}")
+
+  contact      Contact       @relation("ContactCaptureEvents", fields: [contactId],           references: [id], onDelete: Cascade)
+  organization Organization  @relation(fields: [organizationId],  references: [id], onDelete: Cascade)
+  source       CaptureSource @relation(fields: [sourceId],        references: [id], onDelete: Restrict)
+  campaign     Campaign?     @relation(fields: [campaignId],      references: [id])
+  referredBy   Contact?      @relation("ReferredByContact",       fields: [referredByContactId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([contactId, createdAt(sort: Desc)])
+  @@index([organizationId, channel, createdAt(sort: Desc)])
+  @@index([organizationId, campaignId])
+  @@index([organizationId, sourceId])
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@map("capture_events")
 }
 
 model PipelineStage {
@@ -1805,4 +1885,22 @@ enum GoalPeriod {
   YEARLY
 
   @@map("goal_period")
+}
+
+enum CaptureChannel {
+  WHATSAPP
+  INSTAGRAM
+  WEBSITE_CHAT
+  EMBED_FORM
+  FACEBOOK_LEAD
+  API
+  PHONE_CALL
+  IN_PERSON
+  EVENT
+  EMAIL
+  REFERRAL
+  IMPORT
+  UNKNOWN
+
+  @@map("capture_channel")
 }
