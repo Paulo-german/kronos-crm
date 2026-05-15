@@ -40,6 +40,8 @@ export const updateStep = orgActionClient
           normalizedActions.length > 0 ? normalizedActions : Prisma.JsonNull,
         keyQuestion: data.keyQuestion || null,
         messageTemplate: data.messageTemplate || null,
+        lifecycleTrigger: data.lifecycleTrigger ?? null,
+        lifecycleDealPipelineId: data.lifecycleDealPipelineId ?? null,
       },
     })
 

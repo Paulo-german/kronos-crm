@@ -3,7 +3,7 @@ import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { z } from 'zod'
 import { db } from '@/_lib/prisma'
-import type { KnowledgeFileStatus } from '@prisma/client'
+import type { KnowledgeFileStatus, LifecycleStage } from '@prisma/client'
 import type { BusinessHoursConfig } from '@/_actions/agent/update-agent/schema'
 import type { FollowUpBusinessHoursConfig } from '@/_actions/follow-up/update-follow-up-business-hours/schema'
 import type { ExhaustedAction, ExhaustedConfig } from '@/_data-access/follow-up/types'
@@ -26,6 +26,8 @@ export interface AgentStepDto {
   actions: StepAction[]
   keyQuestion: string | null
   messageTemplate: string | null
+  lifecycleTrigger: LifecycleStage | null
+  lifecycleDealPipelineId: string | null
   order: number
 }
 
@@ -186,6 +188,8 @@ const fetchAgentByIdFromDb = async (
         actions: parsed.success ? parsed.data : [],
         keyQuestion: step.keyQuestion,
         messageTemplate: step.messageTemplate,
+        lifecycleTrigger: step.lifecycleTrigger,
+        lifecycleDealPipelineId: step.lifecycleDealPipelineId,
         order: step.order,
       }
     }),

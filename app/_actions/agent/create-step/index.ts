@@ -38,6 +38,8 @@ export const createStep = orgActionClient
           actions: data.actions.length > 0 ? data.actions : Prisma.JsonNull,
           keyQuestion: data.keyQuestion || null,
           messageTemplate: data.messageTemplate || null,
+          lifecycleTrigger: data.lifecycleTrigger ?? null,
+          lifecycleDealPipelineId: data.lifecycleDealPipelineId ?? null,
           order: nextOrder,
         },
       })

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { LifecycleStage } from '@prisma/client'
 import { stepActionSchema } from './step-action-schema'
 
 export const stepFieldsSchema = z.object({
@@ -7,6 +8,8 @@ export const stepFieldsSchema = z.object({
   actions: z.array(stepActionSchema).optional().default([]),
   keyQuestion: z.string().max(500).optional(),
   messageTemplate: z.string().max(1000).optional(),
+  lifecycleTrigger: z.nativeEnum(LifecycleStage).nullable().optional(),
+  lifecycleDealPipelineId: z.string().uuid().nullable().optional(),
 })
 
 export type StepFields = z.infer<typeof stepFieldsSchema>
