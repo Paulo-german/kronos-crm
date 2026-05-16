@@ -1,9 +1,10 @@
 import 'server-only'
+import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 import type { RBACContext } from '@/_lib/rbac'
 import { isElevated } from '@/_lib/rbac'
-import type { AppointmentStatus, AppointmentType } from '@prisma/client'
+import type { AppointmentStatus, AppointmentType, DealStatus } from '@prisma/client'
 
 export interface AppointmentDto {
   id: string
@@ -20,6 +21,7 @@ export interface AppointmentDto {
   // dealId é opcional desde a Fase A do scheduling v2 (SERVICE appointments não têm deal)
   dealId: string | null
   dealTitle: string | null
+  dealStatus: DealStatus | null
   professionalId: string | null
   serviceId: string | null
   createdAt: Date
@@ -51,7 +53,7 @@ const fetchAppointmentsFromDb = async (
       professionalId: true,
       serviceId: true,
       deal: {
-        select: { title: true },
+        select: { title: true, status: true },
       },
       user: {
         select: { fullName: true },
@@ -74,6 +76,7 @@ const fetchAppointmentsFromDb = async (
     contactId: appointment.contactId,
     dealId: appointment.dealId,
     dealTitle: appointment.deal?.title ?? null,
+    dealStatus: appointment.deal?.status ?? null,
     professionalId: appointment.professionalId,
     serviceId: appointment.serviceId,
     createdAt: appointment.createdAt,
@@ -85,7 +88,7 @@ const fetchAppointmentsFromDb = async (
  * Busca todos os agendamentos da organização (Cacheado)
  * RBAC: MEMBER só vê agendamentos atribuídos a ele
  */
-export const getAppointments = async (
+export const getAppointments = cache(async (
   ctx: RBACContext,
 ): Promise<AppointmentDto[]> => {
   const elevated = isElevated(ctx.userRole)
@@ -100,4 +103,4 @@ export const getAppointments = async (
   )
 
   return getCached()
-}
+})

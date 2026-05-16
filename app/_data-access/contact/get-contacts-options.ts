@@ -1,4 +1,5 @@
 import 'server-only'
+import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 import type { RBACContext } from '@/_lib/rbac'
@@ -9,6 +10,7 @@ export type ContactOptionDto = {
   id: string
   name: string
   phone: string | null
+  assignedTo: string | null
 }
 
 const fetchContactsOptionsFromDb = async (
@@ -26,6 +28,7 @@ const fetchContactsOptionsFromDb = async (
       id: true,
       name: true,
       phone: true,
+      assignedTo: true,
     },
     orderBy: {
       name: 'asc',
@@ -37,6 +40,7 @@ const fetchContactsOptionsFromDb = async (
     id: contact.id,
     name: contact.name,
     phone: (!elevated && hidePiiFromMembers) ? maskPhone(contact.phone) : contact.phone,
+    assignedTo: contact.assignedTo,
   }))
 }
 
@@ -44,7 +48,7 @@ const fetchContactsOptionsFromDb = async (
  * Busca contatos para uso em selects/comboboxes (Cacheado)
  * RBAC: MEMBER só vê contatos atribuídos a ele
  */
-export const getContactsOptions = async (
+export const getContactsOptions = cache(async (
   ctx: RBACContext,
 ): Promise<ContactOptionDto[]> => {
   const elevated = isElevated(ctx.userRole)
@@ -60,4 +64,4 @@ export const getContactsOptions = async (
   )
 
   return getCached()
-}
+})

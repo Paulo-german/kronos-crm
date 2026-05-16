@@ -1,5 +1,5 @@
 import { db } from '@/_lib/prisma'
-import type { AppointmentStatus, AppointmentType } from '@prisma/client'
+import type { AppointmentStatus, AppointmentType, PaymentStatus } from '@prisma/client'
 import type { PermissionContext } from './types'
 import { canAccessRecord, requirePermission } from './guards'
 
@@ -132,7 +132,7 @@ export async function findConversationWithRBAC(
 export async function findAppointmentWithRBAC(
   appointmentId: string,
   ctx: PermissionContext
-): Promise<{ id: string; assignedTo: string; dealId: string | null; status: AppointmentStatus; title: string; type: AppointmentType; professionalId: string | null }> {
+): Promise<{ id: string; assignedTo: string; dealId: string | null; status: AppointmentStatus; title: string; type: AppointmentType; professionalId: string | null; paymentStatus: PaymentStatus | null }> {
   const appointment = await db.appointment.findFirst({
     where: {
       id: appointmentId,
@@ -146,6 +146,7 @@ export async function findAppointmentWithRBAC(
       title: true,
       type: true,
       professionalId: true,
+      paymentStatus: true,
     },
   })
 

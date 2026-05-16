@@ -1,4 +1,5 @@
 import 'server-only'
+import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 import type { AppointmentDto } from './get-appointments'
@@ -30,7 +31,7 @@ const fetchDealAppointmentsFromDb = async (
       },
       dealId: true,
       deal: {
-        select: { title: true },
+        select: { title: true, status: true },
       },
       createdAt: true,
       updatedAt: true,
@@ -50,6 +51,7 @@ const fetchDealAppointmentsFromDb = async (
     contactId: appointment.contactId,
     dealId: appointment.dealId,
     dealTitle: appointment.deal?.title ?? null,
+    dealStatus: appointment.deal?.status ?? null,
     professionalId: appointment.professionalId,
     serviceId: appointment.serviceId,
     createdAt: appointment.createdAt,
@@ -61,7 +63,7 @@ const fetchDealAppointmentsFromDb = async (
  * Busca agendamentos de um deal específico (Cacheado)
  * Sem RBAC de ownership — acesso ao deal já foi verificado antes
  */
-export const getDealAppointments = async (
+export const getDealAppointments = cache(async (
   dealId: string,
   orgId: string,
 ): Promise<AppointmentDto[]> => {
@@ -74,4 +76,4 @@ export const getDealAppointments = async (
   )
 
   return getCached()
-}
+})
