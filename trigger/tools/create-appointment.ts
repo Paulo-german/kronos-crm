@@ -5,6 +5,8 @@ import { logger } from '@trigger.dev/sdk/v3'
 import { revalidateTags } from './lib/revalidate-tags'
 import { withRetry, safeBestEffort } from './lib/with-retry'
 import type { ToolContext } from './types'
+import { roundRobinAssign } from '@/_lib/distribution/round-robin'
+import { createOpenDealForBooking } from '@/_lib/lifecycle/create-open-deal-for-booking'
 
 interface CreateAppointmentResult {
   success: boolean
@@ -359,28 +361,38 @@ async function runServiceCreation(
     }
   }
 
-  // assignedTo: prioriza o User do profissional; senão, owner da organização
-  let resolvedUserId: string | null = professional.userId
-  if (!resolvedUserId) {
-    const owner = await db.member.findFirst({
-      where: {
-        organizationId: ctx.organizationId,
-        role: 'OWNER',
-        userId: { not: null },
-      },
+  // assignedTo: usa contact.assignedTo (responsável de vendas do contato)
+  // Se nulo, roda round-robin entre os membros elegíveis da org
+  const contactRecord = await db.contact.findUnique({
+    where: { id: ctx.contactId },
+    select: { assignedTo: true },
+  })
+
+  let assignedTo: string
+  if (contactRecord?.assignedTo) {
+    assignedTo = contactRecord.assignedTo
+  } else {
+    const members = await db.member.findMany({
+      where: { organizationId: ctx.organizationId, status: 'ACCEPTED', role: { in: ['MEMBER', 'ADMIN', 'OWNER'] } },
       select: { userId: true },
     })
-    if (!owner?.userId) {
+    const memberUserIds = members.map((m) => m.userId).filter(Boolean) as string[]
+    const resolved = await roundRobinAssign(ctx.organizationId, memberUserIds)
+    if (!resolved) {
       return {
         success: false,
-        message: 'Não foi possível determinar o responsável pelo agendamento.',
+        message: 'Não há atendentes disponíveis para atribuir o agendamento.',
       }
     }
-    resolvedUserId = owner.userId
+    assignedTo = resolved
+    // Atribui o contato ao usuário sorteado para manter consistência futura
+    await db.contact.update({
+      where: { id: ctx.contactId },
+      data: { assignedTo },
+    })
   }
-  const assignedTo = resolvedUserId
 
-  await withRetry(
+  const appointment = await withRetry(
     () =>
       db.appointment.create({
         data: {
@@ -401,8 +413,28 @@ async function runServiceCreation(
     'db.appointment.create',
   )
 
+  // Criar deal OPEN vinculado automaticamente (sem cascade de lifecycle na criação)
   await safeBestEffort(
-    () => revalidateTags([`appointments:${ctx.organizationId}`]),
+    async () => {
+      await createOpenDealForBooking({
+        appointmentId: appointment.id,
+        orgId: ctx.organizationId,
+        assignedTo,
+        contactId: ctx.contactId,
+        serviceId: service.id,
+        serviceName: service.name ?? 'Serviço',
+        priceSnapshot: Number(service.price ?? 0),
+      })
+    },
+    'createOpenDealForBooking',
+  )
+
+  await safeBestEffort(
+    () => revalidateTags([
+      `appointments:${ctx.organizationId}`,
+      `deals:${ctx.organizationId}`,
+      `pipeline:${ctx.organizationId}`,
+    ]),
     'revalidateTags',
   )
 
