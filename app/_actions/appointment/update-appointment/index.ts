@@ -15,6 +15,8 @@ import {
 } from '@/_lib/rbac'
 import { createNotification } from '@/_lib/notifications/create-notification'
 import { getOrgSlug } from '@/_lib/notifications/get-org-slug'
+import { markDealWonFromBooking } from '@/_lib/lifecycle/mark-deal-won-from-booking'
+import { markDealLostFromBooking } from '@/_lib/lifecycle/mark-deal-lost-from-booking'
 
 export const updateAppointment = orgActionClient
   .schema(updateAppointmentSchema)
@@ -31,9 +33,12 @@ export const updateAppointment = orgActionClient
 
     if (isLocked) {
       // Exceção: permite mudar apenas o status se for uma transição válida
+      // dealResolution é enviado junto com status para BOOKINGs — não conta como campo extra
       const isOnlyStatusChange =
         data.status !== undefined &&
-        Object.keys(data).filter((key) => key !== 'id' && data[key as keyof typeof data] !== undefined).length === 1
+        Object.keys(data).filter(
+          (key) => key !== 'id' && key !== 'dealResolution' && data[key as keyof typeof data] !== undefined,
+        ).length === 1
 
       if (!isOnlyStatusChange) {
         throw new Error(
@@ -129,6 +134,7 @@ export const updateAppointment = orgActionClient
       ...(data.contactId !== undefined ? { contactId: data.contactId } : {}),
       ...(data.professionalId !== undefined ? { professionalId: data.professionalId } : {}),
       ...(data.serviceId !== undefined ? { serviceId: data.serviceId } : {}),
+      ...(data.paymentStatus !== undefined ? { paymentStatus: data.paymentStatus } : {}),
     }
 
     await db.appointment.update({
@@ -136,7 +142,34 @@ export const updateAppointment = orgActionClient
       data: updateData,
     })
 
-    // 7. Activity se status mudou — apenas para MEETING (dealId obrigatório para Activity)
+    // 6.1. Gatilhos de deal para BOOKING com negociação vinculada
+    const isStatusChange = data.status !== undefined && data.status !== existing.status
+    const isBookingWithDeal = existing.type === 'BOOKING' && !!existing.dealId
+
+    if (isStatusChange && isBookingWithDeal) {
+      if (data.status === 'COMPLETED') {
+        // COMPLETED → marcar deal como WON + cascade CUSTOMER
+        await markDealWonFromBooking({
+          dealId: existing.dealId!,
+          orgId: ctx.orgId,
+          causeUserId: ctx.userId,
+        })
+      } else if (
+        (data.status === 'CANCELED' || data.status === 'NO_SHOW') &&
+        data.dealResolution === 'MARK_LOST'
+      ) {
+        // CANCELED/NO_SHOW com escolha de perder o deal
+        await markDealLostFromBooking({
+          dealId: existing.dealId!,
+          orgId: ctx.orgId,
+          causeUserId: ctx.userId,
+          reason: data.status,
+        })
+      }
+      // dealResolution === 'KEEP_OPEN' → não altera o deal
+    }
+
+    // 7. Activity de status no deal vinculado — MEETING e BOOKING com dealId
     if (data.status !== undefined && data.status !== existing.status && existing.dealId) {
       const activityType =
         data.status === 'CANCELED' ? 'appointment_canceled' : 'appointment_updated'

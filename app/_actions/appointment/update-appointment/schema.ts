@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { AppointmentStatus } from '@prisma/client'
+import { AppointmentStatus, PaymentStatus } from '@prisma/client'
 
 export const updateAppointmentSchema = z
   .object({
@@ -17,6 +17,9 @@ export const updateAppointmentSchema = z
     contactId: z.string().uuid().optional(),
     professionalId: z.string().uuid().optional(),
     serviceId: z.string().uuid().optional(),
+    paymentStatus: z.nativeEnum(PaymentStatus).nullable().optional(),
+    // Resolve o que acontece com o deal vinculado quando BOOKING vai para CANCELED ou NO_SHOW
+    dealResolution: z.enum(['MARK_LOST', 'KEEP_OPEN']).optional(),
   })
   .refine(
     (data) => {
@@ -30,7 +33,8 @@ export const updateAppointmentSchema = z
         data.assignedTo !== undefined ||
         data.contactId !== undefined ||
         data.professionalId !== undefined ||
-        data.serviceId !== undefined
+        data.serviceId !== undefined ||
+        data.paymentStatus !== undefined
       )
     },
     { message: 'Ao menos um campo deve ser fornecido para atualização' },
