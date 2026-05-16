@@ -8,6 +8,8 @@ export const createAppointmentFormSchema = z
     // mas obrigatório na submissão — validado via superRefine
     contactId: z.string().uuid('Contato é obrigatório').optional(),
     dealId: z.string().uuid().optional(),
+    // autoCreateDeal: cria negociação junto com o BOOKING quando dealId não é informado
+    autoCreateDeal: z.boolean().optional(),
     professionalId: z.string().uuid().optional(),
     serviceId: z.string().uuid().optional(),
     title: z.string().min(1, 'Título é obrigatório'),
@@ -60,7 +62,24 @@ export const createAppointmentFormSchema = z
         path: ['serviceId'],
       })
     }
-    // Responsável obrigatório apenas para MEETING (BOOKING defaulta para ctx.userId no servidor)
+    // BOOKING: deve ter dealId OU autoCreateDeal=true — os dois juntos são inválidos
+    if (data.type === 'BOOKING') {
+      if (data.autoCreateDeal && data.dealId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Selecione uma negociação existente ou marque "Criar negociação junto", não ambos',
+          path: ['dealId'],
+        })
+      }
+      if (!data.autoCreateDeal && !data.dealId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Negociação é obrigatória para agendamentos de serviço',
+          path: ['dealId'],
+        })
+      }
+    }
+    // Responsável obrigatório apenas para MEETING (BOOKING deriva de contact.assignedTo no servidor)
     if (data.type === 'MEETING' && !data.assignedTo) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -76,6 +95,7 @@ export const createAppointmentSchema = z
     type: z.enum(['MEETING', 'BOOKING']),
     contactId: z.string().uuid('Contato é obrigatório'),
     dealId: z.string().uuid().optional(),
+    autoCreateDeal: z.boolean().optional(),
     professionalId: z.string().uuid().optional(),
     serviceId: z.string().uuid().optional(),
     title: z.string().min(1, 'Título é obrigatório'),
@@ -121,10 +141,22 @@ export const createAppointmentSchema = z
         path: ['serviceId'],
       })
     }
-    // Espelha a validação do form schema: MEMBER que chama a action diretamente
-    // sem assignedTo em MEETING receberia ctx.userId via resolveAssignedTo, mas
-    // ADMIN/OWNER passando intencionalmente um assignedTo inválido seria silencioso.
-    // O guard aqui garante que a invariante vale independente do caller.
+    if (data.type === 'BOOKING') {
+      if (data.autoCreateDeal && data.dealId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Selecione uma negociação existente ou marque "Criar negociação junto", não ambos',
+          path: ['dealId'],
+        })
+      }
+      if (!data.autoCreateDeal && !data.dealId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Negociação é obrigatória para agendamentos de serviço',
+          path: ['dealId'],
+        })
+      }
+    }
     if (data.type === 'MEETING' && !data.assignedTo) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

@@ -14,6 +14,7 @@ import {
 import { createNotification } from '@/_lib/notifications/create-notification'
 import { getOrgSlug } from '@/_lib/notifications/get-org-slug'
 import { timeToMinutes } from '@/_data-access/professional/slot-utils'
+import { createOpenDealForBooking } from '@/_lib/lifecycle/create-open-deal-for-booking'
 
 export const createAppointment = orgActionClient
   .schema(createAppointmentSchema)
@@ -48,6 +49,17 @@ export const createAppointment = orgActionClient
       const professionalId = data.professionalId
       const serviceId = data.serviceId
 
+      // 5a.1. BOOKING usa contact.assignedTo como responsável de vendas — ignorar qualquer valor do client
+      const contact = await db.contact.findFirst({
+        where: { id: data.contactId, organizationId: ctx.orgId },
+        select: { assignedTo: true },
+      })
+      if (!contact?.assignedTo) {
+        throw new Error('Contato sem responsável. Atribua um responsável antes de criar o agendamento.')
+      }
+      // Sobrescreve a variável local — apenas para o bloco BOOKING
+      const bookingAssignedTo = contact.assignedTo
+
       // 5b. Profissional ativo pertencente à org
       const professional = await db.professional.findFirst({
         where: { id: professionalId, organizationId: ctx.orgId, isActive: true },
@@ -60,7 +72,7 @@ export const createAppointment = orgActionClient
       // 5c. Serviço ativo pertencente à org — busca inclui price para reutilizar como priceSnapshot
       const service = await db.service.findFirst({
         where: { id: serviceId, organizationId: ctx.orgId, isActive: true },
-        select: { id: true, duration: true, price: true },
+        select: { id: true, duration: true, price: true, name: true },
       })
       if (!service) {
         throw new Error('Serviço não encontrado ou inativo.')
@@ -151,7 +163,7 @@ export const createAppointment = orgActionClient
           notes: data.notes,
           startDate: data.startDate,
           endDate: computedEndDate,
-          assignedTo,
+          assignedTo: bookingAssignedTo,
           dealId: null,
           professionalId,
           serviceId,
@@ -159,19 +171,42 @@ export const createAppointment = orgActionClient
         },
       })
 
-      // 8. BOOKING não gera Activity — sem dealId para registrar no timeline
-      // Activity própria de serviços planejada para v2
+      // 8. Vincular deal — obrigatório: ou link a existing, ou criar automaticamente
+      if (data.dealId) {
+        // 8a. Validar que o deal pertence à org e está acessível
+        await findDealWithRBAC(data.dealId, ctx)
+        await db.appointment.update({
+          where: { id: appointment.id },
+          data: { dealId: data.dealId },
+        })
+      } else if (data.autoCreateDeal) {
+        // 8b. Criar deal OPEN vinculado — sem cascade de lifecycle na criação
+        await createOpenDealForBooking({
+          appointmentId: appointment.id,
+          orgId: ctx.orgId,
+          assignedTo: bookingAssignedTo,
+          contactId: data.contactId,
+          serviceId,
+          serviceName: service.name ?? 'Serviço',
+          priceSnapshot: Number(service.price ?? 0),
+        })
+        revalidateTag(`deals:${ctx.orgId}`)
+        revalidateTag(`pipeline:${ctx.orgId}`)
+      } else {
+        // Safeguard: schema já bloqueia, mas nunca chega aqui
+        throw new Error('Negociação é obrigatória para agendamentos de serviço.')
+      }
 
       // 9. Invalidar cache
       revalidateTag(`appointments:${ctx.orgId}`)
       revalidateTag(`professional-appointments:${professionalId}`)
 
-      if (assignedTo !== ctx.userId) {
+      if (bookingAssignedTo !== ctx.userId) {
         after(async () => {
           const slug = await getOrgSlug(ctx.orgId)
           await createNotification({
             orgId: ctx.orgId,
-            userId: assignedTo,
+            userId: bookingAssignedTo,
             type: 'USER_ACTION',
             title: 'Novo agendamento atribuído a você',
             body: `O agendamento "${data.title}" foi atribuído a você.`,
