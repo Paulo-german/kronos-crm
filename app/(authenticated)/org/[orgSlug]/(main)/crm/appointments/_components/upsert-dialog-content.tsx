@@ -106,6 +106,7 @@ interface UpsertAppointmentDialogContentProps {
   onUpdate?: (data: UpdateAppointmentInput) => void
   isUpdating?: boolean
   fixedDealId?: string
+  focusField?: 'dealId'
 }
 
 export function UpsertAppointmentDialogContent({
@@ -117,6 +118,7 @@ export function UpsertAppointmentDialogContent({
   fixedDealId,
   contactOptions,
   services,
+  focusField,
 }: UpsertAppointmentDialogContentProps) {
   const isEditing = !!defaultValues
 
@@ -212,6 +214,15 @@ export function UpsertAppointmentDialogContent({
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
   }, [])
+
+  // Foco programático em campo específico (sincronização com DOM — uso legítimo de useEffect)
+  useEffect(() => {
+    if (!focusField) return
+    const node = document.querySelector<HTMLElement>(`[data-field="${focusField}"]`)
+    if (!node) return
+    node.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    node.focus()
+  }, [focusField])
 
   const { execute: executeAssignOwner, isPending: isAssigningOwner } = useAction(
     updateContact,
@@ -672,7 +683,7 @@ export function UpsertAppointmentDialogContent({
               control={form.control}
               name="dealId"
               render={({ field }) => (
-                <FormItem className="flex flex-col">
+                <FormItem className="flex flex-col" data-field="dealId" tabIndex={-1}>
                   <FormLabel className="flex items-center gap-1">
                     Negócio <span className="text-destructive">*</span>
                   </FormLabel>

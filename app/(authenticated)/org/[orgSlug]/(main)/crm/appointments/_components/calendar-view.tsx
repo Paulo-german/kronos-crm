@@ -17,6 +17,7 @@ import {
 import { ptBR } from 'date-fns/locale'
 import { formatInTimeZone, fromZonedTime } from 'date-fns-tz'
 import {
+  AlertTriangleIcon,
   BanIcon,
   CheckCircle2Icon,
   ChevronLeft,
@@ -181,12 +182,17 @@ function HoverPreview({ appointment, currentStatus, children }: HoverPreviewProp
           </div>
 
           {/* Deal */}
-          {appointment.dealTitle && (
+          {appointment.dealTitle ? (
             <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
               <LinkIcon className="h-3 w-3 shrink-0" />
               <span className="truncate">{appointment.dealTitle}</span>
             </div>
-          )}
+          ) : appointment.type === 'BOOKING' ? (
+            <div className="flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400">
+              <AlertTriangleIcon className="h-3 w-3 shrink-0" />
+              <span className="truncate">Sem negociação vinculada</span>
+            </div>
+          ) : null}
 
           {/* Responsável */}
           {appointment.assigneeName && (
@@ -244,6 +250,9 @@ function AppointmentBlock({
         <span className="flex items-center gap-1">
           <span className="shrink-0">{startTime}</span>
           <span className="truncate">{appointment.title}</span>
+          {appointment.type === 'BOOKING' && !appointment.dealId && (
+            <AlertTriangleIcon className="h-3 w-3 shrink-0 text-amber-500" />
+          )}
         </span>
       </button>
     </HoverPreview>
@@ -315,6 +324,7 @@ interface DayPopoverContentProps {
   statusOverrides: Record<string, AppointmentStatus>
   onStatusSelect: (appointmentId: string, newStatus: AppointmentStatus, appointment?: AppointmentDto) => void
   onEditAppointment: (appointment: AppointmentDto) => void
+  onEditWithDealFocus: (appointment: AppointmentDto) => void
   onCreateForDay: (date: Date) => void
   onClose: () => void
 }
@@ -325,6 +335,7 @@ function DayPopoverContent({
   statusOverrides,
   onStatusSelect,
   onEditAppointment,
+  onEditWithDealFocus,
   onCreateForDay,
   onClose,
 }: DayPopoverContentProps) {
@@ -413,14 +424,28 @@ function DayPopoverContent({
                         {statusConfig.label}
                       </Badge>
 
-                      {appointment.dealTitle && (
+                      {appointment.dealTitle ? (
                         <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
                           <LinkIcon className="h-2.5 w-2.5" />
                           <span className="max-w-[80px] truncate">
                             {appointment.dealTitle}
                           </span>
                         </span>
-                      )}
+                      ) : appointment.type === 'BOOKING' ? (
+                        // BOOKING sem negociação vinculada — alerta clicável para vincular
+                        <button
+                          type="button"
+                          className="flex items-center gap-0.5 text-[10px] text-amber-600 hover:underline dark:text-amber-400"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            onEditWithDealFocus(appointment)
+                            onClose()
+                          }}
+                        >
+                          <AlertTriangleIcon className="h-2.5 w-2.5 shrink-0" />
+                          <span>Sem negociação</span>
+                        </button>
+                      ) : null}
 
                       {appointment.assigneeName && (
                         <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
@@ -517,6 +542,8 @@ export function CalendarView({
   const [editingAppointment, setEditingAppointment] =
     useState<AppointmentDto | null>(null)
   const [isEditSheetOpen, setIsEditSheetOpen] = useState(false)
+  // Campo de foco programático ao abrir o Sheet (ex: 'dealId' para BOOKING sem negociação)
+  const [editingFocusField, setEditingFocusField] = useState<'dealId' | undefined>(undefined)
 
   // Estado do Sheet de criação com data pré-preenchida
   const [isCreateSheetOpen, setIsCreateSheetOpen] = useState(false)
@@ -604,6 +631,14 @@ export function CalendarView({
   // Handlers memoizados
   const handleAppointmentClick = useCallback((appointment: AppointmentDto) => {
     setEditingAppointment(appointment)
+    setEditingFocusField(undefined)
+    setIsEditSheetOpen(true)
+  }, [])
+
+  // Abre o Sheet de edição com foco direto no campo de deal (BOOKING sem negociação)
+  const handleEditWithDealFocus = useCallback((appointment: AppointmentDto) => {
+    setEditingAppointment(appointment)
+    setEditingFocusField('dealId')
     setIsEditSheetOpen(true)
   }, [])
 
@@ -796,6 +831,7 @@ export function CalendarView({
                         statusOverrides={statusOverrides}
                         onStatusSelect={handleStatusSelect}
                         onEditAppointment={handleAppointmentClick}
+                        onEditWithDealFocus={handleEditWithDealFocus}
                         onCreateForDay={handleCreateForDay}
                         onClose={() => setOpenPopoverId(null)}
                       />
@@ -868,7 +904,10 @@ export function CalendarView({
         open={isEditSheetOpen}
         onOpenChange={(open) => {
           setIsEditSheetOpen(open)
-          if (!open) setEditingAppointment(null)
+          if (!open) {
+            setEditingAppointment(null)
+            setEditingFocusField(undefined)
+          }
         }}
       >
         {editingAppointment && (
@@ -881,6 +920,7 @@ export function CalendarView({
             setIsOpen={setIsEditSheetOpen}
             onUpdate={(data) => executeUpdate(data)}
             isUpdating={isUpdating}
+            focusField={editingFocusField}
           />
         )}
       </Sheet>

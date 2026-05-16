@@ -195,6 +195,7 @@ const AppointmentsDataTable = ({
   const [editingAppointment, setEditingAppointment] =
     useState<AppointmentDto | null>(null)
   const [isEditSheetOpen, setIsEditSheetOpen] = useState(false)
+  const [editingFocusField, setEditingFocusField] = useState<'dealId' | undefined>(undefined)
 
   // Estado do dialog de deleção individual
   const [deletingAppointment, setDeletingAppointment] =
@@ -294,6 +295,13 @@ const AppointmentsDataTable = ({
 
   const handleEdit = useCallback((appointment: AppointmentDto) => {
     setEditingAppointment(appointment)
+    setEditingFocusField(undefined)
+    setIsEditSheetOpen(true)
+  }, [])
+
+  const handleEditWithDealFocus = useCallback((appointment: AppointmentDto) => {
+    setEditingAppointment(appointment)
+    setEditingFocusField('dealId')
     setIsEditSheetOpen(true)
   }, [])
 
@@ -333,7 +341,10 @@ const AppointmentsDataTable = ({
         open={isEditSheetOpen}
         onOpenChange={(open) => {
           setIsEditSheetOpen(open)
-          if (!open) setEditingAppointment(null)
+          if (!open) {
+            setEditingAppointment(null)
+            setEditingFocusField(undefined)
+          }
         }}
       >
         {editingAppointment && (
@@ -346,6 +357,7 @@ const AppointmentsDataTable = ({
             setIsOpen={setIsEditSheetOpen}
             onUpdate={(data) => executeUpdate(data)}
             isUpdating={isUpdating}
+            focusField={editingFocusField}
           />
         )}
       </Sheet>
@@ -457,6 +469,7 @@ const AppointmentsDataTable = ({
                       statusOverrides={statusOverrides}
                       onStatusSelect={handleStatusSelect}
                       onEdit={handleEdit}
+                      onEditWithDealFocus={handleEditWithDealFocus}
                       onDeleteRequest={(appt) => {
                         setDeletingAppointment(appt)
                         setIsDeleteDialogOpen(true)
@@ -518,6 +531,7 @@ interface TimelineItemProps {
   statusOverrides: Record<string, AppointmentStatus>
   onStatusSelect: (appointmentId: string, newStatus: AppointmentStatus, appointment?: AppointmentDto) => void
   onEdit: (appointment: AppointmentDto) => void
+  onEditWithDealFocus: (appointment: AppointmentDto) => void
   onDeleteRequest: (appointment: AppointmentDto) => void
   isDimmed: boolean
   showDate: boolean
@@ -529,6 +543,7 @@ function TimelineItem({
   statusOverrides,
   onStatusSelect,
   onEdit,
+  onEditWithDealFocus,
   onDeleteRequest,
   isDimmed: isDimmedProp,
   showDate,
@@ -605,7 +620,7 @@ function TimelineItem({
             onClick={(event) => event.stopPropagation()}
           >
             {/* Chip do deal */}
-            {appointment.dealId && appointment.dealTitle && (
+            {appointment.dealId && appointment.dealTitle ? (
               <Link
                 href={`/org/${orgSlug}/crm/deals/${appointment.dealId}`}
                 className="flex items-center gap-1 rounded-md bg-secondary/50 px-2 py-0.5 text-xs font-medium text-secondary-foreground hover:bg-secondary hover:underline"
@@ -613,7 +628,27 @@ function TimelineItem({
                 <LinkIcon className="h-3 w-3" />
                 {appointment.dealTitle}
               </Link>
-            )}
+            ) : appointment.type === 'BOOKING' ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      onEditWithDealFocus(appointment)
+                    }}
+                    className="flex items-center gap-1 rounded-md bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-700 hover:bg-amber-500/20 dark:text-amber-400"
+                  >
+                    <AlertTriangleIcon className="h-3 w-3" />
+                    Sem negociação
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-[280px]">
+                  Este agendamento não está vinculado a uma negociação. Relatórios de
+                  receita podem não refletir este serviço. Clique para vincular.
+                </TooltipContent>
+              </Tooltip>
+            ) : null}
 
             {/* Responsável */}
             {appointment.assigneeName && (
