@@ -7,6 +7,7 @@ import { withRetry, safeBestEffort } from './lib/with-retry'
 import type { ToolContext } from './types'
 import { roundRobinAssign } from '@/_lib/distribution/round-robin'
 import { createOpenDealForBooking } from '@/_lib/lifecycle/create-open-deal-for-booking'
+import { recalculateDealValue } from '@/_lib/deal-value'
 
 interface CreateAppointmentResult {
   success: boolean
@@ -17,6 +18,7 @@ export interface CreateAppointmentConfig {
   startTime?: string  // "HH:MM" — horário mínimo permitido
   endTime?: string    // "HH:MM" — horário máximo permitido
   triggerHint?: string
+  bookingCreateDeal?: boolean // default true se omitido
 }
 
 function timeToMinutes(time: string): number {
@@ -413,21 +415,80 @@ async function runServiceCreation(
     'db.appointment.create',
   )
 
-  // Criar deal OPEN vinculado automaticamente (sem cascade de lifecycle na criação)
-  await safeBestEffort(
-    async () => {
-      await createOpenDealForBooking({
-        appointmentId: appointment.id,
-        orgId: ctx.organizationId,
-        assignedTo,
-        contactId: ctx.contactId,
-        serviceId: service.id,
-        serviceName: service.name ?? 'Serviço',
-        priceSnapshot: Number(service.price ?? 0),
-      })
-    },
-    'createOpenDealForBooking',
-  )
+  // Passo 1 — REUSO OBRIGATÓRIO: tentar linkar deal OPEN existente na conversa,
+  // independente do toggle bookingCreateDeal. O toggle nunca suprime o reuso.
+  let resolvedDealId: string | null = null
+
+  if (ctx.dealId) {
+    const conversationDeal = await db.deal.findFirst({
+      where: {
+        id: ctx.dealId,
+        organizationId: ctx.organizationId,
+      },
+      select: { id: true, status: true },
+    })
+
+    if (conversationDeal?.status === 'OPEN') {
+      resolvedDealId = conversationDeal.id
+    }
+    // WON/LOST/inexistente → resolvedDealId permanece null, cai para passo 2
+  }
+
+  if (resolvedDealId) {
+    // Deal OPEN encontrado na conversa → linkar (obrigatório, toggle ignorado).
+    // NÃO cria DealLineItem — deal pré-existente já tem seu escopo de line items;
+    // adicionar item por agendamento inflaria o valor em conversas multi-serviço.
+    const dealToLink = resolvedDealId
+    await safeBestEffort(
+      async () => {
+        await db.appointment.update({
+          where: { id: appointment.id },
+          data: { dealId: dealToLink },
+        })
+        await recalculateDealValue(dealToLink)
+      },
+      'linkAppointmentToExistingDeal',
+    )
+
+    // Sincronizar Conversation.dealId apenas quando o deal reutilizado difere do snapshot
+    // de ctx.dealId (caso normal: são iguais e nada precisa ser feito). Sem isso, se o step
+    // tiver lifecycleTrigger=OPPORTUNITY, o lifecycle posterior (process-agent-message-single-v2
+    // step:10a) cria deal duplicado — guard centralizado em apply-lifecycle-trigger.ts:91-97.
+    // No caminho de criação abaixo, o sync já é feito atomicamente dentro do $transaction.
+    if (ctx.dealId !== dealToLink) {
+      await safeBestEffort(
+        () =>
+          db.conversation.update({
+            where: { id: ctx.conversationId },
+            data: { dealId: dealToLink },
+          }),
+        'syncConversationDealId',
+      )
+    }
+  } else if (config.bookingCreateDeal !== false) {
+    // Passo 2 — CRIAÇÃO CONDICIONADA AO TOGGLE: nenhum deal OPEN na conversa
+    // (não existe, ou existe como WON/LOST) + toggle ON → criar novo OPEN.
+    // createOpenDealForBooking sincroniza Conversation.dealId no transaction (seção 4.1).
+    const result = await safeBestEffort(
+      async () => {
+        return await createOpenDealForBooking({
+          appointmentId: appointment.id,
+          orgId: ctx.organizationId,
+          assignedTo,
+          contactId: ctx.contactId,
+          serviceId: service.id,
+          serviceName: service.name ?? 'Serviço',
+          priceSnapshot: Number(service.price ?? 0),
+          conversationId: ctx.conversationId,
+        })
+      },
+      'createOpenDealForBooking',
+    )
+    if (result?.dealId) {
+      resolvedDealId = result.dealId
+    }
+  }
+  // Toggle OFF + sem deal OPEN na conversa → appointment fica sem dealId (intencional).
 
   await safeBestEffort(
     () => revalidateTags([

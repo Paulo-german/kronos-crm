@@ -138,6 +138,7 @@ export function buildToolSet(
           startTime: config.startTime,
           endTime: config.endTime,
           triggerHint: config.trigger,
+          bookingCreateDeal: config.bookingCreateDeal,
         })
       })
       continue

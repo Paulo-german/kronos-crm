@@ -115,6 +115,8 @@ export const stepActionSchema = z.discriminatedUnion('type', [
       .string()
       .regex(/^\d{2}:\d{2}$/)
       .optional(),
+    // test-chat não simula create_appointment hoje (ver build-mock-tool-set.ts) — bookingCreateDeal só tem efeito em produção
+    bookingCreateDeal: z.boolean().default(true),
   }),
 ])
 

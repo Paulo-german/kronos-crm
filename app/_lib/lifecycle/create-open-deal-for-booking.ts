@@ -10,6 +10,7 @@ interface CreateOpenDealForBookingParams {
   serviceId: string
   serviceName: string
   priceSnapshot: number
+  conversationId?: string
 }
 
 /**
@@ -21,7 +22,7 @@ interface CreateOpenDealForBookingParams {
 export async function createOpenDealForBooking(
   params: CreateOpenDealForBookingParams,
 ): Promise<{ dealId: string }> {
-  const { appointmentId, orgId, assignedTo, contactId, serviceId, serviceName, priceSnapshot } = params
+  const { appointmentId, orgId, assignedTo, contactId, serviceId, serviceName, priceSnapshot, conversationId } = params
 
   const firstPipeline = await db.pipeline.findFirst({
     where: { organizationId: orgId },
@@ -77,6 +78,13 @@ export async function createOpenDealForBooking(
       where: { id: appointmentId },
       data: { dealId: created.id },
     })
+
+    if (conversationId) {
+      await tx.conversation.update({
+        where: { id: conversationId },
+        data: { dealId: created.id },
+      })
+    }
 
     return created
   })

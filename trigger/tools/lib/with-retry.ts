@@ -73,10 +73,11 @@ export async function withRetry<T>(fn: () => Promise<T>, label: string): Promise
   throw lastError
 }
 
-export async function safeBestEffort(fn: () => Promise<unknown>, label: string): Promise<void> {
+export async function safeBestEffort<T>(fn: () => Promise<T>, label: string): Promise<T | undefined> {
   try {
-    await fn()
+    return await fn()
   } catch (error) {
-    logger.warn(`${label}: best-effort operation failed, skipping`, { error })
+    logger.warn(`[safeBestEffort] ${label} failed (non-fatal)`, { error })
+    return undefined
   }
 }
