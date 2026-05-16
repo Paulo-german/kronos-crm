@@ -1,4 +1,5 @@
-import { LifecycleCauseType, LifecycleStage } from '@prisma/client'
+import 'server-only'
+import { CustomerStatus, LifecycleCauseType, LifecycleStage } from '@prisma/client'
 import { db } from '@/_lib/prisma'
 import { revalidateLifecycleCache } from './revalidate-lifecycle-cache'
 
@@ -37,7 +38,7 @@ export async function advanceContactLifecycle(
   const timestampField = {
     QUALIFIED: { qualifiedAt: now },
     OPPORTUNITY: { becameOpportunityAt: now },
-    CUSTOMER: { becameCustomerAt: now },
+    CUSTOMER: { becameCustomerAt: now, customerStatus: CustomerStatus.ACTIVE },
     LEAD: {},
   }[toStage]
 

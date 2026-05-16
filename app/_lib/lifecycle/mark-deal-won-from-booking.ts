@@ -6,6 +6,7 @@ import { ActivityType, LifecycleCauseType, LifecycleStage } from '@prisma/client
 import { evaluateAutomations } from '@/_lib/automations/evaluate-automations'
 import { advanceContactLifecycle } from './advance-contact-lifecycle'
 import { ensureDealHasPrimaryCaptureEvent } from './ensure-deal-capture-event'
+import { reactivateCustomerIfDormant } from './reactivate-customer-if-dormant'
 
 interface MarkDealWonFromBookingParams {
   dealId: string
@@ -71,6 +72,12 @@ export async function markDealWonFromBooking(params: MarkDealWonFromBookingParam
         organizationId: orgId,
         toStage: LifecycleStage.CUSTOMER,
         causeType: LifecycleCauseType.DEAL_WON,
+        causeRefId: dealId,
+        changedByUserId: causeUserId,
+      })
+      await reactivateCustomerIfDormant({
+        contactId: primaryContact.contactId,
+        organizationId: orgId,
         causeRefId: dealId,
         changedByUserId: causeUserId,
       })

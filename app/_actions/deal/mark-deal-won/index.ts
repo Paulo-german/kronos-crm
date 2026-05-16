@@ -14,6 +14,7 @@ import {
 import { evaluateAutomations } from '@/_lib/automations/evaluate-automations'
 import { advanceContactLifecycle } from '@/_lib/lifecycle/advance-contact-lifecycle'
 import { ensureDealHasPrimaryCaptureEvent } from '@/_lib/lifecycle/ensure-deal-capture-event'
+import { reactivateCustomerIfDormant } from '@/_lib/lifecycle/reactivate-customer-if-dormant'
 
 export const markDealWon = orgActionClient
   .schema(markDealWonSchema)
@@ -81,6 +82,29 @@ export const markDealWon = orgActionClient
         causeType: LifecycleCauseType.DEAL_WON,
         causeRefId: data.dealId,
       })
+    })
+
+    after(async () => {
+      const primaryContact = await db.dealContact.findFirst({
+        where: { dealId: data.dealId, isPrimary: true },
+        select: { contactId: true },
+      })
+      if (!primaryContact) return
+
+      try {
+        await reactivateCustomerIfDormant({
+          contactId: primaryContact.contactId,
+          organizationId: ctx.orgId,
+          causeRefId: data.dealId,
+          changedByUserId: ctx.userId,
+        })
+      } catch (error) {
+        console.warn('[markDealWon] Falha na re-ativação de lifecycle:', {
+          dealId: data.dealId,
+          orgId: ctx.orgId,
+          error: error instanceof Error ? error.message : String(error),
+        })
+      }
     })
 
     return { success: true }
