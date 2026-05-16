@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { toast } from 'sonner'
 import {
   BellOff,
   CalendarDays,
@@ -54,6 +55,9 @@ interface StepActionBuilderProps {
   pipelineStages: PipelineStageOption[]
   excludeGlobalTools?: boolean
   agentMode?: 'PRODUCT' | 'SERVICE' | 'HYBRID'
+  previousStepsLifecycleTriggers?: string[]
+  currentLifecycleTrigger?: string | null
+  onLifecycleTriggerChange?: (value: string) => void
 }
 
 const TRIGGER_PLACEHOLDERS: Record<string, string> = {
@@ -101,7 +105,7 @@ const buildDefaultAction = (type: string): StepAction => {
     case 'hand_off_to_human':
       return { type: 'hand_off_to_human', trigger: '', notifyTarget: 'none' as const }
     case 'create_appointment':
-      return { type: 'create_appointment', trigger: '' }
+      return { type: 'create_appointment', trigger: '', bookingCreateDeal: true }
     default:
       return { type: 'update_contact', trigger: '' }
   }
@@ -239,6 +243,9 @@ const StepActionBuilder = ({
   pipelineStages,
   excludeGlobalTools = false,
   agentMode = 'PRODUCT',
+  previousStepsLifecycleTriggers,
+  currentLifecycleTrigger,
+  onLifecycleTriggerChange,
 }: StepActionBuilderProps) => {
   // Indexado por id de instância (não por type) para permitir abrir/fechar
   // cards individuais quando há múltiplas instâncias do mesmo type.
@@ -271,6 +278,18 @@ const StepActionBuilder = ({
     const newAction = { id: crypto.randomUUID(), ...buildDefaultAction(type) }
     onChange([...value, newAction])
     setExpandedIds((prev) => new Set([...prev, newAction.id!]))
+
+    if (type === 'create_appointment' && onLifecycleTriggerChange) {
+      const hasPriorOpportunity = (previousStepsLifecycleTriggers ?? []).some(
+        (trigger) => trigger === 'OPPORTUNITY',
+      )
+      if (!hasPriorOpportunity && currentLifecycleTrigger !== 'OPPORTUNITY') {
+        onLifecycleTriggerChange('OPPORTUNITY')
+        toast.info(
+          'O gatilho de ciclo de vida "Oportunidade" foi ativado automaticamente neste passo, pois nenhum passo anterior já o definia.',
+        )
+      }
+    }
   }
 
   const removeAction = (id: string) => {
@@ -756,42 +775,64 @@ const StepActionBuilder = ({
 
                       {/* create_appointment: janela de horário (duração vem do serviço no DB) */}
                       {action.type === 'create_appointment' && (
-                        <div className="space-y-2">
-                          <div>
-                            <Label className="text-xs">Janela de tempo para agendamentos</Label>
-                            <p className="text-[11px] text-muted-foreground mt-0.5">
-                              A IA só poderá agendar dentro deste horário
-                            </p>
+                        <>
+                          <div className="space-y-2">
+                            <div>
+                              <Label className="text-xs">Janela de tempo para agendamentos</Label>
+                              <p className="text-[11px] text-muted-foreground mt-0.5">
+                                A IA só poderá agendar dentro deste horário
+                              </p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="space-y-1.5">
+                                <Label className="text-xs text-muted-foreground">Início</Label>
+                                <Input
+                                  placeholder="08:00"
+                                  pattern="\d{2}:\d{2}"
+                                  value={action.startTime ?? ''}
+                                  onChange={(event) =>
+                                    updateAction(actionId, {
+                                      startTime: event.target.value || undefined,
+                                    })
+                                  }
+                                />
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label className="text-xs text-muted-foreground">Fim</Label>
+                                <Input
+                                  placeholder="18:00"
+                                  pattern="\d{2}:\d{2}"
+                                  value={action.endTime ?? ''}
+                                  onChange={(event) =>
+                                    updateAction(actionId, {
+                                      endTime: event.target.value || undefined,
+                                    })
+                                  }
+                                />
+                              </div>
+                            </div>
                           </div>
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1.5">
-                              <Label className="text-xs text-muted-foreground">Início</Label>
-                              <Input
-                                placeholder="08:00"
-                                pattern="\d{2}:\d{2}"
-                                value={action.startTime ?? ''}
-                                onChange={(event) =>
-                                  updateAction(actionId, {
-                                    startTime: event.target.value || undefined,
-                                  })
+
+                          {/* Toggle de criação de negociação quando ainda não existe deal aberto na conversa */}
+                          <div className="space-y-2 border-t pt-3">
+                            <div className="flex items-center justify-between">
+                              <div className="space-y-0.5">
+                                <Label className="text-xs">Criar negociação quando não houver uma aberta</Label>
+                                <p className="text-[11px] text-muted-foreground">
+                                  Se a conversa já tiver uma negociação aberta, o agendamento será vinculado
+                                  a ela automaticamente. Este controle só decide se uma negociação nova é
+                                  criada quando ainda não existe nenhuma.
+                                </p>
+                              </div>
+                              <Switch
+                                checked={action.bookingCreateDeal ?? true}
+                                onCheckedChange={(checked) =>
+                                  updateAction(actionId, { bookingCreateDeal: checked })
                                 }
                               />
                             </div>
-                            <div className="space-y-1.5">
-                              <Label className="text-xs text-muted-foreground">Fim</Label>
-                              <Input
-                                placeholder="18:00"
-                                pattern="\d{2}:\d{2}"
-                                value={action.endTime ?? ''}
-                                onChange={(event) =>
-                                  updateAction(actionId, {
-                                    endTime: event.target.value || undefined,
-                                  })
-                                }
-                              />
-                            </div>
                           </div>
-                        </div>
+                        </>
                       )}
 
                       {/* hand_off_to_human: notificação ao atendente via WhatsApp */}

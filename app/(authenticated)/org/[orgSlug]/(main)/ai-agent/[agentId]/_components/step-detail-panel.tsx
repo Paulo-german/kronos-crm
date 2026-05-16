@@ -52,6 +52,7 @@ interface StepDetailPanelProps {
   onSaveSuccess?: () => void
   excludeGlobalTools?: boolean
   agentMode?: 'PRODUCT' | 'SERVICE' | 'HYBRID'
+  previousStepsLifecycleTriggers?: string[]
 }
 
 const StepDetailPanel = ({
@@ -65,6 +66,7 @@ const StepDetailPanel = ({
   onSaveSuccess,
   excludeGlobalTools = false,
   agentMode,
+  previousStepsLifecycleTriggers,
 }: StepDetailPanelProps) => {
   const isEditing = !!step?.id
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
@@ -227,6 +229,13 @@ const StepDetailPanel = ({
                 pipelineStages={pipelineStages}
                 excludeGlobalTools={excludeGlobalTools}
                 agentMode={agentMode}
+                previousStepsLifecycleTriggers={previousStepsLifecycleTriggers}
+                currentLifecycleTrigger={watchedLifecycleTrigger ?? null}
+                onLifecycleTriggerChange={(val) =>
+                  form.setValue('lifecycleTrigger', val as CreateStepFormInput['lifecycleTrigger'], {
+                    shouldDirty: true,
+                  })
+                }
               />
             )}
 

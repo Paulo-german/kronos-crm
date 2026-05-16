@@ -204,6 +204,15 @@ const UpsertStepDialog = ({
               onChange={(actions) => form.setValue('actions', actions)}
               pipelineStages={pipelineStages}
               agentMode={agentMode}
+              previousStepsLifecycleTriggers={[]}
+              currentLifecycleTrigger={watchedLifecycleTrigger ?? null}
+              onLifecycleTriggerChange={(val) =>
+                form.setValue(
+                  'lifecycleTrigger',
+                  val as CreateStepFormInput['lifecycleTrigger'],
+                  { shouldDirty: true },
+                )
+              }
             />
 
             <FormField

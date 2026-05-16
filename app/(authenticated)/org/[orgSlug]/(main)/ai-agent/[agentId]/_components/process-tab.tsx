@@ -146,6 +146,7 @@ interface SortableStepCardProps {
   onSaveSuccess?: () => void
   excludeGlobalTools?: boolean
   agentMode?: 'PRODUCT' | 'SERVICE' | 'HYBRID'
+  previousStepsLifecycleTriggers?: string[]
 }
 
 const SortableStepCard = ({
@@ -162,6 +163,7 @@ const SortableStepCard = ({
   onSaveSuccess,
   excludeGlobalTools,
   agentMode,
+  previousStepsLifecycleTriggers,
 }: SortableStepCardProps) => {
   const {
     attributes,
@@ -244,6 +246,7 @@ const SortableStepCard = ({
               onSaveSuccess={onSaveSuccess}
               excludeGlobalTools={excludeGlobalTools}
               agentMode={agentMode}
+              previousStepsLifecycleTriggers={previousStepsLifecycleTriggers}
             />
           </div>
         </CollapsibleContent>
@@ -372,24 +375,33 @@ const ProcessTab = ({
   )
   const hasMigrationPending = stepsWithGlobalTools.length > 0
 
-  const stepCards = steps.map((step, index) => (
-    <SortableStepCard
-      key={step.id}
-      step={step}
-      index={index}
-      isOpen={openStepId === step.id}
-      canManage={canManage}
-      onToggle={handleToggleStep}
-      agentId={agent.id}
-      pipelineStages={pipelineStages}
-      pipelines={pipelines}
-      onCreateSuccess={handleCreateSuccess}
-      onDeleteSuccess={handleDeleteSuccess}
-      onSaveSuccess={onSaveSuccess}
-      excludeGlobalTools={excludeGlobalTools}
-      agentMode={agent.agentMode}
-    />
-  ))
+  const stepCards = steps.map((step, index) => {
+    // Triggers de lifecycle dos steps anteriores (por ordem de exibição)
+    const previousStepsLifecycleTriggers = steps
+      .slice(0, index)
+      .map((s) => s.lifecycleTrigger)
+      .filter((trigger) => trigger !== null) as string[]
+
+    return (
+      <SortableStepCard
+        key={step.id}
+        step={step}
+        index={index}
+        previousStepsLifecycleTriggers={previousStepsLifecycleTriggers}
+        isOpen={openStepId === step.id}
+        canManage={canManage}
+        onToggle={handleToggleStep}
+        agentId={agent.id}
+        pipelineStages={pipelineStages}
+        pipelines={pipelines}
+        onCreateSuccess={handleCreateSuccess}
+        onDeleteSuccess={handleDeleteSuccess}
+        onSaveSuccess={onSaveSuccess}
+        excludeGlobalTools={excludeGlobalTools}
+        agentMode={agent.agentMode}
+      />
+    )
+  })
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-3">
@@ -472,6 +484,9 @@ const ProcessTab = ({
               onSaveSuccess={onSaveSuccess}
               excludeGlobalTools={excludeGlobalTools}
               agentMode={agent.agentMode}
+              previousStepsLifecycleTriggers={steps
+                .map((s) => s.lifecycleTrigger)
+                .filter((trigger) => trigger !== null) as string[]}
             />
           </div>
         )}
