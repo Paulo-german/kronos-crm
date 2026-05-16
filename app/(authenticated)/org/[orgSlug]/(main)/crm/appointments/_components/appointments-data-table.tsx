@@ -28,6 +28,7 @@ import { ptBR } from 'date-fns/locale'
 import { updateAppointment } from '@/_actions/appointment/update-appointment'
 import { deleteAppointment } from '@/_actions/appointment/delete-appointment'
 import { UpsertAppointmentDialogContent } from './upsert-dialog-content'
+import { CancelBookingDealDialog } from './cancel-booking-deal-dialog'
 import AppointmentTableDropdownMenu from './table-dropdown-menu'
 import ConfirmationDialog from '@/_components/confirmation-dialog'
 import type { AppointmentDto } from '@/_data-access/appointment/get-appointments'
@@ -46,6 +47,7 @@ interface AppointmentsDataTableProps {
   members: AcceptedMemberDto[]
   contactOptions: ContactOptionDto[]
   services: ServiceDto[]
+  orgSlug?: string
 }
 
 // Tipo da seção (determina visual e comportamento)
@@ -187,6 +189,7 @@ const AppointmentsDataTable = ({
   members,
   contactOptions,
   services,
+  orgSlug,
 }: AppointmentsDataTableProps) => {
   // Estado do Sheet de edição (elevado para sobreviver ao re-render)
   const [editingAppointment, setEditingAppointment] =
@@ -201,6 +204,15 @@ const AppointmentsDataTable = ({
   const [statusOverrides, setStatusOverrides] = useState<
     Record<string, AppointmentStatus>
   >({})
+
+  // Estado do modal de resolução de deal ao cancelar BOOKING
+  const [cancelDialog, setCancelDialog] = useState<{
+    open: boolean
+    appointmentId: string
+    dealId: string
+    dealTitle: string
+    targetStatus: 'CANCELED' | 'NO_SHOW'
+  } | null>(null)
 
   // Controle de grupos colapsados (somente "Anteriores" começa colapsado)
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
@@ -223,7 +235,7 @@ const AppointmentsDataTable = ({
   )
 
   // Hook para atualizar apenas o status (via popover inline)
-  const { execute: executeUpdateStatus } = useAction(updateAppointment, {
+  const { execute: executeUpdateStatus, isPending: isUpdatingStatus } = useAction(updateAppointment, {
     onSuccess: () => {
       toast.success('Status atualizado com sucesso.')
     },
@@ -239,7 +251,26 @@ const AppointmentsDataTable = ({
   })
 
   const handleStatusSelect = useCallback(
-    (appointmentId: string, newStatus: AppointmentStatus) => {
+    (appointmentId: string, newStatus: AppointmentStatus, appointment?: AppointmentDto) => {
+      // Intercept CANCELED/NO_SHOW para BOOKING com deal em aberto
+      if (
+        appointment &&
+        appointment.type === 'BOOKING' &&
+        (newStatus === 'CANCELED' || newStatus === 'NO_SHOW') &&
+        appointment.dealId &&
+        appointment.dealTitle &&
+        appointment.dealStatus === 'OPEN'
+      ) {
+        setCancelDialog({
+          open: true,
+          appointmentId,
+          dealId: appointment.dealId,
+          dealTitle: appointment.dealTitle,
+          targetStatus: newStatus,
+        })
+        return
+      }
+
       setStatusOverrides((prev) => ({ ...prev, [appointmentId]: newStatus }))
       executeUpdateStatus({ id: appointmentId, status: newStatus })
     },
@@ -284,6 +315,17 @@ const AppointmentsDataTable = ({
     [appointments],
   )
 
+  const handleCancelDialogConfirm = useCallback(
+    (dealResolution: 'MARK_LOST' | 'KEEP_OPEN') => {
+      if (!cancelDialog) return
+      const { appointmentId, targetStatus } = cancelDialog
+      setStatusOverrides((prev) => ({ ...prev, [appointmentId]: targetStatus }))
+      executeUpdateStatus({ id: appointmentId, status: targetStatus, dealResolution })
+      setCancelDialog(null)
+    },
+    [cancelDialog, executeUpdateStatus],
+  )
+
   return (
     <>
       {/* Sheet de edição fora da lista para sobreviver ao re-render */}
@@ -307,6 +349,20 @@ const AppointmentsDataTable = ({
           />
         )}
       </Sheet>
+
+      {/* Modal de resolução de deal ao cancelar BOOKING */}
+      {cancelDialog && (
+        <CancelBookingDealDialog
+          open={cancelDialog.open}
+          onOpenChange={(open) => {
+            if (!open) setCancelDialog(null)
+          }}
+          dealTitle={cancelDialog.dealTitle}
+          targetStatus={cancelDialog.targetStatus}
+          isPending={isUpdatingStatus}
+          onConfirm={handleCancelDialogConfirm}
+        />
+      )}
 
       {/* Dialog de deleção individual */}
       <ConfirmationDialog
@@ -407,6 +463,7 @@ const AppointmentsDataTable = ({
                       }}
                       isDimmed={isDimmedGroup}
                       showDate={showDate}
+                      orgSlug={orgSlug}
                     />
                   ))}
                 </div>
@@ -459,11 +516,12 @@ const RESOLUTION_ACTIONS: Array<{
 interface TimelineItemProps {
   appointment: AppointmentDto
   statusOverrides: Record<string, AppointmentStatus>
-  onStatusSelect: (appointmentId: string, newStatus: AppointmentStatus) => void
+  onStatusSelect: (appointmentId: string, newStatus: AppointmentStatus, appointment?: AppointmentDto) => void
   onEdit: (appointment: AppointmentDto) => void
   onDeleteRequest: (appointment: AppointmentDto) => void
   isDimmed: boolean
   showDate: boolean
+  orgSlug?: string
 }
 
 function TimelineItem({
@@ -474,6 +532,7 @@ function TimelineItem({
   onDeleteRequest,
   isDimmed: isDimmedProp,
   showDate,
+  orgSlug,
 }: TimelineItemProps) {
   const currentStatus = (statusOverrides[appointment.id] ??
     appointment.status) as AppointmentStatus
@@ -546,13 +605,15 @@ function TimelineItem({
             onClick={(event) => event.stopPropagation()}
           >
             {/* Chip do deal */}
-            <Link
-              href={`/crm/deals/${appointment.dealId}`}
-              className="flex items-center gap-1 rounded-md bg-secondary/50 px-2 py-0.5 text-xs font-medium text-secondary-foreground hover:bg-secondary hover:underline"
-            >
-              <LinkIcon className="h-3 w-3" />
-              {appointment.dealTitle}
-            </Link>
+            {appointment.dealId && appointment.dealTitle && (
+              <Link
+                href={`/org/${orgSlug}/crm/deals/${appointment.dealId}`}
+                className="flex items-center gap-1 rounded-md bg-secondary/50 px-2 py-0.5 text-xs font-medium text-secondary-foreground hover:bg-secondary hover:underline"
+              >
+                <LinkIcon className="h-3 w-3" />
+                {appointment.dealTitle}
+              </Link>
+            )}
 
             {/* Responsável */}
             {appointment.assigneeName && (
@@ -586,6 +647,7 @@ function TimelineItem({
                         onStatusSelect(
                           appointment.id,
                           isActive ? 'SCHEDULED' : action.status,
+                          appointment,
                         )
                       }
                     >

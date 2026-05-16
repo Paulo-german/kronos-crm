@@ -52,6 +52,7 @@ export default async function SchedulingSettingsPage({
         settings={settings}
         allProfessionals={activeProfessionals}
       />
+
     </div>
   )
 }

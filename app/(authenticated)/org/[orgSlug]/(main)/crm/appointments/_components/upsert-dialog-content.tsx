@@ -12,6 +12,7 @@ import {
   UserIcon,
   BriefcaseIcon,
   ScissorsIcon,
+  AlertCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatInTimeZone, fromZonedTime } from 'date-fns-tz'
@@ -21,14 +22,15 @@ import {
   SetStateAction,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react'
 import type { AppointmentDto } from '@/_data-access/appointment/get-appointments'
 import type { ContactOptionDto } from '@/_data-access/contact/get-contacts-options'
 import type { ServiceDto } from '@/_data-access/service/get-services'
-import type { AvailableProfessionalDto } from '@/_data-access/professional/get-available-professionals'
-import { getAvailableProfessionalsAction } from '@/_actions/professional/get-available-professionals'
+import type { SlotDto } from '@/_data-access/professional/slot-utils'
+import { getSlotsByDateAction } from '@/_actions/professional/get-slots-by-date'
 
 import {
   SheetContent,
@@ -62,9 +64,16 @@ import {
   PopoverTrigger,
 } from '@/_components/ui/popover'
 import { Calendar } from '@/_components/ui/calendar'
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from '@/_components/ui/avatar'
+import { Badge } from '@/_components/ui/badge'
 import { cn } from '@/_lib/utils'
 
 import { createAppointment } from '@/_actions/appointment/create-appointment'
+import { updateContact } from '@/_actions/contact/update-contact'
 import { searchDeals } from '@/_actions/deal/search-deals'
 import {
   createAppointmentFormSchema,
@@ -79,6 +88,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/_components/ui/select'
+import { Switch } from '@/_components/ui/switch'
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from '@/_components/ui/alert'
 
 const SAO_PAULO_TZ = 'America/Sao_Paulo'
 
@@ -119,19 +134,33 @@ export function UpsertAppointmentDialogContent({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // --------------------------------------------------------------------------
-  // Estado: comboboxes de contato, serviço e profissional
+  // Estado: comboboxes de contato e serviço
   // --------------------------------------------------------------------------
   const [openContactCombobox, setOpenContactCombobox] = useState(false)
   const [contactSearch, setContactSearch] = useState('')
   const [openServiceCombobox, setOpenServiceCombobox] = useState(false)
-  const [openProfessionalCombobox, setOpenProfessionalCombobox] = useState(false)
 
   // --------------------------------------------------------------------------
-  // Estado: lista de profissionais disponíveis (carregada via action)
+  // Estado: atribuição rápida de responsável ao contato
   // --------------------------------------------------------------------------
-  const [availableProfessionals, setAvailableProfessionals] = useState<
-    AvailableProfessionalDto[]
-  >([])
+  const [openAssignOwnerPopover, setOpenAssignOwnerPopover] = useState(false)
+  const [assignOwnerSearch, setAssignOwnerSearch] = useState('')
+  // Rastreia contatos que tiveram responsável atribuído inline nessa sessão
+  const [localContactOwners, setLocalContactOwners] = useState<Record<string, string>>({})
+  // Ref para capturar o contactId no momento do dispatch e evitar stale closure no onSuccess
+  const assignOwnerContactIdRef = useRef<string | null>(null)
+
+  // --------------------------------------------------------------------------
+  // Estado exclusivo do booking widget
+  // --------------------------------------------------------------------------
+  const [selectedDay, setSelectedDay] = useState<Date | null>(
+    defaultValues?.startDate ? new Date(defaultValues.startDate) : null,
+  )
+  const [filterProfessionalId, setFilterProfessionalId] = useState<string | null>(
+    defaultValues?.professionalId ?? null,
+  )
+  const [slots, setSlots] = useState<SlotDto[]>([])
+  const [selectedSlotKey, setSelectedSlotKey] = useState<string | null>(null)
 
   const MIN_SEARCH_CHARS = 3
 
@@ -148,13 +177,16 @@ export function UpsertAppointmentDialogContent({
     },
   )
 
-  const { execute: fetchProfessionals, isPending: isFetchingProfessionals } =
-    useAction(getAvailableProfessionalsAction, {
+  const { execute: fetchSlots, isPending: isLoadingSlots } = useAction(
+    getSlotsByDateAction,
+    {
       onSuccess: ({ data }) => {
-        if (data) setAvailableProfessionals(data)
+        if (data) setSlots(data)
+        else setSlots([])
       },
-      onError: () => setAvailableProfessionals([]),
-    })
+      onError: () => setSlots([]),
+    },
+  )
 
   const handleDealSearchChange = useCallback(
     (value: string) => {
@@ -180,6 +212,29 @@ export function UpsertAppointmentDialogContent({
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
   }, [])
+
+  const { execute: executeAssignOwner, isPending: isAssigningOwner } = useAction(
+    updateContact,
+    {
+      onSuccess: () => {
+        // Usa a ref em vez do closure de watchedContactId para garantir que registramos
+        // o owner no contato correto mesmo que o usuário tenha trocado o contato
+        // enquanto o request estava em voo.
+        const contactIdAtDispatch = assignOwnerContactIdRef.current
+        if (contactIdAtDispatch) {
+          setLocalContactOwners((prev) => ({ ...prev, [contactIdAtDispatch]: 'assigned' }))
+        }
+        toast.success('Responsável atribuído com sucesso.')
+        setOpenAssignOwnerPopover(false)
+        setAssignOwnerSearch('')
+        assignOwnerContactIdRef.current = null
+      },
+      onError: ({ error }) => {
+        assignOwnerContactIdRef.current = null
+        toast.error(error.serverError || 'Erro ao atribuir responsável.')
+      },
+    },
+  )
 
   const { execute: executeCreate, isPending: isCreating } = useAction(
     createAppointment,
@@ -214,6 +269,7 @@ export function UpsertAppointmentDialogContent({
         startDate: new Date(defaultValues.startDate),
         endDate: defaultValues.endDate ? new Date(defaultValues.endDate) : undefined,
         dealId: defaultValues.dealId ?? undefined,
+        autoCreateDeal: false,
         serviceId: defaultValues.serviceId ?? undefined,
         professionalId: defaultValues.professionalId ?? undefined,
         assignedTo: defaultValues.assignedTo,
@@ -226,6 +282,7 @@ export function UpsertAppointmentDialogContent({
         startDate: new Date(),
         endDate: new Date(Date.now() + 60 * 60 * 1000), // +1h
         dealId: fixedDealId || undefined,
+        autoCreateDeal: false,
         assignedTo: undefined,
       }
 
@@ -240,41 +297,29 @@ export function UpsertAppointmentDialogContent({
   const watchedType = form.watch('type')
   const watchedServiceId = form.watch('serviceId')
   const watchedStartDate = form.watch('startDate')
+  const watchedAutoCreateDeal = form.watch('autoCreateDeal')
+  const watchedContactId = form.watch('contactId')
 
-  // --------------------------------------------------------------------------
-  // useEffect: busca profissionais disponíveis quando serviceId + startDate mudam
-  // Único useEffect legítimo — sincroniza com sistema externo (server action)
-  // --------------------------------------------------------------------------
-  useEffect(() => {
-    if (watchedType !== 'BOOKING' || !watchedServiceId || !watchedStartDate) {
-      setAvailableProfessionals([])
-      return
-    }
+  // Verifica se o contato selecionado tem responsável (relevante para BOOKING).
+  // Checa estado local primeiro — atualizado quando responsável é atribuído inline.
+  const contactHasOwner = useMemo(() => {
+    if (!watchedContactId) return null
+    if (localContactOwners[watchedContactId]) return true
+    const contact = contactOptions.find((option) => option.id === watchedContactId)
+    if (!contact) return null
+    return !!contact.assignedTo
+  }, [watchedContactId, contactOptions, localContactOwners])
 
-    // Extrai hora em UTC para comparar com jornadas armazenadas em UTC
-    const startTime = `${String(watchedStartDate.getUTCHours()).padStart(2, '0')}:${String(watchedStartDate.getUTCMinutes()).padStart(2, '0')}`
-
-    fetchProfessionals({
-      serviceId: watchedServiceId,
-      startDate: watchedStartDate,
-      startTime,
-      contactId: form.getValues('contactId') || undefined,
-    })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [watchedType, watchedServiceId, watchedStartDate])
-
-  const onSubmit = (data: CreateAppointmentInput) => {
-    // superRefine garante contactId presente — guard para narrowing de tipo
-    if (!data.contactId) return
-
-    const contactId = data.contactId
-
-    if (isEditing && defaultValues?.id) {
-      onUpdate?.({ ...data, id: defaultValues.id })
-    } else {
-      executeCreate({ ...data, contactId })
-    }
-  }
+  // Membros filtrados pela busca no popover de atribuição de responsável
+  const filteredAssignableMembers = useMemo(() => {
+    if (!assignOwnerSearch) return assignableMembers
+    const term = assignOwnerSearch.toLowerCase()
+    return assignableMembers.filter(
+      (member) =>
+        member.user?.fullName?.toLowerCase().includes(term) ||
+        member.email.toLowerCase().includes(term),
+    )
+  }, [assignableMembers, assignOwnerSearch])
 
   // --------------------------------------------------------------------------
   // Derivados: agrupamento de serviços por categoria
@@ -292,9 +337,8 @@ export function UpsertAppointmentDialogContent({
   )
 
   // Contato selecionado (para exibir no trigger do combobox)
-  const selectedContactId = form.watch('contactId')
   const selectedContact = contactOptions.find(
-    (contact) => contact.id === selectedContactId,
+    (contact) => contact.id === watchedContactId,
   )
 
   // Serviço selecionado (para exibir no trigger do combobox)
@@ -303,16 +347,105 @@ export function UpsertAppointmentDialogContent({
     (service) => service.id === selectedServiceId,
   )
 
-  // Profissional selecionado (para exibir no trigger do combobox)
-  const selectedProfessionalId = form.watch('professionalId')
-  const selectedProfessional = availableProfessionals.find(
-    (professional) => professional.id === selectedProfessionalId,
-  )
+  // Profissionais ativos vinculados ao serviço selecionado
+  const serviceProfessionals = useMemo(() => {
+    if (!selectedService) return []
+    return selectedService.professionalServices.filter((ps) => ps.professional.isActive)
+  }, [selectedService])
+
+  // Em modo "Qualquer", deduplica slots por startTime mantendo o primeiro (ordem de distribuição)
+  const displaySlots = useMemo(() => {
+    if (filterProfessionalId) return slots
+    const seen = new Set<string>()
+    return slots.filter((slot) => {
+      if (seen.has(slot.startTime)) return false
+      seen.add(slot.startTime)
+      return true
+    })
+  }, [slots, filterProfessionalId])
 
   // Contatos filtrados client-side pela busca
   const filteredContacts = contactOptions.filter((contact) =>
     contact.name.toLowerCase().includes(contactSearch.toLowerCase()),
   )
+
+  // --------------------------------------------------------------------------
+  // useEffect: sincroniza selectedDay a partir do watchedStartDate (RHF → estado local).
+  // Functional update evita re-render quando apenas a hora muda (ex: seleção de slot).
+  // --------------------------------------------------------------------------
+  useEffect(() => {
+    if (watchedType !== 'BOOKING' || !watchedStartDate) {
+      setSelectedDay(null)
+      return
+    }
+    const d = watchedStartDate
+    const newDay = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
+    setSelectedDay((prev) => {
+      if (prev?.getTime() === newDay.getTime()) return prev
+      return newDay
+    })
+  }, [watchedType, watchedStartDate])
+
+  // --------------------------------------------------------------------------
+  // useEffect: busca slots disponíveis quando serviceId + selectedDay mudam
+  // Único useEffect legítimo — sincroniza com sistema externo (server action)
+  // --------------------------------------------------------------------------
+  useEffect(() => {
+    if (watchedType !== 'BOOKING' || !watchedServiceId || !selectedDay) {
+      setSlots([])
+      return
+    }
+
+    setSelectedSlotKey(null)
+    fetchSlots({
+      serviceId: watchedServiceId,
+      date: selectedDay,
+      professionalId: filterProfessionalId ?? undefined,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchedType, watchedServiceId, selectedDay, filterProfessionalId])
+
+  // --------------------------------------------------------------------------
+  // Funções auxiliares do booking widget
+  // --------------------------------------------------------------------------
+
+  // Converte iniciais do nome para exibir no Avatar fallback
+  function getInitials(name: string): string {
+    return name
+      .split(' ')
+      .slice(0, 2)
+      .map((word) => word[0])
+      .join('')
+      .toUpperCase()
+  }
+
+  // Selecionar um slot: seta startDate (dia + hora UTC) e professionalId no form.
+  // Usa form.getValues para evitar stale closure em selectedDay.
+  function selectSlot(slot: SlotDto) {
+    const currentDate = form.getValues('startDate')
+    if (!currentDate) return
+    const [hours, minutes] = slot.startTime.split(':').map(Number)
+    const slotDate = new Date(
+      Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth(), currentDate.getUTCDate()),
+    )
+    slotDate.setUTCHours(hours ?? 0, minutes ?? 0, 0, 0)
+    form.setValue('startDate', slotDate)
+    form.setValue('professionalId', slot.professionalId)
+    setSelectedSlotKey(`${slot.professionalId}-${slot.startTime}`)
+  }
+
+  const onSubmit = (data: CreateAppointmentInput) => {
+    // superRefine garante contactId presente — guard para narrowing de tipo
+    if (!data.contactId) return
+
+    const contactId = data.contactId
+
+    if (isEditing && defaultValues?.id) {
+      onUpdate?.({ ...data, id: defaultValues.id })
+    } else {
+      executeCreate({ ...data, contactId })
+    }
+  }
 
   return (
     <SheetContent className="overflow-y-auto sm:max-w-lg">
@@ -348,7 +481,10 @@ export function UpsertAppointmentDialogContent({
                         field.onChange('MEETING')
                         form.setValue('professionalId', undefined)
                         form.setValue('serviceId', undefined)
-                        setAvailableProfessionals([])
+                        setSlots([])
+                        setSelectedDay(null)
+                        setSelectedSlotKey(null)
+                        setFilterProfessionalId(null)
                       }}
                     >
                       <BriefcaseIcon className="h-3.5 w-3.5" />
@@ -375,8 +511,163 @@ export function UpsertAppointmentDialogContent({
             )}
           />
 
-          {/* NEGÓCIO — apenas MEETING e sem fixedDealId */}
-          {watchedType === 'MEETING' && !fixedDealId && (
+          {/* CONTATO — primeiro campo de dados, obrigatório para ambos os tipos */}
+          <FormField<CreateAppointmentInput, 'contactId'>
+            control={form.control}
+            name="contactId"
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel className="flex items-center gap-1">
+                  Contato <span className="text-destructive">*</span>
+                </FormLabel>
+                <Popover
+                  open={openContactCombobox}
+                  onOpenChange={setOpenContactCombobox}
+                >
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        className={cn(
+                          'w-full justify-between',
+                          !field.value && 'text-muted-foreground',
+                          form.formState.errors.contactId && 'border-destructive',
+                        )}
+                      >
+                        <span className="flex items-center gap-2 truncate">
+                          <UserIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                          {selectedContact
+                            ? selectedContact.name
+                            : 'Selecione um contato...'}
+                        </span>
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                    <Command shouldFilter={false}>
+                      <CommandInput
+                        placeholder="Buscar contato..."
+                        value={contactSearch}
+                        onValueChange={setContactSearch}
+                      />
+                      <CommandList>
+                        {filteredContacts.length === 0 ? (
+                          <CommandEmpty>Nenhum contato encontrado.</CommandEmpty>
+                        ) : (
+                          <CommandGroup>
+                            {filteredContacts.map((contact) => (
+                              <CommandItem
+                                key={contact.id}
+                                value={contact.id}
+                                onSelect={() => {
+                                  form.setValue('contactId', contact.id)
+                                  setOpenContactCombobox(false)
+                                  setContactSearch('')
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    'mr-2 h-4 w-4',
+                                    contact.id === field.value
+                                      ? 'opacity-100'
+                                      : 'opacity-0',
+                                  )}
+                                />
+                                <span className="flex-1">{contact.name}</span>
+                                {contact.phone && (
+                                  <span className="ml-2 text-xs text-muted-foreground">
+                                    {contact.phone}
+                                  </span>
+                                )}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        )}
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* ALERTA: contato sem responsável — com botão de atribuição rápida inline */}
+          {watchedType === 'BOOKING' && watchedContactId && contactHasOwner === false && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Contato sem responsável</AlertTitle>
+              <AlertDescription className="space-y-2">
+                <p>
+                  Este contato não tem um responsável de vendas. Atribua um para continuar.
+                </p>
+                <Popover
+                  open={openAssignOwnerPopover}
+                  onOpenChange={(open) => {
+                    setOpenAssignOwnerPopover(open)
+                    if (!open) setAssignOwnerSearch('')
+                  }}
+                >
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={isAssigningOwner}
+                      className="border-destructive/50 bg-transparent text-destructive hover:bg-destructive/10"
+                    >
+                      {isAssigningOwner && (
+                        <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                      )}
+                      Atribuir responsável
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 p-0" align="start">
+                    <Command shouldFilter={false}>
+                      <CommandInput
+                        placeholder="Buscar membro..."
+                        value={assignOwnerSearch}
+                        onValueChange={setAssignOwnerSearch}
+                      />
+                      <CommandList>
+                        {filteredAssignableMembers.length === 0 ? (
+                          <CommandEmpty>Nenhum membro encontrado.</CommandEmpty>
+                        ) : (
+                          <CommandGroup>
+                            {filteredAssignableMembers.map((member) => (
+                              <CommandItem
+                                key={member.id}
+                                value={member.userId}
+                                disabled={isAssigningOwner}
+                                onSelect={() => {
+                                  if (!watchedContactId) return
+                                  assignOwnerContactIdRef.current = watchedContactId
+                                  executeAssignOwner({
+                                    id: watchedContactId,
+                                    assignedTo: member.userId,
+                                  })
+                                }}
+                              >
+                                <span className="flex-1">{member.user?.fullName}</span>
+                                <span className="ml-2 text-xs text-muted-foreground truncate">
+                                  {member.email}
+                                </span>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        )}
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* NEGÓCIO — MEETING e BOOKING (sem fixedDealId), exceto quando autoCreateDeal está ativo */}
+          {(watchedType === 'MEETING' || watchedType === 'BOOKING') && !fixedDealId && !watchedAutoCreateDeal && (
             <FormField<CreateAppointmentInput, 'dealId'>
               control={form.control}
               name="dealId"
@@ -477,88 +768,36 @@ export function UpsertAppointmentDialogContent({
             />
           )}
 
-          {/* CONTATO — obrigatório para ambos os tipos */}
-          <FormField<CreateAppointmentInput, 'contactId'>
-            control={form.control}
-            name="contactId"
-            render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel className="flex items-center gap-1">
-                  Contato <span className="text-destructive">*</span>
-                </FormLabel>
-                <Popover
-                  open={openContactCombobox}
-                  onOpenChange={setOpenContactCombobox}
-                >
-                  <PopoverTrigger asChild>
+          {/* TOGGLE: Criar negociação junto — apenas BOOKING sem fixedDealId */}
+          {watchedType === 'BOOKING' && !fixedDealId && (
+            <FormField<CreateAppointmentInput, 'autoCreateDeal'>
+              control={form.control}
+              name="autoCreateDeal"
+              render={({ field }) => (
+                <FormItem>
+                  <div className="flex items-center gap-3">
                     <FormControl>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        className={cn(
-                          'w-full justify-between',
-                          !field.value && 'text-muted-foreground',
-                          form.formState.errors.contactId && 'border-destructive',
-                        )}
-                      >
-                        <span className="flex items-center gap-2 truncate">
-                          <UserIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                          {selectedContact
-                            ? selectedContact.name
-                            : 'Selecione um contato...'}
-                        </span>
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                    <Command shouldFilter={false}>
-                      <CommandInput
-                        placeholder="Buscar contato..."
-                        value={contactSearch}
-                        onValueChange={setContactSearch}
+                      <Switch
+                        checked={field.value ?? false}
+                        onCheckedChange={(checked) => {
+                          field.onChange(checked)
+                          if (checked) {
+                            form.setValue('dealId', undefined)
+                          }
+                        }}
+                        disabled={!watchedContactId}
                       />
-                      <CommandList>
-                        {filteredContacts.length === 0 ? (
-                          <CommandEmpty>Nenhum contato encontrado.</CommandEmpty>
-                        ) : (
-                          <CommandGroup>
-                            {filteredContacts.map((contact) => (
-                              <CommandItem
-                                key={contact.id}
-                                value={contact.id}
-                                onSelect={() => {
-                                  form.setValue('contactId', contact.id)
-                                  setOpenContactCombobox(false)
-                                  setContactSearch('')
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    'mr-2 h-4 w-4',
-                                    contact.id === field.value
-                                      ? 'opacity-100'
-                                      : 'opacity-0',
-                                  )}
-                                />
-                                <span className="flex-1">{contact.name}</span>
-                                {contact.phone && (
-                                  <span className="ml-2 text-xs text-muted-foreground">
-                                    {contact.phone}
-                                  </span>
-                                )}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        )}
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+                    </FormControl>
+                    <FormLabel className="cursor-pointer select-none font-normal">
+                      {!watchedContactId
+                        ? 'Selecione um contato para habilitar'
+                        : 'Criar negociação junto com o agendamento'}
+                    </FormLabel>
+                  </div>
+                </FormItem>
+              )}
+            />
+          )}
 
           {/* SERVIÇO — apenas BOOKING */}
           {watchedType === 'BOOKING' && (
@@ -619,9 +858,11 @@ export function UpsertAppointmentDialogContent({
                                         if (!form.getValues('title')) {
                                           form.setValue('title', service.name)
                                         }
-                                        // Limpa profissional ao trocar serviço
+                                        // Limpa seleções do booking widget ao trocar serviço
                                         form.setValue('professionalId', undefined)
-                                        setAvailableProfessionals([])
+                                        setSlots([])
+                                        setSelectedSlotKey(null)
+                                        setFilterProfessionalId(null)
                                         setOpenServiceCombobox(false)
                                       }}
                                     >
@@ -653,108 +894,123 @@ export function UpsertAppointmentDialogContent({
             />
           )}
 
-          {/* DATA DE INÍCIO — sempre visível */}
-          <DateTimeField
-            form={form}
-            name="startDate"
-            label="Data de Início"
-          />
+          {/* SERVICE INFO CARD — exibe detalhes do serviço selecionado */}
+          {watchedType === 'BOOKING' && selectedService && (
+            <div className="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-2 text-sm">
+              <ScissorsIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <span className="flex-1 font-medium">{selectedService.name}</span>
+              <Badge variant="secondary">{selectedService.duration} min</Badge>
+              <Badge variant="secondary">
+                {Number(selectedService.price).toLocaleString('pt-BR', {
+                  style: 'currency',
+                  currency: 'BRL',
+                })}
+              </Badge>
+            </div>
+          )}
+
+          {/* DATA DE INÍCIO — BOOKING usa seletor só de dia (hora vem do slot) */}
+          {watchedType === 'BOOKING' && (
+            <DateOnlyField form={form} name="startDate" label="Data de Início" />
+          )}
+
+          {/* FILTRO DE PROFISSIONAL — chips clicáveis após serviço + data selecionados */}
+          {watchedType === 'BOOKING' && watchedServiceId && selectedDay && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium leading-none">Profissional</p>
+              <div className="flex flex-wrap gap-2">
+                {/* Chip "Qualquer disponível" */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFilterProfessionalId(null)
+                    setSelectedSlotKey(null)
+                    form.setValue('professionalId', undefined)
+                  }}
+                  className={cn(
+                    'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors',
+                    filterProfessionalId === null
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-border bg-background text-foreground hover:bg-muted',
+                  )}
+                >
+                  Qualquer disponível
+                </button>
+
+                {/* Chip por profissional do serviço */}
+                {serviceProfessionals.map((ps) => (
+                  <button
+                    key={ps.professionalId}
+                    type="button"
+                    onClick={() => {
+                      setFilterProfessionalId(ps.professionalId)
+                      setSelectedSlotKey(null)
+                      form.setValue('professionalId', ps.professionalId)
+                    }}
+                    className={cn(
+                      'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors',
+                      filterProfessionalId === ps.professionalId
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-border bg-background text-foreground hover:bg-muted',
+                    )}
+                  >
+                    <Avatar className="h-5 w-5">
+                      <AvatarImage src={ps.professional.avatarUrl ?? ''} />
+                      <AvatarFallback className="text-[10px]">
+                        {getInitials(ps.professional.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    {ps.professional.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* HORÁRIOS DISPONÍVEIS — grid de chips após serviço + data selecionados */}
+          {watchedType === 'BOOKING' && watchedServiceId && selectedDay && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium leading-none">Horário disponível</p>
+
+              {isLoadingSlots ? (
+                <div className="flex items-center justify-center py-6">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : displaySlots.length === 0 ? (
+                <p className="py-4 text-center text-sm text-muted-foreground">
+                  Nenhum horário disponível para este dia.
+                </p>
+              ) : (
+                <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
+                  {displaySlots.map((slot) => {
+                    const key = `${slot.professionalId}-${slot.startTime}`
+                    const isSelected = selectedSlotKey === key
+                    return (
+                      <Button
+                        key={key}
+                        type="button"
+                        size="sm"
+                        variant={isSelected ? 'default' : 'outline'}
+                        className="w-full"
+                        onClick={() => selectSlot(slot)}
+                      >
+                        {slot.startTime}
+                      </Button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* DATA DE INÍCIO — apenas MEETING (BOOKING usa o booking widget acima) */}
+          {watchedType === 'MEETING' && (
+            <DateTimeField form={form} name="startDate" label="Data de Início" />
+          )}
 
           {/* DATA DE FIM — apenas MEETING */}
           {watchedType === 'MEETING' && (
             <DateTimeField form={form} name="endDate" label="Data de Fim" />
-          )}
-
-          {/* PROFISSIONAL — apenas BOOKING, após serviceId + startDate preenchidos */}
-          {watchedType === 'BOOKING' && (
-            <FormField<CreateAppointmentInput, 'professionalId'>
-              control={form.control}
-              name="professionalId"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel className="flex items-center gap-1">
-                    Profissional <span className="text-destructive">*</span>
-                  </FormLabel>
-                  <Popover
-                    open={openProfessionalCombobox}
-                    onOpenChange={setOpenProfessionalCombobox}
-                  >
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant="outline"
-                          role="combobox"
-                          disabled={isFetchingProfessionals || (!watchedServiceId || !watchedStartDate)}
-                          className={cn(
-                            'w-full justify-between',
-                            !field.value && 'text-muted-foreground',
-                            form.formState.errors.professionalId &&
-                              'border-destructive',
-                          )}
-                        >
-                          {isFetchingProfessionals ? (
-                            <span className="flex items-center gap-2">
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              Buscando disponibilidade...
-                            </span>
-                          ) : selectedProfessional ? (
-                            selectedProfessional.name
-                          ) : !watchedServiceId || !watchedStartDate ? (
-                            'Selecione o serviço e data primeiro'
-                          ) : (
-                            'Selecione um profissional...'
-                          )}
-                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                      <Command>
-                        <CommandList>
-                          {isFetchingProfessionals ? (
-                            <div className="flex items-center justify-center py-6">
-                              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                            </div>
-                          ) : availableProfessionals.length === 0 ? (
-                            <CommandEmpty>
-                              Nenhum profissional disponível neste horário.
-                            </CommandEmpty>
-                          ) : (
-                            <CommandGroup>
-                              {availableProfessionals.map((professional) => (
-                                <CommandItem
-                                  key={professional.id}
-                                  value={professional.id}
-                                  onSelect={() => {
-                                    form.setValue(
-                                      'professionalId',
-                                      professional.id,
-                                    )
-                                    setOpenProfessionalCombobox(false)
-                                  }}
-                                >
-                                  <Check
-                                    className={cn(
-                                      'mr-2 h-4 w-4',
-                                      professional.id === field.value
-                                        ? 'opacity-100'
-                                        : 'opacity-0',
-                                    )}
-                                  />
-                                  <UserIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
-                                  {professional.name}
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          )}
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
           )}
 
           {/* TÍTULO */}
@@ -831,7 +1087,14 @@ export function UpsertAppointmentDialogContent({
           />
 
           <SheetFooter>
-            <Button type="submit" disabled={isExecuting}>
+            <Button
+              type="submit"
+              disabled={
+                isExecuting ||
+                (watchedType === 'BOOKING' && watchedContactId !== undefined && contactHasOwner === false) ||
+                (watchedType === 'BOOKING' && !selectedSlotKey)
+              }
+            >
               {isExecuting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Salvar
             </Button>
@@ -844,7 +1107,7 @@ export function UpsertAppointmentDialogContent({
 
 /**
  * Componente interno para campo de data+hora (Calendar + time input)
- * Reutilizado para startDate e endDate
+ * Reutilizado para startDate e endDate — usado apenas em MEETING
  */
 function DateTimeField({
   form,
@@ -987,6 +1250,82 @@ function DateTimeField({
                   }}
                 />
               </div>
+            </PopoverContent>
+          </Popover>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  )
+}
+
+/**
+ * Seletor de data sem input de hora — usado no BOOKING onde a hora vem do slot selecionado.
+ */
+function DateOnlyField({
+  form,
+  name,
+  label,
+}: {
+  form: ReturnType<typeof useForm<CreateAppointmentInput>>
+  name: 'startDate' | 'endDate'
+  label: string
+}) {
+  return (
+    <FormField<CreateAppointmentInput, typeof name>
+      control={form.control}
+      name={name}
+      render={({ field }) => (
+        <FormItem className="flex flex-col">
+          <FormLabel className="flex items-center gap-1">
+            {label} <span className="text-destructive">*</span>
+          </FormLabel>
+          <Popover>
+            <PopoverTrigger asChild>
+              <FormControl>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    'w-full pl-3 text-left font-normal',
+                    !field.value && 'text-muted-foreground',
+                    form.formState.errors[name] && 'border-destructive',
+                  )}
+                >
+                  {field.value ? (
+                    (() => {
+                      try {
+                        if (isNaN(field.value.getTime())) {
+                          return <span className="text-destructive">Data inválida</span>
+                        }
+                        return formatInTimeZone(field.value, SAO_PAULO_TZ, 'dd/MM/yyyy', {
+                          locale: ptBR,
+                        })
+                      } catch {
+                        return <span className="text-destructive">Data inválida</span>
+                      }
+                    })()
+                  ) : (
+                    <span>Selecione uma data</span>
+                  )}
+                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                </Button>
+              </FormControl>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={field.value}
+                onSelect={(date: Date | undefined) => {
+                  if (!date) return
+                  // Meia-noite UTC do dia selecionado — hora será definida pelo slot
+                  const dayStart = new Date(
+                    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
+                  )
+                  field.onChange(dayStart)
+                }}
+                disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                initialFocus
+              />
             </PopoverContent>
           </Popover>
           <FormMessage />

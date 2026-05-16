@@ -45,6 +45,7 @@ import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 import { updateAppointment } from '@/_actions/appointment/update-appointment'
 import { UpsertAppointmentDialogContent } from './upsert-dialog-content'
+import { CancelBookingDealDialog } from './cancel-booking-deal-dialog'
 import type { AppointmentDto } from '@/_data-access/appointment/get-appointments'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import type { ContactOptionDto } from '@/_data-access/contact/get-contacts-options'
@@ -256,7 +257,7 @@ function AppointmentBlock({
 interface PopoverResolutionActionsProps {
   appointment: AppointmentDto
   statusOverrides: Record<string, AppointmentStatus>
-  onStatusSelect: (appointmentId: string, newStatus: AppointmentStatus) => void
+  onStatusSelect: (appointmentId: string, newStatus: AppointmentStatus, appointment?: AppointmentDto) => void
 }
 
 function PopoverResolutionActions({
@@ -287,6 +288,7 @@ function PopoverResolutionActions({
                   onStatusSelect(
                     appointment.id,
                     isActive ? 'SCHEDULED' : action.status,
+                    appointment,
                   )
                 }}
               >
@@ -311,7 +313,7 @@ interface DayPopoverContentProps {
   day: Date
   dayAppointments: AppointmentDto[]
   statusOverrides: Record<string, AppointmentStatus>
-  onStatusSelect: (appointmentId: string, newStatus: AppointmentStatus) => void
+  onStatusSelect: (appointmentId: string, newStatus: AppointmentStatus, appointment?: AppointmentDto) => void
   onEditAppointment: (appointment: AppointmentDto) => void
   onCreateForDay: (date: Date) => void
   onClose: () => void
@@ -531,6 +533,15 @@ export function CalendarView({
     Record<string, AppointmentStatus>
   >({})
 
+  // Estado do modal de resolução de deal ao cancelar BOOKING
+  const [cancelDialog, setCancelDialog] = useState<{
+    open: boolean
+    appointmentId: string
+    dealId: string
+    dealTitle: string
+    targetStatus: 'CANCELED' | 'NO_SHOW'
+  } | null>(null)
+
   // Hook para atualização completa (Sheet de edição)
   const { execute: executeUpdate, isPending: isUpdating } = useAction(
     updateAppointment,
@@ -547,7 +558,7 @@ export function CalendarView({
   )
 
   // Hook para atualização de status via resolução rápida (optimistic)
-  const { execute: executeUpdateStatus } = useAction(updateAppointment, {
+  const { execute: executeUpdateStatus, isPending: isUpdatingStatus } = useAction(updateAppointment, {
     onSuccess: () => {
       toast.success('Status atualizado com sucesso.')
     },
@@ -597,11 +608,41 @@ export function CalendarView({
   }, [])
 
   const handleStatusSelect = useCallback(
-    (appointmentId: string, newStatus: AppointmentStatus) => {
+    (appointmentId: string, newStatus: AppointmentStatus, appointment?: AppointmentDto) => {
+      // Intercept CANCELED/NO_SHOW para BOOKING com deal em aberto
+      if (
+        appointment &&
+        appointment.type === 'BOOKING' &&
+        (newStatus === 'CANCELED' || newStatus === 'NO_SHOW') &&
+        appointment.dealId &&
+        appointment.dealTitle &&
+        appointment.dealStatus === 'OPEN'
+      ) {
+        setCancelDialog({
+          open: true,
+          appointmentId,
+          dealId: appointment.dealId,
+          dealTitle: appointment.dealTitle,
+          targetStatus: newStatus,
+        })
+        return
+      }
+
       setStatusOverrides((prev) => ({ ...prev, [appointmentId]: newStatus }))
       executeUpdateStatus({ id: appointmentId, status: newStatus })
     },
     [executeUpdateStatus],
+  )
+
+  const handleCancelDialogConfirm = useCallback(
+    (dealResolution: 'MARK_LOST' | 'KEEP_OPEN') => {
+      if (!cancelDialog) return
+      const { appointmentId, targetStatus } = cancelDialog
+      setStatusOverrides((prev) => ({ ...prev, [appointmentId]: targetStatus }))
+      executeUpdateStatus({ id: appointmentId, status: targetStatus, dealResolution })
+      setCancelDialog(null)
+    },
+    [cancelDialog, executeUpdateStatus],
   )
 
   const handleCreateForDay = useCallback((date: Date) => {
@@ -808,6 +849,20 @@ export function CalendarView({
         </div>
       </div>
 
+      {/* Modal de resolução de deal ao cancelar BOOKING */}
+      {cancelDialog && (
+        <CancelBookingDealDialog
+          open={cancelDialog.open}
+          onOpenChange={(open) => {
+            if (!open) setCancelDialog(null)
+          }}
+          dealTitle={cancelDialog.dealTitle}
+          targetStatus={cancelDialog.targetStatus}
+          isPending={isUpdatingStatus}
+          onConfirm={handleCancelDialogConfirm}
+        />
+      )}
+
       {/* Sheet de edição (estado elevado para sobreviver ao re-render) */}
       <Sheet
         open={isEditSheetOpen}
@@ -852,6 +907,7 @@ export function CalendarView({
               contactId: null,
               dealId: '',
               dealTitle: '',
+              dealStatus: null,
               professionalId: null,
               serviceId: null,
               assignedTo: '',
