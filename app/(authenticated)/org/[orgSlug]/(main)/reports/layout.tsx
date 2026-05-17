@@ -17,7 +17,7 @@ export default async function ReportsLayout({ params, children }: ReportsLayoutP
 
   const { plan } = await getPlanLimits(ctx.orgId)
   if (!plan || plan === 'light') {
-    return <ReportsPlanGate currentPlan={plan ?? null} orgSlug={orgSlug} />
+    return <ReportsPlanGate orgSlug={orgSlug} />
   }
 
   const elevated = isElevated(ctx.userRole)

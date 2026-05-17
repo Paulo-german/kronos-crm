@@ -3,7 +3,6 @@ import { BarChart3, Lock } from 'lucide-react'
 import Link from 'next/link'
 
 interface ReportsPlanGateProps {
-  currentPlan: string | null
   orgSlug: string
 }
 
