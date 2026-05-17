@@ -7,10 +7,12 @@ import { DateRangePicker } from '../_shared/date-range-picker'
 import { LifecycleFunnelSection } from './_components/lifecycle-funnel-section'
 import { AttentionSection } from './_components/attention-section'
 import { GoalsSection } from './_components/goals-section'
+import { RecentMovementSection } from './_components/recent-movement-section'
 import {
   LifecycleFunnelSkeleton,
   AttentionSectionSkeleton,
   GoalsSectionSkeleton,
+  RecentMovementSkeleton,
 } from './_components/skeletons'
 
 interface DashboardV2PageProps {
@@ -26,7 +28,7 @@ export default async function DashboardV2Page({ params, searchParams }: Dashboar
   // parseDateRange não suporta defaultDays: quando ausentes, usa o mês corrente.
   // Para o v2 o default é os últimos 30 dias — calculamos manualmente quando
   // start/end estão ausentes.
-  const dateRange = start ?? end
+  const dateRange = (start ?? end)
     ? parseDateRange(start, end)
     : {
         start: startOfDay(subDays(new Date(), DASHBOARD_V2_DEFAULT_DAYS - 1)),
@@ -49,6 +51,12 @@ export default async function DashboardV2Page({ params, searchParams }: Dashboar
       </Suspense>
       <Suspense fallback={<GoalsSectionSkeleton />}>
         <GoalsSection ctx={ctx} orgSlug={orgSlug} />
+      </Suspense>
+      <Suspense
+        key={`recent-${dateRange.start.toISOString()}-${dateRange.end.toISOString()}`}
+        fallback={<RecentMovementSkeleton />}
+      >
+        <RecentMovementSection ctx={ctx} orgSlug={orgSlug} dateRange={dateRange} />
       </Suspense>
     </div>
   )

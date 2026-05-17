@@ -38,3 +38,18 @@ export function AttentionSectionSkeleton() {
     </div>
   )
 }
+
+export function RecentMovementSkeleton() {
+  return (
+    <div>
+      <Skeleton className="mb-4 h-5 w-44" />
+      <div className="rounded-xl border bg-card">
+        <div className="space-y-1 p-4">
+          {Array.from({ length: 8 }).map((_skeleton, index) => (
+            <Skeleton key={index} className="h-12 rounded-lg" />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
