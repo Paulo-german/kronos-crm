@@ -20,6 +20,7 @@ import {
 } from '@/_data-access/notification/get-pending-invite-notifications'
 import { getUserProfileStatus } from '@/_data-access/user-profile/get-user-profile-status'
 import { WelcomeSurveyModal } from '@/_components/welcome-survey/welcome-survey-modal'
+import { getPlanLimits } from '@/_lib/rbac/plan-limits'
 
 interface MainLayoutProps {
   children: React.ReactNode
@@ -40,6 +41,7 @@ const MainLayout = async ({ children, params }: MainLayoutProps) => {
     unreadCount,
     recentNotifications,
     profileCompleted,
+    planInfo,
   ] = await Promise.all([
     getOnboardingStatus(orgId),
     getTrialStatus(orgId),
@@ -50,6 +52,7 @@ const MainLayout = async ({ children, params }: MainLayoutProps) => {
     getUnreadNotificationCount(userId, orgId),
     getRecentNotifications(userId, orgId),
     getUserProfileStatus(userId, orgId),
+    getPlanLimits(orgId),
   ])
 
   // Buscar notificações de orgs com convite pendente (cross-org)
@@ -104,6 +107,7 @@ const MainLayout = async ({ children, params }: MainLayoutProps) => {
             monthlyLimit: creditBalance.monthlyLimit,
             orgSlug,
           }}
+          planSlug={planInfo.plan}
         />
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <TopBarWrapper
@@ -120,6 +124,7 @@ const MainLayout = async ({ children, params }: MainLayoutProps) => {
                 monthlyLimit: creditBalance.monthlyLimit,
                 orgSlug,
               },
+              planSlug: planInfo.plan,
             }}
           />
           <ContentWrapper>{children}</ContentWrapper>

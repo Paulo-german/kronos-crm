@@ -29,6 +29,7 @@ interface SidebarContentProps {
   organizations?: { id: string; name: string; slug: string; role: MemberRole }[]
   isSuperAdmin?: boolean
   credits?: { available: number; monthlyLimit: number; orgSlug: string }
+  planSlug?: string | null
   onNavigate?: () => void
 }
 
@@ -37,6 +38,7 @@ export const SidebarContent = ({
   organizations = [],
   isSuperAdmin = false,
   credits,
+  planSlug,
   onNavigate,
 }: SidebarContentProps) => {
   const { isCollapsed } = useSidebar()
@@ -44,6 +46,7 @@ export const SidebarContent = ({
   const orgSlug = params?.orgSlug as string | undefined
 
   const hasModule = (slug: ModuleSlug) => activeModules.includes(slug)
+  const hasCopilot = planSlug === 'scale' || planSlug === 'enterprise'
 
   const buildHref = (path: string) => {
     if (orgSlug) {
@@ -100,11 +103,13 @@ export const SidebarContent = ({
               icon={<Users className="h-4 w-4" />}
               dataTour="contacts"
             />
-            <SidebarItem
-              href={buildHref('/copilot')}
-              label="Copiloto"
-              icon={<Compass className="h-4 w-4" />}
-            />
+            {hasCopilot && (
+              <SidebarItem
+                href={buildHref('/copilot')}
+                label="Copiloto"
+                icon={<Compass className="h-4 w-4" />}
+              />
+            )}
           </div>
 
           {/* Módulo: CRM */}

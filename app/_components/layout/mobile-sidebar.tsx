@@ -20,6 +20,7 @@ interface MobileSidebarProps {
   organizations?: { id: string; name: string; slug: string; role: MemberRole }[]
   isSuperAdmin?: boolean
   credits?: { available: number; monthlyLimit: number; orgSlug: string }
+  planSlug?: string | null
 }
 
 export const MobileSidebar = ({
@@ -27,6 +28,7 @@ export const MobileSidebar = ({
   organizations,
   isSuperAdmin,
   credits,
+  planSlug,
 }: MobileSidebarProps) => {
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
@@ -61,6 +63,7 @@ export const MobileSidebar = ({
                 organizations={organizations}
                 isSuperAdmin={isSuperAdmin}
                 credits={credits}
+                planSlug={planSlug}
                 onNavigate={() => setOpen(false)}
               />
             </TooltipProvider>

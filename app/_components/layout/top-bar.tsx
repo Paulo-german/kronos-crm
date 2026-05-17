@@ -12,6 +12,7 @@ export interface SidebarProps {
   organizations?: { id: string; name: string; slug: string; role: MemberRole }[]
   isSuperAdmin?: boolean
   credits?: { available: number; monthlyLimit: number; orgSlug: string }
+  planSlug?: string | null
 }
 
 interface TopBarProps {

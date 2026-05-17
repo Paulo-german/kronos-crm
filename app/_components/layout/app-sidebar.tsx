@@ -13,6 +13,7 @@ interface AppSidebarProps {
   organizations?: { id: string; name: string; slug: string; role: MemberRole }[]
   isSuperAdmin?: boolean
   credits?: { available: number; monthlyLimit: number; orgSlug: string }
+  planSlug?: string | null
 }
 
 export const AppSidebar = ({
@@ -20,6 +21,7 @@ export const AppSidebar = ({
   organizations = [],
   isSuperAdmin = false,
   credits,
+  planSlug,
 }: AppSidebarProps) => {
   const { isCollapsed, toggle } = useSidebar()
 
@@ -51,6 +53,7 @@ export const AppSidebar = ({
         organizations={organizations}
         isSuperAdmin={isSuperAdmin}
         credits={credits}
+        planSlug={planSlug}
       />
     </aside>
   )

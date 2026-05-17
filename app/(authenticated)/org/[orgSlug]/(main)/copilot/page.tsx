@@ -1,5 +1,7 @@
+import { redirect } from 'next/navigation'
 import type { LifecycleStage } from '@prisma/client'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
+import { getPlanLimits } from '@/_lib/rbac/plan-limits'
 import { getOrgInsightsOverview } from '@/_data-access/copilot/get-org-insights-overview'
 import { getContactsAtRisk } from '@/_data-access/copilot/get-contacts-at-risk'
 import { getStalledDeals } from '@/_data-access/copilot/get-stalled-deals'
@@ -33,6 +35,11 @@ export default async function CopilotPage({ params, searchParams }: CopilotPageP
   const { orgSlug } = await params
   const sp = await searchParams
   const ctx = await getOrgContext(orgSlug)
+
+  const { plan } = await getPlanLimits(ctx.orgId)
+  if (plan !== 'scale' && plan !== 'enterprise') {
+    redirect(`/org/${orgSlug}/plans`)
+  }
 
   // Lê os filtros da tab "Em risco" da URL — o nuqs hook escreve aqui via shallow: false
   const rawSort = typeof sp.sort === 'string' ? sp.sort : 'scoreAsc'
