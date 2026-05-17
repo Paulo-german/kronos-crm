@@ -1,4 +1,10 @@
 import { logger } from '@trigger.dev/sdk/v3'
+import { revalidateTags } from '../tools/lib/revalidate-tags'
+
+// revalidateTag do next/cache é no-op em contexto Trigger.dev — usamos HTTP via revalidateTags
+export async function revalidateContactsCache(orgId: string): Promise<void> {
+  await revalidateTags([`contacts:${orgId}`, `dashboard:${orgId}`, `reports:${orgId}`])
+}
 
 /**
  * Dispara revalidação do cache de mensagens via API interna.
