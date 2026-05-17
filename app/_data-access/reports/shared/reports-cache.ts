@@ -8,7 +8,10 @@ export function makeReportsCacheKey(
   scope: string,
   ctx: RBACContext,
   dateRange: DateRange,
-  extra: Record<string, unknown> = {},
+  // Aceita qualquer interface tipada (ReportsFilters, InboxDashboardFilters etc.) sem exigir
+  // index signature `[key: string]: unknown`. Serializamos via JSON.stringify, então só
+  // precisamos que seja um objeto serializável.
+  extra: object = {},
 ): string[] {
   const elevated = isElevated(ctx.userRole)
   const extraKey = JSON.stringify(extra, Object.keys(extra).sort())
