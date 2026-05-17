@@ -10,6 +10,7 @@ import {
   Settings2,
   Sparkles,
   Tag,
+  Target,
   UserIcon,
   Users,
   Zap,
@@ -92,6 +93,13 @@ const SettingsPage = async ({ params }: SettingsPageProps) => {
                   orgSlug={orgSlug}
                 >
                   <FunnelIcon size={20} />
+                </CardSettings>
+                <CardSettings
+                  title="Metas"
+                  href="settings/goals"
+                  orgSlug={orgSlug}
+                >
+                  <Target size={20} />
                 </CardSettings>
                 <CardSettings
                   title="Catálogo"
