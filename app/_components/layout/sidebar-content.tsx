@@ -13,6 +13,7 @@ import {
   Bot,
   Shield,
   GraduationCap,
+  Compass,
 } from 'lucide-react'
 import { SidebarItem } from '@/_components/layout/sidebar-item'
 import { SignOutButton } from '@/_components/auth/sign-out-button'
@@ -98,6 +99,11 @@ export const SidebarContent = ({
               label="Contatos"
               icon={<Users className="h-4 w-4" />}
               dataTour="contacts"
+            />
+            <SidebarItem
+              href={buildHref('/copilot')}
+              label="Copiloto"
+              icon={<Compass className="h-4 w-4" />}
             />
           </div>
 
