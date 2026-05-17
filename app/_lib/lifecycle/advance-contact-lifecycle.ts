@@ -1,4 +1,5 @@
 import 'server-only'
+import { after } from 'next/server'
 import { CustomerStatus, LifecycleCauseType, LifecycleStage } from '@prisma/client'
 import { db } from '@/_lib/prisma'
 import { revalidateLifecycleCache } from './revalidate-lifecycle-cache'
@@ -76,11 +77,12 @@ export async function advanceContactLifecycle(
 
   if (skipScoreUpdate) return { applied: true }
 
-  // Recálculo de health score com o novo estágio é secundário — falha aqui
-  // não pode regredir o lifecycle nem derrubar o caller.
-  try {
-    const signals = await collectSignalsForContact(contactId, organizationId)
-    if (signals) {
+  // Recálculo de health score após a resposta ser enviada — não bloqueia o caller.
+  after(async () => {
+    try {
+      const signals = await collectSignalsForContact(contactId, organizationId)
+      if (!signals) return
+
       const result = computeHealthScore({
         contactId,
         organizationId,
@@ -89,15 +91,15 @@ export async function advanceContactLifecycle(
       })
       await persistOne(result)
       revalidateCopilotCache(organizationId)
+    } catch (error) {
+      console.warn('[advanceContactLifecycle] Falha no recálculo de health score:', {
+        contactId,
+        organizationId,
+        toStage,
+        error: error instanceof Error ? error.message : String(error),
+      })
     }
-  } catch (error) {
-    console.warn('[advanceContactLifecycle] Falha no recálculo de health score:', {
-      contactId,
-      organizationId,
-      toStage,
-      error: error instanceof Error ? error.message : String(error),
-    })
-  }
+  })
 
   return { applied: true }
 }
