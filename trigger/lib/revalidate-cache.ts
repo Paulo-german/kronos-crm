@@ -6,6 +6,14 @@ export async function revalidateContactsCache(orgId: string): Promise<void> {
   await revalidateTags([`contacts:${orgId}`, `dashboard:${orgId}`, `reports:${orgId}`])
 }
 
+export async function revalidateCopilotCache(orgId: string): Promise<void> {
+  await revalidateTags([
+    `copilot:${orgId}`,
+    `contacts:${orgId}`,
+    `dashboard:${orgId}`,
+  ])
+}
+
 /**
  * Dispara revalidação do cache de mensagens via API interna.
  * Separado em módulo compartilhado porque tanto `process-agent-message`
