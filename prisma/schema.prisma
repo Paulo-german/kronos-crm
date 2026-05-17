@@ -209,6 +209,7 @@ model Contact {
   lastCaptureAt       DateTime?       @map("last_capture_at")
   healthScore         Float?          @map("health_score")
   scoredAt            DateTime?       @map("scored_at")
+  lastInteractionAt   DateTime?       @map("last_interaction_at")
   qualifiedAt         DateTime?       @map("qualified_at")
   becameOpportunityAt DateTime?       @map("became_opportunity_at")
   becameCustomerAt    DateTime?       @map("became_customer_at")
@@ -233,6 +234,7 @@ model Contact {
   @@index([organizationId, customerStatus])
   @@index([organizationId, healthScore(sort: Desc)])
   @@index([organizationId, lastCaptureAt(sort: Desc)])
+  @@index([organizationId, lastInteractionAt(sort: Desc)])
   @@map("contacts")
 }
 
