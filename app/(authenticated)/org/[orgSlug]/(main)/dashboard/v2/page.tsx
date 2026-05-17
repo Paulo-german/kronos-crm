@@ -1,18 +1,40 @@
-import { Card, CardContent } from '@/_components/ui/card'
-import { Construction } from 'lucide-react'
+import { Suspense } from 'react'
+import { subDays, startOfDay, endOfDay } from 'date-fns'
+import { getOrgContext } from '@/_data-access/organization/get-organization-context'
+import { parseDateRange } from '@/_utils/date-range'
+import { DASHBOARD_V2_DEFAULT_DAYS } from '@/_lib/lifecycle/dashboard-v2-constants'
+import { DateRangePicker } from '../_shared/date-range-picker'
+import { LifecycleFunnelSection } from './_components/lifecycle-funnel-section'
+import { LifecycleFunnelSkeleton } from './_components/skeletons'
 
-export default function DashboardV2Page() {
+interface DashboardV2PageProps {
+  params: Promise<{ orgSlug: string }>
+  searchParams: Promise<{ start?: string; end?: string }>
+}
+
+export default async function DashboardV2Page({ params, searchParams }: DashboardV2PageProps) {
+  const { orgSlug } = await params
+  const { start, end } = await searchParams
+  const ctx = await getOrgContext(orgSlug)
+
+  // parseDateRange não suporta defaultDays: quando ausentes, usa o mês corrente.
+  // Para o v2 o default é os últimos 30 dias — calculamos manualmente quando
+  // start/end estão ausentes.
+  const dateRange = start ?? end
+    ? parseDateRange(start, end)
+    : {
+        start: startOfDay(subDays(new Date(), DASHBOARD_V2_DEFAULT_DAYS - 1)),
+        end: endOfDay(new Date()),
+      }
+
   return (
-    <div className="flex h-full items-center justify-center">
-      <Card className="w-full max-w-sm">
-        <CardContent className="flex flex-col items-center gap-3 pt-6 text-center">
-          <Construction className="h-8 w-8 text-muted-foreground" />
-          <p className="font-medium">Novo dashboard em construção</p>
-          <p className="text-sm text-muted-foreground">
-            Em breve aqui estará a visão da jornada dos seus clientes.
-          </p>
-        </CardContent>
-      </Card>
+    <div className="flex h-full flex-col gap-6">
+      <div className="flex items-center justify-end">
+        <DateRangePicker />
+      </div>
+      <Suspense fallback={<LifecycleFunnelSkeleton />}>
+        <LifecycleFunnelSection ctx={ctx} dateRange={dateRange} />
+      </Suspense>
     </div>
   )
 }
