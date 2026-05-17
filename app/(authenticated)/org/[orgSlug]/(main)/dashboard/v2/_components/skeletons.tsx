@@ -13,6 +13,19 @@ export function LifecycleFunnelSkeleton() {
   )
 }
 
+export function GoalsSectionSkeleton() {
+  return (
+    <div>
+      <Skeleton className="mb-4 h-5 w-36" />
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <Skeleton className="h-40 rounded-xl" />
+        <Skeleton className="h-40 rounded-xl" />
+        <Skeleton className="h-40 rounded-xl" />
+      </div>
+    </div>
+  )
+}
+
 export function AttentionSectionSkeleton() {
   return (
     <div>

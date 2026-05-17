@@ -6,7 +6,12 @@ import { DASHBOARD_V2_DEFAULT_DAYS } from '@/_lib/lifecycle/dashboard-v2-constan
 import { DateRangePicker } from '../_shared/date-range-picker'
 import { LifecycleFunnelSection } from './_components/lifecycle-funnel-section'
 import { AttentionSection } from './_components/attention-section'
-import { LifecycleFunnelSkeleton, AttentionSectionSkeleton } from './_components/skeletons'
+import { GoalsSection } from './_components/goals-section'
+import {
+  LifecycleFunnelSkeleton,
+  AttentionSectionSkeleton,
+  GoalsSectionSkeleton,
+} from './_components/skeletons'
 
 interface DashboardV2PageProps {
   params: Promise<{ orgSlug: string }>
@@ -41,6 +46,9 @@ export default async function DashboardV2Page({ params, searchParams }: Dashboar
       </Suspense>
       <Suspense fallback={<AttentionSectionSkeleton />}>
         <AttentionSection ctx={ctx} orgSlug={orgSlug} />
+      </Suspense>
+      <Suspense fallback={<GoalsSectionSkeleton />}>
+        <GoalsSection ctx={ctx} orgSlug={orgSlug} />
       </Suspense>
     </div>
   )
