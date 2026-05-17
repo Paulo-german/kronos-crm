@@ -5,7 +5,8 @@ import { parseDateRange } from '@/_utils/date-range'
 import { DASHBOARD_V2_DEFAULT_DAYS } from '@/_lib/lifecycle/dashboard-v2-constants'
 import { DateRangePicker } from '../_shared/date-range-picker'
 import { LifecycleFunnelSection } from './_components/lifecycle-funnel-section'
-import { LifecycleFunnelSkeleton } from './_components/skeletons'
+import { AttentionSection } from './_components/attention-section'
+import { LifecycleFunnelSkeleton, AttentionSectionSkeleton } from './_components/skeletons'
 
 interface DashboardV2PageProps {
   params: Promise<{ orgSlug: string }>
@@ -30,10 +31,16 @@ export default async function DashboardV2Page({ params, searchParams }: Dashboar
   return (
     <div className="flex h-full flex-col gap-6">
       <div className="flex items-center justify-end">
-        <DateRangePicker />
+        <DateRangePicker defaultLabel="Últimos 30 dias" />
       </div>
-      <Suspense fallback={<LifecycleFunnelSkeleton />}>
+      <Suspense
+        key={`${dateRange.start.toISOString()}-${dateRange.end.toISOString()}`}
+        fallback={<LifecycleFunnelSkeleton />}
+      >
         <LifecycleFunnelSection ctx={ctx} dateRange={dateRange} />
+      </Suspense>
+      <Suspense fallback={<AttentionSectionSkeleton />}>
+        <AttentionSection ctx={ctx} orgSlug={orgSlug} />
       </Suspense>
     </div>
   )
