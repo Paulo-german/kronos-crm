@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
-import { PipelineFunnel } from '@/(authenticated)/org/[orgSlug]/(main)/dashboard/_components/pipeline-funnel'
+import { PipelineFunnel } from '@/(authenticated)/org/[orgSlug]/(main)/dashboard/v1/_components/pipeline-funnel'
 import type { FunnelData } from '@/_data-access/dashboard/types'
 
 interface PipelineFunnelCardProps {

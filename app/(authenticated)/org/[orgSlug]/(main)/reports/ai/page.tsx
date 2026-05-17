@@ -3,8 +3,8 @@ import { getOrgContext } from '@/_data-access/organization/get-organization-cont
 import { parseDateRange } from '@/_utils/date-range'
 import { findReportSection } from '../_config/report-sections'
 import { ReportsSectionHeader } from '../_components/reports-section-header'
-import { AiDashboardSection } from '@/(authenticated)/org/[orgSlug]/(main)/dashboard/_components/ai-dashboard-section'
-import { AiDashboardSkeleton } from '@/(authenticated)/org/[orgSlug]/(main)/dashboard/_components/skeletons'
+import { AiDashboardSection } from '@/(authenticated)/org/[orgSlug]/(main)/dashboard/v1/_components/ai-dashboard-section'
+import { AiDashboardSkeleton } from '@/(authenticated)/org/[orgSlug]/(main)/dashboard/v1/_components/skeletons'
 
 interface AiReportPageProps {
   params: Promise<{ orgSlug: string }>

@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
-import { RevenueAreaChart } from '@/(authenticated)/org/[orgSlug]/(main)/dashboard/_components/revenue-area-chart'
+import { RevenueAreaChart } from '@/(authenticated)/org/[orgSlug]/(main)/dashboard/v1/_components/revenue-area-chart'
 import type { RevenueByMonth } from '@/_data-access/dashboard/types'
 
 interface OverviewRevenueChartProps {

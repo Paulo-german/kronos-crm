@@ -1,7 +1,7 @@
 'use client'
 
 import { parseAsString, useQueryStates } from 'nuqs'
-import { DateRangePicker } from '@/(authenticated)/org/[orgSlug]/(main)/dashboard/_components/date-range-picker'
+import { DateRangePicker } from '@/(authenticated)/org/[orgSlug]/(main)/dashboard/_shared/date-range-picker'
 import { AssigneeFilter } from './assignee-filter'
 import type { MemberOption } from './assignee-filter'
 
