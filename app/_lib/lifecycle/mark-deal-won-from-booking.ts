@@ -7,6 +7,13 @@ import { evaluateAutomations } from '@/_lib/automations/evaluate-automations'
 import { advanceContactLifecycle } from './advance-contact-lifecycle'
 import { ensureDealHasPrimaryCaptureEvent } from './ensure-deal-capture-event'
 import { reactivateCustomerIfDormant } from './reactivate-customer-if-dormant'
+import {
+  collectSignalsForContact,
+  toContactSignals,
+} from '../../../trigger/lib/collect-health-signals'
+import { computeHealthScore } from '../../../trigger/lib/compute-health-score'
+import { persistOne } from '../../../trigger/lib/persist-health-score'
+import { revalidateCopilotCache } from '@/_lib/revalidate-copilot-cache'
 
 interface MarkDealWonFromBookingParams {
   dealId: string
@@ -58,14 +65,20 @@ export async function markDealWonFromBooking(params: MarkDealWonFromBookingParam
   )
 
   after(async () => {
-    const primaryContact = await db.dealContact.findFirst({
-      where: { dealId, isPrimary: true },
-      select: { contactId: true },
-    })
-
-    if (!primaryContact) return
-
     try {
+      const primaryContact = await db.dealContact.findFirst({
+        where: { dealId, isPrimary: true },
+        select: { contactId: true },
+      })
+
+      if (!primaryContact) return
+
+      // lastInteractionAt antes do advanceContactLifecycle para que o sinal de recência
+      // já esteja fresco quando o score for calculado ao final deste bloco.
+      await db.contact.update({
+        where: { id: primaryContact.contactId },
+        data: { lastInteractionAt: new Date() },
+      })
       await ensureDealHasPrimaryCaptureEvent({ dealId, organizationId: orgId })
       await advanceContactLifecycle({
         contactId: primaryContact.contactId,
@@ -74,6 +87,7 @@ export async function markDealWonFromBooking(params: MarkDealWonFromBookingParam
         causeType: LifecycleCauseType.DEAL_WON,
         causeRefId: dealId,
         changedByUserId: causeUserId,
+        skipScoreUpdate: true,
       })
       await reactivateCustomerIfDormant({
         contactId: primaryContact.contactId,
@@ -81,6 +95,19 @@ export async function markDealWonFromBooking(params: MarkDealWonFromBookingParam
         causeRefId: dealId,
         changedByUserId: causeUserId,
       })
+
+      // lifecycleStage vem de signals (já lido pelo SQL), sem query extra.
+      const signals = await collectSignalsForContact(primaryContact.contactId, orgId)
+      if (signals) {
+        const result = computeHealthScore({
+          contactId: primaryContact.contactId,
+          organizationId: orgId,
+          stage: signals.lifecycleStage,
+          signals: toContactSignals(signals),
+        })
+        await persistOne(result)
+        revalidateCopilotCache(orgId)
+      }
     } catch (error) {
       console.warn('[markDealWonFromBooking] Falha no cascade de lifecycle:', {
         dealId,

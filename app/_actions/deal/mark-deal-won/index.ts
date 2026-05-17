@@ -15,6 +15,13 @@ import { evaluateAutomations } from '@/_lib/automations/evaluate-automations'
 import { advanceContactLifecycle } from '@/_lib/lifecycle/advance-contact-lifecycle'
 import { ensureDealHasPrimaryCaptureEvent } from '@/_lib/lifecycle/ensure-deal-capture-event'
 import { reactivateCustomerIfDormant } from '@/_lib/lifecycle/reactivate-customer-if-dormant'
+import {
+  collectSignalsForContact,
+  toContactSignals,
+} from '../../../../trigger/lib/collect-health-signals'
+import { computeHealthScore } from '../../../../trigger/lib/compute-health-score'
+import { persistOne } from '../../../../trigger/lib/persist-health-score'
+import { revalidateCopilotCache } from '@/_lib/revalidate-copilot-cache'
 
 export const markDealWon = orgActionClient
   .schema(markDealWonSchema)
@@ -60,38 +67,47 @@ export const markDealWon = orgActionClient
     }))
 
     after(async () => {
-      const org = await db.organization.findUnique({
-        where: { id: ctx.orgId },
-        select: { facilitatorDealWonToCustomer: true },
-      })
+      try {
+        const org = await db.organization.findUnique({
+          where: { id: ctx.orgId },
+          select: { facilitatorDealWonToCustomer: true },
+        })
 
-      if (!org?.facilitatorDealWonToCustomer) return
+        if (!org?.facilitatorDealWonToCustomer) return
 
-      const primaryContact = await db.dealContact.findFirst({
-        where: { dealId: data.dealId, isPrimary: true },
-        select: { contactId: true },
-      })
+        const primaryContact = await db.dealContact.findFirst({
+          where: { dealId: data.dealId, isPrimary: true },
+          select: { contactId: true },
+        })
 
-      if (!primaryContact) return
+        if (!primaryContact) return
 
-      await ensureDealHasPrimaryCaptureEvent({ dealId: data.dealId, organizationId: ctx.orgId })
-      await advanceContactLifecycle({
-        contactId: primaryContact.contactId,
-        organizationId: ctx.orgId,
-        toStage: LifecycleStage.CUSTOMER,
-        causeType: LifecycleCauseType.DEAL_WON,
-        causeRefId: data.dealId,
-      })
+        await ensureDealHasPrimaryCaptureEvent({ dealId: data.dealId, organizationId: ctx.orgId })
+        await advanceContactLifecycle({
+          contactId: primaryContact.contactId,
+          organizationId: ctx.orgId,
+          toStage: LifecycleStage.CUSTOMER,
+          causeType: LifecycleCauseType.DEAL_WON,
+          causeRefId: data.dealId,
+          skipScoreUpdate: true,
+        })
+      } catch (error) {
+        console.warn('[markDealWon] Falha no avanço de lifecycle:', {
+          dealId: data.dealId,
+          orgId: ctx.orgId,
+          error: error instanceof Error ? error.message : String(error),
+        })
+      }
     })
 
     after(async () => {
-      const primaryContact = await db.dealContact.findFirst({
-        where: { dealId: data.dealId, isPrimary: true },
-        select: { contactId: true },
-      })
-      if (!primaryContact) return
-
       try {
+        const primaryContact = await db.dealContact.findFirst({
+          where: { dealId: data.dealId, isPrimary: true },
+          select: { contactId: true },
+        })
+        if (!primaryContact) return
+
         await reactivateCustomerIfDormant({
           contactId: primaryContact.contactId,
           organizationId: ctx.orgId,
@@ -100,6 +116,42 @@ export const markDealWon = orgActionClient
         })
       } catch (error) {
         console.warn('[markDealWon] Falha na re-ativação de lifecycle:', {
+          dealId: data.dealId,
+          orgId: ctx.orgId,
+          error: error instanceof Error ? error.message : String(error),
+        })
+      }
+    })
+
+    // lastInteractionAt + health score num único after() — lastInteractionAt primeiro para que
+    // o sinal de recência já esteja fresco quando collectSignalsForContact rodar.
+    // lifecycleStage vem de signals (já lido pelo SQL), sem JOIN extra.
+    after(async () => {
+      try {
+        const primaryContact = await db.dealContact.findFirst({
+          where: { dealId: data.dealId, isPrimary: true },
+          select: { contactId: true },
+        })
+        if (!primaryContact) return
+
+        await db.contact.update({
+          where: { id: primaryContact.contactId },
+          data: { lastInteractionAt: new Date() },
+        })
+
+        const signals = await collectSignalsForContact(primaryContact.contactId, ctx.orgId)
+        if (!signals) return
+
+        const result = computeHealthScore({
+          contactId: primaryContact.contactId,
+          organizationId: ctx.orgId,
+          stage: signals.lifecycleStage,
+          signals: toContactSignals(signals),
+        })
+        await persistOne(result)
+        revalidateCopilotCache(ctx.orgId)
+      } catch (error) {
+        console.warn('[markDealWon] Falha no recálculo de health score:', {
           dealId: data.dealId,
           orgId: ctx.orgId,
           error: error instanceof Error ? error.message : String(error),

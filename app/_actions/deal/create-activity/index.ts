@@ -42,5 +42,25 @@ export const createActivity = orgActionClient
       payload: { activityType: data.type },
     }))
 
+    after(async () => {
+      try {
+        const primaryContact = await db.dealContact.findFirst({
+          where: { dealId: data.dealId, isPrimary: true },
+          select: { contactId: true },
+        })
+        if (!primaryContact) return
+
+        await db.contact.update({
+          where: { id: primaryContact.contactId },
+          data: { lastInteractionAt: new Date() },
+        })
+      } catch (error) {
+        console.warn('[createActivity] Falha ao atualizar lastInteractionAt:', {
+          dealId: data.dealId,
+          error: error instanceof Error ? error.message : String(error),
+        })
+      }
+    })
+
     return { success: true }
   })

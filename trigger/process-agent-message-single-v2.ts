@@ -771,6 +771,23 @@ export async function runSingleV2(
     },
   })
 
+  // Health score: mensagem inbound do contato é um sinal de recência forte.
+  // Atualização não-fatal — falha não derruba o fluxo do agente.
+  if (conversation.contactId) {
+    try {
+      await db.contact.update({
+        where: { id: conversation.contactId },
+        data: { lastInteractionAt: new Date() },
+      })
+    } catch (error) {
+      logger.warn('Failed to update contact.lastInteractionAt', {
+        conversationId: ctx.conversationId,
+        contactId: conversation.contactId,
+        error: error instanceof Error ? error.message : String(error),
+      })
+    }
+  }
+
   // Emite thinking após carregar contexto — UI mostra que o agente está processando
   await emitAgentStatus({
     conversationId: ctx.conversationId,
