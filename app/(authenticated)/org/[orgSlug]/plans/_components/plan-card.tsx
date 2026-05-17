@@ -149,6 +149,7 @@ export function PlanCard({
                     variant="outline"
                     className={cn(
                       'shrink-0 px-1.5 py-0 text-[10px] font-normal',
+                      feature.badge === 'Novo' && 'border-primary/60 bg-primary/10 text-primary',
                       feature.badge === 'Beta' && 'border-yellow-400/60 bg-yellow-400/10 text-yellow-600 dark:text-yellow-400',
                       feature.badge === 'Em breve' && 'border-blue-400/60 bg-blue-400/10 text-blue-600 dark:text-blue-400',
                     )}
