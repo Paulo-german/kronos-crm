@@ -151,6 +151,7 @@ function getEntityLabel(entity: RBACEntity): string {
     workingHours: 'jornada de trabalho',
     // Catálogo
     promotion: 'promoções',
+    goal: 'metas',
   }
   return labels[entity]
 }

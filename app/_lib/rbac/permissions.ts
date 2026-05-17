@@ -168,6 +168,14 @@ const PERMISSION_MATRIX: Record<RBACEntity, Record<RBACAction, MemberRole[]>> = 
     delete: ['OWNER', 'ADMIN'],
     transfer: [],
   },
+  // Metas (Goals): leitura ampla (MEMBER vê metas próprias + ORG/PIPELINE — RBAC adicional nas queries)
+  goal: {
+    create: ['OWNER', 'ADMIN'],
+    read: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'],
+    update: ['OWNER', 'ADMIN'],
+    delete: ['OWNER', 'ADMIN'],
+    transfer: [],
+  },
 }
 
 /**

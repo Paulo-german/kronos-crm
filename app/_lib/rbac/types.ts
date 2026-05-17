@@ -38,6 +38,7 @@ export type RBACEntity =
   | 'workingHours'
   // Catálogo
   | 'promotion'
+  | 'goal'
 
 /**
  * Ações possíveis em cada entidade
