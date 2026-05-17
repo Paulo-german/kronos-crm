@@ -1,10 +1,10 @@
 import { Suspense } from 'react'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
-import { getKpiMetrics } from '@/_data-access/dashboard/get-kpi-metrics'
-import { getRevenueOverTime } from '@/_data-access/dashboard/get-revenue-over-time'
+import { getKpiMetricsForReports } from '@/_data-access/reports/overview/get-kpi-metrics-for-reports'
+import { getRevenueOverTimeForReports } from '@/_data-access/reports/overview/get-revenue-over-time-for-reports'
 import { getChannelAttribution } from '@/_data-access/reports/overview/get-channel-attribution'
-import { parseDateRange, getPreviousPeriod } from '@/_utils/date-range'
-import type { DashboardFilters } from '@/_data-access/dashboard/types'
+import { parseDateRange } from '@/_utils/date-range'
+import type { ReportsFilters } from '@/_data-access/reports/shared/reports-types'
 import { Skeleton } from '@/_components/ui/skeleton'
 import { findReportSection } from '../_config/report-sections'
 import { ReportsSectionHeader } from '../_components/reports-section-header'
@@ -29,17 +29,15 @@ export default async function OverviewPage({ params, searchParams }: OverviewPag
 
   const ctx = await getOrgContext(orgSlug)
   const dateRange = parseDateRange(start, end)
-  const prevRange = getPreviousPeriod(dateRange)
-
   const attributionModel = (attribution === 'last' || attribution === 'per_deal') ? attribution : 'first'
 
-  const filters: DashboardFilters = {
+  const filters: ReportsFilters = {
     assignee: assignee ?? undefined,
   }
 
   const [kpi, revenueData, channelAttribution] = await Promise.all([
-    getKpiMetrics(ctx, dateRange, prevRange, filters),
-    getRevenueOverTime(ctx, dateRange, filters),
+    getKpiMetricsForReports(ctx, dateRange, filters),
+    getRevenueOverTimeForReports(ctx, dateRange, filters),
     getChannelAttribution(ctx, dateRange, { model: attributionModel, includeManual: false }),
   ])
 
