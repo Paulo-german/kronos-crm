@@ -12,6 +12,7 @@ import {
   requirePermission,
 } from '@/_lib/rbac'
 import { evaluateAutomations } from '@/_lib/automations/evaluate-automations'
+import { downgradeContactIfDealReopened } from '@/_lib/lifecycle/downgrade-contact-if-deal-reopened'
 
 export const reopenDeal = orgActionClient
   .schema(reopenDealSchema)
@@ -55,6 +56,31 @@ export const reopenDeal = orgActionClient
       dealId: data.dealId,
       payload: { status: 'OPEN' },
     }))
+
+    // Causal rollback: se este deal causou a promoção do contato a CUSTOMER,
+    // desfaz a promoção (a menos que haja outro DEAL_WON mais recente que sustente).
+    after(async () => {
+      try {
+        const primaryContact = await db.dealContact.findFirst({
+          where: { dealId: data.dealId, isPrimary: true },
+          select: { contactId: true },
+        })
+        if (!primaryContact) return
+
+        await downgradeContactIfDealReopened({
+          dealId: data.dealId,
+          contactId: primaryContact.contactId,
+          organizationId: ctx.orgId,
+          changedByUserId: ctx.userId,
+        })
+      } catch (error) {
+        console.warn('[reopenDeal] Falha no downgrade de lifecycle:', {
+          dealId: data.dealId,
+          orgId: ctx.orgId,
+          error: error instanceof Error ? error.message : String(error),
+        })
+      }
+    })
 
     return { success: true }
   })
