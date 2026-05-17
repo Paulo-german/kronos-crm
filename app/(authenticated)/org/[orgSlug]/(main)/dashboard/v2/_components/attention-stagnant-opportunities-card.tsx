@@ -2,7 +2,10 @@ import Link from 'next/link'
 import { Clock } from 'lucide-react'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/_components/ui/card'
 import { Badge } from '@/_components/ui/badge'
-import { ATTENTION_CARD_LIMIT } from '@/_lib/lifecycle/dashboard-v2-constants'
+import {
+  ATTENTION_CARD_LIMIT,
+  STAGNANT_OPPORTUNITY_DAYS,
+} from '@/_lib/lifecycle/dashboard-v2-constants'
 import type { AttentionListDto } from '@/_data-access/dashboard-v2/shared/attention-types'
 import { AttentionContactRow } from './attention-contact-row'
 
@@ -35,7 +38,7 @@ export function AttentionStagnantOpportunitiesCard({
           <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
             <Clock className="size-8 text-muted-foreground/50" />
             <p className="text-sm text-muted-foreground">Nenhuma oportunidade parada</p>
-            <p className="text-xs text-muted-foreground">há mais de 14 dias</p>
+            <p className="text-xs text-muted-foreground">há mais de {STAGNANT_OPPORTUNITY_DAYS} dias</p>
           </div>
         ) : (
           <div className="space-y-0.5">

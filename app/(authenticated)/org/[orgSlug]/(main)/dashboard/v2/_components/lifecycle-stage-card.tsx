@@ -65,7 +65,7 @@ function StageSubInfo({ metrics }: { metrics: LifecycleStageMetrics }) {
           : 'text-sm text-muted-foreground'
       }
     >
-      {atRisk} {atRisk === 1 ? 'em risco' : 'em risco'}
+      {atRisk} {atRisk === 1 ? 'cliente em risco' : 'clientes em risco'}
     </p>
   )
 }

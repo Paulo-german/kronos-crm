@@ -2,6 +2,7 @@ import 'server-only'
 
 import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
+import { subDays } from 'date-fns'
 import { DealStatus, LifecycleStage, type Prisma } from '@prisma/client'
 import { db } from '@/_lib/prisma'
 import { isElevated, type RBACContext } from '@/_lib/rbac'
@@ -42,8 +43,7 @@ async function fetchStagnantOpportunities(
   elevated: boolean,
 ): Promise<AttentionListDto> {
   const now = new Date()
-  const stagnantThreshold = new Date()
-  stagnantThreshold.setDate(stagnantThreshold.getDate() - STAGNANT_OPPORTUNITY_DAYS)
+  const stagnantThreshold = subDays(now, STAGNANT_OPPORTUNITY_DAYS)
 
   const contactWhere = buildContactWhereForDashboardV2(orgId, userId, elevated, {
     lifecycleStage: LifecycleStage.OPPORTUNITY,
@@ -55,8 +55,9 @@ async function fetchStagnantOpportunities(
     updatedAt: { lt: stagnantThreshold },
   }
 
-  // O Prisma não permite ORDER BY em relação aninhada — buscamos um conjunto maior
-  // que o limite e ordenamos em memória pelo `updatedAt` do deal mais antigo de cada contato.
+  // O Prisma suporta `orderBy` em relações aninhadas: `deals[0]` já é o deal mais antigo
+  // para cada contato. O sort app-layer ordena os contatos pelo seu deal mais antigo (o Prisma
+  // não permite ordenar `contact.findMany` pelo campo de uma relação aninhada).
   const contactsWhere: Prisma.ContactWhereInput = {
     ...contactWhere,
     deals: { some: { deal: stagnantDealWhere } },

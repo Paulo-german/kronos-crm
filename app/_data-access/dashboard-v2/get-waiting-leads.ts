@@ -2,6 +2,7 @@ import 'server-only'
 
 import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
+import { subDays } from 'date-fns'
 import { CaptureChannel, LifecycleStage, type Prisma } from '@prisma/client'
 import { db } from '@/_lib/prisma'
 import { isElevated, type RBACContext } from '@/_lib/rbac'
@@ -42,8 +43,7 @@ async function fetchWaitingLeads(
   elevated: boolean,
 ): Promise<AttentionListDto> {
   const now = new Date()
-  const leadWaitingThreshold = new Date()
-  leadWaitingThreshold.setDate(leadWaitingThreshold.getDate() - LEAD_WAITING_DAYS)
+  const leadWaitingThreshold = subDays(now, LEAD_WAITING_DAYS)
 
   const contactWhere = buildContactWhereForDashboardV2(orgId, userId, elevated, {
     lifecycleStage: LifecycleStage.LEAD,

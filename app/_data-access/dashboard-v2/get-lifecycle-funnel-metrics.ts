@@ -71,7 +71,7 @@ export interface LifecycleFunnelMetricsDto {
 }
 
 // Shape do resultado do groupBy({ by: ['toStage'], _count: { _all: true } })
-type StageFlowGroup = {
+interface StageFlowGroup {
   toStage: LifecycleStage
   _count: { _all: number }
 }

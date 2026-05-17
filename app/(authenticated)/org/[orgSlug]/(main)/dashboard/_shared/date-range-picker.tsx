@@ -23,7 +23,11 @@ const dateRangeParsers = {
   end: parseAsString.withOptions({ shallow: false }),
 }
 
-export function DateRangePicker() {
+interface DateRangePickerProps {
+  defaultLabel?: string
+}
+
+export function DateRangePicker({ defaultLabel = 'Este mês' }: DateRangePickerProps) {
   const [range, setRange] = useQueryStates(dateRangeParsers)
   const presets = getDateRangePresets()
 
@@ -63,7 +67,7 @@ export function DateRangePicker() {
   }
 
   const buttonLabel = (() => {
-    if (!selected?.from) return 'Este mês'
+    if (!selected?.from) return defaultLabel
     const fromLabel = format(selected.from, 'dd MMM', { locale: ptBR })
     if (!selected.to || selected.from.getTime() === selected.to.getTime()) {
       return fromLabel

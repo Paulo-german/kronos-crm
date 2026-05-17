@@ -2,6 +2,7 @@ import 'server-only'
 
 import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
+import { subDays } from 'date-fns'
 import { CustomerStatus, LifecycleStage, type Prisma } from '@prisma/client'
 import { db } from '@/_lib/prisma'
 import { isElevated, type RBACContext } from '@/_lib/rbac'
@@ -28,14 +29,16 @@ async function fetchAtRiskCustomers(
   userId: string,
   elevated: boolean,
 ): Promise<AttentionListDto> {
-  const scoreStaleThreshold = new Date()
-  scoreStaleThreshold.setDate(scoreStaleThreshold.getDate() - SCORE_STALE_DAYS)
+  const now = new Date()
+  const scoreStaleThreshold = subDays(now, SCORE_STALE_DAYS)
 
   const contactWhere = buildContactWhereForDashboardV2(orgId, userId, elevated, {
     lifecycleStage: LifecycleStage.CUSTOMER,
   })
 
-  // Critério de risco: healthScore baixo OU customerStatus DORMANT
+  // Critério de risco: healthScore baixo OU customerStatus DORMANT.
+  // Usa AND para compor com contactWhere — evita sobrescrever campos com mesmo nome
+  // caso buildContactWhereForDashboardV2 venha a incluir OR no futuro.
   const riskWhere: Prisma.ContactWhereInput = {
     OR: [
       { healthScore: { lt: HEALTH_SCORE_RISK_THRESHOLD } },
@@ -43,7 +46,7 @@ async function fetchAtRiskCustomers(
     ],
   }
 
-  const finalWhere: Prisma.ContactWhereInput = { ...contactWhere, ...riskWhere }
+  const finalWhere: Prisma.ContactWhereInput = { AND: [contactWhere, riskWhere] }
 
   const [rawContacts, totalCount] = await Promise.all([
     db.contact.findMany({
@@ -65,13 +68,12 @@ async function fetchAtRiskCustomers(
     const isScoreStale =
       contact.scoredAt !== null && contact.scoredAt < scoreStaleThreshold
 
-    // Resolução do label principal: score numérico tem precedência sobre status DORMANT
-    let primaryMetric = 'Score —'
-    if (contact.healthScore !== null) {
-      primaryMetric = `Score ${Math.round(contact.healthScore)}`
-    } else if (contact.customerStatus === CustomerStatus.DORMANT) {
-      primaryMetric = 'Dormente'
-    }
+    // Score numérico tem precedência sobre status DORMANT no label principal
+    const primaryMetric = (() => {
+      if (contact.healthScore !== null) return `Score ${Math.round(contact.healthScore)}`
+      if (contact.customerStatus === CustomerStatus.DORMANT) return 'Dormente'
+      return 'Score —'
+    })()
 
     return {
       contactId: contact.id,
