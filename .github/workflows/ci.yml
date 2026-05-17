@@ -35,3 +35,6 @@ jobs:
 
       - name: Parity test (prompt compilers)
         run: pnpm tsx trigger/lib/__tests__/single-prompt-parity.test.ts
+
+      - name: Unit test (health score)
+        run: pnpm tsx trigger/lib/__tests__/compute-health-score.test.ts
