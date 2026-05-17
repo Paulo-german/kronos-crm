@@ -14,6 +14,7 @@ import {
   Shield,
   GraduationCap,
   Compass,
+  BarChart3,
 } from 'lucide-react'
 import { SidebarItem } from '@/_components/layout/sidebar-item'
 import { SignOutButton } from '@/_components/auth/sign-out-button'
@@ -96,6 +97,11 @@ export const SidebarContent = ({
               label="Dashboard"
               icon={<LayoutDashboard className="h-4 w-4" />}
               dataTour="dashboard"
+            />
+            <SidebarItem
+              href={buildHref('/reports')}
+              label="Relatórios"
+              icon={<BarChart3 className="h-4 w-4" />}
             />
             <SidebarItem
               href={buildHref('/contacts')}
