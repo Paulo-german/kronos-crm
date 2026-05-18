@@ -12,6 +12,7 @@ interface AppSidebarProps {
   activeModules?: ModuleSlug[]
   organizations?: { id: string; name: string; slug: string; role: MemberRole }[]
   isSuperAdmin?: boolean
+  isElevated?: boolean
   credits?: { available: number; monthlyLimit: number; orgSlug: string }
   planSlug?: string | null
 }
@@ -20,6 +21,7 @@ export const AppSidebar = ({
   activeModules = [],
   organizations = [],
   isSuperAdmin = false,
+  isElevated = false,
   credits,
   planSlug,
 }: AppSidebarProps) => {
@@ -52,6 +54,7 @@ export const AppSidebar = ({
         activeModules={activeModules}
         organizations={organizations}
         isSuperAdmin={isSuperAdmin}
+        isElevated={isElevated}
         credits={credits}
         planSlug={planSlug}
       />

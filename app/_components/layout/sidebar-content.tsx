@@ -14,7 +14,10 @@ import {
   Shield,
   GraduationCap,
   Compass,
-  BarChart3,
+  GitBranch,
+  Package,
+  XCircle,
+  Sparkles,
 } from 'lucide-react'
 import { SidebarItem } from '@/_components/layout/sidebar-item'
 import { SignOutButton } from '@/_components/auth/sign-out-button'
@@ -29,6 +32,7 @@ interface SidebarContentProps {
   activeModules?: ModuleSlug[]
   organizations?: { id: string; name: string; slug: string; role: MemberRole }[]
   isSuperAdmin?: boolean
+  isElevated?: boolean
   credits?: { available: number; monthlyLimit: number; orgSlug: string }
   planSlug?: string | null
   onNavigate?: () => void
@@ -38,6 +42,7 @@ export const SidebarContent = ({
   activeModules = [],
   organizations = [],
   isSuperAdmin = false,
+  isElevated = false,
   credits,
   planSlug,
   onNavigate,
@@ -97,11 +102,6 @@ export const SidebarContent = ({
               label="Dashboard"
               icon={<LayoutDashboard className="h-4 w-4" />}
               dataTour="dashboard"
-            />
-            <SidebarItem
-              href={buildHref('/reports')}
-              label="Relatórios"
-              icon={<BarChart3 className="h-4 w-4" />}
             />
             <SidebarItem
               href={buildHref('/contacts')}
@@ -175,6 +175,51 @@ export const SidebarContent = ({
               />
             </div>
           )}
+
+          {/* Relatórios — sempre visível */}
+          <div className="min-w-0">
+            <div className={sectionTitleClass}>
+              <span className="h-px flex-1 bg-border-strong" />
+              <span className="shrink-0 text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground/40">Relatórios</span>
+            </div>
+            <SidebarItem
+              href={buildHref('/reports/overview')}
+              label="Visão geral"
+              icon={<Compass className="h-4 w-4" />}
+            />
+            <SidebarItem
+              href={buildHref('/reports/pipeline')}
+              label="Pipeline"
+              icon={<GitBranch className="h-4 w-4" />}
+            />
+            {isElevated && (
+              <SidebarItem
+                href={buildHref('/reports/team')}
+                label="Time"
+                icon={<Users className="h-4 w-4" />}
+              />
+            )}
+            <SidebarItem
+              href={buildHref('/reports/products')}
+              label="Produtos"
+              icon={<Package className="h-4 w-4" />}
+            />
+            <SidebarItem
+              href={buildHref('/reports/lost-deals')}
+              label="Perdas"
+              icon={<XCircle className="h-4 w-4" />}
+            />
+            <SidebarItem
+              href={buildHref('/reports/inbox')}
+              label="Inbox"
+              icon={<Inbox className="h-4 w-4" />}
+            />
+            <SidebarItem
+              href={buildHref('/reports/ai')}
+              label="IA"
+              icon={<Sparkles className="h-4 w-4" />}
+            />
+          </div>
         </div>
       </nav>
 

@@ -21,6 +21,7 @@ import {
 import { getUserProfileStatus } from '@/_data-access/user-profile/get-user-profile-status'
 import { WelcomeSurveyModal } from '@/_components/welcome-survey/welcome-survey-modal'
 import { getPlanLimits } from '@/_lib/rbac/plan-limits'
+import { isElevated } from '@/_lib/rbac'
 
 interface MainLayoutProps {
   children: React.ReactNode
@@ -102,6 +103,7 @@ const MainLayout = async ({ children, params }: MainLayoutProps) => {
           activeModules={activeModuleSlugs}
           organizations={userOrganizations}
           isSuperAdmin={user?.isSuperAdmin ?? false}
+          isElevated={isElevated(userRole)}
           credits={{
             available: creditBalance.available,
             monthlyLimit: creditBalance.monthlyLimit,
@@ -119,6 +121,7 @@ const MainLayout = async ({ children, params }: MainLayoutProps) => {
               activeModules: activeModuleSlugs,
               organizations: userOrganizations,
               isSuperAdmin: user?.isSuperAdmin ?? false,
+              isElevated: isElevated(userRole),
               credits: {
                 available: creditBalance.available,
                 monthlyLimit: creditBalance.monthlyLimit,
