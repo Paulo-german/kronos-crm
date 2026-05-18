@@ -21,7 +21,7 @@ interface TopBarWrapperProps {
 
 export const TopBarWrapper = (props: TopBarWrapperProps) => {
   const pathname = usePathname()
-  const isInbox = /\/inbox(\/|$)/.test(pathname)
+  const isInbox = /\/inbox(\/|$)/.test(pathname) && !pathname.includes('/reports/')
 
   if (isInbox) {
     return (
