@@ -2,7 +2,7 @@ import 'server-only'
 
 import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
-import { LifecycleCauseType, type LifecycleStage } from '@prisma/client'
+import type { LifecycleCauseType, LifecycleStage } from '@prisma/client'
 import { db } from '@/_lib/prisma'
 import { isElevated, type RBACContext } from '@/_lib/rbac'
 import { mapCauseTypeToLabel } from '@/_lib/lifecycle/cause-type-labels'
@@ -33,12 +33,11 @@ async function fetchRecentLifecycleMovement(
   dateRange: DateRange,
   limit: number,
 ): Promise<LifecycleMovementItemDto[]> {
-  // Filtra BACKFILL (origem sintética da migração) e aplica RBAC na relação contact
-  // — MEMBER só vê transições de contatos atribuídos a ele.
+  // RBAC na relação contact — MEMBER só vê transições de contatos atribuídos a ele.
+  // Entradas BACKFILL refletem histórico real de negócio reconstruído e permanecem na timeline.
   const records = await db.contactLifecycleHistory.findMany({
     where: {
       organizationId: orgId,
-      causeType: { not: LifecycleCauseType.BACKFILL },
       createdAt: { gte: dateRange.start, lte: dateRange.end },
       ...(elevated ? {} : { contact: { assignedTo: userId } }),
     },

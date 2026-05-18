@@ -43,7 +43,7 @@ const MONTH_LABELS_PT_BR = [
 
 export interface LifecycleStageMetrics {
   stage: LifecycleStage
-  // Fluxo: entradas no estágio durante o DateRange (número principal)
+  // Fluxo: contatos distintos que entraram no estágio durante o DateRange (número principal)
   periodCount: number
   prevPeriodCount: number
   // Estoque: snapshot atual de contatos no estágio (footnote)
@@ -144,10 +144,9 @@ async function fetchLifecycleFunnelMetrics(
   const prevRange = getPreviousPeriod(dateRange)
 
   // RBAC nas queries de ContactLifecycleHistory: MEMBER limita pelo contato atribuído.
-  // `BACKFILL` é filtrado em todas as queries de fluxo (origem sintética de migração).
+  // Entradas BACKFILL refletem histórico real de negócio reconstruído e devem entrar nos contadores.
   const historyWhereBase: Prisma.ContactLifecycleHistoryWhereInput = {
     organizationId: orgId,
-    causeType: { not: LifecycleCauseType.BACKFILL },
     ...(elevated ? {} : { contact: { assignedTo: userId } }),
   }
 
