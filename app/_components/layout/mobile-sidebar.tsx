@@ -19,7 +19,6 @@ interface MobileSidebarProps {
   activeModules?: ModuleSlug[]
   organizations?: { id: string; name: string; slug: string; role: MemberRole }[]
   isSuperAdmin?: boolean
-  isElevated?: boolean
   credits?: { available: number; monthlyLimit: number; orgSlug: string }
   planSlug?: string | null
 }
@@ -28,7 +27,6 @@ export const MobileSidebar = ({
   activeModules,
   organizations,
   isSuperAdmin,
-  isElevated,
   credits,
   planSlug,
 }: MobileSidebarProps) => {
@@ -64,7 +62,6 @@ export const MobileSidebar = ({
                 activeModules={activeModules}
                 organizations={organizations}
                 isSuperAdmin={isSuperAdmin}
-                isElevated={isElevated}
                 credits={credits}
                 planSlug={planSlug}
                 onNavigate={() => setOpen(false)}

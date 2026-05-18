@@ -11,7 +11,6 @@ export interface SidebarProps {
   activeModules?: ModuleSlug[]
   organizations?: { id: string; name: string; slug: string; role: MemberRole }[]
   isSuperAdmin?: boolean
-  isElevated?: boolean
   credits?: { available: number; monthlyLimit: number; orgSlug: string }
   planSlug?: string | null
 }

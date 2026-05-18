@@ -4,6 +4,7 @@ import { isElevated } from '@/_lib/rbac'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
 import { ReportsGlobalFilters } from './_components/reports-global-filters'
 import { ReportsPlanGate } from './_components/reports-plan-gate'
+import { ReportsNavTabs } from './_components/reports-nav-tabs'
 
 interface ReportsLayoutProps {
   params: Promise<{ orgSlug: string }>
@@ -29,8 +30,9 @@ export default async function ReportsLayout({ params, children }: ReportsLayoutP
     })) ?? null
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex min-h-full flex-col gap-6 p-6">
       <ReportsGlobalFilters isElevated={elevated} members={members} />
+      <ReportsNavTabs isElevated={elevated} />
       {children}
     </div>
   )

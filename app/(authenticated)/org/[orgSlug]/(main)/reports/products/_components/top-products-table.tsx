@@ -14,7 +14,6 @@ import type { ProductMixRow } from '@/_data-access/reports/products/get-product-
 
 interface TopProductsTableProps {
   data: ProductMixRow[]
-  title?: string
 }
 
 interface VariationBadgeProps {
