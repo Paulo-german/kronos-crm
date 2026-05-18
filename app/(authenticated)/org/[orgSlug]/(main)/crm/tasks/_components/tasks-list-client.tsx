@@ -7,7 +7,6 @@ import { EmptyTasks } from './empty-tasks'
 import TasksDataTable from './tasks-data-table'
 import { useTaskFilters } from '../_lib/use-task-filters'
 import type { TaskDto } from '@/_data-access/task/get-tasks'
-import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
 import type { MemberRole, TaskType } from '@prisma/client'
 
 // Tipo simplificado para o select de responsável (normalizado na page.tsx)
@@ -18,7 +17,6 @@ export interface MemberOption {
 
 interface TasksListClientProps {
   tasks: TaskDto[]
-  dealOptions: DealOptionDto[]
   members: MemberOption[]
   currentUserId: string
   userRole: MemberRole
@@ -26,7 +24,6 @@ interface TasksListClientProps {
 
 export function TasksListClient({
   tasks,
-  dealOptions,
   members,
   currentUserId,
   userRole,
@@ -99,13 +96,12 @@ export function TasksListClient({
     !searchQuery
 
   if (showEmptyState) {
-    return <EmptyTasks dealOptions={dealOptions} />
+    return <EmptyTasks />
   }
 
   return (
     <div className="flex flex-col gap-4">
       <TasksToolbar
-        dealOptions={dealOptions}
         members={members}
         currentUserId={currentUserId}
         userRole={userRole}
@@ -119,7 +115,7 @@ export function TasksListClient({
         searchQuery={searchQuery}
         onSearchQueryChange={setSearchQuery}
       />
-      <TasksDataTable tasks={filteredTasks} dealOptions={dealOptions} />
+      <TasksDataTable tasks={filteredTasks} />
     </div>
   )
 }

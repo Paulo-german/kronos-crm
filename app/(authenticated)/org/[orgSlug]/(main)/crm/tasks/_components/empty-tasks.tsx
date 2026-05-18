@@ -5,13 +5,8 @@ import { ClipboardCheck, PlusIcon } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import { Sheet, SheetTrigger } from '@/_components/ui/sheet'
 import { UpsertTaskDialogContent } from './upsert-dialog-content'
-import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
 
-interface EmptyTasksProps {
-  dealOptions: DealOptionDto[]
-}
-
-export function EmptyTasks({ dealOptions }: EmptyTasksProps) {
+export function EmptyTasks() {
   const [isOpen, setIsOpen] = useState(false)
 
   return (
@@ -40,10 +35,7 @@ export function EmptyTasks({ dealOptions }: EmptyTasksProps) {
             Nova Tarefa
           </Button>
         </SheetTrigger>
-        <UpsertTaskDialogContent
-          setIsOpen={setIsOpen}
-          dealOptions={dealOptions}
-        />
+        <UpsertTaskDialogContent setIsOpen={setIsOpen} />
       </Sheet>
     </div>
   )

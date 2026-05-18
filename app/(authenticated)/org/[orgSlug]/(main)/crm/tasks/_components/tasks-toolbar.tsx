@@ -13,12 +13,10 @@ import { TaskFiltersSheet } from './task-filters-sheet'
 import { TaskFilterBadges } from './task-filter-badges'
 import CreateTaskButton from './create-task-button'
 import type { TaskFilters } from '../_lib/task-filters'
-import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
 import type { MemberRole } from '@prisma/client'
 import type { MemberOption } from './tasks-list-client'
 
 interface TasksToolbarProps {
-  dealOptions: DealOptionDto[]
   members: MemberOption[]
   currentUserId: string
   userRole: MemberRole
@@ -34,7 +32,6 @@ interface TasksToolbarProps {
 }
 
 export function TasksToolbar({
-  dealOptions,
   members,
   userRole,
   filters,
@@ -97,7 +94,7 @@ export function TasksToolbar({
 
           <div className="flex-1" />
 
-          <CreateTaskButton dealOptions={dealOptions} />
+          <CreateTaskButton />
         </div>
 
         <TaskFilterBadges

@@ -16,16 +16,14 @@ import type {
   DealDetailsDto,
   DealTaskDto,
 } from '@/_data-access/deal/get-deal-details'
-import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
 import type { TaskDto } from '@/_data-access/task/get-tasks'
 import { UpsertTaskDialogContent } from '../../../tasks/_components/upsert-dialog-content'
 
 interface TabTasksProps {
   deal: DealDetailsDto
-  dealOptions: DealOptionDto[]
 }
 
-const TabTasks = ({ deal, dealOptions }: TabTasksProps) => {
+const TabTasks = ({ deal }: TabTasksProps) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<DealTaskDto | null>(null)
   const [deletingTask, setDeletingTask] = useState<DealTaskDto | null>(null)
@@ -143,7 +141,6 @@ const TabTasks = ({ deal, dealOptions }: TabTasksProps) => {
                   createdAt: new Date(),
                 }
           }
-          dealOptions={dealOptions}
           setIsOpen={(open) => {
             setIsDialogOpen(open)
             if (!open) setEditingTask(null)

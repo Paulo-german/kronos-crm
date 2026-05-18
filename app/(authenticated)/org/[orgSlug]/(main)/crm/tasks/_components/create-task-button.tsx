@@ -6,13 +6,7 @@ import { Button } from '@/_components/ui/button'
 import { Sheet, SheetTrigger } from '@/_components/ui/sheet'
 import { UpsertTaskDialogContent } from './upsert-dialog-content'
 
-import { DealOptionDto } from '@/_data-access/deal/get-deals-options'
-
-interface CreateTaskButtonProps {
-  dealOptions: DealOptionDto[]
-}
-
-const CreateTaskButton = ({ dealOptions }: CreateTaskButtonProps) => {
+const CreateTaskButton = () => {
   const [isOpen, setIsOpen] = useState(false)
 
   return (
@@ -23,10 +17,7 @@ const CreateTaskButton = ({ dealOptions }: CreateTaskButtonProps) => {
           Nova Tarefa
         </Button>
       </SheetTrigger>
-      <UpsertTaskDialogContent
-        setIsOpen={setIsOpen}
-        dealOptions={dealOptions}
-      />
+      <UpsertTaskDialogContent setIsOpen={setIsOpen} />
     </Sheet>
   )
 }

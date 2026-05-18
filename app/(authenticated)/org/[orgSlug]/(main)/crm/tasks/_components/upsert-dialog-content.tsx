@@ -19,8 +19,15 @@ import {
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Dispatch, SetStateAction, useMemo, useState } from 'react'
-import { TaskDto } from '@/_data-access/task/get-tasks'
+import {
+  Dispatch,
+  SetStateAction,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react'
+import type { TaskDto } from '@/_data-access/task/get-tasks'
 
 import {
   SheetContent,
@@ -65,21 +72,30 @@ import { Calendar } from '@/_components/ui/calendar'
 import { cn } from '@/_lib/utils'
 
 import { createTask } from '@/_actions/task/create-task'
+import { searchDeals } from '@/_actions/deal/search-deals'
 import {
   createTaskSchema,
   CreateTaskInput,
 } from '@/_actions/task/create-task/schema'
 import type { UpdateTaskInput } from '@/_actions/task/update-task/schema'
-import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
 
 interface UpsertTaskDialogContentProps {
   defaultValues?: TaskDto
-  dealOptions: DealOptionDto[]
   setIsOpen: Dispatch<SetStateAction<boolean>>
   onUpdate?: (data: UpdateTaskInput) => void
   isUpdating?: boolean
   fixedDealId?: string
 }
+
+interface DealSearchResult {
+  id: string
+  title: string
+  contactId: string | null
+  contactName: string | null
+}
+
+const MIN_SEARCH_CHARS = 3
+const SEARCH_DEBOUNCE_MS = 300
 
 const TASK_TYPE_ICONS: Record<string, React.ReactNode> = {
   TASK: <CheckCircle2 className="mr-2 h-4 w-4 text-slate-500" />,
@@ -102,30 +118,55 @@ const TASK_TYPE_LABELS: Record<string, string> = {
 export function UpsertTaskDialogContent({
   defaultValues,
   setIsOpen,
-  dealOptions,
   onUpdate,
   isUpdating: isUpdatingProp = false,
   fixedDealId,
 }: UpsertTaskDialogContentProps) {
   const isEditing = !!defaultValues
 
+  // Estado: busca de negócio (deal) com debounce server-side
   const [openCombobox, setOpenCombobox] = useState(false)
   const [dealSearch, setDealSearch] = useState('')
+  const [dealResults, setDealResults] = useState<DealSearchResult[]>([])
+  // Em modo edição, o título do deal já vem em defaultValues.deal.title — usado como fallback para o trigger
+  const [selectedDealTitle, setSelectedDealTitle] = useState<string | null>(
+    defaultValues?.deal?.title ?? null,
+  )
+  const dealDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const MIN_SEARCH_CHARS = 3
+  const { execute: executeSearch, isPending: isSearching } = useAction(
+    searchDeals,
+    {
+      onSuccess: ({ data }) => {
+        if (data) setDealResults(data)
+      },
+    },
+  )
 
-  const normalize = (str: string) =>
-    str.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+  const handleDealSearchChange = useCallback(
+    (value: string) => {
+      setDealSearch(value)
 
-  const filteredDeals = useMemo(() => {
-    if (dealSearch.length < MIN_SEARCH_CHARS) return []
-    const query = normalize(dealSearch)
-    return dealOptions.filter(
-      (deal) =>
-        normalize(deal.title).includes(query) ||
-        (deal.contactName ? normalize(deal.contactName).includes(query) : false),
-    )
-  }, [dealOptions, dealSearch])
+      if (dealDebounceRef.current) clearTimeout(dealDebounceRef.current)
+
+      if (value.length < MIN_SEARCH_CHARS) {
+        setDealResults([])
+        return
+      }
+
+      dealDebounceRef.current = setTimeout(() => {
+        executeSearch({ query: value })
+      }, SEARCH_DEBOUNCE_MS)
+    },
+    [executeSearch],
+  )
+
+  // Limpar timeout no unmount
+  useEffect(() => {
+    return () => {
+      if (dealDebounceRef.current) clearTimeout(dealDebounceRef.current)
+    }
+  }, [])
 
   const { execute: executeCreate, isPending: isCreating } = useAction(
     createTask,
@@ -245,7 +286,16 @@ export function UpsertTaskDialogContent({
                   <FormLabel className="flex items-center gap-1">
                     Negócio <span className="text-destructive">*</span>
                   </FormLabel>
-                  <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
+                  <Popover
+                    open={openCombobox}
+                    onOpenChange={(open) => {
+                      setOpenCombobox(open)
+                      if (!open) {
+                        setDealSearch('')
+                        setDealResults([])
+                      }
+                    }}
+                  >
                     <PopoverTrigger asChild>
                       <FormControl>
                         <Button
@@ -258,37 +308,42 @@ export function UpsertTaskDialogContent({
                           )}
                         >
                           {field.value
-                            ? dealOptions.find((deal) => deal.id === field.value)
-                                ?.title
+                            ? (selectedDealTitle ?? 'Negócio não encontrado')
                             : 'Selecione um negócio...'}
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[300px] p-0">
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                       <Command shouldFilter={false}>
                         <CommandInput
                           placeholder="Digite pelo menos 3 caracteres..."
                           value={dealSearch}
-                          onValueChange={setDealSearch}
+                          onValueChange={handleDealSearchChange}
                         />
                         <CommandList>
                           {dealSearch.length < MIN_SEARCH_CHARS ? (
                             <div className="py-6 text-center text-sm text-muted-foreground">
                               Digite pelo menos 3 caracteres
                             </div>
-                          ) : filteredDeals.length === 0 ? (
+                          ) : isSearching ? (
+                            <div className="flex items-center justify-center py-6">
+                              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                            </div>
+                          ) : dealResults.length === 0 ? (
                             <CommandEmpty>Nenhum negócio encontrado.</CommandEmpty>
                           ) : (
                             <CommandGroup>
-                              {filteredDeals.map((deal) => (
+                              {dealResults.map((deal) => (
                                 <CommandItem
                                   value={deal.id}
                                   key={deal.id}
                                   onSelect={() => {
                                     form.setValue('dealId', deal.id)
+                                    setSelectedDealTitle(deal.title)
                                     setOpenCombobox(false)
                                     setDealSearch('')
+                                    setDealResults([])
                                   }}
                                 >
                                   <Check

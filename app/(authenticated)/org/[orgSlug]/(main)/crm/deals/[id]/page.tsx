@@ -58,7 +58,7 @@ const DealPage = async ({ params }: DealPageProps) => {
         }
         tasksTabSlot={
           <Suspense fallback={<TabTasksSkeleton />}>
-            <TabTasksServer deal={deal} ctx={ctx} />
+            <TabTasksServer deal={deal} />
           </Suspense>
         }
         appointmentsTabSlot={

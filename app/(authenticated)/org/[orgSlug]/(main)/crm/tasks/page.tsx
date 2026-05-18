@@ -1,6 +1,5 @@
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getTasks } from '@/_data-access/task/get-tasks'
-import { getDealsOptions } from '@/_data-access/deal/get-deals-options'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
 import { TasksListClient } from './_components/tasks-list-client'
 
@@ -12,9 +11,8 @@ const TasksPage = async ({ params }: TasksPageProps) => {
   const { orgSlug } = await params
   const ctx = await getOrgContext(orgSlug)
 
-  const [tasks, dealOptions, members] = await Promise.all([
+  const [tasks, members] = await Promise.all([
     getTasks(ctx),
-    getDealsOptions(ctx),
     getOrganizationMembers(ctx.orgId),
   ])
 
@@ -29,7 +27,6 @@ const TasksPage = async ({ params }: TasksPageProps) => {
   return (
     <TasksListClient
       tasks={tasks}
-      dealOptions={dealOptions}
       members={acceptedMembers}
       currentUserId={ctx.userId}
       userRole={ctx.userRole}

@@ -46,7 +46,6 @@ import { UpsertTaskDialogContent } from './upsert-dialog-content'
 import TaskTableDropdownMenu from './table-dropdown-menu'
 import ConfirmationDialog from '@/_components/confirmation-dialog'
 import type { TaskDto } from '@/_data-access/task/get-tasks'
-import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
 import type { LucideIcon } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
@@ -198,10 +197,9 @@ function groupTasksByDeadline(tasks: TaskDto[]): TaskTimelineSection[] {
 
 interface TasksDataTableProps {
   tasks: TaskDto[]
-  dealOptions: DealOptionDto[]
 }
 
-const TasksDataTable = ({ tasks, dealOptions }: TasksDataTableProps) => {
+const TasksDataTable = ({ tasks }: TasksDataTableProps) => {
   const [, startTransition] = useTransition()
 
   // Estado do Sheet de edição (elevado para sobreviver ao re-render)
@@ -312,7 +310,6 @@ const TasksDataTable = ({ tasks, dealOptions }: TasksDataTableProps) => {
           <UpsertTaskDialogContent
             key={editingTask.id}
             defaultValues={editingTask}
-            dealOptions={dealOptions}
             setIsOpen={setIsEditSheetOpen}
             onUpdate={(data) => executeUpdate(data)}
             isUpdating={isUpdating}
