@@ -44,11 +44,17 @@ import {
 import type { ContactDetailDto } from '@/_data-access/contact/get-contact-by-id'
 import type { CompanyDto } from '@/_data-access/company/get-companies'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
+import type { LifecycleHistoryItemDto } from '@/_data-access/lifecycle/types'
 import { InlineTextField } from '@/_components/form-controls/inline-text-field'
 import { InlineSelectField } from '@/_components/form-controls/inline-select-field'
 import { useContactFieldUpdate } from '../_hooks/use-contact-field-update'
 import { formatPhone } from '@/_utils/format-phone'
 import { transferContact } from '@/_actions/contact/transfer-contact'
+import { LIFECYCLE_STAGE_CONFIG } from '@/_lib/lifecycle/lifecycle-stage-config'
+import { CUSTOMER_STATUS_CONFIG } from '@/_lib/lifecycle/customer-status-config'
+import { LifecycleStatusCard } from './lifecycle-status-card'
+import { CaptureSourceCard } from './capture-source-card'
+import { ContactLifecycleTimeline } from './contact-lifecycle-timeline'
 import type { MemberRole } from '@prisma/client'
 
 interface ContactDetailClientProps {
@@ -59,6 +65,7 @@ interface ContactDetailClientProps {
   userRole: MemberRole
   hidePiiFromMembers: boolean
   orgSlug: string
+  lifecycleHistory: LifecycleHistoryItemDto[]
 }
 
 const ContactDetailClient = ({
@@ -69,8 +76,8 @@ const ContactDetailClient = ({
   userRole,
   hidePiiFromMembers,
   orgSlug,
+  lifecycleHistory,
 }: ContactDetailClientProps) => {
-  // PII restrito: MEMBER + toggle ativo na org
   const isPiiRestricted = userRole === 'MEMBER' && hidePiiFromMembers
   const { handleBack } = useSmartNavigation({ fallbackPath: `/org/${orgSlug}/contacts` })
   const { updateField, isPending } = useContactFieldUpdate({
@@ -78,27 +85,20 @@ const ContactDetailClient = ({
   })
 
   const [isTransferOpen, setIsTransferOpen] = useState(false)
-  const [selectedMemberId, setSelectedMemberId] = useState<string | undefined>(
-    undefined,
-  )
+  const [selectedMemberId, setSelectedMemberId] = useState<string | undefined>(undefined)
   const [cascadeDeals, setCascadeDeals] = useState(true)
 
   const { execute: executeTransfer, isPending: isTransferring } = useAction(
     transferContact,
     {
       onSuccess: () => {
-        toast.success('Contato transferido com sucesso!', {
-          position: 'bottom-right',
-        })
+        toast.success('Contato transferido com sucesso!', { position: 'bottom-right' })
         setIsTransferOpen(false)
         setSelectedMemberId(undefined)
         setCascadeDeals(true)
       },
       onError: ({ error }) => {
-        toast.error(
-          error.serverError || 'Erro ao transferir contato.',
-          { position: 'bottom-right' },
-        )
+        toast.error(error.serverError || 'Erro ao transferir contato.', { position: 'bottom-right' })
       },
     },
   )
@@ -111,11 +111,7 @@ const ContactDetailClient = ({
 
   const handleTransfer = () => {
     if (selectedMemberId) {
-      executeTransfer({
-        contactId: contact.id,
-        newAssigneeId: selectedMemberId,
-        cascadeDeals,
-      })
+      executeTransfer({ contactId: contact.id, newAssigneeId: selectedMemberId, cascadeDeals })
     }
   }
 
@@ -127,19 +123,14 @@ const ContactDetailClient = ({
     setIsTransferOpen(open)
   }
 
-  const assignableMembers = members.filter(
-    (member) => member.user?.fullName,
-  )
+  const assignableMembers = members.filter((member) => member.user?.fullName)
+
+  const stageConfig = LIFECYCLE_STAGE_CONFIG[contact.lifecycleStage]
+  const statusConfig = CUSTOMER_STATUS_CONFIG[contact.customerStatus]
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-6">
-      {/* Back button */}
-      <Button
-        variant="ghost"
-        size="sm"
-        className="gap-2"
-        onClick={handleBack}
-      >
+      <Button variant="ghost" size="sm" className="gap-2" onClick={handleBack}>
         <ArrowLeft className="h-4 w-4" />
         Voltar
       </Button>
@@ -158,10 +149,23 @@ const ContactDetailClient = ({
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <Badge
                 variant="outline"
+                className={`h-6 gap-1.5 px-2 text-xs font-medium ${stageConfig.badgeClassName}`}
+              >
+                <stageConfig.icon className="h-3 w-3" />
+                {stageConfig.label}
+              </Badge>
+              <Badge
+                variant="outline"
+                className={`h-6 px-2 text-xs font-medium ${statusConfig.badgeClassName}`}
+              >
+                {statusConfig.label}
+              </Badge>
+              <Badge
+                variant="outline"
                 className={`h-6 gap-1.5 px-2 text-xs font-semibold transition-colors ${
                   contact.isDecisionMaker
-                    ? 'bg-kronos-green/10 text-kronos-green border-kronos-green/20'
-                    : 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20'
+                    ? 'border-kronos-green/20 bg-kronos-green/10 text-kronos-green'
+                    : 'border-zinc-500/20 bg-zinc-500/10 text-zinc-400'
                 }`}
               >
                 <CircleIcon className="h-1.5 w-1.5 fill-current" />
@@ -183,14 +187,23 @@ const ContactDetailClient = ({
         </div>
       </div>
 
+      {/* Lifecycle & Status */}
+      <LifecycleStatusCard contact={contact} userRole={userRole} />
+
+      {/* Origem & Captura */}
+      <CaptureSourceCard
+        firstCaptureChannel={contact.firstCaptureChannel}
+        firstCaptureAt={contact.firstCaptureAt}
+        lastCaptureChannel={contact.lastCaptureChannel}
+        lastCaptureAt={contact.lastCaptureAt}
+      />
+
       {/* Grid: Info + Empresa */}
       <div className="grid gap-4 md:grid-cols-2">
         {/* Card Informações de Contato */}
         <Card className="border-border/50 bg-card">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold">
-              Informações de Contato
-            </CardTitle>
+            <CardTitle className="text-base font-semibold">Informações de Contato</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center justify-between text-sm">
@@ -199,9 +212,7 @@ const ContactDetailClient = ({
                 Email
               </span>
               {isPiiRestricted ? (
-                <span className="text-sm font-medium">
-                  {contact.email ?? '—'}
-                </span>
+                <span className="text-sm font-medium">{contact.email ?? '—'}</span>
               ) : (
                 <InlineTextField
                   value={contact.email}
@@ -235,9 +246,7 @@ const ContactDetailClient = ({
                 Telefone
               </span>
               {isPiiRestricted ? (
-                <span className="text-sm font-medium">
-                  {contact.phone ?? '—'}
-                </span>
+                <span className="text-sm font-medium">{contact.phone ?? '—'}</span>
               ) : (
                 <InlineTextField
                   value={formatPhone(contact.phone)}
@@ -256,9 +265,7 @@ const ContactDetailClient = ({
                 CPF
               </span>
               {isPiiRestricted ? (
-                <span className="text-sm font-medium">
-                  {contact.cpf ?? '—'}
-                </span>
+                <span className="text-sm font-medium">{contact.cpf ?? '—'}</span>
               ) : (
                 <InlineTextField
                   value={contact.cpf}
@@ -282,9 +289,7 @@ const ContactDetailClient = ({
               <Switch
                 id="decision-maker-page"
                 checked={contact.isDecisionMaker}
-                onCheckedChange={(checked) =>
-                  updateField('isDecisionMaker', checked)
-                }
+                onCheckedChange={(checked) => updateField('isDecisionMaker', checked)}
                 disabled={isPending}
               />
             </div>
@@ -341,15 +346,17 @@ const ContactDetailClient = ({
         </Card>
       )}
 
+      {/* Histórico de Lifecycle */}
+      <ContactLifecycleTimeline items={lifecycleHistory} />
+
       {/* Responsável */}
       <div className="rounded-lg border bg-card p-4">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <UserCog className="h-4 w-4" />
           <span>Responsável pelo Contato:</span>
           <span className="font-medium text-foreground">
-            {members.find(
-              (member) => member.userId === contact.assignedTo,
-            )?.user?.fullName || 'Não atribuído'}
+            {members.find((member) => member.userId === contact.assignedTo)?.user?.fullName ||
+              'Não atribuído'}
           </span>
         </div>
       </div>
@@ -366,19 +373,13 @@ const ContactDetailClient = ({
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="new-owner-page">Novo Responsável</Label>
-              <Select
-                value={selectedMemberId}
-                onValueChange={setSelectedMemberId}
-              >
+              <Select value={selectedMemberId} onValueChange={setSelectedMemberId}>
                 <SelectTrigger id="new-owner-page" className="w-full">
                   <SelectValue placeholder="Selecione um membro..." />
                 </SelectTrigger>
                 <SelectContent>
                   {assignableMembers.map((member) => (
-                    <SelectItem
-                      key={member.id}
-                      value={member.userId as string}
-                    >
+                    <SelectItem key={member.id} value={member.userId as string}>
                       {member.user?.fullName} ({member.email})
                     </SelectItem>
                   ))}
@@ -386,7 +387,6 @@ const ContactDetailClient = ({
               </Select>
             </div>
 
-            {/* Checkbox de cascade para negócios vinculados */}
             <div
               className={`flex items-start gap-3 rounded-md border p-3 transition-opacity ${
                 contact.deals.length === 0 ? 'opacity-60' : ''
@@ -396,16 +396,11 @@ const ContactDetailClient = ({
                 id="cascade-deals"
                 checked={contact.deals.length > 0 ? cascadeDeals : false}
                 disabled={contact.deals.length === 0}
-                onCheckedChange={(checked) =>
-                  setCascadeDeals(checked === true)
-                }
+                onCheckedChange={(checked) => setCascadeDeals(checked === true)}
                 className="mt-0.5"
               />
               <div className="grid gap-1.5 leading-none">
-                <Label
-                  htmlFor="cascade-deals"
-                  className="cursor-pointer text-sm font-medium"
-                >
+                <Label htmlFor="cascade-deals" className="cursor-pointer text-sm font-medium">
                   Transferir também os negócios vinculados
                 </Label>
                 {contact.deals.length > 0 ? (
@@ -433,10 +428,7 @@ const ContactDetailClient = ({
             >
               Cancelar
             </Button>
-            <Button
-              onClick={handleTransfer}
-              disabled={!selectedMemberId || isTransferring}
-            >
+            <Button onClick={handleTransfer} disabled={!selectedMemberId || isTransferring}>
               {isTransferring ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
