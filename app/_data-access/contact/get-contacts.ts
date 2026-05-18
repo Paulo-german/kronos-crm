@@ -1,7 +1,7 @@
 import 'server-only'
 import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
-import type { Prisma } from '@prisma/client'
+import type { Prisma, LifecycleStage, CustomerStatus } from '@prisma/client'
 import type { RBACContext } from '@/_lib/rbac'
 import { isElevated } from '@/_lib/rbac'
 import { maskEmail, maskPhone, maskCpf } from '@/_lib/pii-mask'
@@ -18,6 +18,9 @@ export interface ContactDto {
   companyName: string | null
   assignedTo: string | null
   deals: { id: string; title: string }[]
+  lifecycleStage: LifecycleStage
+  customerStatus: CustomerStatus
+  healthScore: number | null
   createdAt: Date
   updatedAt: Date
 }
@@ -32,6 +35,10 @@ export interface ContactListParams {
   hasDeals?: boolean
   /** Filtro manual de responsável — só é aplicado para ADMIN/OWNER (elevado). MEMBER ignora este campo. */
   assignedTo?: string
+  lifecycleStages?: LifecycleStage[]
+  customerStatuses?: CustomerStatus[]
+  healthScoreMin?: number
+  healthScoreMax?: number
 }
 
 export interface ContactListResult {
@@ -104,6 +111,9 @@ const fetchContactsFromDb = async (
     companyName: contact.company?.name ?? null,
     assignedTo: contact.assignedTo,
     deals: contact.deals.map((dc) => dc.deal),
+    lifecycleStage: contact.lifecycleStage,
+    customerStatus: contact.customerStatus,
+    healthScore: contact.healthScore,
     createdAt: contact.createdAt,
     updatedAt: contact.updatedAt,
   }))
@@ -163,6 +173,20 @@ const fetchContactsPaginatedFromDb = async (
       ? params.hasDeals
         ? { deals: { some: {} } }
         : { deals: { none: {} } }
+      : {}),
+    // Filtros de lifecycle stage (multi-select)
+    ...(params.lifecycleStages?.length ? { lifecycleStage: { in: params.lifecycleStages } } : {}),
+    // Filtros de customer status (multi-select)
+    ...(params.customerStatuses?.length ? { customerStatus: { in: params.customerStatuses } } : {}),
+    // Filtro de health score range
+    ...(params.healthScoreMin !== undefined || params.healthScoreMax !== undefined
+      ? {
+          healthScore: {
+            ...(params.healthScoreMin !== undefined ? { gte: params.healthScoreMin } : {}),
+            ...(params.healthScoreMax !== undefined ? { lte: params.healthScoreMax } : {}),
+            not: null,
+          },
+        }
       : {}),
     // Busca textual: nome, email ou telefone (case-insensitive)
     // Quando masked: email e phone removidos para não vazar PII por busca
@@ -235,6 +259,9 @@ const fetchContactsPaginatedFromDb = async (
       companyName: contact.company?.name ?? null,
       assignedTo: contact.assignedTo,
       deals: contact.deals.map((dc) => dc.deal),
+      lifecycleStage: contact.lifecycleStage,
+      customerStatus: contact.customerStatus,
+      healthScore: contact.healthScore,
       createdAt: contact.createdAt,
       updatedAt: contact.updatedAt,
     })),
@@ -269,6 +296,10 @@ export const getContactsPaginated = async (
     isDecisionMaker: params.isDecisionMaker ?? '',
     hasDeals: params.hasDeals ?? '',
     assignedTo: params.assignedTo ?? '',
+    lifecycleStages: params.lifecycleStages?.join(',') ?? '',
+    customerStatuses: params.customerStatuses?.join(',') ?? '',
+    healthScoreMin: params.healthScoreMin ?? '',
+    healthScoreMax: params.healthScoreMax ?? '',
   })
 
   const getCached = unstable_cache(
