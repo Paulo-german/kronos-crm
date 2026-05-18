@@ -97,6 +97,8 @@ import {
 } from '@/_components/ui/alert'
 
 const SAO_PAULO_TZ = 'America/Sao_Paulo'
+const MIN_SEARCH_CHARS = 3
+const SEARCH_DEBOUNCE_MS = 300
 
 interface UpsertAppointmentDialogContentProps {
   defaultValues?: AppointmentDto
@@ -167,8 +169,6 @@ export function UpsertAppointmentDialogContent({
   const [slots, setSlots] = useState<SlotDto[]>([])
   const [selectedSlotKey, setSelectedSlotKey] = useState<string | null>(null)
 
-  const MIN_SEARCH_CHARS = 3
-
   // --------------------------------------------------------------------------
   // Actions
   // --------------------------------------------------------------------------
@@ -215,7 +215,7 @@ export function UpsertAppointmentDialogContent({
 
       debounceRef.current = setTimeout(() => {
         executeSearch({ query: value })
-      }, 300)
+      }, SEARCH_DEBOUNCE_MS)
     },
     [executeSearch],
   )
@@ -233,7 +233,7 @@ export function UpsertAppointmentDialogContent({
 
       contactDebounceRef.current = setTimeout(() => {
         executeContactSearch({ query: value })
-      }, 300)
+      }, SEARCH_DEBOUNCE_MS)
     },
     [executeContactSearch],
   )

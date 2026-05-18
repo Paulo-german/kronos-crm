@@ -11,13 +11,14 @@ export const searchDeals = orgActionClient
   .schema(searchDealsSchema)
   .action(async ({ parsedInput: { query }, ctx }) => {
     const elevated = isElevated(ctx.userRole)
+    const normalizedQuery = query.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 
     const deals = await db.deal.findMany({
       where: {
         organizationId: ctx.orgId,
         status: { in: ['OPEN', 'IN_PROGRESS'] },
         ...(elevated ? {} : { assignedTo: ctx.userId }),
-        title: { contains: query, mode: 'insensitive' },
+        title: { contains: normalizedQuery, mode: 'insensitive' },
       },
       select: {
         id: true,

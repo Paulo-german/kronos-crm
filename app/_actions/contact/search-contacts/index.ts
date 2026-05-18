@@ -13,12 +13,13 @@ export const searchContacts = orgActionClient
   .action(async ({ parsedInput: { query }, ctx }) => {
     const elevated = isElevated(ctx.userRole)
     const hidePii = ctx.hidePiiFromMembers ?? false
+    const normalizedQuery = query.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 
     const contacts = await db.contact.findMany({
       where: {
         organizationId: ctx.orgId,
         ...(elevated ? {} : { assignedTo: ctx.userId }),
-        name: { contains: query, mode: 'insensitive' },
+        name: { contains: normalizedQuery, mode: 'insensitive' },
       },
       select: {
         id: true,
