@@ -740,7 +740,7 @@ export function WizardStepAction({ stageOptions, members, lossReasons, whatsappI
           data-error={showConfigErrors && !getConfigString('targetStage') ? 'true' : undefined}
         >
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            Configuração (Avançar lifecycle do contato)
+            Configuração (Avançar ciclo do contato)
           </p>
           <div className="space-y-2">
             <Label>Avançar para o estágio *</Label>

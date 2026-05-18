@@ -8,6 +8,10 @@ import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 import { LifecycleStage } from '@prisma/client'
 import {
+  LIFECYCLE_STAGE_CONFIG,
+  LIFECYCLE_STAGE_ORDER,
+} from '@/_lib/lifecycle/lifecycle-stage-config'
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -254,7 +258,7 @@ const UpsertStepDialog = ({
             />
 
             <div className="space-y-3 rounded-lg border border-border/50 bg-muted/30 p-4">
-              <p className="text-sm font-medium">Avançar lifecycle ao atingir esta etapa</p>
+              <p className="text-sm font-medium">Avançar ciclo ao atingir esta etapa</p>
               <FormField
                 control={form.control}
                 name="lifecycleTrigger"
@@ -274,15 +278,19 @@ const UpsertStepDialog = ({
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="none">Nenhum</SelectItem>
-                        <SelectItem value={LifecycleStage.QUALIFIED}>
-                          Qualificado
-                        </SelectItem>
-                        <SelectItem value={LifecycleStage.OPPORTUNITY}>
-                          Oportunidade
-                        </SelectItem>
-                        <SelectItem value={LifecycleStage.CUSTOMER}>
-                          Cliente
-                        </SelectItem>
+                        {LIFECYCLE_STAGE_ORDER.filter(
+                          (stage) => stage !== LifecycleStage.LEAD,
+                        ).map((stage) => {
+                          const cfg = LIFECYCLE_STAGE_CONFIG[stage]
+                          return (
+                            <SelectItem key={stage} value={stage}>
+                              <span className="flex items-center gap-2">
+                                <cfg.icon className={`h-3.5 w-3.5 ${cfg.colorClassName}`} />
+                                {cfg.label}
+                              </span>
+                            </SelectItem>
+                          )
+                        })}
                       </SelectContent>
                     </Select>
                     <FormMessage />

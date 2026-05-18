@@ -16,7 +16,7 @@ export const ACTION_LABELS: Record<AutomationAction, string> = {
   NOTIFY_USER: 'Enviar notificação',
   UPDATE_DEAL_PRIORITY: 'Alterar prioridade',
   SEND_WHATSAPP_FOLLOWUP: 'Enviar follow-up no WhatsApp',
-  UPDATE_CONTACT_LIFECYCLE: 'Avançar lifecycle do contato',
+  UPDATE_CONTACT_LIFECYCLE: 'Avançar ciclo do contato',
 }
 
 export const CONDITION_FIELD_LABELS: Record<string, string> = {
