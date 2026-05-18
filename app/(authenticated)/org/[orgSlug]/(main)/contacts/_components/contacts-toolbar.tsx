@@ -34,6 +34,7 @@ interface ContactsToolbarProps {
   onApplyFilters: (filters: Partial<ContactFilters>) => void
   onClearFilters: () => void
   activeFilterCount: number
+  isScoreEnabled: boolean
 }
 
 export function ContactsToolbar({
@@ -47,6 +48,7 @@ export function ContactsToolbar({
   onApplyFilters,
   onClearFilters,
   activeFilterCount,
+  isScoreEnabled,
 }: ContactsToolbarProps) {
   const isMember = userRole === 'MEMBER'
   const searchParams = useSearchParams()
@@ -186,6 +188,7 @@ export function ContactsToolbar({
           filters={filters}
           onApplyFilters={onApplyFilters}
           activeFilterCount={activeFilterCount}
+          isScoreEnabled={isScoreEnabled}
         />
 
         <div className="ml-auto flex items-center gap-2">

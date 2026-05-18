@@ -2,7 +2,28 @@
 
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { useCallback, useMemo } from 'react'
+import type { LifecycleStage, CustomerStatus } from '@prisma/client'
+import { LifecycleStage as LifecycleStageEnum, CustomerStatus as CustomerStatusEnum } from '@prisma/client'
 import type { ContactFilters } from './contact-filters'
+
+const VALID_STAGES = new Set<string>(Object.values(LifecycleStageEnum))
+const VALID_STATUSES = new Set<string>(Object.values(CustomerStatusEnum))
+
+function parseCsvStages(csv: string | null): LifecycleStage[] {
+  if (!csv) return []
+  return csv.split(',').filter((value): value is LifecycleStage => VALID_STAGES.has(value))
+}
+
+function parseCsvStatuses(csv: string | null): CustomerStatus[] {
+  if (!csv) return []
+  return csv.split(',').filter((value): value is CustomerStatus => VALID_STATUSES.has(value))
+}
+
+function parseScore(raw: string | null): number | null {
+  if (!raw) return null
+  const value = Number(raw)
+  return Number.isNaN(value) ? null : value
+}
 
 export function useContactFilters() {
   const searchParams = useSearchParams()
@@ -28,6 +49,10 @@ export function useContactFilters() {
           : hasDealsParam === 'false'
             ? false
             : null,
+      lifecycleStages: parseCsvStages(searchParams.get('lifecycleStages')),
+      customerStatuses: parseCsvStatuses(searchParams.get('customerStatuses')),
+      healthScoreMin: parseScore(searchParams.get('healthScoreMin')),
+      healthScoreMax: parseScore(searchParams.get('healthScoreMax')),
     }
   }, [searchParams])
 
@@ -57,6 +82,30 @@ export function useContactFilters() {
         params.delete('hasDeals')
       }
 
+      if (merged.lifecycleStages.length > 0) {
+        params.set('lifecycleStages', merged.lifecycleStages.join(','))
+      } else {
+        params.delete('lifecycleStages')
+      }
+
+      if (merged.customerStatuses.length > 0) {
+        params.set('customerStatuses', merged.customerStatuses.join(','))
+      } else {
+        params.delete('customerStatuses')
+      }
+
+      if (merged.healthScoreMin !== null && merged.healthScoreMin !== undefined) {
+        params.set('healthScoreMin', String(merged.healthScoreMin))
+      } else {
+        params.delete('healthScoreMin')
+      }
+
+      if (merged.healthScoreMax !== null && merged.healthScoreMax !== undefined) {
+        params.set('healthScoreMax', String(merged.healthScoreMax))
+      } else {
+        params.delete('healthScoreMax')
+      }
+
       router.replace(`${pathname}?${params.toString()}`, { scroll: false })
     },
     [searchParams, filters, router, pathname],
@@ -64,11 +113,16 @@ export function useContactFilters() {
 
   const clearFilters = useCallback(() => {
     const params = new URLSearchParams(searchParams.toString())
-    // Resetar filtros e página ao limpar
     params.set('page', '1')
-    ;['companyId', 'isDecisionMaker', 'hasDeals'].forEach((param) =>
-      params.delete(param),
-    )
+    ;[
+      'companyId',
+      'isDecisionMaker',
+      'hasDeals',
+      'lifecycleStages',
+      'customerStatuses',
+      'healthScoreMin',
+      'healthScoreMax',
+    ].forEach((param) => params.delete(param))
     router.replace(`${pathname}?${params.toString()}`, { scroll: false })
   }, [searchParams, router, pathname])
 
@@ -77,6 +131,9 @@ export function useContactFilters() {
     if (filters.companyId) count++
     if (filters.isDecisionMaker !== null) count++
     if (filters.hasDeals !== null) count++
+    if (filters.lifecycleStages.length > 0) count++
+    if (filters.customerStatuses.length > 0) count++
+    if (filters.healthScoreMin !== null || filters.healthScoreMax !== null) count++
     return count
   }, [filters])
 

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Filter, X } from 'lucide-react'
+import { CustomerStatus, LifecycleStage } from '@prisma/client'
 import {
   Sheet,
   SheetContent,
@@ -13,6 +14,7 @@ import {
 } from '@/_components/ui/sheet'
 import { Button } from '@/_components/ui/button'
 import { Checkbox } from '@/_components/ui/checkbox'
+import { Input } from '@/_components/ui/input'
 import { Label } from '@/_components/ui/label'
 import { Badge } from '@/_components/ui/badge'
 import {
@@ -23,6 +25,11 @@ import {
   SelectValue,
 } from '@/_components/ui/select'
 import { cn } from '@/_lib/utils'
+import {
+  LIFECYCLE_STAGE_CONFIG,
+  LIFECYCLE_STAGE_ORDER,
+} from '@/_lib/lifecycle/lifecycle-stage-config'
+import { CUSTOMER_STATUS_CONFIG } from '@/_lib/lifecycle/customer-status-config'
 import type { ContactFilters } from '../_lib/contact-filters'
 import { DEFAULT_CONTACT_FILTERS } from '../_lib/contact-filters'
 import type { CompanyDto } from '@/_data-access/company/get-companies'
@@ -32,6 +39,7 @@ interface ContactsFiltersSheetProps {
   filters: ContactFilters
   onApplyFilters: (filters: Partial<ContactFilters>) => void
   activeFilterCount: number
+  isScoreEnabled: boolean
 }
 
 export function ContactsFiltersSheet({
@@ -39,6 +47,7 @@ export function ContactsFiltersSheet({
   filters,
   onApplyFilters,
   activeFilterCount,
+  isScoreEnabled,
 }: ContactsFiltersSheetProps) {
   const [localFilters, setLocalFilters] = useState<ContactFilters>(filters)
   const [isOpen, setIsOpen] = useState(false)
@@ -71,6 +80,26 @@ export function ContactsFiltersSheet({
     })
   }
 
+  /** Alterna um lifecycle stage no array multi-select */
+  const toggleLifecycleStage = (stage: LifecycleStage) => {
+    const arr = localFilters.lifecycleStages
+    setLocalFilters({
+      ...localFilters,
+      lifecycleStages: arr.includes(stage) ? arr.filter((s) => s !== stage) : [...arr, stage],
+    })
+  }
+
+  /** Alterna um customer status no array multi-select */
+  const toggleCustomerStatus = (status: CustomerStatus) => {
+    const arr = localFilters.customerStatuses
+    setLocalFilters({
+      ...localFilters,
+      customerStatuses: arr.includes(status)
+        ? arr.filter((s) => s !== status)
+        : [...arr, status],
+    })
+  }
+
   return (
     <Sheet open={isOpen} onOpenChange={handleOpenChange}>
       <SheetTrigger asChild>
@@ -91,6 +120,114 @@ export function ContactsFiltersSheet({
         </SheetHeader>
 
         <div className="flex-1 space-y-6 overflow-y-auto py-4">
+          {/* Filtro de Lifecycle Stage */}
+          <div className="space-y-3">
+            <Label className="text-sm font-semibold">Estágio do Funil</Label>
+            <div className="flex flex-wrap gap-2">
+              {LIFECYCLE_STAGE_ORDER.map((stage) => {
+                const cfg = LIFECYCLE_STAGE_CONFIG[stage]
+                const isActive = localFilters.lifecycleStages.includes(stage)
+                return (
+                  <label
+                    key={stage}
+                    className={cn(
+                      'flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 transition-colors',
+                      isActive
+                        ? 'border-primary/40 bg-primary/10 text-primary'
+                        : 'border-input hover:bg-accent',
+                    )}
+                  >
+                    <Checkbox
+                      checked={isActive}
+                      onCheckedChange={() => toggleLifecycleStage(stage)}
+                      className="sr-only"
+                    />
+                    <cfg.icon className={cn('size-3.5', isActive ? 'text-primary' : cfg.colorClassName)} />
+                    <span className="text-sm">{cfg.label}</span>
+                  </label>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Filtro de Customer Status */}
+          <div className="space-y-3">
+            <Label className="text-sm font-semibold">Status do Cliente</Label>
+            <div className="flex flex-wrap gap-2">
+              {(Object.values(CustomerStatus) as CustomerStatus[]).map((status) => {
+                const cfg = CUSTOMER_STATUS_CONFIG[status]
+                const isActive = localFilters.customerStatuses.includes(status)
+                return (
+                  <label
+                    key={status}
+                    className={cn(
+                      'flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 transition-colors',
+                      isActive
+                        ? 'border-primary/40 bg-primary/10 text-primary'
+                        : 'border-input hover:bg-accent',
+                    )}
+                  >
+                    <Checkbox
+                      checked={isActive}
+                      onCheckedChange={() => toggleCustomerStatus(status)}
+                      className="sr-only"
+                    />
+                    <span className="text-sm">{cfg.label}</span>
+                  </label>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Filtro de Health Score (plan-gated) */}
+          {isScoreEnabled && (
+            <div className="space-y-3">
+              <Label className="text-sm font-semibold">Health Score</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label htmlFor="score-min" className="text-xs text-muted-foreground">
+                    Mínimo
+                  </Label>
+                  <Input
+                    id="score-min"
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={1}
+                    placeholder="0"
+                    value={localFilters.healthScoreMin ?? ''}
+                    onChange={(event) =>
+                      setLocalFilters({
+                        ...localFilters,
+                        healthScoreMin: event.target.value === '' ? null : Number(event.target.value),
+                      })
+                    }
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="score-max" className="text-xs text-muted-foreground">
+                    Máximo
+                  </Label>
+                  <Input
+                    id="score-max"
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={1}
+                    placeholder="100"
+                    value={localFilters.healthScoreMax ?? ''}
+                    onChange={(event) =>
+                      setLocalFilters({
+                        ...localFilters,
+                        healthScoreMax: event.target.value === '' ? null : Number(event.target.value),
+                      })
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Filtro de Empresa */}
           <div className="space-y-3">
             <Label className="text-sm font-semibold">Empresa</Label>

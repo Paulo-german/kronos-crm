@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { LifecycleStage, CustomerStatus } from '@prisma/client'
 import type {
   ContactListParams,
   ContactListResult,
@@ -47,6 +48,32 @@ export const contactListParamsSchema = z.object({
       val === 'true' ? true : val === 'false' ? false : undefined,
     ),
   assignedTo: z.string().uuid().optional(),
+  lifecycleStages: z
+    .string()
+    .optional()
+    .transform((csv) =>
+      csv
+        ? (csv
+            .split(',')
+            .filter((value): value is LifecycleStage =>
+              (Object.values(LifecycleStage) as string[]).includes(value),
+            ))
+        : undefined,
+    ),
+  customerStatuses: z
+    .string()
+    .optional()
+    .transform((csv) =>
+      csv
+        ? (csv
+            .split(',')
+            .filter((value): value is CustomerStatus =>
+              (Object.values(CustomerStatus) as string[]).includes(value),
+            ))
+        : undefined,
+    ),
+  healthScoreMin: z.coerce.number().int().min(0).max(100).optional(),
+  healthScoreMax: z.coerce.number().int().min(0).max(100).optional(),
 })
 
 /**

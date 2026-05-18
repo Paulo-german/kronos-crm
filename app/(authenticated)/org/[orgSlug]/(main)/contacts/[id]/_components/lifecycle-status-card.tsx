@@ -38,7 +38,6 @@ function formatDate(date: Date | null): string {
 }
 
 export function LifecycleStatusCard({ contact, userRole }: LifecycleStatusCardProps) {
-  const stageConfig = LIFECYCLE_STAGE_CONFIG[contact.lifecycleStage]
   const statusConfig = CUSTOMER_STATUS_CONFIG[contact.customerStatus]
   const canDowngrade = userRole === 'ADMIN' || userRole === 'OWNER'
 
@@ -83,7 +82,6 @@ export function LifecycleStatusCard({ contact, userRole }: LifecycleStatusCardPr
               disabled={isPending}
             >
               <SelectTrigger className="h-8 w-auto gap-1.5 border-border/50 bg-background text-sm font-medium">
-                <stageConfig.icon className={`h-3.5 w-3.5 ${stageConfig.colorClassName}`} />
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

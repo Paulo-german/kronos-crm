@@ -12,6 +12,8 @@ import { ContactsToolbar } from './contacts-toolbar'
 import { ContactsDataTable } from './contacts-data-table'
 import { ContactsPagination } from './contacts-pagination'
 import { EmptyContacts } from './empty-contacts'
+import { ContactLifecycleTabs } from './contact-lifecycle-tabs'
+import type { ContactsLifecycleCounts } from './contact-lifecycle-tabs'
 import { useContactFilters } from '../_lib/use-contact-filters'
 import { updateContact } from '@/_actions/contact/update-contact'
 import { deleteContact } from '@/_actions/contact/delete-contact'
@@ -36,6 +38,8 @@ interface ContactsListClientProps {
   withinQuota: boolean
   orgSlug: string
   hidePiiFromMembers: boolean
+  isScoreEnabled: boolean
+  lifecycleCounts: ContactsLifecycleCounts
 }
 
 export function ContactsListClient({
@@ -51,6 +55,8 @@ export function ContactsListClient({
   withinQuota,
   orgSlug,
   hidePiiFromMembers,
+  isScoreEnabled,
+  lifecycleCounts,
 }: ContactsListClientProps) {
   const { filters, setFilters, clearFilters, activeFilterCount, hasActiveFilters } =
     useContactFilters()
@@ -148,6 +154,8 @@ export function ContactsListClient({
   return (
     <>
       <div className="flex flex-col gap-4">
+        <ContactLifecycleTabs counts={lifecycleCounts} />
+
         <ContactsToolbar
           members={members}
           companyOptions={companyOptions}
@@ -159,6 +167,7 @@ export function ContactsListClient({
           onApplyFilters={setFilters}
           onClearFilters={clearFilters}
           activeFilterCount={activeFilterCount}
+          isScoreEnabled={isScoreEnabled}
         />
 
         <ContactsDataTable
@@ -168,6 +177,7 @@ export function ContactsListClient({
           onBulkDelete={handleBulkDelete}
           orgSlug={orgSlug}
           isPiiRestricted={userRole === 'MEMBER' && (hidePiiFromMembers ?? false)}
+          isScoreEnabled={isScoreEnabled}
         />
 
         <ContactsPagination

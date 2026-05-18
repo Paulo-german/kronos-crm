@@ -14,6 +14,7 @@ interface ContactsDataTableProps {
   onBulkDelete: (ids: string[]) => void
   orgSlug: string
   isPiiRestricted: boolean
+  isScoreEnabled: boolean
 }
 
 export function ContactsDataTable({
@@ -23,6 +24,7 @@ export function ContactsDataTable({
   onBulkDelete,
   orgSlug,
   isPiiRestricted,
+  isScoreEnabled,
 }: ContactsDataTableProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
@@ -118,6 +120,7 @@ export function ContactsDataTable({
             onDelete={() => onDelete(contact)}
             orgSlug={orgSlug}
             isPiiRestricted={isPiiRestricted}
+            isScoreEnabled={isScoreEnabled}
           />
         ))}
       </div>

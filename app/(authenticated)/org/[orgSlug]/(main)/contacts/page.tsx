@@ -1,8 +1,10 @@
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getContactsPaginated } from '@/_data-access/contact/get-contacts'
+import { getContactsLifecycleCounts } from '@/_data-access/contact/get-contacts-lifecycle-counts'
 import { getCompanies } from '@/_data-access/company/get-companies'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
-import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
+import { checkPlanQuota, getPlanLimits } from '@/_lib/rbac/plan-limits'
+import { SCORE_ELIGIBLE_PRODUCT_KEYS } from '@/../trigger/lib/health-score-constants'
 import { ContactsListClient } from './_components/contacts-list-client'
 import { parseContactListParams } from './_lib/contact-list-params'
 
@@ -17,12 +19,18 @@ const ContactsPage = async ({ params, searchParams }: ContactsPageProps) => {
   const ctx = await getOrgContext(orgSlug)
   const listParams = parseContactListParams(resolvedSearchParams)
 
-  const [result, companies, quota, members] = await Promise.all([
+  const [result, companies, quota, members, planInfo, lifecycleCounts] = await Promise.all([
     getContactsPaginated(ctx, listParams),
     getCompanies(ctx.orgId),
     checkPlanQuota(ctx.orgId, 'contact'),
     getOrganizationMembers(ctx.orgId),
+    getPlanLimits(ctx.orgId),
+    getContactsLifecycleCounts(ctx, listParams),
   ])
+
+  const isScoreEnabled = planInfo.plan
+    ? (SCORE_ELIGIBLE_PRODUCT_KEYS as readonly string[]).includes(planInfo.plan)
+    : false
 
   return (
     <ContactsListClient
@@ -38,6 +46,8 @@ const ContactsPage = async ({ params, searchParams }: ContactsPageProps) => {
       withinQuota={quota.withinQuota}
       orgSlug={orgSlug}
       hidePiiFromMembers={ctx.hidePiiFromMembers ?? false}
+      isScoreEnabled={isScoreEnabled}
+      lifecycleCounts={lifecycleCounts}
     />
   )
 }

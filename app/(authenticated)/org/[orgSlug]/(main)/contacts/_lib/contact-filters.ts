@@ -1,14 +1,21 @@
+import type { CustomerStatus, LifecycleStage } from '@prisma/client'
+
 export interface ContactFilters {
-  /** Filtrar por empresa (UUID da Company ou null para todas) */
   companyId: string | null
-  /** Filtrar decisores: true = apenas decisores, false = apenas não-decisores, null = todos */
   isDecisionMaker: boolean | null
-  /** Filtrar por presença de negócios vinculados: true = com deals, false = sem deals, null = todos */
   hasDeals: boolean | null
+  lifecycleStages: LifecycleStage[]
+  customerStatuses: CustomerStatus[]
+  healthScoreMin: number | null
+  healthScoreMax: number | null
 }
 
 export const DEFAULT_CONTACT_FILTERS: ContactFilters = {
   companyId: null,
   isDecisionMaker: null,
   hasDeals: null,
+  lifecycleStages: [],
+  customerStatuses: [],
+  healthScoreMin: null,
+  healthScoreMax: null,
 }

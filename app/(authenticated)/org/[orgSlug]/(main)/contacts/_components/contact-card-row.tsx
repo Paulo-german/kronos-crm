@@ -13,6 +13,8 @@ import { Badge } from '@/_components/ui/badge'
 import { cn } from '@/_lib/utils'
 import { formatPhone } from '@/_utils/format-phone'
 import { formatPhoneForWhatsApp } from '@/_utils/format-phone-whatsapp'
+import { LIFECYCLE_STAGE_CONFIG } from '@/_lib/lifecycle/lifecycle-stage-config'
+import { SCORE_RED_MAX, SCORE_YELLOW_MAX } from '@/../trigger/lib/health-score-constants'
 import ContactTableDropdownMenu from './table-dropdown-menu'
 import type { ContactDto } from '@/_data-access/contact/get-contacts'
 
@@ -53,6 +55,7 @@ interface ContactCardRowProps {
   onDelete: () => void
   orgSlug: string
   isPiiRestricted: boolean
+  isScoreEnabled: boolean
 }
 
 export function ContactCardRow({
@@ -63,10 +66,12 @@ export function ContactCardRow({
   onDelete,
   orgSlug,
   isPiiRestricted,
+  isScoreEnabled,
 }: ContactCardRowProps) {
   const avatarColor = getAvatarColor(contact.name)
   const initials = getInitials(contact.name)
   const formattedPhone = contact.phone ? formatPhone(contact.phone) : null
+  const stageCfg = LIFECYCLE_STAGE_CONFIG[contact.lifecycleStage]
 
   return (
     <div
@@ -88,13 +93,27 @@ export function ContactCardRow({
       {/* Avatar com iniciais */}
       <div
         className={cn(
-          'flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold',
+          'relative flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold',
           avatarColor.bg,
           avatarColor.text,
         )}
         aria-hidden="true"
       >
         {initials}
+        {isScoreEnabled && contact.healthScore !== null && (
+          <span
+            className={cn(
+              'absolute -bottom-0.5 -right-0.5 size-3 rounded-full ring-2 ring-card',
+              contact.healthScore <= SCORE_RED_MAX && 'bg-red-500',
+              contact.healthScore > SCORE_RED_MAX &&
+                contact.healthScore <= SCORE_YELLOW_MAX &&
+                'bg-amber-500',
+              contact.healthScore > SCORE_YELLOW_MAX && 'bg-emerald-500',
+            )}
+            title={`Health Score: ${Math.round(contact.healthScore)}`}
+            aria-label={`Health Score: ${Math.round(contact.healthScore)}`}
+          />
+        )}
       </div>
 
       {/* Informações principais — ocupa o espaço restante */}
@@ -117,6 +136,13 @@ export function ContactCardRow({
               aria-label="Tomador de decisão"
             />
           )}
+          <Badge
+            variant="outline"
+            className={cn('h-5 gap-1 px-1.5 text-[10px] font-medium', stageCfg.badgeClassName)}
+          >
+            <stageCfg.icon className="size-2.5" />
+            {stageCfg.label}
+          </Badge>
         </div>
 
         <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5">
