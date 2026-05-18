@@ -1,4 +1,4 @@
-import { Filter, Sprout, Star, Target, type LucideIcon } from 'lucide-react'
+import { Crown, Flame, Handshake, UserPlus, type LucideIcon } from 'lucide-react'
 import { LifecycleStage } from '@prisma/client'
 
 /**
@@ -7,43 +7,49 @@ import { LifecycleStage } from '@prisma/client'
  * - `label`: texto PT-BR exibido em cards, tooltips e timelines.
  * - `icon`: ícone Lucide usado no header dos cards do funil.
  * - `colorClassName`: classe Tailwind aplicada ao ícone/badge do estágio.
+ * - `badgeClassName`: classes completas para badges (bg + text + border).
  * - `chartColor`: valor CSS (HSL token) consumido pelo Recharts no AreaChart de evolução.
  *
- * As cores cobrem a progressão LEAD → CUSTOMER em tom crescente de "valor capturado":
- * neutro (LEAD) → primary (QUALIFIED) → amber (OPPORTUNITY) → emerald (CUSTOMER).
+ * Progressão visual LEAD → CUSTOMER:
+ * cinza (LEAD) → laranja (QUALIFIED) → azul (OPPORTUNITY) → roxo/primary (CUSTOMER)
  */
 
 export interface LifecycleStageVisualConfig {
   label: string
   icon: LucideIcon
   colorClassName: string
+  badgeClassName: string
   chartColor: string
 }
 
 export const LIFECYCLE_STAGE_CONFIG: Record<LifecycleStage, LifecycleStageVisualConfig> = {
   [LifecycleStage.LEAD]: {
     label: 'Lead',
-    icon: Sprout,
-    colorClassName: 'text-muted-foreground',
+    icon: UserPlus,
+    colorClassName: 'text-zinc-400',
+    badgeClassName: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20',
     chartColor: 'hsl(var(--muted-foreground))',
   },
   [LifecycleStage.QUALIFIED]: {
     label: 'Qualificado',
-    icon: Filter,
-    colorClassName: 'text-primary',
-    chartColor: 'hsl(var(--primary))',
+    icon: Flame,
+    colorClassName: 'text-orange-500',
+    badgeClassName: 'bg-orange-500/10 text-orange-500 border-orange-500/20',
+    chartColor: '#f97316',
   },
   [LifecycleStage.OPPORTUNITY]: {
     label: 'Oportunidade',
-    icon: Target,
-    colorClassName: 'text-amber-500',
-    chartColor: '#f59e0b',
+    icon: Handshake,
+    colorClassName: 'text-blue-500',
+    badgeClassName: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+    chartColor: '#3b82f6',
   },
   [LifecycleStage.CUSTOMER]: {
     label: 'Cliente',
-    icon: Star,
-    colorClassName: 'text-emerald-500',
-    chartColor: '#10b981',
+    icon: Crown,
+    colorClassName: 'text-primary',
+    badgeClassName: 'bg-primary/10 text-primary border-primary/20',
+    chartColor: 'hsl(var(--primary))',
   },
 }
 
