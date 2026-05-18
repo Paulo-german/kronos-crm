@@ -75,6 +75,7 @@ import { cn } from '@/_lib/utils'
 import { createAppointment } from '@/_actions/appointment/create-appointment'
 import { updateContact } from '@/_actions/contact/update-contact'
 import { searchDeals } from '@/_actions/deal/search-deals'
+import { searchContacts } from '@/_actions/contact/search-contacts'
 import {
   createAppointmentFormSchema,
   CreateAppointmentInput,
@@ -140,6 +141,8 @@ export function UpsertAppointmentDialogContent({
   // --------------------------------------------------------------------------
   const [openContactCombobox, setOpenContactCombobox] = useState(false)
   const [contactSearch, setContactSearch] = useState('')
+  const [contactResults, setContactResults] = useState<ContactOptionDto[]>([])
+  const contactDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [openServiceCombobox, setOpenServiceCombobox] = useState(false)
 
   // --------------------------------------------------------------------------
@@ -179,6 +182,15 @@ export function UpsertAppointmentDialogContent({
     },
   )
 
+  const { execute: executeContactSearch, isPending: isSearchingContacts } = useAction(
+    searchContacts,
+    {
+      onSuccess: ({ data }) => {
+        if (data) setContactResults(data)
+      },
+    },
+  )
+
   const { execute: fetchSlots, isPending: isLoadingSlots } = useAction(
     getSlotsByDateAction,
     {
@@ -208,10 +220,29 @@ export function UpsertAppointmentDialogContent({
     [executeSearch],
   )
 
-  // Limpar timeout no unmount
+  const handleContactSearchChange = useCallback(
+    (value: string) => {
+      setContactSearch(value)
+
+      if (contactDebounceRef.current) clearTimeout(contactDebounceRef.current)
+
+      if (value.length < MIN_SEARCH_CHARS) {
+        setContactResults([])
+        return
+      }
+
+      contactDebounceRef.current = setTimeout(() => {
+        executeContactSearch({ query: value })
+      }, 300)
+    },
+    [executeContactSearch],
+  )
+
+  // Limpar timeouts no unmount
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
+      if (contactDebounceRef.current) clearTimeout(contactDebounceRef.current)
     }
   }, [])
 
@@ -316,10 +347,12 @@ export function UpsertAppointmentDialogContent({
   const contactHasOwner = useMemo(() => {
     if (!watchedContactId) return null
     if (localContactOwners[watchedContactId]) return true
-    const contact = contactOptions.find((option) => option.id === watchedContactId)
+    const contact =
+      contactResults.find((option) => option.id === watchedContactId) ??
+      contactOptions.find((option) => option.id === watchedContactId)
     if (!contact) return null
     return !!contact.assignedTo
-  }, [watchedContactId, contactOptions, localContactOwners])
+  }, [watchedContactId, contactOptions, contactResults, localContactOwners])
 
   // Membros filtrados pela busca no popover de atribuição de responsável
   const filteredAssignableMembers = useMemo(() => {
@@ -348,9 +381,10 @@ export function UpsertAppointmentDialogContent({
   )
 
   // Contato selecionado (para exibir no trigger do combobox)
-  const selectedContact = contactOptions.find(
-    (contact) => contact.id === watchedContactId,
-  )
+  // Busca em contactResults primeiro (busca server-side) e fallback em contactOptions
+  const selectedContact =
+    contactResults.find((contact) => contact.id === watchedContactId) ??
+    contactOptions.find((contact) => contact.id === watchedContactId)
 
   // Serviço selecionado (para exibir no trigger do combobox)
   const selectedServiceId = form.watch('serviceId')
@@ -374,11 +408,6 @@ export function UpsertAppointmentDialogContent({
       return true
     })
   }, [slots, filterProfessionalId])
-
-  // Contatos filtrados client-side pela busca
-  const filteredContacts = contactOptions.filter((contact) =>
-    contact.name.toLowerCase().includes(contactSearch.toLowerCase()),
-  )
 
   // --------------------------------------------------------------------------
   // useEffect: sincroniza selectedDay a partir do watchedStartDate (RHF → estado local).
@@ -533,7 +562,13 @@ export function UpsertAppointmentDialogContent({
                 </FormLabel>
                 <Popover
                   open={openContactCombobox}
-                  onOpenChange={setOpenContactCombobox}
+                  onOpenChange={(open) => {
+                    setOpenContactCombobox(open)
+                    if (!open) {
+                      setContactSearch('')
+                      setContactResults([])
+                    }
+                  }}
                 >
                   <PopoverTrigger asChild>
                     <FormControl>
@@ -559,16 +594,24 @@ export function UpsertAppointmentDialogContent({
                   <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                     <Command shouldFilter={false}>
                       <CommandInput
-                        placeholder="Buscar contato..."
+                        placeholder="Digite pelo menos 3 caracteres..."
                         value={contactSearch}
-                        onValueChange={setContactSearch}
+                        onValueChange={handleContactSearchChange}
                       />
                       <CommandList>
-                        {filteredContacts.length === 0 ? (
+                        {contactSearch.length < MIN_SEARCH_CHARS ? (
+                          <div className="py-6 text-center text-sm text-muted-foreground">
+                            Digite pelo menos 3 caracteres
+                          </div>
+                        ) : isSearchingContacts ? (
+                          <div className="flex items-center justify-center py-6">
+                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                          </div>
+                        ) : contactResults.length === 0 ? (
                           <CommandEmpty>Nenhum contato encontrado.</CommandEmpty>
                         ) : (
                           <CommandGroup>
-                            {filteredContacts.map((contact) => (
+                            {contactResults.map((contact) => (
                               <CommandItem
                                 key={contact.id}
                                 value={contact.id}
@@ -576,6 +619,7 @@ export function UpsertAppointmentDialogContent({
                                   form.setValue('contactId', contact.id)
                                   setOpenContactCombobox(false)
                                   setContactSearch('')
+                                  setContactResults([])
                                 }}
                               >
                                 <Check
@@ -744,10 +788,6 @@ export function UpsertAppointmentDialogContent({
                                     // Auto-preencher contato do negócio se ainda não selecionado
                                     if (deal.contactId && !form.getValues('contactId')) {
                                       form.setValue('contactId', deal.contactId)
-                                      const contactOption = contactOptions.find(
-                                        (option) => option.id === deal.contactId,
-                                      )
-                                      if (contactOption) setContactSearch(contactOption.name)
                                     }
                                   }}
                                 >
