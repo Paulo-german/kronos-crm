@@ -2,7 +2,6 @@ import { getOrgContext } from '@/_data-access/organization/get-organization-cont
 import { getOrgPipeline } from '@/_data-access/pipeline/get-user-pipeline'
 import { getOrgPipelines } from '@/_data-access/pipeline/get-org-pipelines'
 import { getDealsByPipeline } from '@/_data-access/deal/get-deals-by-pipeline'
-import { getContacts } from '@/_data-access/contact/get-contacts'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
 import { getTutorialCompletions } from '@/_data-access/tutorial/get-tutorial-completions'
 import { PipelineClient } from './_components/pipeline-client'
@@ -28,15 +27,14 @@ const PipelinePage = async ({ params, searchParams }: PipelinePageProps) => {
   const finalPipeline =
     pipeline || (await createDefaultPipeline({ orgId: ctx.orgId }))
 
-  // Busca deals, contatos, membros e tutoriais em paralelo (com contexto RBAC)
-  const [dealsByStage, contacts, orgMembers, completedTutorialIds] = await Promise.all([
+  // Busca deals, membros e tutoriais em paralelo (com contexto RBAC)
+  const [dealsByStage, orgMembers, completedTutorialIds] = await Promise.all([
     finalPipeline
       ? getDealsByPipeline(
           finalPipeline.stages.map((stage) => stage.id),
           ctx,
         )
       : {},
-    getContacts(ctx),
     getOrganizationMembers(ctx.orgId),
     getTutorialCompletions(ctx.userId, ctx.orgId),
   ])
@@ -52,7 +50,6 @@ const PipelinePage = async ({ params, searchParams }: PipelinePageProps) => {
         pipelines={pipelines}
         activePipelineId={finalPipeline?.id ?? ''}
         dealsByStage={dealsByStage}
-        contacts={contacts}
         members={members}
         currentUserId={ctx.userId}
         userRole={ctx.userRole}

@@ -16,7 +16,6 @@ import { updateDeal } from '@/_actions/deal/update-deal'
 import { deleteDeal } from '@/_actions/deal/delete-deal'
 import { bulkDeleteDeals } from '@/_actions/deal/bulk-delete-deals'
 import type { DealListDto } from '@/_data-access/deal/get-deals'
-import type { ContactDto } from '@/_data-access/contact/get-contacts'
 import type { StageDto, PipelineWithStagesDto } from '@/_data-access/pipeline/get-user-pipeline'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import type { OrgPipelineDto } from '@/_data-access/pipeline/get-org-pipelines'
@@ -29,7 +28,6 @@ interface DealsListClientProps {
   pageSize: number
   totalPages: number
   stages: StageDto[]
-  contacts: ContactDto[]
   pipeline: PipelineWithStagesDto
   pipelines: OrgPipelineDto[]
   activePipelineId: string
@@ -48,7 +46,6 @@ export function DealsListClient({
   pageSize,
   totalPages,
   stages,
-  contacts,
   pipeline,
   pipelines,
   activePipelineId,
@@ -160,7 +157,6 @@ export function DealsListClient({
     return (
       <DealsEmptyState
         stages={stages}
-        contacts={contacts}
         withinQuota={withinQuota}
       />
     )
@@ -171,7 +167,6 @@ export function DealsListClient({
       <div className="flex flex-col gap-4">
         <DealsToolbar
           members={members}
-          contacts={contacts}
           stages={stages}
           pipeline={pipeline}
           pipelines={pipelines}
@@ -234,7 +229,6 @@ export function DealsListClient({
                 : undefined,
             }}
             stages={stages}
-            contacts={contacts}
             setIsOpen={setIsEditSheetOpen}
             onUpdate={(data) => executeUpdate(data)}
             isUpdating={isUpdating}

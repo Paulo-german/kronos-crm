@@ -1,6 +1,5 @@
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getDealsPaginated } from '@/_data-access/deal/get-deals'
-import { getContacts } from '@/_data-access/contact/get-contacts'
 import { getOrgPipeline } from '@/_data-access/pipeline/get-user-pipeline'
 import { getOrgPipelines } from '@/_data-access/pipeline/get-org-pipelines'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
@@ -37,9 +36,8 @@ const DealsListPage = async ({ params, searchParams }: DealsListPageProps) => {
     pipelineId: pipelineRaw ? (listParams.pipelineId ?? pipeline.id) : undefined,
   }
 
-  const [result, contacts, members, quota, completedTutorialIds] = await Promise.all([
+  const [result, members, quota, completedTutorialIds] = await Promise.all([
     getDealsPaginated(ctx, effectiveParams),
-    getContacts(ctx),
     getOrganizationMembers(ctx.orgId),
     checkPlanQuota(ctx.orgId, 'deal'),
     getTutorialCompletions(ctx.userId, ctx.orgId),
@@ -53,7 +51,6 @@ const DealsListPage = async ({ params, searchParams }: DealsListPageProps) => {
       pageSize={result.pageSize}
       totalPages={result.totalPages}
       stages={pipeline.stages}
-      contacts={contacts}
       pipeline={pipeline}
       pipelines={pipelines}
       activePipelineId={pipeline.id}

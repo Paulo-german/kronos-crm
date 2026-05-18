@@ -1,6 +1,13 @@
 'use client'
 
-import { Dispatch, SetStateAction, useMemo, useState } from 'react'
+import {
+  Dispatch,
+  SetStateAction,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAction } from 'next-safe-action/hooks'
@@ -8,6 +15,7 @@ import { toast } from 'sonner'
 import { Check, ChevronsUpDown, Loader2 } from 'lucide-react'
 import type { NumberFormatValues } from 'react-number-format'
 import { cn } from '@/_lib/utils'
+import { Label } from '@/_components/ui/label'
 import {
   SheetContent,
   SheetDescription,
@@ -53,6 +61,7 @@ import {
 import { PhoneInput } from '@/_components/form-controls/phone-input'
 import { updateDeal } from '@/_actions/deal/update-deal'
 import { createDealWithContact } from '@/_actions/deal/create-deal-with-contact'
+import { searchContacts } from '@/_actions/contact/search-contacts'
 import {
   dealFormSchema,
   type DealFormInput,
@@ -62,22 +71,22 @@ import {
   type DealWithContactFormInput,
 } from '@/_actions/deal/create-deal-with-contact/schema'
 import type { UpdateDealInput } from '@/_actions/deal/update-deal/schema'
-import type { ContactDto } from '@/_data-access/contact/get-contacts'
+import type { ContactOptionDto } from '@/_data-access/contact/get-contacts-options'
 import type { StageDto } from '@/_data-access/pipeline/get-user-pipeline'
 
 interface DealDialogContentProps {
   defaultValues?: Partial<DealFormInput> & { id?: string }
   stages: StageDto[]
-  contacts: ContactDto[]
   setIsOpen: Dispatch<SetStateAction<boolean>>
   onUpdate?: (data: UpdateDealInput) => void
   isUpdating?: boolean
 }
 
+const MIN_SEARCH_CHARS = 3
+
 export function DealDialogContent({
   defaultValues,
   stages,
-  contacts,
   setIsOpen,
   onUpdate,
   isUpdating: externalIsUpdating,
@@ -85,21 +94,40 @@ export function DealDialogContent({
   const isEditing = !!defaultValues?.id
   const [open, setOpen] = useState(false)
   const [contactSearch, setContactSearch] = useState('')
+  const [contactResults, setContactResults] = useState<ContactOptionDto[]>([])
+  const contactDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const MIN_SEARCH_CHARS = 3
-  const MAX_RESULTS = 10
+  const { execute: executeContactSearch, isPending: isSearchingContacts } =
+    useAction(searchContacts, {
+      onSuccess: ({ data }) => {
+        if (data) setContactResults(data)
+      },
+    })
 
-  const filteredContacts = useMemo(() => {
-    if (contactSearch.length < MIN_SEARCH_CHARS) return []
-    const query = contactSearch.toLowerCase()
-    return contacts
-      .filter(
-        (c) =>
-          c.name.toLowerCase().includes(query) ||
-          c.companyName?.toLowerCase().includes(query),
-      )
-      .slice(0, MAX_RESULTS)
-  }, [contacts, contactSearch])
+  const handleContactSearchChange = useCallback(
+    (value: string) => {
+      setContactSearch(value)
+
+      if (contactDebounceRef.current) clearTimeout(contactDebounceRef.current)
+
+      if (value.length < MIN_SEARCH_CHARS) {
+        setContactResults([])
+        return
+      }
+
+      contactDebounceRef.current = setTimeout(() => {
+        executeContactSearch({ query: value })
+      }, 300)
+    },
+    [executeContactSearch],
+  )
+
+  // Limpar timeout no unmount para evitar setState após unmount
+  useEffect(() => {
+    return () => {
+      if (contactDebounceRef.current) clearTimeout(contactDebounceRef.current)
+    }
+  }, [])
 
   // Formulário de edição: schema simples sem lógica de contato inline
   const editForm = useForm<DealFormInput>({
@@ -237,7 +265,6 @@ export function DealDialogContent({
               )}
             />
 
-
             <div className="flex justify-end gap-2 pt-4">
               <Button
                 type="button"
@@ -248,14 +275,8 @@ export function DealDialogContent({
                 Cancelar
               </Button>
               <Button type="submit" disabled={isPending}>
-                {isPending ? (
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="animate-spin" />
-                    Salvar
-                  </div>
-                ) : (
-                  'Salvar'
-                )}
+                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Salvar
               </Button>
             </div>
           </form>
@@ -320,7 +341,7 @@ export function DealDialogContent({
 
             {/* Seção de contato: tabs para buscar existente ou criar novo */}
             <div className="space-y-2">
-              <label className="text-sm font-medium leading-none">Contato</label>
+              <Label>Contato</Label>
               <Tabs
                 value={contactMode}
                 onValueChange={(value) => {
@@ -336,6 +357,7 @@ export function DealDialogContent({
                   } else {
                     createForm.setValue('contactId', undefined)
                     setContactSearch('')
+                    setContactResults([])
                   }
                 }}
               >
@@ -356,91 +378,112 @@ export function DealDialogContent({
                   </TabsTrigger>
                 </TabsList>
 
-                {/* Tab: buscar contato existente via combobox */}
+                {/* Tab: buscar contato existente via combobox (server-side) */}
                 <TabsContent value="existing">
                   <FormField
                     control={createForm.control}
                     name="contactId"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <Popover open={open} onOpenChange={setOpen}>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant="outline"
-                                role="combobox"
-                                aria-expanded={open}
-                                disabled={isPending}
-                                className={cn(
-                                  'w-full justify-between border-border bg-input font-normal hover:bg-input/80',
-                                  !field.value && 'text-muted-foreground',
-                                )}
-                              >
-                                {field.value
-                                  ? contacts.find(
-                                      (contact) => contact.id === field.value,
-                                    )?.name
-                                  : 'Selecione um contato'}
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                            <Command shouldFilter={false}>
-                              <CommandInput
-                                placeholder="Digite pelo menos 3 caracteres..."
-                                value={contactSearch}
-                                onValueChange={setContactSearch}
-                              />
-                              <CommandList>
-                                {contactSearch.length < MIN_SEARCH_CHARS ? (
-                                  <div className="py-6 text-center text-sm text-muted-foreground">
-                                    Digite pelo menos 3 caracteres
-                                  </div>
-                                ) : filteredContacts.length === 0 ? (
-                                  <CommandEmpty>
-                                    Nenhum contato encontrado.
-                                  </CommandEmpty>
-                                ) : (
-                                  <CommandGroup>
-                                    {filteredContacts.map((contact) => (
-                                      <CommandItem
-                                        key={contact.id}
-                                        value={contact.id}
-                                        onSelect={() => {
-                                          createForm.setValue(
-                                            'contactId',
-                                            contact.id,
-                                          )
-                                          setOpen(false)
-                                          setContactSearch('')
-                                        }}
-                                      >
-                                        <Check
-                                          className={cn(
-                                            'mr-2 h-4 w-4',
-                                            contact.id === field.value
-                                              ? 'opacity-100'
-                                              : 'opacity-0',
-                                          )}
-                                        />
-                                        {contact.name}
-                                        {contact.companyName && (
-                                          <span className="ml-1 text-xs text-muted-foreground">
-                                            ({contact.companyName})
+                    render={({ field }) => {
+                      // Contato selecionado para exibição no trigger: busca em contactResults
+                      // (server-side). Após selecionar, o contato fica em contactResults até
+                      // que o popover seja reaberto e os resultados sejam limpos.
+                      const selectedContact = contactResults.find(
+                        (contact) => contact.id === field.value,
+                      )
+
+                      return (
+                        <FormItem className="flex flex-col">
+                          <Popover
+                            open={open}
+                            onOpenChange={(nextOpen) => {
+                              setOpen(nextOpen)
+                              if (!nextOpen) {
+                                setContactSearch('')
+                                setContactResults([])
+                              }
+                            }}
+                          >
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant="outline"
+                                  role="combobox"
+                                  aria-expanded={open}
+                                  disabled={isPending}
+                                  className={cn(
+                                    'w-full justify-between border-border bg-input font-normal hover:bg-input/80',
+                                    !field.value && 'text-muted-foreground',
+                                  )}
+                                >
+                                  {selectedContact
+                                    ? selectedContact.name
+                                    : 'Selecione um contato'}
+                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                              <Command shouldFilter={false}>
+                                <CommandInput
+                                  placeholder="Digite pelo menos 3 caracteres..."
+                                  value={contactSearch}
+                                  onValueChange={handleContactSearchChange}
+                                />
+                                <CommandList>
+                                  {contactSearch.length < MIN_SEARCH_CHARS ? (
+                                    <div className="py-6 text-center text-sm text-muted-foreground">
+                                      Digite pelo menos 3 caracteres
+                                    </div>
+                                  ) : isSearchingContacts ? (
+                                    <div className="flex items-center justify-center py-6">
+                                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                    </div>
+                                  ) : contactResults.length === 0 ? (
+                                    <CommandEmpty>
+                                      Nenhum contato encontrado.
+                                    </CommandEmpty>
+                                  ) : (
+                                    <CommandGroup>
+                                      {contactResults.map((contact) => (
+                                        <CommandItem
+                                          key={contact.id}
+                                          value={contact.id}
+                                          onSelect={() => {
+                                            createForm.setValue(
+                                              'contactId',
+                                              contact.id,
+                                            )
+                                            setOpen(false)
+                                          }}
+                                        >
+                                          <Check
+                                            className={cn(
+                                              'mr-2 h-4 w-4',
+                                              contact.id === field.value
+                                                ? 'opacity-100'
+                                                : 'opacity-0',
+                                            )}
+                                          />
+                                          <span className="flex-1">
+                                            {contact.name}
                                           </span>
-                                        )}
-                                      </CommandItem>
-                                    ))}
-                                  </CommandGroup>
-                                )}
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                                          {contact.phone && (
+                                            <span className="ml-2 text-xs text-muted-foreground">
+                                              {contact.phone}
+                                            </span>
+                                          )}
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  )}
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )
+                    }}
                   />
                 </TabsContent>
 
@@ -546,14 +589,8 @@ export function DealDialogContent({
                 Cancelar
               </Button>
               <Button type="submit" disabled={isPending}>
-                {isPending ? (
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="animate-spin" />
-                    Salvar
-                  </div>
-                ) : (
-                  'Salvar'
-                )}
+                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Salvar
               </Button>
             </div>
           </form>

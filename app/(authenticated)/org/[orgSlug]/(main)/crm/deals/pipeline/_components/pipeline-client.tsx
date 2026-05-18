@@ -19,7 +19,6 @@ import type {
   DealDto,
   DealsByStageDto,
 } from '@/_data-access/deal/get-deals-by-pipeline'
-import type { ContactDto } from '@/_data-access/contact/get-contacts'
 import type { OrgPipelineDto } from '@/_data-access/pipeline/get-org-pipelines'
 import type { MemberRole } from '@prisma/client'
 import { Settings2Icon } from 'lucide-react'
@@ -39,7 +38,6 @@ interface PipelineClientProps {
   pipelines: OrgPipelineDto[]
   activePipelineId: string
   dealsByStage: DealsByStageDto
-  contacts: ContactDto[]
   members: MemberOption[]
   currentUserId: string
   userRole: MemberRole
@@ -56,7 +54,6 @@ export const PipelineClient = ({
   pipelines,
   activePipelineId,
   dealsByStage,
-  contacts,
   members,
   currentUserId,
   userRole,
@@ -161,7 +158,6 @@ export const PipelineClient = ({
         createButton={
           <CreateDealButton
             stages={pipeline.stages}
-            contacts={contacts}
           />
         }
         filtersSheet={
@@ -192,7 +188,6 @@ export const PipelineClient = ({
           key={`new-${dialogState.stageId}`}
           defaultValues={{ stageId: dialogState.stageId }}
           stages={pipeline.stages}
-          contacts={contacts}
           setIsOpen={(open) => {
             if (typeof open === 'boolean' && !open) {
               closeDialog()

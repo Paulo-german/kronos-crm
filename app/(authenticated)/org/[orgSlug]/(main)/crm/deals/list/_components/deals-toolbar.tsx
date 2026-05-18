@@ -22,7 +22,6 @@ import { DEAL_SORT_OPTIONS } from '../_lib/deal-list-params'
 import type { DealListSortOption } from '../_lib/use-deal-list-filters'
 import type { DealFilters } from '../../_lib/deal-filters'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
-import type { ContactDto } from '@/_data-access/contact/get-contacts'
 import type { StageDto, PipelineWithStagesDto } from '@/_data-access/pipeline/get-user-pipeline'
 import type { OrgPipelineDto } from '@/_data-access/pipeline/get-org-pipelines'
 import type { MemberRole } from '@prisma/client'
@@ -31,7 +30,6 @@ const SEARCH_DEBOUNCE_MS = 300
 
 interface DealsToolbarProps {
   members: AcceptedMemberDto[]
-  contacts: ContactDto[]
   stages: StageDto[]
   pipeline: PipelineWithStagesDto
   pipelines: OrgPipelineDto[]
@@ -57,7 +55,6 @@ interface DealsToolbarProps {
 
 export function DealsToolbar({
   members,
-  contacts,
   stages,
   pipeline,
   pipelines,
@@ -216,7 +213,6 @@ export function DealsToolbar({
 
           <CreateDealButton
             stages={stages}
-            contacts={contacts}
             withinQuota={withinQuota}
           />
         </div>

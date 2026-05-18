@@ -10,18 +10,15 @@ import {
   TooltipTrigger,
 } from '@/_components/ui/tooltip'
 import { DealDialogContent } from './deal-dialog-content'
-import type { ContactDto } from '@/_data-access/contact/get-contacts'
 import type { StageDto } from '@/_data-access/pipeline/get-user-pipeline'
 
 interface CreateDealButtonProps {
   stages: StageDto[]
-  contacts: ContactDto[]
   withinQuota?: boolean
 }
 
 const CreateDealButton = ({
   stages,
-  contacts,
   withinQuota = true,
 }: CreateDealButtonProps) => {
   const [isOpen, setIsOpen] = useState(false)
@@ -52,7 +49,6 @@ const CreateDealButton = ({
       </SheetTrigger>
       <DealDialogContent
         stages={stages}
-        contacts={contacts}
         setIsOpen={setIsOpen}
       />
     </Sheet>

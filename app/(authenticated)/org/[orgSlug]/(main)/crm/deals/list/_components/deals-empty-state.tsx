@@ -6,18 +6,15 @@ import { Sheet, SheetTrigger } from '@/_components/ui/sheet'
 import { Button } from '@/_components/ui/button'
 import { Plus } from 'lucide-react'
 import { DealDialogContent } from '../../_components/deal-dialog-content'
-import type { ContactDto } from '@/_data-access/contact/get-contacts'
 import type { StageDto } from '@/_data-access/pipeline/get-user-pipeline'
 
 interface DealsEmptyStateProps {
   stages: StageDto[]
-  contacts: ContactDto[]
   withinQuota: boolean
 }
 
 export function DealsEmptyState({
   stages,
-  contacts,
   withinQuota,
 }: DealsEmptyStateProps) {
   const [isOpen, setIsOpen] = useState(false)
@@ -51,7 +48,6 @@ export function DealsEmptyState({
           </SheetTrigger>
           <DealDialogContent
             stages={stages}
-            contacts={contacts}
             setIsOpen={setIsOpen}
           />
         </Sheet>
