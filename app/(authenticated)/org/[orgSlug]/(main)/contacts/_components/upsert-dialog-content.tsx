@@ -4,6 +4,7 @@ import { Dispatch, SetStateAction } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAction } from 'next-safe-action/hooks'
+import { useParams, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import type { NumberFormatValues } from 'react-number-format'
 import {
@@ -20,6 +21,13 @@ import {
   FormLabel,
   FormMessage,
 } from '@/_components/ui/form'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/_components/ui/select'
 import { Input } from '@/_components/ui/input'
 import { Button } from '@/_components/ui/button'
 import { Switch } from '@/_components/ui/switch'
@@ -31,8 +39,15 @@ import {
 import type { UpdateContactInput } from '@/_actions/contact/update-contact/schema'
 import { CompanyCombobox } from './company-combobox'
 import { PhoneInput } from '@/_components/form-controls/phone-input'
+import {
+  LIFECYCLE_STAGE_CONFIG,
+  LIFECYCLE_STAGE_ORDER,
+} from '@/_lib/lifecycle/lifecycle-stage-config'
+import { CAPTURE_CHANNEL_CONFIG } from '@/_lib/lifecycle/capture-channel-config'
 import { Loader2 } from 'lucide-react'
 import type { MemberRole } from '@prisma/client'
+import { CaptureChannel, LifecycleStage } from '@prisma/client'
+import type { PipelineStageSimple } from '@/_data-access/pipeline/get-default-pipeline-with-stages'
 
 interface UpsertContactDialogContentProps {
   defaultValues?: ContactInput & { id?: string }
@@ -42,6 +57,7 @@ interface UpsertContactDialogContentProps {
   isUpdating?: boolean
   userRole?: MemberRole
   hidePiiFromMembers?: boolean
+  pipelineStages?: PipelineStageSimple[]
 }
 
 const UpsertContactDialogContent = ({
@@ -52,8 +68,11 @@ const UpsertContactDialogContent = ({
   isUpdating: isUpdatingProp = false,
   userRole,
   hidePiiFromMembers = false,
+  pipelineStages = [],
 }: UpsertContactDialogContentProps) => {
   const isEditing = !!defaultValues?.id
+  const router = useRouter()
+  const params = useParams<{ orgSlug: string }>()
   // Ocultar campos PII no modo edição quando: MEMBER + toggle ativo na org
   const isPiiRestricted = userRole === 'MEMBER' && hidePiiFromMembers && isEditing
 
@@ -65,8 +84,12 @@ const UpsertContactDialogContent = ({
       phone: '',
       role: '',
       cpf: '',
-      companyId: undefined, // null vs undefined fix
+      companyId: undefined,
       isDecisionMaker: false,
+      lifecycleStage: undefined,
+      firstCaptureChannel: undefined,
+      inlineDealTitle: '',
+      inlineDealPipelineStageId: pipelineStages[0]?.id ?? undefined,
     },
   })
 
@@ -86,6 +109,9 @@ const UpsertContactDialogContent = ({
         }
         form.reset()
         setIsOpen(false)
+        if (data?.dealId) {
+          router.push(`/org/${params.orgSlug}/crm/deals/${data.dealId}`)
+        }
       },
       onError: ({ error }) => {
         toast.error(error.serverError || 'Erro ao criar contato.')
@@ -107,6 +133,9 @@ const UpsertContactDialogContent = ({
   }
 
   const isPending = isCreating || isUpdatingProp
+  const watchedStage = form.watch('lifecycleStage')
+  const needsInlineDeal =
+    watchedStage === LifecycleStage.OPPORTUNITY || watchedStage === LifecycleStage.CUSTOMER
 
   return (
     <SheetContent className="overflow-y-auto sm:max-w-xl">
@@ -221,6 +250,140 @@ const UpsertContactDialogContent = ({
               )}
             />
           </div>
+
+          {/* Estágio inicial, canal de captura e negociação inline — apenas na criação */}
+          {!isEditing && (
+            <>
+              <div className="grid gap-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="lifecycleStage"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Estágio inicial</FormLabel>
+                      <Select
+                        value={field.value ?? ''}
+                        onValueChange={(value) => field.onChange(value || undefined)}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Lead (padrão)" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {LIFECYCLE_STAGE_ORDER.map((stage) => {
+                            const cfg = LIFECYCLE_STAGE_CONFIG[stage]
+                            return (
+                              <SelectItem key={stage} value={stage}>
+                                <span className="flex items-center gap-2">
+                                  <cfg.icon className={`h-3.5 w-3.5 ${cfg.colorClassName}`} />
+                                  {cfg.label}
+                                </span>
+                              </SelectItem>
+                            )
+                          })}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="firstCaptureChannel"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Canal de captura</FormLabel>
+                      <Select
+                        value={field.value ?? ''}
+                        onValueChange={(value) =>
+                          field.onChange(value ? (value as CaptureChannel) : null)
+                        }
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Não informado" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {(Object.values(CaptureChannel) as CaptureChannel[]).map((channel) => {
+                            const cfg = CAPTURE_CHANNEL_CONFIG[channel]
+                            return (
+                              <SelectItem key={channel} value={channel}>
+                                <span className="flex items-center gap-2">
+                                  <cfg.icon className="h-3.5 w-3.5 text-muted-foreground" />
+                                  {cfg.label}
+                                </span>
+                              </SelectItem>
+                            )
+                          })}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {needsInlineDeal && (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="inlineDealTitle"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Negociação *{' '}
+                          <span className="font-normal text-muted-foreground">
+                            {watchedStage === LifecycleStage.CUSTOMER
+                              ? '(ganha)'
+                              : '(em aberto)'}
+                          </span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Ex: Proposta de serviço anual"
+                            value={field.value || ''}
+                            onChange={field.onChange}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="inlineDealPipelineStageId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Etapa do pipeline *</FormLabel>
+                        <Select
+                          value={field.value ?? ''}
+                          onValueChange={(value) => field.onChange(value || undefined)}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione a etapa" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {pipelineStages.map((stage) => (
+                              <SelectItem key={stage.id} value={stage.id}>
+                                {stage.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
+            </>
+          )}
 
           <div className="grid gap-4 md:grid-cols-2">
             {!isPiiRestricted && (

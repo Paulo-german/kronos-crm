@@ -7,15 +7,18 @@ import { Sheet, SheetTrigger } from '@/_components/ui/sheet'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/_components/ui/tooltip'
 import UpsertContactDialogContent from './upsert-dialog-content'
 import { CompanyDto } from '@/_data-access/company/get-companies'
+import type { PipelineStageSimple } from '@/_data-access/pipeline/get-default-pipeline-with-stages'
 
 interface CreateContactButtonProps {
   companyOptions: CompanyDto[]
   withinQuota?: boolean
+  pipelineStages?: PipelineStageSimple[]
 }
 
 const CreateContactButton = ({
   companyOptions,
   withinQuota = true,
+  pipelineStages = [],
 }: CreateContactButtonProps) => {
   const [isOpen, setIsOpen] = useState(false)
 
@@ -30,7 +33,7 @@ const CreateContactButton = ({
             </Button>
           </span>
         </TooltipTrigger>
-        <TooltipContent>Limite atingido. Faca upgrade do plano.</TooltipContent>
+        <TooltipContent>Limite atingido. Faça upgrade do plano.</TooltipContent>
       </Tooltip>
     )
   }
@@ -46,6 +49,7 @@ const CreateContactButton = ({
       <UpsertContactDialogContent
         setIsOpen={setIsOpen}
         companyOptions={companyOptions}
+        pipelineStages={pipelineStages}
       />
     </Sheet>
   )

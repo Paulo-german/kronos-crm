@@ -23,6 +23,7 @@ import { CONTACTS_TOUR_STEPS } from '@/_lib/onboarding/tours/contacts-tour'
 import type { ContactDto } from '@/_data-access/contact/get-contacts'
 import type { CompanyDto } from '@/_data-access/company/get-companies'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
+import type { PipelineStageSimple } from '@/_data-access/pipeline/get-default-pipeline-with-stages'
 import type { MemberRole } from '@prisma/client'
 
 interface ContactsListClientProps {
@@ -40,6 +41,7 @@ interface ContactsListClientProps {
   hidePiiFromMembers: boolean
   isScoreEnabled: boolean
   lifecycleCounts: ContactsLifecycleCounts
+  pipelineStages: PipelineStageSimple[]
 }
 
 export function ContactsListClient({
@@ -57,6 +59,7 @@ export function ContactsListClient({
   hidePiiFromMembers,
   isScoreEnabled,
   lifecycleCounts,
+  pipelineStages,
 }: ContactsListClientProps) {
   const { filters, setFilters, clearFilters, activeFilterCount, hasActiveFilters } =
     useContactFilters()
@@ -168,6 +171,7 @@ export function ContactsListClient({
           onClearFilters={clearFilters}
           activeFilterCount={activeFilterCount}
           isScoreEnabled={isScoreEnabled}
+          pipelineStages={pipelineStages}
         />
 
         <ContactsDataTable

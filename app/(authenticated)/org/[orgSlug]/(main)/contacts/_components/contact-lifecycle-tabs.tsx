@@ -7,11 +7,10 @@ import {
   LIFECYCLE_STAGE_CONFIG,
   LIFECYCLE_STAGE_ORDER,
 } from '@/_lib/lifecycle/lifecycle-stage-config'
+import type { ContactsLifecycleCounts } from '@/_data-access/contact/get-contacts-lifecycle-counts'
 import { useContactFilters } from '../_lib/use-contact-filters'
 
-export interface ContactsLifecycleCounts extends Record<LifecycleStage, number> {
-  total: number
-}
+export type { ContactsLifecycleCounts }
 
 interface ContactLifecycleTabsProps {
   counts: ContactsLifecycleCounts

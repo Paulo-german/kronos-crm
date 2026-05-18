@@ -5,7 +5,7 @@ import { db } from '@/_lib/prisma'
 import type { RBACContext } from '@/_lib/rbac'
 import { isElevated } from '@/_lib/rbac'
 import { maskEmail, maskPhone, maskCpf } from '@/_lib/pii-mask'
-import type { CaptureChannel, CustomerStatus, LifecycleStage } from '@prisma/client'
+import type { CaptureChannel, CustomerStatus, DealStatus, LifecycleStage } from '@prisma/client'
 
 export interface ContactDetailDto {
   id: string
@@ -24,6 +24,7 @@ export interface ContactDetailDto {
   deals: {
     id: string
     title: string
+    status: DealStatus
   }[]
   createdAt: Date
   updatedAt: Date
@@ -89,6 +90,7 @@ const fetchContactByIdFromDb = async (
             select: {
               id: true,
               title: true,
+              status: true,
             },
           },
         },
@@ -111,7 +113,11 @@ const fetchContactByIdFromDb = async (
     companyId: contact.companyId,
     assignedTo: contact.assignedTo,
     company: contact.company,
-    deals: contact.deals.map((dealContact) => dealContact.deal),
+    deals: contact.deals.map((dealContact) => ({
+      id: dealContact.deal.id,
+      title: dealContact.deal.title,
+      status: dealContact.deal.status,
+    })),
     createdAt: contact.createdAt,
     updatedAt: contact.updatedAt,
     lifecycleStage: contact.lifecycleStage,

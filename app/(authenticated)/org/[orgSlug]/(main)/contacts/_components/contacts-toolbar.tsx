@@ -19,6 +19,7 @@ import CreateContactButton from './create-contact-button'
 import type { ContactFilters } from '../_lib/contact-filters'
 import type { CompanyDto } from '@/_data-access/company/get-companies'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
+import type { PipelineStageSimple } from '@/_data-access/pipeline/get-default-pipeline-with-stages'
 import type { MemberRole } from '@prisma/client'
 
 const SEARCH_DEBOUNCE_MS = 300
@@ -35,6 +36,7 @@ interface ContactsToolbarProps {
   onClearFilters: () => void
   activeFilterCount: number
   isScoreEnabled: boolean
+  pipelineStages: PipelineStageSimple[]
 }
 
 export function ContactsToolbar({
@@ -49,6 +51,7 @@ export function ContactsToolbar({
   onClearFilters,
   activeFilterCount,
   isScoreEnabled,
+  pipelineStages,
 }: ContactsToolbarProps) {
   const isMember = userRole === 'MEMBER'
   const searchParams = useSearchParams()
@@ -202,6 +205,7 @@ export function ContactsToolbar({
           <CreateContactButton
             companyOptions={companyOptions}
             withinQuota={withinQuota}
+            pipelineStages={pipelineStages}
           />
         </div>
       </div>

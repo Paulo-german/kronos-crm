@@ -15,9 +15,10 @@ const fetchCountsFromDb = async (
   orgId: string,
   userId: string,
   elevated: boolean,
+  hidePiiFromMembers: boolean,
   params: ContactListParams,
 ): Promise<ContactsLifecycleCounts> => {
-  const masked = !elevated
+  const masked = !elevated && hidePiiFromMembers
 
   // WHERE igual ao da listagem paginada, mas sem filtro de lifecycleStage
   // para que cada tab mostre o total de contatos que cairiam nela
@@ -83,6 +84,7 @@ const fetchCountsFromDb = async (
 export const getContactsLifecycleCounts = cache(
   async (ctx: RBACContext, params: ContactListParams): Promise<ContactsLifecycleCounts> => {
     const elevated = isElevated(ctx.userRole)
+    const hidePiiFromMembers = ctx.hidePiiFromMembers ?? false
 
     // Cache key exclui lifecycleStages pois a contagem ignora esse filtro
     const paramsKey = JSON.stringify({
@@ -97,7 +99,7 @@ export const getContactsLifecycleCounts = cache(
     })
 
     const getCached = unstable_cache(
-      async () => fetchCountsFromDb(ctx.orgId, ctx.userId, elevated, params),
+      async () => fetchCountsFromDb(ctx.orgId, ctx.userId, elevated, hidePiiFromMembers, params),
       [`contacts-counts-${ctx.orgId}-${ctx.userId}-${elevated}-${paramsKey}`],
       {
         tags: [`contacts:${ctx.orgId}`],

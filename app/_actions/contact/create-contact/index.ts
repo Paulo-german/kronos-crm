@@ -1,10 +1,10 @@
 'use server'
 
-import { LifecycleCauseType, LifecycleStage } from '@prisma/client'
+import { CaptureChannel, CustomerStatus, DealStatus, LifecycleCauseType, LifecycleStage } from '@prisma/client'
 import { orgActionClient } from '@/_lib/safe-action'
 import { contactSchema } from './schema'
 import { db } from '@/_lib/prisma'
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import {
   canPerformAction,
   requirePermission,
@@ -39,7 +39,53 @@ export const createContact = orgActionClient
       }
     }
 
-    const contact = await db.$transaction(async (tx) => {
+    const initialStage = data.lifecycleStage ?? LifecycleStage.LEAD
+    const needsInlineDeal =
+      initialStage === LifecycleStage.OPPORTUNITY || initialStage === LifecycleStage.CUSTOMER
+    const now = new Date()
+
+    // Timestamps de todos os estágios percorridos até initialStage — garante integridade
+    // para dashboard e relatórios que consultam becameOpportunityAt / becameCustomerAt etc.
+    const stageFields =
+      initialStage === LifecycleStage.QUALIFIED
+        ? { qualifiedAt: now }
+        : initialStage === LifecycleStage.OPPORTUNITY
+          ? { qualifiedAt: now, becameOpportunityAt: now }
+          : initialStage === LifecycleStage.CUSTOMER
+            ? { qualifiedAt: now, becameOpportunityAt: now, becameCustomerAt: now, customerStatus: CustomerStatus.ACTIVE }
+            : {}
+
+    // Cadeia de histórico: um registro por estágio percorrido — analytics conta cada transição
+    const stageChain: LifecycleStage[] = [LifecycleStage.LEAD, LifecycleStage.QUALIFIED, LifecycleStage.OPPORTUNITY, LifecycleStage.CUSTOMER]
+    const targetIndex = stageChain.indexOf(initialStage)
+    const historyChain = stageChain.slice(0, targetIndex + 1).map((stage, index, arr) => ({
+      organizationId: ctx.orgId,
+      fromStage: index === 0 ? null : arr[index - 1],
+      toStage: stage,
+      causeType: LifecycleCauseType.CONTACT_CREATED,
+      causeRefId: null as string | null,
+      changedByUserId: ctx.userId,
+    }))
+
+    // Canal de captura: padrão UNKNOWN quando não informado
+    const captureChannel = data.firstCaptureChannel ?? CaptureChannel.UNKNOWN
+
+    // Validar que a etapa do pipeline pertence à organização
+    if (needsInlineDeal && data.inlineDealTitle?.trim() && data.inlineDealPipelineStageId) {
+      const stageExists = await db.pipelineStage.findFirst({
+        where: {
+          id: data.inlineDealPipelineStageId,
+          pipeline: { organizationId: ctx.orgId },
+        },
+        select: { id: true },
+      })
+
+      if (!stageExists) {
+        throw new Error('Etapa do pipeline não encontrada.')
+      }
+    }
+
+    const txResult = await db.$transaction(async (tx) => {
       const newContact = await tx.contact.create({
         data: {
           organizationId: ctx.orgId,
@@ -51,28 +97,63 @@ export const createContact = orgActionClient
           cpf: data.cpf || null,
           companyId: data.companyId || null,
           isDecisionMaker: data.isDecisionMaker,
+          lifecycleStage: initialStage,
+          ...stageFields,
+          firstCaptureChannel: captureChannel,
+          firstCaptureAt: now,
+          lastCaptureChannel: captureChannel,
+          lastCaptureAt: now,
         },
       })
 
-      await tx.contactLifecycleHistory.create({
-        data: {
-          contactId: newContact.id,
-          organizationId: ctx.orgId,
-          fromStage: null,
-          toStage: LifecycleStage.LEAD,
-          causeType: LifecycleCauseType.CONTACT_CREATED,
-          causeRefId: null,
-          changedByUserId: ctx.userId,
-        },
+      await tx.contactLifecycleHistory.createMany({
+        data: historyChain.map((record) => ({ ...record, contactId: newContact.id })),
       })
 
-      return newContact
+      // Criar negociação inline para OPPORTUNITY e CUSTOMER
+      let inlineDealId: string | null = null
+      if (needsInlineDeal && data.inlineDealTitle?.trim() && data.inlineDealPipelineStageId) {
+        const deal = await tx.deal.create({
+          data: {
+            organizationId: ctx.orgId,
+            assignedTo,
+            title: data.inlineDealTitle.trim(),
+            pipelineStageId: data.inlineDealPipelineStageId,
+            companyId: data.companyId || null,
+            status: initialStage === LifecycleStage.CUSTOMER ? DealStatus.WON : DealStatus.OPEN,
+          },
+        })
+
+        await tx.dealContact.create({
+          data: {
+            dealId: deal.id,
+            contactId: newContact.id,
+            isPrimary: true,
+          },
+        })
+
+        inlineDealId = deal.id
+      }
+
+      return { contact: newContact, dealId: inlineDealId }
     })
 
     revalidateTag(`contacts:${ctx.orgId}`)
-    revalidatePath('/contacts')
+
+    if (txResult.dealId) {
+      revalidateTag(`pipeline:${ctx.orgId}`)
+      revalidateTag(`deals:${ctx.orgId}`)
+      revalidateTag(`deals-options:${ctx.orgId}`)
+      revalidateTag(`dashboard:${ctx.orgId}`)
+    }
 
     const quota = await checkPlanQuota(ctx.orgId, 'contact')
 
-    return { success: true, contactId: contact.id, current: quota.current, limit: quota.limit }
+    return {
+      success: true,
+      contactId: txResult.contact.id,
+      dealId: txResult.dealId,
+      current: quota.current,
+      limit: quota.limit,
+    }
   })

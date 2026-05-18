@@ -5,6 +5,7 @@ import { getCompanies } from '@/_data-access/company/get-companies'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
 import { checkPlanQuota, getPlanLimits } from '@/_lib/rbac/plan-limits'
 import { SCORE_ELIGIBLE_PRODUCT_KEYS } from '@/../trigger/lib/health-score-constants'
+import { getDefaultPipelineWithStages } from '@/_data-access/pipeline/get-default-pipeline-with-stages'
 import { ContactsListClient } from './_components/contacts-list-client'
 import { parseContactListParams } from './_lib/contact-list-params'
 
@@ -19,14 +20,16 @@ const ContactsPage = async ({ params, searchParams }: ContactsPageProps) => {
   const ctx = await getOrgContext(orgSlug)
   const listParams = parseContactListParams(resolvedSearchParams)
 
-  const [result, companies, quota, members, planInfo, lifecycleCounts] = await Promise.all([
-    getContactsPaginated(ctx, listParams),
-    getCompanies(ctx.orgId),
-    checkPlanQuota(ctx.orgId, 'contact'),
-    getOrganizationMembers(ctx.orgId),
-    getPlanLimits(ctx.orgId),
-    getContactsLifecycleCounts(ctx, listParams),
-  ])
+  const [result, companies, quota, members, planInfo, lifecycleCounts, pipelineStages] =
+    await Promise.all([
+      getContactsPaginated(ctx, listParams),
+      getCompanies(ctx.orgId),
+      checkPlanQuota(ctx.orgId, 'contact'),
+      getOrganizationMembers(ctx.orgId),
+      getPlanLimits(ctx.orgId),
+      getContactsLifecycleCounts(ctx, listParams),
+      getDefaultPipelineWithStages(ctx.orgId),
+    ])
 
   const isScoreEnabled = planInfo.plan
     ? (SCORE_ELIGIBLE_PRODUCT_KEYS as readonly string[]).includes(planInfo.plan)
@@ -48,6 +51,7 @@ const ContactsPage = async ({ params, searchParams }: ContactsPageProps) => {
       hidePiiFromMembers={ctx.hidePiiFromMembers ?? false}
       isScoreEnabled={isScoreEnabled}
       lifecycleCounts={lifecycleCounts}
+      pipelineStages={pipelineStages}
     />
   )
 }

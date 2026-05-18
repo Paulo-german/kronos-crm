@@ -2,12 +2,11 @@
 
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { useCallback, useMemo } from 'react'
-import type { LifecycleStage, CustomerStatus } from '@prisma/client'
-import { LifecycleStage as LifecycleStageEnum, CustomerStatus as CustomerStatusEnum } from '@prisma/client'
+import { LifecycleStage, CustomerStatus } from '@prisma/client'
 import type { ContactFilters } from './contact-filters'
 
-const VALID_STAGES = new Set<string>(Object.values(LifecycleStageEnum))
-const VALID_STATUSES = new Set<string>(Object.values(CustomerStatusEnum))
+const VALID_STAGES = new Set<string>(Object.values(LifecycleStage))
+const VALID_STATUSES = new Set<string>(Object.values(CustomerStatus))
 
 function parseCsvStages(csv: string | null): LifecycleStage[] {
   if (!csv) return []
