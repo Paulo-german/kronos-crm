@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
-import { GraduationCap, Loader2, X } from 'lucide-react'
+import { GraduationCap, Kanban, Loader2, Sparkles, Workflow, X } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/_components/ui/dialog'
 import { Button } from '@/_components/ui/button'
 import { SlideContainer } from '@/_components/slides/slide-container'
@@ -11,6 +12,11 @@ import { SlideProgress } from '@/_components/slides/slide-progress'
 import { TutorialSlideContent } from './tutorial-slide-content'
 import { completeTutorial } from '@/_actions/tutorial/complete-tutorial'
 import type { TutorialDefinition } from '@/_lib/tutorials/tutorial-types'
+
+const TUTORIAL_ICON_MAP: Record<string, LucideIcon> = {
+  Kanban,
+  Workflow,
+}
 
 interface TutorialModalProps {
   tutorial: TutorialDefinition
@@ -28,6 +34,7 @@ export const TutorialModal = ({
   const [step, setStep] = useState(0)
   const [direction, setDirection] = useState(1)
 
+  const TutorialIcon = TUTORIAL_ICON_MAP[tutorial.icon] ?? GraduationCap
   const totalSteps = tutorial.slides.length
   const currentSlide = tutorial.slides[step]
   const isFirst = step === 0
@@ -121,7 +128,7 @@ export const TutorialModal = ({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="w-[90vw] max-w-3xl gap-0 overflow-hidden p-0 outline-none ring-0 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 sm:rounded-lg [&>button:last-child]:hidden"
+        className="w-[90vw] max-w-5xl gap-0 overflow-hidden p-0 outline-none ring-0 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 sm:rounded-lg [&>button:last-child]:hidden"
         onPointerDownOutside={(event) => {
           // Bloqueia clique fora apenas quando não é re-visita
           if (!isCompleted) event.preventDefault()
@@ -136,11 +143,17 @@ export const TutorialModal = ({
         {/* Header com gradiente e branding */}
         <div className="relative flex items-center gap-3 border-b bg-gradient-to-r from-primary/10 via-primary/5 to-transparent px-6 py-4">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <GraduationCap className="h-5 w-5" />
+            <TutorialIcon className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-foreground">
+            <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
               {tutorial.title}
+              {tutorial.badge && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                  <Sparkles className="h-2.5 w-2.5" />
+                  {tutorial.badge}
+                </span>
+              )}
             </p>
             <p className="text-xs text-muted-foreground">
               {tutorial.estimatedMinutes} min &middot; {totalSteps} slides

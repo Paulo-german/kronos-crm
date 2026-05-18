@@ -83,6 +83,73 @@ export const TUTORIAL_REGISTRY: TutorialDefinition[] = [
       },
     ],
   },
+  {
+    id: 'lifecycle-intro',
+    title: 'Ciclo de Vida dos Contatos',
+    badge: 'Novidade',
+    description:
+      'Conheça a nova estrutura de ciclo, saúde dos relacionamentos e origem de captura.',
+    icon: 'Workflow',
+    category: 'getting_started',
+    relatedRoute: '/crm/contacts',
+    estimatedMinutes: 6,
+    slides: [
+      {
+        title: 'Ciclo de vida dos contatos',
+        description:
+          'Pense no ciclo de vida: seu contato começa como Lead, vai se aquecendo e pode chegar a Cliente. O Kronos acompanha esse ciclo — e você vê tudo em tempo real.',
+        content: { type: 'component', componentId: 'lifecycle-stages' },
+      },
+      {
+        title: 'Como cada estágio é atingido',
+        description:
+          'Lead entra pelo inbox ou qualquer canal de captura. Qualificado vem do agente de IA ou de você. Oportunidade e Cliente avançam automaticamente pelos negócios — mas você pode ajustar a qualquer momento.',
+        content: { type: 'component', componentId: 'lifecycle-auto-advance' },
+      },
+      {
+        title: 'Configure quando o agente avança',
+        description:
+          'No processo do agente, cada etapa tem uma opção "Avançar ciclo". Basta escolher o estágio de destino — quando a conversa chegar naquela etapa, o contato avança automaticamente.',
+        content: { type: 'component', componentId: 'lifecycle-agent-config' },
+      },
+      {
+        title: 'O agente de IA cuida do ciclo',
+        description:
+          'O agente lê cada mensagem em tempo real. Quando detecta interesse, avança para Qualificado. Quando o contato quer fechar, cria o negócio e avança para Oportunidade — tudo sem você precisar fazer nada.',
+        content: { type: 'component', componentId: 'lifecycle-agent' },
+      },
+      {
+        title: 'Saúde do relacionamento',
+        description:
+          'O pontinho colorido é um alarme silencioso: verde significa contato frequente, amarelo pede atenção, vermelho avisa que aquela pessoa pode estar esquecendo de você. Aja antes de perder.',
+        content: { type: 'component', componentId: 'lifecycle-health' },
+      },
+      {
+        title: 'Filtre sua base por estágio',
+        description:
+          'Na lista de contatos, clique em qualquer aba para ver só quem está naquele estágio do ciclo. Ótimo para focar em quem está perto de fechar ou descobrir quantos Leads ainda precisam de atenção.',
+        content: { type: 'component', componentId: 'lifecycle-filter-tabs' },
+      },
+      {
+        title: 'De onde vieram seus contatos',
+        description:
+          'Saber por onde cada cliente chegou é ouro para o seu marketing. Ao criar um contato, basta marcar o canal — o Kronos mostrará quais fontes trazem mais resultados.',
+        content: { type: 'component', componentId: 'lifecycle-capture' },
+      },
+      {
+        title: 'Tudo registrado, nada esquecido',
+        description:
+          'Cada avanço de estágio fica gravado com data, motivo e quem fez a mudança. Ideal para passar um contato para outro vendedor sem perder nenhum contexto.',
+        content: { type: 'component', componentId: 'lifecycle-timeline' },
+      },
+      {
+        title: 'Onde encontrar tudo isso',
+        description:
+          'O ciclo aparece em três lugares do Kronos. Você não precisa procurar — ele está sempre visível onde mais importa.',
+        content: { type: 'component', componentId: 'lifecycle-overview' },
+      },
+    ],
+  },
 ]
 
 // Single source of truth para os IDs — usado pelo Zod schema da action

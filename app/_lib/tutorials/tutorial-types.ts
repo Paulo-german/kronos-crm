@@ -17,6 +17,7 @@ export interface TutorialDefinition {
   title: string
   description: string
   icon: string // lucide icon name
+  badge?: string // ex: 'Novidade' — exibido como chip no header do modal
   category: 'getting_started' | 'advanced'
   slides: TutorialSlide[]
   relatedRoute: string // rota onde o trigger contextual aparece
