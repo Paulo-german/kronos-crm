@@ -1,5 +1,6 @@
 'use server'
 
+import { LifecycleCauseType, LifecycleStage } from '@prisma/client'
 import { orgActionClient } from '@/_lib/safe-action'
 import { contactSchema } from './schema'
 import { db } from '@/_lib/prisma'
@@ -38,18 +39,34 @@ export const createContact = orgActionClient
       }
     }
 
-    const contact = await db.contact.create({
-      data: {
-        organizationId: ctx.orgId,
-        assignedTo,
-        name: data.name,
-        email: data.email || null,
-        phone: data.phone || null,
-        role: data.role || null,
-        cpf: data.cpf || null,
-        companyId: data.companyId || null,
-        isDecisionMaker: data.isDecisionMaker,
-      },
+    const contact = await db.$transaction(async (tx) => {
+      const newContact = await tx.contact.create({
+        data: {
+          organizationId: ctx.orgId,
+          assignedTo,
+          name: data.name,
+          email: data.email || null,
+          phone: data.phone || null,
+          role: data.role || null,
+          cpf: data.cpf || null,
+          companyId: data.companyId || null,
+          isDecisionMaker: data.isDecisionMaker,
+        },
+      })
+
+      await tx.contactLifecycleHistory.create({
+        data: {
+          contactId: newContact.id,
+          organizationId: ctx.orgId,
+          fromStage: null,
+          toStage: LifecycleStage.LEAD,
+          causeType: LifecycleCauseType.CONTACT_CREATED,
+          causeRefId: null,
+          changedByUserId: ctx.userId,
+        },
+      })
+
+      return newContact
     })
 
     revalidateTag(`contacts:${ctx.orgId}`)
