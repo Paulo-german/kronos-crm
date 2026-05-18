@@ -7,8 +7,8 @@ import { LifecycleCauseType } from '@prisma/client'
  * o rótulo inclui a autoria ("manualmente por {nome}"). Fallback para "manualmente"
  * preserva legibilidade caso o usuário tenha sido removido (`changedByName=null`).
  *
- * `BACKFILL` aparece aqui apenas como salvaguarda — a query principal filtra essa
- * causa antes de chegar à UI (origem sintética da migração de dados).
+ * `BACKFILL` representa histórico reconstruído com datas reais de negócio e aparece
+ * na timeline ao lado das demais causas.
  */
 export function mapCauseTypeToLabel(
   causeType: LifecycleCauseType,
@@ -32,6 +32,8 @@ export function mapCauseTypeToLabel(
     case LifecycleCauseType.INACTIVITY:
       return 'por inatividade'
     case LifecycleCauseType.BACKFILL:
-      return 'migração de dados'
+      return 'histórico reconstruído'
+    case LifecycleCauseType.CONTACT_CREATED:
+      return 'novo contato'
   }
 }

@@ -2065,6 +2065,7 @@ enum LifecycleCauseType {
   INACTIVITY
   BACKFILL
   AI_QUALIFICATION
+  CONTACT_CREATED
 
   @@map("lifecycle_cause_type")
 }
