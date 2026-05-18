@@ -3,7 +3,7 @@ import 'server-only'
 import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { subDays } from 'date-fns'
-import { CaptureChannel, LifecycleStage, type Prisma } from '@prisma/client'
+import { LifecycleStage, type Prisma } from '@prisma/client'
 import { db } from '@/_lib/prisma'
 import { isElevated, type RBACContext } from '@/_lib/rbac'
 import {
@@ -11,26 +11,10 @@ import {
   DASHBOARD_V2_CACHE_REVALIDATE_S,
   LEAD_WAITING_DAYS,
 } from '@/_lib/lifecycle/dashboard-v2-constants'
+import { CAPTURE_CHANNEL_CONFIG } from '@/_lib/lifecycle/capture-channel-config'
 import { buildContactWhereForDashboardV2 } from './shared/build-contact-where'
 import { makeDashboardV2CacheKey } from './shared/dashboard-v2-cache'
 import type { AttentionContactDto, AttentionListDto } from './shared/attention-types'
-
-// Labels PT-BR para o canal de captura no secondary metric
-const CAPTURE_CHANNEL_LABELS: Record<CaptureChannel, string> = {
-  WHATSAPP: 'WhatsApp',
-  INSTAGRAM: 'Instagram',
-  WEBSITE_CHAT: 'Chat do Site',
-  EMBED_FORM: 'Formulário',
-  FACEBOOK_LEAD: 'Facebook Lead',
-  API: 'API',
-  PHONE_CALL: 'Ligação',
-  IN_PERSON: 'Presencial',
-  EVENT: 'Evento',
-  EMAIL: 'E-mail',
-  REFERRAL: 'Indicação',
-  IMPORT: 'Importação',
-  UNKNOWN: 'Origem desconhecida',
-}
 
 // Acima deste número de dias o card escala de "warning" para "destructive"
 const DESTRUCTIVE_WAITING_DAYS = 10
@@ -84,7 +68,7 @@ async function fetchWaitingLeads(
         primaryMetric: '— dias aguardando',
         primaryMetricVariant: 'warning',
         secondaryMetric: contact.firstCaptureChannel
-          ? CAPTURE_CHANNEL_LABELS[contact.firstCaptureChannel]
+          ? CAPTURE_CHANNEL_CONFIG[contact.firstCaptureChannel].label
           : null,
       }
     }
@@ -100,7 +84,7 @@ async function fetchWaitingLeads(
       primaryMetric: `${diffDays} dias aguardando`,
       primaryMetricVariant: variant,
       secondaryMetric: contact.firstCaptureChannel
-        ? CAPTURE_CHANNEL_LABELS[contact.firstCaptureChannel]
+        ? CAPTURE_CHANNEL_CONFIG[contact.firstCaptureChannel].label
         : null,
     }
   })

@@ -12,17 +12,10 @@ import {
   HEALTH_SCORE_RISK_THRESHOLD,
   SCORE_STALE_DAYS,
 } from '@/_lib/lifecycle/dashboard-v2-constants'
+import { CUSTOMER_STATUS_CONFIG } from '@/_lib/lifecycle/customer-status-config'
 import { buildContactWhereForDashboardV2 } from './shared/build-contact-where'
 import { makeDashboardV2CacheKey } from './shared/dashboard-v2-cache'
 import type { AttentionContactDto, AttentionListDto } from './shared/attention-types'
-
-// Labels PT-BR para o secondary metric do card
-const CUSTOMER_STATUS_LABELS: Record<CustomerStatus, string> = {
-  NEVER_BOUGHT: 'Nunca comprou',
-  ACTIVE: 'Ativo',
-  DORMANT: 'Dormente',
-  CHURNED: 'Perdido',
-}
 
 async function fetchAtRiskCustomers(
   orgId: string,
@@ -81,7 +74,7 @@ async function fetchAtRiskCustomers(
       contactAvatarUrl: null,
       primaryMetric,
       primaryMetricVariant: 'destructive',
-      secondaryMetric: CUSTOMER_STATUS_LABELS[contact.customerStatus],
+      secondaryMetric: CUSTOMER_STATUS_CONFIG[contact.customerStatus].label,
       isScoreStale,
     }
   })
