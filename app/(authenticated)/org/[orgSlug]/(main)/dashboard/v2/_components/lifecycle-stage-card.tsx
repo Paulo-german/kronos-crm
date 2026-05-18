@@ -87,7 +87,7 @@ export function LifecycleStageCard({ metrics }: LifecycleStageCardProps) {
   })()
 
   return (
-    <Card className="flex flex-col">
+    <Card className="flex h-full flex-col">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center justify-between text-sm font-medium">
           <span className="flex items-center gap-1.5">

@@ -1,14 +1,25 @@
+import { Fragment } from 'react'
 import { Skeleton } from '@/_components/ui/skeleton'
 
 export function LifecycleFunnelSkeleton() {
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      {/* Desktop */}
+      <div className="hidden gap-2 lg:flex">
+        {Array.from({ length: 4 }).map((_skeleton, index) => (
+          <Fragment key={index}>
+            <Skeleton className="h-36 flex-1 rounded-xl" />
+            {index < 3 && <div className="w-10 shrink-0" />}
+          </Fragment>
+        ))}
+      </div>
+      {/* Mobile */}
+      <div className="grid grid-cols-2 gap-4 lg:hidden">
         {Array.from({ length: 4 }).map((_skeleton, index) => (
           <Skeleton key={index} className="h-36 rounded-xl" />
         ))}
       </div>
-      <Skeleton className="h-[220px] rounded-xl" />
+      <Skeleton className="h-[278px] rounded-xl" />
     </div>
   )
 }

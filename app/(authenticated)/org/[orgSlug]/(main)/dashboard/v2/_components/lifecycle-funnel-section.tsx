@@ -1,8 +1,10 @@
+import { Fragment } from 'react'
 import { getLifecycleFunnelMetrics } from '@/_data-access/dashboard-v2/get-lifecycle-funnel-metrics'
 import type { RBACContext } from '@/_lib/rbac'
 import type { DateRange } from '@/_data-access/dashboard/types'
 import { LifecycleStageCard } from './lifecycle-stage-card'
 import { LifecycleEvolutionChart } from './lifecycle-evolution-chart'
+import { StageConnector } from './lifecycle-stage-connector'
 
 interface LifecycleFunnelSectionProps {
   ctx: RBACContext
@@ -14,7 +16,24 @@ export async function LifecycleFunnelSection({ ctx, dateRange }: LifecycleFunnel
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      {/* Desktop: funil horizontal com taxa de conversão entre estágios */}
+      <div className="hidden items-stretch gap-2 lg:flex">
+        {metrics.stages.map((stageMetrics, index) => (
+          <Fragment key={stageMetrics.stage}>
+            <div className="flex-1">
+              <LifecycleStageCard metrics={stageMetrics} />
+            </div>
+            {index < metrics.stages.length - 1 && (
+              <StageConnector
+                fromCount={stageMetrics.periodCount}
+                toCount={metrics.stages[index + 1].periodCount}
+              />
+            )}
+          </Fragment>
+        ))}
+      </div>
+      {/* Mobile: grade 2×2 sem conectores */}
+      <div className="grid grid-cols-2 gap-4 lg:hidden">
         {metrics.stages.map((stageMetrics) => (
           <LifecycleStageCard key={stageMetrics.stage} metrics={stageMetrics} />
         ))}
