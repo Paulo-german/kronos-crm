@@ -1,9 +1,11 @@
 import 'server-only'
+import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 import type { RBACContext } from '@/_lib/rbac'
 import { isElevated } from '@/_lib/rbac'
 import { maskEmail, maskPhone, maskCpf } from '@/_lib/pii-mask'
+import type { CaptureChannel, CustomerStatus, LifecycleStage } from '@prisma/client'
 
 export interface ContactDetailDto {
   id: string
@@ -25,6 +27,17 @@ export interface ContactDetailDto {
   }[]
   createdAt: Date
   updatedAt: Date
+  lifecycleStage: LifecycleStage
+  customerStatus: CustomerStatus
+  firstCaptureChannel: CaptureChannel | null
+  firstCaptureAt: Date | null
+  lastCaptureChannel: CaptureChannel | null
+  lastCaptureAt: Date | null
+  healthScore: number | null
+  lastInteractionAt: Date | null
+  qualifiedAt: Date | null
+  becameOpportunityAt: Date | null
+  becameCustomerAt: Date | null
 }
 
 const fetchContactByIdFromDb = async (
@@ -41,7 +54,29 @@ const fetchContactByIdFromDb = async (
       // RBAC: MEMBER só vê próprios, ADMIN/OWNER vê todos
       ...(elevated ? {} : { assignedTo: userId }),
     },
-    include: {
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      phone: true,
+      role: true,
+      cpf: true,
+      isDecisionMaker: true,
+      companyId: true,
+      assignedTo: true,
+      createdAt: true,
+      updatedAt: true,
+      lifecycleStage: true,
+      customerStatus: true,
+      firstCaptureChannel: true,
+      firstCaptureAt: true,
+      lastCaptureChannel: true,
+      lastCaptureAt: true,
+      healthScore: true,
+      lastInteractionAt: true,
+      qualifiedAt: true,
+      becameOpportunityAt: true,
+      becameCustomerAt: true,
       company: {
         select: {
           id: true,
@@ -49,7 +84,7 @@ const fetchContactByIdFromDb = async (
         },
       },
       deals: {
-        include: {
+        select: {
           deal: {
             select: {
               id: true,
@@ -76,9 +111,20 @@ const fetchContactByIdFromDb = async (
     companyId: contact.companyId,
     assignedTo: contact.assignedTo,
     company: contact.company,
-    deals: contact.deals.map((deal) => deal.deal),
+    deals: contact.deals.map((dealContact) => dealContact.deal),
     createdAt: contact.createdAt,
     updatedAt: contact.updatedAt,
+    lifecycleStage: contact.lifecycleStage,
+    customerStatus: contact.customerStatus,
+    firstCaptureChannel: contact.firstCaptureChannel,
+    firstCaptureAt: contact.firstCaptureAt,
+    lastCaptureChannel: contact.lastCaptureChannel,
+    lastCaptureAt: contact.lastCaptureAt,
+    healthScore: contact.healthScore,
+    lastInteractionAt: contact.lastInteractionAt,
+    qualifiedAt: contact.qualifiedAt,
+    becameOpportunityAt: contact.becameOpportunityAt,
+    becameCustomerAt: contact.becameCustomerAt,
   }
 }
 
@@ -86,7 +132,7 @@ const fetchContactByIdFromDb = async (
  * Busca um contato específico por ID (Cacheado)
  * RBAC: MEMBER só vê contatos atribuídos a ele
  */
-export const getContactById = async (
+export const getContactById = cache(async (
   contactId: string,
   ctx: RBACContext,
 ): Promise<ContactDetailDto | null> => {
@@ -103,4 +149,4 @@ export const getContactById = async (
   )
 
   return getCached()
-}
+})
