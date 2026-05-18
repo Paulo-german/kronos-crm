@@ -25,7 +25,7 @@ import {
 } from '@/_lib/lifecycle/lifecycle-stage-config'
 import { CUSTOMER_STATUS_CONFIG } from '@/_lib/lifecycle/customer-status-config'
 import { ScoreBadge } from '@/(authenticated)/org/[orgSlug]/(main)/copilot/_components/score-badge'
-import type { MemberRole } from '@prisma/client'
+import { DealStatus, LifecycleStage, type MemberRole } from '@prisma/client'
 
 interface LifecycleStatusCardProps {
   contact: ContactDetailDto
@@ -40,6 +40,9 @@ function formatDate(date: Date | null): string {
 export function LifecycleStatusCard({ contact, userRole }: LifecycleStatusCardProps) {
   const statusConfig = CUSTOMER_STATUS_CONFIG[contact.customerStatus]
   const canDowngrade = userRole === 'ADMIN' || userRole === 'OWNER'
+
+  const hasDeals = contact.deals.length > 0
+  const hasWonDeals = contact.deals.some((deal) => deal.status === DealStatus.WON)
 
   const { execute, isPending } = useAction(changeLifecycleStage, {
     onSuccess: ({ data }) => {
@@ -69,7 +72,7 @@ export function LifecycleStatusCard({ contact, userRole }: LifecycleStatusCardPr
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base font-semibold">
           <Activity className="h-4 w-4" />
-          Lifecycle & Status
+          Ciclo & Status
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -90,15 +93,33 @@ export function LifecycleStatusCard({ contact, userRole }: LifecycleStatusCardPr
                   const currentIndex = LIFECYCLE_STAGE_ORDER.indexOf(contact.lifecycleStage)
                   const stageIndex = LIFECYCLE_STAGE_ORDER.indexOf(stage)
                   const isDowngrade = stageIndex < currentIndex
-                  const disabled = isDowngrade && !canDowngrade
+                  const isAdvance = stageIndex > currentIndex
+
+                  const needsDealHint =
+                    isAdvance &&
+                    (stage === LifecycleStage.OPPORTUNITY || stage === LifecycleStage.CUSTOMER) &&
+                    !hasDeals
+                  const needsWonDealHint =
+                    isAdvance && stage === LifecycleStage.CUSTOMER && hasDeals && !hasWonDeals
+
+                  const disabled =
+                    (isDowngrade && !canDowngrade) || needsDealHint || needsWonDealHint
+
+                  const hint = isDowngrade && !canDowngrade
+                    ? '(admin)'
+                    : needsDealHint
+                      ? '(sem negócio)'
+                      : needsWonDealHint
+                        ? '(sem negócio ganho)'
+                        : null
 
                   return (
                     <SelectItem key={stage} value={stage} disabled={disabled}>
                       <span className="flex items-center gap-2">
                         <cfg.icon className={`h-3.5 w-3.5 ${cfg.colorClassName}`} />
                         {cfg.label}
-                        {isDowngrade && !canDowngrade && (
-                          <span className="text-xs text-muted-foreground">(admin)</span>
+                        {hint && (
+                          <span className="text-xs text-muted-foreground">{hint}</span>
                         )}
                       </span>
                     </SelectItem>

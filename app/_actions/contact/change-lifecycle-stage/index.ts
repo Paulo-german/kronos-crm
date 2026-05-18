@@ -1,6 +1,6 @@
 'use server'
 
-import { LifecycleCauseType } from '@prisma/client'
+import { DealStatus, LifecycleCauseType, LifecycleStage } from '@prisma/client'
 import { orgActionClient } from '@/_lib/safe-action'
 import { changeLifecycleStageSchema } from './schema'
 import { db } from '@/_lib/prisma'
@@ -8,7 +8,6 @@ import {
   canPerformAction,
   canAccessRecord,
   requirePermission,
-  isElevated,
 } from '@/_lib/rbac'
 import { advanceContactLifecycle } from '@/_lib/lifecycle/advance-contact-lifecycle'
 import { revalidateLifecycleCache } from '@/_lib/lifecycle/revalidate-lifecycle-cache'
@@ -37,6 +36,34 @@ export const changeLifecycleStage = orgActionClient
     const isAdvance = targetIndex > currentIndex
 
     if (isAdvance) {
+      // Validar pré-requisitos de negociação antes de avançar
+      if (toStage === LifecycleStage.OPPORTUNITY || toStage === LifecycleStage.CUSTOMER) {
+        const dealCount = await db.dealContact.count({
+          where: { contactId, deal: { organizationId: ctx.orgId } },
+        })
+
+        if (dealCount === 0) {
+          throw new Error(
+            'O contato precisa ter pelo menos uma negociação para avançar para Oportunidade ou Cliente.',
+          )
+        }
+      }
+
+      if (toStage === LifecycleStage.CUSTOMER) {
+        const wonDealCount = await db.dealContact.count({
+          where: {
+            contactId,
+            deal: { organizationId: ctx.orgId, status: DealStatus.WON },
+          },
+        })
+
+        if (wonDealCount === 0) {
+          throw new Error(
+            'O contato precisa ter pelo menos uma negociação ganha para avançar para Cliente.',
+          )
+        }
+      }
+
       await advanceContactLifecycle({
         contactId,
         organizationId: ctx.orgId,
@@ -48,9 +75,9 @@ export const changeLifecycleStage = orgActionClient
       return { success: true, applied: true, toStage }
     }
 
-    // Downgrade: apenas ADMIN ou OWNER
-    if (!isElevated(ctx.userRole) || ctx.userRole === 'SUPPORT') {
-      throw new Error('Apenas administradores podem reverter o estágio de lifecycle.')
+    // Downgrade: apenas ADMIN ou OWNER (SUPPORT e MEMBER não podem reverter)
+    if (ctx.userRole !== 'ADMIN' && ctx.userRole !== 'OWNER') {
+      throw new Error('Apenas administradores podem reverter o estágio do ciclo.')
     }
 
     await db.$transaction([
