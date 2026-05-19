@@ -6,27 +6,50 @@ import { db } from '@/_lib/prisma'
 
 const DEV_EMAILS = ['paulo.roriz01@gmail.com', 'paulo.german777@gmail.com']
 
-const CACHE_TAG_PREFIXES = [
+// Tags com padrão ${prefix}:${orgId} — cada entrada gera uma chamada revalidateTag.
+const CACHE_TAG_PREFIXES_BY_ORG = [
+  // CRM
   'pipeline',
   'deals',
+  'deals-options',
   'contacts',
   'tasks',
   'products',
   'companies',
-  'subscriptions',
-  'org-members',
   'deal-lost-reasons',
-  'organization',
-  'agents',
-  'agentGroups',
-  'inboxes',
-  'conversations',
+  'appointments',
+  'goals',
+  // Reports
+  'reports',
+  // Dashboard
   'dashboard',
   'dashboard-charts',
+  'dashboard-ai',
+  // Inbox / Conversas
+  'inboxes',
+  'conversations',
+  'conversation-labels',
+  'copilot',
+  // Agentes IA
+  'agents',
+  'agentGroups',
   'automations',
   'follow-ups-org',
+  'integrations',
+  // Billing / Plano
+  'subscriptions',
+  'credits',
+  // Organização / Membros
+  'org-members',
+  'org-settings',
   'onboarding',
-  'appointments',
+  // Módulos de serviço (agendamentos, profissionais etc.)
+  'modules',
+  'professionals',
+  'promotions',
+  'scheduling-settings',
+  'service-categories',
+  'services',
 ] as const
 
 export const revalidateAllCache = orgActionClient.action(async ({ ctx }) => {
@@ -39,14 +62,21 @@ export const revalidateAllCache = orgActionClient.action(async ({ ctx }) => {
     throw new Error('Ação restrita.')
   }
 
-  for (const prefix of CACHE_TAG_PREFIXES) {
+  for (const prefix of CACHE_TAG_PREFIXES_BY_ORG) {
     revalidateTag(`${prefix}:${ctx.orgId}`)
   }
+
+  // organization usa slug como chave (não orgId) — tratado separadamente.
+  revalidateTag(`organization:${ctx.orgSlug}`)
 
   // Tags por userId
   revalidateTag(`user:${ctx.userId}`)
   revalidateTag(`user-orgs:${ctx.userId}`)
   revalidateTag(`notifications:${ctx.userId}`)
+  revalidateTag(`notification-preferences:${ctx.userId}`)
+  revalidateTag(`user-profile:${ctx.userId}:${ctx.orgId}`)
+  revalidateTag(`tutorials:${ctx.userId}:${ctx.orgId}`)
 
-  return { revalidated: CACHE_TAG_PREFIXES.length + 3 }
+  const total = CACHE_TAG_PREFIXES_BY_ORG.length + 7
+  return { revalidated: total }
 })
