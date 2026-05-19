@@ -158,6 +158,7 @@ export const PipelineClient = ({
         createButton={
           <CreateDealButton
             stages={pipeline.stages}
+            members={members}
           />
         }
         filtersSheet={
@@ -188,6 +189,7 @@ export const PipelineClient = ({
           key={`new-${dialogState.stageId}`}
           defaultValues={{ stageId: dialogState.stageId }}
           stages={pipeline.stages}
+          members={members}
           setIsOpen={(open) => {
             if (typeof open === 'boolean' && !open) {
               closeDialog()

@@ -84,8 +84,9 @@ export const createDeal = orgActionClient
             }
           : undefined,
         companyId: data.companyId || null,
-        expectedCloseDate: data.expectedCloseDate || null,
         assignedTo,
+        ...(data.priority ? { priority: data.priority } : {}),
+        ...(data.notes ? { notes: data.notes } : {}),
       },
     })
 

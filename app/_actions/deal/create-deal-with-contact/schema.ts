@@ -19,8 +19,9 @@ const dealBaseSchema = z.object({
   title: z.string().trim().min(1, 'Título é obrigatório'),
   stageId: z.string().uuid('ID da etapa inválido'),
   companyId: z.string().uuid('ID da empresa inválido').optional().nullable(),
-  expectedCloseDate: z.date().optional(),
   assignedTo: z.string().uuid().optional().nullable(),
+  priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
+  notes: z.string().optional().nullable(),
 })
 
 // Schema principal da action: intersection garante que os campos base sempre existam
@@ -39,8 +40,9 @@ export const dealWithContactFormSchema = z.intersection(
     title: z.string().min(1, 'Título é obrigatório'),
     stageId: z.string().min(1, 'Etapa é obrigatória'),
     companyId: z.string().optional(),
-    expectedCloseDate: z.date().optional(),
     assignedTo: z.string().optional(),
+    priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
+    notes: z.string().optional(),
   }),
   z.discriminatedUnion('contactMode', [
     z.object({

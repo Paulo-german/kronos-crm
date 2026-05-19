@@ -9,16 +9,18 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/_components/ui/tooltip'
-import { DealDialogContent } from './deal-dialog-content'
+import { DealDialogContent, type DealMemberOption } from './deal-dialog-content'
 import type { StageDto } from '@/_data-access/pipeline/get-user-pipeline'
 
 interface CreateDealButtonProps {
   stages: StageDto[]
+  members?: DealMemberOption[]
   withinQuota?: boolean
 }
 
 const CreateDealButton = ({
   stages,
+  members = [],
   withinQuota = true,
 }: CreateDealButtonProps) => {
   const [isOpen, setIsOpen] = useState(false)
@@ -49,6 +51,7 @@ const CreateDealButton = ({
       </SheetTrigger>
       <DealDialogContent
         stages={stages}
+        members={members}
         setIsOpen={setIsOpen}
       />
     </Sheet>

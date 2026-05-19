@@ -15,7 +15,6 @@ import { toast } from 'sonner'
 import { Check, ChevronsUpDown, Loader2 } from 'lucide-react'
 import type { NumberFormatValues } from 'react-number-format'
 import { cn } from '@/_lib/utils'
-import { Label } from '@/_components/ui/label'
 import {
   SheetContent,
   SheetDescription,
@@ -31,6 +30,7 @@ import {
   FormMessage,
 } from '@/_components/ui/form'
 import { Input } from '@/_components/ui/input'
+import { Textarea } from '@/_components/ui/textarea'
 import { Button } from '@/_components/ui/button'
 import {
   Select,
@@ -73,10 +73,17 @@ import {
 import type { UpdateDealInput } from '@/_actions/deal/update-deal/schema'
 import type { ContactOptionDto } from '@/_data-access/contact/get-contacts-options'
 import type { StageDto } from '@/_data-access/pipeline/get-user-pipeline'
+import { PRIORITY_OPTIONS } from '../_lib/deal-filters'
+
+export interface DealMemberOption {
+  userId: string
+  name: string
+}
 
 interface DealDialogContentProps {
   defaultValues?: Partial<DealFormInput> & { id?: string }
   stages: StageDto[]
+  members?: DealMemberOption[]
   setIsOpen: Dispatch<SetStateAction<boolean>>
   onUpdate?: (data: UpdateDealInput) => void
   isUpdating?: boolean
@@ -87,6 +94,7 @@ const MIN_SEARCH_CHARS = 3
 export function DealDialogContent({
   defaultValues,
   stages,
+  members = [],
   setIsOpen,
   onUpdate,
   isUpdating: externalIsUpdating,
@@ -95,6 +103,7 @@ export function DealDialogContent({
   const [open, setOpen] = useState(false)
   const [contactSearch, setContactSearch] = useState('')
   const [contactResults, setContactResults] = useState<ContactOptionDto[]>([])
+  const [selectedContactCache, setSelectedContactCache] = useState<ContactOptionDto | null>(null)
   const contactDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const { execute: executeContactSearch, isPending: isSearchingContacts } =
@@ -122,14 +131,12 @@ export function DealDialogContent({
     [executeContactSearch],
   )
 
-  // Limpar timeout no unmount para evitar setState após unmount
   useEffect(() => {
     return () => {
       if (contactDebounceRef.current) clearTimeout(contactDebounceRef.current)
     }
   }, [])
 
-  // Formulário de edição: schema simples sem lógica de contato inline
   const editForm = useForm<DealFormInput>({
     resolver: zodResolver(dealFormSchema),
     defaultValues: {
@@ -137,18 +144,21 @@ export function DealDialogContent({
       stageId: defaultValues?.stageId || stages[0]?.id || '',
       contactId: defaultValues?.contactId || undefined,
       companyId: defaultValues?.companyId || undefined,
-      expectedCloseDate: defaultValues?.expectedCloseDate || undefined,
+      assignedTo: defaultValues?.assignedTo || undefined,
+      priority: defaultValues?.priority || 'medium',
+      notes: defaultValues?.notes || '',
     },
   })
 
-  // Formulário de criação: schema com suporte a contato inline
   const createForm = useForm<DealWithContactFormInput>({
     resolver: zodResolver(dealWithContactFormSchema),
     defaultValues: {
       title: '',
       stageId: stages[0]?.id || '',
       companyId: undefined,
-      expectedCloseDate: undefined,
+      assignedTo: undefined,
+      priority: 'medium',
+      notes: '',
       contactMode: 'existing',
       contactId: undefined,
       contactName: '',
@@ -195,7 +205,9 @@ export function DealDialogContent({
       title: data.title,
       contactId: data.contactId || null,
       companyId: data.companyId || null,
-      expectedCloseDate: data.expectedCloseDate || undefined,
+      assignedTo: data.assignedTo || null,
+      priority: data.priority || undefined,
+      notes: data.notes || null,
     }
 
     if (onUpdate) {
@@ -210,10 +222,10 @@ export function DealDialogContent({
       title: data.title,
       stageId: data.stageId,
       companyId: data.companyId || undefined,
-      expectedCloseDate: data.expectedCloseDate || undefined,
+      assignedTo: data.assignedTo || undefined,
+      priority: data.priority || undefined,
+      notes: data.notes || undefined,
       contactMode: data.contactMode,
-      // Campos do discriminated union — TypeScript exige o cast pois o tipo
-      // é uma intersection e os campos ficam todos opcionais no nível superior
       contactId: data.contactMode === 'existing' ? (data.contactId || undefined) : undefined,
       contactName: data.contactMode === 'new' ? data.contactName : undefined,
       contactEmail: data.contactMode === 'new' ? (data.contactEmail || undefined) : undefined,
@@ -224,7 +236,6 @@ export function DealDialogContent({
   const isPending =
     isCreating || (onUpdate ? !!externalIsUpdating : isInternalUpdating)
 
-  // Valor atual do contactMode para controlar as tabs (apenas no form de criação)
   const contactMode = isEditing ? 'existing' : createForm.watch('contactMode')
 
   return (
@@ -240,7 +251,7 @@ export function DealDialogContent({
 
       {isEditing ? (
         // ----------------------------------------------------------------
-        // MODO EDIÇÃO: form simples sem lógica de contato inline
+        // MODO EDIÇÃO
         // ----------------------------------------------------------------
         <Form {...editForm}>
           <form
@@ -256,6 +267,86 @@ export function DealDialogContent({
                   <FormControl>
                     <Input
                       placeholder="Ex: Proposta comercial Q1"
+                      disabled={isPending}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <FormField
+                control={editForm.control}
+                name="assignedTo"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Responsável</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value ?? undefined}
+                      disabled={isPending}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione..." />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {members.map((member) => (
+                          <SelectItem key={member.userId} value={member.userId}>
+                            {member.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editForm.control}
+                name="priority"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Prioridade</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value ?? 'medium'}
+                      disabled={isPending}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione..." />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {PRIORITY_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={editForm.control}
+              name="notes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Anotações</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Informações relevantes sobre esta negociação..."
+                      className="resize-none"
+                      rows={3}
                       disabled={isPending}
                       {...field}
                     />
@@ -327,9 +418,7 @@ export function DealDialogContent({
                     <SelectContent>
                       {stages.map((stage) => (
                         <SelectItem key={stage.id} value={stage.id}>
-                          <div className="flex items-center gap-2">
-                            {stage.name}
-                          </div>
+                          {stage.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -341,7 +430,6 @@ export function DealDialogContent({
 
             {/* Seção de contato: tabs para buscar existente ou criar novo */}
             <div className="space-y-2">
-              <Label>Contato</Label>
               <Tabs
                 value={contactMode}
                 onValueChange={(value) => {
@@ -349,7 +437,6 @@ export function DealDialogContent({
                     'contactMode',
                     value as 'existing' | 'new',
                   )
-                  // Limpar campos do modo anterior ao trocar de aba
                   if (value === 'existing') {
                     createForm.setValue('contactName', '')
                     createForm.setValue('contactEmail', '')
@@ -367,7 +454,7 @@ export function DealDialogContent({
                     className="rounded-md py-2"
                     disabled={isPending}
                   >
-                    Buscar existente
+                    Buscar contato
                   </TabsTrigger>
                   <TabsTrigger
                     value="new"
@@ -378,18 +465,15 @@ export function DealDialogContent({
                   </TabsTrigger>
                 </TabsList>
 
-                {/* Tab: buscar contato existente via combobox (server-side) */}
                 <TabsContent value="existing">
                   <FormField
                     control={createForm.control}
                     name="contactId"
                     render={({ field }) => {
-                      // Contato selecionado para exibição no trigger: busca em contactResults
-                      // (server-side). Após selecionar, o contato fica em contactResults até
-                      // que o popover seja reaberto e os resultados sejam limpos.
-                      const selectedContact = contactResults.find(
-                        (contact) => contact.id === field.value,
-                      )
+                      // Cache tem prioridade — persiste após contactResults ser zerado no fechamento do popover.
+                      const selectedContact =
+                        (selectedContactCache?.id === field.value ? selectedContactCache : null) ??
+                        contactResults.find((contact) => contact.id === field.value)
 
                       return (
                         <FormItem className="flex flex-col">
@@ -449,10 +533,8 @@ export function DealDialogContent({
                                           key={contact.id}
                                           value={contact.id}
                                           onSelect={() => {
-                                            createForm.setValue(
-                                              'contactId',
-                                              contact.id,
-                                            )
+                                            createForm.setValue('contactId', contact.id)
+                                            setSelectedContactCache(contact)
                                             setOpen(false)
                                           }}
                                         >
@@ -487,7 +569,6 @@ export function DealDialogContent({
                   />
                 </TabsContent>
 
-                {/* Tab: criar contato novo inline */}
                 <TabsContent value="new">
                   <div className="space-y-4">
                     <FormField
@@ -552,26 +633,79 @@ export function DealDialogContent({
               </Tabs>
             </div>
 
+            <div className="grid gap-4 md:grid-cols-2">
+              <FormField
+                control={createForm.control}
+                name="assignedTo"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Responsável</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value ?? undefined}
+                      disabled={isPending}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione..." />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {members.map((member) => (
+                          <SelectItem key={member.userId} value={member.userId}>
+                            {member.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={createForm.control}
+                name="priority"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Prioridade</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value ?? 'medium'}
+                      disabled={isPending}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione..." />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {PRIORITY_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
             <FormField
               control={createForm.control}
-              name="expectedCloseDate"
+              name="notes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Previsão de fechamento</FormLabel>
+                  <FormLabel>Anotações</FormLabel>
                   <FormControl>
-                    <Input
-                      type="date"
+                    <Textarea
+                      placeholder="Informações relevantes sobre esta negociação..."
+                      className="resize-none"
+                      rows={3}
                       disabled={isPending}
-                      value={
-                        field.value
-                          ? new Date(field.value).toISOString().split('T')[0]
-                          : ''
-                      }
-                      onChange={(e) =>
-                        field.onChange(
-                          e.target.value ? new Date(e.target.value) : undefined,
-                        )
-                      }
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />

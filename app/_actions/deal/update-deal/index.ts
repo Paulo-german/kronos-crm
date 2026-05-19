@@ -46,8 +46,6 @@ export const updateDeal = orgActionClient
     if (data.title !== undefined) updateData.title = data.title
     if (data.priority !== undefined) updateData.priority = data.priority
     if (data.notes !== undefined) updateData.notes = data.notes
-    if (data.expectedCloseDate !== undefined)
-      updateData.expectedCloseDate = data.expectedCloseDate
     if (data.assignedTo !== undefined) updateData.assignedTo = data.assignedTo
 
     // Handle company relation properly to avoid Prisma type conflicts
@@ -117,25 +115,6 @@ export const updateDeal = orgActionClient
         })
       }
 
-      if (
-        data.expectedCloseDate &&
-        data.expectedCloseDate.getTime() !== deal.expectedCloseDate?.getTime()
-      ) {
-        const newDate = new Intl.DateTimeFormat('pt-BR').format(
-          data.expectedCloseDate,
-        )
-        const oldDate = deal.expectedCloseDate
-          ? new Intl.DateTimeFormat('pt-BR').format(deal.expectedCloseDate)
-          : 'Sem data'
-        await tx.activity.create({
-          data: {
-            dealId: data.id,
-            type: 'date_changed',
-            content: `Alterou previsão de ${oldDate} para ${newDate}`,
-            performedBy: ctx.userId,
-          },
-        })
-      }
     })
 
     revalidatePath('/crm/deals/pipeline')

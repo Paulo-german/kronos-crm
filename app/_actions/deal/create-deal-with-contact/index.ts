@@ -108,8 +108,9 @@ export const createDealWithContact = orgActionClient
             title: data.title,
             pipelineStageId: data.stageId,
             companyId: data.companyId || null,
-            expectedCloseDate: data.expectedCloseDate || null,
             assignedTo,
+            ...(data.priority ? { priority: data.priority } : {}),
+            ...(data.notes ? { notes: data.notes } : {}),
             contacts: {
               create: {
                 contactId: newContact.id,
@@ -128,8 +129,9 @@ export const createDealWithContact = orgActionClient
           title: data.title,
           pipelineStageId: data.stageId,
           companyId: data.companyId || null,
-          expectedCloseDate: data.expectedCloseDate || null,
           assignedTo,
+          ...(data.priority ? { priority: data.priority } : {}),
+          ...(data.notes ? { notes: data.notes } : {}),
           contacts: data.contactId
             ? {
                 create: {

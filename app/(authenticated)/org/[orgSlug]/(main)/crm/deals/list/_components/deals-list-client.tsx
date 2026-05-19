@@ -10,7 +10,7 @@ import { DealsToolbar } from './deals-toolbar'
 import { DealsDataTable } from './deals-data-table'
 import { DealsPagination } from './deals-pagination'
 import { DealsEmptyState } from './deals-empty-state'
-import { DealDialogContent } from '../../_components/deal-dialog-content'
+import { DealDialogContent, type DealMemberOption } from '../../_components/deal-dialog-content'
 import { useDealListFilters } from '../_lib/use-deal-list-filters'
 import { updateDeal } from '@/_actions/deal/update-deal'
 import { deleteDeal } from '@/_actions/deal/delete-deal'
@@ -153,10 +153,18 @@ export function DealsListClient({
   // Empty state premium: total zero E sem nenhum filtro ativo
   const showEmptyState = total === 0 && !hasAnyUrlFilter
 
+  // Converte AcceptedMemberDto para o shape simples exigido pelo DealDialogContent
+  const dealMembers: DealMemberOption[] = members
+    .filter((member): member is typeof member & { userId: string } =>
+      member.userId !== null && !!member.user?.fullName,
+    )
+    .map((member) => ({ userId: member.userId, name: member.user!.fullName! }))
+
   if (showEmptyState) {
     return (
       <DealsEmptyState
         stages={stages}
+        members={dealMembers}
         withinQuota={withinQuota}
       />
     )
@@ -224,11 +232,12 @@ export function DealsListClient({
               stageId: editingDeal.stageId,
               contactId: editingDeal.contactId ?? undefined,
               companyId: editingDeal.companyId ?? undefined,
-              expectedCloseDate: editingDeal.expectedCloseDate
-                ? new Date(editingDeal.expectedCloseDate)
-                : undefined,
+              assignedTo: editingDeal.assignedTo,
+              priority: editingDeal.priority,
+              notes: editingDeal.notes ?? undefined,
             }}
             stages={stages}
+            members={dealMembers}
             setIsOpen={setIsEditSheetOpen}
             onUpdate={(data) => executeUpdate(data)}
             isUpdating={isUpdating}

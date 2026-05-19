@@ -5,8 +5,9 @@ export const createDealSchema = z.object({
   stageId: z.string().uuid('ID da etapa inválido'),
   contactId: z.string().uuid('ID do contato inválido').optional().nullable(),
   companyId: z.string().uuid('ID da empresa inválido').optional().nullable(),
-  expectedCloseDate: z.date().optional(),
   assignedTo: z.string().uuid().optional().nullable(), // RBAC: quem é responsável
+  priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
+  notes: z.string().optional().nullable(),
 })
 
 export type CreateDealInput = z.infer<typeof createDealSchema>
@@ -17,8 +18,9 @@ export const dealFormSchema = z.object({
   stageId: z.string().min(1, 'Etapa é obrigatória'),
   contactId: z.string().optional(),
   companyId: z.string().optional(),
-  expectedCloseDate: z.date().optional(),
   assignedTo: z.string().optional(),
+  priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
+  notes: z.string().optional(),
 })
 
 export type DealFormInput = z.infer<typeof dealFormSchema>
