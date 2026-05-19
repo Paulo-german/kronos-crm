@@ -144,6 +144,11 @@ export function UpsertAppointmentDialogContent({
   const [openContactCombobox, setOpenContactCombobox] = useState(false)
   const [contactSearch, setContactSearch] = useState('')
   const [contactResults, setContactResults] = useState<ContactOptionDto[]>([])
+  const [selectedContactCache, setSelectedContactCache] = useState<ContactOptionDto | null>(
+    defaultValues?.contactId
+      ? (contactOptions.find((c) => c.id === defaultValues.contactId) ?? null)
+      : null,
+  )
   const contactDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [openServiceCombobox, setOpenServiceCombobox] = useState(false)
 
@@ -349,10 +354,11 @@ export function UpsertAppointmentDialogContent({
     if (localContactOwners[watchedContactId]) return true
     const contact =
       contactResults.find((option) => option.id === watchedContactId) ??
-      contactOptions.find((option) => option.id === watchedContactId)
+      contactOptions.find((option) => option.id === watchedContactId) ??
+      (selectedContactCache?.id === watchedContactId ? selectedContactCache : null)
     if (!contact) return null
     return !!contact.assignedTo
-  }, [watchedContactId, contactOptions, contactResults, localContactOwners])
+  }, [watchedContactId, contactOptions, contactResults, localContactOwners, selectedContactCache])
 
   // Membros filtrados pela busca no popover de atribuição de responsável
   const filteredAssignableMembers = useMemo(() => {
@@ -380,9 +386,10 @@ export function UpsertAppointmentDialogContent({
     {},
   )
 
-  // Contato selecionado (para exibir no trigger do combobox)
-  // Busca em contactResults primeiro (busca server-side) e fallback em contactOptions
+  // Contato selecionado (para exibir no trigger do combobox).
+  // Cache tem prioridade — persiste após contactResults ser zerado no fechamento do combobox.
   const selectedContact =
+    (selectedContactCache?.id === watchedContactId ? selectedContactCache : null) ??
     contactResults.find((contact) => contact.id === watchedContactId) ??
     contactOptions.find((contact) => contact.id === watchedContactId)
 
@@ -617,6 +624,7 @@ export function UpsertAppointmentDialogContent({
                                 value={contact.id}
                                 onSelect={() => {
                                   form.setValue('contactId', contact.id)
+                                  setSelectedContactCache(contact)
                                   setOpenContactCombobox(false)
                                   setContactSearch('')
                                   setContactResults([])
