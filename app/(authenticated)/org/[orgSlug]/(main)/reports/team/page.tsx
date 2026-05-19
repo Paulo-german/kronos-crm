@@ -4,6 +4,8 @@ import { getOrgContext } from '@/_data-access/organization/get-organization-cont
 import { isElevated } from '@/_lib/rbac'
 import { parseDateRange } from '@/_utils/date-range'
 import { getTeamPerformance } from '@/_data-access/reports/team/get-team-performance'
+import { getTeamMemberTaskBreakdown } from '@/_data-access/reports/team/get-team-member-task-breakdown'
+import { getTeamMemberById } from '@/_data-access/reports/team/get-team-member-by-id'
 import { Card } from '@/_components/ui/card'
 import { Skeleton } from '@/_components/ui/skeleton'
 import type { ReportsFilters } from '@/_data-access/reports/shared/reports-types'
@@ -11,15 +13,17 @@ import { findReportSection } from '../_config/report-sections'
 import { ReportsSectionHeader } from '../_components/reports-section-header'
 import { TeamRankingTable } from './_components/team-ranking-table'
 import { TeamGoalsStrip } from './_components/team-goals-strip'
+import { MemberSpotlight } from './_components/member-spotlight'
+import { TeamMemberDrawerWrapper } from './_components/team-member-drawer-wrapper'
 
 interface TeamReportPageProps {
   params: Promise<{ orgSlug: string }>
-  searchParams: Promise<{ start?: string; end?: string; assignee?: string }>
+  searchParams: Promise<{ start?: string; end?: string; assignee?: string; member?: string }>
 }
 
 export default async function TeamReportPage({ params, searchParams }: TeamReportPageProps) {
   const { orgSlug } = await params
-  const { start, end, assignee } = await searchParams
+  const { start, end, assignee, member } = await searchParams
 
   const ctx = await getOrgContext(orgSlug)
 
@@ -30,7 +34,32 @@ export default async function TeamReportPage({ params, searchParams }: TeamRepor
   const dateRange = parseDateRange(start, end)
   const filters: ReportsFilters = { assignee }
 
-  const teamData = await getTeamPerformance(ctx, dateRange, filters)
+  // Todas as queries independentes correm em paralelo: ranking + spotlight + drawer.
+  // cache() do React deduplica automaticamente quando assignee === member.
+  const spotlightFetch = assignee
+    ? Promise.all([getTeamMemberTaskBreakdown(ctx, assignee, dateRange), getTeamMemberById(ctx.orgId, assignee)])
+    : Promise.resolve(null)
+
+  const drawerFetch = member
+    ? Promise.all([getTeamMemberTaskBreakdown(ctx, member, dateRange), getTeamMemberById(ctx.orgId, member)])
+    : Promise.resolve(null)
+
+  const [teamData, spotlightResult, drawerResult] = await Promise.all([
+    getTeamPerformance(ctx, dateRange, filters),
+    spotlightFetch,
+    drawerFetch,
+  ])
+
+  const spotlightBreakdown = spotlightResult?.[0] ?? null
+  const spotlightBasicInfo = spotlightResult?.[1] ?? null
+  const drawerBreakdown = drawerResult?.[0] ?? null
+  const drawerBasicInfo = drawerResult?.[1] ?? null
+
+  const drawerMember = member ? (teamData.find((row) => row.userId === member) ?? null) : null
+  const spotlightMember = assignee
+    ? (teamData.find((row) => row.userId === assignee) ?? null)
+    : null
+
   const section = findReportSection('team')
 
   return (
@@ -39,6 +68,15 @@ export default async function TeamReportPage({ params, searchParams }: TeamRepor
         title={section?.label ?? 'Time'}
         description={section?.description}
       />
+
+      {/* Spotlight do membro filtrado — visível apenas quando ?assignee= está preenchido */}
+      {assignee && spotlightBasicInfo && (
+        <MemberSpotlight
+          member={spotlightMember}
+          basicInfo={spotlightBasicInfo}
+          taskBreakdown={spotlightBreakdown ?? []}
+        />
+      )}
 
       {/* Bloco 1: Ranking */}
       <div className="flex flex-col gap-3">
@@ -52,7 +90,9 @@ export default async function TeamReportPage({ params, searchParams }: TeamRepor
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-0.5">
           <h2 className="text-sm font-semibold">Metas individuais</h2>
-          <p className="text-xs text-muted-foreground">Progresso das metas de cada membro da equipe.</p>
+          <p className="text-xs text-muted-foreground">
+            Progresso das metas de cada membro da equipe.
+          </p>
         </div>
         <Suspense
           fallback={
@@ -66,6 +106,15 @@ export default async function TeamReportPage({ params, searchParams }: TeamRepor
           <TeamGoalsStrip orgSlug={orgSlug} />
         </Suspense>
       </div>
+
+      {/* Drawer do membro selecionado via ?member= na URL */}
+      {member && (
+        <TeamMemberDrawerWrapper
+          member={drawerMember}
+          basicInfo={drawerBasicInfo}
+          taskBreakdown={drawerBreakdown ?? []}
+        />
+      )}
     </div>
   )
 }

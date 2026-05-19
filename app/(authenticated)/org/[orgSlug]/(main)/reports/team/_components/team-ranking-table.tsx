@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
 import { TrendingUp, TrendingDown } from 'lucide-react'
+import { useQueryStates } from 'nuqs'
 import { Avatar, AvatarFallback, AvatarImage } from '@/_components/ui/avatar'
 import {
   Table,
@@ -15,7 +15,9 @@ import { cn } from '@/_lib/utils'
 import { formatCurrency } from '@/_utils/format-currency'
 import { formatVariation } from '@/_utils/date-range'
 import type { TeamMemberPerformance } from '@/_data-access/reports/team/get-team-performance'
-import { TeamMemberDrawer } from './team-member-drawer'
+import { RankBadge } from './rank-badge'
+import { getInitials } from './get-initials'
+import { memberQueryParsers } from './member-query-parsers'
 
 interface TeamRankingTableProps {
   data: TeamMemberPerformance[]
@@ -49,65 +51,83 @@ function VariationBadge({ current, previous }: VariationBadgeProps) {
   )
 }
 
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join('')
-    .toUpperCase()
-}
-
 export function TeamRankingTable({ data }: TeamRankingTableProps) {
-  const [selectedMember, setSelectedMember] = useState<TeamMemberPerformance | null>(null)
+  const [, setMemberQuery] = useQueryStates(memberQueryParsers)
+
+  // Receita do líder (data já vem ordenada por revenue desc do data-access)
+  const topRevenue = data[0]?.revenue ?? 0
 
   return (
-    <>
-      <Table>
-        <TableHeader>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="w-14">Posição</TableHead>
+          <TableHead>Membro</TableHead>
+          <TableHead className="text-right">Deals ganhos</TableHead>
+          <TableHead className="text-right">Receita</TableHead>
+          <TableHead className="text-right">Ticket médio</TableHead>
+          <TableHead className="text-right">Conversão</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {data.length === 0 ? (
           <TableRow>
-            <TableHead className="w-12">#</TableHead>
-            <TableHead>Membro</TableHead>
-            <TableHead className="text-right">Deals ganhos</TableHead>
-            <TableHead className="text-right">Receita</TableHead>
-            <TableHead className="text-right">Ticket médio</TableHead>
-            <TableHead className="text-right">Conversão</TableHead>
+            <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
+              Nenhum membro com atividade no período.
+            </TableCell>
           </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
-                Nenhum membro com atividade no período.
-              </TableCell>
-            </TableRow>
-          ) : (
-            data.map((member, index) => (
+        ) : (
+          data.map((member, index) => {
+            const ratio = topRevenue > 0 ? Math.min(member.revenue / topRevenue, 1) : 0
+
+            return (
               <TableRow
                 key={member.userId}
                 className="cursor-pointer"
-                onClick={() => setSelectedMember(member)}
+                onClick={() => void setMemberQuery({ member: member.userId })}
               >
-                <TableCell className="font-medium text-muted-foreground">
-                  #{index + 1}
+                <TableCell>
+                  <RankBadge position={index + 1} />
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <Avatar className="size-7">
                       <AvatarImage src={member.avatarUrl ?? undefined} alt={member.fullName} />
-                      <AvatarFallback className="text-xs">{getInitials(member.fullName)}</AvatarFallback>
+                      <AvatarFallback className="text-xs">
+                        {getInitials(member.fullName)}
+                      </AvatarFallback>
                     </Avatar>
                     <span className="font-medium">{member.fullName}</span>
                   </div>
                 </TableCell>
                 <TableCell className="text-right">
                   <span>{member.dealsWonCount}</span>
-                  <VariationBadge current={member.dealsWonCount} previous={member.prevDealsWonCount} />
+                  <VariationBadge
+                    current={member.dealsWonCount}
+                    previous={member.prevDealsWonCount}
+                  />
                 </TableCell>
                 <TableCell className="text-right">
-                  <span>{formatCurrency(member.revenue)}</span>
-                  <VariationBadge current={member.revenue} previous={member.prevRevenue} />
+                  <div>
+                    <span>{formatCurrency(member.revenue)}</span>
+                    <VariationBadge current={member.revenue} previous={member.prevRevenue} />
+                  </div>
+                  <div
+                    role="progressbar"
+                    aria-valuenow={Math.round(ratio * 100)}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-label="Receita relativa ao líder"
+                    className="mt-1 h-1 w-full overflow-hidden rounded-full bg-muted/40"
+                  >
+                    <div
+                      className={cn(
+                        'h-full rounded-full',
+                        ratio === 1 ? 'bg-emerald-500' : 'bg-primary/60',
+                      )}
+                      style={{ width: `${ratio * 100}%` }}
+                    />
+                  </div>
                 </TableCell>
                 <TableCell className="text-right">
                   <span>{formatCurrency(member.avgTicket)}</span>
@@ -115,19 +135,16 @@ export function TeamRankingTable({ data }: TeamRankingTableProps) {
                 </TableCell>
                 <TableCell className="text-right">
                   <span>{member.conversionRate.toFixed(1)}%</span>
-                  <VariationBadge current={member.conversionRate} previous={member.prevConversionRate} />
+                  <VariationBadge
+                    current={member.conversionRate}
+                    previous={member.prevConversionRate}
+                  />
                 </TableCell>
               </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
-
-      <TeamMemberDrawer
-        member={selectedMember}
-        open={selectedMember !== null}
-        onClose={() => setSelectedMember(null)}
-      />
-    </>
+            )
+          })
+        )}
+      </TableBody>
+    </Table>
   )
 }

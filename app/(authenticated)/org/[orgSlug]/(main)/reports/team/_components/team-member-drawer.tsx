@@ -1,83 +1,50 @@
 'use client'
 
-import { TrendingUp, TrendingDown } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/_components/ui/avatar'
-import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/_components/ui/sheet'
-import { cn } from '@/_lib/utils'
 import { formatCurrency } from '@/_utils/format-currency'
 import { formatVariation } from '@/_utils/date-range'
 import type { TeamMemberPerformance } from '@/_data-access/reports/team/get-team-performance'
+import type { TeamMemberBasicInfo } from '@/_data-access/reports/team/get-team-member-by-id'
+import type { TeamMemberTaskBreakdownItem } from '@/_data-access/reports/team/get-team-member-task-breakdown'
+import { MetricCard } from './metric-card'
+import { TeamMemberTaskBreakdownList } from './team-member-task-breakdown-list'
+import { getInitials } from './get-initials'
 
-interface TeamMemberDrawerProps {
+export interface TeamMemberDrawerProps {
   member: TeamMemberPerformance | null
+  basicInfo: TeamMemberBasicInfo | null
+  taskBreakdown: TeamMemberTaskBreakdownItem[]
   open: boolean
   onClose: () => void
 }
 
-interface MetricCardProps {
-  title: string
-  value: string
-  variation: ReturnType<typeof formatVariation>
-}
+export function TeamMemberDrawer({
+  member,
+  basicInfo,
+  taskBreakdown,
+  open,
+  onClose,
+}: TeamMemberDrawerProps) {
+  const displayName = member?.fullName ?? basicInfo?.fullName ?? ''
+  const displayAvatar = member?.avatarUrl ?? basicInfo?.avatarUrl ?? undefined
 
-function MetricCard({ title, value, variation }: MetricCardProps) {
-  return (
-    <Card>
-      <CardHeader className="pb-1 pt-4">
-        <CardTitle className="text-xs font-medium text-muted-foreground">{title}</CardTitle>
-      </CardHeader>
-      <CardContent className="pb-4">
-        <p className="text-xl font-bold">{value}</p>
-        {variation && (
-          <span
-            className={cn(
-              'mt-1 inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-xs font-semibold',
-              variation.isPositive
-                ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400'
-                : 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400',
-            )}
-          >
-            {variation.isPositive ? (
-              <TrendingUp className="size-3" />
-            ) : (
-              <TrendingDown className="size-3" />
-            )}
-            {variation.value}
-          </span>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
-
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join('')
-    .toUpperCase()
-}
-
-export function TeamMemberDrawer({ member, open, onClose }: TeamMemberDrawerProps) {
   return (
     <Sheet open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose() }}>
-      <SheetContent side="right" className="sm:max-w-lg overflow-y-auto">
+      <SheetContent side="right" className="overflow-y-auto sm:max-w-lg">
+        <SheetHeader className="pb-6">
+          <div className="flex items-center gap-3">
+            <Avatar className="size-10">
+              <AvatarImage src={displayAvatar} alt={displayName} />
+              <AvatarFallback>{getInitials(displayName)}</AvatarFallback>
+            </Avatar>
+            <SheetTitle className="text-base font-semibold">{displayName}</SheetTitle>
+          </div>
+        </SheetHeader>
+
         {member && (
           <>
-            <SheetHeader className="pb-6">
-              <div className="flex items-center gap-3">
-                <Avatar className="size-10">
-                  <AvatarImage src={member.avatarUrl ?? undefined} alt={member.fullName} />
-                  <AvatarFallback>{getInitials(member.fullName)}</AvatarFallback>
-                </Avatar>
-                <SheetTitle className="text-base font-semibold">{member.fullName}</SheetTitle>
-              </div>
-            </SheetHeader>
-
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <MetricCard
                 title="Deals Ganhos"
                 value={String(member.dealsWonCount)}
@@ -98,6 +65,22 @@ export function TeamMemberDrawer({ member, open, onClose }: TeamMemberDrawerProp
                 value={`${member.conversionRate.toFixed(1)}%`}
                 variation={formatVariation(member.conversionRate, member.prevConversionRate)}
               />
+              <MetricCard
+                title="Deals Perdidos"
+                value={String(member.dealsLostCount)}
+                variation={formatVariation(member.dealsLostCount, member.prevDealsLostCount)}
+                invertPolarity
+              />
+              <MetricCard
+                title="Pipeline Ativo"
+                value={formatCurrency(member.openPipelineValue)}
+                footnote={`${member.openDealsCount} deal(s) em aberto`}
+              />
+            </div>
+
+            <div className="mt-6">
+              <h3 className="mb-2 text-sm font-semibold">Tarefas concluídas no período</h3>
+              <TeamMemberTaskBreakdownList items={taskBreakdown} />
             </div>
           </>
         )}
