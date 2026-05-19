@@ -25,11 +25,20 @@ export interface TeamMemberPerformance {
   prevRevenue: number
   prevAvgTicket: number
   prevConversionRate: number
+  dealsLostCount: number
+  prevDealsLostCount: number
+  openDealsCount: number
+  openPipelineValue: number
 }
 
 interface WonAggregate {
   count: number
   revenue: number
+}
+
+interface OpenSnapshotAggregate {
+  count: number
+  value: number
 }
 
 // Convertemos os groupBy do Prisma em Maps por assignedTo para facilitar o join no app layer
@@ -57,6 +66,29 @@ function indexOpenedByAssignee(
   return map
 }
 
+function indexLostByAssignee(
+  rows: Array<{ assignedTo: string; _count: { id: number } }>,
+): Map<string, number> {
+  const map = new Map<string, number>()
+  for (const row of rows) {
+    map.set(row.assignedTo, row._count.id)
+  }
+  return map
+}
+
+function indexOpenSnapshotByAssignee(
+  rows: Array<{ assignedTo: string; _count: { id: number }; _sum: { value: unknown } }>,
+): Map<string, OpenSnapshotAggregate> {
+  const map = new Map<string, OpenSnapshotAggregate>()
+  for (const row of rows) {
+    map.set(row.assignedTo, {
+      count: row._count.id,
+      value: Number(row._sum.value ?? 0),
+    })
+  }
+  return map
+}
+
 async function fetchTeamPerformance(
   orgId: string,
   userId: string,
@@ -70,59 +102,96 @@ async function fetchTeamPerformance(
     ignoreStatus: true,
   })
 
-  const [wonCurrent, openedCurrent, wonPrev, openedPrev] = await Promise.all([
-    db.deal.groupBy({
-      by: ['assignedTo'],
-      _count: { id: true },
-      _sum: { value: true },
-      where: {
-        ...baseWhere,
-        status: DealStatus.WON,
-        updatedAt: { gte: dateRange.start, lte: dateRange.end },
-      },
-    }),
-    db.deal.groupBy({
-      by: ['assignedTo'],
-      _count: { id: true },
-      where: {
-        ...baseWhere,
-        createdAt: { gte: dateRange.start, lte: dateRange.end },
-      },
-    }),
-    db.deal.groupBy({
-      by: ['assignedTo'],
-      _count: { id: true },
-      _sum: { value: true },
-      where: {
-        ...baseWhere,
-        status: DealStatus.WON,
-        updatedAt: { gte: prevRange.start, lte: prevRange.end },
-      },
-    }),
-    db.deal.groupBy({
-      by: ['assignedTo'],
-      _count: { id: true },
-      where: {
-        ...baseWhere,
-        createdAt: { gte: prevRange.start, lte: prevRange.end },
-      },
-    }),
-  ])
+  const [wonCurrent, openedCurrent, wonPrev, openedPrev, lostCurrent, lostPrev, openSnapshot] =
+    await Promise.all([
+      db.deal.groupBy({
+        by: ['assignedTo'],
+        _count: { id: true },
+        _sum: { value: true },
+        where: {
+          ...baseWhere,
+          status: DealStatus.WON,
+          updatedAt: { gte: dateRange.start, lte: dateRange.end },
+        },
+      }),
+      db.deal.groupBy({
+        by: ['assignedTo'],
+        _count: { id: true },
+        where: {
+          ...baseWhere,
+          createdAt: { gte: dateRange.start, lte: dateRange.end },
+        },
+      }),
+      db.deal.groupBy({
+        by: ['assignedTo'],
+        _count: { id: true },
+        _sum: { value: true },
+        where: {
+          ...baseWhere,
+          status: DealStatus.WON,
+          updatedAt: { gte: prevRange.start, lte: prevRange.end },
+        },
+      }),
+      db.deal.groupBy({
+        by: ['assignedTo'],
+        _count: { id: true },
+        where: {
+          ...baseWhere,
+          createdAt: { gte: prevRange.start, lte: prevRange.end },
+        },
+      }),
+      db.deal.groupBy({
+        by: ['assignedTo'],
+        _count: { id: true },
+        where: {
+          ...baseWhere,
+          status: DealStatus.LOST,
+          updatedAt: { gte: dateRange.start, lte: dateRange.end },
+        },
+      }),
+      db.deal.groupBy({
+        by: ['assignedTo'],
+        _count: { id: true },
+        where: {
+          ...baseWhere,
+          status: DealStatus.LOST,
+          updatedAt: { gte: prevRange.start, lte: prevRange.end },
+        },
+      }),
+      // Pipeline ativo é snapshot ALL TIME (sem filtro temporal) — mesma convenção de
+      // get-kpi-metrics-for-reports.ts. O valor não muda entre períodos para a mesma cache key.
+      db.deal.groupBy({
+        by: ['assignedTo'],
+        _count: { id: true },
+        _sum: { value: true },
+        where: {
+          ...baseWhere,
+          status: { in: [DealStatus.OPEN, DealStatus.IN_PROGRESS] },
+        },
+      }),
+    ])
 
   const wonCurrentMap = indexWonByAssignee(wonCurrent)
   const openedCurrentMap = indexOpenedByAssignee(openedCurrent)
   const wonPrevMap = indexWonByAssignee(wonPrev)
   const openedPrevMap = indexOpenedByAssignee(openedPrev)
+  const lostCurrentMap = indexLostByAssignee(lostCurrent)
+  const lostPrevMap = indexLostByAssignee(lostPrev)
+  const openSnapshotMap = indexOpenSnapshotByAssignee(openSnapshot)
 
-  // Apenas usuários com atividade no período atual entram no relatório (won OU opened).
+  // Vendedor pode ter pipeline ativo sem atividade no período (won/opened) — incluímos
+  // openSnapshot.keys() para garantir que apareça no relatório.
   const activeUserIds = new Set<string>()
   for (const id of wonCurrentMap.keys()) activeUserIds.add(id)
   for (const id of openedCurrentMap.keys()) activeUserIds.add(id)
+  for (const id of lostCurrentMap.keys()) activeUserIds.add(id)
+  for (const id of openSnapshotMap.keys()) activeUserIds.add(id)
 
   // Coletamos todos os ids (atual + anterior) só para popular o userMap em um único findMany.
   const allUserIds = new Set<string>(activeUserIds)
   for (const id of wonPrevMap.keys()) allUserIds.add(id)
   for (const id of openedPrevMap.keys()) allUserIds.add(id)
+  for (const id of lostPrevMap.keys()) allUserIds.add(id)
 
   if (activeUserIds.size === 0) return []
 
@@ -158,6 +227,10 @@ async function fetchTeamPerformance(
       prevRevenue: wonPast.revenue,
       prevAvgTicket,
       prevConversionRate,
+      dealsLostCount: lostCurrentMap.get(assigneeId) ?? 0,
+      prevDealsLostCount: lostPrevMap.get(assigneeId) ?? 0,
+      openDealsCount: openSnapshotMap.get(assigneeId)?.count ?? 0,
+      openPipelineValue: openSnapshotMap.get(assigneeId)?.value ?? 0,
     })
   }
 
