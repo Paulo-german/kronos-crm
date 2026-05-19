@@ -46,7 +46,7 @@ import type { CompanyDto } from '@/_data-access/company/get-companies'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import type { LifecycleHistoryItemDto } from '@/_data-access/lifecycle/types'
 import { InlineTextField } from '@/_components/form-controls/inline-text-field'
-import { InlineSelectField } from '@/_components/form-controls/inline-select-field'
+import { CompanyCombobox } from '../../_components/company-combobox'
 import { useContactFieldUpdate } from '../_hooks/use-contact-field-update'
 import { formatPhone } from '@/_utils/format-phone'
 import { transferContact } from '@/_actions/contact/transfer-contact'
@@ -305,16 +305,10 @@ const ContactDetailClient = ({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <InlineSelectField
-              value={contact.companyId}
-              options={companies.map((company) => ({
-                value: company.id,
-                label: company.name,
-              }))}
-              onSave={(value) => updateField('companyId', value)}
-              isPending={isPending}
-              placeholder="Selecione uma empresa"
-              emptyLabel="Nenhuma empresa vinculada"
+            <CompanyCombobox
+              value={contact.companyId ?? undefined}
+              options={companies.map((company) => ({ id: company.id, name: company.name }))}
+              onChange={(value) => updateField('companyId', value || null)}
             />
           </CardContent>
         </Card>
