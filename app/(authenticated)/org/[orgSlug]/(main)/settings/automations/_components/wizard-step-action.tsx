@@ -22,7 +22,7 @@ import { Label } from '@/_components/ui/label'
 import { ACTION_LABELS, REASSIGN_STRATEGY_LABELS, NOTIFY_TARGET_LABELS, PRIORITY_OPTIONS, LIFECYCLE_STAGE_OPTIONS } from './automation-labels'
 import { Badge } from '@/_components/ui/badge'
 import { cn } from '@/_lib/utils'
-import { UserPlus, ArrowRight, XCircle, Bell, AlertTriangle, MessageCircle, UserCheck } from 'lucide-react'
+import { UserPlus, ArrowRight, XCircle, Bell, AlertTriangle, MessageCircle, UserCheck, Braces } from 'lucide-react'
 import React, { useRef } from 'react'
 import type { AutomationFormValues } from './wizard-form-types'
 import type { PipelineStageOption } from '@/_data-access/pipeline/get-pipeline-stages'
@@ -45,14 +45,45 @@ const ACTION_ICONS: Record<AutomationAction, React.ElementType> = {
 }
 
 const MESSAGE_VARIABLES = [
-  { token: '{{deal.title}}',        label: 'Título' },
-  { token: '{{deal.stage}}',        label: 'Estágio' },
-  { token: '{{deal.assignee}}',     label: 'Responsável' },
-  { token: '{{deal.value}}',        label: 'Valor' },
-  { token: '{{contact.name}}',      label: 'Contato' },
-  { token: '{{contact.firstName}}', label: 'Primeiro nome' },
-  { token: '{{user.name}}',         label: 'Meu nome' },
+  { token: '{{deal.title}}',        label: 'Título',        group: 'Negócio' },
+  { token: '{{deal.stage}}',        label: 'Estágio',       group: 'Negócio' },
+  { token: '{{deal.assignee}}',     label: 'Responsável',   group: 'Negócio' },
+  { token: '{{deal.value}}',        label: 'Valor',         group: 'Negócio' },
+  { token: '{{contact.name}}',      label: 'Nome',          group: 'Contato' },
+  { token: '{{contact.firstName}}', label: 'Primeiro nome', group: 'Contato' },
+  { token: '{{user.name}}',         label: 'Meu nome',      group: 'Você' },
 ] as const
+
+const VARIABLE_GROUPS = ['Negócio', 'Contato', 'Você'] as const
+
+const VariableInserter = ({ onInsert }: { onInsert: (token: string) => void }) => (
+  <div className="space-y-1">
+    <span className="text-xs text-muted-foreground">Inserir variável:</span>
+    <div className="flex flex-col gap-1">
+      {VARIABLE_GROUPS.map((group) => {
+        const vars = MESSAGE_VARIABLES.filter((variable) => variable.group === group)
+        return (
+          <div key={group} className="flex flex-wrap items-center gap-1">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/50 w-12 shrink-0">
+              {group}
+            </span>
+            {vars.map((variable) => (
+              <button
+                key={variable.token}
+                type="button"
+                onClick={() => onInsert(variable.token)}
+                className="inline-flex items-center gap-1 rounded border border-primary/25 bg-primary/5 px-1.5 py-0.5 text-[11px] font-medium text-primary/75 transition-colors hover:border-primary/50 hover:bg-primary/10 hover:text-primary"
+              >
+                <Braces className="h-2.5 w-2.5 shrink-0" />
+                {variable.label}
+              </button>
+            ))}
+          </div>
+        )
+      })}
+    </div>
+  </div>
+)
 
 interface WizardStepActionProps {
   stageOptions: PipelineStageOption[]
@@ -460,23 +491,7 @@ export function WizardStepAction({ stageOptions, members, lossReasons, whatsappI
 
           <div className="space-y-2">
             <Label>Mensagem *</Label>
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-xs text-muted-foreground">Inserir variável:</span>
-              {MESSAGE_VARIABLES.map((variable) => (
-                <button
-                  key={variable.token}
-                  type="button"
-                  onClick={() => insertVariable(variable.token)}
-                >
-                  <Badge
-                    variant="outline"
-                    className="cursor-pointer font-mono text-xs hover:bg-accent transition-colors"
-                  >
-                    {variable.token}
-                  </Badge>
-                </button>
-              ))}
-            </div>
+            <VariableInserter onInsert={insertVariable} />
             <Textarea
               ref={textareaRef}
               placeholder="Ex: A negociação {{deal.title}} está parada no estágio {{deal.stage}} há mais de 2 dias."
@@ -647,23 +662,7 @@ export function WizardStepAction({ stageOptions, members, lossReasons, whatsappI
           {/* Template de mensagem */}
           <div className="space-y-2">
             <Label>Mensagem *</Label>
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-xs text-muted-foreground">Inserir variável:</span>
-              {MESSAGE_VARIABLES.map((variable) => (
-                <button
-                  key={variable.token}
-                  type="button"
-                  onClick={() => insertFollowupVariable(variable.token)}
-                >
-                  <Badge
-                    variant="outline"
-                    className="cursor-pointer font-mono text-xs hover:bg-accent transition-colors"
-                  >
-                    {variable.token}
-                  </Badge>
-                </button>
-              ))}
-            </div>
+            <VariableInserter onInsert={insertFollowupVariable} />
             <Textarea
               ref={followupTextareaRef}
               placeholder="Ex: Olá {{contact.firstName}}, tudo bem? Queria retomar a conversa sobre {{deal.title}}."
