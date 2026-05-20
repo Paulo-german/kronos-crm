@@ -24,15 +24,21 @@ export function GlobalSearch() {
     <>
       <Button
         variant="ghost"
-        size="sm"
-        className="h-8 min-w-96 justify-between gap-2 text-muted-foreground"
+        size="icon"
+        className="h-8 w-8 md:hidden"
         onClick={() => setOpen(true)}
       >
         <Search className="h-4 w-4" />
-        <span className="hidden sm:inline-flex">
-          Buscar contatos, empresas e negociações
-        </span>
-        <kbd className="pointer-events-none hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="hidden h-8 min-w-96 justify-between gap-2 text-muted-foreground md:inline-flex"
+        onClick={() => setOpen(true)}
+      >
+        <Search className="h-4 w-4" />
+        <span>Buscar contatos, empresas e negociações</span>
+        <kbd className="pointer-events-none h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 md:flex">
           <span className="text-xs">⌘</span>K
         </kbd>
       </Button>
