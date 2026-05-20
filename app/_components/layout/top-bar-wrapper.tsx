@@ -16,6 +16,7 @@ interface TopBarWrapperProps {
   orgSlug: string
   initialUnreadCount: number
   initialNotifications: NotificationDto[]
+  completedTutorialIds: string[]
   sidebarProps?: SidebarProps
 }
 

@@ -25,6 +25,7 @@ interface TopBarProps {
   orgSlug: string
   initialUnreadCount: number
   initialNotifications: NotificationDto[]
+  completedTutorialIds: string[]
   sidebarProps?: SidebarProps
 }
 
@@ -33,6 +34,7 @@ export const TopBar = ({
   orgSlug,
   initialUnreadCount,
   initialNotifications,
+  completedTutorialIds,
   sidebarProps,
 }: TopBarProps) => {
   return (
@@ -60,6 +62,7 @@ export const TopBar = ({
         orgSlug={orgSlug}
         initialUnreadCount={initialUnreadCount}
         initialNotifications={initialNotifications}
+        completedTutorialIds={completedTutorialIds}
       />
     </header>
   )

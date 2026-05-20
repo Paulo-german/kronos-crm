@@ -12,7 +12,6 @@ import {
   Inbox,
   Bot,
   Shield,
-  GraduationCap,
   Compass,
   BarChart3,
 } from 'lucide-react'
@@ -207,11 +206,6 @@ export const SidebarContent = ({
             icon={<Shield className="h-4 w-4" />}
           />
         )}
-        <SidebarItem
-          href={buildHref('/tutorials')}
-          label="Tutoriais"
-          icon={<GraduationCap className="h-4 w-4" />}
-        />
         <SidebarItem
           href={buildHref('/settings')}
           label="Configurações"

@@ -3,6 +3,7 @@
 import { ThemeToggle } from '@/_components/theme-toggle'
 import { RevalidateCacheButton } from '@/_components/layout/revalidate-cache-button'
 import { NotificationBell } from '@/_components/layout/notification-bell'
+import { TutorialsPopoverButton } from '@/_components/layout/tutorials-popover-button'
 import { UserAvatarDropdown } from '@/_components/layout/user-avatar-dropdown'
 import type { NotificationDto } from '@/_data-access/notification/types'
 
@@ -18,6 +19,7 @@ interface TopBarActionsProps {
   orgSlug: string
   initialUnreadCount: number
   initialNotifications: NotificationDto[]
+  completedTutorialIds: string[]
 }
 
 export const TopBarActions = ({
@@ -25,12 +27,15 @@ export const TopBarActions = ({
   orgSlug,
   initialUnreadCount,
   initialNotifications,
+  completedTutorialIds,
 }: TopBarActionsProps) => {
   const isDevUser = DEV_EMAILS.includes(user.email)
 
   return (
     <div className="flex items-center gap-1">
       {isDevUser && <RevalidateCacheButton />}
+
+      <TutorialsPopoverButton completedTutorialIds={completedTutorialIds} orgSlug={orgSlug} />
 
       <NotificationBell
         orgSlug={orgSlug}
