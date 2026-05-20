@@ -9,6 +9,8 @@ import { getAgents } from '@/_data-access/agent/get-agents'
 import { getUserById } from '@/_data-access/user/get-user-by-id'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 import { AgentsCardGrid } from './_components/agents-card-grid'
+import { getTutorialCompletions } from '@/_data-access/tutorial/get-tutorial-completions'
+import { AgentsListIntroTrigger } from '@/_components/tutorials/agents-list-intro-trigger'
 
 // Forçar renderização dinâmica para que process.env seja lido em runtime,
 // evitando que Next.js cache o valor da flag durante o build.
@@ -25,16 +27,20 @@ const AiAgentPage = async ({ params }: AiAgentPageProps) => {
   const singleV2OverhaulEnabled =
     process.env.SINGLE_V2_OVERHAUL_ENABLED === 'true'
 
-  const [agents, quota, user] = await Promise.all([
+  const [agents, quota, user, completedTutorialIds] = await Promise.all([
     getAgents(ctx.orgId),
     checkPlanQuota(ctx.orgId, 'agent'),
     getUserById(ctx.userId),
+    getTutorialCompletions(ctx.userId, ctx.orgId),
   ])
 
   const isSuperAdmin = user?.isSuperAdmin ?? false
 
   return (
     <div className="space-y-6">
+      <AgentsListIntroTrigger
+        hasSeenAgentsListIntro={completedTutorialIds.includes('agents-list')}
+      />
       <Header>
         <HeaderLeft>
           <HeaderTitle>Agentes IA</HeaderTitle>

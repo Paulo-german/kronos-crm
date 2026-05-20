@@ -11,6 +11,9 @@ import {
   BarChart2,
   Users,
   Briefcase,
+  Bot,
+  Workflow,
+  ClipboardCheck,
 } from 'lucide-react'
 
 // Mapa centralizado de ícones suportados nos tutoriais
@@ -26,4 +29,7 @@ export const TUTORIAL_ICON_MAP: Record<string, ComponentType<{ className?: strin
   BarChart2,
   Users,
   Briefcase,
+  Bot,
+  Workflow,
+  ClipboardCheck,
 }

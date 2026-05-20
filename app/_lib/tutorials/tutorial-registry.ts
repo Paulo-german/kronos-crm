@@ -167,6 +167,42 @@ export const TUTORIAL_REGISTRY: TutorialDefinition[] = [
     ],
   },
   {
+    id: 'agents-list',
+    title: 'Agentes IA: Seu Time Automático',
+    description:
+      'Entenda o que são os agentes de IA, como eles funcionam e como cadastrar o seu primeiro agente.',
+    icon: 'Bot',
+    category: 'getting_started',
+    relatedRoute: '/ai-agent',
+    estimatedMinutes: 3,
+    slides: [
+      {
+        title: 'O que é um Agente IA?',
+        description:
+          'Um agente de IA é um assistente que trabalha por você 24h por dia: lê as mensagens que chegam nos seus canais e responde automaticamente, como se fosse um vendedor sempre disponível.',
+        content: { type: 'component', componentId: 'agents-what-is' },
+      },
+      {
+        title: 'Como o agente age',
+        description:
+          'O agente não só responde — ele age. Ao analisar cada mensagem, pode qualificar o lead, mover o negócio de etapa no funil e criar tarefas para o time, tudo sem intervenção manual.',
+        content: { type: 'component', componentId: 'agents-how-it-works' },
+      },
+      {
+        title: 'Entendendo o painel de agentes',
+        description:
+          'Cada agente aparece como um card com seu status (ativo ou inativo), o modelo de IA utilizado e estatísticas de steps configurados, inboxes conectados e arquivos de conhecimento.',
+        content: { type: 'component', componentId: 'agents-card' },
+      },
+      {
+        title: 'Cadastrando um agente',
+        description:
+          'Para criar um agente, informe o nome, o papel (SDR, Closer, Suporte…), os dados da sua empresa, o tom de voz ideal e a arquitetura. Em seguida, configure o processo e as conexões na página de detalhes.',
+        content: { type: 'component', componentId: 'agents-create' },
+      },
+    ],
+  },
+  {
     id: 'deal-details',
     title: 'Tudo sobre o Detalhe do Negócio',
     description:

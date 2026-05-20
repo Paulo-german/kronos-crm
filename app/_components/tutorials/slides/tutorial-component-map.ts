@@ -27,6 +27,10 @@ import { DealDetailSummaryLegend } from './deal-detail-summary-legend'
 import { DealDetailProductsSlide } from './deal-detail-products-slide'
 import { DealDetailTasksSlide } from './deal-detail-tasks-slide'
 import { DealDetailAppointmentsSlide } from './deal-detail-appointments-slide'
+import { AgentsWhatIsSlide } from './agents-what-is-slide'
+import { AgentsHowItWorksSlide } from './agents-how-it-works-slide'
+import { AgentsCardSlide } from './agents-card-slide'
+import { AgentsCreateSlide } from './agents-create-slide'
 
 interface TutorialComponentEntry {
   component: ComponentType
@@ -65,4 +69,8 @@ export const TUTORIAL_COMPONENT_MAP: Record<string, TutorialComponentEntry> = {
   'deal-detail-products': { component: DealDetailProductsSlide },
   'deal-detail-tasks': { component: DealDetailTasksSlide },
   'deal-detail-appointments': { component: DealDetailAppointmentsSlide },
+  'agents-what-is': { component: AgentsWhatIsSlide },
+  'agents-how-it-works': { component: AgentsHowItWorksSlide },
+  'agents-card': { component: AgentsCardSlide },
+  'agents-create': { component: AgentsCreateSlide },
 }
