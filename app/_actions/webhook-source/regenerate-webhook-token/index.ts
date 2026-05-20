@@ -2,12 +2,12 @@
 
 import { randomUUID } from 'node:crypto'
 import { revalidateTag } from 'next/cache'
-import { orgActionClient } from '@/_lib/safe-action'
+import { superAdminOrgActionClient } from '@/_lib/safe-action'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 import { db } from '@/_lib/prisma'
 import { regenerateWebhookTokenSchema } from '../schema'
 
-export const regenerateWebhookToken = orgActionClient
+export const regenerateWebhookToken = superAdminOrgActionClient
   .schema(regenerateWebhookTokenSchema)
   .action(async ({ parsedInput: data, ctx }) => {
     requirePermission(canPerformAction(ctx, 'webhookSource', 'update'))

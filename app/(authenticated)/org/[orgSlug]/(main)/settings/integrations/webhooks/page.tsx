@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getWebhookSources } from '@/_data-access/webhook-source/get-webhook-sources'
-import { canPerformAction } from '@/_lib/rbac'
+import { db } from '@/_lib/prisma'
 import Header, {
   HeaderLeft,
   HeaderRight,
@@ -20,8 +20,13 @@ export default async function WebhooksPage({ params }: PageProps) {
   const { orgSlug } = await params
   const ctx = await getOrgContext(orgSlug)
 
-  if (!canPerformAction(ctx, 'webhookSource', 'read').allowed) {
-    redirect(`/org/${orgSlug}/settings`)
+  const currentUser = await db.user.findUnique({
+    where: { id: ctx.userId },
+    select: { isSuperAdmin: true },
+  })
+
+  if (!currentUser?.isSuperAdmin) {
+    redirect(`/org/${orgSlug}/settings/integrations`)
   }
 
   const rawSources = await getWebhookSources(ctx)

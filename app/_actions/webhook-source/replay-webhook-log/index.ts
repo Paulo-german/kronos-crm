@@ -1,13 +1,13 @@
 'use server'
 
 import { revalidateTag } from 'next/cache'
-import { orgActionClient } from '@/_lib/safe-action'
+import { superAdminOrgActionClient } from '@/_lib/safe-action'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 import { db } from '@/_lib/prisma'
 import { processInboundWebhook } from '@/_lib/webhooks/process-inbound-webhook'
 import { replayWebhookLogSchema } from '../schema'
 
-export const replayWebhookLog = orgActionClient
+export const replayWebhookLog = superAdminOrgActionClient
   .schema(replayWebhookLogSchema)
   .action(async ({ parsedInput: data, ctx }) => {
     requirePermission(canPerformAction(ctx, 'webhookSource', 'update'))

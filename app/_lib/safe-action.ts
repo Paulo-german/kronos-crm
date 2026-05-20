@@ -112,6 +112,24 @@ export const orgActionClient = freeOrgActionClient.use(async ({ ctx, next }) => 
 })
 
 /**
+ * Action client com autenticação + contexto de organização + plano ativo + super admin.
+ * Use para: actions de features restritas a super administradores dentro de uma org.
+ * (ex: webhook source management, features em beta controlado)
+ */
+export const superAdminOrgActionClient = orgActionClient.use(async ({ ctx, next }) => {
+  const user = await db.user.findUnique({
+    where: { id: ctx.userId },
+    select: { isSuperAdmin: true },
+  })
+
+  if (!user?.isSuperAdmin) {
+    throw new Error('Acesso restrito a super administradores.')
+  }
+
+  return next({ ctx })
+})
+
+/**
  * Action client exclusivo para super admins (painel Delfos).
  * Herda autenticação do authActionClient e verifica isSuperAdmin no banco.
  * Use para: TODAS as actions do painel /admin que manipulam dados globais da plataforma.
