@@ -289,7 +289,7 @@ export const followUpCron = schedules.task({
         nextFollowUpAt: { lte: now },
         aiPaused: false,
         OR: [
-          { inbox: { agentId: { not: null }, agent: { isActive: true } } },
+          { inbox: { agentId: { not: null }, agent: { isActive: true, NOT: { agentVersion: 'single-v2' } } } },
           { inbox: { agentGroupId: { not: null }, agentGroup: { isActive: true } } },
         ],
       },
