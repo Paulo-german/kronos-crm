@@ -4,6 +4,7 @@ import { getOrgPipelines } from '@/_data-access/pipeline/get-org-pipelines'
 import { getDealsByPipeline } from '@/_data-access/deal/get-deals-by-pipeline'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
 import { getTutorialCompletions } from '@/_data-access/tutorial/get-tutorial-completions'
+import { PipelineIntroTrigger } from '@/_components/tutorials/pipeline-intro-trigger'
 import { PipelineClient } from './_components/pipeline-client'
 import { createDefaultPipeline } from '@/_data-access/pipeline/create-default-pipeline'
 
@@ -44,18 +45,23 @@ const PipelinePage = async ({ params, searchParams }: PipelinePageProps) => {
     .map((member) => ({ userId: member.userId!, name: member.user!.fullName! }))
 
   return (
-    <div className="flex h-full flex-col space-y-6 overflow-hidden">
-      <PipelineClient
-        pipeline={finalPipeline}
-        pipelines={pipelines}
-        activePipelineId={finalPipeline?.id ?? ''}
-        dealsByStage={dealsByStage}
-        members={members}
-        currentUserId={ctx.userId}
-        userRole={ctx.userRole}
-        isPipelineTutorialCompleted={completedTutorialIds.includes('pipeline')}
+    <>
+      <div className="flex h-full flex-col space-y-6 overflow-hidden">
+        <PipelineClient
+          pipeline={finalPipeline}
+          pipelines={pipelines}
+          activePipelineId={finalPipeline?.id ?? ''}
+          dealsByStage={dealsByStage}
+          members={members}
+          currentUserId={ctx.userId}
+          userRole={ctx.userRole}
+          isPipelineTutorialCompleted={completedTutorialIds.includes('pipeline')}
+        />
+      </div>
+      <PipelineIntroTrigger
+        hasSeenPipelineIntro={completedTutorialIds.includes('pipeline')}
       />
-    </div>
+    </>
   )
 }
 

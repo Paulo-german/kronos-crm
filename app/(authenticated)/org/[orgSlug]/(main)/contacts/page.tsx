@@ -6,6 +6,8 @@ import { getOrganizationMembers } from '@/_data-access/organization/get-organiza
 import { checkPlanQuota, getPlanLimits } from '@/_lib/rbac/plan-limits'
 import { SCORE_ELIGIBLE_PRODUCT_KEYS } from '@/../trigger/lib/health-score-constants'
 import { getDefaultPipelineWithStages } from '@/_data-access/pipeline/get-default-pipeline-with-stages'
+import { getTutorialCompletions } from '@/_data-access/tutorial/get-tutorial-completions'
+import { LifecycleIntroTrigger } from '@/_components/tutorials/lifecycle-intro-trigger'
 import { ContactsListClient } from './_components/contacts-list-client'
 import { parseContactListParams } from './_lib/contact-list-params'
 
@@ -20,7 +22,7 @@ const ContactsPage = async ({ params, searchParams }: ContactsPageProps) => {
   const ctx = await getOrgContext(orgSlug)
   const listParams = parseContactListParams(resolvedSearchParams)
 
-  const [result, companies, quota, members, planInfo, lifecycleCounts, pipelineStages] =
+  const [result, companies, quota, members, planInfo, lifecycleCounts, pipelineStages, completedTutorialIds] =
     await Promise.all([
       getContactsPaginated(ctx, listParams),
       getCompanies(ctx.orgId),
@@ -29,6 +31,7 @@ const ContactsPage = async ({ params, searchParams }: ContactsPageProps) => {
       getPlanLimits(ctx.orgId),
       getContactsLifecycleCounts(ctx, listParams),
       getDefaultPipelineWithStages(ctx.orgId),
+      getTutorialCompletions(ctx.userId, ctx.orgId),
     ])
 
   const isScoreEnabled = planInfo.plan
@@ -36,23 +39,28 @@ const ContactsPage = async ({ params, searchParams }: ContactsPageProps) => {
     : false
 
   return (
-    <ContactsListClient
-      contacts={result.data}
-      total={result.total}
-      page={result.page}
-      pageSize={result.pageSize}
-      totalPages={result.totalPages}
-      companyOptions={companies}
-      members={members.accepted}
-      currentUserId={ctx.userId}
-      userRole={ctx.userRole}
-      withinQuota={quota.withinQuota}
-      orgSlug={orgSlug}
-      hidePiiFromMembers={ctx.hidePiiFromMembers ?? false}
-      isScoreEnabled={isScoreEnabled}
-      lifecycleCounts={lifecycleCounts}
-      pipelineStages={pipelineStages}
-    />
+    <>
+      <ContactsListClient
+        contacts={result.data}
+        total={result.total}
+        page={result.page}
+        pageSize={result.pageSize}
+        totalPages={result.totalPages}
+        companyOptions={companies}
+        members={members.accepted}
+        currentUserId={ctx.userId}
+        userRole={ctx.userRole}
+        withinQuota={quota.withinQuota}
+        orgSlug={orgSlug}
+        hidePiiFromMembers={ctx.hidePiiFromMembers ?? false}
+        isScoreEnabled={isScoreEnabled}
+        lifecycleCounts={lifecycleCounts}
+        pipelineStages={pipelineStages}
+      />
+      <LifecycleIntroTrigger
+        hasSeenLifecycleIntro={completedTutorialIds.includes('lifecycle-intro')}
+      />
+    </>
   )
 }
 

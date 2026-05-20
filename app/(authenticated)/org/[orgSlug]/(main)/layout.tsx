@@ -22,8 +22,6 @@ import { getUserProfileStatus } from '@/_data-access/user-profile/get-user-profi
 import { WelcomeSurveyModal } from '@/_components/welcome-survey/welcome-survey-modal'
 import { getPlanLimits } from '@/_lib/rbac/plan-limits'
 import { getTutorialCompletions } from '@/_data-access/tutorial/get-tutorial-completions'
-import { LifecycleIntroTrigger } from '@/_components/tutorials/lifecycle-intro-trigger'
-import { TaskOutcomeIntroTrigger } from '@/_components/tutorials/task-outcome-intro-trigger'
 
 interface MainLayoutProps {
   children: React.ReactNode
@@ -144,12 +142,6 @@ const MainLayout = async ({ children, params }: MainLayoutProps) => {
       </div>
       <DashboardTourTrigger />
       {userRole === 'OWNER' && !profileCompleted && <WelcomeSurveyModal />}
-      <LifecycleIntroTrigger
-        hasSeenLifecycleIntro={completedTutorialIds.includes('lifecycle-intro')}
-      />
-      <TaskOutcomeIntroTrigger
-        hasSeenTaskOutcomeIntro={completedTutorialIds.includes('task-outcome-intro')}
-      />
     </div>
   )
 }
