@@ -10,6 +10,7 @@ import {
   FormMessage,
 } from '@/_components/ui/form'
 import { Textarea } from '@/_components/ui/textarea'
+import { Input } from '@/_components/ui/input'
 import {
   Select,
   SelectContent,
@@ -19,10 +20,10 @@ import {
 } from '@/_components/ui/select'
 import { RadioGroup, RadioGroupItem } from '@/_components/ui/radio-group'
 import { Label } from '@/_components/ui/label'
-import { ACTION_LABELS, REASSIGN_STRATEGY_LABELS, NOTIFY_TARGET_LABELS, PRIORITY_OPTIONS, LIFECYCLE_STAGE_OPTIONS } from './automation-labels'
+import { ACTION_LABELS, REASSIGN_STRATEGY_LABELS, NOTIFY_TARGET_LABELS, PRIORITY_OPTIONS, LIFECYCLE_STAGE_OPTIONS, TASK_ACTION_TYPE_OPTIONS, TASK_ASSIGN_OPTIONS } from './automation-labels'
 import { Badge } from '@/_components/ui/badge'
 import { cn } from '@/_lib/utils'
-import { UserPlus, ArrowRight, XCircle, Bell, AlertTriangle, MessageCircle, UserCheck, Braces } from 'lucide-react'
+import { UserPlus, ArrowRight, XCircle, Bell, AlertTriangle, MessageCircle, UserCheck, Braces, ListChecks } from 'lucide-react'
 import React, { useRef } from 'react'
 import type { AutomationFormValues } from './wizard-form-types'
 import type { PipelineStageOption } from '@/_data-access/pipeline/get-pipeline-stages'
@@ -42,6 +43,7 @@ const ACTION_ICONS: Record<AutomationAction, React.ElementType> = {
   UPDATE_DEAL_PRIORITY: AlertTriangle,
   SEND_WHATSAPP_FOLLOWUP: MessageCircle,
   UPDATE_CONTACT_LIFECYCLE: UserCheck,
+  CREATE_TASK: ListChecks,
 }
 
 const MESSAGE_VARIABLES = [
@@ -123,6 +125,11 @@ export function WizardStepAction({ stageOptions, members, lossReasons, whatsappI
   const getConfigArray = (key: string): string[] => {
     const val = actionConfig[key]
     return Array.isArray(val) ? (val as string[]) : []
+  }
+
+  const getConfigNumber = (key: string, defaultValue: number): number => {
+    const val = actionConfig[key]
+    return typeof val === 'number' && Number.isFinite(val) ? val : defaultValue
   }
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -771,6 +778,166 @@ export function WizardStepAction({ stageOptions, members, lossReasons, whatsappI
               <p className="text-sm text-destructive">Selecione o estágio</p>
             )}
           </div>
+        </div>
+      )}
+
+      {/* CREATE_TASK */}
+      {actionType === AutomationAction.CREATE_TASK && (
+        <div
+          className="space-y-4 rounded-md border bg-muted/30 p-4"
+          data-error={
+            showConfigErrors &&
+            (!getConfigString('titleTemplate') ||
+              !getConfigString('assignTo') ||
+              (getConfigString('assignTo') === 'specific_user' && !getConfigString('assignToUserId')))
+              ? 'true'
+              : undefined
+          }
+        >
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            Configuração (Criar tarefa)
+          </p>
+
+          <div className="space-y-2">
+            <Label>Título da tarefa *</Label>
+            <VariableInserter
+              onInsert={(token) => {
+                const current = getConfigString('titleTemplate')
+                setActionConfigValue('titleTemplate', current + token)
+                form.clearErrors('actionConfig')
+              }}
+            />
+            <Input
+              placeholder="Ex: Follow-up com {{contact.firstName}} sobre {{deal.title}}"
+              maxLength={200}
+              className={showConfigErrors && !getConfigString('titleTemplate') ? 'border-destructive' : ''}
+              value={getConfigString('titleTemplate')}
+              onChange={(event) => {
+                setActionConfigValue('titleTemplate', event.target.value)
+                form.clearErrors('actionConfig')
+              }}
+            />
+            {showConfigErrors && !getConfigString('titleTemplate') && (
+              <p className="text-sm text-destructive">Digite o título</p>
+            )}
+          </div>
+
+          <Separator />
+
+          <div className="space-y-2">
+            <Label>Tipo</Label>
+            <Select
+              value={getConfigString('taskType') || 'TASK'}
+              onValueChange={(val) => setActionConfigValue('taskType', val)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o tipo" />
+              </SelectTrigger>
+              <SelectContent>
+                {TASK_ACTION_TYPE_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Vencimento (dias a partir de hoje)</Label>
+            <Input
+              type="number"
+              min={0}
+              max={365}
+              value={getConfigNumber('dueInDays', 1)}
+              onChange={(event) =>
+                setActionConfigValue('dueInDays', event.target.value === '' ? 1 : Number(event.target.value))
+              }
+            />
+            <p className="text-xs text-muted-foreground">0 = vence hoje às 23:59. Máximo 365 dias.</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Prioridade</Label>
+            <Select
+              value={getConfigString('priority') || 'medium'}
+              onValueChange={(val) => setActionConfigValue('priority', val)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione a prioridade" />
+              </SelectTrigger>
+              <SelectContent>
+                {PRIORITY_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Separator />
+
+          <div className="space-y-3">
+            <Label>Atribuir tarefa para *</Label>
+            <RadioGroup
+              value={getConfigString('assignTo')}
+              onValueChange={(val) => {
+                setActionConfigValue('assignTo', val)
+                if (val === 'deal_assignee') {
+                  setActionConfigValue('assignToUserId', undefined)
+                }
+                form.clearErrors('actionConfig')
+              }}
+              className="space-y-2"
+            >
+              {TASK_ASSIGN_OPTIONS.map((option) => (
+                <div key={option.value} className="flex items-center gap-2">
+                  <RadioGroupItem value={option.value} id={`task-assign-${option.value}`} />
+                  <Label htmlFor={`task-assign-${option.value}`} className="cursor-pointer font-normal">
+                    {option.label}
+                  </Label>
+                </div>
+              ))}
+            </RadioGroup>
+            {showConfigErrors && !getConfigString('assignTo') && (
+              <p className="text-sm text-destructive">Selecione como atribuir</p>
+            )}
+          </div>
+
+          {getConfigString('assignTo') === 'specific_user' && (
+            <div className="space-y-2">
+              <Label>Membro responsável *</Label>
+              <Select
+                value={getConfigString('assignToUserId')}
+                onValueChange={(val) => {
+                  setActionConfigValue('assignToUserId', val)
+                  form.clearErrors('actionConfig')
+                }}
+              >
+                <SelectTrigger
+                  className={
+                    showConfigErrors && !getConfigString('assignToUserId') ? 'border-destructive' : ''
+                  }
+                >
+                  <SelectValue placeholder="Selecione o membro" />
+                </SelectTrigger>
+                <SelectContent>
+                  {members.map((member) => {
+                    const memberId = member.userId ?? member.id
+                    return (
+                      <SelectItem key={memberId} value={memberId}>
+                        {member.user?.fullName ?? member.email}
+                      </SelectItem>
+                    )
+                  })}
+                </SelectContent>
+              </Select>
+              {showConfigErrors && !getConfigString('assignToUserId') && (
+                <p className="text-sm text-destructive">Selecione o membro</p>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -17,6 +17,7 @@ export const ACTION_LABELS: Record<AutomationAction, string> = {
   UPDATE_DEAL_PRIORITY: 'Alterar prioridade',
   SEND_WHATSAPP_FOLLOWUP: 'Enviar follow-up no WhatsApp',
   UPDATE_CONTACT_LIFECYCLE: 'Avançar ciclo do contato',
+  CREATE_TASK: 'Criar tarefa',
 }
 
 export const CONDITION_FIELD_LABELS: Record<string, string> = {
@@ -85,4 +86,18 @@ export const LIFECYCLE_STAGE_OPTIONS: { label: string; value: string; descriptio
   { label: 'Qualificado', value: 'QUALIFIED', description: 'Demonstrou interesse e fit' },
   { label: 'Oportunidade', value: 'OPPORTUNITY', description: 'Em negociação ativa' },
   { label: 'Cliente', value: 'CUSTOMER', description: 'Conversão realizada' },
+]
+
+export const TASK_ACTION_TYPE_OPTIONS: { label: string; value: string }[] = [
+  { label: 'Tarefa', value: 'TASK' },
+  { label: 'Reunião', value: 'MEETING' },
+  { label: 'Ligação', value: 'CALL' },
+  { label: 'WhatsApp', value: 'WHATSAPP' },
+  { label: 'Visita', value: 'VISIT' },
+  { label: 'E-mail', value: 'EMAIL' },
+]
+
+export const TASK_ASSIGN_OPTIONS: { label: string; value: string }[] = [
+  { label: 'Responsável pela negociação', value: 'deal_assignee' },
+  { label: 'Membro específico', value: 'specific_user' },
 ]
