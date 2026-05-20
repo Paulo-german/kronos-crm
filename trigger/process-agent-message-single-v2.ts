@@ -25,6 +25,7 @@ import { isSingleV2OverhaulEnabled } from './lib/feature-flags'
 import { buildPromptBaseContext } from './lib/prompt-base-context'
 import { compileSingleSystemPrompt } from './lib/prompt-single-compiler'
 import { applyLifecycleTrigger } from './lib/apply-lifecycle-trigger'
+import { applyStepAutoActions } from './lib/apply-step-auto-actions'
 import type { GroupToolConfig } from './tools'
 import {
   createConversationEvent,
@@ -1951,6 +1952,26 @@ export async function runSingleV2(
           logger.error('lifecycle:trigger_failed', {
             conversationId: ctx.conversationId,
             error: lifecycleErr instanceof Error ? lifecycleErr.message : String(lifecycleErr),
+          })
+        }
+      }
+
+      // Auto-ações do step — non-fatal, não bloqueia lifecycle nem FUP
+      if (newStep && (newStep.autoDealStageId || newStep.autoTasks)) {
+        try {
+          await applyStepAutoActions({
+            conversationId: ctx.conversationId,
+            organizationId: ctx.organizationId,
+            agentId: ctx.effectiveAgentId,
+            agentName: promptContext.agentName,
+            dealId: conversation.dealId,
+            autoDealStageId: newStep.autoDealStageId,
+            autoTasks: newStep.autoTasks,
+          })
+        } catch (autoActionsErr) {
+          logger.error('step:auto_actions_failed', {
+            conversationId: ctx.conversationId,
+            error: autoActionsErr instanceof Error ? autoActionsErr.message : String(autoActionsErr),
           })
         }
       }

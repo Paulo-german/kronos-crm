@@ -64,6 +64,8 @@ const dealContextSchema = z.object({
   appointments: z.array(dealAppointmentSchema),
 })
 
+const autoTaskSchema = z.array(z.object({ title: z.string(), dueInDays: z.number().int().positive() }))
+
 // Mantido 1:1 com o schema existente em app/_actions/agent/shared/step-action-schema.ts
 const agentStepSchema = z.object({
   id: z.string().uuid(),
@@ -75,6 +77,8 @@ const agentStepSchema = z.object({
   messageTemplate: z.string().nullable(),
   lifecycleTrigger: z.nativeEnum(LifecycleStage).nullable(),
   lifecycleDealPipelineId: z.string().uuid().nullable(),
+  autoDealStageId: z.string().uuid().nullable(),
+  autoTasks: autoTaskSchema.nullable(),
 })
 
 const toolEventSchema = z.object({
@@ -214,6 +218,8 @@ export async function buildPromptBaseContext(
             messageTemplate: true,
             lifecycleTrigger: true,
             lifecycleDealPipelineId: true,
+            autoDealStageId: true,
+            autoTasks: true,
           },
         },
       },
@@ -353,9 +359,10 @@ export async function buildPromptBaseContext(
     ...mediaUrlTools,
   ]
 
-  // Serializar steps — actions são Json no banco, precisam ser re-parseados
+  // Serializar steps — actions e autoTasks são Json no banco, precisam ser re-parseados
   const steps: PromptBaseContext['steps'] = agent.steps.map((step) => {
     const parsedActions = z.array(stepActionSchema).safeParse(step.actions)
+    const parsedAutoTasks = autoTaskSchema.safeParse(step.autoTasks)
     return {
       id: step.id,
       name: step.name,
@@ -366,6 +373,8 @@ export async function buildPromptBaseContext(
       messageTemplate: step.messageTemplate ?? null,
       lifecycleTrigger: step.lifecycleTrigger ?? null,
       lifecycleDealPipelineId: step.lifecycleDealPipelineId ?? null,
+      autoDealStageId: step.autoDealStageId ?? null,
+      autoTasks: parsedAutoTasks.success ? parsedAutoTasks.data : null,
     }
   })
 

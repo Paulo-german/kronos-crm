@@ -104,6 +104,8 @@ const BASE_FIXTURE: PromptBaseContext = {
       messageTemplate: null,
       lifecycleTrigger: null,
       lifecycleDealPipelineId: null,
+      autoDealStageId: null,
+      autoTasks: null,
     },
     {
       id: '00000000-0000-0000-0000-000000000011',
@@ -121,6 +123,8 @@ const BASE_FIXTURE: PromptBaseContext = {
       messageTemplate: 'Que tal agendar uma demo de 30 minutos esta semana?',
       lifecycleTrigger: null,
       lifecycleDealPipelineId: null,
+      autoDealStageId: null,
+      autoTasks: null,
     },
   ],
   contact: {

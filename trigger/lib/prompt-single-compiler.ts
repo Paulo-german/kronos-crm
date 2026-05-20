@@ -28,6 +28,8 @@ export interface SingleSystemPrompt {
     name: string
     lifecycleTrigger: LifecycleStage | null
     lifecycleDealPipelineId: string | null
+    autoDealStageId: string | null
+    autoTasks: Array<{ title: string; dueInDays: number }> | null
   }>
   currentStepOrder: number
   totalSteps: number
@@ -564,6 +566,8 @@ export function compileSingleSystemPrompt(
       name: step.name,
       lifecycleTrigger: step.lifecycleTrigger,
       lifecycleDealPipelineId: step.lifecycleDealPipelineId,
+      autoDealStageId: step.autoDealStageId,
+      autoTasks: step.autoTasks,
     })),
     currentStepOrder: base.currentStepOrder,
     totalSteps: base.steps.length,
