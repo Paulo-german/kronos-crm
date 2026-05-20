@@ -22,6 +22,11 @@ import { TaskOutcomeIntroSlide } from './task-outcome-intro-slide'
 import { TaskOutcomeTypesSlide } from './task-outcome-types-slide'
 import { TaskOutcomeFlowSlide } from './task-outcome-flow-slide'
 import { TaskOutcomeTimelineSlide } from './task-outcome-timeline-slide'
+import { DealDetailSummarySlide } from './deal-detail-summary-slide'
+import { DealDetailSummaryLegend } from './deal-detail-summary-legend'
+import { DealDetailProductsSlide } from './deal-detail-products-slide'
+import { DealDetailTasksSlide } from './deal-detail-tasks-slide'
+import { DealDetailAppointmentsSlide } from './deal-detail-appointments-slide'
 
 interface TutorialComponentEntry {
   component: ComponentType
@@ -56,4 +61,8 @@ export const TUTORIAL_COMPONENT_MAP: Record<string, TutorialComponentEntry> = {
   'task-outcome-types': { component: TaskOutcomeTypesSlide },
   'task-outcome-flow': { component: TaskOutcomeFlowSlide },
   'task-outcome-timeline': { component: TaskOutcomeTimelineSlide },
+  'deal-detail-summary': { component: DealDetailSummarySlide, sidebar: DealDetailSummaryLegend },
+  'deal-detail-products': { component: DealDetailProductsSlide },
+  'deal-detail-tasks': { component: DealDetailTasksSlide },
+  'deal-detail-appointments': { component: DealDetailAppointmentsSlide },
 }

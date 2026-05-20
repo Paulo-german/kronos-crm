@@ -4,12 +4,14 @@ import { getOrgContext } from '@/_data-access/organization/get-organization-cont
 import { getDealDetails } from '@/_data-access/deal/get-deal-details'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
 import { getDealLostReasons } from '@/_data-access/settings/get-lost-reasons'
+import { getTutorialCompletions } from '@/_data-access/tutorial/get-tutorial-completions'
 
 import DealDetailClient from './_components/deal-detail-client'
 import ContactWidgetServer from './_components/contact-widget-server'
 import TabProductsServer from './_components/tab-products-server'
 import TabTasksServer from './_components/tab-tasks-server'
 import TabAppointmentsServer from './_components/tab-appointments-server'
+import { DealDetailIntroTrigger } from '@/_components/tutorials/deal-detail-intro-trigger'
 import {
   ContactWidgetSkeleton,
   TabProductsSkeleton,
@@ -32,13 +34,17 @@ const DealPage = async ({ params }: DealPageProps) => {
   }
 
   // Queries leves necessárias para dialogs (transfer + lost)
-  const [members, lostReasons] = await Promise.all([
+  const [members, lostReasons, completedTutorialIds] = await Promise.all([
     getOrganizationMembers(ctx.orgId),
     getDealLostReasons(ctx.orgId),
+    getTutorialCompletions(ctx.userId, ctx.orgId),
   ])
 
   return (
     <div className="h-full w-full">
+      <DealDetailIntroTrigger
+        hasSeenDealDetailIntro={completedTutorialIds.includes('deal-details')}
+      />
       <DealDetailClient
         deal={deal}
         members={members.accepted}

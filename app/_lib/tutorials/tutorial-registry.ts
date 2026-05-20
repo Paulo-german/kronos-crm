@@ -166,6 +166,54 @@ export const TUTORIAL_REGISTRY: TutorialDefinition[] = [
       },
     ],
   },
+  {
+    id: 'deal-details',
+    title: 'Tudo sobre o Detalhe do Negócio',
+    description:
+      'Explore a página completa de um negócio: resumo, produtos, serviços, promoções, tarefas, agendamentos e como fechar uma venda.',
+    icon: 'Briefcase',
+    category: 'getting_started',
+    relatedRoute: '/crm/deals',
+    estimatedMinutes: 4,
+    slides: [
+      {
+        title: 'A página do negócio',
+        description:
+          'Cada negócio tem sua própria página com tudo centralizado: status, prioridade, etapa do funil e acesso rápido às ações de fechar ou perder a venda.',
+        content: { type: 'component', componentId: 'pipeline-deal-detail' },
+      },
+      {
+        title: 'Aba Resumo',
+        description:
+          'O Resumo reúne as informações essenciais do negócio: valor, etapa, data de fechamento, contato vinculado, notas e toda a timeline de atividades registradas.',
+        content: { type: 'component', componentId: 'deal-detail-summary' },
+      },
+      {
+        title: 'Produtos, serviços e promoções',
+        description:
+          'Na aba Produtos você monta o escopo comercial do negócio. Adicione produtos do seu catálogo, serviços avulsos e promoções — o total é calculado automaticamente.',
+        content: { type: 'component', componentId: 'deal-detail-products' },
+      },
+      {
+        title: 'Tarefas do negócio',
+        description:
+          'Crie tarefas diretamente no negócio — ligações, reuniões, visitas ou mensagens. Ao concluir, registre o resultado para manter o histórico completo na timeline.',
+        content: { type: 'component', componentId: 'deal-detail-tasks' },
+      },
+      {
+        title: 'Agendamentos vinculados',
+        description:
+          'Vincule agendamentos ao negócio para ter o histórico de reuniões, demos e visitas em um só lugar. Crie novos agendamentos ou associe um já existente.',
+        content: { type: 'component', componentId: 'deal-detail-appointments' },
+      },
+      {
+        title: 'Fechando o negócio',
+        description:
+          'Quando chegar a hora, marque como venda — informe o motivo da perda se não foi desta vez, ou transfira o negócio para outro vendedor. Tudo com histórico registrado.',
+        content: { type: 'component', componentId: 'pipeline-close-deal' },
+      },
+    ],
+  },
 ]
 
 // Single source of truth para os IDs — usado pelo Zod schema da action

@@ -10,6 +10,7 @@ import {
   TrendingUp,
   BarChart2,
   Users,
+  Briefcase,
 } from 'lucide-react'
 
 // Mapa centralizado de ícones suportados nos tutoriais
@@ -24,4 +25,5 @@ export const TUTORIAL_ICON_MAP: Record<string, ComponentType<{ className?: strin
   TrendingUp,
   BarChart2,
   Users,
+  Briefcase,
 }
