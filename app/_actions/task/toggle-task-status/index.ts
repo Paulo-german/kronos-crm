@@ -9,36 +9,31 @@ import { findTaskWithRBAC, canPerformAction, requirePermission } from '@/_lib/rb
 export const toggleTaskStatus = orgActionClient
   .schema(toggleTaskStatusSchema)
   .action(async ({ parsedInput: data, ctx }) => {
-    // 1. Verificar permissão base
     requirePermission(canPerformAction(ctx, 'task', 'update'))
-
-    // 2. Buscar tarefa com verificação RBAC (já valida acesso)
     await findTaskWithRBAC(data.id, ctx)
 
-    // 3. Buscar dados completos para activity
-    const task = await db.task.findFirst({
-      where: { id: data.id },
-    })
+    const task = await db.task.findFirst({ where: { id: data.id } })
+    if (!task) throw new Error('Tarefa não encontrada.')
 
-    if (!task) {
-      throw new Error('Tarefa não encontrada.')
-    }
+    const willBeCompleted = !task.isCompleted
 
-    // 4. Toggle o status
     await db.task.update({
       where: { id: data.id },
       data: {
-        isCompleted: !task.isCompleted,
+        isCompleted: willBeCompleted,
+        // Reabertura limpa o outcome anterior para evitar estado inconsistente
+        ...(!willBeCompleted ? { outcomeType: null, outcomeNotes: null } : {}),
       },
     })
 
-    // Se completou a task e ela tem deal, cria atividade
-    if (!task.isCompleted && task.dealId) {
+    // Caminho do "Concluir sem registrar": activity genérica
+    if (willBeCompleted && task.dealId) {
       await db.activity.create({
         data: {
           type: 'task_completed',
           content: task.title,
           dealId: task.dealId,
+          performedBy: ctx.userId,
         },
       })
     }
@@ -49,5 +44,5 @@ export const toggleTaskStatus = orgActionClient
     revalidatePath('/crm/deals/pipeline')
     if (task.dealId) revalidatePath(`/crm/deals/${task.dealId}`)
 
-    return { success: true, isCompleted: !task.isCompleted }
+    return { success: true, isCompleted: willBeCompleted }
   })

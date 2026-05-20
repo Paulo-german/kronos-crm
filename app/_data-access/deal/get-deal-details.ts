@@ -37,6 +37,8 @@ export interface DealTaskDto {
   dueDate: Date
   isCompleted: boolean
   dealId: string
+  outcomeType: string | null
+  outcomeNotes: string | null
 }
 
 export interface DealAppointmentDto {
@@ -280,13 +282,15 @@ const fetchDealDetailsFromDb = async (
       metadata: (a.metadata as Record<string, unknown>) ?? null,
     })),
     totalActivities: deal._count.activities,
-    tasks: deal.tasks.map((t) => ({
-      id: t.id,
-      title: t.title,
-      type: t.type,
-      dueDate: t.dueDate,
-      isCompleted: t.isCompleted,
+    tasks: deal.tasks.map((task) => ({
+      id: task.id,
+      title: task.title,
+      type: task.type,
+      dueDate: task.dueDate,
+      isCompleted: task.isCompleted,
       dealId: deal.id,
+      outcomeType: task.outcomeType,
+      outcomeNotes: task.outcomeNotes,
     })),
     appointments,
   }

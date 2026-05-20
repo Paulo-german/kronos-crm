@@ -25,6 +25,8 @@ import {
   Bot,
   Loader2,
   FileText,
+  MessageCircle,
+  Briefcase,
 } from 'lucide-react'
 import { useAction } from 'next-safe-action/hooks'
 import type { DealActivityDto } from '@/_data-access/deal/get-deal-details'
@@ -171,6 +173,18 @@ const activityConfig: Record<
     label: 'Agendamento Excluído',
     color: 'text-red-500',
     bgColor: 'bg-red-500/10',
+  },
+  whatsapp: {
+    icon: MessageCircle,
+    label: 'WhatsApp',
+    color: 'text-emerald-500',
+    bgColor: 'bg-emerald-500/10',
+  },
+  visit: {
+    icon: Briefcase,
+    label: 'Visita',
+    color: 'text-purple-500',
+    bgColor: 'bg-purple-500/10',
   },
 }
 

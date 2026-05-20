@@ -16,6 +16,8 @@ export type TaskDto = {
   }
   assignedTo: string
   createdAt: Date
+  outcomeType: string | null
+  outcomeNotes: string | null
 }
 
 const fetchTasksFromDb = async (
@@ -48,6 +50,8 @@ const fetchTasksFromDb = async (
         },
       },
       createdAt: true,
+      outcomeType: true,
+      outcomeNotes: true,
     },
   })
 }

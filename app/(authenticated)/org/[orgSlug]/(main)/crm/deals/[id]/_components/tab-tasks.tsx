@@ -18,6 +18,7 @@ import type {
 } from '@/_data-access/deal/get-deal-details'
 import type { TaskDto } from '@/_data-access/task/get-tasks'
 import { UpsertTaskDialogContent } from '../../../tasks/_components/upsert-dialog-content'
+import { TaskOutcomeDialog } from '../../../tasks/_components/task-outcome-dialog'
 
 interface TabTasksProps {
   deal: DealDetailsDto
@@ -28,6 +29,7 @@ const TabTasks = ({ deal }: TabTasksProps) => {
   const [editingTask, setEditingTask] = useState<DealTaskDto | null>(null)
   const [deletingTask, setDeletingTask] = useState<DealTaskDto | null>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [outcomeTask, setOutcomeTask] = useState<DealTaskDto | null>(null)
   const [, startTransition] = useTransition()
 
   // Estado otimista para tarefas
@@ -79,11 +81,17 @@ const TabTasks = ({ deal }: TabTasksProps) => {
     },
   )
 
-  const handleToggle = (taskId: string) => {
-    startTransition(() => {
-      setOptimisticTasks(taskId)
-      executeToggle({ taskId })
-    })
+  const handleToggle = (task: DealTaskDto) => {
+    // Reabrindo task concluída: toggle direto + otimismo
+    if (task.isCompleted) {
+      startTransition(() => {
+        setOptimisticTasks(task.id)
+        executeToggle({ taskId: task.id })
+      })
+      return
+    }
+    // Concluindo: abre dialog de outcome
+    setOutcomeTask(task)
   }
 
   const mapToTaskDto = (task: DealTaskDto): TaskDto => ({
@@ -96,6 +104,8 @@ const TabTasks = ({ deal }: TabTasksProps) => {
     deal: { title: deal.title },
     assignedTo: deal.assigneeId, // Usa o assignee do deal como fallback
     createdAt: new Date(),
+    outcomeType: task.outcomeType,
+    outcomeNotes: task.outcomeNotes,
   })
 
   const formatDate = (date: Date) => {
@@ -139,6 +149,8 @@ const TabTasks = ({ deal }: TabTasksProps) => {
                   deal: { title: deal.title },
                   assignedTo: deal.assigneeId,
                   createdAt: new Date(),
+                  outcomeType: null,
+                  outcomeNotes: null,
                 }
           }
           setIsOpen={(open) => {
@@ -170,7 +182,7 @@ const TabTasks = ({ deal }: TabTasksProps) => {
                     >
                       <Checkbox
                         checked={false}
-                        onCheckedChange={() => handleToggle(task.id)}
+                        onCheckedChange={() => handleToggle(task)}
                       />
                       <div className="flex-1">
                         <p className="font-medium">{task.title}</p>
@@ -219,7 +231,7 @@ const TabTasks = ({ deal }: TabTasksProps) => {
                     >
                       <Checkbox
                         checked={true}
-                        onCheckedChange={() => handleToggle(task.id)}
+                        onCheckedChange={() => handleToggle(task)}
                       />
                       <div className="flex-1">
                         <p className="font-medium line-through">{task.title}</p>
@@ -279,6 +291,26 @@ const TabTasks = ({ deal }: TabTasksProps) => {
           }}
           isLoading={isDeleting}
           confirmLabel="Confirmar Exclusão"
+        />
+
+        <TaskOutcomeDialog
+          task={
+            outcomeTask
+              ? { id: outcomeTask.id, title: outcomeTask.title, type: outcomeTask.type }
+              : null
+          }
+          open={!!outcomeTask}
+          onOpenChange={(open) => {
+            if (!open) setOutcomeTask(null)
+          }}
+          onCompleted={() => {
+            if (outcomeTask) {
+              startTransition(() => {
+                setOptimisticTasks(outcomeTask.id)
+              })
+            }
+            setOutcomeTask(null)
+          }}
         />
       </Card>
     </Sheet>

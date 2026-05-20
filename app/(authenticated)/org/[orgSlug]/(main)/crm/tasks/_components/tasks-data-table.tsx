@@ -45,6 +45,7 @@ import { updateTask } from '@/_actions/task/update-task'
 import { UpsertTaskDialogContent } from './upsert-dialog-content'
 import TaskTableDropdownMenu from './table-dropdown-menu'
 import ConfirmationDialog from '@/_components/confirmation-dialog'
+import { TaskOutcomeDialog } from './task-outcome-dialog'
 import type { TaskDto } from '@/_data-access/task/get-tasks'
 import type { LucideIcon } from 'lucide-react'
 
@@ -210,6 +211,9 @@ const TasksDataTable = ({ tasks }: TasksDataTableProps) => {
   const [deletingTask, setDeletingTask] = useState<TaskDto | null>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
+  // Estado do dialog de outcome (ao concluir uma tarefa)
+  const [outcomeTask, setOutcomeTask] = useState<TaskDto | null>(null)
+
   // Seção "Concluídas" começa colapsada por padrão
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
     new Set(['completed']),
@@ -224,18 +228,24 @@ const TasksDataTable = ({ tasks }: TasksDataTableProps) => {
       ),
   )
 
-  // Hook de toggle de status (otimista)
+  // Hook de toggle de status (otimista) — usado apenas para reabrir tasks concluídas
   const { execute: executeToggle } = useAction(toggleTaskStatus, {
     onSuccess: () => toast.success('Status da tarefa atualizado com sucesso.'),
     onError: () => toast.error('Erro ao atualizar status da tarefa.'),
   })
 
   const handleToggle = useCallback(
-    (taskId: string) => {
-      startTransition(() => {
-        setOptimisticTasks(taskId)
-        executeToggle({ id: taskId })
-      })
+    (task: TaskDto) => {
+      // Reabrindo task concluída: toggle direto + otimismo
+      if (task.isCompleted) {
+        startTransition(() => {
+          setOptimisticTasks(task.id)
+          executeToggle({ id: task.id })
+        })
+        return
+      }
+      // Concluindo: abre dialog de outcome
+      setOutcomeTask(task)
     },
     [executeToggle, setOptimisticTasks],
   )
@@ -341,6 +351,23 @@ const TasksDataTable = ({ tasks }: TasksDataTableProps) => {
         }}
         isLoading={isDeletingIndividual}
         confirmLabel="Confirmar Exclusão"
+      />
+
+      {/* Dialog de outcome ao concluir tarefa */}
+      <TaskOutcomeDialog
+        task={outcomeTask}
+        open={!!outcomeTask}
+        onOpenChange={(open) => {
+          if (!open) setOutcomeTask(null)
+        }}
+        onCompleted={() => {
+          if (outcomeTask) {
+            startTransition(() => {
+              setOptimisticTasks(outcomeTask.id)
+            })
+          }
+          setOutcomeTask(null)
+        }}
       />
 
       {/* Timeline de seções */}
@@ -454,7 +481,7 @@ interface TimelineTaskRowProps {
   task: TaskDto
   isOverdueSection: boolean
   isDimmed: boolean
-  onToggle: (taskId: string) => void
+  onToggle: (task: TaskDto) => void
   onEdit: (task: TaskDto) => void
   onDeleteRequest: (task: TaskDto) => void
 }
@@ -491,7 +518,7 @@ function TimelineTaskRow({
       <button
         type="button"
         className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
-        onClick={() => onToggle(task.id)}
+        onClick={() => onToggle(task)}
         aria-label={
           task.isCompleted ? 'Marcar como pendente' : 'Marcar como concluída'
         }

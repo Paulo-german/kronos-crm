@@ -503,6 +503,8 @@ model Task {
   title          String
   dueDate        DateTime     @map("due_date")
   isCompleted    Boolean      @default(false) @map("is_completed")
+  outcomeType    String?      @map("outcome_type")
+  outcomeNotes   String?      @map("outcome_notes")
   assignedTo     String       @map("assigned_to")
   createdBy      String       @map("created_by")
   createdAt      DateTime     @default(now()) @map("created_at")
@@ -1620,6 +1622,8 @@ enum ActivityType {
   appointment_updated
   appointment_canceled
   appointment_deleted
+  whatsapp
+  visit
 }
 
 enum AppointmentStatus {

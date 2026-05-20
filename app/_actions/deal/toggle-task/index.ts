@@ -15,11 +15,12 @@ export const toggleTask = orgActionClient
     // 2. Busca a tarefa com verificação RBAC
     const task = await findTaskWithRBAC(data.taskId, ctx)
 
-    // 3. Toggle o status
+    // 3. Toggle o status (reabertura limpa o outcome para evitar estado inconsistente)
     await db.task.update({
       where: { id: data.taskId },
       data: {
         isCompleted: !task.isCompleted,
+        ...(task.isCompleted ? { outcomeType: null, outcomeNotes: null } : {}),
       },
     })
 
