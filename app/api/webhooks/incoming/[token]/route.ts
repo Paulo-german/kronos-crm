@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { waitUntil } from '@vercel/functions'
 import { db } from '@/_lib/prisma'
 import { getWebhookSourceByToken } from '@/_data-access/webhook-source/get-webhook-source-by-token'
 import { processInboundWebhook } from '@/_lib/webhooks/process-inbound-webhook'
@@ -112,7 +113,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   }
 
   // 7. Idempotência: se o emissor envia X-Webhook-Event-Id, retornamos o log original
-  const externalEventId = request.headers.get('x-webhook-event-id')
+  const rawEventId = request.headers.get('x-webhook-event-id')
+  const externalEventId = rawEventId ? rawEventId.slice(0, 255) : null
   if (externalEventId) {
     const since = new Date(Date.now() - DEDUP_WINDOW_HOURS * MS_PER_HOUR)
     const duplicate = await db.webhookLog.findFirst({
@@ -128,21 +130,23 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     }
   }
 
-  // 8. Pipeline de processamento — orquestrador isola handlers e invalida cache
-  const log = await processInboundWebhook({
-    source: {
-      id: source.id,
-      organizationId: source.organizationId,
-      platform: source.platform,
-      eventType: source.eventType,
-      fieldMapping: source.fieldMapping as Record<string, string>,
-      isActive: source.isActive,
-      secretKey: source.secretKey,
-    },
-    payload,
-    externalEventId,
-    isReplay: false,
-  })
+  // 8. Pipeline de processamento — retorna 200 imediatamente, processa em background
+  waitUntil(
+    processInboundWebhook({
+      source: {
+        id: source.id,
+        organizationId: source.organizationId,
+        platform: source.platform,
+        eventType: source.eventType,
+        fieldMapping: source.fieldMapping as Record<string, string>,
+        isActive: source.isActive,
+        secretKey: source.secretKey,
+      },
+      payload,
+      externalEventId,
+      isReplay: false,
+    }),
+  )
 
-  return NextResponse.json({ success: true, logId: log.id })
+  return NextResponse.json({ success: true })
 }
