@@ -89,7 +89,7 @@ export const TutorialSlideContent = ({
       </div>
 
       {/* Coluna direita: componente (fora do gradient) */}
-      <div className="flex flex-1 items-center justify-center px-4">
+      <div className="flex flex-1 items-center justify-center">
         <Component />
       </div>
     </div>

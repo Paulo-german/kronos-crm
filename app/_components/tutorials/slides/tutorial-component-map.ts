@@ -1,4 +1,12 @@
 import type { ComponentType } from 'react'
+import { PipelineListViewSlide } from './pipeline-list-view-slide'
+import { PipelineMultiFunnelSlide } from './pipeline-multi-funnel-slide'
+import { PipelineOverviewSlide } from './pipeline-overview-slide'
+import { PipelineCreateDealSlide } from './pipeline-create-deal-slide'
+import { PipelineDragDropSlide } from './pipeline-drag-drop-slide'
+import { PipelineDealDetailSlide } from './pipeline-deal-detail-slide'
+import { PipelineFiltersSlide } from './pipeline-filters-slide'
+import { PipelineCloseDealSlide } from './pipeline-close-deal-slide'
 import { DealCardAnatomy } from './deal-card-anatomy'
 import { DealCardLegend } from './deal-card-legend'
 import { LifecycleStagesSlide } from './lifecycle-stages-slide'
@@ -23,6 +31,14 @@ interface TutorialComponentEntry {
 // Mapa de componentes React disponíveis para slides do tipo 'component'
 // Para adicionar um novo: crie o componente em ./slides/ e registre aqui
 export const TUTORIAL_COMPONENT_MAP: Record<string, TutorialComponentEntry> = {
+  'pipeline-list-view': { component: PipelineListViewSlide },
+  'pipeline-multi-funnel': { component: PipelineMultiFunnelSlide },
+  'pipeline-overview': { component: PipelineOverviewSlide },
+  'pipeline-create-deal': { component: PipelineCreateDealSlide },
+  'pipeline-drag-drop': { component: PipelineDragDropSlide },
+  'pipeline-deal-detail': { component: PipelineDealDetailSlide },
+  'pipeline-filters': { component: PipelineFiltersSlide },
+  'pipeline-close-deal': { component: PipelineCloseDealSlide },
   'deal-card-anatomy': {
     component: DealCardAnatomy,
     sidebar: DealCardLegend,
