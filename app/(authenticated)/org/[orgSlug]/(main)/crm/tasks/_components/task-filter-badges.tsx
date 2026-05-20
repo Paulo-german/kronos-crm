@@ -69,13 +69,13 @@ export function TaskFilterBadges({
         </Badge>
       )}
 
-      {/* Badge de período */}
+      {/* Badge de vencimento */}
       {(filters.dateFrom || filters.dateTo) && (
         <Badge
           variant="secondary"
           className="gap-1 pr-1 text-xs font-normal"
         >
-          Período:{' '}
+          Vencimento:{' '}
           {filters.dateFrom
             ? format(filters.dateFrom, 'dd/MM/yy', { locale: ptBR })
             : '...'}
@@ -85,6 +85,29 @@ export function TaskFilterBadges({
             : '...'}
           <button
             onClick={() => onFiltersChange({ dateFrom: null, dateTo: null })}
+            className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </Badge>
+      )}
+
+      {/* Badge de data de criação */}
+      {(filters.createdAtFrom || filters.createdAtTo) && (
+        <Badge
+          variant="secondary"
+          className="gap-1 pr-1 text-xs font-normal"
+        >
+          Criação:{' '}
+          {filters.createdAtFrom
+            ? format(filters.createdAtFrom, 'dd/MM/yy', { locale: ptBR })
+            : '...'}
+          {' - '}
+          {filters.createdAtTo
+            ? format(filters.createdAtTo, 'dd/MM/yy', { locale: ptBR })
+            : '...'}
+          <button
+            onClick={() => onFiltersChange({ createdAtFrom: null, createdAtTo: null })}
             className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20"
           >
             <X className="h-3 w-3" />

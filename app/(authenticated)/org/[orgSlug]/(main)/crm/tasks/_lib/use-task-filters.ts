@@ -24,10 +24,12 @@ export function useTaskFilters() {
     const statusParam = searchParams.get('status')
     const dateFromParam = searchParams.get('dateFrom')
     const dateToParam = searchParams.get('dateTo')
+    const createdAtFromParam = searchParams.get('createdAtFrom')
+    const createdAtToParam = searchParams.get('createdAtTo')
 
     const rawStatus = statusParam as TaskFilters['status'] | null
     const validStatus: TaskFilters['status'] =
-      rawStatus === 'pending' || rawStatus === 'completed'
+      rawStatus === 'pending' || rawStatus === 'overdue' || rawStatus === 'completed'
         ? rawStatus
         : DEFAULT_TASK_FILTERS.status
 
@@ -38,6 +40,8 @@ export function useTaskFilters() {
       status: validStatus,
       dateFrom: dateFromParam ? parseLocalDate(dateFromParam) : null,
       dateTo: dateToParam ? parseLocalDate(dateToParam) : null,
+      createdAtFrom: createdAtFromParam ? parseLocalDate(createdAtFromParam) : null,
+      createdAtTo: createdAtToParam ? parseLocalDate(createdAtToParam) : null,
     }
   }, [searchParams])
 
@@ -74,6 +78,18 @@ export function useTaskFilters() {
         params.delete('dateTo')
       }
 
+      if (merged.createdAtFrom) {
+        params.set('createdAtFrom', format(merged.createdAtFrom, 'yyyy-MM-dd'))
+      } else {
+        params.delete('createdAtFrom')
+      }
+
+      if (merged.createdAtTo) {
+        params.set('createdAtTo', format(merged.createdAtTo, 'yyyy-MM-dd'))
+      } else {
+        params.delete('createdAtTo')
+      }
+
       router.replace(`${pathname}?${params.toString()}`, { scroll: false })
     },
     [searchParams, filters, router, pathname],
@@ -81,7 +97,7 @@ export function useTaskFilters() {
 
   const clearFilters = useCallback(() => {
     const params = new URLSearchParams(searchParams.toString())
-    ;['types', 'status', 'dateFrom', 'dateTo'].forEach((param) =>
+    ;['types', 'status', 'dateFrom', 'dateTo', 'createdAtFrom', 'createdAtTo'].forEach((param) =>
       params.delete(param),
     )
     router.replace(`${pathname}?${params.toString()}`, { scroll: false })
@@ -90,8 +106,8 @@ export function useTaskFilters() {
   const activeFilterCount = useMemo(() => {
     let count = 0
     if (filters.types.length > 0) count++
-    if (filters.status !== 'all') count++
     if (filters.dateFrom || filters.dateTo) count++
+    if (filters.createdAtFrom || filters.createdAtTo) count++
     return count
   }, [filters])
 

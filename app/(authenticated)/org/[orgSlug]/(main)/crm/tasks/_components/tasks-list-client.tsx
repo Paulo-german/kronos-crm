@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { endOfDay } from 'date-fns'
+import { endOfDay, isBefore, startOfToday } from 'date-fns'
 import { TasksToolbar } from './tasks-toolbar'
 import { EmptyTasks } from './empty-tasks'
 import TasksDataTable from './tasks-data-table'
@@ -69,6 +69,11 @@ export function TasksListClient({
     // Filtro de status
     if (filters.status === 'pending') {
       result = result.filter((task) => !task.isCompleted)
+    } else if (filters.status === 'overdue') {
+      const todayStart = startOfToday()
+      result = result.filter(
+        (task) => !task.isCompleted && isBefore(new Date(task.dueDate), todayStart),
+      )
     } else if (filters.status === 'completed') {
       result = result.filter((task) => task.isCompleted)
     }
@@ -83,6 +88,18 @@ export function TasksListClient({
     if (filters.dateTo) {
       const dateTo = endOfDay(filters.dateTo)
       result = result.filter((task) => new Date(task.dueDate) <= dateTo)
+    }
+
+    // Filtro de data de criação (createdAtFrom)
+    if (filters.createdAtFrom) {
+      const createdAtFrom = filters.createdAtFrom
+      result = result.filter((task) => new Date(task.createdAt) >= createdAtFrom)
+    }
+
+    // Filtro de data de criação (createdAtTo)
+    if (filters.createdAtTo) {
+      const createdAtTo = endOfDay(filters.createdAtTo)
+      result = result.filter((task) => new Date(task.createdAt) <= createdAtTo)
     }
 
     return result

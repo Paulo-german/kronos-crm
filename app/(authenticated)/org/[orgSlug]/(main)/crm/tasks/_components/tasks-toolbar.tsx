@@ -1,18 +1,22 @@
 'use client'
 
-import { Search, UserIcon } from 'lucide-react'
+import { Search, UserIcon, ChevronDown, Check } from 'lucide-react'
+import { useState } from 'react'
 import { Input } from '@/_components/ui/input'
+import { Button } from '@/_components/ui/button'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/_components/ui/select'
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/_components/ui/popover'
+import { cn } from '@/_lib/utils'
 import { TaskFiltersSheet } from './task-filters-sheet'
 import { TaskFilterBadges } from './task-filter-badges'
+import { TaskTypeMultiSelect } from './task-type-multi-select'
+import { TaskStatusSelect } from './task-status-select'
 import CreateTaskButton from './create-task-button'
 import type { TaskFilters } from '../_lib/task-filters'
+import type { TaskType } from '@prisma/client'
 import type { MemberRole } from '@prisma/client'
 import type { MemberOption } from './tasks-list-client'
 
@@ -33,6 +37,7 @@ interface TasksToolbarProps {
 
 export function TasksToolbar({
   members,
+  currentUserId,
   userRole,
   filters,
   onFiltersChange,
@@ -45,6 +50,15 @@ export function TasksToolbar({
   onSearchQueryChange,
 }: TasksToolbarProps) {
   const isMember = userRole === 'MEMBER'
+  const [assigneeOpen, setAssigneeOpen] = useState(false)
+
+  const effectiveAssignee = isMember ? currentUserId : assigneeFilter
+  const assigneeName = members.find((m) => m.userId === effectiveAssignee)?.name
+
+  const assigneeTriggerLabel =
+    effectiveAssignee === 'all' || !assigneeName
+      ? 'Todos os responsáveis'
+      : assigneeName
 
   return (
     <div className="flex flex-col gap-3">
@@ -59,32 +73,97 @@ export function TasksToolbar({
         />
       </div>
 
-      {/* Linha 2: Select responsável + filtros + botão criar */}
+      {/* Linha 2: Responsável + Tipo + Status + Filtros + Criar */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
-          <Select
-            value={assigneeFilter}
-            onValueChange={onAssigneeFilterChange}
-            disabled={isMember}
-          >
-            <SelectTrigger className="w-[260px]">
-              <UserIcon className="mr-2 h-4 w-4 text-muted-foreground" />
-              <SelectValue placeholder="Responsável" />
-            </SelectTrigger>
-            <SelectContent>
+          {/* Responsável */}
+          <Popover open={assigneeOpen} onOpenChange={setAssigneeOpen}>
+            <PopoverTrigger asChild disabled={isMember}>
+              <Button
+                variant="outline"
+                className="w-64 justify-between border-border-strong bg-background font-normal hover:bg-accent"
+              >
+                <UserIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="truncate text-sm">
+                    {assigneeTriggerLabel}
+                  </span>
+                </span>
+                <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[220px] p-2" align="start">
               {!isMember && (
-                <SelectItem value="all">Todos os responsáveis</SelectItem>
-              )}
-              {members.map((member) => (
-                <SelectItem
-                  key={member.userId}
-                  value={member.userId}
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent"
+                  onClick={() => {
+                    onAssigneeFilterChange('all')
+                    setAssigneeOpen(false)
+                  }}
                 >
-                  {member.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+                  <Check
+                    className={cn(
+                      'h-4 w-4 shrink-0',
+                      assigneeFilter === 'all' ? 'opacity-100' : 'opacity-0',
+                    )}
+                  />
+                  Todos os responsáveis
+                </button>
+              )}
+              {members.map((member) => {
+                const isSelected = assigneeFilter === member.userId
+                return (
+                  <button
+                    key={member.userId}
+                    type="button"
+                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent"
+                    onClick={() => {
+                      onAssigneeFilterChange(member.userId)
+                      setAssigneeOpen(false)
+                    }}
+                  >
+                    <Check
+                      className={cn(
+                        'h-4 w-4 shrink-0',
+                        isSelected ? 'opacity-100' : 'opacity-0',
+                      )}
+                    />
+                    {member.name}
+                  </button>
+                )
+              })}
+              {assigneeFilter !== 'all' && !isMember && (
+                <>
+                  <div className="my-1 border-t" />
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent"
+                    onClick={() => {
+                      onAssigneeFilterChange('all')
+                      setAssigneeOpen(false)
+                    }}
+                  >
+                    Limpar filtro
+                  </button>
+                </>
+              )}
+            </PopoverContent>
+          </Popover>
+
+          {/* Tipo */}
+          <TaskTypeMultiSelect
+            value={filters.types}
+            onChange={(types) =>
+              onFiltersChange({ types: types as TaskType[] })
+            }
+          />
+
+          {/* Status */}
+          <TaskStatusSelect
+            value={filters.status}
+            onChange={(status) => onFiltersChange({ status })}
+          />
 
           <TaskFiltersSheet
             filters={filters}
