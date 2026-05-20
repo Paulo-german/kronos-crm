@@ -2,6 +2,7 @@
 // NÃO adicione `import 'server-only'` nem dependências de server (db, next/cache, etc.).
 
 import { GoalPeriod } from '@prisma/client'
+import { TZDate } from '@date-fns/tz'
 import {
   startOfWeek,
   endOfWeek,
@@ -13,7 +14,6 @@ import {
   endOfYear,
   addMilliseconds,
 } from 'date-fns'
-import { toZonedTime, fromZonedTime } from 'date-fns-tz'
 
 export interface GoalPeriodWindow {
   periodStart: Date
@@ -32,19 +32,23 @@ export function computeGoalPeriod(
   reference: Date,
   timezone: string = DEFAULT_TIMEZONE,
 ): GoalPeriodWindow {
-  const zonedRef = toZonedTime(reference, timezone)
+  const ref = new TZDate(reference, timezone)
 
-  const getRange = (): { start: Date; end: Date } => {
-    if (period === 'WEEKLY') return { start: startOfWeek(zonedRef, { weekStartsOn: WEEK_STARTS_ON_MONDAY }), end: endOfWeek(zonedRef, { weekStartsOn: WEEK_STARTS_ON_MONDAY }) }
-    if (period === 'MONTHLY') return { start: startOfMonth(zonedRef), end: endOfMonth(zonedRef) }
-    if (period === 'QUARTERLY') return { start: startOfQuarter(zonedRef), end: endOfQuarter(zonedRef) }
-    return { start: startOfYear(zonedRef), end: endOfYear(zonedRef) }
+  const getRange = (): { start: TZDate; end: TZDate } => {
+    if (period === 'WEEKLY')
+      return {
+        start: startOfWeek(ref, { weekStartsOn: WEEK_STARTS_ON_MONDAY }),
+        end: endOfWeek(ref, { weekStartsOn: WEEK_STARTS_ON_MONDAY }),
+      }
+    if (period === 'MONTHLY') return { start: startOfMonth(ref), end: endOfMonth(ref) }
+    if (period === 'QUARTERLY') return { start: startOfQuarter(ref), end: endOfQuarter(ref) }
+    return { start: startOfYear(ref), end: endOfYear(ref) }
   }
 
   const { start, end } = getRange()
 
   return {
-    periodStart: fromZonedTime(start, timezone),
-    periodEnd: addMilliseconds(fromZonedTime(end, timezone), 1),
+    periodStart: new Date(start.getTime()),
+    periodEnd: addMilliseconds(new Date(end.getTime()), 1),
   }
 }
