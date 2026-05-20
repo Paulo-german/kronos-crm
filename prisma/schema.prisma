@@ -122,6 +122,7 @@ model Organization {
   lifecycleHistory             ContactLifecycleHistory[]
   scoreHistory                 ContactScoreHistory[]
   companyContacts              CompanyContact[]
+  webhookSources               WebhookSource[]
 
   @@map("organizations")
 }
@@ -2108,4 +2109,85 @@ enum SalesDistributionModel {
   PERFORMANCE_WEIGHTED
 
   @@map("sales_distribution_model")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Inbound Webhooks
+// ─────────────────────────────────────────────────────────────
+
+enum WebhookPlatform {
+  GENERIC
+  SHOPIFY
+  NUVEM_SHOP
+  HOTMART
+  GOOGLE_FORMS
+  OTHER
+
+  @@map("webhook_platform")
+}
+
+enum WebhookEventType {
+  NEW_CONTACT
+  UPDATE_CONTACT
+  NEW_DEAL
+  UPDATE_DEAL
+  DEAL_CLOSED
+
+  @@map("webhook_event_type")
+}
+
+enum WebhookLogStatus {
+  PROCESSED
+  ERROR
+  IGNORED
+
+  @@map("webhook_log_status")
+}
+
+model WebhookSource {
+  id             String           @id @default(uuid())
+  organizationId String           @map("organization_id")
+  name           String
+  token          String           @unique @default(uuid())
+  // Chave secreta para HMAC (Fase 2). NULL = aceita sem verificação.
+  secretKey      String?          @map("secret_key")
+  platform       WebhookPlatform  @default(GENERIC)
+  eventType      WebhookEventType @map("event_type")
+  // Mapa dot-notation: { "email": "data.customer.email", ... }
+  fieldMapping   Json             @default("{}") @map("field_mapping")
+  isActive       Boolean          @default(true) @map("is_active")
+  lastReceivedAt DateTime?        @map("last_received_at")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  logs         WebhookLog[]
+
+  @@index([organizationId, isActive])
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@map("webhook_sources")
+}
+
+model WebhookLog {
+  id              String           @id @default(uuid())
+  webhookSourceId String           @map("webhook_source_id")
+  organizationId  String           @map("organization_id")
+  receivedAt      DateTime         @default(now()) @map("received_at")
+  externalEventId String?          @map("external_event_id")
+  payload         Json
+  resolvedData    Json             @default("{}") @map("resolved_data")
+  status          WebhookLogStatus
+  errorMessage    String?          @map("error_message")
+  // SetNull: se contact/deal for deletado o log permanece como auditoria
+  contactId       String?          @map("contact_id")
+  dealId          String?          @map("deal_id")
+  createdAt       DateTime         @default(now()) @map("created_at")
+
+  webhookSource WebhookSource @relation(fields: [webhookSourceId], references: [id], onDelete: Cascade)
+
+  @@index([webhookSourceId, receivedAt(sort: Desc)])
+  @@index([organizationId, receivedAt(sort: Desc)])
+  @@index([organizationId, status, receivedAt(sort: Desc)])
+  // Índice único parcial criado via SQL manual na migration (Prisma não suporta)
+  @@map("webhook_logs")
 }

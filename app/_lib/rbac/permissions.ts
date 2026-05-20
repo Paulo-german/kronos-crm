@@ -176,6 +176,15 @@ const PERMISSION_MATRIX: Record<RBACEntity, Record<RBACAction, MemberRole[]>> = 
     delete: ['OWNER', 'ADMIN'],
     transfer: [],
   },
+  // Inbound Webhooks: configuram endpoints públicos que materializam dados na org
+  // Restrito a OWNER/ADMIN — MEMBER não deve criar endpoints que afetam dados da org inteira
+  webhookSource: {
+    create: ['OWNER', 'ADMIN'],
+    read: ['OWNER', 'ADMIN'],
+    update: ['OWNER', 'ADMIN'],
+    delete: ['OWNER'], // Apenas OWNER deleta — endpoint público é asset crítico
+    transfer: [],
+  },
 }
 
 /**

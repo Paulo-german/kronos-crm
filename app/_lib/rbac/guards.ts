@@ -152,6 +152,8 @@ function getEntityLabel(entity: RBACEntity): string {
     // Catálogo
     promotion: 'promoções',
     goal: 'metas',
+    // Webhooks de entrada
+    webhookSource: 'webhooks de entrada',
   }
   return labels[entity]
 }

@@ -39,6 +39,8 @@ export type RBACEntity =
   // Catálogo
   | 'promotion'
   | 'goal'
+  // Inbound Webhooks
+  | 'webhookSource'
 
 /**
  * Ações possíveis em cada entidade
