@@ -150,6 +150,43 @@ export const TUTORIAL_REGISTRY: TutorialDefinition[] = [
       },
     ],
   },
+  {
+    id: 'task-outcome-intro',
+    title: 'Registre o Resultado das suas Atividades',
+    badge: 'Novidade',
+    description:
+      'Registre o que aconteceu em cada ligação, reunião e mensagem — e veja o histórico completo na timeline do negócio.',
+    icon: 'ClipboardCheck',
+    category: 'getting_started',
+    relatedRoute: '/crm/deals',
+    estimatedMinutes: 3,
+    slides: [
+      {
+        title: 'Registre o que aconteceu em cada atividade',
+        description:
+          'Ao marcar uma tarefa como concluída, o Kronos pergunta como foi. Um registro rápido que constrói o histórico completo do negócio.',
+        content: { type: 'component', componentId: 'task-outcome-intro' },
+      },
+      {
+        title: 'Resultado certo para cada tipo de atividade',
+        description:
+          'Ligação, reunião, WhatsApp, visita ou e-mail — cada tipo tem opções contextuais. Nada genérico, nada desnecessário.',
+        content: { type: 'component', componentId: 'task-outcome-types' },
+      },
+      {
+        title: 'Funciona com um clique',
+        description:
+          'Marque a tarefa como concluída. O dialog abre automaticamente — selecione o resultado e salve. Ou clique em "Concluir sem registrar" para pular.',
+        content: { type: 'component', componentId: 'task-outcome-flow' },
+      },
+      {
+        title: 'Histórico automático no negócio',
+        description:
+          'Cada resultado vira um registro na timeline do negócio. Sem esforço extra — tudo documentado, nada esquecido.',
+        content: { type: 'component', componentId: 'task-outcome-timeline' },
+      },
+    ],
+  },
 ]
 
 // Single source of truth para os IDs — usado pelo Zod schema da action

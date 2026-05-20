@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
-import { GraduationCap, Kanban, Loader2, Sparkles, Workflow, X } from 'lucide-react'
+import { ClipboardCheck, GraduationCap, Kanban, Loader2, Sparkles, Workflow, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/_components/ui/dialog'
 import { Button } from '@/_components/ui/button'
@@ -16,6 +16,7 @@ import type { TutorialDefinition } from '@/_lib/tutorials/tutorial-types'
 const TUTORIAL_ICON_MAP: Record<string, LucideIcon> = {
   Kanban,
   Workflow,
+  ClipboardCheck,
 }
 
 interface TutorialModalProps {
