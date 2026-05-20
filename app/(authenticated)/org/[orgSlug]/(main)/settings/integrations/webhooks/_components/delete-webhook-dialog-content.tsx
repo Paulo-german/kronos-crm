@@ -30,7 +30,7 @@ export function DeleteWebhookDialogContent({
 }: DeleteWebhookDialogContentProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
+      <AlertDialogContent onCloseAutoFocus={(e) => e.preventDefault()}>
         <AlertDialogHeader>
           <AlertDialogTitle>Deletar webhook?</AlertDialogTitle>
           <AlertDialogDescription>

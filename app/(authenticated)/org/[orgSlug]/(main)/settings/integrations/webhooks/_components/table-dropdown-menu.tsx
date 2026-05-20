@@ -128,7 +128,7 @@ export function TableDropdownMenu({
 
       {/* Confirmação de regeneração de token */}
       <AlertDialog open={confirmRegenerateOpen} onOpenChange={setConfirmRegenerateOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent onCloseAutoFocus={(e) => e.preventDefault()}>
           <AlertDialogHeader>
             <AlertDialogTitle>Regenerar token?</AlertDialogTitle>
             <AlertDialogDescription>
