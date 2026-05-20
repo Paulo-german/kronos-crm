@@ -1,6 +1,15 @@
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Webhook } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/_components/ui/card'
+import { Separator } from '@/_components/ui/separator'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getUserIntegrations } from '@/_data-access/integration/get-user-integrations'
 import Header, {
@@ -69,6 +78,35 @@ const IntegrationsPage = async ({ params }: IntegrationsPageProps) => {
           orgSlug={orgSlug}
           enabled={googleCalendarEnabled}
         />
+
+        <Card className="flex flex-col">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg border bg-muted">
+                <Webhook className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div>
+                <CardTitle className="text-base">Webhooks de Entrada</CardTitle>
+                <CardDescription className="text-sm">
+                  Receba dados de plataformas externas automaticamente.
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="flex-1">
+            <p className="text-sm text-muted-foreground">
+              Crie endpoints para receber eventos do Shopify, Hotmart, Google Forms e outras plataformas.
+            </p>
+          </CardContent>
+          <Separator />
+          <CardFooter className="pt-4">
+            <Button asChild size="sm" variant="outline">
+              <Link href={`/org/${orgSlug}/settings/integrations/webhooks`}>
+                Gerenciar webhooks
+              </Link>
+            </Button>
+          </CardFooter>
+        </Card>
       </div>
     </div>
   )
