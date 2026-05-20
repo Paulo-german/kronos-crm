@@ -19,7 +19,7 @@ export const updateWebhookSource = superAdminOrgActionClient
     })
 
     if (!existing) {
-      throw new Error('Webhook source não encontrada.')
+      throw new Error('Webhook source não encontrado.')
     }
 
     await db.webhookSource.update({

@@ -18,7 +18,7 @@ export const regenerateWebhookToken = superAdminOrgActionClient
     })
 
     if (!existing) {
-      throw new Error('Webhook source não encontrada.')
+      throw new Error('Webhook source não encontrado.')
     }
 
     const newToken = randomUUID()

@@ -102,11 +102,10 @@ export function WebhookSourcesDataTable({ data, orgSlug }: WebhookSourcesDataTab
     [startTransition, updateOptimistic, executeUpdate],
   )
 
-  const handleViewLogs = useCallback((sourceId: string) => {
-    const found = data.find((s) => s.id === sourceId)
+  const handleViewLogs = useCallback((sourceId: string, sourceName: string) => {
     setViewingLogsSourceId(sourceId)
-    setViewingLogsSourceName(found?.name ?? '')
-  }, [data])
+    setViewingLogsSourceName(sourceName)
+  }, [])
 
   const handleCopyUrl = useCallback((source: WebhookSourceDto) => {
     const origin =

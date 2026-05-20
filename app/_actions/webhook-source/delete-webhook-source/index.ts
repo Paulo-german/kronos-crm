@@ -18,7 +18,7 @@ export const deleteWebhookSource = superAdminOrgActionClient
     })
 
     if (!existing) {
-      throw new Error('Webhook source não encontrada.')
+      throw new Error('Webhook source não encontrado.')
     }
 
     await db.webhookSource.delete({ where: { id: data.id } })

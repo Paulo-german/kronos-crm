@@ -55,9 +55,7 @@ export async function handleNewDeal({
 
     if (existing) {
       contactId = existing.id
-    }
-
-    if (!existing) {
+    } else {
       const created = await db.contact.create({
         data: {
           organizationId: orgId,

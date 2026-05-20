@@ -37,7 +37,7 @@ import type { WebhookSourceDto } from '@/_actions/webhook-source/schema'
 interface TableDropdownMenuProps {
   source: WebhookSourceDto
   onEdit: (source: WebhookSourceDto) => void
-  onViewLogs: (sourceId: string) => void
+  onViewLogs: (sourceId: string, sourceName: string) => void
   onDelete: (source: WebhookSourceDto) => void
 }
 
@@ -96,7 +96,7 @@ export function TableDropdownMenu({
             Editar
           </DropdownMenuItem>
 
-          <DropdownMenuItem className="gap-1.5" onSelect={() => onViewLogs(source.id)}>
+          <DropdownMenuItem className="gap-1.5" onSelect={() => onViewLogs(source.id, source.name)}>
             <ScrollText className="h-4 w-4" />
             Ver logs
           </DropdownMenuItem>

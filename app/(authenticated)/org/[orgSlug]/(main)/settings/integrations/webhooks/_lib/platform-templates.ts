@@ -1,13 +1,5 @@
-export type FieldMappingKey =
-  | 'name'
-  | 'email'
-  | 'phone'
-  | 'cpf'
-  | 'companyName'
-  | 'dealTitle'
-  | 'dealValue'
-  | 'dealNotes'
-  | 'dealStageId'
+import type { FieldMappingKey } from '@/_actions/webhook-source/schema'
+export type { FieldMappingKey }
 
 export type WebhookPlatform =
   | 'GENERIC'

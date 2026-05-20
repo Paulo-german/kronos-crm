@@ -1,4 +1,5 @@
 import 'server-only'
+import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 import type { Prisma, WebhookLogStatus } from '@prisma/client'
@@ -11,7 +12,7 @@ interface GetLogsOptions {
   since?: Date
 }
 
-export async function getWebhookLogsBySource(
+export const getWebhookLogsBySource = cache(async function getWebhookLogsBySource(
   webhookSourceId: string,
   ctx: RBACContext,
   options: GetLogsOptions,
@@ -57,4 +58,4 @@ export async function getWebhookLogsBySource(
   )
 
   return getCached()
-}
+})

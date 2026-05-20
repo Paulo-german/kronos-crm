@@ -1,9 +1,10 @@
 import 'server-only'
+import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 import type { RBACContext } from '@/_lib/rbac'
 
-export async function getWebhookLogById(logId: string, ctx: RBACContext) {
+export const getWebhookLogById = cache(async function getWebhookLogById(logId: string, ctx: RBACContext) {
   const getCached = unstable_cache(
     async () =>
       db.webhookLog.findFirst({
@@ -25,4 +26,4 @@ export async function getWebhookLogById(logId: string, ctx: RBACContext) {
     { tags: [`webhook-log:${logId}`] },
   )
   return getCached()
-}
+})

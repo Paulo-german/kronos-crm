@@ -113,8 +113,8 @@ export function WebhookLogsSheet({
 
           <div className="flex-1 space-y-1">
             {isPending ? (
-              Array.from({ length: 5 }).map((_, index) => (
-                <Skeleton key={index} className="h-12 w-full rounded-md" />
+              Array.from({ length: 5 }).map((_item, skeletonIndex) => (
+                <Skeleton key={skeletonIndex} className="h-12 w-full rounded-md" />
               ))
             ) : logs.length === 0 ? (
               <div className="flex h-40 items-center justify-center rounded-lg border border-dashed">
