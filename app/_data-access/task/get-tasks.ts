@@ -15,6 +15,9 @@ export type TaskDto = {
     title: string
   }
   assignedTo: string
+  assignee: {
+    fullName: string | null
+  }
   createdAt: Date
   outcomeType: string | null
   outcomeNotes: string | null
@@ -47,6 +50,11 @@ const fetchTasksFromDb = async (
       deal: {
         select: {
           title: true,
+        },
+      },
+      assignee: {
+        select: {
+          fullName: true,
         },
       },
       createdAt: true,

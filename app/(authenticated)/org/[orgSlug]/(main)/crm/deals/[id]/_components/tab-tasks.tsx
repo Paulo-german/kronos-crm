@@ -99,7 +99,8 @@ const TabTasks = ({ deal }: TabTasksProps) => {
     isCompleted: task.isCompleted,
     dealId: task.dealId,
     deal: { title: deal.title },
-    assignedTo: deal.assigneeId, // Usa o assignee do deal como fallback
+    assignedTo: deal.assigneeId,
+    assignee: { fullName: deal.assigneeName },
     createdAt: new Date(),
     outcomeType: task.outcomeType,
     outcomeNotes: task.outcomeNotes,
@@ -145,6 +146,7 @@ const TabTasks = ({ deal }: TabTasksProps) => {
                   dueDate: new Date(),
                   deal: { title: deal.title },
                   assignedTo: deal.assigneeId,
+                  assignee: { fullName: deal.assigneeName },
                   createdAt: new Date(),
                   outcomeType: null,
                   outcomeNotes: null,

@@ -17,6 +17,7 @@ import {
   Circle,
   LinkIcon,
   TrashIcon,
+  UserIcon,
   Users,
   Phone,
   MessageCircle,
@@ -36,6 +37,12 @@ import {
 import { ptBR } from 'date-fns/locale'
 import { Sheet } from '@/_components/ui/sheet'
 import { Button } from '@/_components/ui/button'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/_components/ui/tooltip'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 import { cn } from '@/_lib/utils'
@@ -46,6 +53,9 @@ import { UpsertTaskDialogContent } from './upsert-dialog-content'
 import TaskTableDropdownMenu from './table-dropdown-menu'
 import ConfirmationDialog from '@/_components/confirmation-dialog'
 import { TaskOutcomeDialog } from './task-outcome-dialog'
+import {
+  TASK_OUTCOME_OPTIONS,
+} from '@/_lib/task/outcome-config'
 import type { TaskDto } from '@/_data-access/task/get-tasks'
 import type { LucideIcon } from 'lucide-react'
 
@@ -544,6 +554,49 @@ function TimelineTaskRow({
       >
         {task.title}
       </span>
+
+      {/* Responsável */}
+      {task.assignee.fullName && (
+        <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+          <UserIcon className="h-3 w-3 shrink-0" />
+          <span className="max-w-[100px] truncate">{task.assignee.fullName.split(' ')[0]}</span>
+        </span>
+      )}
+
+      {/* Outcome badge (só para tarefas concluídas com outcome registrado) */}
+      {task.isCompleted && task.outcomeType && (() => {
+        const options = TASK_OUTCOME_OPTIONS[task.type] ?? TASK_OUTCOME_OPTIONS['TASK']
+        const outcomeOption = options.find((opt) => opt.value === task.outcomeType)
+        if (!outcomeOption) return null
+        const OutcomeIcon = outcomeOption.icon
+        const badge = (
+          <span
+            className={cn(
+              'flex shrink-0 items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium',
+              outcomeOption.positive
+                ? 'border-kronos-green/40 bg-kronos-green/10 text-kronos-green'
+                : 'border-border bg-muted/50 text-muted-foreground',
+            )}
+          >
+            <OutcomeIcon className="h-3 w-3 shrink-0" />
+            {outcomeOption.label}
+          </span>
+        )
+        if (!task.outcomeNotes) return badge
+        return (
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>{badge}</TooltipTrigger>
+              <TooltipContent
+                side="top"
+                className="max-w-[240px] whitespace-pre-wrap text-xs"
+              >
+                {task.outcomeNotes}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )
+      })()}
 
       {/* Deal badge */}
       {task.deal && task.dealId && (
