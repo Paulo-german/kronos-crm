@@ -121,6 +121,27 @@ export interface SendWhatsappFollowupConfig {
   noConversationBehavior: 'create' | 'skip'
 }
 
+export type CreateTaskAssignStrategy = 'deal_assignee' | 'specific_user'
+
+export type TaskActionType = 'TASK' | 'MEETING' | 'CALL' | 'WHATSAPP' | 'VISIT' | 'EMAIL'
+
+export type TaskActionPriority = 'low' | 'medium' | 'high' | 'urgent'
+
+export interface CreateTaskActionConfig {
+  /** Template do título com placeholders ({{deal.title}}, {{contact.firstName}}, ...) */
+  titleTemplate: string
+  /** Dias a partir de hoje (00:00) para o vencimento. Default 1. */
+  dueInDays?: number
+  /** Como definir o responsável da task */
+  assignTo: CreateTaskAssignStrategy
+  /** Obrigatório quando assignTo === 'specific_user' */
+  assignToUserId?: string
+  /** Default 'medium'. Persistido em activity.metadata (Task model não tem coluna priority). */
+  priority?: TaskActionPriority
+  /** Default 'TASK'. Mapeia para enum TaskType do schema. */
+  taskType?: TaskActionType
+}
+
 // ─────────────────────────────────────────────────────────────
 // Contexto passado a cada executor
 // ─────────────────────────────────────────────────────────────

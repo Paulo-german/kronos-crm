@@ -1827,6 +1827,8 @@ enum AutomationAction {
   SEND_WHATSAPP_FOLLOWUP
   // Avança o lifecycle stage dos contatos vinculados ao deal (monotônico)
   UPDATE_CONTACT_LIFECYCLE
+  // Cria uma Task vinculada ao deal disparador (template + dueInDays + assign config)
+  CREATE_TASK
 }
 
 enum AutomationExecutionStatus {

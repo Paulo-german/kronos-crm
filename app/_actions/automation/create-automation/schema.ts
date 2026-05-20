@@ -124,6 +124,39 @@ export const updateContactLifecycleConfigSchema = z.object({
   targetStage: z.nativeEnum(LifecycleStage),
 })
 
+export const createTaskConfigSchema = z
+  .object({
+    titleTemplate: z
+      .string()
+      .trim()
+      .min(1, 'Título é obrigatório')
+      .max(200, 'Máximo de 200 caracteres'),
+    dueInDays: z
+      .number({ message: 'Informe os dias até o vencimento' })
+      .int('Use apenas números inteiros')
+      .min(0, 'Não pode ser negativo')
+      .max(365, 'Máximo de 365 dias')
+      .default(1),
+    assignTo: z.enum(['deal_assignee', 'specific_user'], {
+      message: 'Selecione como atribuir a tarefa',
+    }),
+    assignToUserId: z.string().uuid('ID de usuário inválido').optional(),
+    priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
+    taskType: z
+      .enum(['TASK', 'MEETING', 'CALL', 'WHATSAPP', 'VISIT', 'EMAIL'])
+      .default('TASK'),
+  })
+  .superRefine((data, ctx) => {
+    // Quando 'specific_user', exige userId
+    if (data.assignTo === 'specific_user' && !data.assignToUserId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['assignToUserId'],
+        message: 'Selecione o membro responsável pela tarefa.',
+      })
+    }
+  })
+
 // ─────────────────────────────────────────────────────────────
 // Schema principal de criação (com validação cross-field via superRefine)
 // ─────────────────────────────────────────────────────────────
@@ -167,6 +200,7 @@ export const createAutomationSchema = z.object({
     [AutomationAction.UPDATE_DEAL_PRIORITY]: updateDealPriorityConfigSchema,
     [AutomationAction.SEND_WHATSAPP_FOLLOWUP]: sendWhatsappFollowupConfigSchema,
     [AutomationAction.UPDATE_CONTACT_LIFECYCLE]: updateContactLifecycleConfigSchema,
+    [AutomationAction.CREATE_TASK]: createTaskConfigSchema,
   }
 
   const actionResult = actionValidators[data.actionType].safeParse(data.actionConfig)

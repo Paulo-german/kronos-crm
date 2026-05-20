@@ -22,6 +22,7 @@ import {
   updateDealPriorityConfigSchema,
   sendWhatsappFollowupConfigSchema,
   updateContactLifecycleConfigSchema,
+  createTaskConfigSchema,
 } from './schema'
 
 const TRIGGER_VALIDATORS: Record<AutomationTrigger, z.ZodTypeAny> = {
@@ -41,6 +42,7 @@ const ACTION_VALIDATORS: Record<AutomationAction, z.ZodTypeAny> = {
   [AutomationAction.UPDATE_DEAL_PRIORITY]: updateDealPriorityConfigSchema,
   [AutomationAction.SEND_WHATSAPP_FOLLOWUP]: sendWhatsappFollowupConfigSchema,
   [AutomationAction.UPDATE_CONTACT_LIFECYCLE]: updateContactLifecycleConfigSchema,
+  [AutomationAction.CREATE_TASK]: createTaskConfigSchema,
 }
 
 export const updateAutomation = orgActionClient
@@ -167,6 +169,11 @@ async function validatePartialCrossEntityReferences(
   // Valida inboxId no actionConfig (SEND_WHATSAPP_FOLLOWUP)
   if (typeof actionConfig?.inboxId === 'string') {
     await requireWhatsappInboxInOrg(actionConfig.inboxId, orgId)
+  }
+
+  // Valida assignToUserId no actionConfig (CREATE_TASK)
+  if (typeof actionConfig?.assignToUserId === 'string') {
+    await requireUsersInOrg([actionConfig.assignToUserId], orgId)
   }
 }
 

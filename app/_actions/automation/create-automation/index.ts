@@ -74,6 +74,11 @@ async function validateCrossEntityReferences(
   if (typeof actionConfig.inboxId === 'string' && actionConfig.inboxId !== SENTINEL_DEAL_INBOX) {
     await requireWhatsappInboxInOrg(actionConfig.inboxId, orgId)
   }
+
+  // Valida assignToUserId no actionConfig (CREATE_TASK)
+  if (typeof actionConfig.assignToUserId === 'string') {
+    await requireUsersInOrg([actionConfig.assignToUserId], orgId)
+  }
 }
 
 async function requireStageInOrg(stageId: string, orgId: string): Promise<void> {
