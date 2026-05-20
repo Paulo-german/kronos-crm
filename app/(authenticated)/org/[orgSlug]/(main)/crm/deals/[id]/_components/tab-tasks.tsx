@@ -42,11 +42,8 @@ const TabTasks = ({ deal }: TabTasksProps) => {
   )
 
   const { execute: executeToggle } = useAction(toggleTask, {
-    onSuccess: ({ data }) => {
-      setIsDialogOpen(false)
-      toast.success(
-        data?.isCompleted ? 'Tarefa concluída!' : 'Tarefa reaberta!',
-      )
+    onSuccess: () => {
+      toast.success('Tarefa reaberta!')
     },
     onError: ({ error }) => {
       toast.error(error.serverError || 'Erro ao atualizar tarefa.')
