@@ -967,6 +967,8 @@ model AgentStep {
   messageTemplate       String?                   @map("message_template")
   lifecycleTrigger        LifecycleStage? @map("lifecycle_trigger")
   lifecycleDealPipelineId String?         @map("lifecycle_deal_pipeline_id")
+  autoDealStageId         String?         @map("auto_deal_stage_id")
+  autoTasks               Json?           @map("auto_tasks")
   agent                 Agent                     @relation(fields: [agentId], references: [id], onDelete: Cascade)
   followUpLinks         FollowUpAgentStep[]
 
