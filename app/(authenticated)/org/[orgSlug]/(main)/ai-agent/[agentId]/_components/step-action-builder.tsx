@@ -58,9 +58,12 @@ interface StepActionBuilderProps {
   previousStepsLifecycleTriggers?: string[]
   currentLifecycleTrigger?: string | null
   onLifecycleTriggerChange?: (value: string) => void
+  agentVersion?: 'single-v1' | 'single-v2'
 }
 
 const TRIGGER_PLACEHOLDERS: Record<string, string> = {
+  move_deal: 'Ex: Ao concluir esta etapa',
+  create_task: 'Ex: Ao identificar necessidade de follow-up',
   update_contact: 'Ex: Ao coletar dados do contato',
   update_deal: 'Ex: Ao coletar informações do negócio',
   list_availability: 'Ex: Quando o lead quiser agendar uma reunião',
@@ -69,14 +72,14 @@ const TRIGGER_PLACEHOLDERS: Record<string, string> = {
   create_appointment: 'Ex: Quando o cliente confirmar o serviço',
 }
 
-const AUTO_TRIGGER_TYPES = new Set(['move_deal', 'create_task'])
+const DEPRECATED_IN_V2 = new Set(['move_deal', 'create_task'])
 
 const buildDefaultAction = (type: string): StepAction => {
   switch (type) {
     case 'move_deal':
-      return { type: 'move_deal', trigger: 'Quando chegar nesta etapa', targetStage: '' }
+      return { type: 'move_deal', trigger: '', targetStage: '' }
     case 'create_task':
-      return { type: 'create_task', trigger: 'Quando chegar nesta etapa', title: '' }
+      return { type: 'create_task', trigger: '', title: '' }
     case 'update_contact':
       return { type: 'update_contact', trigger: '' }
     case 'update_deal':
@@ -246,6 +249,7 @@ const StepActionBuilder = ({
   previousStepsLifecycleTriggers,
   currentLifecycleTrigger,
   onLifecycleTriggerChange,
+  agentVersion,
 }: StepActionBuilderProps) => {
   // Indexado por id de instância (não por type) para permitir abrir/fechar
   // cards individuais quando há múltiplas instâncias do mesmo type.
@@ -412,6 +416,11 @@ const StepActionBuilder = ({
                                 Inativa
                               </span>
                             )}
+                            {agentVersion === 'single-v2' && DEPRECATED_IN_V2.has(action.type) && (
+                              <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600">
+                                Migrado para Automações — remove em 01/09/2026
+                              </span>
+                            )}
                           </div>
                           {isGlobalTool ? (
                             <span className="block text-xs text-amber-600/70">
@@ -466,25 +475,17 @@ const StepActionBuilder = ({
                           {toolOption.description}
                         </p>
                       )}
-                      {/* Campo trigger — fixo para move_deal/create_task, editável para os demais */}
                       <div className="space-y-1.5">
                         <Label className="text-xs">Quando executar</Label>
-                        {AUTO_TRIGGER_TYPES.has(action.type) ? (
-                          <div className="flex items-center gap-2 rounded-md border border-dashed bg-input px-3 py-2">
-                            <Zap className="h-3.5 w-3.5 shrink-0 text-amber-500" />
-                            <span className="text-xs text-muted-foreground">Automático ao chegar nesta etapa</span>
-                          </div>
-                        ) : (
-                          <Input
-                            placeholder={TRIGGER_PLACEHOLDERS[action.type]}
-                            value={action.trigger}
-                            onChange={(event) =>
-                              updateAction(actionId, {
-                                trigger: event.target.value,
-                              })
-                            }
-                          />
-                        )}
+                        <Input
+                          placeholder={TRIGGER_PLACEHOLDERS[action.type]}
+                          value={action.trigger}
+                          onChange={(event) =>
+                            updateAction(actionId, {
+                              trigger: event.target.value,
+                            })
+                          }
+                        />
                       </div>
 
                       {/* move_deal: select de stage */}

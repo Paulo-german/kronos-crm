@@ -37,6 +37,7 @@ import { Input } from '@/_components/ui/input'
 import { Textarea } from '@/_components/ui/textarea'
 import { Button } from '@/_components/ui/button'
 import StepActionBuilder from './step-action-builder'
+import StepAutomationsSection from './step-automations-section'
 import { createStep } from '@/_actions/agent/create-step'
 import { updateStep } from '@/_actions/agent/update-step'
 import {
@@ -44,6 +45,7 @@ import {
   type CreateStepFormInput,
 } from '@/_actions/agent/create-step/schema'
 import type { StepAction } from '@/_actions/agent/shared/step-action-schema'
+import type { AutoTaskItem } from '@/_actions/agent/shared/step-fields-schema'
 import type { AgentStepDto } from '@/_data-access/agent/get-agent-by-id'
 import type { PipelineStageOption } from '@/_data-access/pipeline/get-pipeline-stages'
 import type { OrgPipelineDto } from '@/_data-access/pipeline/get-org-pipelines'
@@ -56,6 +58,7 @@ interface UpsertStepDialogProps {
   pipelineStages: PipelineStageOption[]
   pipelines: OrgPipelineDto[]
   agentMode?: 'PRODUCT' | 'SERVICE' | 'HYBRID'
+  agentVersion?: 'single-v1' | 'single-v2'
 }
 
 const UpsertStepDialog = ({
@@ -66,6 +69,7 @@ const UpsertStepDialog = ({
   pipelineStages,
   pipelines,
   agentMode,
+  agentVersion,
 }: UpsertStepDialogProps) => {
   const isEditing = !!defaultValues?.id
 
@@ -80,6 +84,8 @@ const UpsertStepDialog = ({
       messageTemplate: defaultValues?.messageTemplate || '',
       lifecycleTrigger: defaultValues?.lifecycleTrigger ?? null,
       lifecycleDealPipelineId: defaultValues?.lifecycleDealPipelineId ?? null,
+      autoDealStageId: defaultValues?.autoDealStageId ?? null,
+      autoTasks: defaultValues?.autoTasks ?? null,
     },
   })
 
@@ -93,6 +99,16 @@ const UpsertStepDialog = ({
     name: 'actions',
   })
 
+  const watchedAutoDealStageId = useWatch({
+    control: form.control,
+    name: 'autoDealStageId',
+  })
+
+  const watchedAutoTasks = useWatch({
+    control: form.control,
+    name: 'autoTasks',
+  })
+
   useEffect(() => {
     if (open) {
       form.reset({
@@ -104,6 +120,8 @@ const UpsertStepDialog = ({
         messageTemplate: defaultValues?.messageTemplate || '',
         lifecycleTrigger: defaultValues?.lifecycleTrigger ?? null,
         lifecycleDealPipelineId: defaultValues?.lifecycleDealPipelineId ?? null,
+        autoDealStageId: defaultValues?.autoDealStageId ?? null,
+        autoTasks: defaultValues?.autoTasks ?? null,
       })
     }
   }, [open, defaultValues, agentId, form])
@@ -147,6 +165,8 @@ const UpsertStepDialog = ({
         messageTemplate: data.messageTemplate,
         lifecycleTrigger: data.lifecycleTrigger,
         lifecycleDealPipelineId: data.lifecycleDealPipelineId,
+        autoDealStageId: data.autoDealStageId,
+        autoTasks: data.autoTasks,
       })
     } else {
       executeCreate(data)
@@ -203,6 +223,20 @@ const UpsertStepDialog = ({
               )}
             />
 
+            {agentVersion === 'single-v2' && (
+              <StepAutomationsSection
+                autoDealStageId={watchedAutoDealStageId ?? null}
+                autoTasks={(watchedAutoTasks ?? null) as AutoTaskItem[] | null}
+                onAutoDealStageIdChange={(val) =>
+                  form.setValue('autoDealStageId', val, { shouldDirty: true })
+                }
+                onAutoTasksChange={(val) =>
+                  form.setValue('autoTasks', val, { shouldDirty: true })
+                }
+                pipelineStages={pipelineStages}
+              />
+            )}
+
             <StepActionBuilder
               value={(watchedActions ?? []) as StepAction[]}
               onChange={(actions) => form.setValue('actions', actions)}
@@ -217,6 +251,7 @@ const UpsertStepDialog = ({
                   { shouldDirty: true },
                 )
               }
+              agentVersion={agentVersion}
             />
 
             <FormField

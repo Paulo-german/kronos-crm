@@ -147,6 +147,7 @@ interface SortableStepCardProps {
   excludeGlobalTools?: boolean
   agentMode?: 'PRODUCT' | 'SERVICE' | 'HYBRID'
   previousStepsLifecycleTriggers?: string[]
+  agentVersion?: 'single-v1' | 'single-v2'
 }
 
 const SortableStepCard = ({
@@ -164,6 +165,7 @@ const SortableStepCard = ({
   excludeGlobalTools,
   agentMode,
   previousStepsLifecycleTriggers,
+  agentVersion,
 }: SortableStepCardProps) => {
   const {
     attributes,
@@ -247,6 +249,7 @@ const SortableStepCard = ({
               excludeGlobalTools={excludeGlobalTools}
               agentMode={agentMode}
               previousStepsLifecycleTriggers={previousStepsLifecycleTriggers}
+              agentVersion={agentVersion}
             />
           </div>
         </CollapsibleContent>
@@ -399,6 +402,7 @@ const ProcessTab = ({
         onSaveSuccess={onSaveSuccess}
         excludeGlobalTools={excludeGlobalTools}
         agentMode={agent.agentMode}
+        agentVersion={agent.agentVersion as 'single-v1' | 'single-v2'}
       />
     )
   })
@@ -487,6 +491,7 @@ const ProcessTab = ({
               previousStepsLifecycleTriggers={steps
                 .map((s) => s.lifecycleTrigger)
                 .filter((trigger) => trigger !== null) as string[]}
+              agentVersion={agent.agentVersion as 'single-v1' | 'single-v2'}
             />
           </div>
         )}

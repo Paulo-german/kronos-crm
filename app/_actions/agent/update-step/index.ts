@@ -42,6 +42,8 @@ export const updateStep = orgActionClient
         messageTemplate: data.messageTemplate || null,
         lifecycleTrigger: data.lifecycleTrigger ?? null,
         lifecycleDealPipelineId: data.lifecycleDealPipelineId ?? null,
+        autoDealStageId: data.autoDealStageId ?? null,
+        autoTasks: data.autoTasks && data.autoTasks.length > 0 ? data.autoTasks : Prisma.JsonNull,
       },
     })
 

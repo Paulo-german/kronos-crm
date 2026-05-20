@@ -33,6 +33,7 @@ import { Input } from '@/_components/ui/input'
 import { Textarea } from '@/_components/ui/textarea'
 import ConfirmationDialog from '@/_components/confirmation-dialog'
 import StepActionBuilder from './step-action-builder'
+import StepAutomationsSection from './step-automations-section'
 import { createStep } from '@/_actions/agent/create-step'
 import { updateStep } from '@/_actions/agent/update-step'
 import { deleteStep } from '@/_actions/agent/delete-step'
@@ -41,6 +42,7 @@ import {
   type CreateStepFormInput,
 } from '@/_actions/agent/create-step/schema'
 import type { StepAction } from '@/_actions/agent/shared/step-action-schema'
+import type { AutoTaskItem } from '@/_actions/agent/shared/step-fields-schema'
 import type { AgentStepDto } from '@/_data-access/agent/get-agent-by-id'
 import type { PipelineStageOption } from '@/_data-access/pipeline/get-pipeline-stages'
 import type { OrgPipelineDto } from '@/_data-access/pipeline/get-org-pipelines'
@@ -57,6 +59,7 @@ interface StepDetailPanelProps {
   excludeGlobalTools?: boolean
   agentMode?: 'PRODUCT' | 'SERVICE' | 'HYBRID'
   previousStepsLifecycleTriggers?: string[]
+  agentVersion?: 'single-v1' | 'single-v2'
 }
 
 const StepDetailPanel = ({
@@ -71,6 +74,7 @@ const StepDetailPanel = ({
   excludeGlobalTools = false,
   agentMode,
   previousStepsLifecycleTriggers,
+  agentVersion,
 }: StepDetailPanelProps) => {
   const isEditing = !!step?.id
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
@@ -88,6 +92,8 @@ const StepDetailPanel = ({
       messageTemplate: step?.messageTemplate ?? '',
       lifecycleTrigger: step?.lifecycleTrigger ?? null,
       lifecycleDealPipelineId: step?.lifecycleDealPipelineId ?? null,
+      autoDealStageId: step?.autoDealStageId ?? null,
+      autoTasks: step?.autoTasks ?? null,
     },
   })
 
@@ -99,6 +105,16 @@ const StepDetailPanel = ({
   const watchedActions = useWatch({
     control: form.control,
     name: 'actions',
+  })
+
+  const watchedAutoDealStageId = useWatch({
+    control: form.control,
+    name: 'autoDealStageId',
+  })
+
+  const watchedAutoTasks = useWatch({
+    control: form.control,
+    name: 'autoTasks',
   })
 
   const { execute: executeCreate, isPending: isCreating } = useAction(
@@ -167,6 +183,8 @@ const StepDetailPanel = ({
         messageTemplate: data.messageTemplate,
         lifecycleTrigger: data.lifecycleTrigger,
         lifecycleDealPipelineId: data.lifecycleDealPipelineId,
+        autoDealStageId: data.autoDealStageId,
+        autoTasks: data.autoTasks,
       })
     } else {
       executeCreate(data)
@@ -224,6 +242,20 @@ const StepDetailPanel = ({
               )}
             />
 
+            {canManage && agentVersion === 'single-v2' && (
+              <StepAutomationsSection
+                autoDealStageId={watchedAutoDealStageId ?? null}
+                autoTasks={(watchedAutoTasks ?? null) as AutoTaskItem[] | null}
+                onAutoDealStageIdChange={(val) =>
+                  form.setValue('autoDealStageId', val, { shouldDirty: true })
+                }
+                onAutoTasksChange={(val) =>
+                  form.setValue('autoTasks', val, { shouldDirty: true })
+                }
+                pipelineStages={pipelineStages}
+              />
+            )}
+
             {canManage && (
               <StepActionBuilder
                 value={(watchedActions ?? []) as StepAction[]}
@@ -240,6 +272,7 @@ const StepDetailPanel = ({
                     shouldDirty: true,
                   })
                 }
+                agentVersion={agentVersion}
               />
             )}
 

@@ -14,6 +14,10 @@ import {
   type StepAction,
 } from '@/_actions/agent/shared/step-action-schema'
 import {
+  autoTaskItemSchema,
+  type AutoTaskItem,
+} from '@/_actions/agent/shared/step-fields-schema'
+import {
   globalToolsArraySchema,
   type GlobalTool,
 } from '@/_actions/agent/shared/global-tool-schema'
@@ -28,6 +32,8 @@ export interface AgentStepDto {
   messageTemplate: string | null
   lifecycleTrigger: LifecycleStage | null
   lifecycleDealPipelineId: string | null
+  autoDealStageId: string | null
+  autoTasks: AutoTaskItem[] | null
   order: number
 }
 
@@ -181,6 +187,7 @@ const fetchAgentByIdFromDb = async (
     })),
     steps: agent.steps.map((step) => {
       const parsed = z.array(stepActionSchema).safeParse(step.actions)
+      const parsedAutoTasks = z.array(autoTaskItemSchema).safeParse(step.autoTasks)
       return {
         id: step.id,
         name: step.name,
@@ -190,6 +197,8 @@ const fetchAgentByIdFromDb = async (
         messageTemplate: step.messageTemplate,
         lifecycleTrigger: step.lifecycleTrigger,
         lifecycleDealPipelineId: step.lifecycleDealPipelineId,
+        autoDealStageId: step.autoDealStageId ?? null,
+        autoTasks: parsedAutoTasks.success ? parsedAutoTasks.data : null,
         order: step.order,
       }
     }),
