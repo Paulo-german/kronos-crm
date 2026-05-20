@@ -287,8 +287,12 @@ export async function evaluateAutomations(event: AutomationEvent): Promise<void>
         },
       })
 
-      revalidateTag(`automation:${automation.id}`)
-      revalidateTag(`automations:${event.orgId}`)
+      try {
+        revalidateTag(`automation:${automation.id}`)
+        revalidateTag(`automations:${event.orgId}`)
+      } catch {
+        // revalidateTag indisponível fora do contexto de request Next.js (ex: Trigger.dev)
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
       console.error(

@@ -4,6 +4,7 @@ import { logger } from '@trigger.dev/sdk/v3'
 import { db } from '@/_lib/prisma'
 import { withRetry, safeBestEffort } from '../tools/lib/with-retry'
 import { revalidateTags } from '../tools/lib/revalidate-tags'
+import { evaluateAutomations } from '@/_lib/automations/evaluate-automations'
 
 interface AutoTask {
   title: string
@@ -155,6 +156,20 @@ async function moveDeal(params: {
     fromStage: deal.stage.name,
     toStage: newStage.name,
   })
+
+  await safeBestEffort(
+    () => evaluateAutomations({
+      orgId: organizationId,
+      triggerType: 'DEAL_MOVED',
+      dealId,
+      payload: {
+        fromStageId: deal.pipelineStageId,
+        toStageId: newStage.id,
+        pipelineId: deal.stage.pipelineId,
+      },
+    }),
+    'evaluateAutomations(auto_move)',
+  )
 
   return true
 }
