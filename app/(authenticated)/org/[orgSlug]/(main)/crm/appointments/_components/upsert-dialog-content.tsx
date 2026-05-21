@@ -1374,10 +1374,9 @@ function DateOnlyField({
                 selected={field.value}
                 onSelect={(date: Date | undefined) => {
                   if (!date) return
-                  // Meia-noite UTC do dia selecionado — hora será definida pelo slot
-                  const dayStart = new Date(
-                    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
-                  )
+                  // Meia-noite local do dia selecionado — Calendar compara por data local,
+                  // e formatDateUtc/getUTCDay ainda funcionam pois UTC-3 não cruza a virada UTC
+                  const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate())
                   field.onChange(dayStart)
                 }}
                 disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
