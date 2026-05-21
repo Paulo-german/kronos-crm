@@ -7,6 +7,7 @@ export async function getWebhookSourceByToken(token: string) {
     select: {
       id: true,
       organizationId: true,
+      squadId: true,
       eventType: true,
       fieldMapping: true,
       isActive: true,

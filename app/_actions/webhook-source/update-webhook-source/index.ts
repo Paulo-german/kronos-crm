@@ -41,6 +41,7 @@ export const updateWebhookSource = superAdminOrgActionClient
           : {}),
         ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
         ...secretKeyUpdate,
+        ...(data.squadId !== undefined ? { squadId: data.squadId } : {}),
       },
     })
 

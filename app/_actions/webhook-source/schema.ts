@@ -67,6 +67,7 @@ export const createWebhookSourceSchema = z.object({
   fieldMapping: fieldMappingSchema,
   isActive: z.boolean().default(true),
   secretKey: secretKeyField,
+  squadId: z.string().uuid().nullable().optional(),
 })
 
 export const updateWebhookSourceSchema = z.object({
@@ -78,6 +79,7 @@ export const updateWebhookSourceSchema = z.object({
   isActive: z.boolean().optional(),
   secretKey: secretKeyField,
   clearSecretKey: z.boolean().optional(),
+  squadId: z.string().uuid().nullable().optional(),
 })
 
 export const deleteWebhookSourceSchema = z.object({

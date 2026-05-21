@@ -21,6 +21,7 @@ export const createWebhookSource = superAdminOrgActionClient
         fieldMapping: data.fieldMapping as Prisma.InputJsonValue,
         isActive: data.isActive,
         secretKey: data.secretKey ?? null,
+        squadId: data.squadId ?? null,
       },
       select: { id: true, token: true },
     })

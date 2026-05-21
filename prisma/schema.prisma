@@ -475,6 +475,7 @@ model Deal {
   lossReasonId      String?         @map("loss_reason_id")
   value             Decimal         @default(0) @db.Decimal(15, 2)
   mrr               Decimal         @default(0) @map("mrr") @db.Decimal(15, 2)
+  squadId           String?         @map("squad_id")
   activities           Activity[]
   appointments         Appointment[]
   conversations        Conversation[]
@@ -485,6 +486,7 @@ model Deal {
   company              Company?        @relation(fields: [companyId], references: [id])
   lossReason           DealLostReason? @relation(fields: [lossReasonId], references: [id])
   organization         Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  squad                Squad?          @relation(fields: [squadId], references: [id], onDelete: SetNull)
   stage                PipelineStage   @relation(fields: [pipelineStageId], references: [id])
   tasks                Task[]
   automationExecutions AutomationExecution[]
@@ -495,6 +497,7 @@ model Deal {
   @@index([organizationId, status, assignedTo])
   @@index([organizationId, status, updatedAt(sort: Desc)])
   @@index([organizationId, status, createdAt(sort: Desc)])
+  @@index([organizationId, squadId])
   @@map("deals")
 }
 
@@ -1120,6 +1123,8 @@ model Squad {
   organization      Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   members           SquadMember[]
   inboxes           Inbox[]
+  deals             Deal[]
+  webhookSources    WebhookSource[]
 
   @@index([organizationId])
   @@map("squads")
@@ -2210,6 +2215,7 @@ enum WebhookLogStatus {
 model WebhookSource {
   id             String           @id @default(uuid())
   organizationId String           @map("organization_id")
+  squadId        String?          @map("squad_id")
   name           String
   token          String           @unique @default(uuid())
   // Chave secreta para HMAC (Fase 2). NULL = aceita sem verificação.
@@ -2224,6 +2230,7 @@ model WebhookSource {
   updatedAt      DateTime         @updatedAt @map("updated_at")
 
   organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  squad        Squad?         @relation(fields: [squadId], references: [id], onDelete: SetNull)
   logs         WebhookLog[]
 
   @@index([organizationId, isActive])

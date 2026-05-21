@@ -25,6 +25,7 @@ export const replayWebhookLog = superAdminOrgActionClient
       source: {
         id: original.webhookSource.id,
         organizationId: original.webhookSource.organizationId,
+        squadId: original.webhookSource.squadId,
         platform: original.webhookSource.platform,
         eventType: original.webhookSource.eventType,
         fieldMapping: original.webhookSource.fieldMapping as Record<string, string>,

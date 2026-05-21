@@ -137,6 +137,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         source: {
           id: source.id,
           organizationId: source.organizationId,
+          squadId: source.squadId,
           platform: source.platform,
           eventType: source.eventType,
           fieldMapping: source.fieldMapping as Record<string, string>,

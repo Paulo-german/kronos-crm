@@ -20,6 +20,7 @@ interface ProcessInput {
   source: {
     id: string
     organizationId: string
+    squadId: string | null
     platform: WebhookPlatform
     eventType: WebhookEventType
     fieldMapping: Record<string, string>
@@ -46,7 +47,7 @@ export async function processInboundWebhook(input: ProcessInput): Promise<{ id: 
         result = await handleUpdateContact({ orgId: source.organizationId, resolved })
         break
       case 'NEW_DEAL':
-        result = await handleNewDeal({ orgId: source.organizationId, resolved })
+        result = await handleNewDeal({ orgId: source.organizationId, squadId: source.squadId, resolved })
         break
       case 'UPDATE_DEAL':
         result = await handleUpdateDeal({ orgId: source.organizationId, resolved })
