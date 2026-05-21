@@ -31,7 +31,10 @@ import FollowUpsTab from './follow-ups-tab'
 import TestChatPanel from './test-chat-panel'
 import { PageTourTrigger } from '@/_components/onboarding/page-tour-trigger'
 import { AGENT_DETAIL_TOUR_STEPS } from '@/_lib/onboarding/tours/agent-detail-tour'
-import type { FollowUpDto, ExhaustedConfig } from '@/_data-access/follow-up/types'
+import type {
+  FollowUpDto,
+  ExhaustedConfig,
+} from '@/_data-access/follow-up/types'
 
 interface InboxOptionDto {
   id: string
@@ -76,7 +79,8 @@ const AgentDetailClient = ({
   followUpExhaustedConfig,
   hasActiveServices,
 }: AgentDetailClientProps) => {
-  const canManage = userRole === 'OWNER' || userRole === 'ADMIN' || userRole === 'SUPPORT'
+  const canManage =
+    userRole === 'OWNER' || userRole === 'ADMIN' || userRole === 'SUPPORT'
   const [activeTab, setActiveTab] = useQueryState(
     'tab',
     parseAsString.withDefault('general'),
@@ -111,9 +115,9 @@ const AgentDetailClient = ({
   return (
     <TooltipProvider>
       {/* Layout principal: conteúdo + painel lateral do chat */}
-      <div className="flex flex-1 min-h-0 min-w-0 bg-background">
+      <div className="flex min-h-0 min-w-0 flex-1 bg-background">
         {/* Conteúdo principal — flex-1 para ceder espaço ao painel quando aberto */}
-        <div className="flex flex-1 min-w-0 flex-col gap-6 overflow-x-hidden overflow-y-auto p-6">
+        <div className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto overflow-x-hidden p-6">
           {/* Back + Title */}
           <div className="flex flex-col gap-4">
             <Button variant="ghost" size="sm" className="w-fit" asChild>
@@ -190,36 +194,27 @@ const AgentDetailClient = ({
 
           {/* Tabs — grid-cols-5 com a nova tab Follow-ups */}
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList data-tour="agent-tabs" className="grid h-12 w-full grid-cols-5 rounded-md border border-border/50 bg-tab/30">
-              <TabsTrigger
-                value="general"
-                className="rounded-md py-2 data-[state=active]:bg-card/80"
-              >
+            <TabsList
+              data-tour="agent-tabs"
+              className="grid h-12 w-full grid-cols-5 rounded-md"
+            >
+              <TabsTrigger value="general" className="rounded-md py-2">
                 Geral
               </TabsTrigger>
-              <TabsTrigger
-                value="process"
-                className="rounded-md py-2 data-[state=active]:bg-card/80"
-              >
+              <TabsTrigger value="process" className="rounded-md py-2">
                 Processo
               </TabsTrigger>
               <TabsTrigger
                 value="knowledge"
                 data-tour="agent-knowledge"
-                className="rounded-md py-2 data-[state=active]:bg-card/80"
+                className="rounded-md py-2"
               >
                 Conhecimento
               </TabsTrigger>
-              <TabsTrigger
-                value="connection"
-                className="rounded-md py-2 data-[state=active]:bg-card/80"
-              >
+              <TabsTrigger value="connection" className="rounded-md py-2">
                 Conexão
               </TabsTrigger>
-              <TabsTrigger
-                value="follow-ups"
-                className="rounded-md py-2 data-[state=active]:bg-card/80"
-              >
+              <TabsTrigger value="follow-ups" className="rounded-md py-2">
                 Follow-ups
               </TabsTrigger>
             </TabsList>
@@ -294,7 +289,7 @@ const AgentDetailClient = ({
 
       {/* Botão flutuante para abrir o chat — visível apenas quando fechado */}
       {!isChatOpen && (
-        <div className="fixed right-6 top-1/2 -translate-y-1/2 z-50">
+        <div className="fixed right-6 top-1/2 z-50 -translate-y-1/2">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button

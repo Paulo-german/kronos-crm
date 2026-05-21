@@ -71,7 +71,8 @@ const AgentDetailV2Client = ({
   followUpExhaustedConfig,
   hasActiveServices,
 }: AgentDetailV2ClientProps) => {
-  const canManage = userRole === 'OWNER' || userRole === 'ADMIN' || userRole === 'SUPPORT'
+  const canManage =
+    userRole === 'OWNER' || userRole === 'ADMIN' || userRole === 'SUPPORT'
 
   const [isActive, setIsActive] = useState(agent.isActive)
 
@@ -99,8 +100,8 @@ const AgentDetailV2Client = ({
 
   return (
     <TooltipProvider>
-      <div className="flex flex-1 min-h-0 min-w-0 bg-background">
-        <div className="flex flex-1 min-w-0 flex-col gap-6 overflow-x-hidden overflow-y-auto p-6">
+      <div className="flex min-h-0 min-w-0 flex-1 bg-background">
+        <div className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto overflow-x-hidden p-6">
           <div className="flex flex-col gap-4">
             <Button variant="ghost" size="sm" className="w-fit" asChild>
               <Link href={`/org/${orgSlug}/ai-agent`}>
@@ -157,25 +158,25 @@ const AgentDetailV2Client = ({
           <Tabs defaultValue="general">
             <TabsList
               data-tour="agent-tabs"
-              className="grid h-12 w-full grid-cols-5 rounded-md border border-border/50 bg-tab/30"
+              className="grid h-12 w-full grid-cols-5 rounded-md"
             >
-              <TabsTrigger value="general" className="rounded-md py-2 data-[state=active]:bg-card/80">
+              <TabsTrigger value="general" className="rounded-md py-2">
                 Geral
               </TabsTrigger>
-              <TabsTrigger value="process" className="rounded-md py-2 data-[state=active]:bg-card/80">
+              <TabsTrigger value="process" className="rounded-md py-2">
                 Processo
               </TabsTrigger>
               <TabsTrigger
                 value="knowledge"
                 data-tour="agent-knowledge"
-                className="rounded-md py-2 data-[state=active]:bg-card/80"
+                className="rounded-md py-2"
               >
                 Conhecimento
               </TabsTrigger>
-              <TabsTrigger value="connection" className="rounded-md py-2 data-[state=active]:bg-card/80">
+              <TabsTrigger value="connection" className="rounded-md py-2">
                 Conexão
               </TabsTrigger>
-              <TabsTrigger value="follow-ups" className="rounded-md py-2 data-[state=active]:bg-card/80">
+              <TabsTrigger value="follow-ups" className="rounded-md py-2">
                 Follow-ups
               </TabsTrigger>
             </TabsList>
