@@ -223,13 +223,11 @@ const InboxDetailClient = ({
   const assignableMembers = members.filter((member) => member.userId)
 
   const handleToggleDistributionUser = (userId: string) => {
-    setLocalDistributionUserIds((current) => {
-      const updated = current.includes(userId)
-        ? current.filter((id) => id !== userId)
-        : [...current, userId]
-      executeInlineUpdate({ id: inbox.id, distributionUserIds: updated })
-      return updated
-    })
+    const updated = localDistributionUserIds.includes(userId)
+      ? localDistributionUserIds.filter((id) => id !== userId)
+      : [...localDistributionUserIds, userId]
+    setLocalDistributionUserIds(updated)
+    executeInlineUpdate({ id: inbox.id, distributionUserIds: updated })
   }
 
   const handleSquadChange = (value: string) => {
@@ -650,29 +648,6 @@ const InboxDetailClient = ({
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
-              {/* Auto Create Deal Toggle */}
-              <div className="flex items-center justify-between rounded-md border border-border/50 bg-background/70 p-3">
-                <div className="space-y-0.5">
-                  <Label className="text-sm font-medium">
-                    Criar negócio automaticamente
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    Cria um negócio para cada nova conversa iniciada nesta
-                    caixa.
-                  </p>
-                </div>
-                <Switch
-                  checked={inbox.autoCreateDeal}
-                  onCheckedChange={(checked) => {
-                    executeInlineUpdate({
-                      id: inbox.id,
-                      autoCreateDeal: checked,
-                    })
-                  }}
-                  disabled={!canManage}
-                />
-              </div>
-
               {/* Pipeline Select */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">
@@ -708,97 +683,108 @@ const InboxDetailClient = ({
                 </p>
               </div>
 
-              {/* Squad selector */}
-              <div className="space-y-2">
+              {/* Distribuição de leads — grid 2 colunas */}
+              <div className="space-y-3">
                 <Label className="text-sm font-medium">
-                  Time de atendimento
+                  Distribuição de leads
                 </Label>
-                <Select
-                  value={localSquadId ?? 'none'}
-                  onValueChange={handleSquadChange}
-                  disabled={!canManage}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sem time configurado" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">
-                      Sem time (usar membros abaixo)
-                    </SelectItem>
-                    {squads.map((squad) => (
-                      <SelectItem key={squad.id} value={squad.id}>
-                        {squad.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {localSquadId && (
-                  <p className="text-xs text-muted-foreground">
-                    O time tem prioridade sobre a lista de membros abaixo.
-                  </p>
-                )}
-              </div>
-
-              {/* Distribution Users Multi-select */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">
-                  Membros para distribuição
-                </Label>
-                {assignableMembers.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    Nenhum membro disponível.
-                  </p>
-                ) : (
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start"
-                        type="button"
-                        disabled={!canManage}
-                      >
-                        {localDistributionUserIds.length === 0
-                          ? 'Selecionar membros...'
-                          : `${localDistributionUserIds.length} membro(s) selecionado(s)`}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-80">
-                      <div className="space-y-2">
-                        {assignableMembers.map((member) => (
-                          <div
-                            key={member.userId}
-                            className="flex items-center space-x-2"
-                          >
-                            <Checkbox
-                              id={`dist-inbox-${member.userId}`}
-                              checked={localDistributionUserIds.includes(
-                                member.userId!,
-                              )}
-                              onCheckedChange={() =>
-                                handleToggleDistributionUser(member.userId!)
-                              }
-                              disabled={!canManage}
-                            />
-                            <Label
-                              htmlFor={`dist-inbox-${member.userId}`}
-                              className="cursor-pointer"
-                            >
-                              {member.user?.fullName ?? member.email}
-                            </Label>
-                          </div>
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Equipe */}
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">
+                      Equipe para distribuição
+                    </Label>
+                    <Select
+                      value={localSquadId ?? 'none'}
+                      onValueChange={handleSquadChange}
+                      disabled={!canManage || localDistributionUserIds.length > 0}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sem equipe" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Sem equipe</SelectItem>
+                        {squads.map((squad) => (
+                          <SelectItem key={squad.id} value={squad.id}>
+                            {squad.name}
+                          </SelectItem>
                         ))}
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                )}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                {localDistributionUserIds.length === 0 && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <AlertTriangleIcon className="h-4 w-4" />
+                  {/* Membros */}
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">
+                      Membros para distribuição
+                    </Label>
+                    {assignableMembers.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        Nenhum membro disponível.
+                      </p>
+                    ) : (
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className="w-full justify-start"
+                            type="button"
+                            disabled={!canManage || !!localSquadId}
+                          >
+                            {localDistributionUserIds.length === 0
+                              ? 'Selecionar membros...'
+                              : `${localDistributionUserIds.length} membro(s)`}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-72">
+                          <div className="space-y-2">
+                            {assignableMembers.map((member) => (
+                              <div
+                                key={member.userId}
+                                className="flex items-center space-x-2"
+                              >
+                                <Checkbox
+                                  id={`dist-inbox-${member.userId}`}
+                                  checked={localDistributionUserIds.includes(
+                                    member.userId!,
+                                  )}
+                                  onCheckedChange={() =>
+                                    handleToggleDistributionUser(member.userId!)
+                                  }
+                                  disabled={!canManage || !!localSquadId}
+                                />
+                                <Label
+                                  htmlFor={`dist-inbox-${member.userId}`}
+                                  className="cursor-pointer"
+                                >
+                                  {member.user?.fullName ?? member.email}
+                                </Label>
+                              </div>
+                            ))}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    )}
+                  </div>
+                </div>
+
+                {/* Hints contextuais */}
+                {!localSquadId && localDistributionUserIds.length === 0 && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <AlertTriangleIcon className="h-3.5 w-3.5" />
                     <span>Leads serão atribuídos ao dono da organização.</span>
                   </div>
                 )}
-
+                {localDistributionUserIds.length > 0 && !localSquadId && (
+                  <p className="text-xs text-muted-foreground">
+                    Remova os membros para poder selecionar uma equipe.
+                  </p>
+                )}
+                {localSquadId && (
+                  <p className="text-xs text-muted-foreground">
+                    Selecione &quot;Sem equipe&quot; para usar membros individuais.
+                  </p>
+                )}
                 {localDistributionUserIds.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {localDistributionUserIds.map((userId) => {
@@ -811,11 +797,30 @@ const InboxDetailClient = ({
                     })}
                   </div>
                 )}
+              </div>
 
-                <p className="text-xs text-muted-foreground">
-                  Leads serão distribuídos em round-robin entre os membros
-                  selecionados.
-                </p>
+              {/* Auto Create Deal — opção avançada, não é o fluxo recomendado */}
+              <div className="border-t border-border/40 pt-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm text-muted-foreground">
+                      Criar negócio ao iniciar conversa
+                    </Label>
+                    <p className="text-xs text-muted-foreground/70">
+                      Atalho para criar o negócio imediatamente, sem passar pelo ciclo de qualificação de leads.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={inbox.autoCreateDeal}
+                    onCheckedChange={(checked) => {
+                      executeInlineUpdate({
+                        id: inbox.id,
+                        autoCreateDeal: checked,
+                      })
+                    }}
+                    disabled={!canManage}
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
