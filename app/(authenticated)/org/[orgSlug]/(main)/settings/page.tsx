@@ -13,6 +13,7 @@ import {
   Target,
   UserIcon,
   Zap,
+  Inbox,
 } from 'lucide-react'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 
@@ -52,7 +53,7 @@ const SettingsPage = async ({ params }: SettingsPageProps) => {
                   href="settings/inboxes"
                   orgSlug={orgSlug}
                 >
-                  <Mail size={20} />
+                  <Inbox size={20} />
                 </CardSettings>
               )}
               <CardSettings
@@ -119,7 +120,7 @@ const SettingsPage = async ({ params }: SettingsPageProps) => {
                   <CalendarDays size={20} />
                 </CardSettings>
                 <CardSettings
-                  title="Distribuição"
+                  title="Agendamentos"
                   href="settings/scheduling"
                   orgSlug={orgSlug}
                 >
