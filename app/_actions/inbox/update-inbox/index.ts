@@ -46,7 +46,19 @@ export const updateInbox = orgActionClient
       }
     }
 
-    // 3c. Se distributionUserIds mudar, validar que são membros da org
+    // 3c. Se squadId mudar, validar que pertence à org
+    if (data.squadId !== undefined && data.squadId !== null) {
+      const squad = await db.squad.findFirst({
+        where: { id: data.squadId, organizationId: ctx.orgId },
+        select: { id: true },
+      })
+
+      if (!squad) {
+        throw new Error('Time não encontrado ou não pertence à organização.')
+      }
+    }
+
+    // 3d. Se distributionUserIds mudar, validar que são membros da org
     if (data.distributionUserIds !== undefined && data.distributionUserIds.length > 0) {
       const validMembers = await db.member.findMany({
         where: {
@@ -76,6 +88,7 @@ export const updateInbox = orgActionClient
         ...(data.showAttendantName !== undefined && { showAttendantName: data.showAttendantName }),
         ...(data.pipelineId !== undefined && { pipelineId: data.pipelineId }),
         ...(data.distributionUserIds !== undefined && { distributionUserIds: data.distributionUserIds }),
+        ...(data.squadId !== undefined && { squadId: data.squadId }),
       },
     })
 

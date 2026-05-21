@@ -50,6 +50,7 @@ import type { EvolutionInstanceInfo } from '@/_lib/evolution/types-instance'
 import type { MemberRole } from '@prisma/client'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import type { OrgPipelineDto } from '@/_data-access/pipeline/get-org-pipelines'
+import type { SquadDto } from '@/_data-access/squad/get-squads'
 import { updateInbox } from '@/_actions/inbox/update-inbox'
 import { linkInboxToAgent } from '@/_actions/inbox/link-inbox-to-agent'
 import { linkInboxToGroup } from '@/_actions/agent-group/link-inbox-to-group'
@@ -86,6 +87,7 @@ interface InboxDetailClientProps {
   instanceInfo: EvolutionInstanceInfo | null
   members: AcceptedMemberDto[]
   pipelines: OrgPipelineDto[]
+  squads: SquadDto[]
 }
 
 const channelLabels: Record<string, string> = {
@@ -119,6 +121,7 @@ const InboxDetailClient = ({
   instanceInfo,
   members,
   pipelines,
+  squads,
 }: InboxDetailClientProps) => {
   const canManage = userRole === 'OWNER' || userRole === 'ADMIN' || userRole === 'SUPPORT'
   const [activeTab, setActiveTab] = useQueryState(
@@ -132,6 +135,9 @@ const InboxDetailClient = ({
   >(null)
   const [localDistributionUserIds, setLocalDistributionUserIds] = useState(
     inbox.distributionUserIds,
+  )
+  const [localSquadId, setLocalSquadId] = useState<string | null>(
+    inbox.squadId,
   )
 
   // Verifica se este inbox usa instancia Evolution self-hosted do usuario
@@ -224,6 +230,12 @@ const InboxDetailClient = ({
       executeInlineUpdate({ id: inbox.id, distributionUserIds: updated })
       return updated
     })
+  }
+
+  const handleSquadChange = (value: string) => {
+    const squadId = value === 'none' ? null : value
+    setLocalSquadId(squadId)
+    executeInlineUpdate({ id: inbox.id, squadId })
   }
 
   /**
@@ -696,10 +708,41 @@ const InboxDetailClient = ({
                 </p>
               </div>
 
+              {/* Squad selector */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">
+                  Time de atendimento
+                </Label>
+                <Select
+                  value={localSquadId ?? 'none'}
+                  onValueChange={handleSquadChange}
+                  disabled={!canManage}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sem time configurado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">
+                      Sem time (usar membros abaixo)
+                    </SelectItem>
+                    {squads.map((squad) => (
+                      <SelectItem key={squad.id} value={squad.id}>
+                        {squad.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {localSquadId && (
+                  <p className="text-xs text-muted-foreground">
+                    O time tem prioridade sobre a lista de membros abaixo.
+                  </p>
+                )}
+              </div>
+
               {/* Distribution Users Multi-select */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">
-                  Distribuição de leads
+                  Membros para distribuição
                 </Label>
                 {assignableMembers.length === 0 ? (
                   <p className="text-sm text-muted-foreground">

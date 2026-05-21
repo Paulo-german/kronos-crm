@@ -34,6 +34,7 @@ export interface InboxDetailDto {
   showAttendantName: boolean
   pipelineId: string | null
   distributionUserIds: string[]
+  squadId: string | null
   organizationId: string
   createdAt: Date
   updatedAt: Date
@@ -82,6 +83,7 @@ const fetchInboxByIdFromDb = async (
     showAttendantName: inbox.showAttendantName,
     pipelineId: inbox.pipelineId ?? null,
     distributionUserIds: inbox.distributionUserIds ?? [],
+    squadId: inbox.squadId ?? null,
     organizationId: inbox.organizationId,
     createdAt: inbox.createdAt,
     updatedAt: inbox.updatedAt,

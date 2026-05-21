@@ -10,6 +10,7 @@ export const updateInboxSchema = z
     showAttendantName: z.boolean().optional(),
     pipelineId: z.string().uuid().nullable().optional(),
     distributionUserIds: z.array(z.string().uuid()).optional(),
+    squadId: z.string().uuid().nullable().optional(),
   })
   .refine((data) => Object.keys(data).length > 1, {
     message: 'Envie pelo menos um campo para atualizar',
