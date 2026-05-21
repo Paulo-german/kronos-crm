@@ -30,6 +30,7 @@ import type { AppointmentDto } from '@/_data-access/appointment/get-appointments
 import type { ContactOptionDto } from '@/_data-access/contact/get-contacts-options'
 import type { ServiceDto } from '@/_data-access/service/get-services'
 import type { SlotDto } from '@/_data-access/professional/slot-utils'
+import { formatDateUtc } from '@/_data-access/professional/slot-utils'
 import { getSlotsByDateAction } from '@/_actions/professional/get-slots-by-date'
 
 import {
@@ -466,17 +467,14 @@ export function UpsertAppointmentDialogContent({
       .toUpperCase()
   }
 
-  // Selecionar um slot: seta startDate (dia + hora UTC) e professionalId no form.
+  // Selecionar um slot: converte startTime (horário SP) para UTC antes de salvar no form.
   // Usa form.getValues para evitar stale closure em selectedDay.
   function selectSlot(slot: SlotDto) {
     const currentDate = form.getValues('startDate')
     if (!currentDate) return
-    const [hours, minutes] = slot.startTime.split(':').map(Number)
-    const slotDate = new Date(
-      Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth(), currentDate.getUTCDate()),
-    )
-    slotDate.setUTCHours(hours ?? 0, minutes ?? 0, 0, 0)
-    form.setValue('startDate', slotDate)
+    const dateStr = formatDateUtc(currentDate)
+    const utcDate = fromZonedTime(`${dateStr}T${slot.startTime}:00`, SAO_PAULO_TZ)
+    form.setValue('startDate', utcDate)
     form.setValue('professionalId', slot.professionalId)
     setSelectedSlotKey(`${slot.professionalId}-${slot.startTime}`)
   }

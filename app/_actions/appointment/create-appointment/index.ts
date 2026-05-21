@@ -14,6 +14,7 @@ import {
 import { createNotification } from '@/_lib/notifications/create-notification'
 import { getOrgSlug } from '@/_lib/notifications/get-org-slug'
 import { timeToMinutes } from '@/_data-access/professional/slot-utils'
+import { toZonedTime } from 'date-fns-tz'
 import { createOpenDealForBooking } from '@/_lib/lifecycle/create-open-deal-for-booking'
 
 export const createAppointment = orgActionClient
@@ -88,10 +89,17 @@ export const createAppointment = orgActionClient
       }
 
       // 5e. Verificar que startDate está dentro da jornada efetiva do profissional
-      // Usa UTC para evitar drift de timezone — horários no banco são armazenados como "HH:mm" string
-      const dayOfWeek = data.startDate.getUTCDay()
+      // Converte para fuso SP antes de extrair dia/hora — workStart/workEnd são strings no horário local
+      const startInSP = toZonedTime(data.startDate, 'America/Sao_Paulo')
+      const dayOfWeek = startInSP.getDay()
+      // @db.Date exige Date de meia-noite UTC — extrai o dia no fuso SP para evitar cruzar a virada UTC
+      const spDateOnly = new Date(Date.UTC(
+        startInSP.getFullYear(),
+        startInSP.getMonth(),
+        startInSP.getDate(),
+      ))
       const exception = await db.workingHoursException.findFirst({
-        where: { professionalId, date: data.startDate },
+        where: { professionalId, date: spDateOnly },
         select: { type: true, startTime: true, endTime: true },
       })
 
@@ -121,7 +129,7 @@ export const createAppointment = orgActionClient
         workEnd = workingHours.endTime
       }
 
-      const startMinutes = data.startDate.getUTCHours() * 60 + data.startDate.getUTCMinutes()
+      const startMinutes = startInSP.getHours() * 60 + startInSP.getMinutes()
       const endMinutes = startMinutes + service.duration
 
       if (

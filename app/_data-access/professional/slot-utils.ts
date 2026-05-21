@@ -2,6 +2,9 @@
  * Utilitários puros de geração de slots de agendamento.
  * Sem imports de banco — lógica pura reutilizável por booking core e agente IA.
  */
+import { toZonedTime } from 'date-fns-tz'
+
+const SAO_PAULO_TZ = 'America/Sao_Paulo'
 
 export const SLOT_GRANULARITY_MINUTES = 15
 export const MAX_LOOKAHEAD_DAYS = 30
@@ -44,10 +47,9 @@ export function formatDateUtc(date: Date): string {
 /**
  * Gera todos os slots livres de um dia para um profissional dado seu serviço, jornada e ocupações.
  *
- * A aritmética de tempo é feita inteiramente em minutos inteiros para evitar
- * problemas de timezone drift que ocorreriam ao construir objetos Date locais.
- * Os busySlots são convertidos de Date (UTC do banco) para minutos no contexto
- * do dia especificado, extraindo apenas hora e minuto via getUTCHours/getUTCMinutes.
+ * A aritmética de tempo é feita em minutos inteiros para evitar timezone drift.
+ * Os busySlots (UTC do banco) são convertidos para o fuso SP antes da extração
+ * de hora/minuto, garantindo alinhamento com workStart/workEnd que são strings locais.
  */
 export function generateSlotsForDay(params: {
   professionalId: string
@@ -73,11 +75,15 @@ export function generateSlotsForDay(params: {
   const workStartMinutes = timeToMinutes(workStart)
   const workEndMinutes = timeToMinutes(workEnd)
 
-  // Converte busySlots para intervalos em minutos desde meia-noite (UTC, sem drift de timezone)
-  const busyIntervals = busySlots.map((slot) => ({
-    start: slot.startDate.getUTCHours() * 60 + slot.startDate.getUTCMinutes(),
-    end: slot.endDate.getUTCHours() * 60 + slot.endDate.getUTCMinutes(),
-  }))
+  // Converte busySlots (UTC do banco) para minutos no fuso SP, alinhando com workStart/workEnd
+  const busyIntervals = busySlots.map((slot) => {
+    const startSP = toZonedTime(slot.startDate, SAO_PAULO_TZ)
+    const endSP = toZonedTime(slot.endDate, SAO_PAULO_TZ)
+    return {
+      start: startSP.getHours() * 60 + startSP.getMinutes(),
+      end: endSP.getHours() * 60 + endSP.getMinutes(),
+    }
+  })
 
   const slots: SlotDto[] = []
   let cursor = workStartMinutes
