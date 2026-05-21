@@ -129,15 +129,27 @@ interface BuildClassifierMessagesArgs {
   // Reutiliza as mensagens já normalizadas (sem o system prompt do agente).
   recentHistory: Array<{ role: 'user' | 'assistant'; content: string }>
   contactName: string
+  // Resposta gerada pelo agente neste turno (Call 2). Incluída como última mensagem
+  // assistant para que o classificador veja o turno completo antes de decidir o step.
+  agentResponse?: string
 }
 
 function buildClassifierMessages(args: BuildClassifierMessagesArgs): ModelMessage[] {
-  const { steps, recentHistory, contactName } = args
+  const { steps, recentHistory, contactName, agentResponse } = args
 
   const sortedSteps = [...steps].sort((a, b) => a.order - b.order)
   const stepsBlock = sortedSteps
     .map((step, index) => `${index + 1}. ${step.name} — id: \`${step.id}\``)
     .join('\n')
+
+  const historyMessages = recentHistory.map((msg) => ({
+    role: msg.role,
+    content: msg.content,
+  }))
+
+  if (agentResponse) {
+    historyMessages.push({ role: 'assistant', content: agentResponse })
+  }
 
   return [
     {
@@ -151,10 +163,7 @@ function buildClassifierMessages(args: BuildClassifierMessagesArgs): ModelMessag
       role: 'system',
       content: `Etapas do funil (em ordem):\n${stepsBlock}`,
     },
-    ...recentHistory.map((msg) => ({
-      role: msg.role,
-      content: msg.content,
-    })),
+    ...historyMessages,
   ] as ModelMessage[]
 }
 
@@ -1177,7 +1186,7 @@ export async function runSingleV2(
     }
   }
 
-  const runStepClassifier = async (): Promise<ClassifierResult | null> => {
+  const runStepClassifier = async (agentResponse?: string): Promise<ClassifierResult | null> => {
     if (!hasSteps) return null
 
     const stepIds = promptContext.steps.map((step) => step.id) as [string, ...string[]]
@@ -1190,6 +1199,7 @@ export async function runSingleV2(
           steps: promptContext.steps,
           recentHistory,
           contactName: promptContext.contactName,
+          agentResponse,
         }),
         schema: classifierSchema,
         temperature: 0, // determinístico — classificação enum, não há criatividade necessária
@@ -1229,32 +1239,22 @@ export async function runSingleV2(
     }
   }
 
-  const [responder, classifier] = await Promise.all([runResponder(), runStepClassifier()])
-
+  // Call 2: aguarda resposta antes de iniciar Call 3.
+  const responder = await runResponder()
   responseText = responder?.message ?? ''
 
-  // Agregação de tokens do Call 1 + Call 2 + Call 3 para accounting correto.
-  // totalUsage substitui result.usage em TODOS os pontos downstream.
-  // Padrão idêntico ao de crew-v1 (trigger/process-agent-message-crew-v1.ts:594-597).
-  // O classificador usa modelo diferente mas a agregação é simples — sobrecusto
-  // desprezível dado o tamanho mínimo do prompt do classificador (~64 tokens out).
+  // Tokens de Call 1 + Call 2 para accounting de créditos no caminho crítico.
+  // Call 3 (classificador) roda em paralelo ao guard+send — custo negligível
+  // (~64 tokens out) é somado ao totalUsage após o send, antes do step advance.
   const responderUsage = responder?.usage ?? { inputTokens: 0, outputTokens: 0 }
-  const classifierUsage = classifier?.usage ?? { inputTokens: 0, outputTokens: 0 }
-
-  const totalUsage = {
-    inputTokens:
-      (result.usage?.inputTokens ?? 0)
-      + responderUsage.inputTokens
-      + classifierUsage.inputTokens,
-    outputTokens:
-      (result.usage?.outputTokens ?? 0)
-      + responderUsage.outputTokens
-      + classifierUsage.outputTokens,
+  let totalUsage = {
+    inputTokens: (result.usage?.inputTokens ?? 0) + responderUsage.inputTokens,
+    outputTokens: (result.usage?.outputTokens ?? 0) + responderUsage.outputTokens,
   }
 
-  // classifiedId é let porque o fallback pode sobrescrever quando Call 3 falhou
-  // mas o fallback conseguiu classificar via Output.object.
-  let classifiedId = classifier?.classifiedId
+  // classifiedId é let: pode ser preenchido pelo tool_only_fallback ou pelo
+  // classificador (Call 3) — Call 3 sempre tem prioridade quando bem-sucedido.
+  let classifiedId: string | undefined = undefined
 
   // Se o LLM gastou todos os steps em tool calls e não gerou texto,
   // faz uma chamada extra SEM tools para gerar a resposta ao cliente.
@@ -1331,8 +1331,8 @@ export async function runSingleV2(
 
       responseText = fallbackOutput?.message ?? fallbackResult?.text ?? ''
 
-      // Recuperação: se Call 3 falhou mas o fallback classificou, adota o valor.
-      // Nunca sobrescreve uma classificação já bem-sucedida da Call 3.
+      // Classificação de recuperação do fallback — Call 3 ainda não disparou aqui.
+      // Se Call 3 bem-sucedido sobrescreverá este valor no bloco "Aguarda Call 3".
       if (fallbackOutput?.currentStep) {
         classifiedId = fallbackOutput.currentStep
       }
@@ -1349,21 +1349,6 @@ export async function runSingleV2(
       }
     }
   }
-
-  // Guard de monotonicidade: step só avança, nunca regride.
-  // Calculado APÓS o fallback para capturar classifiedId atualizado pelo fallback.
-  // Math.max previne regressão; Math.min previne avanço além do último step.
-  const classifiedStep = classifiedId
-    ? promptContext.steps.find((step) => step.id === classifiedId)?.order
-    : undefined
-  const newStepOrder =
-    classifiedStep !== undefined
-      ? Math.max(
-          promptContext.currentStepOrder,
-          Math.min(classifiedStep, promptContext.totalSteps - 1),
-        )
-      : promptContext.currentStepOrder
-  const stepAdvanced = newStepOrder > promptContext.currentStepOrder
 
   // Strip tool calls vazados como texto puro pelo LLM (ex: Gemini)
   // Deve rodar ANTES da checagem de vazio para que, se tudo era tool JSON,
@@ -1539,9 +1524,6 @@ export async function runSingleV2(
         (step) =>
           step.toolCalls?.map((toolCall) => toolCall.toolName) ?? [],
       ) ?? [],
-    classifiedStep,
-    newStepOrder,
-    stepAdvanced,
   })
   ctx.tracker.addStep({
     type: 'LLM_CALL',
@@ -1747,6 +1729,12 @@ export async function runSingleV2(
   // retry.fetch do Trigger.dev: retenta 429/5xx no nível HTTP sem re-executar o pipeline
   const fetcher = createRetryableFetch()
 
+  // Call 3 dispara aqui — guard aprovou, mensagem será enviada.
+  // Roda em paralelo ao envio WhatsApp para reduzir latência percebida pelo lead.
+  // Texto final (pós-strip + pós-guard) garante que não há tokens gastos em vão.
+  // Aguardado logo após o send — ver bloco "Aguarda Call 3" abaixo.
+  const classifierPromise = runStepClassifier(responseText || undefined)
+
   let lastSentId: string | null = null
 
   try {
@@ -1884,6 +1872,35 @@ export async function runSingleV2(
       `Send failed (${ctx.message.provider}): ${sendError instanceof Error ? sendError.message : String(sendError)}`,
     )
   }
+
+  // -----------------------------------------------------------------------
+  // Aguarda Call 3 — rodou em paralelo ao guard+send para reduzir latência
+  // percebida pelo lead. Resolve aqui, antes do step advance.
+  // -----------------------------------------------------------------------
+  const classifier = await classifierPromise
+  // Classifier tem prioridade sobre classifiedId do tool_only_fallback.
+  if (classifier?.classifiedId) {
+    classifiedId = classifier.classifiedId
+  }
+  // Agrega tokens do classificador ao totalUsage para logging final.
+  const classifierUsage = classifier?.usage ?? { inputTokens: 0, outputTokens: 0 }
+  totalUsage = {
+    inputTokens: totalUsage.inputTokens + classifierUsage.inputTokens,
+    outputTokens: totalUsage.outputTokens + classifierUsage.outputTokens,
+  }
+
+  // Guard de monotonicidade: step só avança, nunca regride.
+  const classifiedStep = classifiedId
+    ? promptContext.steps.find((step) => step.id === classifiedId)?.order
+    : undefined
+  const newStepOrder =
+    classifiedStep !== undefined
+      ? Math.max(
+          promptContext.currentStepOrder,
+          Math.min(classifiedStep, promptContext.totalSteps - 1),
+        )
+      : promptContext.currentStepOrder
+  const stepAdvanced = newStepOrder > promptContext.currentStepOrder
 
   // -----------------------------------------------------------------------
   // 10a-guard. Handoff humano pendente do degraded path do guard
