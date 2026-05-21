@@ -35,118 +35,125 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     )
   }
 
-  // 2. Resolver source — sem cache pra que isActive/regen tenham efeito imediato
-  const source = await getWebhookSourceByToken(token)
-  if (!source || !source.isActive) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 })
-  }
-
-  // 3. Defesa antecipada via Content-Length antes de drenar o body
-  const contentLength = Number(request.headers.get('content-length') ?? '0')
-  if (contentLength > MAX_PAYLOAD_BYTES) {
-    await persistWebhookLog({
-      webhookSourceId: source.id,
-      organizationId: source.organizationId,
-      payload: { _truncated: true, contentLength },
-      resolvedData: {},
-      status: 'ERROR',
-      errorMessage: `Payload too large (${contentLength} bytes)`,
-    })
-    return NextResponse.json({ error: 'payload_too_large' }, { status: 413 })
-  }
-
-  // 4. Leitura do body — fallback silencioso se o stream falhar (cliente já desconectou)
-  let rawBody: string
   try {
-    rawBody = await request.text()
-  } catch {
-    return NextResponse.json({ success: true })
-  }
-  if (rawBody.length > MAX_PAYLOAD_BYTES) {
-    await persistWebhookLog({
-      webhookSourceId: source.id,
-      organizationId: source.organizationId,
-      payload: { _truncated: true, length: rawBody.length },
-      resolvedData: {},
-      status: 'ERROR',
-      errorMessage: 'Payload too large (post-read)',
-    })
-    return NextResponse.json({ error: 'payload_too_large' }, { status: 413 })
-  }
+    // 2. Resolver source — sem cache pra que isActive/regen tenham efeito imediato
+    const source = await getWebhookSourceByToken(token)
+    if (!source || !source.isActive) {
+      return NextResponse.json({ error: 'not_found' }, { status: 404 })
+    }
 
-  // 5. HMAC (Fase 2) — import dinâmico permite buildar sem o módulo existir ainda
-  if (source.secretKey) {
-    const { verifyHmacSignature } = await import('@/_lib/webhooks/verify-hmac-signature')
-    const signatureValid = verifyHmacSignature({
-      platform: source.platform,
-      rawBody,
-      secretKey: source.secretKey,
-      headers: request.headers,
-    })
-    if (!signatureValid) {
+    // 3. Defesa antecipada via Content-Length antes de drenar o body
+    const contentLength = Number(request.headers.get('content-length') ?? '0')
+    if (contentLength > MAX_PAYLOAD_BYTES) {
       await persistWebhookLog({
         webhookSourceId: source.id,
         organizationId: source.organizationId,
-        payload: { _rejected: true, reason: 'invalid_signature' },
+        payload: { _truncated: true, contentLength },
         resolvedData: {},
         status: 'ERROR',
-        errorMessage: 'Invalid HMAC signature',
+        errorMessage: `Payload too large (${contentLength} bytes)`,
       })
-      return NextResponse.json({ error: 'invalid_signature' }, { status: 401 })
+      return NextResponse.json({ error: 'payload_too_large' }, { status: 413 })
     }
-  }
 
-  // 6. Parse JSON — JSON inválido é registrado como ERROR mas retorna 200 pra evitar retry loop
-  let payload: unknown = null
-  try {
-    payload = JSON.parse(rawBody)
-  } catch {
-    const log = await persistWebhookLog({
-      webhookSourceId: source.id,
-      organizationId: source.organizationId,
-      payload: { _raw: rawBody.slice(0, RAW_BODY_TRUNCATE_BYTES) },
-      resolvedData: {},
-      status: 'ERROR',
-      errorMessage: 'Invalid JSON payload',
-    })
-    return NextResponse.json({ success: true, logId: log.id })
-  }
-
-  // 7. Idempotência: se o emissor envia X-Webhook-Event-Id, retornamos o log original
-  const rawEventId = request.headers.get('x-webhook-event-id')
-  const externalEventId = rawEventId ? rawEventId.slice(0, 255) : null
-  if (externalEventId) {
-    const since = new Date(Date.now() - DEDUP_WINDOW_HOURS * MS_PER_HOUR)
-    const duplicate = await db.webhookLog.findFirst({
-      where: {
+    // 4. Leitura do body — fallback silencioso se o stream falhar (cliente já desconectou)
+    let rawBody: string
+    try {
+      rawBody = await request.text()
+    } catch {
+      return NextResponse.json({ success: true })
+    }
+    if (rawBody.length > MAX_PAYLOAD_BYTES) {
+      await persistWebhookLog({
         webhookSourceId: source.id,
-        externalEventId,
-        receivedAt: { gte: since },
-      },
-      select: { id: true },
-    })
-    if (duplicate) {
-      return NextResponse.json({ success: true, logId: duplicate.id, deduplicated: true })
-    }
-  }
-
-  // 8. Pipeline de processamento — retorna 200 imediatamente, processa em background
-  waitUntil(
-    processInboundWebhook({
-      source: {
-        id: source.id,
         organizationId: source.organizationId,
-        platform: source.platform,
-        eventType: source.eventType,
-        fieldMapping: source.fieldMapping as Record<string, string>,
-        isActive: source.isActive,
-        secretKey: source.secretKey,
-      },
-      payload,
-      externalEventId,
-      isReplay: false,
-    }),
-  )
+        payload: { _truncated: true, length: rawBody.length },
+        resolvedData: {},
+        status: 'ERROR',
+        errorMessage: 'Payload too large (post-read)',
+      })
+      return NextResponse.json({ error: 'payload_too_large' }, { status: 413 })
+    }
 
-  return NextResponse.json({ success: true })
+    // 5. HMAC — import dinâmico mantém o módulo fora do bundle quando sem secret
+    if (source.secretKey) {
+      const { verifyHmacSignature } = await import('@/_lib/webhooks/verify-hmac-signature')
+      const signatureValid = verifyHmacSignature({
+        platform: source.platform,
+        rawBody,
+        secretKey: source.secretKey,
+        headers: request.headers,
+      })
+      if (!signatureValid) {
+        await persistWebhookLog({
+          webhookSourceId: source.id,
+          organizationId: source.organizationId,
+          payload: { _rejected: true, reason: 'invalid_signature' },
+          resolvedData: {},
+          status: 'ERROR',
+          errorMessage: 'Invalid HMAC signature',
+        })
+        return NextResponse.json({ error: 'invalid_signature' }, { status: 401 })
+      }
+    }
+
+    // 6. Parse JSON — JSON inválido é registrado como ERROR mas retorna 200 pra evitar retry loop
+    let payload: unknown = null
+    try {
+      payload = JSON.parse(rawBody)
+    } catch {
+      const log = await persistWebhookLog({
+        webhookSourceId: source.id,
+        organizationId: source.organizationId,
+        payload: { _raw: rawBody.slice(0, RAW_BODY_TRUNCATE_BYTES) },
+        resolvedData: {},
+        status: 'ERROR',
+        errorMessage: 'Invalid JSON payload',
+      })
+      return NextResponse.json({ success: true, logId: log.id })
+    }
+
+    // 7. Idempotência: se o emissor envia X-Webhook-Event-Id, retornamos o log original
+    const rawEventId = request.headers.get('x-webhook-event-id')
+    const externalEventId = rawEventId ? rawEventId.slice(0, 255) : null
+    if (externalEventId) {
+      const since = new Date(Date.now() - DEDUP_WINDOW_HOURS * MS_PER_HOUR)
+      const duplicate = await db.webhookLog.findFirst({
+        where: {
+          webhookSourceId: source.id,
+          externalEventId,
+          receivedAt: { gte: since },
+        },
+        select: { id: true },
+      })
+      if (duplicate) {
+        return NextResponse.json({ success: true, logId: duplicate.id, deduplicated: true })
+      }
+    }
+
+    // 8. Pipeline de processamento — retorna 200 imediatamente, processa em background
+    waitUntil(
+      processInboundWebhook({
+        source: {
+          id: source.id,
+          organizationId: source.organizationId,
+          platform: source.platform,
+          eventType: source.eventType,
+          fieldMapping: source.fieldMapping as Record<string, string>,
+          isActive: source.isActive,
+          secretKey: source.secretKey,
+        },
+        payload,
+        externalEventId,
+        isReplay: false,
+      }),
+    )
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    // Erro inesperado (banco indisponível, etc.) — 500 é correto aqui: sinaliza ao emissor
+    // que deve retentar. O dedup window (24h) protege contra duplicatas no retry.
+    console.error('[webhook/incoming] Unhandled error:', error instanceof Error ? error.message : error)
+    return NextResponse.json({ error: 'internal_error' }, { status: 500 })
+  }
 }

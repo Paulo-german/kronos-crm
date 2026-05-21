@@ -64,6 +64,8 @@ export async function processInboundWebhook(input: ProcessInput): Promise<{ id: 
     }
   }
 
+  // persistWebhookLog é crítico para auditoria — se falhar, o evento perde rastreabilidade.
+  // Relança a exceção para que waitUntil/replay sinalizem falha em vez de silenciar.
   const log = await persistWebhookLog({
     webhookSourceId: source.id,
     organizationId: source.organizationId,
@@ -76,10 +78,15 @@ export async function processInboundWebhook(input: ProcessInput): Promise<{ id: 
     dealId: result.dealId ?? null,
   })
 
-  await db.webhookSource.update({
-    where: { id: source.id },
-    data: { lastReceivedAt: new Date() },
-  })
+  // lastReceivedAt é não-crítico — falha aqui não compromete o log nem o dado principal
+  try {
+    await db.webhookSource.update({
+      where: { id: source.id },
+      data: { lastReceivedAt: new Date() },
+    })
+  } catch {
+    // swallow: melhor perder a data da última atividade do que falhar o processamento
+  }
 
   revalidateTag(`webhook-sources:${source.organizationId}`)
   revalidateTag(`webhook-logs:${source.id}`)
