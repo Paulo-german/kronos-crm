@@ -58,12 +58,10 @@ export async function handleNewDeal({
   // Resolve assignee via squad — fallback para OWNER se nenhum squad configurado
   const squadResolution = await resolveSquadMember({ orgId, squadId, contactCurrentAssignedTo })
 
-  let assignedUserId: string
   const resolvedSquadId = squadResolution?.squadId ?? null
+  let assignedUserId = squadResolution?.userId ?? null
 
-  if (squadResolution) {
-    assignedUserId = squadResolution.userId
-  } else {
+  if (!assignedUserId) {
     const owner = await db.member.findFirst({
       where: { organizationId: orgId, role: 'OWNER', status: 'ACCEPTED' },
       select: { userId: true },

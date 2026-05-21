@@ -41,7 +41,7 @@ export async function processInboundWebhook(input: ProcessInput): Promise<{ id: 
   try {
     switch (source.eventType) {
       case 'NEW_CONTACT':
-        result = await handleNewContact({ orgId: source.organizationId, resolved })
+        result = await handleNewContact({ orgId: source.organizationId, squadId: source.squadId, resolved })
         break
       case 'UPDATE_CONTACT':
         result = await handleUpdateContact({ orgId: source.organizationId, resolved })

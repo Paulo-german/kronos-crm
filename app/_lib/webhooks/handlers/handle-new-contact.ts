@@ -1,8 +1,10 @@
 import { db } from '@/_lib/prisma'
+import { resolveSquadMember } from '@/_lib/distribution/resolve-squad-member'
 import { resolveCompanyId } from './resolve-company-id'
 
 interface HandlerInput {
   orgId: string
+  squadId?: string | null
   resolved: Record<string, unknown>
 }
 
@@ -14,6 +16,7 @@ interface ProcessResult {
 
 export async function handleNewContact({
   orgId,
+  squadId,
   resolved,
 }: HandlerInput): Promise<ProcessResult> {
   const email = typeof resolved.email === 'string' ? resolved.email : null
@@ -27,15 +30,22 @@ export async function handleNewContact({
     return { status: 'IGNORED' }
   }
 
-  // OWNER ativo é o assignee padrão para contatos vindos de webhook
-  const owner = await db.member.findFirst({
-    where: { organizationId: orgId, role: 'OWNER', status: 'ACCEPTED' },
-    select: { userId: true },
-    orderBy: { createdAt: 'asc' },
-  })
+  const squadResolution = await resolveSquadMember({ orgId, squadId })
 
-  if (!owner?.userId) {
-    return { status: 'ERROR', errorMessage: 'No active OWNER found for organization' }
+  let assignedUserId = squadResolution?.userId ?? null
+
+  if (!assignedUserId) {
+    const owner = await db.member.findFirst({
+      where: { organizationId: orgId, role: 'OWNER', status: 'ACCEPTED' },
+      select: { userId: true },
+      orderBy: { createdAt: 'asc' },
+    })
+
+    if (!owner?.userId) {
+      return { status: 'ERROR', errorMessage: 'No active OWNER found for organization' }
+    }
+
+    assignedUserId = owner.userId
   }
 
   const companyId = await resolveCompanyId(orgId, companyName)
@@ -68,7 +78,7 @@ export async function handleNewContact({
         phone,
         cpf,
         companyId,
-        assignedTo: owner.userId,
+        assignedTo: assignedUserId,
       },
       select: { id: true },
     })
@@ -83,7 +93,7 @@ export async function handleNewContact({
       phone,
       cpf,
       companyId,
-      assignedTo: owner.userId,
+      assignedTo: assignedUserId,
     },
     select: { id: true },
   })
