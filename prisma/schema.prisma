@@ -1066,7 +1066,7 @@ model Inbox {
   agentId               String?        @map("agent_id")
   createdAt             DateTime       @default(now()) @map("created_at")
   updatedAt             DateTime       @updatedAt @map("updated_at")
-  autoCreateDeal        Boolean        @default(true) @map("auto_create_deal")
+  autoCreateDeal        Boolean        @default(false) @map("auto_create_deal")
   distributionUserIds   String[]       @map("distribution_user_ids") @db.Uuid
   pipelineId            String?        @map("pipeline_id") @db.Uuid
   connectionType        ConnectionType @default(EVOLUTION) @map("connection_type")

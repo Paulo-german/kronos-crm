@@ -79,7 +79,7 @@ const fetchInboxByIdFromDb = async (
     agentName: inbox.agent?.name ?? null,
     agentGroupId: inbox.agentGroupId,
     agentGroupName: inbox.agentGroup?.name ?? null,
-    autoCreateDeal: inbox.autoCreateDeal ?? true,
+    autoCreateDeal: inbox.autoCreateDeal ?? false,
     showAttendantName: inbox.showAttendantName,
     pipelineId: inbox.pipelineId ?? null,
     distributionUserIds: inbox.distributionUserIds ?? [],
