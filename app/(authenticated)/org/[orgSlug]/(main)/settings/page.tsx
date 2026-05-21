@@ -4,7 +4,6 @@ import {
   CalendarDays,
   CreditCard,
   FunnelIcon,
-  Mail,
   LayoutGrid,
   Plug,
   Settings2,

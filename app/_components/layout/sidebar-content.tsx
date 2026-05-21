@@ -8,7 +8,7 @@ import {
   Kanban,
   CheckSquare,
   CalendarClock,
-  Settings,
+  Settings2,
   Inbox,
   Bot,
   Shield,
@@ -209,7 +209,7 @@ export const SidebarContent = ({
         <SidebarItem
           href={buildHref('/settings')}
           label="Configurações"
-          icon={<Settings className="h-4 w-4" />}
+          icon={<Settings2 className="h-4 w-4" />}
           dataTour="settings"
         />
         <SignOutButton isCollapsed={isCollapsed} />
