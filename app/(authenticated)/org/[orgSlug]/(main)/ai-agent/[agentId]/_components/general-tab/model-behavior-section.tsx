@@ -20,9 +20,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/_components/ui/form'
-import { AGENT_MODELS } from '@/_lib/ai/models'
-import { formatAvgCostPerMessage } from '@/_lib/ai/pricing'
-import { Badge } from '@/_components/ui/badge'
+import { AGENT_TIERS } from '@/_lib/ai/models'
 import type { SectionProps } from './types'
 
 export const ModelBehaviorSection = ({ form, canManage }: SectionProps) => {
@@ -54,20 +52,12 @@ export const ModelBehaviorSection = ({ form, canManage }: SectionProps) => {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {AGENT_MODELS.map((model) => (
-                    <SelectItem key={model.id} value={model.id}>
+                  {AGENT_TIERS.map((tier) => (
+                    <SelectItem key={tier.id} value={tier.id}>
                       <div className="flex items-baseline gap-2">
-                        <span>{model.label}</span>
-                        {model.recommendedFor?.includes('agent') && (
-                          <Badge variant="outline" className="text-xs">
-                            Recomendado
-                          </Badge>
-                        )}
+                        <span>{tier.label}</span>
                         <span className="text-xs text-muted-foreground">
-                          {model.description}
-                        </span>
-                        <span className="text-xs text-muted-foreground/60">
-                          {formatAvgCostPerMessage(model)}
+                          {tier.description}
                         </span>
                       </div>
                     </SelectItem>

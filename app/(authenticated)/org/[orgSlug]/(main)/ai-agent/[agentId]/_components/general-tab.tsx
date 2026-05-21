@@ -12,7 +12,7 @@ import { cn } from '@/_lib/utils'
 import { updateAgent } from '@/_actions/agent/update-agent'
 import { businessHoursConfigSchema } from '@/_actions/agent/update-agent/schema'
 import { promptConfigSchema } from '@/_actions/agent/shared/prompt-config-schema'
-import { AGENT_MODEL_IDS, DEFAULT_AGENT_MODEL_ID, isValidAgentModel } from '@/_lib/ai/models'
+import { AGENT_TIER_IDS, modelIdToTier, tierToModelId } from '@/_lib/ai/models'
 import { DEFAULT_BUSINESS_HOURS_CONFIG, DEFAULT_PROMPT_CONFIG } from './constants'
 import { IdentitySection } from './general-tab/identity-section'
 import { CompanySection } from './general-tab/company-section'
@@ -30,7 +30,7 @@ export const generalTabSchema = z.object({
   name: z.string().min(1, 'Nome não pode ser vazio'),
   promptConfig: promptConfigSchema,
   systemPrompt: z.string(),
-  modelId: z.enum(AGENT_MODEL_IDS),
+  modelId: z.enum(AGENT_TIER_IDS),
   debounceSeconds: z.number().int().min(0).max(120),
   pipelineIds: z.array(z.string().uuid()),
   businessHoursEnabled: z.boolean(),
@@ -56,8 +56,8 @@ const GeneralTab = ({ agent, pipelines, canManage, onSaveSuccess, hasActiveServi
       name: agent.name,
       promptConfig: agent.promptConfig ?? DEFAULT_PROMPT_CONFIG,
       systemPrompt: agent.systemPrompt,
-      // Guard defensivo: normaliza IDs legados (fora da lista canônica) para o default.
-      modelId: isValidAgentModel(agent.modelId) ? agent.modelId : DEFAULT_AGENT_MODEL_ID,
+      // Converte model ID do banco para tier. IDs fora dos tiers conhecidos caem em 'medio'.
+      modelId: modelIdToTier(agent.modelId),
       debounceSeconds: agent.debounceSeconds,
       pipelineIds: agent.pipelineIds,
       businessHoursEnabled: agent.businessHoursEnabled,
@@ -82,6 +82,7 @@ const GeneralTab = ({ agent, pipelines, canManage, onSaveSuccess, hasActiveServi
     execute({
       id: agent.id,
       ...data,
+      modelId: tierToModelId(data.modelId),
     })
   }
 

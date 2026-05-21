@@ -37,7 +37,7 @@ import {
 } from '@/_components/ui/tooltip'
 import { updateAgent } from '@/_actions/agent/update-agent'
 import { migrateStepToolsToGlobal } from '@/_actions/agent/migrate-step-tools-to-global'
-import { getModelLabel } from '@/_lib/ai/models'
+import { AGENT_TIERS } from '@/_lib/ai/models'
 import AgentTableDropdownMenu from './table-dropdown-menu'
 import UpsertAgentSheetContent from './upsert-agent-sheet-content'
 import DeleteAgentDialog from './delete-agent-dialog'
@@ -240,7 +240,7 @@ export function AgentsCardGrid({
                     {agent.name}
                   </h3>
                   <Badge variant="secondary">
-                    {getModelLabel(agent.modelId)}
+                    {AGENT_TIERS.find((tier) => tier.modelId === agent.modelId)?.label ?? 'Médio'}
                   </Badge>
                 </div>
 

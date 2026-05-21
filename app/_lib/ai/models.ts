@@ -180,6 +180,46 @@ export function isValidAgentModel(id: string): id is AgentModelId {
   return AGENT_MODELS.some((model) => model.id === id)
 }
 
+// ---------------------------------------------------------------------------
+// Tiers de modelo para o picker do agente
+// Abstrai os model IDs reais da UI — o banco continua armazenando o model ID.
+// ---------------------------------------------------------------------------
+
+export const AGENT_TIERS = [
+  {
+    id: 'economico' as const,
+    label: 'Econômico',
+    description: 'Mais rápido e com menor custo por mensagem.',
+    modelId: 'openai/gpt-5.4-mini' satisfies AgentModelId,
+  },
+  {
+    id: 'medio' as const,
+    label: 'Médio',
+    description: 'Bom equilíbrio entre qualidade e custo.',
+    modelId: 'google/gemini-2.5-pro' satisfies AgentModelId,
+  },
+  {
+    id: 'avancado' as const,
+    label: 'Avançado',
+    description: 'Maior capacidade de raciocínio e precisão.',
+    modelId: 'openai/gpt-5.2' satisfies AgentModelId,
+  },
+] as const
+
+export type AgentTierId = (typeof AGENT_TIERS)[number]['id']
+
+export const AGENT_TIER_IDS = AGENT_TIERS.map((tier) => tier.id) as unknown as [AgentTierId, ...AgentTierId[]]
+
+export const DEFAULT_AGENT_TIER_ID: AgentTierId = 'medio'
+
+export function modelIdToTier(modelId: string): AgentTierId {
+  return AGENT_TIERS.find((tier) => tier.modelId === modelId)?.id ?? DEFAULT_AGENT_TIER_ID
+}
+
+export function tierToModelId(tierId: AgentTierId): AgentModelId {
+  return AGENT_TIERS.find((tier) => tier.id === tierId)!.modelId
+}
+
 export function isValidRouterModel(id: string): id is RouterModelId {
   return ROUTER_MODELS.some((model) => model.id === id)
 }
