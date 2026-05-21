@@ -24,6 +24,9 @@ const fetchDealAppointmentsFromDb = async (
       status: true,
       assignedTo: true,
       contactId: true,
+      contact: {
+        select: { name: true },
+      },
       professionalId: true,
       serviceId: true,
       user: {
@@ -49,6 +52,7 @@ const fetchDealAppointmentsFromDb = async (
     assignedTo: appointment.assignedTo,
     assigneeName: appointment.user?.fullName ?? null,
     contactId: appointment.contactId,
+    contactName: appointment.contact?.name ?? null,
     dealId: appointment.dealId,
     dealTitle: appointment.deal?.title ?? null,
     dealStatus: appointment.deal?.status ?? null,

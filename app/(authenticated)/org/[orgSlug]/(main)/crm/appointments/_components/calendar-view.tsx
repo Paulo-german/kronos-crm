@@ -945,6 +945,7 @@ export function CalendarView({
               endDate: createDefaultDates.endDate,
               status: 'SCHEDULED',
               contactId: null,
+              contactName: null,
               dealId: '',
               dealTitle: '',
               dealStatus: null,

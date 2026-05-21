@@ -18,6 +18,7 @@ export interface AppointmentDto {
   assigneeName: string | null
   // contactId é obrigatório para ambos os tipos (pode ser null em registros legados pré-backfill)
   contactId: string | null
+  contactName: string | null
   // dealId é opcional desde a Fase A do scheduling v2 (SERVICE appointments não têm deal)
   dealId: string | null
   dealTitle: string | null
@@ -49,6 +50,9 @@ const fetchAppointmentsFromDb = async (
       status: true,
       assignedTo: true,
       contactId: true,
+      contact: {
+        select: { name: true },
+      },
       dealId: true,
       professionalId: true,
       serviceId: true,
@@ -74,6 +78,7 @@ const fetchAppointmentsFromDb = async (
     assignedTo: appointment.assignedTo,
     assigneeName: appointment.user?.fullName ?? null,
     contactId: appointment.contactId,
+    contactName: appointment.contact?.name ?? null,
     dealId: appointment.dealId,
     dealTitle: appointment.deal?.title ?? null,
     dealStatus: appointment.deal?.status ?? null,

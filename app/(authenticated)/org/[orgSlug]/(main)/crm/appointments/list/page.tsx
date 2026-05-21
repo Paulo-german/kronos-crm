@@ -30,6 +30,7 @@ const AppointmentsListPage = async ({
       userRole={ctx.userRole}
       contactOptions={contactOptions}
       services={services}
+      orgSlug={orgSlug}
     />
   )
 }

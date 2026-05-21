@@ -11,6 +11,7 @@ import {
   TimerIcon,
   TrashIcon,
   UserIcon,
+  UserRoundIcon,
   UserXIcon,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -649,6 +650,14 @@ function TimelineItem({
                 </TooltipContent>
               </Tooltip>
             ) : null}
+
+            {/* Contato */}
+            {appointment.contactName && (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <UserRoundIcon className="h-3 w-3" />
+                {appointment.contactName}
+              </span>
+            )}
 
             {/* Responsável */}
             {appointment.assigneeName && (

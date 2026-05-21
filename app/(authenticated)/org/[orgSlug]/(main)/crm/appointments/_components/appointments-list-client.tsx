@@ -19,6 +19,7 @@ interface AppointmentsListClientProps {
   userRole: MemberRole
   contactOptions: ContactOptionDto[]
   services: ServiceDto[]
+  orgSlug: string
 }
 
 export function AppointmentsListClient({
@@ -28,6 +29,7 @@ export function AppointmentsListClient({
   userRole,
   contactOptions,
   services,
+  orgSlug,
 }: AppointmentsListClientProps) {
   const { filters, setFilters, clearFilters, activeFilterCount, hasActiveFilters } =
     useAppointmentFilters()
@@ -101,6 +103,7 @@ export function AppointmentsListClient({
         members={members}
         contactOptions={contactOptions}
         services={services}
+        orgSlug={orgSlug}
       />
     </div>
   )

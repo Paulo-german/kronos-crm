@@ -626,6 +626,11 @@ export function UpsertAppointmentDialogContent({
                                   setOpenContactCombobox(false)
                                   setContactSearch('')
                                   setContactResults([])
+                                  // Auto-fill do título no BOOKING: "{serviço} - {contato}" ou só "{contato}"
+                                  if (watchedType === 'BOOKING' && !form.getValues('title')) {
+                                    const serviceName = selectedService?.name
+                                    form.setValue('title', serviceName ? `${serviceName} - ${contact.name}` : contact.name)
+                                  }
                                 }}
                               >
                                 <Check
@@ -911,9 +916,10 @@ export function UpsertAppointmentDialogContent({
                                       value={`${service.name} ${categoryName}`}
                                       onSelect={() => {
                                         form.setValue('serviceId', service.id)
-                                        // Auto-fill do título se estiver vazio
+                                        // Auto-fill do título se estiver vazio: "{serviço} - {contato}" ou só "{serviço}"
                                         if (!form.getValues('title')) {
-                                          form.setValue('title', service.name)
+                                          const contactName = selectedContact?.name
+                                          form.setValue('title', contactName ? `${service.name} - ${contactName}` : service.name)
                                         }
                                         // Limpa seleções do booking widget ao trocar serviço
                                         form.setValue('professionalId', undefined)
