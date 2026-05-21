@@ -145,7 +145,12 @@ export function WebhookLogDetailDialog({
           </TabsContent>
         </Tabs>
 
-        <DialogFooter>
+        <DialogFooter className="flex-col items-end gap-2 sm:flex-row sm:items-center">
+          {log.status === 'PROCESSED' && (
+            <p className="text-xs text-muted-foreground sm:mr-auto">
+              Este evento já foi processado. Reprocessar pode criar duplicatas.
+            </p>
+          )}
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
@@ -154,6 +159,7 @@ export function WebhookLogDetailDialog({
             Fechar
           </Button>
           <Button
+            variant={log.status === 'PROCESSED' ? 'outline' : 'default'}
             onClick={() => executeReplay({ logId: log.id })}
             disabled={isReplaying}
           >

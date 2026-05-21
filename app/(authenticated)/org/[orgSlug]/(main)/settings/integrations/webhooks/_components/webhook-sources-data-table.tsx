@@ -47,7 +47,9 @@ interface WebhookSourcesDataTableProps {
   orgSlug: string
 }
 
-function SuccessRateBadge({ rate }: { rate: number }) {
+function SuccessRateBadge({ rate, totalEvents }: { rate: number; totalEvents: number }) {
+  if (totalEvents === 0) return <span className="text-sm text-muted-foreground">—</span>
+
   const percentage = Math.round(rate * 100)
 
   if (percentage >= 95) {
@@ -177,7 +179,10 @@ export function WebhookSourcesDataTable({ data, orgSlug }: WebhookSourcesDataTab
       accessorKey: 'stats.successRate',
       header: 'Taxa de sucesso',
       cell: ({ row }) => (
-        <SuccessRateBadge rate={row.original.stats.successRate} />
+        <SuccessRateBadge
+          rate={row.original.stats.successRate}
+          totalEvents={row.original.stats.totalEvents}
+        />
       ),
     },
     {
