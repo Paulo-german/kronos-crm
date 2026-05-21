@@ -95,8 +95,6 @@ export async function resolveConversation(
     select: { id: true, name: true, assignedTo: true, firstCaptureAt: true },
   })
 
-  const isNewContact = !contact
-
   if (!contact) {
     contact = await db.contact.create({
       data: {
@@ -116,7 +114,7 @@ export async function resolveConversation(
       contactId: contact.id,
       channel: 'WHATSAPP',
       remoteJid,
-      // Herda responsavel do contato existente (null se contato eh novo — round-robin vai atualizar depois)
+      // Valor inicial herdado do contato; distribuição (squad/round-robin/etc) sobrescreve logo abaixo
       assignedTo: contact.assignedTo,
     },
     select: { id: true },
@@ -132,7 +130,10 @@ export async function resolveConversation(
       conversation.id,
       { ...dealContext, contactCurrentAssignedTo: contact.assignedTo },
     )
-  } else if (isNewContact && contactAssignContext) {
+  } else if (contactAssignContext) {
+    // Roda distribuição para qualquer contato (novo ou existente).
+    // LOYALTY é tratado dentro de resolveAssignedTo — devolve o mesmo dono se já tiver um.
+    // Modelos não-LOYALTY (ROUND_ROBIN, UTILIZATION) redistribuem normalmente.
     await assignContactOwner(
       orgId,
       contact.id,
@@ -239,16 +240,14 @@ export async function assignContactOwner(
     )
     if (!assignedTo) return
 
-    // Atualizar contato (apenas se ainda nao tem responsavel)
-    await db.contact.updateMany({
-      where: { id: contactId, assignedTo: null },
+    await db.contact.update({
+      where: { id: contactId },
       data: { assignedTo },
     })
 
-    // Atualizar conversa com o mesmo responsavel (apenas se fornecida e ainda sem responsavel)
     if (conversationId) {
-      await db.conversation.updateMany({
-        where: { id: conversationId, assignedTo: null },
+      await db.conversation.update({
+        where: { id: conversationId },
         data: { assignedTo },
       })
     }
@@ -310,9 +309,8 @@ export async function createDealForNewConversation(
         data: { dealId: deal.id, assignedTo },
       })
 
-      // Atribuir contact ao mesmo dono do deal (apenas se não tem dono)
-      await tx.contact.updateMany({
-        where: { id: contactId, assignedTo: null },
+      await tx.contact.update({
+        where: { id: contactId },
         data: { assignedTo },
       })
     })
