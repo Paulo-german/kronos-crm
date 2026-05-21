@@ -287,30 +287,30 @@ function PerformanceWeightedPreview() {
   )
 }
 
-const PREVIEW_MAP: Record<SalesDistributionModel, React.ComponentType> = {
+type ActiveDistributionModel = Exclude<SalesDistributionModel, 'LOYALTY'>
+
+const PREVIEW_MAP: Record<ActiveDistributionModel, React.ComponentType> = {
   ROUND_ROBIN: RoundRobinPreview,
-  LOYALTY: LoyaltyPreview,
   UTILIZATION: UtilizationPreview,
   MANUAL: ManualPreview,
   PERFORMANCE_WEIGHTED: PerformanceWeightedPreview,
 }
 
-const PREVIEW_TITLES: Record<SalesDistributionModel, string> = {
+const PREVIEW_TITLES: Record<ActiveDistributionModel, string> = {
   ROUND_ROBIN: 'Round Robin',
-  LOYALTY: 'Fidelidade',
   UTILIZATION: 'Maior disponibilidade',
   MANUAL: 'Manual',
   PERFORMANCE_WEIGHTED: 'Por Performance',
 }
 
 export function SquadDistributionPreview({ model }: SquadDistributionPreviewProps) {
-  const Preview = PREVIEW_MAP[model]
+  const Preview = PREVIEW_MAP[model as ActiveDistributionModel]
 
   return (
     <div className="rounded-lg border border-border bg-input p-4">
-      <p className="mb-4 text-xs font-medium tracking-wider text-foreground">
-        COMO FUNCIONA: <Badge>{PREVIEW_TITLES[model]}</Badge>
-      </p>
+      <div className="mb-4 flex items-center gap-2 text-xs font-medium tracking-wider text-foreground">
+        COMO FUNCIONA: <Badge>{PREVIEW_TITLES[model as ActiveDistributionModel]}</Badge>
+      </div>
       <Preview />
     </div>
   )

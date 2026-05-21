@@ -1110,7 +1110,6 @@ model Squad {
   organizationId    String                 @map("organization_id")
   name              String
   description       String?
-  avatarUrl         String?                @map("avatar_url")
   type              SquadType              @default(GENERAL)
   isDefault         Boolean                @default(false) @map("is_default")
   distributionModel SalesDistributionModel @default(ROUND_ROBIN) @map("distribution_model")

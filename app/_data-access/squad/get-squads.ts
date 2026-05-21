@@ -9,7 +9,6 @@ export interface SquadDto {
   id: string
   name: string
   description: string | null
-  avatarUrl: string | null
   type: SquadType
   isDefault: boolean
   distributionModel: SalesDistributionModel
@@ -26,7 +25,6 @@ const fetchSquadsFromDb = async (orgId: string): Promise<SquadDto[]> => {
       id: true,
       name: true,
       description: true,
-      avatarUrl: true,
       type: true,
       isDefault: true,
       distributionModel: true,
@@ -42,7 +40,6 @@ const fetchSquadsFromDb = async (orgId: string): Promise<SquadDto[]> => {
     id: squad.id,
     name: squad.name,
     description: squad.description,
-    avatarUrl: squad.avatarUrl,
     type: squad.type,
     isDefault: squad.isDefault,
     distributionModel: squad.distributionModel,

@@ -39,12 +39,12 @@ export const updateSquad = orgActionClient
         data: {
           ...(data.name !== undefined ? { name: data.name } : {}),
           ...(data.description !== undefined ? { description: data.description || null } : {}),
-          ...(data.avatarUrl !== undefined ? { avatarUrl: data.avatarUrl || null } : {}),
           ...(data.type !== undefined ? { type: data.type } : {}),
           ...(data.isDefault !== undefined ? { isDefault: data.isDefault } : {}),
           ...(data.distributionModel !== undefined
             ? { distributionModel: data.distributionModel }
             : {}),
+          ...(data.loyaltyEnabled !== undefined ? { loyaltyEnabled: data.loyaltyEnabled } : {}),
         },
       })
     })

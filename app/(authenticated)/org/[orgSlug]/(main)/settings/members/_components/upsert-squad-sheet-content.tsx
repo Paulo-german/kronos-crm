@@ -67,7 +67,6 @@ export function UpsertSquadSheetContent({
     defaultValues: {
       name: defaultValues?.name ?? '',
       description: defaultValues?.description ?? null,
-      avatarUrl: defaultValues?.avatarUrl ?? null,
       type: defaultValues?.type ?? 'SALES',
       isDefault: defaultValues?.isDefault ?? false,
     },
@@ -169,25 +168,6 @@ export function UpsertSquadSheetContent({
                     placeholder="Descrição opcional do time..."
                     className="resize-none"
                     rows={3}
-                    {...field}
-                    value={field.value ?? ''}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* Avatar URL */}
-          <FormField
-            control={form.control}
-            name="avatarUrl"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Avatar URL</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="https://..."
                     {...field}
                     value={field.value ?? ''}
                   />

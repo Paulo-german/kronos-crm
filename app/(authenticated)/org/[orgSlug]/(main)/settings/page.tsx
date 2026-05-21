@@ -12,7 +12,6 @@ import {
   Tag,
   Target,
   UserIcon,
-  Users,
   Zap,
 } from 'lucide-react'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
@@ -41,20 +40,6 @@ const SettingsPage = async ({ params }: SettingsPageProps) => {
       <div className="grid gap-8 md:grid-cols-2">
         {/* Coluna esquerda */}
         <div className="space-y-8">
-          {/* Conta */}
-          <section className="space-y-3">
-            <h2 className="text-base font-semibold text-foreground">Conta</h2>
-            <div className="grid gap-3">
-              <CardSettings
-                title="Meu Perfil"
-                href="settings/profile"
-                orgSlug={orgSlug}
-              >
-                <UserIcon size={20} />
-              </CardSettings>
-            </div>
-          </section>
-
           {/* Conversas */}
           <section className="space-y-3">
             <h2 className="text-base font-semibold text-foreground">
@@ -162,11 +147,11 @@ const SettingsPage = async ({ params }: SettingsPageProps) => {
                   <Building2 size={20} />
                 </CardSettings>
                 <CardSettings
-                  title="Equipe"
+                  title="Membros e Equipes"
                   href="settings/members"
                   orgSlug={orgSlug}
                 >
-                  <Users size={20} />
+                  <UserIcon size={20} />
                 </CardSettings>
                 <CardSettings
                   title="Integrações"

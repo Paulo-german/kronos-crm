@@ -26,10 +26,10 @@ export interface SquadDetailDto {
   id: string
   name: string
   description: string | null
-  avatarUrl: string | null
   type: SquadType
   isDefault: boolean
   distributionModel: SalesDistributionModel
+  loyaltyEnabled: boolean
   createdAt: Date
   members: SquadMemberDto[]
 }
@@ -69,10 +69,10 @@ const fetchSquadByIdFromDb = async (
     id: squad.id,
     name: squad.name,
     description: squad.description,
-    avatarUrl: squad.avatarUrl,
     type: squad.type,
     isDefault: squad.isDefault,
     distributionModel: squad.distributionModel,
+    loyaltyEnabled: squad.loyaltyEnabled,
     createdAt: squad.createdAt,
     members: squad.members.map((sm) => ({
       id: sm.id,

@@ -23,10 +23,10 @@ export function CreateSquadButton({ withinQuota, orgSlug }: CreateSquadButtonPro
     return (
       <Tooltip>
         <TooltipTrigger asChild>
-          <span>
-            <Button disabled size="sm" className="gap-2">
-              <Plus className="h-4 w-4" />
-              Novo Time
+          <span tabIndex={0}>
+            <Button disabled>
+              <Plus className="mr-2 h-4 w-4" />
+              Criar Time
             </Button>
           </span>
         </TooltipTrigger>
@@ -40,9 +40,9 @@ export function CreateSquadButton({ withinQuota, orgSlug }: CreateSquadButtonPro
 
   return (
     <>
-      <Button size="sm" className="gap-2" onClick={() => setIsOpen(true)}>
-        <Plus className="h-4 w-4" />
-        Novo Time
+      <Button onClick={() => setIsOpen(true)}>
+        <Plus className="mr-2 h-4 w-4" />
+        Criar Time
       </Button>
 
       <Sheet open={isOpen} onOpenChange={setIsOpen}>

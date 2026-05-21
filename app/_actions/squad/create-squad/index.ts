@@ -28,7 +28,6 @@ export const createSquad = orgActionClient
           organizationId: ctx.orgId,
           name: data.name,
           description: data.description || null,
-          avatarUrl: data.avatarUrl || null,
           type: data.type,
           isDefault,
           distributionModel: 'ROUND_ROBIN',

@@ -7,6 +7,7 @@ import { getOrgContext } from '@/_data-access/organization/get-organization-cont
 import { getSquadById } from '@/_data-access/squad/get-squad-by-id'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
 import { SquadDistributionForm } from './_components/squad-distribution-form'
+import { SquadLoyaltyCard } from './_components/squad-loyalty-card'
 import { SquadMembersSection } from './_components/squad-members-section'
 import type { SquadType } from '@prisma/client'
 
@@ -40,28 +41,21 @@ export default async function SquadDetailPage({ params }: SquadDetailPageProps) 
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Voltar */}
-      <Button variant="ghost" size="sm" asChild>
-        <Link href={`/org/${orgSlug}/settings/members?tab=squads`}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar para Times
-        </Link>
-      </Button>
+      <div>
+        <Button variant="ghost" size="sm" asChild>
+          <Link href={`/org/${orgSlug}/settings/members?tab=squads`}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Voltar
+          </Link>
+        </Button>
+      </div>
 
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
-          {squad.avatarUrl ? (
-            <img
-              src={squad.avatarUrl}
-              alt={squad.name}
-              className="h-10 w-10 rounded-full object-cover"
-            />
-          ) : (
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-              <Users className="h-5 w-5 text-muted-foreground" />
-            </div>
-          )}
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+            <Users className="h-5 w-5 text-muted-foreground" />
+          </div>
           <div>
             <h1 className="text-2xl font-bold">{squad.name}</h1>
             <div className="mt-1 flex items-center gap-2">
@@ -77,9 +71,6 @@ export default async function SquadDetailPage({ params }: SquadDetailPageProps) 
         <p className="text-muted-foreground">{squad.description}</p>
       )}
 
-      {/* Modelo de distribuição */}
-      <SquadDistributionForm squad={squad} canManage={canManage} />
-
       {/* Membros */}
       <SquadMembersSection
         squad={squad}
@@ -87,6 +78,12 @@ export default async function SquadDetailPage({ params }: SquadDetailPageProps) 
         canManage={canManage}
         orgSlug={orgSlug}
       />
+
+      {/* Fidelização */}
+      <SquadLoyaltyCard squad={squad} canManage={canManage} />
+
+      {/* Modelo de distribuição */}
+      <SquadDistributionForm squad={squad} canManage={canManage} />
     </div>
   )
 }
