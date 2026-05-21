@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Building2, Plus, ArrowRight, Loader2, LogOut } from 'lucide-react'
+import { Building2, Plus, ArrowRight, Loader2 } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import {
@@ -28,7 +28,6 @@ import {
 } from '@/_components/ui/form'
 import { createOrganization } from '@/_actions/organization/create-organization'
 import { createOrganizationSchema } from '@/_actions/organization/create-organization/schema'
-import { signOut } from '@/_actions/auth/sign-out'
 import type { MemberRole } from '@prisma/client'
 
 type CreateOrganizationSchema = z.infer<typeof createOrganizationSchema>
@@ -54,8 +53,6 @@ export function OrgSelectorClient({ organizations }: OrgSelectorClientProps) {
       name: '',
     },
   })
-
-  const { execute: executeSignOut, status: signOutStatus } = useAction(signOut)
 
   const { execute, isPending } = useAction(createOrganization, {
     onSuccess: ({ data }) => {
@@ -158,24 +155,6 @@ export function OrgSelectorClient({ organizations }: OrgSelectorClientProps) {
           </SheetContent>
         </Sheet>
 
-        <Button
-          className="w-full"
-          variant="ghost"
-          onClick={() => executeSignOut()}
-          disabled={signOutStatus === 'executing'}
-        >
-          {signOutStatus === 'executing' ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Saindo...
-            </>
-          ) : (
-            <>
-              <LogOut className="mr-2 h-4 w-4" />
-              Sair
-            </>
-          )}
-        </Button>
       </CardContent>
     </Card>
   )

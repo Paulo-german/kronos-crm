@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { User, Bell } from 'lucide-react'
+import { User, Bell, LogOut } from 'lucide-react'
+import { useAction } from 'next-safe-action/hooks'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/_components/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/_components/ui/avatar'
+import { signOut } from '@/_actions/auth/sign-out'
 
 interface UserAvatarDropdownProps {
   user: {
@@ -18,7 +20,7 @@ interface UserAvatarDropdownProps {
     email: string
     avatarUrl: string | null
   }
-  orgSlug: string
+  orgSlug?: string
 }
 
 function getInitials(fullName: string | null, email: string): string {
@@ -33,6 +35,7 @@ function getInitials(fullName: string | null, email: string): string {
 
 export const UserAvatarDropdown = ({ user, orgSlug }: UserAvatarDropdownProps) => {
   const initials = getInitials(user.fullName, user.email)
+  const { execute: executeSignOut } = useAction(signOut)
 
   return (
     <DropdownMenu>
@@ -59,17 +62,29 @@ export const UserAvatarDropdown = ({ user, orgSlug }: UserAvatarDropdownProps) =
         <DropdownMenuSeparator />
 
         <DropdownMenuItem asChild>
-          <Link href={`/org/${orgSlug}/settings/profile`} className="cursor-pointer">
+          <Link href="/account/profile" className="cursor-pointer">
             <User className="mr-2 size-4" />
             Meu Perfil
           </Link>
         </DropdownMenuItem>
 
-        <DropdownMenuItem asChild>
-          <Link href={`/org/${orgSlug}/notifications/preferences`} className="cursor-pointer">
-            <Bell className="mr-2 size-4" />
-            Notificações
-          </Link>
+        {orgSlug && (
+          <DropdownMenuItem asChild>
+            <Link href={`/org/${orgSlug}/notifications/preferences`} className="cursor-pointer">
+              <Bell className="mr-2 size-4" />
+              Notificações
+            </Link>
+          </DropdownMenuItem>
+        )}
+
+        <DropdownMenuSeparator />
+
+        <DropdownMenuItem
+          className="cursor-pointer text-destructive focus:text-destructive"
+          onClick={() => executeSignOut()}
+        >
+          <LogOut className="mr-2 size-4" />
+          Sair
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

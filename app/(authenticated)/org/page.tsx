@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/_lib/supabase/server'
 import { getUserOrganizations } from '@/_data-access/organization/get-user-organizations'
+import { getUserById } from '@/_data-access/user/get-user-by-id'
+import { AccountTopBar } from '@/_components/layout/account-top-bar'
 import { OrgSelectorClient } from './_components/org-selector-client'
 
 interface OrgSelectorPageProps {
@@ -19,16 +21,28 @@ const OrgSelectorPage = async ({ searchParams }: OrgSelectorPageProps) => {
     redirect('/login')
   }
 
-  const organizations = await getUserOrganizations(user.id)
+  const [organizations, userData] = await Promise.all([
+    getUserOrganizations(user.id),
+    getUserById(user.id),
+  ])
 
   // Se o usuário tem apenas uma org, redireciona direto (exceto se veio do switcher)
   if (organizations.length === 1 && show !== 'true') {
     redirect(`/org/${organizations[0].slug}/home`)
   }
 
+  const topBarUser = {
+    fullName: userData?.fullName ?? null,
+    email: userData?.email ?? user.email ?? '',
+    avatarUrl: userData?.avatarUrl ?? null,
+  }
+
   return (
-    <div className="flex h-screen items-center justify-center bg-background">
-      <OrgSelectorClient organizations={organizations} />
+    <div className="flex h-screen flex-col bg-background">
+      <AccountTopBar user={topBarUser} />
+      <main className="flex flex-1 items-center justify-center">
+        <OrgSelectorClient organizations={organizations} />
+      </main>
     </div>
   )
 }
