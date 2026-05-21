@@ -22,6 +22,14 @@ export const updateWebhookSource = superAdminOrgActionClient
       throw new Error('Webhook source não encontrado.')
     }
 
+    // Nova secret tem prioridade; só remove se clearSecretKey === true e não há novo valor
+    const newSecret = data.secretKey && data.secretKey.length > 0 ? data.secretKey : undefined
+    const secretKeyUpdate = newSecret
+      ? { secretKey: newSecret }
+      : data.clearSecretKey === true
+        ? { secretKey: null }
+        : {}
+
     await db.webhookSource.update({
       where: { id: data.id },
       data: {
@@ -32,6 +40,7 @@ export const updateWebhookSource = superAdminOrgActionClient
           ? { fieldMapping: data.fieldMapping as Prisma.InputJsonValue }
           : {}),
         ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
+        ...secretKeyUpdate,
       },
     })
 

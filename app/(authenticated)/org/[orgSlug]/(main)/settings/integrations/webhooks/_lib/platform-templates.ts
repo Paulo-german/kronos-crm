@@ -92,6 +92,15 @@ export const EVENT_TYPE_LABELS: Record<WebhookEventType, string> = {
   DEAL_CLOSED: 'Deal fechado',
 }
 
+export const PLATFORM_HMAC_HINTS: Record<WebhookPlatform, string | null> = {
+  SHOPIFY: 'Header: X-Shopify-Hmac-Sha256 (HMAC-SHA256 em Base64)',
+  NUVEM_SHOP: 'Header: X-Linkedstore-Hmac-Sha256 (HMAC-SHA256 em Base64)',
+  HOTMART: 'Header: X-Hotmart-Hottok (token estático enviado pela Hotmart)',
+  GENERIC: 'Header: X-Webhook-Signature no formato sha256=<hex>',
+  OTHER: 'Header: X-Webhook-Signature no formato sha256=<hex>',
+  GOOGLE_FORMS: null,
+}
+
 export const FIELD_MAPPING_KEY_LABELS: Record<FieldMappingKey, string> = {
   name: 'Nome',
   email: 'Email',

@@ -50,12 +50,23 @@ export const fieldMappingSchema = z
     { message: 'Chave de mapeamento inválida' },
   )
 
+// String vazia significa "sem novo valor" — validação de tamanho só para strings não-vazias
+const secretKeyField = z
+  .string()
+  .trim()
+  .max(255)
+  .refine((val) => val === '' || val.length >= 8, {
+    message: 'Secret deve ter ao menos 8 caracteres',
+  })
+  .optional()
+
 export const createWebhookSourceSchema = z.object({
   name: z.string().trim().min(1, 'Nome é obrigatório').max(120),
   platform: webhookPlatformSchema.default('GENERIC'),
   eventType: webhookEventTypeSchema,
   fieldMapping: fieldMappingSchema,
   isActive: z.boolean().default(true),
+  secretKey: secretKeyField,
 })
 
 export const updateWebhookSourceSchema = z.object({
@@ -65,6 +76,8 @@ export const updateWebhookSourceSchema = z.object({
   eventType: webhookEventTypeSchema.optional(),
   fieldMapping: fieldMappingSchema.optional(),
   isActive: z.boolean().optional(),
+  secretKey: secretKeyField,
+  clearSecretKey: z.boolean().optional(),
 })
 
 export const deleteWebhookSourceSchema = z.object({
