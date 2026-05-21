@@ -20,17 +20,20 @@ export async function handleNewDeal({
   const dealTitle = typeof resolved.dealTitle === 'string' ? resolved.dealTitle : null
   if (!dealTitle) return { status: 'IGNORED' }
 
-  // Pipeline default + primeiro estágio
+  // Pipeline default com todos os estágios para suportar dealStageId mapeado
   const pipeline = await db.pipeline.findFirst({
     where: { organizationId: orgId, isDefault: true },
-    include: { stages: { orderBy: { position: 'asc' }, take: 1 } },
+    include: { stages: { orderBy: { position: 'asc' } } },
   })
 
   if (!pipeline || pipeline.stages.length === 0) {
     return { status: 'ERROR', errorMessage: 'No default pipeline or stages found' }
   }
 
-  const firstStage = pipeline.stages[0]
+  const resolvedStageId = typeof resolved.dealStageId === 'string' ? resolved.dealStageId : null
+  const targetStage =
+    (resolvedStageId ? pipeline.stages.find((stage) => stage.id === resolvedStageId) : null) ??
+    pipeline.stages[0]
 
   // OWNER ativo é o assignee padrão
   const owner = await db.member.findFirst({
@@ -84,7 +87,7 @@ export async function handleNewDeal({
     data: {
       organizationId: orgId,
       title: dealTitle,
-      pipelineStageId: firstStage.id,
+      pipelineStageId: targetStage.id,
       assignedTo: owner.userId,
       ...(dealValue ? { value: dealValue } : {}),
       ...(dealNotes ? { notes: dealNotes } : {}),
