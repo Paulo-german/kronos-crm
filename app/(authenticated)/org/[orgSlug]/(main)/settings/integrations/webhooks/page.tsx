@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getWebhookSources } from '@/_data-access/webhook-source/get-webhook-sources'
+import { getSquads } from '@/_data-access/squad/get-squads'
 import { db } from '@/_lib/prisma'
 import Header, {
   HeaderLeft,
@@ -29,7 +30,10 @@ export default async function WebhooksPage({ params }: PageProps) {
     redirect(`/org/${orgSlug}/settings/integrations`)
   }
 
-  const rawSources = await getWebhookSources(ctx)
+  const [rawSources, squads] = await Promise.all([
+    getWebhookSources(ctx),
+    getSquads(ctx),
+  ])
 
   // fieldMapping vem como JsonValue do Prisma — casteamos para o tipo esperado pelo DTO
   const sources = rawSources.map((source) => ({
@@ -47,10 +51,10 @@ export default async function WebhooksPage({ params }: PageProps) {
           </HeaderSubTitle>
         </HeaderLeft>
         <HeaderRight>
-          <CreateWebhookButton />
+          <CreateWebhookButton squads={squads} />
         </HeaderRight>
       </Header>
-      <WebhookSourcesDataTable data={sources} orgSlug={orgSlug} />
+      <WebhookSourcesDataTable data={sources} squads={squads} orgSlug={orgSlug} />
     </>
   )
 }

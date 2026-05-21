@@ -31,6 +31,7 @@ import { Sheet, SheetTrigger } from '@/_components/ui/sheet'
 import { updateWebhookSource } from '@/_actions/webhook-source/update-webhook-source'
 import { deleteWebhookSource } from '@/_actions/webhook-source/delete-webhook-source'
 import type { WebhookSourceDto } from '@/_actions/webhook-source/schema'
+import type { SquadDto } from '@/_data-access/squad/get-squads'
 import {
   PLATFORM_LABELS,
   EVENT_TYPE_LABELS,
@@ -44,6 +45,7 @@ import { WebhookLogsSheet } from './webhook-logs-sheet'
 
 interface WebhookSourcesDataTableProps {
   data: WebhookSourceDto[]
+  squads: SquadDto[]
   orgSlug: string
 }
 
@@ -61,7 +63,7 @@ function SuccessRateBadge({ rate, totalEvents }: { rate: number; totalEvents: nu
   return <span className="text-sm font-medium text-red-600 dark:text-red-400">{percentage}%</span>
 }
 
-export function WebhookSourcesDataTable({ data, orgSlug }: WebhookSourcesDataTableProps) {
+export function WebhookSourcesDataTable({ data, squads, orgSlug }: WebhookSourcesDataTableProps) {
   const [, startTransition] = useTransition()
   const [editingSource, setEditingSource] = useState<WebhookSourceDto | null>(null)
   const [viewingLogsSourceId, setViewingLogsSourceId] = useState<string | null>(null)
@@ -256,6 +258,7 @@ export function WebhookSourcesDataTable({ data, orgSlug }: WebhookSourcesDataTab
             </SheetTrigger>
             <UpsertWebhookSheetContent
               key={createOpen ? 'open' : 'closed'}
+              squads={squads}
               onSuccess={() => setCreateOpen(false)}
             />
           </Sheet>
@@ -301,6 +304,7 @@ export function WebhookSourcesDataTable({ data, orgSlug }: WebhookSourcesDataTab
           <UpsertWebhookSheetContent
             key={editingSource.id}
             source={editingSource}
+            squads={squads}
             onSuccess={() => setEditingSource(null)}
           />
         </Sheet>

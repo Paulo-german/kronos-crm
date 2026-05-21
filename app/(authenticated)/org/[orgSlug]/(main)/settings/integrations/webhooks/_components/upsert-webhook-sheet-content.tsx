@@ -49,6 +49,7 @@ import {
   type WebhookPlatform,
   type WebhookEventType,
 } from '../_lib/platform-templates'
+import type { SquadDto } from '@/_data-access/squad/get-squads'
 
 // z.input<> captura o tipo PRE-defaults (platform opcional, isActive opcional)
 // Evita conflito de tipos no zodResolver que espera o input type, não o output type
@@ -56,6 +57,7 @@ type CreateWebhookInput = z.input<typeof createWebhookSourceSchema>
 
 interface UpsertWebhookSheetContentProps {
   source?: WebhookSourceDto
+  squads: SquadDto[]
   onSuccess?: () => void
 }
 
@@ -64,6 +66,7 @@ const EVENT_TYPES = Object.keys(EVENT_TYPE_LABELS) as WebhookEventType[]
 
 export function UpsertWebhookSheetContent({
   source,
+  squads,
   onSuccess,
 }: UpsertWebhookSheetContentProps) {
   const isEditing = !!source?.id
@@ -79,6 +82,7 @@ export function UpsertWebhookSheetContent({
           eventType: source.eventType as WebhookEventType,
           fieldMapping: source.fieldMapping as Record<string, string>,
           isActive: source.isActive,
+          squadId: source.squadId ?? null,
         }
       : {
           name: '',
@@ -86,6 +90,7 @@ export function UpsertWebhookSheetContent({
           eventType: 'NEW_CONTACT',
           fieldMapping: {},
           isActive: true,
+          squadId: null,
         },
   })
 
@@ -142,6 +147,7 @@ export function UpsertWebhookSheetContent({
   const watchedPlatform = form.watch('platform') as WebhookPlatform
   const watchedEventType = form.watch('eventType') as WebhookEventType
   const watchedFieldMapping = form.watch('fieldMapping') as Record<string, string>
+  const isNewDeal = watchedEventType === 'NEW_DEAL'
 
   const template = PLATFORM_TEMPLATES[watchedPlatform]?.[watchedEventType]
   const hasTemplate =
@@ -266,6 +272,42 @@ export function UpsertWebhookSheetContent({
               )}
             />
           </div>
+
+          {isNewDeal && (
+            <FormField
+              control={form.control}
+              name="squadId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Time responsável</FormLabel>
+                  <Select
+                    value={field.value ?? 'default'}
+                    onValueChange={(value) => field.onChange(value === 'default' ? null : value)}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecionar time..." />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="default">
+                        Time padrão da organização
+                      </SelectItem>
+                      {squads.map((squad) => (
+                        <SelectItem key={squad.id} value={squad.id}>
+                          {squad.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Define qual time receberá os leads deste webhook. Sem seleção, usa o time padrão.
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
 
           <Separator />
 

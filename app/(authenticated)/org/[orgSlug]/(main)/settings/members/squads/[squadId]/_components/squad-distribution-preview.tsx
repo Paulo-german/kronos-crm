@@ -113,45 +113,6 @@ function RoundRobinPreview() {
   )
 }
 
-function LoyaltyPreview() {
-  return (
-    <div className="flex flex-col items-center gap-4">
-      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-        <span>Cliente reconhecido</span>
-        <ArrowRight className="h-3 w-3" />
-        <Chip variant="primary">responsável de sempre</Chip>
-      </div>
-
-      <div className="flex w-full max-w-xs flex-col gap-3">
-        <div className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-4 py-3">
-          <div className="flex flex-col items-center gap-1">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-sm font-semibold text-muted-foreground">
-              J
-            </div>
-            <span className="text-xs text-muted-foreground">João</span>
-          </div>
-
-          <div className="flex flex-1 flex-col items-center gap-0.5 px-3">
-            <div className="h-px w-full border-t border-dashed border-primary/50" />
-            <span className="text-[10px] text-muted-foreground">3 interações anteriores</span>
-          </div>
-
-          <div className="flex flex-col items-center gap-1">
-            <Avatar initial="A" color="bg-violet-500" active size="md" />
-            <span className="text-xs font-medium text-primary">Ana</span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 rounded-md bg-muted/40 px-3 py-2">
-          <span className="text-[11px] text-muted-foreground">Se Ana indisponível:</span>
-          <ArrowRight className="h-3 w-3 text-muted-foreground" />
-          <Chip variant="muted">round robin</Chip>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 function UtilizationPreview() {
   const loads = [28, 72, 51, 65]
 

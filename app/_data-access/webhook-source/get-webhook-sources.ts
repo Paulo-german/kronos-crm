@@ -16,6 +16,7 @@ const fetchSourcesFromDb = async (orgId: string) => {
       eventType: true,
       fieldMapping: true,
       isActive: true,
+      squadId: true,
       lastReceivedAt: true,
       createdAt: true,
       updatedAt: true,

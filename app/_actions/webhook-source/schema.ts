@@ -110,6 +110,7 @@ export interface WebhookSourceDto {
   eventType: z.infer<typeof webhookEventTypeSchema>
   fieldMapping: Record<string, string>
   isActive: boolean
+  squadId: string | null
   hasSecretKey: boolean
   lastReceivedAt: Date | null
   createdAt: Date
