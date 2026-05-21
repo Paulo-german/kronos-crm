@@ -167,6 +167,66 @@ export const TUTORIAL_REGISTRY: TutorialDefinition[] = [
     ],
   },
   {
+    id: 'agent-detail',
+    title: 'Configurando seu Agente de IA',
+    description:
+      'Explore as 5 abas de configuração do agente: identidade, processo, conhecimento, conexões e follow-ups. Aprenda a testar o agente antes de ativar.',
+    icon: 'Bot',
+    category: 'getting_started',
+    relatedRoute: '/ai-agent',
+    estimatedMinutes: 5,
+    slides: [
+      {
+        title: 'A página do agente',
+        description:
+          'Cada agente tem sua própria página com 5 abas de configuração. Aqui você define como o agente pensa, age e se conecta aos seus canais de atendimento.',
+        content: { type: 'component', componentId: 'agent-detail-overview' },
+      },
+      {
+        title: 'Aba Geral',
+        description:
+          'Configure a identidade do agente: nome, papel (SDR, Closer, Suporte…), tom de voz e o modelo de IA. Ative o horário de atendimento para o agente só responder no seu horário comercial.',
+        content: { type: 'component', componentId: 'agent-detail-general' },
+      },
+      {
+        title: 'Aba Processo',
+        description:
+          'O processo define como o agente age em cada etapa da conversa. Adicione steps em sequência e configure ações automáticas em cada um: mover etapa, criar tarefa, fazer hand-off para humano.',
+        content: { type: 'component', componentId: 'agent-detail-process' },
+      },
+      {
+        title: 'Configurando um step',
+        description:
+          'Cada step tem um nome, as instruções que ensinam o agente como agir naquela etapa, e ações automáticas — como mover o negócio de etapa no funil ou criar uma tarefa para o time quando o step for atingido.',
+        content: { type: 'component', componentId: 'agent-detail-process-config' },
+      },
+      {
+        title: 'Aba Conhecimento',
+        description:
+          'Suba arquivos PDF, TXT ou DOCX com informações sobre sua empresa, produtos e processos. O agente usa esse material para responder com precisão — sem inventar nada.',
+        content: { type: 'component', componentId: 'agent-detail-knowledge' },
+      },
+      {
+        title: 'Aba Conexão',
+        description:
+          'Vincule inboxes ao agente para que ele comece a atender. Cada inbox conectada passa a receber as respostas automáticas do agente assim que ele estiver ativo.',
+        content: { type: 'component', componentId: 'agent-detail-connection' },
+      },
+      {
+        title: 'Aba Follow-ups',
+        description:
+          'Configure regras automáticas de recontato: se o lead não responder em X horas, o agente envia uma nova mensagem. Defina também o que acontece depois de todos os follow-ups esgotarem.',
+        content: { type: 'component', componentId: 'agent-detail-followups' },
+      },
+      {
+        title: 'Testar o agente',
+        description:
+          'Antes de ativar, use o chat de teste para conversar com o agente e validar o comportamento. O botão fica fixo na lateral direita da página — clique a qualquer momento para abrir o painel.',
+        content: { type: 'component', componentId: 'agent-detail-test' },
+      },
+    ],
+  },
+  {
     id: 'agents-list',
     title: 'Agentes IA: Seu Time Automático',
     description:

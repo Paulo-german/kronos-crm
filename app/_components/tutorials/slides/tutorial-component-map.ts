@@ -31,6 +31,15 @@ import { AgentsWhatIsSlide } from './agents-what-is-slide'
 import { AgentsHowItWorksSlide } from './agents-how-it-works-slide'
 import { AgentsCardSlide } from './agents-card-slide'
 import { AgentsCreateSlide } from './agents-create-slide'
+import { AgentDetailOverviewSlide } from './agent-detail-overview-slide'
+import { AgentDetailGeneralSlide } from './agent-detail-general-slide'
+import { AgentDetailProcessSlide } from './agent-detail-process-slide'
+import { AgentDetailProcessConfigSlide } from './agent-detail-process-config-slide'
+import { AgentDetailProcessConfigLegend } from './agent-detail-process-config-legend'
+import { AgentDetailKnowledgeSlide } from './agent-detail-knowledge-slide'
+import { AgentDetailConnectionSlide } from './agent-detail-connection-slide'
+import { AgentDetailFollowupsSlide } from './agent-detail-followups-slide'
+import { AgentDetailTestSlide } from './agent-detail-test-slide'
 
 interface TutorialComponentEntry {
   component: ComponentType
@@ -73,4 +82,12 @@ export const TUTORIAL_COMPONENT_MAP: Record<string, TutorialComponentEntry> = {
   'agents-how-it-works': { component: AgentsHowItWorksSlide },
   'agents-card': { component: AgentsCardSlide },
   'agents-create': { component: AgentsCreateSlide },
+  'agent-detail-overview': { component: AgentDetailOverviewSlide },
+  'agent-detail-general': { component: AgentDetailGeneralSlide },
+  'agent-detail-process': { component: AgentDetailProcessSlide },
+  'agent-detail-process-config': { component: AgentDetailProcessConfigSlide, sidebar: AgentDetailProcessConfigLegend },
+  'agent-detail-knowledge': { component: AgentDetailKnowledgeSlide },
+  'agent-detail-connection': { component: AgentDetailConnectionSlide },
+  'agent-detail-followups': { component: AgentDetailFollowupsSlide },
+  'agent-detail-test': { component: AgentDetailTestSlide },
 }

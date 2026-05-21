@@ -13,6 +13,8 @@ import { getServices } from '@/_data-access/service/get-services'
 import { resolveCanonicalAgentVersion } from '@/_lib/agent/agent-version'
 import AgentDetailClient from './_components/agent-detail-client'
 import AgentDetailV2Client from './_components/v2/agent-detail-v2-client'
+import { getTutorialCompletions } from '@/_data-access/tutorial/get-tutorial-completions'
+import { AgentDetailIntroTrigger } from '@/_components/tutorials/agent-detail-intro-trigger'
 
 interface AgentDetailPageProps {
   params: Promise<{ orgSlug: string; agentId: string }>
@@ -22,13 +24,14 @@ const AgentDetailPage = async ({ params }: AgentDetailPageProps) => {
   const { orgSlug, agentId } = await params
   const ctx = await getOrgContext(orgSlug)
 
-  const [agent, pipelines, inboxes, followUps, followUpQuota, services] = await Promise.all([
+  const [agent, pipelines, inboxes, followUps, followUpQuota, services, completedTutorialIds] = await Promise.all([
     getAgentById(agentId, ctx.orgId),
     getOrgPipelines(ctx.orgId),
     getInboxes(ctx.orgId),
     getFollowUps(agentId, ctx.orgId),
     checkPlanQuota(ctx.orgId, 'follow_up'),
     getServices(ctx.orgId),
+    getTutorialCompletions(ctx.userId, ctx.orgId),
   ])
 
   if (!agent) notFound()
@@ -77,11 +80,27 @@ const AgentDetailPage = async ({ params }: AgentDetailPageProps) => {
     hasActiveServices: services.length > 0,
   }
 
+  const trigger = (
+    <AgentDetailIntroTrigger
+      hasSeenAgentDetailIntro={completedTutorialIds.includes('agent-detail')}
+    />
+  )
+
   if (resolveCanonicalAgentVersion(agent.agentVersion) === 'single-v2') {
-    return <AgentDetailV2Client {...sharedProps} />
+    return (
+      <>
+        {trigger}
+        <AgentDetailV2Client {...sharedProps} />
+      </>
+    )
   }
 
-  return <AgentDetailClient {...sharedProps} />
+  return (
+    <>
+      {trigger}
+      <AgentDetailClient {...sharedProps} />
+    </>
+  )
 }
 
 export default AgentDetailPage
