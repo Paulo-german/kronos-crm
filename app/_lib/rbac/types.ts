@@ -41,6 +41,8 @@ export type RBACEntity =
   | 'goal'
   // Inbound Webhooks
   | 'webhookSource'
+  // Squads
+  | 'squad'
 
 /**
  * Ações possíveis em cada entidade

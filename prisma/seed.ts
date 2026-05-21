@@ -32,6 +32,7 @@ async function seedFeaturesAndPlans() {
     { key: 'ai.max_follow_ups', name: 'Follow-ups por agente (total)', type: 'STATIC' as const, valueType: 'NUMBER' as const },
     { key: 'crm.max_automations', name: 'Automações', type: 'STATIC' as const, valueType: 'NUMBER' as const },
     { key: 'crm.max_pipelines', name: 'Funis de Vendas', type: 'STATIC' as const, valueType: 'NUMBER' as const },
+    { key: 'crm.max_squads', name: 'Squads', type: 'STATIC' as const, valueType: 'NUMBER' as const },
   ]
 
   const featureRecords: Record<string, { id: string }> = {}
@@ -166,6 +167,12 @@ async function seedFeaturesAndPlans() {
     { planSlug: 'essential', featureKey: 'crm.max_pipelines', valueNumber: 999 },
     { planSlug: 'scale', featureKey: 'crm.max_pipelines', valueNumber: 999 },
     { planSlug: 'enterprise', featureKey: 'crm.max_pipelines', valueNumber: 999 },
+
+    // Squads (Light = 0 sem acesso, Essential = 2, Scale = 5, Enterprise = ilimitado)
+    { planSlug: 'light', featureKey: 'crm.max_squads', valueNumber: 0 },
+    { planSlug: 'essential', featureKey: 'crm.max_squads', valueNumber: 2 },
+    { planSlug: 'scale', featureKey: 'crm.max_squads', valueNumber: 5 },
+    { planSlug: 'enterprise', featureKey: 'crm.max_squads', valueNumber: 999 },
   ]
 
   // Resolver IDs do DB para os limites

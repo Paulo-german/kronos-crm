@@ -37,7 +37,6 @@ model User {
   changelogEntries        ChangelogEntry[]
   professional            Professional?     @relation("ProfessionalUser")
   goals                   Goal[]
-
   @@map("users")
 }
 
@@ -91,6 +90,7 @@ model Organization {
   lostReasons            DealLostReason[]
   Deal                   Deal[]
   inboxes                Inbox[]
+  squads                 Squad[]
   members                Member[]
   notifications          Notification[]
   planOverride           Plan?                   @relation("PlanOverride", fields: [planOverrideId], references: [id])
@@ -137,8 +137,9 @@ model Member {
   invitationToken String?      @unique @map("invitation_token")
   createdAt       DateTime     @default(now()) @map("created_at")
   updatedAt       DateTime     @updatedAt @map("updated_at")
-  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user            User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization      Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user              User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  squadMemberships  SquadMember[]
 
   @@unique([organizationId, email])
   @@index([organizationId, status, createdAt])
@@ -225,7 +226,6 @@ model Contact {
   lifecycleHistory ContactLifecycleHistory[]
   scoreHistory     ContactScoreHistory[]
   companies        CompanyContact[]
-
   @@index([organizationId, assignedTo, createdAt(sort: Desc)])
   @@index([organizationId, name])
   @@index([organizationId, email])
@@ -1082,11 +1082,13 @@ model Inbox {
   // Modo grupo (mutuamente exclusivo com agentId — validado na action)
   agentGroupId          String?        @map("agent_group_id")
   captureSourceId       String?        @map("capture_source_id")
+  squadId               String?        @map("squad_id")
   conversations         Conversation[]
   agent                 Agent?         @relation(fields: [agentId], references: [id], onDelete: SetNull)
   agentGroup            AgentGroup?    @relation(fields: [agentGroupId], references: [id], onDelete: SetNull)
   organization          Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   captureSource         CaptureSource? @relation(fields: [captureSourceId], references: [id], onDelete: SetNull)
+  squad                 Squad?         @relation(fields: [squadId], references: [id], onDelete: SetNull)
 
   @@index([organizationId])
   @@index([agentId])
@@ -1095,7 +1097,49 @@ model Inbox {
   @@index([zapiInstanceId])
   @@index([metaIgUserId])
   @@index([captureSourceId])
+  @@index([squadId])
   @@map("inboxes")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Squads
+// ─────────────────────────────────────────────────────────────
+
+model Squad {
+  id                String                 @id @default(uuid())
+  organizationId    String                 @map("organization_id")
+  name              String
+  description       String?
+  avatarUrl         String?                @map("avatar_url")
+  type              SquadType              @default(GENERAL)
+  isDefault         Boolean                @default(false) @map("is_default")
+  distributionModel SalesDistributionModel @default(ROUND_ROBIN) @map("distribution_model")
+  loyaltyEnabled    Boolean                @default(false) @map("loyalty_enabled")
+  createdAt         DateTime               @default(now()) @map("created_at")
+  updatedAt         DateTime               @updatedAt @map("updated_at")
+
+  organization      Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members           SquadMember[]
+  inboxes           Inbox[]
+
+  @@index([organizationId])
+  @@map("squads")
+}
+
+model SquadMember {
+  id       String    @id @default(uuid())
+  squadId  String    @map("squad_id")
+  memberId String    @map("member_id")
+  role     SquadRole @default(MEMBER)
+  isActive Boolean   @default(true) @map("is_active")
+  joinedAt DateTime  @default(now()) @map("joined_at")
+
+  squad    Squad     @relation(fields: [squadId], references: [id], onDelete: Cascade)
+  member   Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([squadId, memberId])
+  @@index([squadId])
+  @@map("squad_members")
 }
 
 model Conversation {
@@ -2101,6 +2145,26 @@ enum BillingCycle {
   @@map("billing_cycle")
 }
 
+enum SquadType {
+  SALES
+  SUPPORT
+  CS
+  GENERAL
+
+  @@map("squad_type")
+}
+
+enum SquadRole {
+  LEADER
+  SDR
+  CLOSER
+  FARMER
+  SUPPORT
+  MEMBER
+
+  @@map("squad_role")
+}
+
 enum SalesDistributionModel {
   ROUND_ROBIN
   LOYALTY
@@ -2191,3 +2255,4 @@ model WebhookLog {
   // Índice único parcial criado via SQL manual na migration (Prisma não suporta)
   @@map("webhook_logs")
 }
+

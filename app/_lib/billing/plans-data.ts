@@ -51,6 +51,7 @@ export const PLANS: PlanInfo[] = [
       { name: '1 canal Inbox', included: true },
       { name: 'Agendamentos ilimitados', included: true },
       { name: 'Follow-ups', included: true },
+      { name: 'Times de Vendas (Squads)', included: false },
     ],
   },
   {
@@ -74,6 +75,7 @@ export const PLANS: PlanInfo[] = [
       { name: 'Follow-ups', included: true },
       { name: 'Automações de CRM', included: true },
       { name: 'Múltiplos funis de vendas', included: true },
+      { name: 'Times de Vendas (Squads)', included: true, badge: 'Até 2' },
     ],
   },
   {
@@ -99,6 +101,7 @@ export const PLANS: PlanInfo[] = [
       { name: 'Múltiplos funis de vendas', included: true },
       { name: 'Score de saúde da carteira', included: true, badge: 'Novo' },
       { name: 'Copiloto de vendas', included: true, badge: 'Novo' },
+      { name: 'Times de Vendas (Squads)', included: true, badge: 'Até 5' },
     ],
   },
   {
@@ -124,6 +127,7 @@ export const PLANS: PlanInfo[] = [
       { name: 'Múltiplos funis de vendas', included: true },
       { name: 'Score de saúde da carteira', included: true, badge: 'Novo' },
       { name: 'Copiloto de vendas', included: true, badge: 'Novo' },
+      { name: 'Times de Vendas (Squads)', included: true, badge: 'Ilimitado' },
       { name: 'API de integração', included: true, badge: 'Em breve' },
       { name: 'SSO / SAML', included: true, badge: 'Em breve' },
     ],

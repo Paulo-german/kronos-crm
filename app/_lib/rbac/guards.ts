@@ -154,6 +154,8 @@ function getEntityLabel(entity: RBACEntity): string {
     goal: 'metas',
     // Webhooks de entrada
     webhookSource: 'webhooks de entrada',
+    // Squads
+    squad: 'squads',
   }
   return labels[entity]
 }

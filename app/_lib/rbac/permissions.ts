@@ -185,6 +185,15 @@ const PERMISSION_MATRIX: Record<RBACEntity, Record<RBACAction, MemberRole[]>> = 
     delete: ['OWNER'], // Apenas OWNER deleta — endpoint público é asset crítico
     transfer: [],
   },
+  // Squads: times de vendas/suporte/CS — recurso estratégico gerenciado por OWNER/ADMIN
+  // MEMBER e SUPPORT têm leitura para ver em qual squad estão
+  squad: {
+    create: ['OWNER', 'ADMIN'],
+    read: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'],
+    update: ['OWNER', 'ADMIN'],
+    delete: ['OWNER', 'ADMIN'],
+    transfer: [],
+  },
 }
 
 /**

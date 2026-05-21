@@ -2,12 +2,15 @@ import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
+import { getSquads } from '@/_data-access/squad/get-squads'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 import { QuotaHint } from '@/_components/trial/quota-hint'
 import { MemberList } from './_components/member-list'
 import InviteMemberDialog from './_components/invite-member-dialog'
 import { PiiToggleCard } from './_components/pii-toggle-card'
 import { SupportSection } from './_components/support-section'
+import { SquadsTab } from './_components/squads-tab'
+import { MembersPageClient } from './_components/members-page-client'
 import { redirect } from 'next/navigation'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 
@@ -18,29 +21,24 @@ interface MembersPageProps {
 export default async function MembersPage({ params }: MembersPageProps) {
   const { orgSlug } = await params
 
-  const { orgId, userRole, hidePiiFromMembers } = await getOrgContext(orgSlug)
+  const ctx = await getOrgContext(orgSlug)
+  const { orgId, userRole, hidePiiFromMembers } = ctx
 
   // RBAC: Apenas ADMIN/OWNER podem acessar esta página
   if (userRole !== 'ADMIN' && userRole !== 'OWNER') {
     redirect(`/org/${orgSlug}/home`)
   }
 
-  const [{ accepted, pending, support }, quota] = await Promise.all([
-    getOrganizationMembers(orgId),
-    checkPlanQuota(orgId, 'member'),
-  ])
+  const [{ accepted, pending, support }, memberQuota, squads, squadQuota] =
+    await Promise.all([
+      getOrganizationMembers(orgId),
+      checkPlanQuota(orgId, 'member'),
+      getSquads(ctx),
+      checkPlanQuota(orgId, 'squad'),
+    ])
 
-  return (
-    <div className="container mx-auto space-y-6 py-6">
-      <div className="mb-6">
-        <Button variant="ghost" size="sm" asChild>
-          <Link href={`/org/${orgSlug}/settings`}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar
-          </Link>
-        </Button>
-      </div>
-
+  const membersContent = (
+    <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl font-bold tracking-tight">Membros</h1>
@@ -50,11 +48,11 @@ export default async function MembersPage({ params }: MembersPageProps) {
           <QuotaHint orgId={orgId} entity="member" />
         </div>
         {(userRole === 'ADMIN' || userRole === 'OWNER') && (
-          <InviteMemberDialog withinQuota={quota.withinQuota} />
+          <InviteMemberDialog withinQuota={memberQuota.withinQuota} />
         )}
       </div>
 
-      {/* Toggle de proteção de dados PII — visível apenas para ADMIN/OWNER (já garantido pelo redirect acima) */}
+      {/* Toggle de proteção de dados PII */}
       <PiiToggleCard defaultValue={hidePiiFromMembers} />
 
       <div className="space-y-8">
@@ -76,6 +74,34 @@ export default async function MembersPage({ params }: MembersPageProps) {
       </div>
 
       <SupportSection members={support} />
+    </div>
+  )
+
+  const squadsContent = (
+    <SquadsTab
+      squads={squads}
+      withinQuota={squadQuota.withinQuota}
+      orgId={orgId}
+      orgSlug={orgSlug}
+      userRole={userRole}
+    />
+  )
+
+  return (
+    <div className="container mx-auto space-y-6 py-6">
+      <div className="mb-6">
+        <Button variant="ghost" size="sm" asChild>
+          <Link href={`/org/${orgSlug}/settings`}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Voltar
+          </Link>
+        </Button>
+      </div>
+
+      <MembersPageClient
+        membersContent={membersContent}
+        squadsContent={squadsContent}
+      />
     </div>
   )
 }
