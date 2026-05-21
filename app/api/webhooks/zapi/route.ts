@@ -66,6 +66,7 @@ export async function POST(req: Request) {
       autoCreateDeal: true,
       pipelineId: true,
       distributionUserIds: true,
+      squadId: true,
       zapiInstanceId: true,
       zapiToken: true,
       zapiClientToken: true,
@@ -139,6 +140,7 @@ export async function POST(req: Request) {
     distributionUserIds: inbox.distributionUserIds,
     inboxId: inbox.id,
     salesDistributionModel,
+    squadId: inbox.squadId,
   }
 
   const dealContext = inbox.autoCreateDeal
@@ -147,6 +149,7 @@ export async function POST(req: Request) {
         distributionUserIds: inbox.distributionUserIds,
         inboxId: inbox.id,
         salesDistributionModel,
+        squadId: inbox.squadId,
       }
     : undefined
   log('step:3 inbox_lookup', 'PASS', { inboxId: inbox.id, orgId, inboxActive: inbox.isActive, hasAgentId: !!inbox.agentId, hasGroupId: !!inbox.agentGroupId })

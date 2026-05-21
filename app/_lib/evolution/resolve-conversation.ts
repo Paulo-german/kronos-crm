@@ -3,6 +3,7 @@ import { after } from 'next/server'
 import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
 import { SalesDistributionModel } from '@prisma/client'
+import { resolveSquadMember } from '@/_lib/distribution/resolve-squad-member'
 import { inferCaptureChannelFromInboxChannel } from '@/_lib/lifecycle/infer-capture-channel'
 import { matchCaptureEventToCampaign } from '@/_lib/lifecycle/match-capture-event-to-campaign'
 
@@ -12,6 +13,7 @@ interface DealCreationContext {
   inboxId: string
   salesDistributionModel: SalesDistributionModel
   contactCurrentAssignedTo?: string | null
+  squadId?: string | null
 }
 
 interface ContactAssignContext {
@@ -19,6 +21,7 @@ interface ContactAssignContext {
   inboxId: string
   salesDistributionModel: SalesDistributionModel
   contactCurrentAssignedTo?: string | null
+  squadId?: string | null
 }
 
 interface ResolveResult {
@@ -232,6 +235,7 @@ export async function assignContactOwner(
       context.inboxId,
       context.salesDistributionModel,
       context.contactCurrentAssignedTo,
+      context.squadId,
     )
     if (!assignedTo) return
 
@@ -275,6 +279,7 @@ export async function createDealForNewConversation(
       dealContext.inboxId,
       dealContext.salesDistributionModel,
       dealContext.contactCurrentAssignedTo,
+      dealContext.squadId,
     )
     if (!assignedTo) {
       console.warn('[resolveConversation] Nenhum assignee encontrado para criar deal', { orgId })
@@ -289,6 +294,7 @@ export async function createDealForNewConversation(
           title: contactName,
           pipelineStageId: firstStageId,
           assignedTo,
+          ...(dealContext.squadId ? { squadId: dealContext.squadId } : {}),
           contacts: {
             create: {
               contactId,
@@ -354,7 +360,14 @@ async function resolveAssignedTo(
   inboxId?: string,
   salesDistributionModel?: SalesDistributionModel,
   contactCurrentAssignedTo?: string | null,
+  squadId?: string | null,
 ): Promise<string | null> {
+  // Squad tem prioridade — usa modelo e membros configurados no squad
+  if (squadId) {
+    const squadResolution = await resolveSquadMember({ orgId, squadId, contactCurrentAssignedTo })
+    if (squadResolution) return squadResolution.userId
+  }
+
   const model = salesDistributionModel ?? SalesDistributionModel.ROUND_ROBIN
 
   if (model === SalesDistributionModel.MANUAL) {
@@ -363,7 +376,6 @@ async function resolveAssignedTo(
 
   if (model === SalesDistributionModel.LOYALTY) {
     if (contactCurrentAssignedTo) return contactCurrentAssignedTo
-    // Fallback para round-robin se ainda não há dono
     return resolveRoundRobin(orgId, distributionUserIds, inboxId)
   }
 
@@ -378,7 +390,6 @@ async function resolveAssignedTo(
     console.warn('[resolveConversation] PERFORMANCE_WEIGHTED not implemented, falling back to ROUND_ROBIN', { orgId })
   }
 
-  // Default: ROUND_ROBIN
   return resolveRoundRobin(orgId, distributionUserIds, inboxId)
 }
 

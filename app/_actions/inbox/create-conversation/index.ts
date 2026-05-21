@@ -55,6 +55,7 @@ export const createConversation = orgActionClient
         autoCreateDeal: true,
         pipelineId: true,
         distributionUserIds: true,
+        squadId: true,
         channel: true,
         captureSourceId: true,
       },
@@ -185,6 +186,7 @@ export const createConversation = orgActionClient
           inboxId: inbox.id,
           salesDistributionModel,
           contactCurrentAssignedTo: contact.assignedTo,
+          squadId: inbox.squadId,
         },
       )
     } else if (!contact.assignedTo) {
@@ -197,6 +199,7 @@ export const createConversation = orgActionClient
           inboxId: inbox.id,
           salesDistributionModel,
           contactCurrentAssignedTo: contact.assignedTo,
+          squadId: inbox.squadId,
         },
         conversation.id,
       )

@@ -183,6 +183,7 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
       autoCreateDeal: true,
       pipelineId: true,
       distributionUserIds: true,
+      squadId: true,
       metaAccessToken: true,
       agentId: true,
       agentGroupId: true,
@@ -254,6 +255,7 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
     distributionUserIds: inbox.distributionUserIds,
     inboxId: inbox.id,
     salesDistributionModel,
+    squadId: inbox.squadId,
   }
 
   const dealContext = inbox.autoCreateDeal
@@ -262,6 +264,7 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
         distributionUserIds: inbox.distributionUserIds,
         inboxId: inbox.id,
         salesDistributionModel,
+        squadId: inbox.squadId,
       }
     : undefined
 
@@ -767,6 +770,7 @@ async function processMessageEchoes(value: MetaWebhookEchoValue, t0: number): Pr
       autoCreateDeal: true,
       pipelineId: true,
       distributionUserIds: true,
+      squadId: true,
       organization: { select: { name: true, slug: true } },
     },
   })
@@ -794,10 +798,10 @@ async function processMessageEchoes(value: MetaWebhookEchoValue, t0: number): Pr
     org?.salesDistributionModel ?? SalesDistributionModel.ROUND_ROBIN
 
   const dealContext = inbox.autoCreateDeal
-    ? { pipelineId: inbox.pipelineId, distributionUserIds: inbox.distributionUserIds, inboxId: inbox.id, salesDistributionModel }
+    ? { pipelineId: inbox.pipelineId, distributionUserIds: inbox.distributionUserIds, inboxId: inbox.id, salesDistributionModel, squadId: inbox.squadId }
     : undefined
 
-  const contactAssignContext = { distributionUserIds: inbox.distributionUserIds, inboxId: inbox.id, salesDistributionModel }
+  const contactAssignContext = { distributionUserIds: inbox.distributionUserIds, inboxId: inbox.id, salesDistributionModel, squadId: inbox.squadId }
 
   for (const echo of value.message_echoes) {
     const logEcho = (step: string, outcome: 'PASS' | 'EXIT' | 'SKIP', extra?: Record<string, unknown>) =>
@@ -957,6 +961,7 @@ async function processInstagramMessagingEvent(
       autoCreateDeal: true,
       pipelineId: true,
       distributionUserIds: true,
+      squadId: true,
       metaAccessToken: true,
       metaIgUserId: true,
       organization: { select: { name: true, slug: true } },
@@ -1030,6 +1035,7 @@ async function processInstagramMessagingEvent(
     distributionUserIds: inbox.distributionUserIds,
     inboxId: inbox.id,
     salesDistributionModel,
+    squadId: inbox.squadId,
   }
 
   const dealContext = inbox.autoCreateDeal
@@ -1038,6 +1044,7 @@ async function processInstagramMessagingEvent(
         distributionUserIds: inbox.distributionUserIds,
         inboxId: inbox.id,
         salesDistributionModel,
+        squadId: inbox.squadId,
       }
     : undefined
 
