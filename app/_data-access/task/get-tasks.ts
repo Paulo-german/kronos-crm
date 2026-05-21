@@ -17,7 +17,7 @@ export type TaskDto = {
   assignedTo: string
   assignee: {
     fullName: string | null
-  }
+  } | null
   createdAt: Date
   outcomeType: string | null
   outcomeNotes: string | null

@@ -556,7 +556,7 @@ function TimelineTaskRow({
       </span>
 
       {/* Responsável */}
-      {task.assignee.fullName && (
+      {task.assignee?.fullName && (
         <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
           <UserIcon className="h-3 w-3 shrink-0" />
           <span className="max-w-[100px] truncate">{task.assignee.fullName.split(' ')[0]}</span>
