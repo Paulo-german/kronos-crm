@@ -40,8 +40,11 @@ const OrgSelectorPage = async ({ searchParams }: OrgSelectorPageProps) => {
   return (
     <div className="flex h-screen flex-col bg-background">
       <AccountTopBar user={topBarUser} />
-      <main className="flex flex-1 items-center justify-center">
-        <OrgSelectorClient organizations={organizations} />
+      <main className="flex flex-1 items-center justify-center px-4">
+        <OrgSelectorClient
+          organizations={organizations}
+          userFirstName={userData?.fullName?.split(' ')[0] ?? null}
+        />
       </main>
     </div>
   )

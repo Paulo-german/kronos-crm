@@ -8,8 +8,11 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { Building2, Plus, ArrowRight, Loader2 } from 'lucide-react'
+import { cn } from '@/_lib/utils'
 import { Button } from '@/_components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
+import { Badge } from '@/_components/ui/badge'
+import { Separator } from '@/_components/ui/separator'
+import { Avatar, AvatarFallback } from '@/_components/ui/avatar'
 import {
   Sheet,
   SheetContent,
@@ -41,17 +44,91 @@ interface Organization {
 
 interface OrgSelectorClientProps {
   organizations: Organization[]
+  userFirstName: string | null
 }
 
-export function OrgSelectorClient({ organizations }: OrgSelectorClientProps) {
+const AVATAR_PALETTE = [
+  'bg-blue-500',
+  'bg-purple-500',
+  'bg-pink-500',
+  'bg-orange-500',
+  'bg-emerald-500',
+  'bg-cyan-500',
+  'bg-rose-500',
+  'bg-indigo-500',
+]
+
+const ROLE_LABELS: Record<MemberRole, string> = {
+  OWNER: 'Proprietário',
+  ADMIN: 'Administrador',
+  MEMBER: 'Membro',
+  SUPPORT: 'Suporte',
+}
+
+const ROLE_VARIANTS: Record<MemberRole, 'default' | 'secondary' | 'outline'> = {
+  OWNER: 'default',
+  ADMIN: 'secondary',
+  MEMBER: 'outline',
+  SUPPORT: 'outline',
+}
+
+function getOrgColor(name: string): string {
+  const hash = [...name].reduce((acc, char) => acc + char.charCodeAt(0), 0)
+  return AVATAR_PALETTE[hash % AVATAR_PALETTE.length]
+}
+
+function getOrgInitials(name: string): string {
+  return name
+    .split(' ')
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2)
+}
+
+interface OrgListItemProps {
+  org: Organization
+  isSpotlight: boolean
+  onSelect: (slug: string) => void
+}
+
+function OrgListItem({ org, isSpotlight, onSelect }: OrgListItemProps) {
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(org.slug)}
+      className={cn(
+        'group flex w-full items-center gap-4 rounded-xl border p-4 text-left transition-all duration-150',
+        isSpotlight
+          ? 'border-primary/40 bg-primary/5 shadow-sm hover:bg-primary/10'
+          : 'border-border/50 hover:border-border hover:bg-accent/50',
+      )}
+    >
+      <Avatar className={cn('size-11 shrink-0 text-white', getOrgColor(org.name))}>
+        <AvatarFallback className={cn('text-sm font-semibold text-white', getOrgColor(org.name))}>
+          {getOrgInitials(org.name)}
+        </AvatarFallback>
+      </Avatar>
+
+      <div className="min-w-0 flex-1 space-y-1">
+        <p className="truncate text-sm font-medium leading-none">{org.name}</p>
+        <Badge variant={ROLE_VARIANTS[org.role]} className="text-xs">
+          {ROLE_LABELS[org.role]}
+        </Badge>
+      </div>
+
+      <ArrowRight className="size-4 shrink-0 text-muted-foreground transition-transform duration-150 group-hover:translate-x-0.5" />
+    </button>
+  )
+}
+
+export function OrgSelectorClient({ organizations, userFirstName }: OrgSelectorClientProps) {
   const router = useRouter()
   const [isSheetOpen, setIsSheetOpen] = useState(false)
 
   const form = useForm<CreateOrganizationSchema>({
     resolver: zodResolver(createOrganizationSchema),
-    defaultValues: {
-      name: '',
-    },
+    defaultValues: { name: '' },
   })
 
   const { execute, isPending } = useAction(createOrganization, {
@@ -76,86 +153,89 @@ export function OrgSelectorClient({ organizations }: OrgSelectorClientProps) {
     router.push(`/org/${slug}/dashboard`)
   }
 
+  const hasOrgs = organizations.length > 0
+
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader className="text-center">
-        <CardTitle className="text-2xl">Selecione uma Organização</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {organizations.length === 0 ? (
-          <div className="py-8 text-center text-muted-foreground">
-            <Building2 className="mx-auto mb-4 h-12 w-12 opacity-50" />
-            <p>Você ainda não faz parte de nenhuma organização.</p>
-            <p className="text-sm">Crie uma para começar.</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {organizations.map((org) => (
-              <Button
-                key={org.id}
-                variant="outline"
-                className="w-full justify-between"
-                onClick={() => handleSelectOrg(org.slug)}
-              >
-                <span className="flex min-w-0 items-center gap-2">
-                  <Building2 className="h-4 w-4 shrink-0" />
-                  <span className="truncate">{org.name}</span>
-                </span>
-                <ArrowRight className="h-4 w-4" />
+    <div className="w-full max-w-md space-y-8">
+      <div className="space-y-1.5 text-center">
+        <h1 className="text-3xl font-semibold tracking-tight">
+          {userFirstName ? `Olá, ${userFirstName}` : 'Seus workspaces'}
+        </h1>
+        <p className="text-muted-foreground">
+          {hasOrgs
+            ? 'Selecione um workspace para continuar'
+            : 'Você ainda não faz parte de nenhuma organização.'}
+        </p>
+      </div>
+
+      {hasOrgs && (
+        <div className="space-y-2">
+          {organizations.map((org, index) => (
+            <OrgListItem
+              key={org.id}
+              org={org}
+              isSpotlight={index === 0}
+              onSelect={handleSelectOrg}
+            />
+          ))}
+        </div>
+      )}
+
+      {!hasOrgs && (
+        <div className="flex flex-col items-center gap-2 py-4 text-muted-foreground">
+          <Building2 className="size-10 opacity-30" />
+          <p className="text-sm">Crie uma organização para começar.</p>
+        </div>
+      )}
+
+      {hasOrgs && (
+        <div className="relative flex items-center">
+          <Separator className="flex-1" />
+          <span className="mx-3 text-xs uppercase tracking-wider text-muted-foreground">ou</span>
+          <Separator className="flex-1" />
+        </div>
+      )}
+
+      <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+        <SheetTrigger asChild>
+          <Button className="w-full" variant={hasOrgs ? 'outline' : 'default'}>
+            <Plus className="mr-2 size-4" />
+            Criar nova organização
+          </Button>
+        </SheetTrigger>
+        <SheetContent className="overflow-y-auto sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>Criar Organização</SheetTitle>
+          </SheetHeader>
+          <Form {...form}>
+            <form className="space-y-4 py-4" onSubmit={form.handleSubmit(onSubmit)}>
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome da Organização</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ex: Minha Empresa" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button className="w-full" type="submit" disabled={isPending}>
+                {isPending ? (
+                  <>
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                    Criando...
+                  </>
+                ) : (
+                  'Criar Organização'
+                )}
               </Button>
-            ))}
-          </div>
-        )}
-
-        <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-          <SheetTrigger asChild>
-            <Button className="w-full" variant="default">
-              <Plus className="mr-2 h-4 w-4" />
-              Criar Nova Organização
-            </Button>
-          </SheetTrigger>
-          <SheetContent className="overflow-y-auto sm:max-w-md">
-            <SheetHeader>
-              <SheetTitle>Criar Organização</SheetTitle>
-            </SheetHeader>
-            <Form {...form}>
-              <form
-                className="space-y-4 py-4"
-                onSubmit={form.handleSubmit(onSubmit)}
-              >
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nome da Organização</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ex: Minha Empresa" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button
-                  className="w-full"
-                  type="submit"
-                  disabled={isPending}
-                >
-                  {isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Criando...
-                    </>
-                  ) : (
-                    'Criar Organização'
-                  )}
-                </Button>
-              </form>
-            </Form>
-          </SheetContent>
-        </Sheet>
-
-      </CardContent>
-    </Card>
+            </form>
+          </Form>
+        </SheetContent>
+      </Sheet>
+    </div>
   )
 }
