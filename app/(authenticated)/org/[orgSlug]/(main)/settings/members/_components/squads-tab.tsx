@@ -27,7 +27,7 @@ export function SquadsTab({
       {/* Header da seção */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <h2 className="text-lg font-semibold">Times</h2>
+          <h2 className="text-lg font-semibold">Equipes</h2>
           <p className="text-sm text-muted-foreground">
             Organize seus membros em times com papéis e modelos de distribuição
             específicos.
@@ -46,9 +46,9 @@ export function SquadsTab({
             <Users className="h-7 w-7 text-muted-foreground" />
           </div>
           <div className="space-y-1">
-            <p className="font-medium">Nenhum time criado</p>
+            <p className="font-medium">Nenhuma equipe criada</p>
             <p className="text-sm text-muted-foreground">
-              Crie times para organizar sua equipe com papéis e modelos de
+              Crie equipes para organizar as funções de cada membro e modelos de
               distribuição de leads.
             </p>
           </div>

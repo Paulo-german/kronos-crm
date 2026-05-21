@@ -4,11 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
-import {
-  MoreHorizontal,
-  Trash2,
-  Users,
-} from 'lucide-react'
+import { MoreHorizontal, Trash2, Users } from 'lucide-react'
 import { Card, CardContent } from '@/_components/ui/card'
 import { Badge } from '@/_components/ui/badge'
 import { Button } from '@/_components/ui/button'
@@ -95,7 +91,7 @@ export function SquadCard({ squad, canManage, orgSlug }: SquadCardProps) {
                         onClick={() => setIsDeleteOpen(true)}
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
-                        Excluir time
+                        Excluir equipe
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -131,7 +127,10 @@ export function SquadCard({ squad, canManage, orgSlug }: SquadCardProps) {
                   {squad._count.members === 1 ? 'membro' : 'membros'}
                 </span>
               </div>
-              <Badge variant="secondary" className="ml-auto text-xs font-normal">
+              <Badge
+                variant="secondary"
+                className="ml-auto text-xs font-normal"
+              >
                 {DISTRIBUTION_MODEL_LABELS[squad.distributionModel]}
               </Badge>
             </div>
@@ -142,13 +141,13 @@ export function SquadCard({ squad, canManage, orgSlug }: SquadCardProps) {
       <ConfirmationDialog
         open={isDeleteOpen}
         onOpenChange={setIsDeleteOpen}
-        title="Excluir time?"
+        title="Excluir equipe?"
         description={
           <p>
             Esta ação não pode ser desfeita. Você está prestes a excluir
             <br />
             <span className="font-semibold text-foreground">
-              o time &ldquo;{squad.name}&rdquo;
+              a equipe &ldquo;{squad.name}&rdquo;
             </span>{' '}
             e remover todos os seus membros.
           </p>
@@ -157,7 +156,7 @@ export function SquadCard({ squad, canManage, orgSlug }: SquadCardProps) {
         variant="destructive"
         onConfirm={() => executeDelete({ id: squad.id })}
         isLoading={isDeleting}
-        confirmLabel="Excluir time"
+        confirmLabel="Excluir equipe"
       />
     </>
   )

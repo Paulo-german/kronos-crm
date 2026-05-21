@@ -16,7 +16,10 @@ interface CreateSquadButtonProps {
   orgSlug: string
 }
 
-export function CreateSquadButton({ withinQuota, orgSlug }: CreateSquadButtonProps) {
+export function CreateSquadButton({
+  withinQuota,
+  orgSlug,
+}: CreateSquadButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
 
   if (!withinQuota) {
@@ -26,7 +29,7 @@ export function CreateSquadButton({ withinQuota, orgSlug }: CreateSquadButtonPro
           <span tabIndex={0}>
             <Button disabled>
               <Plus className="mr-2 h-4 w-4" />
-              Criar Time
+              Criar Equipes
             </Button>
           </span>
         </TooltipTrigger>
@@ -42,14 +45,11 @@ export function CreateSquadButton({ withinQuota, orgSlug }: CreateSquadButtonPro
     <>
       <Button onClick={() => setIsOpen(true)}>
         <Plus className="mr-2 h-4 w-4" />
-        Criar Time
+        Criar Equipes
       </Button>
 
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        <UpsertSquadSheetContent
-          orgSlug={orgSlug}
-          setIsOpen={setIsOpen}
-        />
+        <UpsertSquadSheetContent orgSlug={orgSlug} setIsOpen={setIsOpen} />
       </Sheet>
     </>
   )

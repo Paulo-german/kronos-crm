@@ -33,7 +33,7 @@ export function MembersPageClient({
           className="flex items-center gap-2 rounded-md py-2"
         >
           <UsersRound className="h-4 w-4" />
-          Times
+          Equipes
         </TabsTrigger>
       </TabsList>
 
