@@ -7,10 +7,7 @@ import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { canPerformAction, requirePermission, isElevated } from '@/_lib/rbac'
 import { getConversationAsDto } from '@/_data-access/conversation/get-conversations'
-import {
-  createDealForNewConversation,
-  assignContactOwner,
-} from '@/_lib/evolution/resolve-conversation'
+import { createDealForNewConversation } from '@/_lib/evolution/resolve-conversation'
 import { inferCaptureChannelFromInboxChannel } from '@/_lib/lifecycle/infer-capture-channel'
 import { matchCaptureEventToCampaign } from '@/_lib/lifecycle/match-capture-event-to-campaign'
 import { createConversationSchema } from './schema'
@@ -190,19 +187,15 @@ export const createConversation = orgActionClient
         },
       )
     } else if (!contact.assignedTo) {
-      // Contato sem dono: atribuir via round-robin e atualizar a conversa recem-criada tambem
-      await assignContactOwner(
-        ctx.orgId,
-        contact.id,
-        {
-          distributionUserIds: inbox.distributionUserIds,
-          inboxId: inbox.id,
-          salesDistributionModel,
-          contactCurrentAssignedTo: contact.assignedTo,
-          squadId: inbox.squadId,
-        },
-        conversation.id,
-      )
+      // Criação manual: quem inicia a conversa assume o contato sem dono.
+      await db.contact.update({
+        where: { id: contact.id },
+        data: { assignedTo: ctx.userId },
+      })
+      await db.conversation.update({
+        where: { id: conversation.id },
+        data: { assignedTo: ctx.userId },
+      })
     }
 
     // 7. Invalidar caches
