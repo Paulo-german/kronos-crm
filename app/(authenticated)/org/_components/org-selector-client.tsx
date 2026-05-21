@@ -111,7 +111,7 @@ function OrgListItem({ org, onSelect }: OrgListItemProps) {
         </Badge>
       </div>
 
-      <ArrowRight className="size-4 shrink-0 text-muted-foreground transition-transform duration-150 group-hover:translate-x-0.5" />
+      <ArrowRight className="size-4 shrink-0 translate-x-2 text-muted-foreground opacity-0 transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100" />
     </button>
   )
 }
@@ -191,7 +191,7 @@ export function OrgSelectorClient({ organizations, userFirstName }: OrgSelectorC
 
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
         <SheetTrigger asChild>
-          <Button className="w-full" variant={hasOrgs ? 'outline' : 'default'}>
+          <Button className="w-full" variant="default">
             <Plus className="mr-2 size-4" />
             Criar nova organização
           </Button>
