@@ -88,23 +88,17 @@ function getOrgInitials(name: string): string {
 
 interface OrgListItemProps {
   org: Organization
-  isSpotlight: boolean
   onSelect: (slug: string) => void
 }
 
-function OrgListItem({ org, isSpotlight, onSelect }: OrgListItemProps) {
+function OrgListItem({ org, onSelect }: OrgListItemProps) {
   return (
     <button
       type="button"
       onClick={() => onSelect(org.slug)}
-      className={cn(
-        'group flex w-full items-center gap-4 rounded-xl border p-4 text-left transition-all duration-150',
-        isSpotlight
-          ? 'border-primary/40 bg-primary/5 shadow-sm hover:bg-primary/10'
-          : 'border-border/50 hover:border-border hover:bg-accent/50',
-      )}
+      className="group flex w-full items-center gap-4 rounded-xl border border-border/50 bg-card p-4 text-left transition-all duration-150 hover:border-primary/40 hover:bg-primary/5"
     >
-      <Avatar className={cn('size-11 shrink-0 text-white', getOrgColor(org.name))}>
+      <Avatar className="size-11 shrink-0">
         <AvatarFallback className={cn('text-sm font-semibold text-white', getOrgColor(org.name))}>
           {getOrgInitials(org.name)}
         </AvatarFallback>
@@ -170,11 +164,10 @@ export function OrgSelectorClient({ organizations, userFirstName }: OrgSelectorC
 
       {hasOrgs && (
         <div className="space-y-2">
-          {organizations.map((org, index) => (
+          {organizations.map((org) => (
             <OrgListItem
               key={org.id}
               org={org}
-              isSpotlight={index === 0}
               onSelect={handleSelectOrg}
             />
           ))}
