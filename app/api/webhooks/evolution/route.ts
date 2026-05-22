@@ -15,6 +15,7 @@ import type { processAgentMessage } from '@/../../trigger/process-agent-message'
 import type { EvolutionWebhookPayload, EvolutionConnectionUpdateData, NormalizedWhatsAppMessage } from '@/_lib/evolution/types'
 import type { BusinessHoursConfig } from '@/_actions/agent/update-agent/schema'
 import { resolveEvolutionCredentialsByInstanceName, resolveWebhookSecretByInstanceName } from '@/_lib/evolution/resolve-credentials'
+import { updateDeliveryStatus, updateDeliveryStatusFailed } from '@/_lib/message-delivery-status'
 import { AUTO_REOPEN_FIELDS } from '@/_lib/conversation/auto-reopen'
 import { hasActivePlan } from '@/_lib/billing/has-active-plan'
 import { broadcastAgentStatus } from '@/_lib/inbox/broadcast-agent-status'
@@ -115,7 +116,54 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, state })
   }
 
-  // 3. Filtro de evento — so processar messages.upsert a partir daqui
+  // 3. MESSAGES_UPDATE — atualizar delivery status de mensagens enviadas
+  if (payload.event === 'messages.update') {
+    const updates = payload.data as Array<{
+      key: { id: string; fromMe: boolean }
+      update: { status?: string }
+    }>
+
+    if (!Array.isArray(updates)) {
+      return NextResponse.json({ ignored: true, reason: 'messages_update_no_data' })
+    }
+
+    // Só processar updates de mensagens enviadas por nós (fromMe)
+    const outboundUpdates = updates.filter((u) => u.key?.fromMe)
+
+    for (const update of outboundUpdates) {
+      const messageId = update.key.id
+      const status = update.update?.status
+
+      if (!messageId || !status) continue
+
+      // Mapear status da Evolution para nosso enum
+      // SERVER_ACK = WA server recebeu; DELIVERY_ACK = entregue ao device; READ/PLAYED = lido
+      // ERROR = falha no protocolo WA (silenciosa na HTTP response do sendText)
+      if (status === 'READ' || status === 'PLAYED') {
+        const result = await updateDeliveryStatus(messageId, 'read')
+        if (result) {
+          revalidateTag(`conversation-messages:${result.conversationId}`)
+        }
+      } else if (status === 'DELIVERY_ACK' || status === 'SERVER_ACK') {
+        const result = await updateDeliveryStatus(messageId, 'delivered')
+        if (result) {
+          revalidateTag(`conversation-messages:${result.conversationId}`)
+        }
+      } else if (status === 'ERROR') {
+        const result = await updateDeliveryStatusFailed(messageId, {
+          message: 'Falha na entrega ao protocolo WhatsApp.',
+        })
+        if (result) {
+          revalidateTag(`conversation-messages:${result.conversationId}`)
+          revalidateTag(`conversations:${result.organizationId}`)
+        }
+      }
+    }
+
+    return NextResponse.json({ success: true, processed: outboundUpdates.length })
+  }
+
+  // 4. Filtro de evento — so processar messages.upsert a partir daqui
   if (payload.event !== 'messages.upsert') {
     return NextResponse.json({ ignored: true, reason: 'event_not_handled' })
   }

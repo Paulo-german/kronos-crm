@@ -96,6 +96,7 @@ async function doCreateInstance(
         base64: false,
         events: [
           'MESSAGES_UPSERT',
+          'MESSAGES_UPDATE',
           'CONNECTION_UPDATE',
         ],
       },
@@ -379,7 +380,7 @@ export async function updateEvolutionWebhook(
       headers: buildHeaders(apiKey),
       body: JSON.stringify({
         url: webhookUrl,
-        events: ['MESSAGES_UPSERT', 'CONNECTION_UPDATE'],
+        events: ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'CONNECTION_UPDATE'],
         byEvents: false,
         base64: false,
       }),

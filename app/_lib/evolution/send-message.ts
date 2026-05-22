@@ -19,6 +19,12 @@ export async function sendWhatsAppMessage(
 ): Promise<string[]> {
   const { apiUrl, apiKey } = credentials
 
+  if (remoteJid.endsWith('@lid')) {
+    throw new Error(
+      'Não é possível enviar mensagem: o contato usa um identificador temporário (@lid) que não permite envio direto. Aguarde uma mensagem do contato para que o número real seja registrado.',
+    )
+  }
+
   await assertEvolutionConnected(instanceName, credentials)
 
   const chunks = splitIntoParagraphs(text, MAX_WHATSAPP_MESSAGE_LENGTH)
@@ -71,6 +77,16 @@ export async function sendWhatsAppMessage(
 
     const data = await response.json().catch(() => null)
     const messageId = data?.key?.id as string | undefined
+
+    if (!messageId) {
+      console.warn('[evolution] sendText returned no messageId', {
+        instanceName,
+        remoteJid,
+        status: response.status,
+        responseData: data,
+      })
+    }
+
     if (messageId) messageIds.push(messageId)
   }
 
