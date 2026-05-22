@@ -74,7 +74,8 @@ export function AgentsCardGrid({
   const [togglingAgentId, setTogglingAgentId] = useState<string | null>(null)
   const router = useRouter()
 
-  const canManage = userRole === 'OWNER' || userRole === 'ADMIN' || userRole === 'SUPPORT'
+  const canManage =
+    userRole === 'OWNER' || userRole === 'ADMIN' || userRole === 'SUPPORT'
 
   const { execute: executeToggle } = useAction(updateAgent, {
     onSuccess: () => {
@@ -194,7 +195,7 @@ export function AgentsCardGrid({
             className="group cursor-pointer"
             onClick={() => router.push(`/org/${orgSlug}/ai-agent/${agent.id}`)}
           >
-            <Card className="flex min-h-[180px] flex-col transition-colors hover:border-primary/50">
+            <Card className="flex min-h-[180px] flex-col border border-transparent transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary">
               <CardContent className="flex flex-1 flex-col gap-3 p-5">
                 {/* Header: status toggle + dropdown */}
                 <div className="flex items-center justify-between">
@@ -240,7 +241,8 @@ export function AgentsCardGrid({
                     {agent.name}
                   </h3>
                   <Badge variant="secondary">
-                    {AGENT_TIERS.find((tier) => tier.modelId === agent.modelId)?.label ?? 'Médio'}
+                    {AGENT_TIERS.find((tier) => tier.modelId === agent.modelId)
+                      ?.label ?? 'Médio'}
                   </Badge>
                 </div>
 
@@ -255,7 +257,9 @@ export function AgentsCardGrid({
                     }}
                     className="flex w-full items-center justify-between rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-left transition-colors hover:bg-primary/10"
                   >
-                    <span className="text-xs text-muted-foreground">Versão Padrão</span>
+                    <span className="text-xs text-muted-foreground">
+                      Versão Padrão
+                    </span>
                     <span className="flex items-center gap-1 text-xs font-medium text-primary">
                       <ChevronsUpIcon className="h-3 w-3" />
                       Migrar para v2
@@ -405,7 +409,10 @@ export function AgentsCardGrid({
                       'Atualizar negócio',
                       'Criar tarefa',
                     ].map((label) => (
-                      <li key={label} className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-500">
+                      <li
+                        key={label}
+                        className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-500"
+                      >
                         <Wrench className="h-3 w-3 shrink-0" />
                         {label}
                       </li>
