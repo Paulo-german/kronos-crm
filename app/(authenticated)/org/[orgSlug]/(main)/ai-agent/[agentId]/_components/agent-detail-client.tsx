@@ -19,7 +19,7 @@ import {
 } from '@/_components/ui/tooltip'
 import type { AgentDetailDto } from '@/_data-access/agent/get-agent-by-id'
 import type { AgentConnectionStats } from '@/_data-access/agent/get-agent-connection-stats'
-import type { EvolutionInstanceInfo } from '@/_lib/evolution/types-instance'
+import type { EvolutionInstanceInfo } from '@/_lib/evolution-js/types-instance'
 import type { OrgPipelineDto } from '@/_data-access/pipeline/get-org-pipelines'
 import type { PipelineStageOption } from '@/_data-access/pipeline/get-pipeline-stages'
 import type { MemberRole } from '@prisma/client'

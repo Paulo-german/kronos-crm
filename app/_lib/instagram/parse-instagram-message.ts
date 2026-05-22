@@ -1,4 +1,4 @@
-import type { NormalizedWhatsAppMessage, NormalizedMediaInfo, NormalizedMessageType } from '@/_lib/evolution/types'
+import type { NormalizedWhatsAppMessage, NormalizedMediaInfo, NormalizedMessageType } from '@/_lib/evolution-js/types'
 import type { InstagramWebhookEntry, InstagramMessagingEvent, InstagramAttachment } from './types'
 
 interface ExtractedContent {

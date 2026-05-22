@@ -2,7 +2,7 @@ import type {
   NormalizedMediaInfo,
   NormalizedMessageType,
   NormalizedWhatsAppMessage,
-} from '@/_lib/evolution/types'
+} from '@/_lib/evolution-js/types'
 import type { ZApiWebhookPayload } from './types'
 
 /**

@@ -46,7 +46,7 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/_components/ui/radio-group'
 import type { InboxDetailDto } from '@/_data-access/inbox/get-inbox-by-id'
 import type { AgentConnectionStats } from '@/_data-access/agent/get-agent-connection-stats'
-import type { EvolutionInstanceInfo } from '@/_lib/evolution/types-instance'
+import type { EvolutionInstanceInfo } from '@/_lib/evolution-js/types-instance'
 import type { MemberRole } from '@prisma/client'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import type { OrgPipelineDto } from '@/_data-access/pipeline/get-org-pipelines'

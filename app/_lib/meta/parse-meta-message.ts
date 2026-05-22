@@ -1,5 +1,5 @@
 import type { MetaIncomingMessage, MetaWebhookContact } from './types'
-import type { NormalizedWhatsAppMessage, NormalizedMediaInfo, NormalizedMessageType } from '@/_lib/evolution/types'
+import type { NormalizedWhatsAppMessage, NormalizedMediaInfo, NormalizedMessageType } from '@/_lib/evolution-js/types'
 
 interface ExtractedContent {
   type: NormalizedMessageType

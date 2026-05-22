@@ -5,7 +5,7 @@ import { Prisma } from '@prisma/client'
 import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
-import { getEvolutionInstanceInfo } from '@/_lib/evolution/instance-management'
+import { getEvolutionInstanceInfo } from '@/_lib/evolution-js/instance-management'
 import { evolutionSelfHostedSchema } from './schema'
 
 export const saveEvolutionSelfHosted = orgActionClient

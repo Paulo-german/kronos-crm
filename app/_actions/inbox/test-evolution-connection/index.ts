@@ -3,7 +3,7 @@
 import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
-import { resolveEvolutionCredentials } from '@/_lib/evolution/resolve-credentials'
+import { resolveEvolutionCredentials } from '@/_lib/evolution-js/resolve-credentials'
 import { testEvolutionConnectionSchema } from './schema'
 
 type ConnectionStateValue = 'open' | 'close' | 'connecting'

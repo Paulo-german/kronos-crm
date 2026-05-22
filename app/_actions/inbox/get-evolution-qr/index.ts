@@ -4,8 +4,8 @@ import { z } from 'zod'
 import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
-import { getEvolutionQRCode } from '@/_lib/evolution/instance-management'
-import { resolveEvolutionCredentials } from '@/_lib/evolution/resolve-credentials'
+import { getEvolutionQRCode } from '@/_lib/evolution-js/instance-management'
+import { resolveEvolutionCredentials } from '@/_lib/evolution-js/resolve-credentials'
 
 const getEvolutionQRSchema = z.object({
   inboxId: z.string().uuid(),

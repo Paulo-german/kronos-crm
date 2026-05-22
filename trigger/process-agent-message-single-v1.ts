@@ -16,8 +16,8 @@ import { estimateMaxCost, calculateCreditCost } from '@/_lib/ai/pricing'
 import {
   sendWhatsAppMessage,
   sendPresence,
-} from '@/_lib/evolution/send-message'
-import { resolveEvolutionCredentialsByInstanceName } from '@/_lib/evolution/resolve-credentials'
+} from '@/_lib/evolution-js/send-message'
+import { resolveEvolutionCredentialsByInstanceName } from '@/_lib/evolution-js/resolve-credentials'
 import { sendMetaTextMessage } from '@/_lib/meta/send-meta-message'
 import { createRetryableFetch } from './lib/retryable-fetch'
 import { buildSystemPrompt } from './build-system-prompt'

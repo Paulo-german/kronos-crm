@@ -317,7 +317,7 @@ export async function listEvolutionInstances(
     })
 }
 
-export { formatPhoneFromJid } from './format-phone'
+export { formatPhoneFromJid } from '@/_lib/whatsapp/format-phone'
 
 /**
  * Diagnóstico: retorna dados raw da instância + webhook para debug.

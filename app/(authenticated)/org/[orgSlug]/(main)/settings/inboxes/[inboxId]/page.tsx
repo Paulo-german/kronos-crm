@@ -7,8 +7,8 @@ import { getOrganizationMembers } from '@/_data-access/organization/get-organiza
 import { getOrgPipelines } from '@/_data-access/pipeline/get-org-pipelines'
 import { getSquads } from '@/_data-access/squad/get-squads'
 import { getAgentConnectionStats } from '@/_data-access/agent/get-agent-connection-stats'
-import { getEvolutionInstanceInfo } from '@/_lib/evolution/instance-management'
-import { resolveEvolutionCredentials } from '@/_lib/evolution/resolve-credentials'
+import { getEvolutionInstanceInfo } from '@/_lib/evolution-js/instance-management'
+import { resolveEvolutionCredentials } from '@/_lib/evolution-js/resolve-credentials'
 import InboxDetailClient from './_components/inbox-detail-client'
 
 interface InboxDetailPageProps {

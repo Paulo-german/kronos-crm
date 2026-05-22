@@ -1,6 +1,6 @@
 import { logger } from '@trigger.dev/sdk/v3'
-import { sendPresence } from '@/_lib/evolution/send-message'
-import { resolveEvolutionCredentialsByInstanceName } from '@/_lib/evolution/resolve-credentials'
+import { sendPresence } from '@/_lib/evolution-js/send-message'
+import { resolveEvolutionCredentialsByInstanceName } from '@/_lib/evolution-js/resolve-credentials'
 
 type InboxProvider = 'meta_cloud' | 'z_api' | 'evolution' | 'simulator' | 'instagram_dm'
 

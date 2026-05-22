@@ -5,8 +5,8 @@ import { setupWhatsappSchema } from './schema'
 import { db } from '@/_lib/prisma'
 import { revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
-import { createEvolutionInstance, buildWebhookUrl } from '@/_lib/evolution/instance-management'
-import { resolveEvolutionCredentials } from '@/_lib/evolution/resolve-credentials'
+import { createEvolutionInstance, buildWebhookUrl } from '@/_lib/evolution-js/instance-management'
+import { resolveEvolutionCredentials } from '@/_lib/evolution-js/resolve-credentials'
 
 export const setupWhatsapp = orgActionClient
   .schema(setupWhatsappSchema)

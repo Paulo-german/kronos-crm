@@ -1,6 +1,6 @@
 // -----------------------------------------------------------------------------
 // Modulo compartilhado de chunking de texto para envio WhatsApp
-// Extraido de app/_lib/evolution/send-message.ts para reutilizacao entre providers
+// Extraido de app/_lib/evolution-js/send-message.ts para reutilizacao entre providers
 // -----------------------------------------------------------------------------
 
 /**

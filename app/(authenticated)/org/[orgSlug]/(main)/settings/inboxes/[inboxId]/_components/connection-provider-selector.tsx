@@ -15,7 +15,7 @@ import MetaConnectionCard from './meta-connection-card'
 import ZApiConnectionCard from './zapi-connection-card'
 import EvolutionSelfHostedCard from './evolution-self-hosted-card'
 import type { AgentConnectionStats } from '@/_data-access/agent/get-agent-connection-stats'
-import type { EvolutionInstanceInfo } from '@/_lib/evolution/types-instance'
+import type { EvolutionInstanceInfo } from '@/_lib/evolution-js/types-instance'
 
 type ProviderSelection =
   | 'evolution'

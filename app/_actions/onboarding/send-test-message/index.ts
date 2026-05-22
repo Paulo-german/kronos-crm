@@ -4,8 +4,8 @@ import { orgActionClient } from '@/_lib/safe-action'
 import { sendTestMessageSchema } from './schema'
 import { db } from '@/_lib/prisma'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
-import { sendWhatsAppMessage } from '@/_lib/evolution/send-message'
-import { resolveEvolutionCredentials } from '@/_lib/evolution/resolve-credentials'
+import { sendWhatsAppMessage } from '@/_lib/evolution-js/send-message'
+import { resolveEvolutionCredentials } from '@/_lib/evolution-js/resolve-credentials'
 
 export const sendTestMessage = orgActionClient
   .schema(sendTestMessageSchema)

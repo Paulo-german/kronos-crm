@@ -1,4 +1,4 @@
-import type { NormalizedWhatsAppMessage } from '@/_lib/evolution/types'
+import type { NormalizedWhatsAppMessage } from '@/_lib/evolution-js/types'
 import type { GroupPromptContext } from './build-system-prompt'
 import type { createExecutionTracker } from './lib/execution-tracker'
 

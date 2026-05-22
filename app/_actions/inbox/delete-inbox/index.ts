@@ -5,8 +5,8 @@ import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
-import { deleteEvolutionInstance } from '@/_lib/evolution/instance-management'
-import { resolveEvolutionCredentials } from '@/_lib/evolution/resolve-credentials'
+import { deleteEvolutionInstance } from '@/_lib/evolution-js/instance-management'
+import { resolveEvolutionCredentials } from '@/_lib/evolution-js/resolve-credentials'
 
 const deleteInboxSchema = z.object({
   id: z.string().uuid(),

@@ -33,9 +33,9 @@ import { getEvolutionQR } from '@/_actions/inbox/get-evolution-qr'
 import { disconnectEvolution } from '@/_actions/inbox/disconnect-evolution'
 import { debugInstance } from '@/_actions/inbox/debug-instance'
 import { syncEvolutionStatus } from '@/_actions/inbox/sync-evolution-status'
-import { formatPhoneFromJid } from '@/_lib/evolution/format-phone'
+import { formatPhoneFromJid } from '@/_lib/whatsapp/format-phone'
 import type { AgentConnectionStats } from '@/_data-access/agent/get-agent-connection-stats'
-import type { EvolutionInstanceInfo } from '@/_lib/evolution/types-instance'
+import type { EvolutionInstanceInfo } from '@/_lib/evolution-js/types-instance'
 
 interface InboxConnectionCardProps {
   inboxId: string

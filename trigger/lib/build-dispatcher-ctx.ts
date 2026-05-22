@@ -3,7 +3,7 @@ import { resolveCanonicalAgentVersion } from '../../app/_lib/agent/agent-version
 import { updateActiveTrace } from '@langfuse/tracing'
 import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
-import { resolveEvolutionCredentialsByInstanceName } from '@/_lib/evolution/resolve-credentials'
+import { resolveEvolutionCredentialsByInstanceName } from '@/_lib/evolution-js/resolve-credentials'
 import { routeConversation } from './route-conversation'
 import { checkBusinessHours } from '@/_lib/agent/check-business-hours'
 import type { BusinessHoursConfig } from '@/_actions/agent/update-agent/schema'
@@ -23,7 +23,7 @@ import { revalidateConversationCache } from './revalidate-cache'
 import { runWithCreditDebit } from './debit-transcription'
 import { calculateCreditCost, calculateAudioCreditCost } from '@/_lib/ai/pricing'
 import { IMAGE_MODEL } from '../utils/describe-image'
-import type { NormalizedWhatsAppMessage } from '@/_lib/evolution/types'
+import type { NormalizedWhatsAppMessage } from '@/_lib/evolution-js/types'
 import type { DispatcherCtx } from '../dispatcher-types'
 
 // Modelos de vision são mais caros — refletido no multiplicador de créditos

@@ -6,8 +6,8 @@ import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
 import { revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
-import { listEvolutionInstances, getEvolutionWebhook, updateEvolutionWebhook, buildWebhookUrl, deleteEvolutionInstance } from '@/_lib/evolution/instance-management'
-import type { EvolutionCredentials } from '@/_lib/evolution/resolve-credentials'
+import { listEvolutionInstances, getEvolutionWebhook, updateEvolutionWebhook, buildWebhookUrl, deleteEvolutionInstance } from '@/_lib/evolution-js/instance-management'
+import type { EvolutionCredentials } from '@/_lib/evolution-js/resolve-credentials'
 
 const discoverInstancesSchema = z.object({})
 
