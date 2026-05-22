@@ -243,8 +243,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ignored: true, reason: 'no_active_plan' })
   }
 
-  const inboxCredentials = await resolveEvolutionGoCredentialsByInstanceName(instanceName)
-
   const org = await db.organization.findUnique({
     where: { id: orgId },
     select: { salesDistributionModel: true },
@@ -311,18 +309,29 @@ export async function POST(req: Request) {
       revalidateTag(`conversations:${orgId}`)
     }
 
-    await db.message.create({
-      data: {
-        conversationId: resolveResult.conversationId,
-        role: 'assistant',
-        content: resolveMessageContent(normalizedMsg),
-        providerMessageId: messageId,
-        metadata: {
-          sentFrom: 'whatsapp_direct',
-          ...(normalizedMsg.media ? { media: normalizedMsg.media } : {}),
-        } as unknown as Prisma.InputJsonValue,
-      },
-    })
+    try {
+      await db.message.create({
+        data: {
+          conversationId: resolveResult.conversationId,
+          role: 'assistant',
+          content: resolveMessageContent(normalizedMsg),
+          providerMessageId: messageId,
+          metadata: {
+            sentFrom: 'whatsapp_direct',
+            ...(normalizedMsg.media ? { media: normalizedMsg.media } : {}),
+          } as unknown as Prisma.InputJsonValue,
+        },
+      })
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        'code' in error &&
+        (error as { code: string }).code === 'P2002'
+      ) {
+        return NextResponse.json({ success: true, reason: 'duplicate' })
+      }
+      throw error
+    }
 
     await db.conversation.updateMany({
       where: { inboxId: inbox.id, remoteJid },
@@ -339,6 +348,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, reason: 'from_me_saved' })
   }
+
+  const inboxCredentials = await resolveEvolutionGoCredentialsByInstanceName(instanceName)
 
   const hasAiConfigured = !!(inbox.agentId || inbox.agentGroupId)
 
@@ -475,17 +486,28 @@ export async function POST(req: Request) {
       .set(`dedup:${messageId}`, '1', 'EX', DEDUP_TTL_SECONDS, 'NX')
       .catch(() => 'redis_error' as const)
     if (dedupInactive !== null) {
-      await db.message.create({
-        data: {
-          conversationId: resolveInactiveResult.conversationId,
-          role: 'user',
-          content: resolveMessageContent(normalizedMsgInactive) || '[mensagem não suportada]',
-          providerMessageId: messageId,
-          metadata: normalizedMsgInactive.media
-            ? ({ media: normalizedMsgInactive.media } as unknown as Prisma.InputJsonValue)
-            : undefined,
-        },
-      })
+      try {
+        await db.message.create({
+          data: {
+            conversationId: resolveInactiveResult.conversationId,
+            role: 'user',
+            content: resolveMessageContent(normalizedMsgInactive) || '[mensagem não suportada]',
+            providerMessageId: messageId,
+            metadata: normalizedMsgInactive.media
+              ? ({ media: normalizedMsgInactive.media } as unknown as Prisma.InputJsonValue)
+              : undefined,
+          },
+        })
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          'code' in error &&
+          (error as { code: string }).code === 'P2002'
+        ) {
+          return NextResponse.json({ success: true, reason: 'duplicate' })
+        }
+        throw error
+      }
       await db.conversation.update({
         where: { id: resolveInactiveResult.conversationId },
         data: {
@@ -549,17 +571,28 @@ export async function POST(req: Request) {
         .catch(() => 'redis_error' as const)
 
       if (dedupResult !== null) {
-        await db.message.create({
-          data: {
-            conversationId: resolveResult.conversationId,
-            role: 'user',
-            content: resolveMessageContent(normalizedMsg) || '[mensagem não suportada]',
-            providerMessageId: messageId,
-            metadata: normalizedMsg.media
-              ? ({ media: normalizedMsg.media } as unknown as Prisma.InputJsonValue)
-              : undefined,
-          },
-        })
+        try {
+          await db.message.create({
+            data: {
+              conversationId: resolveResult.conversationId,
+              role: 'user',
+              content: resolveMessageContent(normalizedMsg) || '[mensagem não suportada]',
+              providerMessageId: messageId,
+              metadata: normalizedMsg.media
+                ? ({ media: normalizedMsg.media } as unknown as Prisma.InputJsonValue)
+                : undefined,
+            },
+          })
+        } catch (error) {
+          if (
+            error instanceof Error &&
+            'code' in error &&
+            (error as { code: string }).code === 'P2002'
+          ) {
+            return NextResponse.json({ success: true, reason: 'duplicate' })
+          }
+          throw error
+        }
 
         await db.conversation.update({
           where: { id: resolveResult.conversationId },
@@ -568,6 +601,7 @@ export async function POST(req: Request) {
             lastMessageRole: 'user',
             nextFollowUpAt: null,
             followUpCount: 0,
+            lastCustomerMessageAt: new Date(),
             ...AUTO_REOPEN_FIELDS,
           },
         })
