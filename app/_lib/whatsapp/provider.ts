@@ -1,7 +1,13 @@
-import { sendWhatsAppMessage } from '@/_lib/evolution/send-message'
-import { sendWhatsAppAudio } from '@/_lib/evolution/send-audio'
-import { sendWhatsAppMedia } from '@/_lib/evolution/send-media'
-import { editWhatsAppMessage } from '@/_lib/evolution/edit-message'
+import { sendWhatsAppMessage } from '@/_lib/evolution-js/send-message'
+import { sendWhatsAppAudio } from '@/_lib/evolution-js/send-audio'
+import { sendWhatsAppMedia } from '@/_lib/evolution-js/send-media'
+import { editWhatsAppMessage } from '@/_lib/evolution-js/edit-message'
+import { sendEvolutionGoMessage } from '@/_lib/evolution-go/send-message'
+import { sendEvolutionGoAudio } from '@/_lib/evolution-go/send-audio'
+import { sendEvolutionGoMedia } from '@/_lib/evolution-go/send-media'
+import { editEvolutionGoMessage } from '@/_lib/evolution-go/edit-message'
+import type { EvolutionGoCredentials } from '@/_lib/evolution-go/types'
+import { isEvolutionGo, isEvolutionJs } from '@/_lib/whatsapp/connection-type'
 import { sendMetaTextMessage, sendMetaAudioMessage, sendMetaMediaMessage } from '@/_lib/meta/send-meta-message'
 import { sendZApiTextMessage } from '@/_lib/zapi/send-message'
 import { sendZApiAudio } from '@/_lib/zapi/send-audio'
@@ -10,7 +16,7 @@ import { editZApiTextMessage } from '@/_lib/zapi/edit-message'
 import { sendMetaTemplateMessage } from '@/_lib/meta/template-api'
 import { sendInstagramText, sendInstagramAudio, sendInstagramMedia } from '@/_lib/instagram/send-instagram-message'
 import type { ZApiConfig } from '@/_lib/zapi/types'
-import type { EvolutionCredentials } from '@/_lib/evolution/resolve-credentials'
+import type { EvolutionCredentials } from '@/_lib/evolution-js/resolve-credentials'
 import type { MetaTemplateSendComponent } from '@/_lib/meta/types'
 import { ConnectionType, InboxChannel } from '@prisma/client'
 
@@ -145,39 +151,72 @@ export function resolveWhatsAppProvider(inbox: InboxProviderContext, fetcher: ty
     }
   }
 
-  // Default: EVOLUTION
-  if (!inbox.evolutionInstanceName) {
-    throw new Error(
-      'Nenhum canal WhatsApp conectado. Conecte um provedor (Evolution, Meta ou Z-API) nas configurações da caixa de entrada.',
-    )
+  // Evolution Go (sempre selfhosted no MVP)
+  if (isEvolutionGo(inbox.connectionType)) {
+    if (!inbox.evolutionInstanceName || !inbox.evolutionApiUrl || !inbox.evolutionApiKey) {
+      throw new Error(
+        'Evolution Go não configurado corretamente. Configure apiUrl, apiToken e instanceName.',
+      )
+    }
+
+    const goInstanceName = inbox.evolutionInstanceName
+    const goCredentials: EvolutionGoCredentials = {
+      apiUrl: inbox.evolutionApiUrl,
+      apiToken: inbox.evolutionApiKey,
+    }
+
+    return {
+      sendText: (recipientPhone: string, text: string) =>
+        sendEvolutionGoMessage(goInstanceName, recipientPhone, text, goCredentials, fetcher),
+      sendAudio: (recipientPhone: string, audioBase64: string) =>
+        sendEvolutionGoAudio(goInstanceName, recipientPhone, audioBase64, goCredentials),
+      sendMedia: (recipientPhone: string, _mediaBase64: string, mimetype: string, mediatype: 'image' | 'document' | 'video', fileName?: string, caption?: string, mediaUrl?: string) => {
+        if (!mediaUrl) throw new Error('Evolution Go requer URL pública para envio de mídia.')
+        return sendEvolutionGoMedia(goInstanceName, recipientPhone, mediaUrl, mimetype, mediatype, fileName, caption, goCredentials)
+      },
+      sendTemplate: () =>
+        Promise.reject(new Error('Templates não suportados pelo provedor Evolution Go.')),
+      editText: () => editEvolutionGoMessage(),
+    }
   }
 
-  const instanceName = inbox.evolutionInstanceName
+  // Evolution JS (aceita 'EVOLUTION' legacy e 'EVOLUTION_JS')
+  if (isEvolutionJs(inbox.connectionType)) {
+    if (!inbox.evolutionInstanceName) {
+      throw new Error(
+        'Nenhum canal WhatsApp conectado. Conecte um provedor (Evolution, Meta ou Z-API) nas configurações da caixa de entrada.',
+      )
+    }
 
-  // Resolve credenciais: self-hosted tem prioridade sobre env vars globais
-  const credentials: EvolutionCredentials = {
-    apiUrl: inbox.evolutionApiUrl || process.env.EVOLUTION_API_URL || '',
-    apiKey: inbox.evolutionApiKey || process.env.EVOLUTION_API_KEY || '',
-    isSelfHosted: !!(inbox.evolutionApiUrl && inbox.evolutionApiKey),
+    const instanceName = inbox.evolutionInstanceName
+
+    // Resolve credenciais: self-hosted tem prioridade sobre env vars globais
+    const credentials: EvolutionCredentials = {
+      apiUrl: inbox.evolutionApiUrl || process.env.EVOLUTION_API_URL || '',
+      apiKey: inbox.evolutionApiKey || process.env.EVOLUTION_API_KEY || '',
+      isSelfHosted: !!(inbox.evolutionApiUrl && inbox.evolutionApiKey),
+    }
+
+    if (!credentials.apiUrl || !credentials.apiKey) {
+      throw new Error('EVOLUTION_API_URL and EVOLUTION_API_KEY must be configured')
+    }
+
+    return {
+      sendText: (recipientPhone: string, text: string) =>
+        sendWhatsAppMessage(instanceName, recipientPhone, text, credentials, fetcher),
+      sendAudio: (recipientPhone: string, audioBase64: string) =>
+        sendWhatsAppAudio(instanceName, recipientPhone, audioBase64, credentials),
+      sendMedia: (recipientPhone: string, _mediaBase64: string, mimetype: string, mediatype: 'image' | 'document' | 'video', fileName?: string, caption?: string, mediaUrl?: string) => {
+        if (!mediaUrl) throw new Error('Evolution API requer URL pública para envio de mídia. Configure o B2 Storage.')
+        return sendWhatsAppMedia(instanceName, recipientPhone, mediaUrl, mimetype, mediatype, fileName, caption, credentials)
+      },
+      sendTemplate: () => {
+        return Promise.reject(new Error('Templates não suportados pelo provedor Evolution API.'))
+      },
+      editText: (recipientPhone: string, providerMessageId: string, newText: string) =>
+        editWhatsAppMessage(instanceName, recipientPhone, providerMessageId, newText, credentials),
+    }
   }
 
-  if (!credentials.apiUrl || !credentials.apiKey) {
-    throw new Error('EVOLUTION_API_URL and EVOLUTION_API_KEY must be configured')
-  }
-
-  return {
-    sendText: (recipientPhone: string, text: string) =>
-      sendWhatsAppMessage(instanceName, recipientPhone, text, credentials, fetcher),
-    sendAudio: (recipientPhone: string, audioBase64: string) =>
-      sendWhatsAppAudio(instanceName, recipientPhone, audioBase64, credentials),
-    sendMedia: (recipientPhone: string, _mediaBase64: string, mimetype: string, mediatype: 'image' | 'document' | 'video', fileName?: string, caption?: string, mediaUrl?: string) => {
-      if (!mediaUrl) throw new Error('Evolution API requer URL pública para envio de mídia. Configure o B2 Storage.')
-      return sendWhatsAppMedia(instanceName, recipientPhone, mediaUrl, mimetype, mediatype, fileName, caption, credentials)
-    },
-    sendTemplate: () => {
-      return Promise.reject(new Error('Templates não suportados pelo provedor Evolution API.'))
-    },
-    editText: (recipientPhone: string, providerMessageId: string, newText: string) =>
-      editWhatsAppMessage(instanceName, recipientPhone, providerMessageId, newText, credentials),
-  }
+  throw new Error(`ConnectionType não suportado: ${inbox.connectionType}`)
 }
