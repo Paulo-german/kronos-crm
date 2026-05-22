@@ -626,10 +626,14 @@ export function UpsertAppointmentDialogContent({
                                   setOpenContactCombobox(false)
                                   setContactSearch('')
                                   setContactResults([])
-                                  // Auto-fill do título no BOOKING: "{serviço} - {contato}" ou só "{contato}"
-                                  if (watchedType === 'BOOKING' && !form.getValues('title')) {
+                                  // Auto-fill do título no BOOKING: preenche se vazio ou se ainda é o valor auto-gerado anterior
+                                  if (watchedType === 'BOOKING') {
                                     const serviceName = selectedService?.name
-                                    form.setValue('title', serviceName ? `${serviceName} - ${contact.name}` : contact.name)
+                                    const currentTitle = form.getValues('title')
+                                    const wasAutoFilled = !currentTitle || currentTitle === serviceName
+                                    if (wasAutoFilled) {
+                                      form.setValue('title', serviceName ? `${serviceName} - ${contact.name}` : contact.name)
+                                    }
                                   }
                                 }}
                               >
@@ -916,9 +920,11 @@ export function UpsertAppointmentDialogContent({
                                       value={`${service.name} ${categoryName}`}
                                       onSelect={() => {
                                         form.setValue('serviceId', service.id)
-                                        // Auto-fill do título se estiver vazio: "{serviço} - {contato}" ou só "{serviço}"
-                                        if (!form.getValues('title')) {
-                                          const contactName = selectedContact?.name
+                                        // Auto-fill do título se vazio ou se ainda é o valor auto-gerado anterior (só contato)
+                                        const contactName = selectedContact?.name
+                                        const currentTitle = form.getValues('title')
+                                        const wasAutoFilled = !currentTitle || currentTitle === contactName
+                                        if (wasAutoFilled) {
                                           form.setValue('title', contactName ? `${service.name} - ${contactName}` : service.name)
                                         }
                                         // Limpa seleções do booking widget ao trocar serviço
