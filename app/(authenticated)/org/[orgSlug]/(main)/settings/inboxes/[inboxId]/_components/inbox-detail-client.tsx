@@ -59,7 +59,8 @@ import InboxConnectionCard from './inbox-connection-card'
 import MetaConnectionCard from './meta-connection-card'
 import ZApiConnectionCard from './zapi-connection-card'
 import ConnectionProviderSelector from './connection-provider-selector'
-import EvolutionSelfHostedCard from './evolution-self-hosted-card'
+import EvolutionSelfHostedCard from './evolution-js-self-hosted-card'
+import EvolutionGoCard from './evolution-go-card'
 import ConnectInstagramButton from './connect-instagram-button'
 
 // Modo de vinculação da IA neste inbox
@@ -98,6 +99,8 @@ const channelLabels: Record<string, string> = {
 
 const connectionTypeLabels: Record<string, string> = {
   EVOLUTION: 'WhatsApp',
+  EVOLUTION_JS: 'WhatsApp',
+  EVOLUTION_GO: 'Evolution Go',
   META_CLOUD: 'API Oficial (Meta)',
   Z_API: 'Z-API',
 }
@@ -107,7 +110,10 @@ const resolveConnectionLabel = (
   connectionType: string,
   isSelfHosted: boolean,
 ): string => {
-  if (connectionType === 'EVOLUTION' && isSelfHosted) return 'Evolution API'
+  if ((connectionType === 'EVOLUTION' || connectionType === 'EVOLUTION_JS') && isSelfHosted) {
+    return 'Evolution API'
+  }
+  if (connectionType === 'EVOLUTION_GO') return 'Evolution Go'
   return connectionTypeLabels[connectionType] ?? connectionType
 }
 
@@ -140,9 +146,14 @@ const InboxDetailClient = ({
     inbox.squadId,
   )
 
-  // Verifica se este inbox usa instancia Evolution self-hosted do usuario
+  const ct = inbox.connectionType
+
+  // Verifica se este inbox usa instancia Evolution JS self-hosted do usuario
   const isSelfHosted =
-    inbox.connectionType === 'EVOLUTION' && !!inbox.evolutionApiUrl
+    (ct === 'EVOLUTION' || ct === 'EVOLUTION_JS') && !!inbox.evolutionApiUrl
+
+  // Verifica se este inbox usa instancia Evolution Go
+  const isGoProvider = ct === 'EVOLUTION_GO'
 
   // Modo de vinculação: "group" se inbox já tiver agentGroupId, senão "agent"
   const [aiLinkMode, setAiLinkMode] = useState<AiLinkMode>(
@@ -277,7 +288,22 @@ const InboxDetailClient = ({
       )
     }
 
-    // Self-hosted: exibir card de credenciais + card de conexao (se ja tiver instancia pareada)
+    // Evolution Go: card de credenciais + QR + status
+    if (isGoProvider) {
+      return (
+        <EvolutionGoCard
+          inboxId={inbox.id}
+          canManage={canManage}
+          savedApiUrl={inbox.evolutionApiUrl ?? null}
+          savedInstanceName={inbox.evolutionInstanceName ?? null}
+          savedApiTokenMasked={inbox.evolutionApiKey ?? null}
+          webhookSecret={inbox.evolutionWebhookSecret ?? null}
+          initialConnected={inbox.evolutionConnected}
+        />
+      )
+    }
+
+    // Evolution JS self-hosted: card de credenciais + card de conexao (se ja tiver instancia pareada)
     if (isSelfHosted) {
       return (
         <div className="space-y-4">

@@ -13,7 +13,8 @@ import {
 import InboxConnectionCard from './inbox-connection-card'
 import MetaConnectionCard from './meta-connection-card'
 import ZApiConnectionCard from './zapi-connection-card'
-import EvolutionSelfHostedCard from './evolution-self-hosted-card'
+import EvolutionSelfHostedCard from './evolution-js-self-hosted-card'
+import EvolutionGoCard from './evolution-go-card'
 import type { AgentConnectionStats } from '@/_data-access/agent/get-agent-connection-stats'
 import type { EvolutionInstanceInfo } from '@/_lib/evolution-js/types-instance'
 
@@ -22,6 +23,7 @@ type ProviderSelection =
   | 'meta_cloud'
   | 'z_api'
   | 'evolution_self_hosted'
+  | 'evolution_go'
   | null
 
 interface ConnectionProviderSelectorProps {
@@ -153,7 +155,33 @@ const ConnectionProviderSelector = ({
     )
   }
 
-  // Seletor inicial — quatro cards
+  // Sub-fluxo: Evolution Go selfhosted
+  if (selectedProvider === 'evolution_go') {
+    return (
+      <div className="space-y-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-fit"
+          onClick={() => setSelectedProvider(null)}
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Voltar para seleção
+        </Button>
+        <EvolutionGoCard
+          inboxId={inboxId}
+          canManage={canManage}
+          savedApiUrl={null}
+          savedInstanceName={null}
+          savedApiTokenMasked={null}
+          webhookSecret={null}
+          initialConnected={false}
+        />
+      </div>
+    )
+  }
+
+  // Seletor inicial — cinco cards
   return (
     <div className="space-y-4">
       <div className="mb-2">
@@ -281,16 +309,16 @@ const ConnectionProviderSelector = ({
           </CardContent>
         </Card>
 
-        {/* Card Evolution API — self-hosted */}
+        {/* Card Evolution API — self-hosted (JS) */}
         <Card className="cursor-pointer border-border/50 bg-secondary/20 transition-colors hover:border-border hover:bg-secondary/40">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base font-semibold">
               <Server className="h-5 w-5" />
-              Evolution API
+              Evolution API (JS)
             </CardTitle>
             <CardDescription>
-              Conecte usando sua própria instância Evolution API (self-hosted).
-              Para usuários avançados.
+              Conecte usando sua própria instância Evolution API em Node.js
+              (self-hosted). Para usuários avançados.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -305,7 +333,7 @@ const ConnectionProviderSelector = ({
               </li>
               <li className="flex items-center gap-2">
                 <span className="h-1 w-1 rounded-full bg-muted-foreground" />
-                Requer servidor Evolution API ativo
+                Requer servidor Evolution API (Node.js) ativo
               </li>
             </ul>
             {canManage && (
@@ -315,6 +343,45 @@ const ConnectionProviderSelector = ({
                 onClick={() => setSelectedProvider('evolution_self_hosted')}
               >
                 Configurar Evolution API
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Card Evolution Go — self-hosted */}
+        <Card className="cursor-pointer border-border/50 bg-secondary/20 transition-colors hover:border-border hover:bg-secondary/40">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base font-semibold">
+              <Server className="h-5 w-5" />
+              Evolution Go (selfhosted)
+            </CardTitle>
+            <CardDescription>
+              Conecte usando sua própria instância Evolution Go — reimplementação
+              em Go do servidor Evolution. Para usuários avançados.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="mb-4 space-y-1.5 text-xs text-muted-foreground">
+              <li className="flex items-center gap-2">
+                <span className="h-1 w-1 rounded-full bg-muted-foreground" />
+                Servidor Evolution Go self-hosted
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="h-1 w-1 rounded-full bg-muted-foreground" />
+                Autenticação via token por instância
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="h-1 w-1 rounded-full bg-muted-foreground" />
+                Conexão via QR Code
+              </li>
+            </ul>
+            {canManage && (
+              <Button
+                className="w-full"
+                variant="outline"
+                onClick={() => setSelectedProvider('evolution_go')}
+              >
+                Configurar Evolution Go
               </Button>
             )}
           </CardContent>
