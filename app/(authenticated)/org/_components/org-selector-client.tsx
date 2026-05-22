@@ -99,14 +99,19 @@ function OrgListItem({ org, onSelect }: OrgListItemProps) {
       className="group flex w-full items-center gap-4 rounded-xl border border-border/50 bg-card p-4 text-left transition-all duration-150 hover:border-primary/40 hover:bg-primary/5"
     >
       <Avatar className="size-11 shrink-0">
-        <AvatarFallback className={cn('text-sm font-semibold text-white', getOrgColor(org.name))}>
+        <AvatarFallback
+          className={cn(
+            'text-sm font-semibold text-white',
+            getOrgColor(org.name),
+          )}
+        >
           {getOrgInitials(org.name)}
         </AvatarFallback>
       </Avatar>
 
-      <div className="min-w-0 flex-1 space-y-1">
+      <div className="flex min-w-0 flex-1 items-center gap-2">
         <p className="truncate text-sm font-medium leading-none">{org.name}</p>
-        <Badge variant={ROLE_VARIANTS[org.role]} className="text-xs">
+        <Badge variant={ROLE_VARIANTS[org.role]} className="shrink-0 text-xs">
           {ROLE_LABELS[org.role]}
         </Badge>
       </div>
@@ -116,7 +121,10 @@ function OrgListItem({ org, onSelect }: OrgListItemProps) {
   )
 }
 
-export function OrgSelectorClient({ organizations, userFirstName }: OrgSelectorClientProps) {
+export function OrgSelectorClient({
+  organizations,
+  userFirstName,
+}: OrgSelectorClientProps) {
   const router = useRouter()
   const [isSheetOpen, setIsSheetOpen] = useState(false)
 
@@ -165,11 +173,7 @@ export function OrgSelectorClient({ organizations, userFirstName }: OrgSelectorC
       {hasOrgs && (
         <div className="space-y-2">
           {organizations.map((org) => (
-            <OrgListItem
-              key={org.id}
-              org={org}
-              onSelect={handleSelectOrg}
-            />
+            <OrgListItem key={org.id} org={org} onSelect={handleSelectOrg} />
           ))}
         </div>
       )}
@@ -184,7 +188,9 @@ export function OrgSelectorClient({ organizations, userFirstName }: OrgSelectorC
       {hasOrgs && (
         <div className="relative flex items-center">
           <Separator className="flex-1" />
-          <span className="mx-3 text-xs uppercase tracking-wider text-muted-foreground">ou</span>
+          <span className="mx-3 text-xs uppercase tracking-wider text-muted-foreground">
+            ou
+          </span>
           <Separator className="flex-1" />
         </div>
       )}
@@ -201,7 +207,10 @@ export function OrgSelectorClient({ organizations, userFirstName }: OrgSelectorC
             <SheetTitle>Criar Organização</SheetTitle>
           </SheetHeader>
           <Form {...form}>
-            <form className="space-y-4 py-4" onSubmit={form.handleSubmit(onSubmit)}>
+            <form
+              className="space-y-4 py-4"
+              onSubmit={form.handleSubmit(onSubmit)}
+            >
               <FormField
                 control={form.control}
                 name="name"
