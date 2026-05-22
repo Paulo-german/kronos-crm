@@ -179,10 +179,11 @@ const EvolutionGoCard = ({
 
   // Polling de status enquanto há QR exibido e ainda não conectado
   // useEffect permitido aqui: sincronização com sistema externo (Evolution Go)
+  // Nota: savedInstanceName pode ser null logo após o primeiro connect (antes do reload),
+  // mas syncEvolutionGoStatus resolve a instância pelo inboxId — não precisa do nome local.
   useEffect(() => {
     if (!isAlreadyConnected && !qrBase64) return
     if (isConnected) return
-    if (!savedInstanceName) return
 
     pollingRef.current = setInterval(() => {
       executeSync({ inboxId })
@@ -194,7 +195,7 @@ const EvolutionGoCard = ({
         pollingRef.current = null
       }
     }
-  }, [isConnected, qrBase64, isAlreadyConnected, savedInstanceName, inboxId, executeSync])
+  }, [isConnected, qrBase64, isAlreadyConnected, inboxId, executeSync])
 
   const handleSubmit = (values: GoFormValues) => {
     executeConnect({
@@ -343,11 +344,7 @@ const EvolutionGoCard = ({
                         <div className="relative">
                           <Input
                             type={showToken ? 'text' : 'password'}
-                            placeholder={
-                              isAlreadyConnected
-                                ? 'Novo token (deixe vazio para manter)'
-                                : 'Token de autenticação do servidor'
-                            }
+                            placeholder="Token de autenticação do servidor"
                             disabled={!canManage || isConnecting}
                             {...field}
                           />
