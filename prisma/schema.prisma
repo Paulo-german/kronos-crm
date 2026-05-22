@@ -1748,6 +1748,8 @@ enum KnowledgeFileStatus {
 
 enum ConnectionType {
   EVOLUTION
+  EVOLUTION_JS
+  EVOLUTION_GO
   META_CLOUD
   Z_API
   SIMULATOR
