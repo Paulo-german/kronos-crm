@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useRef, useState } from 'react'
-import { Upload, FileSpreadsheet, X } from 'lucide-react'
+import { Upload, FileSpreadsheet, X, Download } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import { Card, CardContent } from '@/_components/ui/card'
 import { cn } from '@/_lib/utils'
@@ -13,6 +13,21 @@ interface ParsedData {
 
 interface UploadStepProps {
   onParsed: (data: ParsedData) => void
+}
+
+const downloadTemplate = async () => {
+  const XLSX = await import('xlsx')
+
+  const rows = [
+    ['Nome', 'Email', 'Telefone', 'Empresa', 'Cargo', 'CPF', 'Decisor'],
+    ['Maria Silva', 'maria@empresa.com', '11999990000', 'Empresa Ltda', 'Gerente', '123.456.789-00', 'Sim'],
+    ['João Souza', 'joao@cliente.com.br', '21988887777', '', 'Diretor', '', 'Não'],
+  ]
+
+  const worksheet = XLSX.utils.aoa_to_sheet(rows)
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Contatos')
+  XLSX.writeFile(workbook, 'modelo-importacao-contatos.xlsx')
 }
 
 export function UploadStep({ onParsed }: UploadStepProps) {
@@ -173,7 +188,20 @@ export function UploadStep({ onParsed }: UploadStepProps) {
         {error && (
           <p className="mt-3 text-sm text-destructive">{error}</p>
         )}
+
+        <div className="mt-4 flex justify-center">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-2 text-muted-foreground"
+            onClick={downloadTemplate}
+          >
+            <Download className="h-3.5 w-3.5" />
+            Baixar planilha modelo
+          </Button>
+        </div>
       </CardContent>
     </Card>
   )
 }
+
