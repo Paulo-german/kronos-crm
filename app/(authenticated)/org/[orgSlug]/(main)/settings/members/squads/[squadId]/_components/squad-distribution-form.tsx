@@ -132,11 +132,11 @@ function WeightedMembersEditor({ members, canManage }: WeightedMembersEditorProp
   )
 
   const handleSliderChange = (squadMemberId: string, value: number[]) => {
-    setWeights((prev) => ({ ...prev, [squadMemberId]: value[0] }))
+    setWeights((prev) => ({ ...prev, [squadMemberId]: snapWeight(value[0]) }))
   }
 
   const handleSliderCommit = (squadMemberId: string, value: number[]) => {
-    const next = value[0]
+    const next = snapWeight(value[0])
     if (next === savedWeights[squadMemberId]) return
     execute({ squadMemberId, weight: next })
   }
