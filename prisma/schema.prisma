@@ -1136,7 +1136,7 @@ model SquadMember {
   memberId String    @map("member_id")
   role     SquadRole @default(MEMBER)
   isActive Boolean   @default(true) @map("is_active")
-  weight   Int       @default(1)
+  weight   Int       @default(5)
   joinedAt DateTime  @default(now()) @map("joined_at")
 
   squad    Squad     @relation(fields: [squadId], references: [id], onDelete: Cascade)

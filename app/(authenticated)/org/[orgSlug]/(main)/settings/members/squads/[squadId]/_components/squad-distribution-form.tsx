@@ -98,7 +98,8 @@ function getInitials(fullName: string | null | undefined, email: string): string
 }
 
 function snapWeight(value: number): number {
-  return Math.max(MIN_WEIGHT, Math.round(value / WEIGHT_STEP) * WEIGHT_STEP)
+  if (value === 0) return 0
+  return Math.max(WEIGHT_STEP, Math.round(value / WEIGHT_STEP) * WEIGHT_STEP)
 }
 
 function WeightedMembersEditor({ members, canManage }: WeightedMembersEditorProps) {
