@@ -22,8 +22,9 @@ import type { SalesDistributionModel } from '@prisma/client'
 import type { LucideIcon } from 'lucide-react'
 import type { SquadMemberDto } from '@/_data-access/squad/get-squad-by-id'
 
-const MIN_WEIGHT = 1
-const MAX_WEIGHT = 20
+const MIN_WEIGHT = 5
+const MAX_WEIGHT = 100
+const WEIGHT_STEP = 5
 
 const MEMBER_PALETTE = [
   { bg: 'bg-violet-500', text: 'text-violet-500' },
@@ -201,7 +202,7 @@ function WeightedMembersEditor({ members, canManage }: WeightedMembersEditorProp
               <Slider
                 min={MIN_WEIGHT}
                 max={MAX_WEIGHT}
-                step={1}
+                step={WEIGHT_STEP}
                 value={[weight]}
                 disabled={!canManage}
                 className="flex-1"
