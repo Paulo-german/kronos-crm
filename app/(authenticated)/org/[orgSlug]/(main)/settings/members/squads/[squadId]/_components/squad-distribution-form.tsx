@@ -97,11 +97,15 @@ function getInitials(fullName: string | null | undefined, email: string): string
   return email.slice(0, 2).toUpperCase()
 }
 
+function snapWeight(value: number): number {
+  return Math.max(MIN_WEIGHT, Math.round(value / WEIGHT_STEP) * WEIGHT_STEP)
+}
+
 function WeightedMembersEditor({ members, canManage }: WeightedMembersEditorProps) {
   const activeMembers = members.filter((squadMember) => squadMember.isActive)
 
   const initialWeights = Object.fromEntries(
-    activeMembers.map((squadMember) => [squadMember.id, squadMember.weight]),
+    activeMembers.map((squadMember) => [squadMember.id, snapWeight(squadMember.weight)]),
   )
 
   const [weights, setWeights] = useState<Record<string, number>>(initialWeights)
