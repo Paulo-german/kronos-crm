@@ -9,6 +9,7 @@ export interface SquadMemberDto {
   id: string
   role: SquadRole
   isActive: boolean
+  weight: number
   joinedAt: Date
   member: {
     id: string
@@ -78,6 +79,7 @@ const fetchSquadByIdFromDb = async (
       id: sm.id,
       role: sm.role,
       isActive: sm.isActive,
+      weight: sm.weight,
       joinedAt: sm.joinedAt,
       member: {
         id: sm.member.id,

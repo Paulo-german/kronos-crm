@@ -83,7 +83,14 @@ export default async function SquadDetailPage({ params }: SquadDetailPageProps) 
       <SquadLoyaltyCard squad={squad} canManage={canManage} />
 
       {/* Modelo de distribuição */}
-      <SquadDistributionForm squad={squad} canManage={canManage} />
+      <SquadDistributionForm
+        squad={{
+          id: squad.id,
+          distributionModel: squad.distributionModel,
+          members: squad.members,
+        }}
+        canManage={canManage}
+      />
     </div>
   )
 }

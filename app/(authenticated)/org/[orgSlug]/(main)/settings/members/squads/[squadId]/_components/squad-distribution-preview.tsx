@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowRight, BarChart2, TrendingUp } from 'lucide-react'
+import { ArrowRight, BarChart2, Scale, TrendingUp } from 'lucide-react'
 import { cn } from '@/_lib/utils'
 import { Badge } from '@/_components/ui/badge'
 import type { SalesDistributionModel } from '@prisma/client'
@@ -248,29 +248,84 @@ function PerformanceWeightedPreview() {
   )
 }
 
-type ActiveDistributionModel = Exclude<SalesDistributionModel, 'LOYALTY'>
+const WEIGHTED_MEMBERS = [
+  { initial: 'A', name: 'Ana', color: 'bg-violet-500', weight: 4 },
+  { initial: 'B', name: 'Bruno', color: 'bg-blue-500', weight: 2 },
+  { initial: 'C', name: 'Carla', color: 'bg-emerald-500', weight: 1 },
+  { initial: 'D', name: 'Diego', color: 'bg-amber-500', weight: 1 },
+]
 
-const PREVIEW_MAP: Record<ActiveDistributionModel, React.ComponentType> = {
+function WeightedPreview() {
+  const total = WEIGHTED_MEMBERS.reduce((sum, member) => sum + member.weight, 0)
+  const maxWeight = Math.max(...WEIGHTED_MEMBERS.map((member) => member.weight))
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
+        <Scale className="h-3 w-3" />
+        <span>Novo lead</span>
+        <ArrowRight className="h-3 w-3" />
+        <Chip variant="primary">peso proporcional</Chip>
+      </div>
+
+      <div className="flex w-full max-w-xs flex-col gap-2 mx-auto">
+        {WEIGHTED_MEMBERS.map((member) => {
+          const pct = (member.weight / total) * 100
+          const isTop = member.weight === maxWeight
+
+          return (
+            <div key={member.name} className="flex items-center gap-2">
+              <Avatar initial={member.initial} color={member.color} active={isTop} size="sm" />
+              <span
+                className={cn(
+                  'w-10 shrink-0 text-xs font-medium',
+                  isTop ? 'text-primary' : 'text-muted-foreground',
+                )}
+              >
+                {member.name}
+              </span>
+              <div className="flex-1 h-1.5 rounded-full bg-muted/50 overflow-hidden">
+                <div
+                  className={cn('h-full rounded-full transition-all duration-500', isTop ? 'bg-primary' : 'bg-muted-foreground/25')}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              <Chip variant={isTop ? 'primary' : 'muted'}>
+                {pct.toFixed(1)}%
+              </Chip>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+const PREVIEW_MAP: Record<SalesDistributionModel, React.ComponentType> = {
   ROUND_ROBIN: RoundRobinPreview,
   UTILIZATION: UtilizationPreview,
   MANUAL: ManualPreview,
   PERFORMANCE_WEIGHTED: PerformanceWeightedPreview,
+  WEIGHTED: WeightedPreview,
+  LOYALTY: ManualPreview,
 }
 
-const PREVIEW_TITLES: Record<ActiveDistributionModel, string> = {
+const PREVIEW_TITLES: Record<SalesDistributionModel, string> = {
   ROUND_ROBIN: 'Round Robin',
   UTILIZATION: 'Maior disponibilidade',
   MANUAL: 'Manual',
   PERFORMANCE_WEIGHTED: 'Por Performance',
+  WEIGHTED: 'Round Robin Ponderado',
+  LOYALTY: 'Manual',
 }
 
 export function SquadDistributionPreview({ model }: SquadDistributionPreviewProps) {
-  const Preview = PREVIEW_MAP[model as ActiveDistributionModel]
+  const Preview = PREVIEW_MAP[model]
 
   return (
     <div className="rounded-lg border border-border bg-input p-4">
       <div className="mb-4 flex items-center gap-2 text-xs font-medium tracking-wider text-foreground">
-        COMO FUNCIONA: <Badge>{PREVIEW_TITLES[model as ActiveDistributionModel]}</Badge>
+        COMO FUNCIONA: <Badge>{PREVIEW_TITLES[model]}</Badge>
       </div>
       <Preview />
     </div>

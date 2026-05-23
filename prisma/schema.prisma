@@ -1136,6 +1136,7 @@ model SquadMember {
   memberId String    @map("member_id")
   role     SquadRole @default(MEMBER)
   isActive Boolean   @default(true) @map("is_active")
+  weight   Int       @default(1)
   joinedAt DateTime  @default(now()) @map("joined_at")
 
   squad    Squad     @relation(fields: [squadId], references: [id], onDelete: Cascade)
@@ -2177,6 +2178,7 @@ enum SalesDistributionModel {
   MANUAL
   UTILIZATION
   PERFORMANCE_WEIGHTED
+  WEIGHTED
 
   @@map("sales_distribution_model")
 }

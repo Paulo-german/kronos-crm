@@ -38,6 +38,7 @@ const DISTRIBUTION_MODEL_LABELS: Record<SalesDistributionModel, string> = {
   UTILIZATION: 'Maior disponibilidade',
   MANUAL: 'Manual',
   PERFORMANCE_WEIGHTED: 'Por Performance',
+  WEIGHTED: 'Round Robin Ponderado',
 }
 
 export function SquadCard({ squad, canManage, orgSlug }: SquadCardProps) {

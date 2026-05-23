@@ -29,6 +29,7 @@ export const updateSquadMember = orgActionClient
       data: {
         ...(data.role !== undefined ? { role: data.role } : {}),
         ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
+        ...(data.weight !== undefined ? { weight: data.weight } : {}),
       },
     })
 
