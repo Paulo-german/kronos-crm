@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { QRCodeSVG } from 'qrcode.react'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import Image from 'next/image'
 import {
   MessageSquare,
   Loader2,
@@ -27,11 +28,11 @@ import {
   CardHeader,
   CardTitle,
 } from '@/_components/ui/card'
+import { Badge } from '@/_components/ui/badge'
 import ConfirmationDialog from '@/_components/confirmation-dialog'
 import { connectEvolution } from '@/_actions/inbox/connect-evolution'
 import { getEvolutionQR } from '@/_actions/inbox/get-evolution-qr'
 import { disconnectEvolution } from '@/_actions/inbox/disconnect-evolution'
-import { debugInstance } from '@/_actions/inbox/debug-instance'
 import { syncEvolutionStatus } from '@/_actions/inbox/sync-evolution-status'
 import { formatPhoneFromJid } from '@/_lib/whatsapp/format-phone'
 import type { AgentConnectionStats } from '@/_data-access/agent/get-agent-connection-stats'
@@ -73,6 +74,7 @@ const InboxConnectionCard = ({
   const [qrBase64, setQrBase64] = useState<string | null>(null)
   const [qrCode, setQrCode] = useState<string | null>(null)
   const [pairingCode, setPairingCode] = useState<string | null>(null)
+  const [isQrExpired, setIsQrExpired] = useState(false)
   const [isDisconnectOpen, setIsDisconnectOpen] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -127,24 +129,11 @@ const InboxConnectionCard = ({
       if (data.code) setQrCode(data.code)
       if (data.pairingCode) setPairingCode(data.pairingCode)
     },
-    onError: () => {
+    onError: ({ error }) => {
+      toast.error(error.serverError || 'Não foi possível verificar o status da conexão.')
       setConnectionState((prev) => (prev === 'checking' ? 'connecting' : prev))
     },
   })
-
-  const [debugData, setDebugData] = useState<string | null>(null)
-
-  const { execute: executeDebug, isPending: isDebugging } = useAction(
-    debugInstance,
-    {
-      onSuccess: ({ data }) => {
-        setDebugData(JSON.stringify(data, null, 2))
-      },
-      onError: ({ error }) => {
-        toast.error(error.serverError || 'Erro ao buscar debug.')
-      },
-    },
-  )
 
   const { execute: executeDisconnect, isPending: isDisconnecting } = useAction(
     disconnectEvolution,
@@ -155,8 +144,10 @@ const InboxConnectionCard = ({
         setQrBase64(null)
         setQrCode(null)
         setPairingCode(null)
+        setIsQrExpired(false)
         setIsDisconnectOpen(false)
         stopPolling()
+        hasSyncedRef.current = false
         onConnectionStateChange?.(false)
       },
       onError: ({ error }) => {
@@ -178,6 +169,7 @@ const InboxConnectionCard = ({
 
   const startPolling = useCallback(() => {
     stopPolling()
+    setIsQrExpired(false)
 
     executeGetQR({ inboxId })
 
@@ -190,6 +182,8 @@ const InboxConnectionCard = ({
       setQrBase64(null)
       setQrCode(null)
       setPairingCode(null)
+      setIsQrExpired(true)
+      toast.error('QR Code expirou. Clique em "Gerar novo QR Code" para tentar novamente.')
     }, QR_TIMEOUT)
   }, [inboxId, executeGetQR, stopPolling])
 
@@ -213,14 +207,23 @@ const InboxConnectionCard = ({
     return (
       <Card className="border-border/50 bg-secondary/20">
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base font-semibold">
-            <WifiOff className="h-5 w-5" />
-            WhatsApp Desconectado
-          </CardTitle>
-          <CardDescription>
-            Conecte uma conta WhatsApp para receber e enviar mensagens nesta
-            caixa de entrada.
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="relative h-8 w-8 shrink-0">
+                <Image
+                  src="/images/providers/whatsapp-meta.svg"
+                  alt="WhatsApp"
+                  fill
+                  className="rounded-md object-contain"
+                  sizes="32px"
+                />
+              </div>
+              <div>
+                <CardTitle className="text-base font-semibold">WhatsApp</CardTitle>
+                <CardDescription>Conecte escaneando o QR Code</CardDescription>
+              </div>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center gap-4 py-6">
@@ -258,13 +261,23 @@ const InboxConnectionCard = ({
     return (
       <Card className="border-border/50 bg-secondary/20">
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base font-semibold">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            Verificando Conexão
-          </CardTitle>
-          <CardDescription>
-            Verificando o status da conexão WhatsApp...
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="relative h-8 w-8 shrink-0">
+                <Image
+                  src="/images/providers/whatsapp-meta.svg"
+                  alt="WhatsApp"
+                  fill
+                  className="rounded-md object-contain"
+                  sizes="32px"
+                />
+              </div>
+              <div>
+                <CardTitle className="text-base font-semibold">WhatsApp</CardTitle>
+                <CardDescription>Verificando conexão...</CardDescription>
+              </div>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-12">
@@ -277,76 +290,123 @@ const InboxConnectionCard = ({
 
   // Estado 2 — QR Code
   if (connectionState === 'connecting') {
+    const qrSteps = [
+      { step: 1, text: 'Abra o WhatsApp no seu celular' },
+      { step: 2, text: 'Toque em Menu (⋮) ou Configurações' },
+      { step: 3, text: 'Selecione Dispositivos conectados' },
+      { step: 4, text: 'Toque em Conectar um dispositivo' },
+      { step: 5, text: 'Aponte a câmera para o QR Code' },
+    ]
+
     return (
       <Card className="border-border/50 bg-secondary/20">
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base font-semibold">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            Escaneie o QR Code
-          </CardTitle>
-          <CardDescription>
-            Abra o WhatsApp no seu celular, vá em Dispositivos Conectados e
-            escaneie o código abaixo.
-          </CardDescription>
+          <div className="flex items-center gap-3">
+            <div className="relative h-8 w-8 shrink-0">
+              <Image
+                src="/images/providers/whatsapp-meta.svg"
+                alt="WhatsApp"
+                fill
+                className="rounded-md object-contain"
+                sizes="32px"
+              />
+            </div>
+            <div>
+              <CardTitle className="text-base font-semibold">WhatsApp</CardTitle>
+              <CardDescription>Escaneie o QR Code para conectar</CardDescription>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col items-center gap-4 py-6">
-            {qrCode ? (
-              <div className="rounded-lg border bg-white p-4">
-                <QRCodeSVG value={qrCode} size={256} />
-              </div>
-            ) : qrBase64 ? (
-              <div className="rounded-lg border bg-white p-4">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={
-                    qrBase64.startsWith('data:')
-                      ? qrBase64
-                      : `data:image/png;base64,${qrBase64}`
-                  }
-                  alt="QR Code WhatsApp"
-                  className="h-64 w-64"
-                />
-              </div>
-            ) : pairingCode ? (
-              <div className="flex flex-col items-center gap-3 rounded-lg border p-8">
-                <p className="text-sm font-medium text-muted-foreground">
-                  Código de pareamento:
+          {pairingCode ? (
+            <div className="flex flex-col items-center gap-4 py-6">
+              <div className="flex flex-col items-center gap-3 rounded-xl border border-border/50 bg-background/70 px-8 py-6">
+                <p className="text-xs font-medium text-muted-foreground">
+                  Código de pareamento
                 </p>
-                <p className="font-mono text-3xl font-bold tracking-widest">
+                <p className="font-mono text-4xl font-bold tracking-[0.3em]">
                   {pairingCode}
                 </p>
-                <p className="max-w-xs text-center text-xs text-muted-foreground">
-                  No WhatsApp, vá em Configurações → Dispositivos Conectados →
-                  Conectar com número de telefone e insira o código acima.
-                </p>
               </div>
-            ) : (
-              <div className="flex h-64 w-64 items-center justify-center rounded-lg border">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              </div>
-            )}
-            <p className="text-sm text-muted-foreground">
-              Atualiza automaticamente a cada 5 segundos.
-            </p>
-            <div className="flex gap-3">
-              <Button variant="outline" onClick={startPolling}>
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Gerar novo QR Code
-              </Button>
-              {canManage && (
-                <Button
-                  variant="ghost"
-                  onClick={() => executeDisconnect({ inboxId })}
-                  disabled={isDisconnecting}
-                >
-                  {isDisconnecting ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : null}
-                  Cancelar
-                </Button>
-              )}
+              <p className="max-w-xs text-center text-xs text-muted-foreground">
+                No WhatsApp → Configurações → Dispositivos conectados →
+                Conectar com número de telefone → insira o código acima.
+              </p>
             </div>
+          ) : (
+            <div className="flex flex-col gap-6 py-2 sm:flex-row sm:items-start sm:gap-8">
+              {/* QR Code */}
+              <div className="flex shrink-0 flex-col items-center gap-2">
+                {qrCode ? (
+                  <div className="rounded-xl border border-border/50 bg-white p-3">
+                    <QRCodeSVG value={qrCode} size={200} />
+                  </div>
+                ) : qrBase64 ? (
+                  <div className="rounded-xl border border-border/50 bg-white p-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={
+                        qrBase64.startsWith('data:')
+                          ? qrBase64
+                          : `data:image/png;base64,${qrBase64}`
+                      }
+                      alt="QR Code WhatsApp"
+                      className="h-[200px] w-[200px]"
+                    />
+                  </div>
+                ) : isQrExpired ? (
+                  <div className="flex h-[200px] w-[200px] flex-col items-center justify-center gap-2 rounded-xl border border-border/50 bg-background/70 px-4 text-center">
+                    <RefreshCw className="h-6 w-6 text-muted-foreground" />
+                    <p className="text-xs text-muted-foreground">
+                      QR Code expirado
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex h-[200px] w-[200px] items-center justify-center rounded-xl border border-border/50 bg-background/70">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                )}
+                {!isQrExpired && (
+                  <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <RefreshCw className="h-3 w-3 animate-spin" />
+                    Atualiza a cada 5 segundos
+                  </p>
+                )}
+              </div>
+
+              {/* Passos */}
+              <div className="flex flex-1 flex-col justify-center gap-1">
+                <p className="mb-3 text-sm font-medium">Como escanear:</p>
+                {qrSteps.map(({ step, text }) => (
+                  <div key={step} className="flex items-start gap-3 py-1.5">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
+                      {step}
+                    </span>
+                    <span className="text-sm text-muted-foreground">{text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="mt-4 flex items-center gap-2 border-t border-border/50 pt-4">
+            <Button variant="outline" size="sm" onClick={startPolling}>
+              <RefreshCw className="mr-2 h-3.5 w-3.5" />
+              Gerar novo QR Code
+            </Button>
+            {canManage && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => executeDisconnect({ inboxId })}
+                disabled={isDisconnecting}
+              >
+                {isDisconnecting && (
+                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                )}
+                Cancelar
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -358,14 +418,30 @@ const InboxConnectionCard = ({
     <>
       <Card className="border-border/50 bg-secondary/20">
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base font-semibold">
-            <Wifi className="h-5 w-5 text-kronos-green" />
-            WhatsApp Conectado
-          </CardTitle>
-          <CardDescription>
-            Esta caixa de entrada está recebendo e enviando mensagens via
-            WhatsApp.
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="relative h-8 w-8 shrink-0">
+                <Image
+                  src="/images/providers/whatsapp-meta.svg"
+                  alt="WhatsApp"
+                  fill
+                  className="rounded-md object-contain"
+                  sizes="32px"
+                />
+              </div>
+              <div>
+                <CardTitle className="text-base font-semibold">WhatsApp</CardTitle>
+                <CardDescription>Gerenciado pela Kronos</CardDescription>
+              </div>
+            </div>
+            <Badge
+              variant="outline"
+              className="gap-1.5 border-emerald-500/20 bg-emerald-500/10 text-emerald-600"
+            >
+              <Wifi className="h-3 w-3" />
+              Conectado
+            </Badge>
+          </div>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Info da conta */}
@@ -446,30 +522,6 @@ const InboxConnectionCard = ({
                   </p>
                 </div>
               </div>
-            </div>
-          )}
-
-          {/* Debug temporário */}
-          {canManage && (
-            <div className="space-y-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => executeDebug({ inboxId })}
-                disabled={isDebugging}
-              >
-                {isDebugging ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Server className="mr-2 h-4 w-4" />
-                )}
-                Debug Webhook
-              </Button>
-              {debugData && (
-                <pre className="max-h-96 overflow-auto rounded-md border bg-muted p-4 text-xs">
-                  {debugData}
-                </pre>
-              )}
             </div>
           )}
 
