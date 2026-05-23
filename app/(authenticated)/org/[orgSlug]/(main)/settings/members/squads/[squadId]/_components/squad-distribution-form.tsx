@@ -22,7 +22,7 @@ import type { SalesDistributionModel } from '@prisma/client'
 import type { LucideIcon } from 'lucide-react'
 import type { SquadMemberDto } from '@/_data-access/squad/get-squad-by-id'
 
-const MIN_WEIGHT = 5
+const MIN_WEIGHT = 0
 const MAX_WEIGHT = 100
 const WEIGHT_STEP = 5
 
