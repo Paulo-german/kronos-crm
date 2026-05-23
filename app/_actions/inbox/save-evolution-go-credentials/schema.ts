@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
-export const connectEvolutionGoInboxSchema = z.object({
+// evolutionWebhookSecret NÃO está no schema — gerado no servidor via crypto.randomUUID()
+export const saveEvolutionGoCredentialsSchema = z.object({
   inboxId: z.string().uuid(),
   apiUrl: z
     .string()
@@ -11,15 +12,16 @@ export const connectEvolutionGoInboxSchema = z.object({
       'URL deve começar com http:// ou https://',
     )
     .refine((url) => !url.endsWith('/'), 'URL não deve terminar com barra'),
-  apiToken: z.string().trim().min(1, 'Token obrigatório'),
   instanceName: z
     .string()
     .trim()
+    .min(1, 'Nome da instância obrigatório')
     .regex(
       /^[a-zA-Z0-9_-]+$/,
       'Use apenas letras, números, hífens e underscores',
-    )
-    .optional(),
+    ),
+  // Pode ser vazio ao editar (mantém o token existente no banco)
+  apiToken: z.string().trim(),
 })
 
-export type ConnectEvolutionGoInboxInput = z.infer<typeof connectEvolutionGoInboxSchema>
+export type SaveEvolutionGoCredentialsInput = z.infer<typeof saveEvolutionGoCredentialsSchema>

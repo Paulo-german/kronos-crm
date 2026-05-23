@@ -37,10 +37,11 @@ export const syncEvolutionGoStatus = orgActionClient
     }
 
     const credentials = await resolveEvolutionGoCredentials(inboxId)
-    const { state } = await getEvolutionGoInstanceStatus(
+    const statusResult = await getEvolutionGoInstanceStatus(
       inbox.evolutionInstanceName,
       credentials,
     )
+    const state = statusResult?.state ?? 'close'
     const connected = state === 'open'
 
     if (inbox.evolutionConnected === connected) {

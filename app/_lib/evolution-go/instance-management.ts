@@ -94,7 +94,7 @@ export async function connectEvolutionGoInstance(
 
   // Primeiro verifica o estado da conexão — se já conectado, não retorna QR
   const stateResult = await getEvolutionGoInstanceStatus(instanceName, credentials)
-  if (stateResult.state === 'open') {
+  if (stateResult?.state === 'open') {
     return { base64: null, code: null, pairingCode: null, state: 'open' }
   }
 
@@ -117,12 +117,13 @@ export async function connectEvolutionGoInstance(
 }
 
 /**
- * Status atual de uma instância — devolve apenas o connection state.
+ * Status atual de uma instância.
+ * Retorna null se a instância não existir (404), lança em 401/403.
  */
 export async function getEvolutionGoInstanceStatus(
   instanceName: string,
   credentials: EvolutionGoCredentials,
-): Promise<EvolutionGoConnectionState> {
+): Promise<EvolutionGoConnectionState | null> {
   const { apiUrl, apiToken } = credentials
 
   const response = await fetch(
@@ -137,6 +138,10 @@ export async function getEvolutionGoInstanceStatus(
     throw new Error('Token inválido ou sem permissão no servidor Evolution Go.')
   }
 
+  if (response.status === 404) {
+    return null
+  }
+
   if (!response.ok) {
     return { state: 'close' }
   }
@@ -144,6 +149,40 @@ export async function getEvolutionGoInstanceStatus(
   const data = await response.json().catch(() => ({}))
   const state = data?.state || data?.instance?.state || 'close'
   return { state }
+}
+
+/**
+ * Atualiza o webhook de uma instância existente.
+ * Endpoint: POST /webhook/set/{instanceName}
+ */
+export async function updateEvolutionGoWebhook(
+  instanceName: string,
+  webhookUrl: string,
+  credentials: EvolutionGoCredentials,
+): Promise<void> {
+  const { apiUrl, apiToken } = credentials
+
+  const response = await fetch(
+    `${apiUrl}/webhook/set/${encodeURIComponent(instanceName)}`,
+    {
+      method: 'POST',
+      headers: buildHeaders(apiToken),
+      body: JSON.stringify({
+        webhook: {
+          url: webhookUrl,
+          events: ['MESSAGE', 'MESSAGE_STATUS', 'CONNECTION'],
+          enabled: true,
+        },
+      }),
+    },
+  )
+
+  if (!response.ok) {
+    const errorBody = await response.text().catch(() => 'unknown')
+    throw new Error(
+      `Evolution Go webhook update failed (${response.status}): ${errorBody}`,
+    )
+  }
 }
 
 /**

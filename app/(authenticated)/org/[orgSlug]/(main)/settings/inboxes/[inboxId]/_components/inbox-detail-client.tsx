@@ -298,7 +298,6 @@ const InboxDetailClient = ({
           savedInstanceName={inbox.evolutionInstanceName ?? null}
           savedApiTokenMasked={inbox.evolutionApiKey ?? null}
           webhookSecret={inbox.evolutionWebhookSecret ?? null}
-          initialConnected={inbox.evolutionConnected}
         />
       )
     }

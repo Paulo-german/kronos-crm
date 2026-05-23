@@ -20,14 +20,14 @@ export async function assertEvolutionGoConnected(
   if (cached && Date.now() < cached.expiresAt) {
     if (!cached.connected) {
       throw new Error(
-        'WhatsApp (Evolution Go) desconectado. Reconecte via QR Code antes de enviar mensagens.',
+        'WhatsApp (Evolution Go) desconectado. Reconecte a instância no servidor Evolution Go antes de enviar mensagens.',
       )
     }
     return
   }
 
-  const { state } = await getEvolutionGoInstanceStatus(instanceName, credentials)
-  const connected = state === 'open'
+  const statusResult = await getEvolutionGoInstanceStatus(instanceName, credentials)
+  const connected = statusResult?.state === 'open'
   connectionCache.set(instanceName, {
     connected,
     expiresAt: Date.now() + CONNECTION_CACHE_TTL_MS,
@@ -35,7 +35,7 @@ export async function assertEvolutionGoConnected(
 
   if (!connected) {
     throw new Error(
-      'WhatsApp (Evolution Go) desconectado. Reconecte via QR Code antes de enviar mensagens.',
+      'WhatsApp (Evolution Go) desconectado. Reconecte a instância no servidor Evolution Go antes de enviar mensagens.',
     )
   }
 }

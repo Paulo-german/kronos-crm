@@ -9,6 +9,7 @@ import {
   buildEvolutionGoWebhookUrl,
   createEvolutionGoInstance,
   getEvolutionGoInstanceStatus,
+  updateEvolutionGoWebhook,
 } from '@/_lib/evolution-go/instance-management'
 import type { EvolutionGoCredentials } from '@/_lib/evolution-go/types'
 import { connectEvolutionGoInboxSchema } from './schema'
@@ -39,34 +40,47 @@ export const connectEvolutionGoInbox = orgActionClient
       apiToken: data.apiToken,
     }
 
-    // 3. Gerar nome único da instância (preserva se já existe)
+    // 3. Resolver nome da instância: parâmetro explícito > salvo no DB > gerar novo
     const instanceName =
-      inbox.evolutionInstanceName ?? `kronos-go-${ctx.orgId.slice(0, 8)}-${inbox.id.slice(0, 8)}`
+      data.instanceName ??
+      inbox.evolutionInstanceName ??
+      `kronos-go-${ctx.orgId.slice(0, 8)}-${inbox.id.slice(0, 8)}`
 
-    // 4. Validar credenciais via status — se o servidor responder qualquer 2xx, o token é válido
-    const statusCheck = await getEvolutionGoInstanceStatus(instanceName, credentials).catch(
-      () => null,
+    // 4. Checar se a instância já existe no servidor (lança em 401/403, null se 404)
+    const statusResult = await getEvolutionGoInstanceStatus(instanceName, credentials).catch(
+      (error: Error) => {
+        throw new Error(
+          `Não foi possível conectar ao servidor Evolution Go: ${error.message}`,
+        )
+      },
     )
-    if (!statusCheck) {
-      throw new Error(
-        'Não foi possível conectar ao servidor Evolution Go. Verifique a URL e o token.',
-      )
-    }
 
     // 5. Webhook secret per-inbox (preserva em re-conexões)
     const webhookSecret = inbox.evolutionWebhookSecret ?? crypto.randomUUID()
     const webhookUrl = buildEvolutionGoWebhookUrl(webhookSecret)
 
-    // 6. Criar instância no servidor Go (token de instância = mesmo secret de webhook
-    // pra simplificar — pode ser separado no futuro se necessário)
-    const createResult = await createEvolutionGoInstance(
-      instanceName,
-      webhookSecret,
-      webhookUrl,
-      credentials,
-    ).catch((error: Error) => {
-      throw new Error(`Falha ao criar instância no Evolution Go: ${error.message}`)
-    })
+    // 6. Criar ou atualizar webhook dependendo se a instância existe
+    let qrBase64: string | null = null
+
+    if (statusResult !== null) {
+      // Instância existe — apenas atualiza o webhook
+      await updateEvolutionGoWebhook(instanceName, webhookUrl, credentials).catch(
+        (error: Error) => {
+          throw new Error(`Falha ao atualizar webhook no Evolution Go: ${error.message}`)
+        },
+      )
+    } else {
+      // Instância não existe — cria do zero e retorna QR
+      const createResult = await createEvolutionGoInstance(
+        instanceName,
+        webhookSecret,
+        webhookUrl,
+        credentials,
+      ).catch((error: Error) => {
+        throw new Error(`Falha ao criar instância no Evolution Go: ${error.message}`)
+      })
+      qrBase64 = createResult.qrBase64
+    }
 
     // 7. Persistir credenciais + connectionType
     try {
@@ -76,8 +90,8 @@ export const connectEvolutionGoInbox = orgActionClient
           connectionType: 'EVOLUTION_GO',
           evolutionApiUrl: data.apiUrl,
           evolutionApiKey: data.apiToken,
-          evolutionInstanceName: createResult.instanceName,
-          evolutionInstanceId: createResult.instanceId || createResult.instanceName,
+          evolutionInstanceName: instanceName,
+          evolutionInstanceId: instanceName,
           evolutionWebhookSecret: webhookSecret,
           evolutionConnected: false,
         },
@@ -103,7 +117,7 @@ export const connectEvolutionGoInbox = orgActionClient
     return {
       success: true,
       inboxId: inbox.id,
-      instanceName: createResult.instanceName,
-      qrBase64: createResult.qrBase64,
+      instanceName,
+      qrBase64,
     }
   })
