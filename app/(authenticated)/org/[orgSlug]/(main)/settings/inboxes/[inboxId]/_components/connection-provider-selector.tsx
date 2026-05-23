@@ -1,15 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { QrCode, Phone, Plug, Server, ArrowLeft } from 'lucide-react'
+import Image from 'next/image'
+import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/_components/ui/card'
 import InboxConnectionCard from './inbox-connection-card'
 import MetaConnectionCard from './meta-connection-card'
 import ZApiConnectionCard from './zapi-connection-card'
@@ -33,39 +27,59 @@ interface ConnectionProviderSelectorProps {
   instanceInfo: EvolutionInstanceInfo | null
 }
 
-/**
- * Seletor de provider de conexao WhatsApp.
- *
- * Quando nenhuma conexao esta ativa, exibe quatro cards para o usuario escolher:
- * - WhatsApp (QR Code) — conexao via instancia gerenciada pela Kronos
- * - WhatsApp Oficial (Meta) — conexao via Embedded Signup da Meta
- * - Z-API — conexao via Instance ID e Token
- * - Evolution API (self-hosted) — conexao via instancia propria do usuario
- *
- * Apos a selecao, renderiza o sub-fluxo correspondente.
- */
+interface ProviderCardProps {
+  logo: string
+  logoAlt: string
+  name: string
+  badge?: string
+  onClick: () => void
+  disabled?: boolean
+}
+
+const ProviderCard = ({ logo, logoAlt, name, badge, onClick, disabled }: ProviderCardProps) => (
+  <button
+    type="button"
+    disabled={disabled}
+    onClick={onClick}
+    className="flex w-full items-center gap-3 rounded-xl border border-border/50 bg-background px-4 py-3.5 text-left transition-colors hover:border-border hover:bg-secondary/20 disabled:cursor-not-allowed disabled:opacity-50"
+  >
+    <div className="relative h-9 w-9 shrink-0">
+      <Image
+        src={logo}
+        alt={logoAlt}
+        fill
+        className="rounded-lg object-contain"
+        sizes="36px"
+      />
+      {badge && (
+        <span className="absolute -bottom-1 -right-1.5 rounded bg-cyan-500 px-1 py-px text-[9px] font-bold leading-3 text-white">
+          {badge}
+        </span>
+      )}
+    </div>
+    <span className="text-sm font-medium">{name}</span>
+  </button>
+)
+
+const BackButton = ({ onClick }: { onClick: () => void }) => (
+  <Button variant="ghost" size="sm" className="w-fit" onClick={onClick}>
+    <ArrowLeft className="mr-2 h-4 w-4" />
+    Voltar para seleção
+  </Button>
+)
+
 const ConnectionProviderSelector = ({
   inboxId,
   canManage,
   connectionStats,
   instanceInfo,
 }: ConnectionProviderSelectorProps) => {
-  const [selectedProvider, setSelectedProvider] =
-    useState<ProviderSelection>(null)
+  const [selectedProvider, setSelectedProvider] = useState<ProviderSelection>(null)
 
-  // Sub-fluxo: WhatsApp via QR Code (gerenciado pela Kronos)
   if (selectedProvider === 'evolution') {
     return (
       <div className="space-y-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-fit"
-          onClick={() => setSelectedProvider(null)}
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar para selecao
-        </Button>
+        <BackButton onClick={() => setSelectedProvider(null)} />
         <InboxConnectionCard
           inboxId={inboxId}
           canManage={canManage}
@@ -80,19 +94,10 @@ const ConnectionProviderSelector = ({
     )
   }
 
-  // Sub-fluxo: Meta Cloud API
   if (selectedProvider === 'meta_cloud') {
     return (
       <div className="space-y-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-fit"
-          onClick={() => setSelectedProvider(null)}
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar para selecao
-        </Button>
+        <BackButton onClick={() => setSelectedProvider(null)} />
         <MetaConnectionCard
           inboxId={inboxId}
           canManage={canManage}
@@ -105,19 +110,10 @@ const ConnectionProviderSelector = ({
     )
   }
 
-  // Sub-fluxo: Z-API
   if (selectedProvider === 'z_api') {
     return (
       <div className="space-y-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-fit"
-          onClick={() => setSelectedProvider(null)}
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar para selecao
-        </Button>
+        <BackButton onClick={() => setSelectedProvider(null)} />
         <ZApiConnectionCard
           inboxId={inboxId}
           canManage={canManage}
@@ -129,19 +125,10 @@ const ConnectionProviderSelector = ({
     )
   }
 
-  // Sub-fluxo: Evolution API self-hosted
   if (selectedProvider === 'evolution_self_hosted') {
     return (
       <div className="space-y-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-fit"
-          onClick={() => setSelectedProvider(null)}
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar para selecao
-        </Button>
+        <BackButton onClick={() => setSelectedProvider(null)} />
         <EvolutionSelfHostedCard
           inboxId={inboxId}
           canManage={canManage}
@@ -155,19 +142,10 @@ const ConnectionProviderSelector = ({
     )
   }
 
-  // Sub-fluxo: Evolution Go selfhosted
   if (selectedProvider === 'evolution_go') {
     return (
       <div className="space-y-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-fit"
-          onClick={() => setSelectedProvider(null)}
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar para seleção
-        </Button>
+        <BackButton onClick={() => setSelectedProvider(null)} />
         <EvolutionGoCard
           inboxId={inboxId}
           canManage={canManage}
@@ -175,217 +153,58 @@ const ConnectionProviderSelector = ({
           savedInstanceName={null}
           savedApiTokenMasked={null}
           webhookSecret={null}
-          initialConnected={false}
+          onRemoved={() => setSelectedProvider(null)}
         />
       </div>
     )
   }
 
-  // Seletor inicial — cinco cards
   return (
     <div className="space-y-4">
-      <div className="mb-2">
-        <p className="text-sm font-medium">Escolha o tipo de conexao</p>
+      <div>
+        <p className="text-sm font-medium">Escolha o provedor de conexão</p>
         <p className="text-xs text-muted-foreground">
           Selecione como deseja conectar o WhatsApp a esta caixa de entrada.
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        {/* Card WhatsApp — QR Code gerenciado */}
-        <Card className="cursor-pointer border-border/50 bg-secondary/20 transition-colors hover:border-border hover:bg-secondary/40">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base font-semibold">
-              <QrCode className="h-5 w-5" />
-              WhatsApp
-            </CardTitle>
-            <CardDescription>
-              Conecte escaneando o QR Code com qualquer número WhatsApp. Ideal
-              para números pessoais ou de negócio.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ul className="mb-4 space-y-1.5 text-xs text-muted-foreground">
-              <li className="flex items-center gap-2">
-                <span className="h-1 w-1 rounded-full bg-muted-foreground" />
-                Qualquer número WhatsApp
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="h-1 w-1 rounded-full bg-muted-foreground" />
-                Conexão via QR Code no celular
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="h-1 w-1 rounded-full bg-muted-foreground" />
-                Sem aprovação da Meta necessária
-              </li>
-            </ul>
-            {canManage && (
-              <Button
-                className="w-full"
-                variant="outline"
-                onClick={() => setSelectedProvider('evolution')}
-              >
-                Conectar via QR Code
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Card Meta Cloud API — API Oficial */}
-        <Card className="cursor-pointer border-border/50 bg-secondary/20 transition-colors hover:border-border hover:bg-secondary/40">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base font-semibold">
-              <Phone className="h-5 w-5" />
-              WhatsApp Oficial (Meta)
-            </CardTitle>
-            <CardDescription>
-              Conecte via API Oficial do WhatsApp Business (Meta Cloud API).
-              Requer número verificado pela Meta.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ul className="mb-4 space-y-1.5 text-xs text-muted-foreground">
-              <li className="flex items-center gap-2">
-                <span className="h-1 w-1 rounded-full bg-muted-foreground" />
-                Número verificado pelo Meta
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="h-1 w-1 rounded-full bg-muted-foreground" />
-                API oficial e estável
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="h-1 w-1 rounded-full bg-muted-foreground" />
-                Sem risco de bloqueio de conta
-              </li>
-            </ul>
-            {canManage && (
-              <Button
-                className="w-full"
-                variant="outline"
-                onClick={() => setSelectedProvider('meta_cloud')}
-              >
-                Conectar via Meta
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Card Z-API */}
-        <Card className="cursor-pointer border-border/50 bg-secondary/20 transition-colors hover:border-border hover:bg-secondary/40">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base font-semibold">
-              <Plug className="h-5 w-5" />
-              Z-API WhatsApp
-            </CardTitle>
-            <CardDescription>
-              Conecte via Z-API usando Instance ID e Token. Ideal para quem já
-              utiliza a plataforma Z-API.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ul className="mb-4 space-y-1.5 text-xs text-muted-foreground">
-              <li className="flex items-center gap-2">
-                <span className="h-1 w-1 rounded-full bg-muted-foreground" />
-                Qualquer número WhatsApp
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="h-1 w-1 rounded-full bg-muted-foreground" />
-                Conexão via QR Code ou código
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="h-1 w-1 rounded-full bg-muted-foreground" />
-                Gerenciado pela plataforma Z-API
-              </li>
-            </ul>
-            {canManage && (
-              <Button
-                className="w-full"
-                variant="outline"
-                onClick={() => setSelectedProvider('z_api')}
-              >
-                Conectar via Z-API
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Card Evolution API — self-hosted (JS) */}
-        <Card className="cursor-pointer border-border/50 bg-secondary/20 transition-colors hover:border-border hover:bg-secondary/40">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base font-semibold">
-              <Server className="h-5 w-5" />
-              Evolution API (JS)
-            </CardTitle>
-            <CardDescription>
-              Conecte usando sua própria instância Evolution API em Node.js
-              (self-hosted). Para usuários avançados.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ul className="mb-4 space-y-1.5 text-xs text-muted-foreground">
-              <li className="flex items-center gap-2">
-                <span className="h-1 w-1 rounded-full bg-muted-foreground" />
-                Instância própria self-hosted
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="h-1 w-1 rounded-full bg-muted-foreground" />
-                Controle total sobre a infraestrutura
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="h-1 w-1 rounded-full bg-muted-foreground" />
-                Requer servidor Evolution API (Node.js) ativo
-              </li>
-            </ul>
-            {canManage && (
-              <Button
-                className="w-full"
-                variant="outline"
-                onClick={() => setSelectedProvider('evolution_self_hosted')}
-              >
-                Configurar Evolution API
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Card Evolution Go — self-hosted */}
-        <Card className="cursor-pointer border-border/50 bg-secondary/20 transition-colors hover:border-border hover:bg-secondary/40">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base font-semibold">
-              <Server className="h-5 w-5" />
-              Evolution Go (selfhosted)
-            </CardTitle>
-            <CardDescription>
-              Conecte usando sua própria instância Evolution Go — reimplementação
-              em Go do servidor Evolution. Para usuários avançados.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ul className="mb-4 space-y-1.5 text-xs text-muted-foreground">
-              <li className="flex items-center gap-2">
-                <span className="h-1 w-1 rounded-full bg-muted-foreground" />
-                Servidor Evolution Go self-hosted
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="h-1 w-1 rounded-full bg-muted-foreground" />
-                Autenticação via token por instância
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="h-1 w-1 rounded-full bg-muted-foreground" />
-                Conexão via QR Code
-              </li>
-            </ul>
-            {canManage && (
-              <Button
-                className="w-full"
-                variant="outline"
-                onClick={() => setSelectedProvider('evolution_go')}
-              >
-                Configurar Evolution Go
-              </Button>
-            )}
-          </CardContent>
-        </Card>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <ProviderCard
+          logo="/images/providers/whatsapp-meta.svg"
+          logoAlt="WhatsApp"
+          name="WhatsApp (QR Code)"
+          onClick={() => setSelectedProvider('evolution')}
+          disabled={!canManage}
+        />
+        <ProviderCard
+          logo="/images/providers/whatsapp-meta.svg"
+          logoAlt="WhatsApp Oficial"
+          name="WhatsApp Oficial (Meta)"
+          onClick={() => setSelectedProvider('meta_cloud')}
+          disabled={!canManage}
+        />
+        <ProviderCard
+          logo="/images/providers/zapi.png"
+          logoAlt="Z-API"
+          name="Z-API"
+          onClick={() => setSelectedProvider('z_api')}
+          disabled={!canManage}
+        />
+        <ProviderCard
+          logo="/images/providers/evolution-api.png"
+          logoAlt="Evolution API"
+          name="Evolution API"
+          onClick={() => setSelectedProvider('evolution_self_hosted')}
+          disabled={!canManage}
+        />
+        <ProviderCard
+          logo="/images/providers/evolution-go.png"
+          logoAlt="Evolution Go"
+          name="Evolution Go"
+          badge="Go"
+          onClick={() => setSelectedProvider('evolution_go')}
+          disabled={!canManage}
+        />
       </div>
     </div>
   )

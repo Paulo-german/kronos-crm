@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
+import Image from 'next/image'
 import {
   Server,
   Copy,
@@ -25,7 +26,6 @@ import {
 } from '@/_components/ui/card'
 import { Button } from '@/_components/ui/button'
 import { Input } from '@/_components/ui/input'
-import { Badge } from '@/_components/ui/badge'
 import { Alert, AlertDescription } from '@/_components/ui/alert'
 import {
   Form,
@@ -196,21 +196,22 @@ const EvolutionSelfHostedCard = ({
       <Card className="border-border/50 bg-secondary/20">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-base font-semibold">
-              <Server className="h-5 w-5" />
-              Evolution API
-            </CardTitle>
-            <Badge
-              variant="outline"
-              className="gap-1.5 bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
-            >
-              <Server className="h-3 w-3" />
-              Evolution API
-            </Badge>
+            <div className="flex items-center gap-3">
+              <div className="relative h-8 w-8 shrink-0">
+                <Image
+                  src="/images/providers/evolution-api.png"
+                  alt="Evolution API"
+                  fill
+                  className="rounded-md object-contain"
+                  sizes="32px"
+                />
+              </div>
+              <div>
+                <CardTitle className="text-base font-semibold">Evolution API</CardTitle>
+                <CardDescription>Self-hosted (Node.js)</CardDescription>
+              </div>
+            </div>
           </div>
-          <CardDescription>
-            Configure sua instância Evolution API self-hosted para este inbox.
-          </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-5">

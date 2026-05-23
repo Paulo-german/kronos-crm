@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
+import Image from 'next/image'
 import {
   Wifi,
   WifiOff,
@@ -194,21 +195,29 @@ const MetaConnectionCard = ({
         <Card className="border-border/50 bg-secondary/20">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-base font-semibold">
-                <Wifi className="h-5 w-5 text-kronos-green" />
-                WhatsApp Business Conectado
-              </CardTitle>
+              <div className="flex items-center gap-3">
+                <div className="relative h-8 w-8 shrink-0">
+                  <Image
+                    src="/images/providers/whatsapp-meta.svg"
+                    alt="WhatsApp Oficial"
+                    fill
+                    className="rounded-md object-contain"
+                    sizes="32px"
+                  />
+                </div>
+                <div>
+                  <CardTitle className="text-base font-semibold">WhatsApp Oficial</CardTitle>
+                  <CardDescription>Meta Cloud API</CardDescription>
+                </div>
+              </div>
               <Badge
                 variant="outline"
-                className="border-kronos-green/20 bg-kronos-green/10 px-2 text-xs font-semibold text-kronos-green"
+                className="gap-1.5 border-emerald-500/20 bg-emerald-500/10 text-emerald-600"
               >
-                API Oficial
+                <Wifi className="h-3 w-3" />
+                Conectado
               </Badge>
             </div>
-            <CardDescription>
-              Esta caixa de entrada esta conectada via API Oficial do WhatsApp
-              Business (Meta Cloud API).
-            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Informacoes da conta */}
@@ -320,14 +329,30 @@ const MetaConnectionCard = ({
   return (
     <Card className="border-border/50 bg-secondary/20">
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base font-semibold">
-            <WifiOff className="h-5 w-5" />
-            WhatsApp Business Desconectado
-          </CardTitle>
-          <CardDescription>
-            Conecte via API Oficial do WhatsApp Business para receber e enviar
-            mensagens com um numero verificado pela Meta.
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="relative h-8 w-8 shrink-0">
+                <Image
+                  src="/images/providers/whatsapp-meta.svg"
+                  alt="WhatsApp Oficial"
+                  fill
+                  className="rounded-md object-contain"
+                  sizes="32px"
+                />
+              </div>
+              <div>
+                <CardTitle className="text-base font-semibold">WhatsApp Oficial</CardTitle>
+                <CardDescription>Meta Cloud API</CardDescription>
+              </div>
+            </div>
+            <Badge
+              variant="outline"
+              className="gap-1.5 border-border/50 bg-secondary/40 text-muted-foreground"
+            >
+              <WifiOff className="h-3 w-3" />
+              Desconectado
+            </Badge>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center gap-4 py-6">

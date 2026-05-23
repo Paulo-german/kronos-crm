@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
+import Image from 'next/image'
 import {
   Wifi,
   WifiOff,
@@ -165,15 +166,31 @@ const ZApiConnectionCard = ({
   if (connectionState === 'connected') {
     return (
       <Card className="border-border/50 bg-secondary/20">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base font-semibold">
-            <Wifi className="h-5 w-5 text-kronos-green" />
-            Z-API Conectada
-            <Badge variant="outline" className="border-kronos-green/20 bg-kronos-green/10 text-kronos-green hover:bg-kronos-green/20">
-              Online
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="relative h-8 w-8 shrink-0">
+                <Image
+                  src="/images/providers/zapi.png"
+                  alt="Z-API"
+                  fill
+                  className="rounded-md object-contain"
+                  sizes="32px"
+                />
+              </div>
+              <div>
+                <CardTitle className="text-base font-semibold">Z-API</CardTitle>
+                <CardDescription>WhatsApp via Z-API</CardDescription>
+              </div>
+            </div>
+            <Badge
+              variant="outline"
+              className="gap-1.5 border-emerald-500/20 bg-emerald-500/10 text-emerald-600"
+            >
+              <Wifi className="h-3 w-3" />
+              Conectado
             </Badge>
-          </CardTitle>
-          <CardDescription>Conexao WhatsApp via Z-API ativa.</CardDescription>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {zapiPhone && (
@@ -258,18 +275,29 @@ const ZApiConnectionCard = ({
   if (connectionState === 'connecting') {
     return (
       <Card className="border-border/50 bg-secondary/20">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base font-semibold">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            Conectando Z-API
-          </CardTitle>
-          <CardDescription>
-            Escaneie o QR code abaixo com o WhatsApp no seu celular.
-          </CardDescription>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="relative h-8 w-8 shrink-0">
+                <Image
+                  src="/images/providers/zapi.png"
+                  alt="Z-API"
+                  fill
+                  className="rounded-md object-contain"
+                  sizes="32px"
+                />
+              </div>
+              <div>
+                <CardTitle className="text-base font-semibold">Z-API</CardTitle>
+                <CardDescription>WhatsApp via Z-API</CardDescription>
+              </div>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-4">
           {qrBase64 ? (
             <div className="rounded-lg border bg-white p-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={qrBase64.startsWith('data:') ? qrBase64 : `data:image/png;base64,${qrBase64}`}
                 alt="QR Code Z-API"
@@ -303,15 +331,31 @@ const ZApiConnectionCard = ({
   // Estado formulario (desconectado)
   return (
     <Card className="border-border/50 bg-secondary/20">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base font-semibold">
-          <WifiOff className="h-5 w-5 text-muted-foreground" />
-          Conectar Z-API
-        </CardTitle>
-        <CardDescription>
-          Insira as credenciais da sua instancia Z-API. Voce encontra esses dados
-          no painel da Z-API ao editar sua instancia.
-        </CardDescription>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="relative h-8 w-8 shrink-0">
+              <Image
+                src="/images/providers/zapi.png"
+                alt="Z-API"
+                fill
+                className="rounded-md object-contain"
+                sizes="32px"
+              />
+            </div>
+            <div>
+              <CardTitle className="text-base font-semibold">Z-API</CardTitle>
+              <CardDescription>WhatsApp via Z-API</CardDescription>
+            </div>
+          </div>
+          <Badge
+            variant="outline"
+            className="gap-1.5 border-border/50 bg-secondary/40 text-muted-foreground"
+          >
+            <WifiOff className="h-3 w-3" />
+            Desconectado
+          </Badge>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
