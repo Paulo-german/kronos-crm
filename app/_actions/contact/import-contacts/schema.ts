@@ -1,6 +1,7 @@
+import { LifecycleStage } from '@prisma/client'
 import { z } from 'zod'
 
-const importRowSchema = z.object({
+export const importRowSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
   email: z.string().email('Email inválido').optional().or(z.literal('')),
   phone: z.string().optional(),
@@ -12,6 +13,7 @@ const importRowSchema = z.object({
 
 export const importContactsSchema = z.object({
   rows: z.array(importRowSchema).min(1, 'Envie ao menos 1 contato'),
+  lifecycleStage: z.nativeEnum(LifecycleStage).default('LEAD'),
 })
 
 export type ImportRow = z.infer<typeof importRowSchema>
