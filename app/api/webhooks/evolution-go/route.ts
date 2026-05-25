@@ -42,7 +42,13 @@ function buildUserMessageMetadata(
   rawGoMessage: unknown,
 ): Prisma.InputJsonValue | undefined {
   if (!media) return undefined
-  return { media, goRawMessage: rawGoMessage } as unknown as Prisma.InputJsonValue
+  const hasRaw = rawGoMessage !== undefined && rawGoMessage !== null
+  if (!hasRaw) {
+    console.warn(`${LOG} buildUserMessageMetadata: rawGoMessage ausente — media será salva sem goRawMessage`, {
+      mediaMimetype: media.mimetype,
+    })
+  }
+  return { media, ...(hasRaw ? { goRawMessage: rawGoMessage } : {}) } as unknown as Prisma.InputJsonValue
 }
 
 export async function POST(req: Request) {
@@ -662,9 +668,7 @@ export async function POST(req: Request) {
               role: 'user',
               content: resolveMessageContent(normalizedMsg) || '[mensagem não suportada]',
               providerMessageId: messageId,
-              metadata: normalizedMsg.media
-                ? ({ media: normalizedMsg.media } as unknown as Prisma.InputJsonValue)
-                : undefined,
+              metadata: buildUserMessageMetadata(normalizedMsg.media, (payload.data as Record<string, unknown>)?.Message),
             },
           })
         } catch (error) {
