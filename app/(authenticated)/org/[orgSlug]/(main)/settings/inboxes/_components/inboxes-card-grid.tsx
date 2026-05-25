@@ -11,6 +11,8 @@ import {
   Wifi,
   WifiOff,
   TrashIcon,
+  Server,
+  Radio,
 } from 'lucide-react'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
@@ -23,14 +25,20 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/_components/ui/tooltip'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/_components/ui/select'
 import { updateInbox } from '@/_actions/inbox/update-inbox'
 import { deleteInbox } from '@/_actions/inbox/delete-inbox'
 import ConfirmationDialog from '@/_components/confirmation-dialog'
 import UpsertInboxSheetContent from './upsert-inbox-sheet-content'
 import InboxTableDropdownMenu from './table-dropdown-menu'
-import { InboxFiltersSheet } from './inbox-filters-sheet'
-import { InboxFilterBadges } from './inbox-filter-badges'
 import { useInboxFilters } from '../_lib/use-inbox-filters'
+import { PROVIDER_OPTIONS, CHANNEL_OPTIONS } from '../_lib/inbox-filters'
 import type { InboxListDto } from '@/_data-access/inbox/get-inboxes'
 
 interface AgentOption {
@@ -76,27 +84,22 @@ export function InboxesCardGrid({
   withinQuota,
   isSuperAdmin,
 }: InboxesCardGridProps) {
-  const { filters, setFilters, clearFilters, activeFilterCount, hasActiveFilters } =
+  const { filters, setFilters, clearFilters, hasActiveFilters } =
     useInboxFilters()
 
   const filteredInboxes = useMemo(() => {
     return inboxes.filter((inbox) => {
-      if (filters.connectionStatus.length > 0) {
+      if (filters.connectionStatus !== 'all') {
         const connected = isInboxConnected(inbox)
-        const matchesStatus =
-          (filters.connectionStatus.includes('connected') && connected) ||
-          (filters.connectionStatus.includes('disconnected') && !connected)
-        if (!matchesStatus) return false
-      }
-      if (filters.provider.length > 0) {
-        if (
-          !inbox.connectionType ||
-          !filters.provider.includes(inbox.connectionType)
-        )
+        if (filters.connectionStatus === 'connected' && !connected) return false
+        if (filters.connectionStatus === 'disconnected' && connected)
           return false
       }
-      if (filters.channel.length > 0) {
-        if (!filters.channel.includes(inbox.channel)) return false
+      if (filters.provider !== 'all') {
+        if (inbox.connectionType !== filters.provider) return false
+      }
+      if (filters.channel !== 'all') {
+        if (inbox.channel !== filters.channel) return false
       }
       return true
     })
@@ -157,9 +160,7 @@ export function InboxesCardGrid({
         <InboxIcon className="h-8 w-8 text-muted-foreground" />
       </div>
       <div className="text-center">
-        <h3 className="text-lg font-semibold">
-          Nenhuma caixa de entrada
-        </h3>
+        <h3 className="text-lg font-semibold">Nenhuma caixa de entrada</h3>
         <p className="text-sm text-muted-foreground">
           Crie sua primeira caixa de entrada para conectar um canal de
           atendimento.
@@ -189,16 +190,14 @@ export function InboxesCardGrid({
   )
 
   // Empty state — filtros sem resultado
-  const filteredEmptyState =
-    inboxes.length > 0 && filteredInboxes.length === 0 && (
+  const filteredEmptyState = inboxes.length > 0 &&
+    filteredInboxes.length === 0 && (
       <div className="flex flex-col items-center justify-center gap-4 py-16">
         <div className="rounded-full bg-muted p-4">
           <InboxIcon className="h-8 w-8 text-muted-foreground" />
         </div>
         <div className="text-center">
-          <h3 className="text-lg font-semibold">
-            Nenhuma caixa encontrada
-          </h3>
+          <h3 className="text-lg font-semibold">Nenhuma caixa encontrada</h3>
           <p className="text-sm text-muted-foreground">
             Nenhuma caixa de entrada corresponde aos filtros aplicados.
           </p>
@@ -332,26 +331,75 @@ export function InboxesCardGrid({
 
   return (
     <>
-      {/* Barra de filtros */}
+      {/* Toolbar de filtros */}
       {inboxes.length > 0 && (
-        <div className="mb-4 space-y-2">
-          <div className="flex items-center gap-3">
-            <InboxFiltersSheet
-              filters={filters}
-              onFiltersChange={setFilters}
-              activeFilterCount={activeFilterCount}
-            />
-            <span className="text-sm text-muted-foreground">
-              {filteredInboxes.length} de {inboxes.length}{' '}
-              {inboxes.length === 1 ? 'caixa' : 'caixas'}
-            </span>
-          </div>
-          <InboxFilterBadges
-            filters={filters}
-            onFiltersChange={setFilters}
-            onClearFilters={clearFilters}
-            hasActiveFilters={hasActiveFilters}
-          />
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <Select
+            value={filters.connectionStatus}
+            onValueChange={(value) => setFilters({ connectionStatus: value })}
+          >
+            <SelectTrigger className="w-72 bg-background">
+              <Wifi className="mr-2 h-4 w-4 text-muted-foreground" />
+              <SelectValue placeholder="Todos os status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os status</SelectItem>
+              <SelectItem value="connected">Conectado</SelectItem>
+              <SelectItem value="disconnected">Desconectado</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={filters.channel}
+            onValueChange={(value) => setFilters({ channel: value })}
+          >
+            <SelectTrigger className="w-72 bg-background">
+              <Radio className="mr-2 h-4 w-4 text-muted-foreground" />
+              <SelectValue placeholder="Todos os canais" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os canais</SelectItem>
+              {CHANNEL_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={filters.provider}
+            onValueChange={(value) => setFilters({ provider: value })}
+          >
+            <SelectTrigger className="w-72 bg-background">
+              <Server className="mr-2 h-4 w-4 text-muted-foreground" />
+              <SelectValue placeholder="Todos os provedores" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os provedores</SelectItem>
+              {PROVIDER_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <span className="text-sm text-muted-foreground">
+            {filteredInboxes.length} de {inboxes.length}{' '}
+            {inboxes.length === 1 ? 'caixa' : 'caixas'}
+          </span>
+
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearFilters}
+              className="text-muted-foreground"
+            >
+              Limpar filtros
+            </Button>
+          )}
         </div>
       )}
 

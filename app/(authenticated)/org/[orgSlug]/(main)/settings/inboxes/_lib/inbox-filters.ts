@@ -1,14 +1,3 @@
-export interface InboxFilters {
-  connectionStatus: ('connected' | 'disconnected')[]
-  provider: string[]
-  channel: string[]
-}
-
-export const CONNECTION_STATUS_OPTIONS = [
-  { value: 'connected', label: 'Conectado' },
-  { value: 'disconnected', label: 'Desconectado' },
-] as const
-
 export const PROVIDER_OPTIONS = [
   { value: 'EVOLUTION_GO', label: 'Evolution Go' },
   { value: 'EVOLUTION_JS', label: 'Evolution JS' },

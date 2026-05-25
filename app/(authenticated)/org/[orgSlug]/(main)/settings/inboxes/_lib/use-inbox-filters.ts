@@ -1,13 +1,18 @@
 'use client'
 
-import { useQueryStates, parseAsArrayOf, parseAsString } from 'nuqs'
+import { useQueryStates, parseAsString } from 'nuqs'
 import { useCallback, useMemo } from 'react'
-import type { InboxFilters } from './inbox-filters'
 
 const filtersParsers = {
-  connectionStatus: parseAsArrayOf(parseAsString).withDefault([]),
-  provider: parseAsArrayOf(parseAsString).withDefault([]),
-  channel: parseAsArrayOf(parseAsString).withDefault([]),
+  connectionStatus: parseAsString.withDefault('all'),
+  provider: parseAsString.withDefault('all'),
+  channel: parseAsString.withDefault('all'),
+}
+
+export interface InboxFilterState {
+  connectionStatus: string
+  provider: string
+  channel: string
 }
 
 export function useInboxFilters() {
@@ -15,12 +20,9 @@ export function useInboxFilters() {
     history: 'replace',
   })
 
-  const filters = useMemo<InboxFilters>(
+  const filters: InboxFilterState = useMemo(
     () => ({
-      connectionStatus: params.connectionStatus as (
-        | 'connected'
-        | 'disconnected'
-      )[],
+      connectionStatus: params.connectionStatus,
       provider: params.provider,
       channel: params.channel,
     }),
@@ -28,35 +30,28 @@ export function useInboxFilters() {
   )
 
   const setFilters = useCallback(
-    (newFilters: Partial<InboxFilters>) => {
-      const merged = { ...filters, ...newFilters }
+    (newFilters: Partial<InboxFilterState>) => {
       setParams({
-        connectionStatus:
-          merged.connectionStatus.length > 0
-            ? merged.connectionStatus
-            : null,
-        provider: merged.provider.length > 0 ? merged.provider : null,
-        channel: merged.channel.length > 0 ? merged.channel : null,
+        connectionStatus: newFilters.connectionStatus ?? params.connectionStatus,
+        provider: newFilters.provider ?? params.provider,
+        channel: newFilters.channel ?? params.channel,
       })
     },
-    [filters, setParams],
+    [params, setParams],
   )
 
   const clearFilters = useCallback(() => setParams(null), [setParams])
 
-  const activeFilterCount = useMemo(() => {
-    let count = 0
-    if (filters.connectionStatus.length > 0) count++
-    if (filters.provider.length > 0) count++
-    if (filters.channel.length > 0) count++
-    return count
-  }, [filters])
+  const hasActiveFilters =
+    params.connectionStatus !== 'all' ||
+    params.provider !== 'all' ||
+    params.channel !== 'all'
 
-  return {
-    filters,
-    setFilters,
-    clearFilters,
-    activeFilterCount,
-    hasActiveFilters: activeFilterCount > 0,
-  }
+  const activeFilterCount = [
+    params.connectionStatus !== 'all',
+    params.provider !== 'all',
+    params.channel !== 'all',
+  ].filter(Boolean).length
+
+  return { filters, setFilters, clearFilters, hasActiveFilters, activeFilterCount }
 }
