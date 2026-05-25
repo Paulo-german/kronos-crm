@@ -45,8 +45,6 @@ const EvolutionGoConnectionCard = ({
   initialConnected,
   onConnectionStateChange,
 }: EvolutionGoConnectionCardProps) => {
-  // Sempre verifica o estado real no servidor ao montar — initialConnected pode estar
-  // desatualizado (ex: credenciais recém-salvas sempre persistem evolutionConnected: false)
   const [connectionState, setConnectionState] = useState<ConnectionState>('checking')
   const [qrBase64, setQrBase64] = useState<string | null>(null)
   const [qrCode, setQrCode] = useState<string | null>(null)
@@ -55,7 +53,6 @@ const EvolutionGoConnectionCard = ({
   const [isDisconnectOpen, setIsDisconnectOpen] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const hasSyncedRef = useRef(false)
 
   const stopPolling = useCallback(() => {
     if (pollRef.current) {
@@ -68,8 +65,31 @@ const EvolutionGoConnectionCard = ({
     }
   }, [])
 
-  const { execute: executeSync } = useAction(syncEvolutionGoStatus)
+  // Verificação inicial de status — só leitura, sem acionar POST /connect
+  const { execute: executeCheckStatus } = useAction(syncEvolutionGoStatus, {
+    onSuccess: ({ data }) => {
+      if (!data) {
+        setConnectionState('disconnected')
+        return
+      }
+      if (data.connected) {
+        setConnectionState('connected')
+        onConnectionStateChange?.(true)
+      } else {
+        setConnectionState('disconnected')
+        onConnectionStateChange?.(false)
+        // Sincroniza banco se divergia
+        if (initialConnected) {
+          onConnectionStateChange?.(false)
+        }
+      }
+    },
+    onError: () => {
+      setConnectionState('disconnected')
+    },
+  })
 
+  // Polling de QR — só ativo quando em estado 'connecting'
   const { execute: executeGetQR } = useAction(getEvolutionGoQr, {
     onSuccess: ({ data }) => {
       if (!data) return
@@ -81,18 +101,7 @@ const EvolutionGoConnectionCard = ({
         setPairingCode(null)
         stopPolling()
         onConnectionStateChange?.(true)
-        if (!hasSyncedRef.current && !initialConnected) {
-          hasSyncedRef.current = true
-          executeSync({ inboxId })
-        }
         return
-      }
-
-      setConnectionState('connecting')
-      onConnectionStateChange?.(false)
-      if (!hasSyncedRef.current && initialConnected) {
-        hasSyncedRef.current = true
-        executeSync({ inboxId })
       }
 
       if (data.base64) setQrBase64(data.base64)
@@ -100,8 +109,7 @@ const EvolutionGoConnectionCard = ({
       if (data.pairingCode) setPairingCode(data.pairingCode)
     },
     onError: ({ error }) => {
-      toast.error(error.serverError || 'Não foi possível verificar o status da conexão.')
-      setConnectionState((prev) => (prev === 'checking' ? 'connecting' : prev))
+      toast.error(error.serverError || 'Não foi possível obter o QR Code.')
     },
   })
 
@@ -117,7 +125,6 @@ const EvolutionGoConnectionCard = ({
         setIsQrExpired(false)
         setIsDisconnectOpen(false)
         stopPolling()
-        hasSyncedRef.current = false
         onConnectionStateChange?.(false)
       },
       onError: ({ error }) => {
@@ -146,8 +153,15 @@ const EvolutionGoConnectionCard = ({
     }, QR_TIMEOUT)
   }, [inboxId, executeGetQR, stopPolling])
 
+  // Verificação inicial ao montar — apenas leitura do status real
   useEffect(() => {
-    if (connectionState === 'checking' || connectionState === 'connecting') {
+    executeCheckStatus({ inboxId })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inboxId])
+
+  // Inicia polling de QR apenas quando o usuário acionou a conexão
+  useEffect(() => {
+    if (connectionState === 'connecting') {
       startPolling()
     }
     return () => stopPolling()
