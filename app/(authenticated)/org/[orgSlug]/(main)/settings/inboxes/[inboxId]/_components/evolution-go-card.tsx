@@ -313,7 +313,7 @@ const EvolutionGoCard = ({
                     name="apiToken"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Global API Key</FormLabel>
+                        <FormLabel>Token da instância</FormLabel>
                         <FormControl>
                           <div className="relative">
                             <Input
@@ -321,7 +321,7 @@ const EvolutionGoCard = ({
                               placeholder={
                                 isAlreadySaved
                                   ? 'Novo token (deixe vazio para manter)'
-                                  : 'Chave de acesso configurada no servidor'
+                                  : 'Token configurado na instância'
                               }
                               disabled={!canManage || isSaving}
                               {...field}
@@ -343,7 +343,7 @@ const EvolutionGoCard = ({
                           </div>
                         </FormControl>
                         <FormDescription>
-                          Chave de acesso global configurada no servidor
+                          Token definido na própria instância, não a chave global do servidor
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
