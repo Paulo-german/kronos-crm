@@ -85,14 +85,20 @@ export async function createEvolutionGoInstance(
 
 /**
  * Normaliza o estado bruto retornado pelo servidor para os valores canônicos.
- * A API Go retorna gin.H (mapa genérico), então o campo e o valor variam.
+ * Evolution Go retorna: { data: { Connected: boolean, LoggedIn: boolean, Name: string }, message: "success" }
  */
 function normalizeInstanceState(data: Record<string, unknown>): EvolutionGoConnectionState['state'] {
+  const inner = data?.data as Record<string, unknown> | undefined
+
+  // Formato real confirmado: { data: { Connected: boolean } }
+  if (inner?.Connected === true) return 'open'
+  if (inner?.Connected === false) return 'close'
+
+  // Fallback para outros formatos possíveis (compatibilidade futura)
   const raw = (
+    (inner?.state as string) ||
     (data?.state as string) ||
     (data?.status as string) ||
-    (data?.instance as Record<string, unknown>)?.state as string ||
-    (data?.connectionStatus as string) ||
     ''
   ).toLowerCase().trim()
 
@@ -137,6 +143,7 @@ export async function getEvolutionGoInstanceStatus(
 /**
  * Polling de QR code — SOMENTE leitura (GET).
  * Não chama POST /connect. Use para o loop de polling após iniciar a conexão.
+ * Quando GET /qr retorna 400 "session already logged in", verifica status novamente.
  */
 export async function pollEvolutionGoQR(
   instanceName: string,
@@ -144,7 +151,7 @@ export async function pollEvolutionGoQR(
 ): Promise<EvolutionGoQRCodeResult> {
   const { apiUrl, apiToken } = credentials
 
-  // 1. Verifica status — se aberto, retorna imediatamente
+  // 1. Verifica status — { data: { Connected: boolean } }
   const statusResult = await getEvolutionGoInstanceStatus(instanceName, credentials)
   if (statusResult?.state === 'open') {
     return { base64: null, code: null, pairingCode: null, state: 'open' }
@@ -156,14 +163,27 @@ export async function pollEvolutionGoQR(
     headers: buildHeaders(apiToken),
   })
 
+  // 400 "session already logged in" — instância conectou entre o status check e o qr check
+  if (qrResponse.status === 400) {
+    const errData = await qrResponse.json().catch(() => ({})) as Record<string, unknown>
+    const isLoggedIn =
+      typeof errData?.error === 'string' &&
+      errData.error.toLowerCase().includes('logged in')
+    if (isLoggedIn) {
+      return { base64: null, code: null, pairingCode: null, state: 'open' }
+    }
+    return { base64: null, code: null, pairingCode: null, state: 'connecting' }
+  }
+
   if (!qrResponse.ok) {
     return { base64: null, code: null, pairingCode: null, state: 'connecting' }
   }
 
   const data = await qrResponse.json().catch(() => ({})) as Record<string, unknown>
-  const base64 = (data?.base64 as string) || (data?.qrcode as Record<string, unknown>)?.base64 as string || null
-  const code = (data?.code as string) || (data?.qr as string) || null
-  const pairingCode = (data?.pairingCode as string) || null
+  const inner = data?.data as Record<string, unknown> | undefined
+  const base64 = (inner?.base64 as string) || (data?.base64 as string) || null
+  const code = (inner?.code as string) || (data?.code as string) || (data?.qr as string) || null
+  const pairingCode = (inner?.pairingCode as string) || (data?.pairingCode as string) || null
 
   return { base64, code, pairingCode, state: 'connecting' }
 }
@@ -206,9 +226,10 @@ export async function connectEvolutionGoInstance(
   }
 
   const data = await qrResponse.json().catch(() => ({})) as Record<string, unknown>
-  const base64 = (data?.base64 as string) || (data?.qrcode as Record<string, unknown>)?.base64 as string || null
-  const code = (data?.code as string) || (data?.qr as string) || null
-  const pairingCode = (data?.pairingCode as string) || null
+  const inner = data?.data as Record<string, unknown> | undefined
+  const base64 = (inner?.base64 as string) || (data?.base64 as string) || null
+  const code = (inner?.code as string) || (data?.code as string) || (data?.qr as string) || null
+  const pairingCode = (inner?.pairingCode as string) || (data?.pairingCode as string) || null
 
   return { base64, code, pairingCode, state: 'connecting' }
 }
