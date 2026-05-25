@@ -46,7 +46,9 @@ const EvolutionGoConnectionCard = ({
   initialConnected,
   onConnectionStateChange,
 }: EvolutionGoConnectionCardProps) => {
-  const [connectionState, setConnectionState] = useState<ConnectionState>('checking')
+  const [connectionState, setConnectionState] = useState<ConnectionState>(
+    initialConnected ? 'connected' : 'checking',
+  )
   const [qrBase64, setQrBase64] = useState<string | null>(null)
   const [qrCode, setQrCode] = useState<string | null>(null)
   const [pairingCode, setPairingCode] = useState<string | null>(null)
@@ -79,10 +81,6 @@ const EvolutionGoConnectionCard = ({
       } else {
         setConnectionState('disconnected')
         onConnectionStateChange?.(false)
-        // Sincroniza banco se divergia
-        if (initialConnected) {
-          onConnectionStateChange?.(false)
-        }
       }
     },
     onError: () => {

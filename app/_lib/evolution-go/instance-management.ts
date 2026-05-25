@@ -10,13 +10,14 @@ import type {
 /**
  * Evolution Go — Gerenciamento de Instâncias WhatsApp.
  *
- * Endpoints (baseados na doc atual do Evolution Go):
- *   POST   /instance/create            { name, token, webhook?, webhookEvents? }
- *   POST   /instance/connect           { instanceName }       -> retorna QR base64
- *   GET    /instance/{name}/status     -> retorna { state }
- *   DELETE /instance/delete/:id        -> remove a instância
+ * Endpoints confirmados via Swagger/curl:
+ *   POST   /instance/create   { name, token, webhook?, webhookEvents? }
+ *   POST   /instance/connect  { webhookUrl?, subscribe? }  → inicia pareamento QR
+ *   GET    /instance/status   → { data: { Connected: bool, LoggedIn: bool, Name: string } }
+ *   GET    /instance/qr       → QR base64 (400 "session already logged in" se já conectado)
+ *   DELETE /instance/delete/:id
  *
- * Auth: header `apikey: <apiToken>` (mesmo padrão do JS — ajustar se a doc Go divergir).
+ * Auth: header `apikey: <instanceToken>` — o token identifica a instância automaticamente (sem nome no path).
  */
 
 function buildHeaders(apiToken: string) {
