@@ -5,9 +5,8 @@ import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 import { resolveEvolutionGoCredentials } from '@/_lib/evolution-go/resolve-credentials'
+import { getEvolutionGoInstanceStatus } from '@/_lib/evolution-go/instance-management'
 import { testEvolutionGoConnectionSchema } from './schema'
-
-type ConnectionStateValue = 'open' | 'close' | 'connecting'
 
 export const testEvolutionGoConnection = orgActionClient
   .schema(testEvolutionGoConnectionSchema)
@@ -34,27 +33,23 @@ export const testEvolutionGoConnection = orgActionClient
 
     const credentials = await resolveEvolutionGoCredentials(inboxId)
 
-    // 3. Fetch inline para distinguir HTTP ok de HTTP erro
-    const response = await fetch(
-      `${credentials.apiUrl}/instance/${encodeURIComponent(inbox.evolutionInstanceName)}/status`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: credentials.apiToken,
-        },
-      },
-    ).catch(() => null)
+    // 3. Usar o mesmo helper que os demais fluxos Evolution Go — trata 404 (null) e lança em 401/403
+    const statusResult = await getEvolutionGoInstanceStatus(
+      inbox.evolutionInstanceName,
+      credentials,
+    ).catch((error: Error) => {
+      throw new Error(`Não foi possível consultar a instância: ${error.message}`)
+    })
 
-    if (!response || !response.ok) {
+    // Instância não existe no servidor
+    if (!statusResult) {
       return {
         success: false as const,
-        error: 'Não foi possível consultar a instância. Verifique a URL e o token.',
+        error: `Instância "${inbox.evolutionInstanceName}" não encontrada no servidor Evolution Go.`,
       }
     }
 
-    const data = await response.json().catch(() => null)
-    const state: ConnectionStateValue = data?.state ?? data?.instance?.state ?? 'close'
+    const state = statusResult.state
     const connected = state === 'open'
 
     // 4. Sincronizar evolutionConnected no banco se divergir do estado real
