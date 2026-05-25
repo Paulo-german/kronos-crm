@@ -19,7 +19,7 @@ export async function sendEvolutionGoAudio(
     body: JSON.stringify({
       number: remoteJid,
       type: 'audio',
-      url: audioBase64.startsWith('data:') ? audioBase64 : `data:audio/ogg;base64,${audioBase64}`,
+      url: audioBase64,
       formatJid: true,
       delay: 0,
     }),
