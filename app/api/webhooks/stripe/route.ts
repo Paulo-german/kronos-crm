@@ -5,9 +5,11 @@ import { db } from '@/_lib/prisma'
 import { revalidateTag } from 'next/cache'
 import {
   getSubscriptionPeriodEnd,
+  getSubscriptionPeriodStart,
   mapStripeStatus,
   resolveProductKey,
 } from '@/_lib/stripe-utils'
+import { resetCreditsForPeriod } from '@/_lib/billing/credit-utils'
 import { notifyOrgAdmins } from '@/_lib/notifications/notify-org-admins'
 import type Stripe from 'stripe'
 
@@ -132,6 +134,7 @@ async function handleCheckoutSessionCompleted(
       stripeSubscriptionId: subscriptionId,
       stripePriceId: priceId,
       status: mapStripeStatus(subscription.status),
+      currentPeriodStart: getSubscriptionPeriodStart(subscription),
       currentPeriodEnd: getSubscriptionPeriodEnd(subscription),
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
       metadata: { product_key: productKey },
@@ -140,6 +143,7 @@ async function handleCheckoutSessionCompleted(
     update: {
       stripePriceId: priceId,
       status: mapStripeStatus(subscription.status),
+      currentPeriodStart: getSubscriptionPeriodStart(subscription),
       currentPeriodEnd: getSubscriptionPeriodEnd(subscription),
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
       metadata: { product_key: productKey },
@@ -172,10 +176,13 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
   const productKey = await resolveProductKey(subscription)
   const plan = await db.plan.findUnique({ where: { slug: productKey } })
 
+  const periodStart = getSubscriptionPeriodStart(subscription)
+
   await db.subscription.update({
     where: { stripeSubscriptionId: subscriptionId },
     data: {
       status: 'active',
+      currentPeriodStart: periodStart,
       currentPeriodEnd: getSubscriptionPeriodEnd(subscription),
       stripePriceId: priceId || undefined,
       metadata: { product_key: productKey },
@@ -183,7 +190,11 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
     },
   })
 
+  // Renovação paga: reseta a franquia para o novo período de faturamento
+  await resetCreditsForPeriod(existing.organizationId, periodStart)
+
   revalidateTag(`subscriptions:${existing.organizationId}`)
+  revalidateTag(`credits:${existing.organizationId}`)
 }
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
@@ -204,6 +215,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
       stripePriceId: priceId || undefined,
       status: mapStripeStatus(subscription.status),
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
+      currentPeriodStart: getSubscriptionPeriodStart(subscription),
       currentPeriodEnd: getSubscriptionPeriodEnd(subscription),
       metadata: { product_key: productKey },
       planId: plan?.id ?? null,

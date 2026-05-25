@@ -111,18 +111,118 @@ async function getCurrentMonthSpent(
 }
 
 /**
+ * Reseta o gasto do período atual (AiUsage do mês corrente) e marca o wallet
+ * como resetado em `periodStart`. Idempotente: chamadas repetidas para o mesmo
+ * período não causam double-reset porque o caller decide via creditsLastResetAt.
+ *
+ * Cria uma WalletTransaction de auditoria do tipo MONTHLY_RESET.
+ */
+export async function resetCreditsForPeriod(
+  orgId: string,
+  periodStart: Date,
+  tx?: PrismaClient,
+): Promise<void> {
+  const prisma = tx ?? db
+  const { periodYear, periodMonth } = getCurrentPeriod()
+
+  const wallet = await prisma.creditWallet.findUnique({
+    where: { organizationId: orgId },
+  })
+
+  if (!wallet) return
+
+  // Idempotência: webhook do Stripe pode disparar mais de uma vez para o mesmo período
+  if (wallet.creditsLastResetAt && wallet.creditsLastResetAt >= periodStart) return
+
+  // Zera o gasto do mês corrente (cria o registro se ainda não existe)
+  await prisma.aiUsage.upsert({
+    where: {
+      organizationId_periodYear_periodMonth: {
+        organizationId: orgId,
+        periodYear,
+        periodMonth,
+      },
+    },
+    create: {
+      organizationId: orgId,
+      periodYear,
+      periodMonth,
+      totalMessagesUsed: 0,
+      totalCreditsSpent: 0,
+    },
+    update: {
+      totalCreditsSpent: 0,
+    },
+  })
+
+  await prisma.creditWallet.update({
+    where: { id: wallet.id },
+    data: { creditsLastResetAt: periodStart },
+  })
+
+  const monthlyLimit = await resolveMonthlyLimit(orgId, prisma)
+
+  await prisma.walletTransaction.create({
+    data: {
+      walletId: wallet.id,
+      type: 'MONTHLY_RESET',
+      amount: monthlyLimit,
+      balanceAfterPlan: monthlyLimit,
+      balanceAfterTopUp: wallet.topUpBalance,
+      description: 'Renovação de créditos — novo período de faturamento',
+    },
+  })
+}
+
+/**
+ * Detecta se o período de faturamento (subscription.currentPeriodStart) avançou
+ * desde o último reset registrado no wallet. Quando avançou, dispara o reset.
+ *
+ * Por que aqui (e não num cron): o webhook do Stripe pode atrasar/falhar.
+ * Validar lazy no caminho de leitura/débito garante que o usuário nunca veja
+ * créditos exauridos após pagar a renovação.
+ */
+async function detectAndApplyResetIfNeeded(
+  orgId: string,
+  walletLastReset: Date | null | undefined,
+  tx?: PrismaClient,
+): Promise<void> {
+  const prisma = tx ?? db
+
+  const subscription = await prisma.subscription.findFirst({
+    where: {
+      organizationId: orgId,
+      status: { in: ['active', 'trialing'] },
+    },
+    select: { currentPeriodStart: true },
+    orderBy: { createdAt: 'desc' },
+  })
+
+  const periodStart = subscription?.currentPeriodStart
+  if (!periodStart) return
+
+  if (!walletLastReset || periodStart > walletLastReset) {
+    await resetCreditsForPeriod(orgId, periodStart, prisma)
+  }
+}
+
+/**
  * Consulta o saldo disponível da organização usando saldo derivado.
  * available = monthlyLimit - currentMonthSpent + topUpBalance
+ *
+ * Aplica reset lazy quando o período de faturamento avançou desde o último reset.
  */
 export async function checkBalance(orgId: string): Promise<BalanceResult> {
-  const [monthlyLimit, monthSpent, wallet] = await Promise.all([
-    resolveMonthlyLimit(orgId),
-    getCurrentMonthSpent(orgId),
-    db.creditWallet.findUnique({
-      where: { organizationId: orgId },
-      select: { topUpBalance: true },
-    }),
-  ])
+  const wallet = await db.creditWallet.findUnique({
+    where: { organizationId: orgId },
+    select: { topUpBalance: true, creditsLastResetAt: true },
+  })
+
+  await detectAndApplyResetIfNeeded(orgId, wallet?.creditsLastResetAt)
+
+  // Leitura sequencial: o reset acima pode ter zerado o AiUsage
+  const monthlyLimit = await resolveMonthlyLimit(orgId)
+  const monthSpent = await getCurrentMonthSpent(orgId)
 
   const topUpBalance = wallet?.topUpBalance ?? 0
   const planBalance = Math.max(0, monthlyLimit - monthSpent)
@@ -155,6 +255,9 @@ export async function debitCredits(
     if (!wallet) {
       return false
     }
+
+    // Aplica reset lazy dentro da mesma transação para evitar race com débito
+    await detectAndApplyResetIfNeeded(orgId, wallet.creditsLastResetAt, tx)
 
     // Saldo derivado: monthlyLimit - gastoDoMês + topUp
     const monthlyLimit = await resolveMonthlyLimit(orgId, tx)

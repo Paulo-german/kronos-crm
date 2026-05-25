@@ -15,6 +15,21 @@ export function getSubscriptionPeriodEnd(
   return new Date(periodEnd * 1000)
 }
 
+/**
+ * Extrai current_period_start do primeiro item da subscription.
+ * Mesma justificativa do getSubscriptionPeriodEnd: na API clover,
+ * o campo vive nos items, não na subscription root.
+ */
+export function getSubscriptionPeriodStart(
+  subscription: Stripe.Subscription,
+): Date {
+  const periodStart = subscription.items.data[0]?.current_period_start
+  if (!periodStart) {
+    return new Date()
+  }
+  return new Date(periodStart * 1000)
+}
+
 const STRIPE_STATUS_MAP: Record<
   string,
   'active' | 'past_due' | 'canceled' | 'trialing' | 'incomplete'
