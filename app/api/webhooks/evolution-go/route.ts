@@ -33,6 +33,8 @@ const NOTIFICATION_ANTI_SPAM_WINDOW_MS = 24 * 60 * 60 * 1000
 const DEDUP_TTL_SECONDS = 300
 const OOH_REPLY_TTL_SECONDS = 3600
 
+const LOG = '[evolution-go/webhook]'
+
 export async function POST(req: Request) {
   // 1. Validação de assinatura — Go é sempre per-inbox, não há secret global
   const { searchParams } = new URL(req.url)
@@ -41,29 +43,52 @@ export async function POST(req: Request) {
   const payload = (await req.json().catch(() => null)) as Record<string, unknown> | null
 
   if (!payload) {
+    console.warn(`${LOG} payload inválido ou não-JSON`)
     return NextResponse.json({ ignored: true, reason: 'invalid_payload' })
   }
 
   const instanceName = payload.instance as string | undefined
+  const event = payload.event as string | undefined
+
+  console.log(`${LOG} recebido`, {
+    event,
+    instance: instanceName,
+    hasSecret: !!secret,
+    payloadKeys: Object.keys(payload),
+  })
+
   if (!instanceName) {
+    console.error(`${LOG} 401: campo "instance" ausente no payload`, {
+      payloadKeys: Object.keys(payload),
+      event,
+    })
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const inboxSecret = await resolveEvolutionGoWebhookSecretByInstanceName(instanceName)
   if (!inboxSecret || secret !== inboxSecret) {
+    console.error(`${LOG} 401: autenticação falhou`, {
+      instanceName,
+      secretReceived: secret ? `${secret.slice(0, 6)}…` : null,
+      inboxFound: !!inboxSecret,
+      secretMatch: inboxSecret ? secret === inboxSecret : false,
+    })
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const event = payload.event as string | undefined
+  console.log(`${LOG} autenticado`, { instanceName, event })
 
   // 2. CONNECTION — atualizar status no banco
   if (event === 'CONNECTION') {
     const parsed = evolutionGoConnectionEventSchema.safeParse(payload.data)
     if (!parsed.success) {
+      console.warn(`${LOG} CONNECTION: payload inválido`, { errors: parsed.error.issues })
       return NextResponse.json({ ignored: true, reason: 'invalid_payload' })
     }
 
     const { state } = parsed.data
+    console.log(`${LOG} CONNECTION state=${state}`, { instanceName })
+
     if (state !== 'open' && state !== 'close') {
       return NextResponse.json({ ignored: true, reason: 'connection_state_ignored' })
     }
@@ -76,6 +101,7 @@ export async function POST(req: Request) {
     })
 
     if (!inbox) {
+      console.warn(`${LOG} CONNECTION: inbox não encontrado`, { instanceName })
       return NextResponse.json({ ignored: true, reason: 'no_inbox_found' })
     }
 
@@ -124,6 +150,7 @@ export async function POST(req: Request) {
   if (event === 'MESSAGE_STATUS') {
     const parsed = evolutionGoStatusEventSchema.safeParse(payload.data)
     if (!parsed.success) {
+      console.warn(`${LOG} MESSAGE_STATUS: payload inválido`, { errors: parsed.error.issues })
       return NextResponse.json({ ignored: true, reason: 'invalid_payload' })
     }
 
@@ -163,11 +190,17 @@ export async function POST(req: Request) {
 
   // 4. Filtro de evento — só processar MESSAGE a partir daqui
   if (event !== 'MESSAGE') {
+    console.log(`${LOG} evento ignorado`, { event, instanceName })
     return NextResponse.json({ ignored: true, reason: 'event_not_handled' })
   }
 
   const dataParsed = evolutionGoMessageEventSchema.safeParse(payload.data)
   if (!dataParsed.success) {
+    console.warn(`${LOG} MESSAGE: payload inválido`, {
+      instanceName,
+      errors: dataParsed.error.issues,
+      dataKeys: payload.data && typeof payload.data === 'object' ? Object.keys(payload.data) : [],
+    })
     return NextResponse.json({ ignored: true, reason: 'invalid_payload' })
   }
   const data = dataParsed.data
@@ -176,7 +209,16 @@ export async function POST(req: Request) {
   const { fromMe, id: messageId } = key
   const remoteJid = key.remoteJidAlt && key.remoteJid.endsWith('@lid') ? key.remoteJidAlt : key.remoteJid
 
+  console.log(`${LOG} MESSAGE`, {
+    instanceName,
+    messageId,
+    fromMe,
+    remoteJid,
+    messageType: data.messageType,
+  })
+
   if (isGroupMessage(remoteJid)) {
+    console.log(`${LOG} ignorado: grupo`, { remoteJid })
     return NextResponse.json({ ignored: true, reason: 'group_message' })
   }
 
@@ -233,6 +275,7 @@ export async function POST(req: Request) {
   })
 
   if (!inbox) {
+    console.error(`${LOG} MESSAGE: inbox não encontrado`, { instanceName })
     return NextResponse.json({ ignored: true, reason: 'no_inbox_found' })
   }
 
@@ -240,6 +283,7 @@ export async function POST(req: Request) {
 
   const orgHasPlan = await hasActivePlan(orgId)
   if (!orgHasPlan) {
+    console.warn(`${LOG} MESSAGE: org sem plano ativo`, { orgId, instanceName })
     return NextResponse.json({ ignored: true, reason: 'no_active_plan' })
   }
 
@@ -346,12 +390,21 @@ export async function POST(req: Request) {
     revalidateTag(`conversations:${orgId}`)
     revalidateTag(`conversation-messages:${resolveResult.conversationId}`)
 
+    console.log(`${LOG} from_me salvo`, { conversationId: resolveResult.conversationId, messageId })
     return NextResponse.json({ success: true, reason: 'from_me_saved' })
   }
 
   const inboxCredentials = await resolveEvolutionGoCredentialsByInstanceName(instanceName)
 
   const hasAiConfigured = !!(inbox.agentId || inbox.agentGroupId)
+
+  console.log(`${LOG} estado do inbox`, {
+    inboxId: inbox.id,
+    isActive: inbox.isActive,
+    hasAiConfigured,
+    agentId: inbox.agentId,
+    agentGroupId: inbox.agentGroupId,
+  })
 
   if (!inbox.isActive || !hasAiConfigured) {
 
@@ -443,6 +496,11 @@ export async function POST(req: Request) {
       revalidateTag(`conversation-messages:${resolveResult.conversationId}`)
     }
 
+    console.log(`${LOG} mensagem salva (inbox/agente inativo)`, {
+      conversationId: resolveResult.conversationId,
+      isActive: inbox.isActive,
+      hasAiConfigured,
+    })
     return NextResponse.json({ success: true, reason: 'agent_inactive_message_saved' })
   }
 
@@ -454,6 +512,13 @@ export async function POST(req: Request) {
     : null
 
   const resolvedAgent = await resolveAgentForConversation(inbox, preResolveConv)
+
+  console.log(`${LOG} agente resolvido`, {
+    agentId: resolvedAgent?.agentId,
+    agentName: resolvedAgent?.agentName,
+    isActive: resolvedAgent?.isActive,
+    requiresRouting: resolvedAgent?.requiresRouting,
+  })
 
   if (!resolvedAgent || !resolvedAgent.isActive) {
     const normalizedMsgInactive = parseEvolutionGoMessage(data, instanceName)
@@ -522,6 +587,9 @@ export async function POST(req: Request) {
       revalidateTag(`conversations:${orgId}`)
       revalidateTag(`conversation-messages:${resolveInactiveResult.conversationId}`)
     }
+    console.log(`${LOG} mensagem salva (agente resolvido inativo)`, {
+      conversationId: resolveInactiveResult.conversationId,
+    })
     return NextResponse.json({ success: true, reason: 'agent_inactive_message_saved' })
   }
 
@@ -532,6 +600,8 @@ export async function POST(req: Request) {
       resolvedAgent.businessHoursTimezone,
       resolvedAgent.businessHoursConfig as BusinessHoursConfig,
     )
+
+    console.log(`${LOG} business hours`, { isOpen, agentId: resolvedAgent.agentId })
 
     if (!isOpen) {
 
@@ -657,10 +727,17 @@ export async function POST(req: Request) {
   ])
 
   if (dedupResult === null) {
+    console.log(`${LOG} dedup: mensagem duplicada ignorada`, { messageId })
     return NextResponse.json({ ignored: true, reason: 'duplicate' })
   }
 
   const { conversationId } = resolveResult
+
+  console.log(`${LOG} conversa resolvida`, {
+    conversationId,
+    isNew: resolveResult.isNew,
+    nameUpdated: resolveResult.nameUpdated,
+  })
 
   if (resolveResult.isNew) {
     revalidateTag(`pipeline:${orgId}`)
@@ -683,6 +760,7 @@ export async function POST(req: Request) {
   })
 
   if (conversation?.aiPaused) {
+    console.log(`${LOG} IA pausada — mensagem salva sem disparar agente`, { conversationId })
     try {
       await db.message.create({
         data: {
@@ -751,6 +829,12 @@ export async function POST(req: Request) {
   // 12. Debounce + Dispatch + unreadCount
   const debounceTimestamp = Date.now()
 
+  console.log(`${LOG} disparando agente`, {
+    conversationId,
+    agentId: resolvedAgent.agentId,
+    debounceSeconds: resolvedAgent.debounceSeconds,
+  })
+
   await Promise.all([
     db.conversation.update({
       where: { id: conversationId },
@@ -800,6 +884,7 @@ export async function POST(req: Request) {
   revalidateTag(`conversations:${orgId}`)
   revalidateTag(`conversation-messages:${conversationId}`)
 
+  console.log(`${LOG} processado com sucesso`, { conversationId, messageId })
   return NextResponse.json({ success: true })
 }
 
