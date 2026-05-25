@@ -121,6 +121,7 @@ export async function resetCreditsForPeriod(
   orgId: string,
   periodStart: Date,
   tx?: PrismaClient,
+  force = false,
 ): Promise<void> {
   const prisma = tx ?? db
   const { periodYear, periodMonth } = getCurrentPeriod()
@@ -131,8 +132,9 @@ export async function resetCreditsForPeriod(
 
   if (!wallet) return
 
-  // Idempotência: webhook do Stripe pode disparar mais de uma vez para o mesmo período
-  if (wallet.creditsLastResetAt && wallet.creditsLastResetAt >= periodStart) return
+  // Idempotência: protege contra retentativas do webhook para o mesmo período.
+  // Bypassed quando force=true (reset manual pelo admin).
+  if (!force && wallet.creditsLastResetAt && wallet.creditsLastResetAt >= periodStart) return
 
   // Zera o gasto do mês corrente (cria o registro se ainda não existe)
   await prisma.aiUsage.upsert({

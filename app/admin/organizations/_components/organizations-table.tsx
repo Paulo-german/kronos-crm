@@ -6,7 +6,7 @@ import { format, differenceInDays, isPast } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
-import { Building2, Clock, Loader2, Pencil, Plus, RefreshCw, Send, Trash2, UserPlus, Users, X } from 'lucide-react'
+import { Building2, Clock, Loader2, Pencil, Plus, RefreshCw, Send, Trash2, UserPlus, Users, X, Zap } from 'lucide-react'
 import {
   Table,
   TableBody,
@@ -64,6 +64,7 @@ import { adminUpdateMemberRole } from '@/_actions/admin/admin-update-member-role
 import { adminRemoveMember } from '@/_actions/admin/admin-remove-member'
 import { adminCancelInvite } from '@/_actions/admin/admin-cancel-invite'
 import { adminResendInvite } from '@/_actions/admin/admin-resend-invite'
+import { adminResetOrgCredits } from '@/_actions/admin/admin-reset-org-credits'
 import type { AdminOrganizationDto } from '@/_data-access/admin/types'
 import type { AdminPlanListItem } from '@/_data-access/admin/get-admin-plans-list'
 import type {
@@ -150,6 +151,9 @@ export const OrganizationsTable = ({ organizations, plans }: OrganizationsTableP
   const [deleteOrg, setDeleteOrg] = useState<AdminOrganizationDto | null>(null)
   const [deleteConfirmName, setDeleteConfirmName] = useState('')
   const [deleteAdminKey, setDeleteAdminKey] = useState('')
+
+  // Reset credits dialog
+  const [resetCreditsOrg, setResetCreditsOrg] = useState<AdminOrganizationDto | null>(null)
 
   // Members sheet
   const [membersOrg, setMembersOrg] = useState<AdminOrganizationDto | null>(null)
@@ -273,6 +277,17 @@ export const OrganizationsTable = ({ organizations, plans }: OrganizationsTableP
     },
     onError: ({ error }) => {
       toast.error(error.serverError ?? 'Erro ao reenviar convite.')
+    },
+  })
+
+  const { execute: executeResetCredits, status: resetCreditsStatus } = useAction(adminResetOrgCredits, {
+    onSuccess: () => {
+      toast.success('Créditos renovados com sucesso.')
+      setResetCreditsOrg(null)
+      router.refresh()
+    },
+    onError: ({ error }) => {
+      toast.error(error.serverError ?? 'Erro ao renovar créditos.')
     },
   })
 
@@ -557,6 +572,15 @@ export const OrganizationsTable = ({ organizations, plans }: OrganizationsTableP
                           </div>
                         </PopoverContent>
                       </Popover>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-amber-600 hover:text-amber-600"
+                        onClick={() => setResetCreditsOrg(org)}
+                      >
+                        <Zap className="h-4 w-4" />
+                      </Button>
 
                       <Popover
                         open={openInvitePopoverId === org.id}
@@ -1004,6 +1028,35 @@ export const OrganizationsTable = ({ organizations, plans }: OrganizationsTableP
               }}
             >
               {cancelInviteStatus === 'executing' ? 'Cancelando...' : 'Cancelar convite'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* AlertDialog: renovar créditos */}
+      <AlertDialog
+        open={resetCreditsOrg !== null}
+        onOpenChange={(open) => { if (!open) setResetCreditsOrg(null) }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Renovar créditos de IA</AlertDialogTitle>
+            <AlertDialogDescription>
+              Isso vai buscar o período atual de faturamento no Stripe e resetar os créditos de{' '}
+              <strong>{resetCreditsOrg?.name}</strong> para o limite completo do plano. Use quando
+              a renovação da assinatura não atualizou os créditos automaticamente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={resetCreditsStatus === 'executing'}
+              onClick={() => {
+                if (!resetCreditsOrg) return
+                executeResetCredits({ organizationId: resetCreditsOrg.id })
+              }}
+            >
+              {resetCreditsStatus === 'executing' ? 'Renovando...' : 'Renovar créditos'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
