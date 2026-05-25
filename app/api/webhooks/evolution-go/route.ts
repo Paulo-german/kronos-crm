@@ -47,8 +47,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ ignored: true, reason: 'invalid_payload' })
   }
 
-  const instanceName = payload.instance as string | undefined
-  const event = payload.event as string | undefined
+  const instanceName = (payload.instanceName ?? payload.instance) as string | undefined
+  const event = (payload.event as string | undefined)?.toUpperCase()
 
   console.log(`${LOG} recebido`, {
     event,
