@@ -205,16 +205,17 @@ export async function POST(req: Request) {
   }
   const data = dataParsed.data
 
-  const { key } = data
-  const { fromMe, id: messageId } = key
-  const remoteJid = key.remoteJidAlt && key.remoteJid.endsWith('@lid') ? key.remoteJidAlt : key.remoteJid
+  const { Info } = data
+  const fromMe = Info.IsFromMe
+  const messageId = Info.ID
+  const remoteJid = Info.Chat
 
   console.log(`${LOG} MESSAGE`, {
     instanceName,
     messageId,
     fromMe,
     remoteJid,
-    messageType: data.messageType,
+    messageType: Info.Type,
   })
 
   if (isGroupMessage(remoteJid)) {

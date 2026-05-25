@@ -6,37 +6,33 @@ import type {
 } from '@/_lib/evolution-js/types'
 import type { EvolutionGoMessageEvent } from './types'
 
-/**
- * Normaliza um evento `MESSAGE` do Evolution Go para o shape genérico
- * consumido pelo dispatcher do Trigger.dev.
- *
- * Reutiliza `resolveEffectiveJid` (lógica @lid → @s.whatsapp.net) e
- * `extractPhoneNumber` do parser JS — são puramente baseados em string
- * e independentes do runtime.
- */
 export function parseEvolutionGoMessage(
   data: EvolutionGoMessageEvent,
   instanceName: string,
 ): NormalizedWhatsAppMessage {
-  const { key, pushName, message, messageTimestamp } = data
+  const { Info, Message } = data
 
-  const { type, text, media } = extractContent(message)
-  const effectiveJid = resolveEffectiveJid(key.remoteJid, key.remoteJidAlt)
+  const { type, text, media } = extractContent(Message)
+  const effectiveJid = resolveEffectiveJid(Info.Chat, Info.Sender)
+
+  const timestamp =
+    typeof Info.Timestamp === 'number'
+      ? Info.Timestamp
+      : Info.Timestamp
+        ? Math.floor(new Date(Info.Timestamp).getTime() / 1000)
+        : Math.floor(Date.now() / 1000)
 
   return {
-    messageId: key.id,
+    messageId: Info.ID,
     remoteJid: effectiveJid,
     phoneNumber: extractPhoneNumber(effectiveJid),
-    pushName: pushName ?? null,
-    fromMe: key.fromMe,
-    timestamp: messageTimestamp,
+    pushName: Info.PushName ?? null,
+    fromMe: Info.IsFromMe,
+    timestamp,
     type,
     text,
     media,
     instanceName,
-    // TODO: ampliar union de `provider` em NormalizedWhatsAppMessage para incluir
-    // 'evolution_go' explicitamente. Por hora reutilizamos 'evolution' (legacy) —
-    // o dispatcher resolve o provider real via `connectionType` do Inbox.
     provider: 'evolution' as const,
   }
 }
@@ -48,7 +44,7 @@ interface ExtractedContent {
 }
 
 function extractContent(
-  message: EvolutionGoMessageEvent['message'],
+  message: EvolutionGoMessageEvent['Message'],
 ): ExtractedContent {
   if (message.audioMessage) {
     return {

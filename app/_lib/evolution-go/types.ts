@@ -24,11 +24,17 @@ export interface EvolutionGoWebhookPayload {
 // Event payloads (defensivos — Zod safeParse no handler)
 // -----------------------------------------------------------------------------
 
-export const evolutionGoMessageKeySchema = z.object({
-  remoteJid: z.string(),
-  remoteJidAlt: z.string().optional(),
-  fromMe: z.boolean(),
-  id: z.string(),
+// Evolution Go (Go/whatsmeow) usa estrutura com PascalCase no campo Info
+export const evolutionGoInfoSchema = z.object({
+  ID: z.string(),
+  Chat: z.string(),
+  Sender: z.string().optional(),
+  IsFromMe: z.boolean(),
+  IsGroup: z.boolean().optional(),
+  PushName: z.string().optional(),
+  // Go time.Time serializado como RFC3339 string ou unix epoch
+  Timestamp: z.union([z.string(), z.number()]).optional(),
+  Type: z.string().optional(),
 })
 
 export const evolutionGoMediaSchema = z.object({
@@ -50,11 +56,9 @@ export const evolutionGoMessageContentSchema = z.object({
 })
 
 export const evolutionGoMessageEventSchema = z.object({
-  key: evolutionGoMessageKeySchema,
-  pushName: z.string().optional(),
-  message: evolutionGoMessageContentSchema,
-  messageType: z.string().optional(),
-  messageTimestamp: z.number(),
+  Info: evolutionGoInfoSchema,
+  Message: evolutionGoMessageContentSchema,
+  IsEdit: z.boolean().optional(),
 })
 
 export type EvolutionGoMessageEvent = z.infer<typeof evolutionGoMessageEventSchema>
