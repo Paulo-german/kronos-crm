@@ -21,11 +21,8 @@ import { PasswordChecklist } from '@/(auth)/sign-up/_components/password-checkli
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
-import { useRouter } from 'next/navigation'
 
 const ResetPasswordForm = () => {
-  const router = useRouter()
-
   const form = useForm<ResetPasswordSchema>({
     resolver: zodResolver(resetPasswordSchema),
     defaultValues: {
@@ -37,10 +34,6 @@ const ResetPasswordForm = () => {
   const password = form.watch('password')
 
   const { execute, isPending } = useAction(resetPassword, {
-    onSuccess: () => {
-      toast.success('Senha redefinida com sucesso! Faça login com sua nova senha.')
-      router.push('/login')
-    },
     onError: ({ error }) => {
       toast.error(
         error.serverError || 'Erro ao redefinir senha. Tente novamente.',

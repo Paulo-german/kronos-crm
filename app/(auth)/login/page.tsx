@@ -5,11 +5,11 @@ import Link from 'next/link'
 import LoginForm from './_components/login-form'
 
 interface LoginPageProps {
-  searchParams: Promise<{ next?: string }>
+  searchParams: Promise<{ next?: string; reset?: string }>
 }
 
 const LoginPage = async ({ searchParams }: LoginPageProps) => {
-  const { next } = await searchParams
+  const { next, reset } = await searchParams
 
   return (
     <>
@@ -27,7 +27,7 @@ const LoginPage = async ({ searchParams }: LoginPageProps) => {
 
       {/* Formulário */}
       <div className="mt-6">
-        <LoginForm redirectTo={next} />
+        <LoginForm redirectTo={next} passwordReset={reset === 'success'} />
       </div>
 
       <Separator className="my-6" />

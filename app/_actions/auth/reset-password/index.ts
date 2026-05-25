@@ -1,5 +1,6 @@
 'use server'
 
+import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { createClient } from '@/_lib/supabase/server'
 import { authActionClient } from '@/_lib/safe-action'
@@ -21,5 +22,5 @@ export const resetPassword = authActionClient
     const cookieStore = await cookies()
     cookieStore.delete('recovery_in_progress')
 
-    return { success: true }
+    redirect('/login?reset=success')
   })

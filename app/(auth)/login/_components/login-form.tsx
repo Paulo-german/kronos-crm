@@ -20,12 +20,20 @@ import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 import Link from 'next/link'
+import { useEffect } from 'react'
 
 interface LoginFormProps {
   redirectTo?: string
+  passwordReset?: boolean
 }
 
-const LoginForm = ({ redirectTo }: LoginFormProps) => {
+const LoginForm = ({ redirectTo, passwordReset }: LoginFormProps) => {
+  useEffect(() => {
+    if (passwordReset) {
+      toast.success('Senha redefinida com sucesso! Faça login com sua nova senha.')
+    }
+  }, [passwordReset])
+
   const form = useForm<SignInSchema>({
     resolver: zodResolver(signInSchema),
     defaultValues: {
