@@ -13,7 +13,7 @@ export const forgotPassword = actionClient
     const origin = headersList.get('origin') || process.env.NEXT_PUBLIC_APP_URL
 
     await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${origin}/auth/confirm`,
+      redirectTo: `${origin}/auth/confirm?next=/reset-password`,
     })
 
     // Sempre retorna sucesso para evitar enumeração de emails

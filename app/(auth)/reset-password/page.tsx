@@ -1,13 +1,19 @@
 import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
 import { createClient } from '@/_lib/supabase/server'
 import { KronosLogo } from '@/_components/icons/kronos-logo'
 import ResetPasswordForm from './_components/reset-password-form'
 
 const ResetPasswordPage = async () => {
+  const cookieStore = await cookies()
+  const isRecoverySession = cookieStore.get('recovery_in_progress')?.value === '1'
+
+  if (!isRecoverySession) {
+    redirect('/auth/auth-code-error')
+  }
+
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
     redirect('/auth/auth-code-error')

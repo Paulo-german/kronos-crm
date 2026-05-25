@@ -1,5 +1,6 @@
 'use server'
 
+import { cookies } from 'next/headers'
 import { createClient } from '@/_lib/supabase/server'
 import { authActionClient } from '@/_lib/safe-action'
 import { resetPasswordSchema } from './schema'
@@ -16,6 +17,9 @@ export const resetPassword = authActionClient
     }
 
     await supabase.auth.signOut()
+
+    const cookieStore = await cookies()
+    cookieStore.delete('recovery_in_progress')
 
     return { success: true }
   })
