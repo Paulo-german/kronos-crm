@@ -9,14 +9,12 @@ function buildHeaders(apiToken: string) {
   return { 'Content-Type': 'application/json', apikey: apiToken }
 }
 
+// Response shape: { message: "success", data: { Info: { id: "..." }, ... } }
 function extractMessageId(data: Record<string, unknown> | null): string | undefined {
   if (!data) return undefined
-  // Tenta os paths mais comuns do Evolution Go
-  return (
-    (data?.id as string | undefined) ??
-    (data?.data as Record<string, unknown> | undefined)?.id as string | undefined ??
-    (data?.key as Record<string, unknown> | undefined)?.id as string | undefined
-  )
+  const inner = data?.data as Record<string, unknown> | undefined
+  const info = inner?.Info as Record<string, unknown> | undefined
+  return info?.id as string | undefined
 }
 
 export async function sendEvolutionGoMessage(
@@ -69,19 +67,20 @@ export async function sendEvolutionGoMessage(
   return messageIds
 }
 
+// POST /message/presence — campo "state", não "presence"
 export async function sendEvolutionGoPresence(
-  instanceName: string,
+  _instanceName: string,
   remoteJid: string,
-  presence: 'composing' | 'paused' = 'composing',
+  state: 'composing' | 'paused' = 'composing',
   credentials: EvolutionGoCredentials,
 ): Promise<void> {
   try {
     const { apiUrl, apiToken } = credentials
 
-    await fetch(`${apiUrl}/send/presence`, {
+    await fetch(`${apiUrl}/message/presence`, {
       method: 'POST',
       headers: buildHeaders(apiToken),
-      body: JSON.stringify({ number: remoteJid, presence }),
+      body: JSON.stringify({ number: remoteJid, state }),
     })
   } catch {
     // Best-effort

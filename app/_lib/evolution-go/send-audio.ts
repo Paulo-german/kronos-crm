@@ -1,6 +1,7 @@
 import { assertEvolutionGoConnected } from './connection-guard'
 import type { EvolutionGoCredentials } from './types'
 
+// Áudio usa POST /send/media com type: "audio"
 export async function sendEvolutionGoAudio(
   instanceName: string,
   remoteJid: string,
@@ -11,12 +12,13 @@ export async function sendEvolutionGoAudio(
 
   await assertEvolutionGoConnected(instanceName, credentials)
 
-  const response = await fetch(`${apiUrl}/send/audio`, {
+  const response = await fetch(`${apiUrl}/send/media`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', apikey: apiToken },
     body: JSON.stringify({
       number: remoteJid,
-      audio: audioBase64,
+      type: 'audio',
+      url: audioBase64,
       formatJid: true,
       delay: 0,
     }),
@@ -28,10 +30,8 @@ export async function sendEvolutionGoAudio(
   }
 
   const data = await response.json().catch(() => null)
-  const messageId =
-    (data?.id as string | undefined) ??
-    (data?.data as Record<string, unknown> | undefined)?.id as string | undefined ??
-    (data?.key as Record<string, unknown> | undefined)?.id as string | undefined
+  const info = (data?.data as Record<string, unknown> | undefined)?.Info as Record<string, unknown> | undefined
+  const messageId = info?.id as string | undefined
 
   if (!messageId) {
     throw new Error('Evolution Go sendAudio: no messageId returned')

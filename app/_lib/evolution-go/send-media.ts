@@ -5,7 +5,7 @@ export async function sendEvolutionGoMedia(
   instanceName: string,
   remoteJid: string,
   mediaUrl: string,
-  mimetype: string,
+  _mimetype: string,
   mediatype: 'image' | 'document' | 'video',
   fileName: string | undefined,
   caption: string | undefined,
@@ -20,11 +20,10 @@ export async function sendEvolutionGoMedia(
     headers: { 'Content-Type': 'application/json', apikey: apiToken },
     body: JSON.stringify({
       number: remoteJid,
-      mediatype,
-      media: mediaUrl,
-      mimetype,
+      type: mediatype,
+      url: mediaUrl,
       caption: caption ?? '',
-      fileName: fileName ?? 'file',
+      filename: fileName ?? 'file',
       formatJid: true,
       delay: 0,
     }),
@@ -36,10 +35,8 @@ export async function sendEvolutionGoMedia(
   }
 
   const data = await response.json().catch(() => null)
-  const messageId =
-    (data?.id as string | undefined) ??
-    (data?.data as Record<string, unknown> | undefined)?.id as string | undefined ??
-    (data?.key as Record<string, unknown> | undefined)?.id as string | undefined
+  const info = (data?.data as Record<string, unknown> | undefined)?.Info as Record<string, unknown> | undefined
+  const messageId = info?.id as string | undefined
 
   if (!messageId) {
     throw new Error('Evolution Go sendMedia: no messageId returned')
