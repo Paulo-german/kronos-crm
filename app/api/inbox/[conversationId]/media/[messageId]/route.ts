@@ -104,7 +104,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
         return NextResponse.json({ error: 'Evolution Go not configured' }, { status: 500 })
       }
 
-      const goRawMessage = (mediaInfo as Record<string, unknown> | undefined)?.goRawMessage
+      const goRawMessage = metadata?.goRawMessage
 
       if (!goRawMessage) {
         console.error('[media-proxy] Evolution Go: goRawMessage ausente no metadata', { messageId })
