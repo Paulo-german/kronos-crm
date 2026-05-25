@@ -45,9 +45,9 @@ const EvolutionGoConnectionCard = ({
   initialConnected,
   onConnectionStateChange,
 }: EvolutionGoConnectionCardProps) => {
-  const [connectionState, setConnectionState] = useState<ConnectionState>(
-    initialConnected ? 'checking' : 'disconnected',
-  )
+  // Sempre verifica o estado real no servidor ao montar — initialConnected pode estar
+  // desatualizado (ex: credenciais recém-salvas sempre persistem evolutionConnected: false)
+  const [connectionState, setConnectionState] = useState<ConnectionState>('checking')
   const [qrBase64, setQrBase64] = useState<string | null>(null)
   const [qrCode, setQrCode] = useState<string | null>(null)
   const [pairingCode, setPairingCode] = useState<string | null>(null)

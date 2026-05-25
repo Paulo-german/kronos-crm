@@ -1,5 +1,6 @@
 'use server'
 
+import { revalidateTag } from 'next/cache'
 import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
@@ -17,7 +18,7 @@ export const testEvolutionGoConnection = orgActionClient
     // 2. Verificar que o inbox pertence à org
     const inbox = await db.inbox.findFirst({
       where: { id: inboxId, organizationId: ctx.orgId },
-      select: { id: true, evolutionInstanceName: true },
+      select: { id: true, agentId: true, evolutionInstanceName: true, evolutionConnected: true },
     })
 
     if (!inbox) {
@@ -54,6 +55,21 @@ export const testEvolutionGoConnection = orgActionClient
 
     const data = await response.json().catch(() => null)
     const state: ConnectionStateValue = data?.state ?? data?.instance?.state ?? 'close'
+    const connected = state === 'open'
+
+    // 4. Sincronizar evolutionConnected no banco se divergir do estado real
+    if (inbox.evolutionConnected !== connected) {
+      await db.inbox.update({
+        where: { id: inbox.id },
+        data: { evolutionConnected: connected },
+      })
+      revalidateTag(`inbox:${inbox.id}`)
+      revalidateTag(`inboxes:${ctx.orgId}`)
+      if (inbox.agentId) {
+        revalidateTag(`agent:${inbox.agentId}`)
+        revalidateTag(`agents:${ctx.orgId}`)
+      }
+    }
 
     return { success: true as const, state }
   })
