@@ -247,7 +247,11 @@ export function createSendMediaTool(ctx: ToolContext) {
               content: messageContent,
               providerMessageId: sentId,
               deliveryStatus: 'sent',
-              metadata: { tool: 'send_media', mediaType: resolvedType },
+              metadata: {
+                tool: 'send_media',
+                mediaType: resolvedType,
+                media: { url: targetUrl, mimetype: mimeType, fileName },
+              },
             },
           }),
           db.conversation.update({

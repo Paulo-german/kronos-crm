@@ -1,4 +1,5 @@
 import { assertEvolutionGoConnected } from './connection-guard'
+import { extractMessageId } from './send-message'
 import type { EvolutionGoCredentials } from './types'
 
 // Áudio usa POST /send/media com type: "audio"
@@ -18,7 +19,7 @@ export async function sendEvolutionGoAudio(
     body: JSON.stringify({
       number: remoteJid,
       type: 'audio',
-      url: audioBase64,
+      url: audioBase64.startsWith('data:') ? audioBase64 : `data:audio/ogg;base64,${audioBase64}`,
       formatJid: true,
       delay: 0,
     }),
@@ -30,8 +31,5 @@ export async function sendEvolutionGoAudio(
   }
 
   const data = await response.json().catch(() => null)
-  const info = (data?.data as Record<string, unknown> | undefined)?.Info as Record<string, unknown> | undefined
-  const messageId = (info?.id as string | undefined) ?? ''
-
-  return messageId
+  return extractMessageId(data) ?? ''
 }

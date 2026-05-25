@@ -1,4 +1,5 @@
 import { assertEvolutionGoConnected } from './connection-guard'
+import { extractMessageId } from './send-message'
 import type { EvolutionGoCredentials } from './types'
 
 export async function sendEvolutionGoMedia(
@@ -35,8 +36,5 @@ export async function sendEvolutionGoMedia(
   }
 
   const data = await response.json().catch(() => null)
-  const info = (data?.data as Record<string, unknown> | undefined)?.Info as Record<string, unknown> | undefined
-  const messageId = (info?.id as string | undefined) ?? ''
-
-  return messageId
+  return extractMessageId(data) ?? ''
 }

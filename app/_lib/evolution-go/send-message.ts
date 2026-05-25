@@ -10,7 +10,7 @@ function buildHeaders(apiToken: string) {
 }
 
 // Response shape: { message: "success", data: { Info: { id: "..." }, ... } }
-function extractMessageId(data: Record<string, unknown> | null): string | undefined {
+export function extractMessageId(data: Record<string, unknown> | null): string | undefined {
   if (!data) return undefined
   const inner = data?.data as Record<string, unknown> | undefined
   const info = inner?.Info as Record<string, unknown> | undefined
