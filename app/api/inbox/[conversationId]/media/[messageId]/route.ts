@@ -13,7 +13,6 @@ interface RouteContext {
 
 export async function GET(_request: NextRequest, context: RouteContext) {
   try {
-    // 1. Auth
     const supabase = await createClient()
     const {
       data: { user },
@@ -35,7 +34,6 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'No access' }, { status: 403 })
     }
 
-    // 2. Buscar mensagem + inbox da conversa
     const { conversationId, messageId } = await context.params
 
     const message = await db.message.findFirst({
@@ -72,7 +70,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     const mediaInfo = metadata?.media as Record<string, unknown> | undefined
     const mediaMimetype = String(mediaInfo?.mimetype ?? 'application/octet-stream')
 
-    // 3a. Meta (API Oficial) — o mediaId fica em metadata.media.url
+    // Meta (API Oficial): o mediaId fica em metadata.media.url
     if (inbox.metaAccessToken) {
       const mediaId = String(mediaInfo?.url ?? '')
 
@@ -97,7 +95,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       }
     }
 
-    // 3b. Evolution Go — POST /message/downloadmedia com o objeto Message raw do webhook
+    // Evolution Go: POST /message/downloadmedia exige o objeto Message raw do webhook
     if (inbox.connectionType === ConnectionType.EVOLUTION_GO) {
       const apiUrl = inbox.evolutionApiUrl
       const apiKey = inbox.evolutionApiKey
@@ -124,8 +122,10 @@ export async function GET(_request: NextRequest, context: RouteContext) {
         return NextResponse.json({ error: 'Failed to fetch media' }, { status: 502 })
       }
 
-      const goData = await goResponse.json().catch(() => null)
-      const dataUrl = goData?.data?.base64 as string | undefined
+      const goData = (await goResponse.json().catch(() => null)) as
+        | { data?: { base64?: string } }
+        | null
+      const dataUrl = goData?.data?.base64
 
       if (!dataUrl) {
         return NextResponse.json({ error: 'No media data returned' }, { status: 404 })
@@ -147,7 +147,6 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       })
     }
 
-    // 3c. Evolution JS — obter mídia em base64
     const instanceName = inbox.evolutionInstanceName
     if (!instanceName) {
       return NextResponse.json(
@@ -192,7 +191,11 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       )
     }
 
-    const { base64, mimetype } = await evolutionResponse.json()
+    const evolutionData = (await evolutionResponse.json().catch(() => null)) as
+      | { base64?: string; mimetype?: string }
+      | null
+    const base64 = evolutionData?.base64
+    const mimetype = evolutionData?.mimetype
 
     if (!base64) {
       return NextResponse.json(
@@ -201,7 +204,6 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       )
     }
 
-    // 4. Converter base64 → buffer e retornar com Content-Type correto
     const buffer = Buffer.from(base64, 'base64')
 
     return new Response(buffer, {
