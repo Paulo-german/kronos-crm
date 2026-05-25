@@ -35,6 +35,16 @@ const OOH_REPLY_TTL_SECONDS = 3600
 
 const LOG = '[evolution-go/webhook]'
 
+// Inclui o objeto Message raw do webhook no metadata para permitir download de mídia
+// POST /message/downloadmedia precisa do Message completo (mediaKey, URL, directPath, etc.)
+function buildUserMessageMetadata(
+  media: NormalizedWhatsAppMessage['media'] | undefined,
+  rawGoMessage: unknown,
+): Prisma.InputJsonValue | undefined {
+  if (!media) return undefined
+  return { media, goRawMessage: rawGoMessage } as unknown as Prisma.InputJsonValue
+}
+
 export async function POST(req: Request) {
   // 1. Validação de assinatura — Go é sempre per-inbox, não há secret global
   const { searchParams } = new URL(req.url)
@@ -482,9 +492,7 @@ export async function POST(req: Request) {
           role: 'user',
           content: resolveMessageContent(normalizedMsg) || '[mensagem não suportada]',
           providerMessageId: messageId,
-          metadata: normalizedMsg.media
-            ? ({ media: normalizedMsg.media } as unknown as Prisma.InputJsonValue)
-            : undefined,
+          metadata: buildUserMessageMetadata(normalizedMsg.media, (payload.data as Record<string, unknown>)?.Message),
         },
       })
 
@@ -566,9 +574,7 @@ export async function POST(req: Request) {
             role: 'user',
             content: resolveMessageContent(normalizedMsgInactive) || '[mensagem não suportada]',
             providerMessageId: messageId,
-            metadata: normalizedMsgInactive.media
-              ? ({ media: normalizedMsgInactive.media } as unknown as Prisma.InputJsonValue)
-              : undefined,
+            metadata: buildUserMessageMetadata(normalizedMsgInactive.media, (payload.data as Record<string, unknown>)?.Message),
           },
         })
       } catch (error) {
@@ -776,9 +782,7 @@ export async function POST(req: Request) {
           role: 'user',
           content: resolveMessageContent(normalizedMessage),
           providerMessageId: messageId,
-          metadata: normalizedMessage.media
-            ? ({ media: normalizedMessage.media } as unknown as Prisma.InputJsonValue)
-            : undefined,
+          metadata: buildUserMessageMetadata(normalizedMessage.media, (payload.data as Record<string, unknown>)?.Message),
         },
       })
 
@@ -818,9 +822,7 @@ export async function POST(req: Request) {
         role: 'user',
         content: resolveMessageContent(normalizedMessage),
         providerMessageId: messageId,
-        metadata: normalizedMessage.media
-          ? ({ media: normalizedMessage.media } as unknown as Prisma.InputJsonValue)
-          : undefined,
+        metadata: buildUserMessageMetadata(normalizedMessage.media, (payload.data as Record<string, unknown>)?.Message),
       },
     })
   } catch (error) {

@@ -5,6 +5,7 @@ import { validateMembership } from '@/_data-access/organization/validate-members
 import { ORG_SLUG_COOKIE } from '@/_lib/constants'
 import { db } from '@/_lib/prisma'
 import { downloadMetaMedia } from '@/_lib/meta/download-meta-media'
+import { ConnectionType } from '@prisma/client'
 
 interface RouteContext {
   params: Promise<{ conversationId: string; messageId: string }>
@@ -50,6 +51,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
             inbox: {
               select: {
                 id: true,
+                connectionType: true,
                 evolutionInstanceName: true,
                 evolutionApiUrl: true,
                 evolutionApiKey: true,
@@ -95,7 +97,57 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       }
     }
 
-    // 3b. Evolution API — obter mídia em base64
+    // 3b. Evolution Go — POST /message/downloadmedia com o objeto Message raw do webhook
+    if (inbox.connectionType === ConnectionType.EVOLUTION_GO) {
+      const apiUrl = inbox.evolutionApiUrl
+      const apiKey = inbox.evolutionApiKey
+
+      if (!apiUrl || !apiKey) {
+        return NextResponse.json({ error: 'Evolution Go not configured' }, { status: 500 })
+      }
+
+      const goRawMessage = (mediaInfo as Record<string, unknown> | undefined)?.goRawMessage
+
+      if (!goRawMessage) {
+        console.error('[media-proxy] Evolution Go: goRawMessage ausente no metadata', { messageId })
+        return NextResponse.json({ error: 'Media data not available' }, { status: 422 })
+      }
+
+      const goResponse = await fetch(`${apiUrl}/message/downloadmedia`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: apiKey },
+        body: JSON.stringify({ message: goRawMessage }),
+      })
+
+      if (!goResponse.ok) {
+        console.error('[media-proxy] Evolution Go error:', goResponse.status, await goResponse.text().catch(() => ''))
+        return NextResponse.json({ error: 'Failed to fetch media' }, { status: 502 })
+      }
+
+      const goData = await goResponse.json().catch(() => null)
+      const dataUrl = goData?.data?.base64 as string | undefined
+
+      if (!dataUrl) {
+        return NextResponse.json({ error: 'No media data returned' }, { status: 404 })
+      }
+
+      // Data URL: "data:<mimetype>;base64,<conteúdo>"
+      const commaIdx = dataUrl.indexOf(',')
+      const base64Content = commaIdx >= 0 ? dataUrl.slice(commaIdx + 1) : dataUrl
+      const inferredMime = commaIdx >= 0 ? dataUrl.slice(5, dataUrl.indexOf(';')) : mediaMimetype
+
+      const buffer = Buffer.from(base64Content, 'base64')
+      return new Response(buffer, {
+        headers: {
+          'Content-Type': inferredMime || mediaMimetype,
+          'Cache-Control': 'private, max-age=3600',
+          'Content-Length': String(buffer.length),
+          'Accept-Ranges': 'bytes',
+        },
+      })
+    }
+
+    // 3c. Evolution JS — obter mídia em base64
     const instanceName = inbox.evolutionInstanceName
     if (!instanceName) {
       return NextResponse.json(
