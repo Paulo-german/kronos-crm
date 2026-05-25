@@ -36,11 +36,7 @@ export async function sendEvolutionGoMedia(
 
   const data = await response.json().catch(() => null)
   const info = (data?.data as Record<string, unknown> | undefined)?.Info as Record<string, unknown> | undefined
-  const messageId = info?.id as string | undefined
-
-  if (!messageId) {
-    throw new Error('Evolution Go sendMedia: no messageId returned')
-  }
+  const messageId = (info?.id as string | undefined) ?? ''
 
   return messageId
 }
