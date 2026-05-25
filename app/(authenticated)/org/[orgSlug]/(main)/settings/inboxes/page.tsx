@@ -8,6 +8,7 @@ import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 import { Button } from '@/_components/ui/button'
 import { InboxesCardGrid } from './_components/inboxes-card-grid'
 import DiscoverInstancesButton from './_components/discover-instances-button'
+import CreateInboxButton from './_components/create-inbox-button'
 import { QuotaHint } from '@/_components/trial/quota-hint'
 import Header, {
   HeaderLeft,
@@ -58,6 +59,11 @@ const InboxesPage = async ({ params }: InboxesPageProps) => {
         </HeaderLeft>
         <HeaderRight>
           <DiscoverInstancesButton />
+          <CreateInboxButton
+            agentOptions={agentOptions}
+            withinQuota={quota.withinQuota}
+            isSuperAdmin={isSuperAdmin}
+          />
         </HeaderRight>
       </Header>
       <InboxesCardGrid

@@ -15,11 +15,13 @@ interface AgentOption {
 interface CreateInboxButtonProps {
   agentOptions: AgentOption[]
   withinQuota?: boolean
+  isSuperAdmin?: boolean
 }
 
 const CreateInboxButton = ({
   agentOptions,
   withinQuota = true,
+  isSuperAdmin = false,
 }: CreateInboxButtonProps) => {
   const [isOpen, setIsOpen] = useState(false)
 
@@ -34,7 +36,7 @@ const CreateInboxButton = ({
             </Button>
           </span>
         </TooltipTrigger>
-        <TooltipContent>Limite atingido. Faca upgrade do plano.</TooltipContent>
+        <TooltipContent>Limite atingido. Faça upgrade do plano.</TooltipContent>
       </Tooltip>
     )
   }
@@ -50,6 +52,7 @@ const CreateInboxButton = ({
       <UpsertInboxSheetContent
         setIsOpen={setIsOpen}
         agentOptions={agentOptions}
+        isSuperAdmin={isSuperAdmin}
       />
     </Sheet>
   )
