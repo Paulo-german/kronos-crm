@@ -3,7 +3,10 @@
 import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
-import { connectEvolutionGoInstance } from '@/_lib/evolution-go/instance-management'
+import {
+  connectEvolutionGoInstance,
+  buildEvolutionGoWebhookUrl,
+} from '@/_lib/evolution-go/instance-management'
 import { resolveEvolutionGoCredentials } from '@/_lib/evolution-go/resolve-credentials'
 import { getEvolutionGoQrSchema } from './schema'
 
@@ -14,7 +17,11 @@ export const getEvolutionGoQr = orgActionClient
 
     const inbox = await db.inbox.findFirst({
       where: { id: inboxId, organizationId: ctx.orgId },
-      select: { evolutionInstanceName: true, connectionType: true },
+      select: {
+        evolutionInstanceName: true,
+        evolutionWebhookSecret: true,
+        connectionType: true,
+      },
     })
 
     if (!inbox) {
@@ -26,7 +33,16 @@ export const getEvolutionGoQr = orgActionClient
     }
 
     const credentials = await resolveEvolutionGoCredentials(inboxId)
-    const result = await connectEvolutionGoInstance(inbox.evolutionInstanceName, credentials)
+
+    const webhookUrl = inbox.evolutionWebhookSecret
+      ? buildEvolutionGoWebhookUrl(inbox.evolutionWebhookSecret)
+      : undefined
+
+    const result = await connectEvolutionGoInstance(
+      inbox.evolutionInstanceName,
+      credentials,
+      webhookUrl,
+    )
 
     return {
       base64: result.base64,

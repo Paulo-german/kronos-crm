@@ -84,59 +84,21 @@ export async function createEvolutionGoInstance(
 }
 
 /**
- * Conecta uma instância existente — retorna QR para pareamento.
- * Evolution Go usa o mesmo endpoint GET do Evolution JS.
- */
-export async function connectEvolutionGoInstance(
-  instanceName: string,
-  credentials: EvolutionGoCredentials,
-): Promise<EvolutionGoQRCodeResult> {
-  const { apiUrl, apiToken } = credentials
-
-  // Primeiro verifica o estado da conexão — se já conectado, não retorna QR
-  const stateResult = await getEvolutionGoInstanceStatus(instanceName, credentials)
-  if (stateResult?.state === 'open') {
-    return { base64: null, code: null, pairingCode: null, state: 'open' }
-  }
-
-  const response = await fetch(
-    `${apiUrl}/instance/connect/${encodeURIComponent(instanceName)}`,
-    {
-      method: 'GET',
-      headers: buildHeaders(apiToken),
-    },
-  )
-
-  if (!response.ok) {
-    return { base64: null, code: null, pairingCode: null, state: 'close' }
-  }
-
-  const data = await response.json().catch(() => ({}))
-  const base64 = data?.base64 || data?.qrcode?.base64 || null
-  const code = data?.code || null
-  const pairingCode = data?.pairingCode || null
-
-  return { base64, code, pairingCode, state: 'connecting' }
-}
-
-/**
  * Status atual de uma instância.
- * Usa o mesmo endpoint do Evolution JS: GET /instance/connectionState/{name}
+ * Evolution Go: GET /instance/status — autenticação via apikey (= token da instância).
+ * O token identifica a instância automaticamente, sem nome no path.
  * Retorna null se a instância não existir (404), lança em 401/403.
  */
 export async function getEvolutionGoInstanceStatus(
-  instanceName: string,
+  _instanceName: string,
   credentials: EvolutionGoCredentials,
 ): Promise<EvolutionGoConnectionState | null> {
   const { apiUrl, apiToken } = credentials
 
-  const response = await fetch(
-    `${apiUrl}/instance/connectionState/${encodeURIComponent(instanceName)}`,
-    {
-      method: 'GET',
-      headers: buildHeaders(apiToken),
-    },
-  )
+  const response = await fetch(`${apiUrl}/instance/status`, {
+    method: 'GET',
+    headers: buildHeaders(apiToken),
+  })
 
   if (response.status === 401 || response.status === 403) {
     throw new Error('Token inválido ou sem permissão no servidor Evolution Go.')
@@ -151,8 +113,59 @@ export async function getEvolutionGoInstanceStatus(
   }
 
   const data = await response.json().catch(() => ({}))
-  const state = data?.instance?.state || data?.state || 'close'
+  const state =
+    data?.state ||
+    data?.status ||
+    data?.instance?.state ||
+    data?.connectionStatus ||
+    'close'
   return { state }
+}
+
+/**
+ * Conecta uma instância — inicia pareamento via QR e seta webhook.
+ * Evolution Go: POST /instance/connect + GET /instance/qr (endpoints separados).
+ * @param webhookUrl - URL do webhook Kronos para receber mensagens desta instância.
+ */
+export async function connectEvolutionGoInstance(
+  instanceName: string,
+  credentials: EvolutionGoCredentials,
+  webhookUrl?: string,
+): Promise<EvolutionGoQRCodeResult> {
+  const { apiUrl, apiToken } = credentials
+
+  // 1. Verifica se já está conectado
+  const stateResult = await getEvolutionGoInstanceStatus(instanceName, credentials)
+  if (stateResult?.state === 'open') {
+    return { base64: null, code: null, pairingCode: null, state: 'open' }
+  }
+
+  // 2. Inicia conexão — seta webhook e eventos; best-effort (pode já estar conectando)
+  await fetch(`${apiUrl}/instance/connect`, {
+    method: 'POST',
+    headers: buildHeaders(apiToken),
+    body: JSON.stringify({
+      ...(webhookUrl ? { webhookUrl } : {}),
+      subscribe: ['MESSAGE', 'MESSAGE_STATUS', 'CONNECTION'],
+    }),
+  }).catch(() => null)
+
+  // 3. Busca o QR code atual via endpoint dedicado
+  const qrResponse = await fetch(`${apiUrl}/instance/qr`, {
+    method: 'GET',
+    headers: buildHeaders(apiToken),
+  })
+
+  if (!qrResponse.ok) {
+    return { base64: null, code: null, pairingCode: null, state: 'connecting' }
+  }
+
+  const data = await qrResponse.json().catch(() => ({}))
+  const base64 = data?.base64 || data?.qrcode?.base64 || null
+  const code = data?.code || data?.qr || null
+  const pairingCode = data?.pairingCode || null
+
+  return { base64, code, pairingCode, state: 'connecting' }
 }
 
 /**
