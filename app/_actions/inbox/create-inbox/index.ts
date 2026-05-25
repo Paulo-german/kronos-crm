@@ -83,6 +83,7 @@ export const createInbox = orgActionClient
           ...(data.autoCreateDeal !== undefined && { autoCreateDeal: data.autoCreateDeal }),
           ...(data.pipelineId !== undefined && { pipelineId: data.pipelineId }),
           ...(data.distributionUserIds !== undefined && { distributionUserIds: data.distributionUserIds }),
+          ...(data.connectionType && { connectionType: data.connectionType }),
         },
       })
     })

@@ -1,6 +1,6 @@
 'use client'
 
-import { Dispatch, SetStateAction } from 'react'
+import { Dispatch, SetStateAction, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAction } from 'next-safe-action/hooks'
@@ -65,6 +65,7 @@ const UpsertInboxSheetContent = ({
     defaultValues: defaultValues || {
       name: '',
       channel: 'WHATSAPP',
+      connectionType: 'EVOLUTION_GO',
       agentId: null,
     },
   })
@@ -106,6 +107,14 @@ const UpsertInboxSheetContent = ({
   }
 
   const isPending = isCreating || isUpdatingProp
+
+  const channel = form.watch('channel')
+
+  useEffect(() => {
+    if (channel !== 'WHATSAPP') {
+      form.setValue('connectionType', null)
+    }
+  }, [channel, form])
 
   return (
     <SheetContent className="overflow-y-auto sm:max-w-xl">
@@ -169,6 +178,35 @@ const UpsertInboxSheetContent = ({
               </FormItem>
             )}
           />
+
+          {channel === 'WHATSAPP' && (
+            <FormField
+              control={form.control}
+              name="connectionType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Provedor de Conexão</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value ?? 'EVOLUTION_GO'}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o provedor" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="EVOLUTION_GO">Evolution Go — Self-hosted (Go)</SelectItem>
+                      <SelectItem value="EVOLUTION_JS">Evolution JS — Self-hosted (Node.js)</SelectItem>
+                      <SelectItem value="META_CLOUD">Meta Cloud API — Oficial Meta</SelectItem>
+                      <SelectItem value="Z_API">Z-API — Cloud (Z-API)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
 
           <FormField
             control={form.control}

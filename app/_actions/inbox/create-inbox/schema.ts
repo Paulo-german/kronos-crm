@@ -3,6 +3,7 @@ import { z } from 'zod'
 export const createInboxSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório').max(100),
   channel: z.enum(['WHATSAPP', 'WEB_CHAT', 'INSTAGRAM_DM']),
+  connectionType: z.enum(['EVOLUTION', 'EVOLUTION_JS', 'EVOLUTION_GO', 'META_CLOUD', 'Z_API']).optional().nullable(),
   agentId: z.string().uuid().optional().nullable(),
   autoCreateDeal: z.boolean().optional(),
   pipelineId: z.string().uuid().nullable().optional(),
