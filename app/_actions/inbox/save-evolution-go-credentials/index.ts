@@ -38,7 +38,7 @@ export const saveEvolutionGoCredentials = orgActionClient
     // 4. Validar apenas autenticação: verifica se o servidor responde e o token é válido.
     // 404 é aceito — a instância pode ainda não existir no servidor (criada depois pelo usuário).
     const statusResponse = await fetch(
-      `${data.apiUrl}/instance/${encodeURIComponent(data.instanceName)}/status`,
+      `${data.apiUrl}/instance/connectionState/${encodeURIComponent(data.instanceName)}`,
       {
         method: 'GET',
         headers: {

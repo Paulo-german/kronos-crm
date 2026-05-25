@@ -85,6 +85,7 @@ export async function createEvolutionGoInstance(
 
 /**
  * Conecta uma instância existente — retorna QR para pareamento.
+ * Evolution Go usa o mesmo endpoint GET do Evolution JS.
  */
 export async function connectEvolutionGoInstance(
   instanceName: string,
@@ -98,11 +99,13 @@ export async function connectEvolutionGoInstance(
     return { base64: null, code: null, pairingCode: null, state: 'open' }
   }
 
-  const response = await fetch(`${apiUrl}/instance/connect`, {
-    method: 'POST',
-    headers: buildHeaders(apiToken),
-    body: JSON.stringify({ instanceName }),
-  })
+  const response = await fetch(
+    `${apiUrl}/instance/connect/${encodeURIComponent(instanceName)}`,
+    {
+      method: 'GET',
+      headers: buildHeaders(apiToken),
+    },
+  )
 
   if (!response.ok) {
     return { base64: null, code: null, pairingCode: null, state: 'close' }
@@ -118,6 +121,7 @@ export async function connectEvolutionGoInstance(
 
 /**
  * Status atual de uma instância.
+ * Usa o mesmo endpoint do Evolution JS: GET /instance/connectionState/{name}
  * Retorna null se a instância não existir (404), lança em 401/403.
  */
 export async function getEvolutionGoInstanceStatus(
@@ -127,7 +131,7 @@ export async function getEvolutionGoInstanceStatus(
   const { apiUrl, apiToken } = credentials
 
   const response = await fetch(
-    `${apiUrl}/instance/${encodeURIComponent(instanceName)}/status`,
+    `${apiUrl}/instance/connectionState/${encodeURIComponent(instanceName)}`,
     {
       method: 'GET',
       headers: buildHeaders(apiToken),
@@ -147,7 +151,7 @@ export async function getEvolutionGoInstanceStatus(
   }
 
   const data = await response.json().catch(() => ({}))
-  const state = data?.state || data?.instance?.state || 'close'
+  const state = data?.instance?.state || data?.state || 'close'
   return { state }
 }
 
