@@ -91,6 +91,15 @@ const CLASSIFIER_HISTORY_TURNS = 6
 // Classificador só precisa devolver um UUID — 64 tokens é mais do que suficiente.
 const CLASSIFIER_MAX_OUTPUT_TOKENS = 64
 
+// Diretiva injetada apenas no system prompt da Call 1 para evitar que o modelo
+// gaste tokens gerando texto que será descartado (o texto final é responsabilidade do Responder).
+const CALL1_EXECUTION_DIRECTIVE =
+  '\n\n## Modo de execução deste turno\n' +
+  'Sua única responsabilidade agora é identificar e executar as ferramentas ' +
+  'necessárias para atender o cliente. NÃO gere texto de resposta — a mensagem ' +
+  'final ao cliente será produzida em uma etapa separada com base nos resultados ' +
+  'das suas ações. Apenas chame as ferramentas apropriadas.'
+
 // Action tools: efeito colateral — Call 2 só precisa saber que foram executadas.
 const ACTION_TOOL_LABELS: Record<string, string> = {
   hand_off_to_human: 'Notificação de atendente humano enviada',
@@ -253,80 +262,83 @@ function formatQueryToolResult(toolName: string, outputValue: unknown): string |
 }
 
 /**
- * Converte as mensagens brutas do Call 1 (tool calls / tool results) em texto
- * legível antes de passá-las ao Call 2.
+ * Filtra as mensagens do Call 1 para o Responder (Call 2) — Opção B: Call 2 gera do zero.
  *
- * Action tools → label simples (Call 2 só precisa saber que foram executadas).
- * Query tools → conteúdo formatado preservado (Call 2 precisa dos dados para responder).
- * Texto puro do assistant → mantido intacto.
+ * Mantém apenas pares tool-call/tool-result com resultado útil; descarta o resto:
+ * - Texto final do assistant (Call 1) → descartado (Call 2 gera sem viés do Call 1).
+ * - Par query tool com resultado → mantido (Call 2 usa os dados para responder).
+ * - Par action tool com resultado → mantido (Call 2 sabe o que foi executado).
+ * - Par com resultado vazio (ex: search sem resultados) → descartado (ambos do par).
  */
 function sanitizeToolMessages(messages: ModelMessage[]): ModelMessage[] {
-  return messages.map((message) => {
+  // Passo 1: identificar quais tool-call IDs têm resultado útil.
+  // Necessário para decidir se o par (assistant tool-call + tool result) deve ser mantido ou descartado junto.
+  const toolCallIdsWithContent = new Set<string>()
+  for (const message of messages) {
+    if (message.role !== 'tool' || !Array.isArray(message.content)) continue
+    for (const part of message.content) {
+      if (part.type !== 'tool-result') continue
+      const outputValue = part.output.type === 'json' ? part.output.value : null
+      const hasContent = QUERY_TOOL_NAMES.has(part.toolName)
+        ? !!formatQueryToolResult(part.toolName, outputValue)
+        : !!(
+            outputValue &&
+            typeof outputValue === 'object' &&
+            !Array.isArray(outputValue) &&
+            Object.keys(outputValue as object).length > 0
+          )
+      if (hasContent) toolCallIdsWithContent.add(part.toolCallId)
+    }
+  }
+
+  // Passo 2: filtrar e transformar mensagens preservando pares tool-call/tool-result.
+  return messages.flatMap((message) => {
     // Mensagens assistant podem conter tool calls no content array
     if (message.role === 'assistant' && Array.isArray(message.content)) {
       const textParts: string[] = []
+      const toolCallPartsWithContent = message.content.filter(
+        (part) => part.type === 'tool-call' && toolCallIdsWithContent.has(part.toolCallId),
+      )
 
       for (const part of message.content) {
         if (part.type === 'text') {
-          if (part.text.trim()) {
-            textParts.push(part.text.trim())
-          }
-        } else if (part.type === 'tool-call') {
+          if (part.text.trim()) textParts.push(part.text.trim())
+        } else if (part.type === 'tool-call' && !toolCallIdsWithContent.has(part.toolCallId)) {
+          // Tool-call sem resultado útil: action tools viram label de texto; query tools são ignoradas
           const label = ACTION_TOOL_LABELS[part.toolName]
-          // Query tools: Call 2 verá o resultado completo na mensagem tool abaixo
-          if (!label && !QUERY_TOOL_NAMES.has(part.toolName)) {
-            textParts.push(`[Ação executada: ${part.toolName}]`)
-          } else if (label) {
-            textParts.push(`[Ação executada: ${label}]`)
+          if (!QUERY_TOOL_NAMES.has(part.toolName)) {
+            textParts.push(label ? `[Ação executada: ${label}]` : `[Ação executada: ${part.toolName}]`)
           }
         }
       }
 
-      if (textParts.length === 0) {
-        return message
+      if (toolCallPartsWithContent.length > 0) {
+        // Há tool-calls com resultado — preservar mensagem com content filtrado para manter o par
+        const filteredContent = message.content.filter(
+          (part) =>
+            (part.type === 'text' && part.text.trim()) ||
+            (part.type === 'tool-call' && toolCallIdsWithContent.has(part.toolCallId)),
+        )
+        return [{ ...message, content: filteredContent } as ModelMessage]
       }
 
-      return { role: 'assistant', content: textParts.join('\n') } as ModelMessage
+      if (textParts.length === 0) return []
+      return [{ role: 'assistant', content: textParts.join('\n') } as ModelMessage]
     }
 
-    // Mensagens tool contêm os resultados das ferramentas
+    // Mensagens tool: manter original somente se há resultado útil (par intacto com o assistant acima)
     if (message.role === 'tool' && Array.isArray(message.content)) {
-      const summaryParts: string[] = []
-
-      for (const part of message.content) {
-        if (part.type !== 'tool-result') continue
-
-        const outputValue = part.output.type === 'json' ? part.output.value : null
-
-        if (QUERY_TOOL_NAMES.has(part.toolName)) {
-          // Query tools: preservar conteúdo em formato legível
-          const formatted = formatQueryToolResult(part.toolName, outputValue)
-          if (formatted) {
-            summaryParts.push(formatted)
-          }
-          continue
-        }
-
-        // Action tools: só indicar que foi executada se houver output significativo
-        if (
-          outputValue &&
-          typeof outputValue === 'object' &&
-          !Array.isArray(outputValue) &&
-          Object.keys(outputValue as object).length > 0
-        ) {
-          const label = ACTION_TOOL_LABELS[part.toolName] ?? part.toolName
-          summaryParts.push(`[Resultado: ${label}]`)
-        }
-      }
-
-      if (summaryParts.length === 0) {
-        return { role: 'assistant', content: '' } as ModelMessage
-      }
-
-      return { role: 'assistant', content: summaryParts.join('\n\n') } as ModelMessage
+      const hasContent = message.content.some(
+        (part) => part.type === 'tool-result' && toolCallIdsWithContent.has(part.toolCallId),
+      )
+      return hasContent ? [message] : []
     }
 
-    return message
+    // Texto final do Call 1: assistant com content string (sem tool-calls) → descartar.
+    // O Responder gera o texto do zero; manter esse texto criaria viés e invalidaria o propósito do Call 2.
+    if (message.role === 'assistant') return []
+
+    return [message]
   })
 }
 
@@ -1026,9 +1038,16 @@ export async function runSingleV2(
   const hasSteps = promptContext.totalSteps > 0
 
   // Call 1: tools apenas — combinar tools+Output.object na mesma chamada pode travar o modelo (ver PLAN-agent-loop-fix).
+  // A diretiva é anexada só ao system prompt da Call 1; llmMessages original fica intacto para o Responder (Call 2).
+  const call1Messages = llmMessages.map((message, index) =>
+    index === 0 && message.role === 'system'
+      ? { ...message, content: message.content + CALL1_EXECUTION_DIRECTIVE }
+      : message,
+  )
+
   const result = await generateText({
     model: getModel(promptContext.modelId),
-    messages: llmMessages,
+    messages: call1Messages,
     tools,
     temperature: LLM_TEMPERATURE,
     stopWhen: stepCountIs(4),
@@ -1279,11 +1298,10 @@ export async function runSingleV2(
         ...llmMessages,
         ...sanitizeToolMessages(result.response.messages),
         {
-          role: 'system' as const,
+          role: 'user' as const,
           content:
-            'Você acabou de executar ações (tool calls) para o cliente, mas não gerou uma resposta textual. ' +
-            'Agora responda ao cliente de forma natural, informando o que foi feito. ' +
-            'Seja breve e objetivo.',
+            '[Sistema: as ferramentas foram executadas. Gere agora a resposta final ao cliente ' +
+            'de forma natural, com base no que foi feito. Seja breve e objetivo.]',
         },
       ]
 
