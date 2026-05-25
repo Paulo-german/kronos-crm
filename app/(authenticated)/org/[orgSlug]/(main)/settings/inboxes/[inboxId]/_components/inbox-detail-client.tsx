@@ -61,6 +61,7 @@ import ZApiConnectionCard from './zapi-connection-card'
 import ConnectionProviderSelector from './connection-provider-selector'
 import EvolutionSelfHostedCard from './evolution-js-self-hosted-card'
 import EvolutionGoCard from './evolution-go-card'
+import EvolutionGoConnectionCard from './evolution-go-connection-card'
 import ConnectInstagramButton from './connect-instagram-button'
 
 // Modo de vinculação da IA neste inbox
@@ -288,17 +289,27 @@ const InboxDetailClient = ({
       )
     }
 
-    // Evolution Go: card de credenciais + QR + status
+    // Evolution Go: card de credenciais + card de conexão (QR/status) se instância configurada
     if (isGoProvider) {
       return (
-        <EvolutionGoCard
-          inboxId={inbox.id}
-          canManage={canManage}
-          savedApiUrl={inbox.evolutionApiUrl ?? null}
-          savedInstanceName={inbox.evolutionInstanceName ?? null}
-          savedApiTokenMasked={inbox.evolutionApiKey ?? null}
-          webhookSecret={inbox.evolutionWebhookSecret ?? null}
-        />
+        <div className="space-y-4">
+          <EvolutionGoCard
+            inboxId={inbox.id}
+            canManage={canManage}
+            savedApiUrl={inbox.evolutionApiUrl ?? null}
+            savedInstanceName={inbox.evolutionInstanceName ?? null}
+            savedApiTokenMasked={inbox.evolutionApiKey ?? null}
+            webhookSecret={inbox.evolutionWebhookSecret ?? null}
+          />
+          {isEvolutionConnected && (
+            <EvolutionGoConnectionCard
+              inboxId={inbox.id}
+              canManage={canManage}
+              initialConnected={inbox.evolutionConnected}
+              onConnectionStateChange={setEvolutionConnectedOverride}
+            />
+          )}
+        </div>
       )
     }
 
