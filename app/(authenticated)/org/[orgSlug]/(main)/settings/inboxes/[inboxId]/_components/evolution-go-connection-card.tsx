@@ -24,6 +24,7 @@ import {
 import { Badge } from '@/_components/ui/badge'
 import ConfirmationDialog from '@/_components/confirmation-dialog'
 import { getEvolutionGoQr } from '@/_actions/inbox/get-evolution-go-qr'
+import { startEvolutionGoConnection } from '@/_actions/inbox/start-evolution-go-connection'
 import { syncEvolutionGoStatus } from '@/_actions/inbox/sync-evolution-go-status'
 import { disconnectEvolutionGoInbox } from '@/_actions/inbox/disconnect-evolution-go-inbox'
 
@@ -89,7 +90,7 @@ const EvolutionGoConnectionCard = ({
     },
   })
 
-  // Polling de QR — só ativo quando em estado 'connecting'
+  // Polling de QR — GET puro, sem POST /connect, evita resetar conexão em andamento
   const { execute: executeGetQR } = useAction(getEvolutionGoQr, {
     onSuccess: ({ data }) => {
       if (!data) return
@@ -113,6 +114,29 @@ const EvolutionGoConnectionCard = ({
     },
   })
 
+  // Disparo inicial de conexão — POST /connect uma única vez, depois polling GET
+  const { execute: executeStartConnection, isPending: isStarting } = useAction(
+    startEvolutionGoConnection,
+    {
+      onSuccess: ({ data }) => {
+        if (!data) return
+        if (data.state === 'open') {
+          setConnectionState('connected')
+          onConnectionStateChange?.(true)
+          return
+        }
+        if (data.base64) setQrBase64(data.base64)
+        if (data.code) setQrCode(data.code)
+        if (data.pairingCode) setPairingCode(data.pairingCode)
+        startPolling()
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError || 'Não foi possível iniciar a conexão.')
+        setConnectionState('disconnected')
+      },
+    },
+  )
+
   const { execute: executeDisconnect, isPending: isDisconnecting } = useAction(
     disconnectEvolutionGoInbox,
     {
@@ -133,11 +157,10 @@ const EvolutionGoConnectionCard = ({
     },
   )
 
+  // Polling de QR após a conexão ter sido iniciada — só GET, sem resetar QR
   const startPolling = useCallback(() => {
     stopPolling()
     setIsQrExpired(false)
-
-    executeGetQR({ inboxId })
 
     pollRef.current = setInterval(() => {
       executeGetQR({ inboxId })
@@ -149,7 +172,7 @@ const EvolutionGoConnectionCard = ({
       setQrCode(null)
       setPairingCode(null)
       setIsQrExpired(true)
-      toast.error('QR Code expirou. Clique em "Gerar novo QR Code" para tentar novamente.')
+      toast.error('QR Code expirou. Clique em "Reconectar" para tentar novamente.')
     }, QR_TIMEOUT)
   }, [inboxId, executeGetQR, stopPolling])
 
@@ -158,14 +181,6 @@ const EvolutionGoConnectionCard = ({
     executeCheckStatus({ inboxId })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inboxId])
-
-  // Inicia polling de QR apenas quando o usuário acionou a conexão
-  useEffect(() => {
-    if (connectionState === 'connecting') {
-      startPolling()
-    }
-    return () => stopPolling()
-  }, [connectionState, startPolling, stopPolling])
 
   if (connectionState === 'disconnected') {
     return (
@@ -196,8 +211,15 @@ const EvolutionGoConnectionCard = ({
               Clique em conectar para obter o QR Code da sua instância Evolution Go e parear o WhatsApp.
             </p>
             {canManage && (
-              <Button onClick={() => setConnectionState('connecting')}>
-                <MessageSquare className="mr-2 h-4 w-4" />
+              <Button
+                onClick={() => executeStartConnection({ inboxId })}
+                disabled={isStarting}
+              >
+                {isStarting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <MessageSquare className="mr-2 h-4 w-4" />
+                )}
                 Conectar WhatsApp
               </Button>
             )}
@@ -333,9 +355,25 @@ const EvolutionGoConnectionCard = ({
           )}
 
           <div className="mt-4 flex items-center gap-2 border-t border-border/50 pt-4">
-            <Button variant="outline" size="sm" onClick={startPolling}>
-              <RefreshCw className="mr-2 h-3.5 w-3.5" />
-              Gerar novo QR Code
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isStarting}
+              onClick={() => {
+                stopPolling()
+                setQrBase64(null)
+                setQrCode(null)
+                setPairingCode(null)
+                setIsQrExpired(false)
+                executeStartConnection({ inboxId })
+              }}
+            >
+              {isStarting ? (
+                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="mr-2 h-3.5 w-3.5" />
+              )}
+              Reconectar
             </Button>
             {canManage && (
               <Button

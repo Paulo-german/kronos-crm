@@ -84,6 +84,24 @@ export async function createEvolutionGoInstance(
 }
 
 /**
+ * Normaliza o estado bruto retornado pelo servidor para os valores canônicos.
+ * A API Go retorna gin.H (mapa genérico), então o campo e o valor variam.
+ */
+function normalizeInstanceState(data: Record<string, unknown>): EvolutionGoConnectionState['state'] {
+  const raw = (
+    (data?.state as string) ||
+    (data?.status as string) ||
+    (data?.instance as Record<string, unknown>)?.state as string ||
+    (data?.connectionStatus as string) ||
+    ''
+  ).toLowerCase().trim()
+
+  if (raw === 'open' || raw === 'connected' || raw === 'online') return 'open'
+  if (raw === 'connecting' || raw === 'qr' || raw === 'pairing') return 'connecting'
+  return 'close'
+}
+
+/**
  * Status atual de uma instância.
  * Evolution Go: GET /instance/status — autenticação via apikey (= token da instância).
  * O token identifica a instância automaticamente, sem nome no path.
@@ -112,20 +130,47 @@ export async function getEvolutionGoInstanceStatus(
     return { state: 'close' }
   }
 
-  const data = await response.json().catch(() => ({}))
-  const state =
-    data?.state ||
-    data?.status ||
-    data?.instance?.state ||
-    data?.connectionStatus ||
-    'close'
-  return { state }
+  const data = await response.json().catch(() => ({})) as Record<string, unknown>
+  return { state: normalizeInstanceState(data) }
 }
 
 /**
- * Conecta uma instância — inicia pareamento via QR e seta webhook.
- * Evolution Go: POST /instance/connect + GET /instance/qr (endpoints separados).
- * @param webhookUrl - URL do webhook Kronos para receber mensagens desta instância.
+ * Polling de QR code — SOMENTE leitura (GET).
+ * Não chama POST /connect. Use para o loop de polling após iniciar a conexão.
+ */
+export async function pollEvolutionGoQR(
+  instanceName: string,
+  credentials: EvolutionGoCredentials,
+): Promise<EvolutionGoQRCodeResult> {
+  const { apiUrl, apiToken } = credentials
+
+  // 1. Verifica status — se aberto, retorna imediatamente
+  const statusResult = await getEvolutionGoInstanceStatus(instanceName, credentials)
+  if (statusResult?.state === 'open') {
+    return { base64: null, code: null, pairingCode: null, state: 'open' }
+  }
+
+  // 2. Lê o QR atual (sem acionar reconexão)
+  const qrResponse = await fetch(`${apiUrl}/instance/qr`, {
+    method: 'GET',
+    headers: buildHeaders(apiToken),
+  })
+
+  if (!qrResponse.ok) {
+    return { base64: null, code: null, pairingCode: null, state: 'connecting' }
+  }
+
+  const data = await qrResponse.json().catch(() => ({})) as Record<string, unknown>
+  const base64 = (data?.base64 as string) || (data?.qrcode as Record<string, unknown>)?.base64 as string || null
+  const code = (data?.code as string) || (data?.qr as string) || null
+  const pairingCode = (data?.pairingCode as string) || null
+
+  return { base64, code, pairingCode, state: 'connecting' }
+}
+
+/**
+ * Inicia a conexão de uma instância — dispara uma vez quando o usuário clica em conectar.
+ * Chama POST /connect (seta webhook e eventos) e retorna o QR inicial.
  */
 export async function connectEvolutionGoInstance(
   instanceName: string,
@@ -140,7 +185,7 @@ export async function connectEvolutionGoInstance(
     return { base64: null, code: null, pairingCode: null, state: 'open' }
   }
 
-  // 2. Inicia conexão — seta webhook e eventos; best-effort (pode já estar conectando)
+  // 2. Dispara a conexão (seta webhook e inicia pareamento via QR)
   await fetch(`${apiUrl}/instance/connect`, {
     method: 'POST',
     headers: buildHeaders(apiToken),
@@ -150,7 +195,7 @@ export async function connectEvolutionGoInstance(
     }),
   }).catch(() => null)
 
-  // 3. Busca o QR code atual via endpoint dedicado
+  // 3. Lê o QR gerado
   const qrResponse = await fetch(`${apiUrl}/instance/qr`, {
     method: 'GET',
     headers: buildHeaders(apiToken),
@@ -160,10 +205,10 @@ export async function connectEvolutionGoInstance(
     return { base64: null, code: null, pairingCode: null, state: 'connecting' }
   }
 
-  const data = await qrResponse.json().catch(() => ({}))
-  const base64 = data?.base64 || data?.qrcode?.base64 || null
-  const code = data?.code || data?.qr || null
-  const pairingCode = data?.pairingCode || null
+  const data = await qrResponse.json().catch(() => ({})) as Record<string, unknown>
+  const base64 = (data?.base64 as string) || (data?.qrcode as Record<string, unknown>)?.base64 as string || null
+  const code = (data?.code as string) || (data?.qr as string) || null
+  const pairingCode = (data?.pairingCode as string) || null
 
   return { base64, code, pairingCode, state: 'connecting' }
 }
