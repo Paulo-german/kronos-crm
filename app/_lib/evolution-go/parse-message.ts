@@ -51,8 +51,8 @@ function extractContent(
       type: 'audio',
       text: null,
       media: {
-        url: message.audioMessage.url,
-        mimetype: message.audioMessage.mimetype,
+        url: message.audioMessage.url ?? '',
+        mimetype: message.audioMessage.mimetype ?? 'audio/ogg',
         seconds: message.audioMessage.seconds,
       },
     }
@@ -63,8 +63,8 @@ function extractContent(
       type: 'image',
       text: message.imageMessage.caption ?? null,
       media: {
-        url: message.imageMessage.url,
-        mimetype: message.imageMessage.mimetype,
+        url: message.imageMessage.url ?? '',
+        mimetype: message.imageMessage.mimetype ?? 'image/jpeg',
       },
     }
   }
@@ -74,8 +74,8 @@ function extractContent(
       type: 'document',
       text: message.documentMessage.caption ?? null,
       media: {
-        url: message.documentMessage.url,
-        mimetype: message.documentMessage.mimetype,
+        url: message.documentMessage.url ?? '',
+        mimetype: message.documentMessage.mimetype ?? 'application/octet-stream',
         fileName: message.documentMessage.fileName,
       },
     }

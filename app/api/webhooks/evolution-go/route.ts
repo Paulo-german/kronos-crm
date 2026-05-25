@@ -198,8 +198,15 @@ export async function POST(req: Request) {
   if (!dataParsed.success) {
     console.warn(`${LOG} MESSAGE: payload inválido`, {
       instanceName,
-      errors: dataParsed.error.issues,
+      errors: dataParsed.error.issues.map((issue) => ({
+        path: issue.path.join('.'),
+        message: issue.message,
+        code: issue.code,
+      })),
       dataKeys: payload.data && typeof payload.data === 'object' ? Object.keys(payload.data) : [],
+      infoKeys: payload.data && typeof payload.data === 'object' && 'Info' in (payload.data as object)
+        ? Object.keys((payload.data as Record<string, unknown>).Info as object)
+        : [],
     })
     return NextResponse.json({ ignored: true, reason: 'invalid_payload' })
   }

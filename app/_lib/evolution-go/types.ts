@@ -38,8 +38,8 @@ export const evolutionGoInfoSchema = z.object({
 })
 
 export const evolutionGoMediaSchema = z.object({
-  url: z.string(),
-  mimetype: z.string(),
+  url: z.string().optional(),
+  mimetype: z.string().optional(),
   seconds: z.number().optional(),
   caption: z.string().optional(),
   fileName: z.string().optional(),
