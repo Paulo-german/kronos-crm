@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   InboxIcon,
@@ -28,6 +28,9 @@ import { deleteInbox } from '@/_actions/inbox/delete-inbox'
 import ConfirmationDialog from '@/_components/confirmation-dialog'
 import UpsertInboxSheetContent from './upsert-inbox-sheet-content'
 import InboxTableDropdownMenu from './table-dropdown-menu'
+import { InboxFiltersSheet } from './inbox-filters-sheet'
+import { InboxFilterBadges } from './inbox-filter-badges'
+import { useInboxFilters } from '../_lib/use-inbox-filters'
 import type { InboxListDto } from '@/_data-access/inbox/get-inboxes'
 
 interface AgentOption {
@@ -73,6 +76,32 @@ export function InboxesCardGrid({
   withinQuota,
   isSuperAdmin,
 }: InboxesCardGridProps) {
+  const { filters, setFilters, clearFilters, activeFilterCount, hasActiveFilters } =
+    useInboxFilters()
+
+  const filteredInboxes = useMemo(() => {
+    return inboxes.filter((inbox) => {
+      if (filters.connectionStatus.length > 0) {
+        const connected = isInboxConnected(inbox)
+        const matchesStatus =
+          (filters.connectionStatus.includes('connected') && connected) ||
+          (filters.connectionStatus.includes('disconnected') && !connected)
+        if (!matchesStatus) return false
+      }
+      if (filters.provider.length > 0) {
+        if (
+          !inbox.connectionType ||
+          !filters.provider.includes(inbox.connectionType)
+        )
+          return false
+      }
+      if (filters.channel.length > 0) {
+        if (!filters.channel.includes(inbox.channel)) return false
+      }
+      return true
+    })
+  }, [inboxes, filters])
+
   const [editingInbox, setEditingInbox] = useState<InboxListDto | null>(null)
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [deletingInbox, setDeletingInbox] = useState<InboxListDto | null>(null)
@@ -121,7 +150,7 @@ export function InboxesCardGrid({
       year: '2-digit',
     }).format(new Date(date))
 
-  // Empty state
+  // Empty state — sem nenhuma caixa cadastrada
   const emptyState = inboxes.length === 0 && (
     <div className="flex flex-col items-center justify-center gap-4 py-16">
       <div className="rounded-full bg-muted p-4">
@@ -159,10 +188,31 @@ export function InboxesCardGrid({
     </div>
   )
 
+  // Empty state — filtros sem resultado
+  const filteredEmptyState =
+    inboxes.length > 0 && filteredInboxes.length === 0 && (
+      <div className="flex flex-col items-center justify-center gap-4 py-16">
+        <div className="rounded-full bg-muted p-4">
+          <InboxIcon className="h-8 w-8 text-muted-foreground" />
+        </div>
+        <div className="text-center">
+          <h3 className="text-lg font-semibold">
+            Nenhuma caixa encontrada
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            Nenhuma caixa de entrada corresponde aos filtros aplicados.
+          </p>
+        </div>
+        <Button variant="outline" onClick={clearFilters}>
+          Limpar filtros
+        </Button>
+      </div>
+    )
+
   // Grid state
-  const gridState = inboxes.length > 0 && (
+  const gridState = filteredInboxes.length > 0 && (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {inboxes.map((inbox) => {
+      {filteredInboxes.map((inbox) => {
         const connected = isInboxConnected(inbox)
 
         return (
@@ -282,7 +332,31 @@ export function InboxesCardGrid({
 
   return (
     <>
+      {/* Barra de filtros */}
+      {inboxes.length > 0 && (
+        <div className="mb-4 space-y-2">
+          <div className="flex items-center gap-3">
+            <InboxFiltersSheet
+              filters={filters}
+              onFiltersChange={setFilters}
+              activeFilterCount={activeFilterCount}
+            />
+            <span className="text-sm text-muted-foreground">
+              {filteredInboxes.length} de {inboxes.length}{' '}
+              {inboxes.length === 1 ? 'caixa' : 'caixas'}
+            </span>
+          </div>
+          <InboxFilterBadges
+            filters={filters}
+            onFiltersChange={setFilters}
+            onClearFilters={clearFilters}
+            hasActiveFilters={hasActiveFilters}
+          />
+        </div>
+      )}
+
       {emptyState}
+      {filteredEmptyState}
       {gridState}
 
       {/* Edit sheet */}
