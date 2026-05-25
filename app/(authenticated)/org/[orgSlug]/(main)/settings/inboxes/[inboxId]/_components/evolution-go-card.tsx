@@ -30,6 +30,7 @@ import { Alert, AlertDescription } from '@/_components/ui/alert'
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -269,14 +270,17 @@ const EvolutionGoCard = ({
                   name="apiUrl"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>URL do servidor</FormLabel>
+                      <FormLabel>URL base da API</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="https://seu-servidor.com"
+                          placeholder="https://evolution.seudominio.com.br"
                           disabled={!canManage || isSaving}
                           {...field}
                         />
                       </FormControl>
+                      <FormDescription>
+                        URL raiz do servidor Evolution Go, sem barra no final
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -288,14 +292,17 @@ const EvolutionGoCard = ({
                     name="instanceName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Nome da instância</FormLabel>
+                        <FormLabel>Nome exato da instância</FormLabel>
                         <FormControl>
                           <Input
-                            placeholder="ex: minha-instancia"
+                            placeholder="ex: outbound_1"
                             disabled={!canManage || isSaving}
                             {...field}
                           />
                         </FormControl>
+                        <FormDescription>
+                          Exatamente como aparece no painel do Evolution Go
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -306,7 +313,7 @@ const EvolutionGoCard = ({
                     name="apiToken"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Token de autenticação</FormLabel>
+                        <FormLabel>Global API Key</FormLabel>
                         <FormControl>
                           <div className="relative">
                             <Input
@@ -314,7 +321,7 @@ const EvolutionGoCard = ({
                               placeholder={
                                 isAlreadySaved
                                   ? 'Novo token (deixe vazio para manter)'
-                                  : 'Token do servidor'
+                                  : 'Chave de acesso configurada no servidor'
                               }
                               disabled={!canManage || isSaving}
                               {...field}
@@ -335,6 +342,9 @@ const EvolutionGoCard = ({
                             </Button>
                           </div>
                         </FormControl>
+                        <FormDescription>
+                          Chave de acesso global configurada no servidor
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}

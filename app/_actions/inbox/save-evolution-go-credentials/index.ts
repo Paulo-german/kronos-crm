@@ -35,7 +35,8 @@ export const saveEvolutionGoCredentials = orgActionClient
       throw new Error('Token de autenticação obrigatório.')
     }
 
-    // 4. Validar credenciais: buscar status da instância no servidor Go
+    // 4. Validar apenas autenticação: verifica se o servidor responde e o token é válido.
+    // 404 é aceito — a instância pode ainda não existir no servidor (criada depois pelo usuário).
     const statusResponse = await fetch(
       `${data.apiUrl}/instance/${encodeURIComponent(data.instanceName)}/status`,
       {
@@ -57,15 +58,10 @@ export const saveEvolutionGoCredentials = orgActionClient
       throw new Error('Token inválido ou sem permissão no servidor Evolution Go.')
     }
 
-    if (statusResponse.status === 404) {
+    // 404 aceito — instância pode não existir ainda; qualquer outro erro de servidor bloqueia
+    if (statusResponse.status !== 404 && !statusResponse.ok) {
       throw new Error(
-        `Instância "${data.instanceName}" não encontrada no servidor. Verifique o nome da instância.`,
-      )
-    }
-
-    if (!statusResponse.ok) {
-      throw new Error(
-        `Servidor Evolution Go retornou erro (${statusResponse.status}). Tente novamente.`,
+        `Servidor Evolution Go retornou erro (${statusResponse.status}). Verifique a URL e tente novamente.`,
       )
     }
 
