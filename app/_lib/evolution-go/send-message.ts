@@ -5,11 +5,20 @@ import type { EvolutionGoCredentials } from './types'
 const MAX_WHATSAPP_MESSAGE_LENGTH = 4000
 const DELAY_BETWEEN_CHUNKS_MS = 800
 
-/**
- * Envia mensagem de texto via Evolution Go.
- * Endpoint assumido: POST /message/sendText  body: { instanceName, number, text }
- * TODO: confirmar shape exato com a doc oficial do Evolution Go.
- */
+function buildHeaders(apiToken: string) {
+  return { 'Content-Type': 'application/json', apikey: apiToken }
+}
+
+function extractMessageId(data: Record<string, unknown> | null): string | undefined {
+  if (!data) return undefined
+  // Tenta os paths mais comuns do Evolution Go
+  return (
+    (data?.id as string | undefined) ??
+    (data?.data as Record<string, unknown> | undefined)?.id as string | undefined ??
+    (data?.key as Record<string, unknown> | undefined)?.id as string | undefined
+  )
+}
+
 export async function sendEvolutionGoMessage(
   instanceName: string,
   remoteJid: string,
@@ -36,39 +45,30 @@ export async function sendEvolutionGoMessage(
       await new Promise((resolve) => setTimeout(resolve, DELAY_BETWEEN_CHUNKS_MS))
     }
 
-    const response = await fetcher(`${apiUrl}/message/sendText`, {
+    const response = await fetcher(`${apiUrl}/send/text`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: apiToken,
-      },
+      headers: buildHeaders(apiToken),
       body: JSON.stringify({
-        instanceName,
         number: remoteJid,
         text: chunks[index],
+        formatJid: true,
+        delay: 0,
       }),
     })
 
     if (!response.ok) {
       const errorBody = await response.text().catch(() => 'unknown')
-      throw new Error(
-        `Evolution Go sendText failed (${response.status}): ${errorBody}`,
-      )
+      throw new Error(`Evolution Go sendText failed (${response.status}): ${errorBody}`)
     }
 
     const data = await response.json().catch(() => null)
-    const messageId = data?.key?.id as string | undefined
-
+    const messageId = extractMessageId(data)
     if (messageId) messageIds.push(messageId)
   }
 
   return messageIds
 }
 
-/**
- * Indicador de presença (typing). Best-effort — falha silenciosa.
- * TODO: confirmar endpoint Go (`/chat/presence`?).
- */
 export async function sendEvolutionGoPresence(
   instanceName: string,
   remoteJid: string,
@@ -78,17 +78,10 @@ export async function sendEvolutionGoPresence(
   try {
     const { apiUrl, apiToken } = credentials
 
-    await fetch(`${apiUrl}/chat/presence`, {
+    await fetch(`${apiUrl}/send/presence`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: apiToken,
-      },
-      body: JSON.stringify({
-        instanceName,
-        number: remoteJid,
-        presence,
-      }),
+      headers: buildHeaders(apiToken),
+      body: JSON.stringify({ number: remoteJid, presence }),
     })
   } catch {
     // Best-effort

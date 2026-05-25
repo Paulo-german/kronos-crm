@@ -1,11 +1,6 @@
 import { assertEvolutionGoConnected } from './connection-guard'
 import type { EvolutionGoCredentials } from './types'
 
-/**
- * Envia mídia (imagem, documento ou vídeo) via Evolution Go.
- * Endpoint assumido: POST /message/sendMedia
- * TODO: confirmar shape final do payload com a doc oficial Go.
- */
 export async function sendEvolutionGoMedia(
   instanceName: string,
   remoteJid: string,
@@ -20,32 +15,31 @@ export async function sendEvolutionGoMedia(
 
   await assertEvolutionGoConnected(instanceName, credentials)
 
-  const response = await fetch(`${apiUrl}/message/sendMedia`, {
+  const response = await fetch(`${apiUrl}/send/media`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      apikey: apiToken,
-    },
+    headers: { 'Content-Type': 'application/json', apikey: apiToken },
     body: JSON.stringify({
-      instanceName,
       number: remoteJid,
       mediatype,
       media: mediaUrl,
       mimetype,
       caption: caption ?? '',
       fileName: fileName ?? 'file',
+      formatJid: true,
+      delay: 0,
     }),
   })
 
   if (!response.ok) {
     const errorBody = await response.text().catch(() => 'unknown')
-    throw new Error(
-      `Evolution Go sendMedia failed (${response.status}): ${errorBody}`,
-    )
+    throw new Error(`Evolution Go sendMedia failed (${response.status}): ${errorBody}`)
   }
 
   const data = await response.json().catch(() => null)
-  const messageId = data?.key?.id as string | undefined
+  const messageId =
+    (data?.id as string | undefined) ??
+    (data?.data as Record<string, unknown> | undefined)?.id as string | undefined ??
+    (data?.key as Record<string, unknown> | undefined)?.id as string | undefined
 
   if (!messageId) {
     throw new Error('Evolution Go sendMedia: no messageId returned')
