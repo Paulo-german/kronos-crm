@@ -36,5 +36,9 @@ export async function sendEvolutionGoMedia(
   }
 
   const data = await response.json().catch(() => null)
-  return extractMessageId(data) ?? ''
+  const messageId = extractMessageId(data)
+  if (!messageId) {
+    console.warn('[evolution-go/send-media] messageId ausente na resposta', { rawResponse: JSON.stringify(data) })
+  }
+  return messageId ?? ''
 }

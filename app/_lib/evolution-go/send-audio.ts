@@ -31,5 +31,9 @@ export async function sendEvolutionGoAudio(
   }
 
   const data = await response.json().catch(() => null)
-  return extractMessageId(data) ?? ''
+  const messageId = extractMessageId(data)
+  if (!messageId) {
+    console.warn('[evolution-go/send-audio] messageId ausente na resposta', { rawResponse: JSON.stringify(data) })
+  }
+  return messageId ?? ''
 }

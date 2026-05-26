@@ -9,12 +9,12 @@ function buildHeaders(apiToken: string) {
   return { 'Content-Type': 'application/json', apikey: apiToken }
 }
 
-// Response shape: { message: "success", data: { Info: { id: "..." }, ... } }
+// Response shape: { message: "success", data: { Info: { ID: "..." }, ... } }
 export function extractMessageId(data: Record<string, unknown> | null): string | undefined {
   if (!data) return undefined
   const inner = data?.data as Record<string, unknown> | undefined
   const info = inner?.Info as Record<string, unknown> | undefined
-  return info?.id as string | undefined
+  return (info?.ID ?? info?.id) as string | undefined
 }
 
 export async function sendEvolutionGoMessage(

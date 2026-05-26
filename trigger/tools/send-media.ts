@@ -224,6 +224,16 @@ export function createSendMediaTool(ctx: ToolContext) {
         }
 
         // 6. Dedup Redis (TTL 5 min)
+        // Se sentId estiver vazio (provider não retornou o ID), não registramos dedup
+        // nem salvamos no banco — o webhook echo (fromMe) vai tratar e salvar corretamente.
+        if (!sentId) {
+          logger.warn('send_media: sentId vazio, delegando persistência ao webhook echo', {
+            conversationId: ctx.conversationId,
+            resolvedType,
+          })
+          return { success: true, message: 'Midia enviada com sucesso.' }
+        }
+
         await redis.set(`dedup:${sentId}`, '1', 'EX', 300).catch(() => {})
 
         // 7. Salvar mensagem no banco — webhook foi bloqueado pelo dedup, então
