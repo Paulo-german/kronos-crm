@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useAction } from 'next-safe-action/hooks'
-import { Scan, Copy, Check, Loader2, CheckCircle2 } from 'lucide-react'
+import { Scan, Copy, Check, Loader2, CheckCircle2, ArrowRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/_components/ui/button'
 import { Input } from '@/_components/ui/input'
@@ -44,6 +44,7 @@ export function WebhookFieldDetector({ webhookSourceId, token, onApply }: Webhoo
   const pollingStartedAt = useRef<Date | null>(null)
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const timeoutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const { execute: fetchPayload } = useAction(getWebhookTestPayload, {
     onSuccess: ({ data }) => {
@@ -54,7 +55,7 @@ export function WebhookFieldDetector({ webhookSourceId, token, onApply }: Webhoo
       stopPolling()
       const detected: DetectedField[] = flattenPayload(data.payload)
       if (detected.length === 0) {
-        toast.warning('Payload recebido, mas nenhum campo primitivo foi encontrado.')
+        toast.warning('Dados recebidos, mas nenhum campo foi encontrado.')
         setState('idle')
         return
       }
@@ -66,7 +67,7 @@ export function WebhookFieldDetector({ webhookSourceId, token, onApply }: Webhoo
       }))
       setRows(detectionRows)
       setState('detected')
-      toast.success('Campos detectados! Confirme o mapeamento abaixo.')
+      toast.success('Campos detectados! Confirme a configuração abaixo.')
     },
   })
 
@@ -78,6 +79,10 @@ export function WebhookFieldDetector({ webhookSourceId, token, onApply }: Webhoo
     if (timeoutTimerRef.current) {
       clearTimeout(timeoutTimerRef.current)
       timeoutTimerRef.current = null
+    }
+    if (copiedTimerRef.current) {
+      clearTimeout(copiedTimerRef.current)
+      copiedTimerRef.current = null
     }
     pollingStartedAt.current = null
   }
@@ -93,7 +98,7 @@ export function WebhookFieldDetector({ webhookSourceId, token, onApply }: Webhoo
     timeoutTimerRef.current = setTimeout(() => {
       stopPolling()
       setState('idle')
-      toast.error('Tempo esgotado. Nenhum payload recebido em 5 minutos.')
+      toast.error('Tempo esgotado. Nenhum dado recebido em 5 minutos.')
     }, POLL_TIMEOUT_MS)
   }
 
@@ -110,7 +115,7 @@ export function WebhookFieldDetector({ webhookSourceId, token, onApply }: Webhoo
     await navigator.clipboard.writeText(testUrl)
     setCopied(true)
     toast.success('URL de teste copiada.')
-    setTimeout(() => setCopied(false), 2000)
+    copiedTimerRef.current = setTimeout(() => setCopied(false), 2000)
   }
 
   const handleCancel = () => {
@@ -137,7 +142,7 @@ export function WebhookFieldDetector({ webhookSourceId, token, onApply }: Webhoo
     }
     onApply(mapping)
     setState('idle')
-    toast.success('Mapeamento aplicado!')
+    toast.success('Campos configurados!')
   }
 
   if (state === 'idle') {
@@ -147,7 +152,7 @@ export function WebhookFieldDetector({ webhookSourceId, token, onApply }: Webhoo
           <div>
             <p className="text-sm font-medium">Detectar campos automaticamente</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Envie um disparo de teste do seu sistema e o CRM detecta os campos disponíveis.
+              Faça um envio de teste pelo sistema externo e o CRM detecta os campos automaticamente.
             </p>
           </div>
           <Button
@@ -168,17 +173,17 @@ export function WebhookFieldDetector({ webhookSourceId, token, onApply }: Webhoo
   if (state === 'listening') {
     return (
       <div className="rounded-md border border-border/50 bg-muted/20 p-3 space-y-3">
-        <p className="text-sm font-medium">Aguardando payload de teste</p>
+        <p className="text-sm font-medium">Aguardando envio de teste</p>
 
         <div className="space-y-1.5">
           <p className="text-xs text-muted-foreground">
-            1. Configure essa URL no seu formulário/sistema:
+            1. Configure este endereço no sistema externo:
           </p>
           <div className="flex gap-2">
             <Input
               readOnly
               value={testUrl}
-              className="font-mono text-xs"
+              className="text-xs text-kronos-blue bg-kronos-blue/10 border-kronos-blue/30"
               aria-label="URL de teste"
             />
             <Button
@@ -187,9 +192,10 @@ export function WebhookFieldDetector({ webhookSourceId, token, onApply }: Webhoo
               size="icon"
               onClick={handleCopy}
               aria-label="Copiar URL de teste"
+              className="border-kronos-blue/30 bg-kronos-blue/10 text-kronos-blue hover:bg-kronos-blue/20 hover:text-kronos-blue"
             >
               {copied ? (
-                <Check className="h-4 w-4 text-green-500" />
+                <Check className="h-4 w-4" />
               ) : (
                 <Copy className="h-4 w-4" />
               )}
@@ -198,13 +204,13 @@ export function WebhookFieldDetector({ webhookSourceId, token, onApply }: Webhoo
         </div>
 
         <p className="text-xs text-muted-foreground">
-          2. Envie um formulário de teste — os campos serão detectados automaticamente.
+          2. Faça um envio de teste pelo sistema externo — os campos serão detectados automaticamente.
         </p>
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            Aguardando payload...
+            Aguardando envio...
           </div>
           <Button
             type="button"
@@ -255,7 +261,7 @@ export function WebhookFieldDetector({ webhookSourceId, token, onApply }: Webhoo
               <p className="font-mono text-xs truncate text-foreground">{row.path}</p>
               <p className="text-xs text-muted-foreground truncate">{row.sampleValue}</p>
             </div>
-            <span className="text-xs text-muted-foreground">→</span>
+            <ArrowRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
             <Select
               value={row.selectedKey || 'none'}
               onValueChange={(value) =>
@@ -290,7 +296,7 @@ export function WebhookFieldDetector({ webhookSourceId, token, onApply }: Webhoo
           onClick={handleApply}
           disabled={mappedCount === 0}
         >
-          Aplicar mapeamento
+          Aplicar configuração
         </Button>
       </div>
     </div>

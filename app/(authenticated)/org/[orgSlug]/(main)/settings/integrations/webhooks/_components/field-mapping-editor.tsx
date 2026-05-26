@@ -39,10 +39,8 @@ const ALL_KEYS: FieldMappingKey[] = [
   'dealStageId',
 ]
 
-let uidCounter = 0
 function nextUid() {
-  uidCounter += 1
-  return String(uidCounter)
+  return crypto.randomUUID()
 }
 
 function recordToPairs(record: Record<string, string>): FieldPair[] {
@@ -127,10 +125,10 @@ export function FieldMappingEditor({ value, onChange }: FieldMappingEditorProps)
           </Select>
 
           <Input
-            placeholder="caminho.no.payload"
+            placeholder="ex: cliente.email"
             value={pair.path}
             onChange={(event) => handlePathChange(pair.uid, event.target.value)}
-            className="font-mono text-xs"
+            className="text-xs"
           />
 
           <Button

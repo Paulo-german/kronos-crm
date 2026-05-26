@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Copy, Check } from 'lucide-react'
 import { Input } from '@/_components/ui/input'
 import { Button } from '@/_components/ui/button'
@@ -12,6 +12,13 @@ interface WebhookUrlDisplayProps {
 
 export function WebhookUrlDisplay({ token }: WebhookUrlDisplayProps) {
   const [copied, setCopied] = useState(false)
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current)
+    }
+  }, [])
 
   const origin =
     typeof window !== 'undefined'
@@ -24,7 +31,7 @@ export function WebhookUrlDisplay({ token }: WebhookUrlDisplayProps) {
     await navigator.clipboard.writeText(url)
     setCopied(true)
     toast.success('URL copiada para a área de transferência.')
-    setTimeout(() => setCopied(false), 2000)
+    copiedTimerRef.current = setTimeout(() => setCopied(false), 2000)
   }
 
   return (
@@ -32,7 +39,7 @@ export function WebhookUrlDisplay({ token }: WebhookUrlDisplayProps) {
       <Input
         readOnly
         value={url}
-        className="font-mono text-xs"
+        className="text-xs text-kronos-blue bg-kronos-blue/10 border-kronos-blue/30"
         aria-label="URL do webhook"
       />
       <Button
@@ -41,8 +48,9 @@ export function WebhookUrlDisplay({ token }: WebhookUrlDisplayProps) {
         size="icon"
         onClick={handleCopy}
         aria-label="Copiar URL"
+        className="border-kronos-blue/30 bg-kronos-blue/10 text-kronos-blue hover:bg-kronos-blue/20 hover:text-kronos-blue"
       >
-        {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+        {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
       </Button>
     </div>
   )

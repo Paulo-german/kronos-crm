@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useOptimistic, useTransition, useCallback } from 'react'
+import { useState, useOptimistic, useTransition, useCallback, useMemo } from 'react'
 import { useAction } from 'next-safe-action/hooks'
 import { formatDistanceToNow } from 'date-fns/formatDistanceToNow'
 import { ptBR } from 'date-fns/locale'
@@ -121,7 +121,7 @@ export function WebhookSourcesDataTable({ data, squads, orgSlug }: WebhookSource
     toast.success('URL copiada para a área de transferência.')
   }, [])
 
-  const columns: ColumnDef<WebhookSourceDto>[] = [
+  const columns: ColumnDef<WebhookSourceDto>[] = useMemo(() => [
     {
       accessorKey: 'name',
       header: 'Nome',
@@ -228,7 +228,7 @@ export function WebhookSourcesDataTable({ data, squads, orgSlug }: WebhookSource
         />
       ),
     },
-  ]
+  ], [optimisticSources, handleToggleActive, handleViewLogs, handleCopyUrl, setEditingSource, setDeletingSource])
 
   const table = useReactTable({
     data: optimisticSources,
