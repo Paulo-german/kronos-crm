@@ -69,13 +69,13 @@ export function WebhookPayloadTester({ fieldMapping }: WebhookPayloadTesterProps
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
-        Cole um payload de exemplo para verificar se os caminhos estão corretos.
+        Cole um exemplo de dados para verificar se as configurações estão corretas.
       </p>
 
       <div className="grid gap-3 md:grid-cols-2">
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-muted-foreground">
-            Payload JSON
+            Dados de exemplo
           </label>
           <Textarea
             value={rawJson}
@@ -96,7 +96,7 @@ export function WebhookPayloadTester({ fieldMapping }: WebhookPayloadTesterProps
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <label className="text-xs font-medium text-muted-foreground">
-              Campos resolvidos
+              Resultado
             </label>
             {entries !== null && (
               <span className="text-xs text-muted-foreground">
@@ -111,7 +111,7 @@ export function WebhookPayloadTester({ fieldMapping }: WebhookPayloadTesterProps
                 ← Clique em &quot;Testar&quot; para ver o resultado
               </p>
             ) : entries.length === 0 ? (
-              <p className="text-xs text-muted-foreground">Nenhum campo mapeado.</p>
+              <p className="text-xs text-muted-foreground">Nenhum campo configurado.</p>
             ) : (
               <div className="space-y-1.5">
                 {entries.map((entry) => (

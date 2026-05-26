@@ -88,7 +88,7 @@ function CreateWizardStepper({ step }: { step: 'step1' | 'step2' }) {
             : 'bg-muted text-muted-foreground',
         )}
       >
-        2. Mapeamento
+        2. Campos
       </span>
     </div>
   )
@@ -156,7 +156,7 @@ export function UpsertWebhookSheetContent({
         }
         toast.success(
           updateContextRef.current === 'wizard'
-            ? 'Mapeamento salvo com sucesso!'
+            ? 'Configuração salva com sucesso!'
             : 'Webhook atualizado com sucesso!',
         )
         onSuccess?.()
@@ -221,7 +221,7 @@ export function UpsertWebhookSheetContent({
   const handleApplyTemplate = () => {
     if (!template) return
     form.setValue('fieldMapping', template as Record<string, string>)
-    toast.info('Template aplicado! Ajuste os caminhos se necessário.')
+    toast.info('Sugestão aplicada! Ajuste se necessário.')
   }
 
   // Modo CREATE step 2: mapeamento após criação do webhook
@@ -232,17 +232,17 @@ export function UpsertWebhookSheetContent({
           <SheetTitle>Novo Webhook</SheetTitle>
           <CreateWizardStepper step="step2" />
           <SheetDescription>
-            Configure como os campos do payload serão mapeados para o CRM.
+            Configure quais informações do sistema externo vão para cada campo do CRM.
           </SheetDescription>
         </SheetHeader>
 
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-muted-foreground">
-            URL do endpoint
+            Endereço de recebimento
           </label>
           <WebhookUrlDisplay token={createdToken} />
           <p className="text-xs text-muted-foreground">
-            Configure esta URL no sistema externo e envie um payload de teste para detectar os campos automaticamente.
+            Copie este endereço no sistema externo e faça um envio de teste para detectar os campos automaticamente.
           </p>
         </div>
 
@@ -251,9 +251,9 @@ export function UpsertWebhookSheetContent({
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium">Mapeamento de campos</p>
+              <p className="text-sm font-medium">Campos recebidos</p>
               <p className="text-xs text-muted-foreground">
-                Mapeie os campos do payload externo para os campos do CRM.
+                Defina quais informações do sistema externo vão para cada campo do CRM.
               </p>
             </div>
             {hasTemplate && (
@@ -263,7 +263,7 @@ export function UpsertWebhookSheetContent({
                 size="sm"
                 onClick={() => {
                   setWizardMapping(template as Record<string, string>)
-                  toast.info('Template aplicado! Ajuste os caminhos se necessário.')
+                  toast.info('Sugestão aplicada! Ajuste se necessário.')
                 }}
                 className="gap-1.5 shrink-0"
               >
@@ -289,7 +289,7 @@ export function UpsertWebhookSheetContent({
           <>
             <Separator />
             <div className="space-y-2">
-              <p className="text-sm font-medium">Testar mapeamento</p>
+              <p className="text-sm font-medium">Testar configuração</p>
               <WebhookPayloadTester fieldMapping={wizardMapping} />
             </div>
           </>
@@ -325,7 +325,7 @@ export function UpsertWebhookSheetContent({
                 Salvando...
               </span>
             ) : (
-              'Salvar mapeamento'
+              'Salvar configuração'
             )}
           </Button>
           </div>
@@ -343,8 +343,8 @@ export function UpsertWebhookSheetContent({
         {!isEditing && <CreateWizardStepper step="step1" />}
         <SheetDescription>
           {isEditing
-            ? 'Atualize as configurações do endpoint de webhook.'
-            : 'Configure um endpoint para receber dados de sistemas externos.'}
+            ? 'Atualize as configurações deste webhook.'
+            : 'Configure um endereço para receber informações de outros sistemas.'}
         </SheetDescription>
       </SheetHeader>
 
@@ -352,7 +352,7 @@ export function UpsertWebhookSheetContent({
       {isEditing && source && (
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-muted-foreground">
-            URL do endpoint
+            Endereço de recebimento
           </label>
           <WebhookUrlDisplay token={source.token} />
         </div>
@@ -518,7 +518,7 @@ export function UpsertWebhookSheetContent({
                 <>
                   <Separator />
                   <div className="space-y-2">
-                    <p className="text-sm font-medium">Testar mapeamento</p>
+                    <p className="text-sm font-medium">Testar configuração</p>
                     <WebhookPayloadTester fieldMapping={watchedFieldMapping} />
                   </div>
                 </>
@@ -530,9 +530,9 @@ export function UpsertWebhookSheetContent({
 
           <div className="space-y-3">
             <div>
-              <p className="text-sm font-medium">Assinatura HMAC</p>
+              <p className="text-sm font-medium">Verificação de segurança</p>
               <p className="text-xs text-muted-foreground">
-                Opcional. Configure um secret para validar a origem dos eventos.
+                Opcional. Adicione uma chave para confirmar que os dados vêm do sistema correto.
               </p>
             </div>
 
@@ -540,7 +540,7 @@ export function UpsertWebhookSheetContent({
               <div className="flex items-center justify-between rounded-md border border-border/50 bg-muted/30 px-3 py-2">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <ShieldCheck className="h-4 w-4 text-green-600 dark:text-green-400" />
-                  Secret configurada
+                  Chave de segurança configurada
                 </div>
                 <Button
                   type="button"
@@ -559,7 +559,7 @@ export function UpsertWebhookSheetContent({
               <div className="flex items-center justify-between rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2">
                 <div className="flex items-center gap-2 text-sm text-destructive">
                   <ShieldOff className="h-4 w-4" />
-                  Secret será removida ao salvar
+                  Chave de segurança será removida ao salvar
                 </div>
                 <Button
                   type="button"
@@ -580,7 +580,7 @@ export function UpsertWebhookSheetContent({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      {isEditing && source?.hasSecretKey ? 'Nova secret' : 'Secret'}
+                      {isEditing && source?.hasSecretKey ? 'Nova chave' : 'Chave de segurança'}
                     </FormLabel>
                     <FormControl>
                       <Input
@@ -609,7 +609,7 @@ export function UpsertWebhookSheetContent({
                 </Badge>
               ) : watchedPlatform === 'GOOGLE_FORMS' ? (
                 <p className="text-xs text-muted-foreground">
-                  Google Forms não suporta assinatura — não configure um secret.
+                  Google Forms não suporta verificação de segurança.
                 </p>
               ) : null
             )}
