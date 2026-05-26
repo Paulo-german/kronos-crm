@@ -96,7 +96,11 @@ export async function processInboundWebhook(input: ProcessInput): Promise<{ id: 
 
   revalidateTag(`webhook-sources:${source.organizationId}`)
   revalidateTag(`webhook-logs:${source.id}`)
-  if (result.contactId) revalidateTag(`contacts:${source.organizationId}`)
+  if (result.contactId) {
+    revalidateTag(`contacts:${source.organizationId}`)
+    // resolveCompanyId pode criar empresa nova — invalida companies mesmo quando apenas encontrou
+    revalidateTag(`companies:${source.organizationId}`)
+  }
   if (result.dealId) revalidateTag(`deals:${source.organizationId}`)
 
   return { id: log.id }
