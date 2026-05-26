@@ -12,7 +12,6 @@ import {
 import { Separator } from '@/_components/ui/separator'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getUserIntegrations } from '@/_data-access/integration/get-user-integrations'
-import { db } from '@/_lib/prisma'
 import Header, {
   HeaderLeft,
   HeaderSubTitle,
@@ -30,11 +29,7 @@ const IntegrationsPage = async ({ params }: IntegrationsPageProps) => {
   const { orgSlug } = await params
   const ctx = await getOrgContext(orgSlug)
 
-  const currentUser = await db.user.findUnique({
-    where: { id: ctx.userId },
-    select: { isSuperAdmin: true },
-  })
-  const isSuperAdmin = currentUser?.isSuperAdmin ?? false
+  const canManageWebhooks = ctx.userRole === 'OWNER' || ctx.userRole === 'ADMIN'
 
   // Verifica se o Google Calendar está configurado e se a org tem acesso (beta gate)
   const googleBetaOrgIds = (process.env.NEXT_PUBLIC_GOOGLE_BETA_ORG_IDS ?? '').split(',').filter(Boolean)
@@ -86,7 +81,7 @@ const IntegrationsPage = async ({ params }: IntegrationsPageProps) => {
           enabled={googleCalendarEnabled}
         />
 
-        {isSuperAdmin && <Card className="flex flex-col">
+        {canManageWebhooks && <Card className="flex flex-col">
           <CardHeader>
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg border bg-muted">
