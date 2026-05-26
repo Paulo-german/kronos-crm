@@ -1,12 +1,12 @@
 'use server'
 
 import { revalidateTag } from 'next/cache'
-import { superAdminOrgActionClient } from '@/_lib/safe-action'
+import { orgActionClient } from '@/_lib/safe-action'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 import { db } from '@/_lib/prisma'
 import { deleteWebhookSourceSchema } from '../schema'
 
-export const deleteWebhookSource = superAdminOrgActionClient
+export const deleteWebhookSource = orgActionClient
   .schema(deleteWebhookSourceSchema)
   .action(async ({ parsedInput: data, ctx }) => {
     // RBAC já restringe delete apenas para OWNER (ver permissions.ts)

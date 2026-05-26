@@ -1,12 +1,12 @@
 'use server'
 
-import { superAdminOrgActionClient } from '@/_lib/safe-action'
+import { orgActionClient } from '@/_lib/safe-action'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 import { db } from '@/_lib/prisma'
 import { getWebhookLogsBySource } from '@/_data-access/webhook-source/get-webhook-logs-by-source'
 import { getWebhookLogsSchema } from '../schema'
 
-export const getWebhookLogs = superAdminOrgActionClient
+export const getWebhookLogs = orgActionClient
   .schema(getWebhookLogsSchema)
   .action(async ({ parsedInput: data, ctx }) => {
     requirePermission(canPerformAction(ctx, 'webhookSource', 'read'))

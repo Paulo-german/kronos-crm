@@ -2,12 +2,12 @@
 
 import { revalidateTag } from 'next/cache'
 import { Prisma } from '@prisma/client'
-import { superAdminOrgActionClient } from '@/_lib/safe-action'
+import { orgActionClient } from '@/_lib/safe-action'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 import { db } from '@/_lib/prisma'
 import { createWebhookSourceSchema } from '../schema'
 
-export const createWebhookSource = superAdminOrgActionClient
+export const createWebhookSource = orgActionClient
   .schema(createWebhookSourceSchema)
   .action(async ({ parsedInput: data, ctx }) => {
     requirePermission(canPerformAction(ctx, 'webhookSource', 'create'))

@@ -2,7 +2,6 @@ import { redirect } from 'next/navigation'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getWebhookSources } from '@/_data-access/webhook-source/get-webhook-sources'
 import { getSquads } from '@/_data-access/squad/get-squads'
-import { db } from '@/_lib/prisma'
 import Header, {
   HeaderLeft,
   HeaderRight,
@@ -21,12 +20,8 @@ export default async function WebhooksPage({ params }: PageProps) {
   const { orgSlug } = await params
   const ctx = await getOrgContext(orgSlug)
 
-  const currentUser = await db.user.findUnique({
-    where: { id: ctx.userId },
-    select: { isSuperAdmin: true },
-  })
-
-  if (!currentUser?.isSuperAdmin) {
+  // RBAC: apenas OWNER/ADMIN podem gerenciar webhooks de entrada
+  if (ctx.userRole !== 'OWNER' && ctx.userRole !== 'ADMIN') {
     redirect(`/org/${orgSlug}/settings/integrations`)
   }
 
