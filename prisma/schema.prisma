@@ -2203,6 +2203,7 @@ enum WebhookPlatform {
 enum WebhookEventType {
   NEW_CONTACT
   UPDATE_CONTACT
+  UPSERT_CONTACT
   NEW_DEAL
   UPDATE_DEAL
   DEAL_CLOSED

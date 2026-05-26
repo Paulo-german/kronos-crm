@@ -3,6 +3,7 @@ import { db } from '@/_lib/prisma'
 import type { WebhookPlatform, WebhookEventType } from '@prisma/client'
 import { resolveFieldMapping } from './resolve-field-mapping'
 import { persistWebhookLog } from './persist-webhook-log'
+import { handleUpsertContact } from './handlers/handle-upsert-contact'
 import { handleNewContact } from './handlers/handle-new-contact'
 import { handleUpdateContact } from './handlers/handle-update-contact'
 import { handleNewDeal } from './handlers/handle-new-deal'
@@ -40,6 +41,10 @@ export async function processInboundWebhook(input: ProcessInput): Promise<{ id: 
   let result: ProcessResult
   try {
     switch (source.eventType) {
+      case 'UPSERT_CONTACT':
+        result = await handleUpsertContact({ orgId: source.organizationId, squadId: source.squadId, resolved })
+        break
+      // Legado: fontes criadas antes da migração para UPSERT_CONTACT
       case 'NEW_CONTACT':
         result = await handleNewContact({ orgId: source.organizationId, squadId: source.squadId, resolved })
         break

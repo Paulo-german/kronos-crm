@@ -9,12 +9,7 @@ export type WebhookPlatform =
   | 'GOOGLE_FORMS'
   | 'OTHER'
 
-export type WebhookEventType =
-  | 'NEW_CONTACT'
-  | 'UPDATE_CONTACT'
-  | 'NEW_DEAL'
-  | 'UPDATE_DEAL'
-  | 'DEAL_CLOSED'
+export type WebhookEventType = 'UPSERT_CONTACT'
 
 type Template = Partial<Record<WebhookEventType, Partial<Record<FieldMappingKey, string>>>>
 
@@ -22,55 +17,30 @@ export const PLATFORM_TEMPLATES: Record<WebhookPlatform, Template> = {
   GENERIC: {},
   OTHER: {},
   SHOPIFY: {
-    NEW_CONTACT: {
+    UPSERT_CONTACT: {
       email: 'customer.email',
       name: 'customer.first_name',
       phone: 'customer.phone',
     },
-    NEW_DEAL: {
-      email: 'customer.email',
-      name: 'customer.first_name',
-      dealTitle: 'name',
-      dealValue: 'total_price',
-    },
-    DEAL_CLOSED: {
-      email: 'customer.email',
-      dealTitle: 'name',
-    },
   },
   HOTMART: {
-    NEW_CONTACT: {
+    UPSERT_CONTACT: {
       email: 'data.buyer.email',
       name: 'data.buyer.name',
       phone: 'data.buyer.checkout_phone',
     },
-    NEW_DEAL: {
-      email: 'data.buyer.email',
-      name: 'data.buyer.name',
-      dealTitle: 'data.product.name',
-      dealValue: 'data.purchase.price.value',
-    },
-    DEAL_CLOSED: {
-      email: 'data.buyer.email',
-      dealTitle: 'data.product.name',
-    },
   },
   GOOGLE_FORMS: {
-    NEW_CONTACT: {
+    UPSERT_CONTACT: {
       name: 'responses.0.textAnswers.answers.0.value',
       email: 'responses.1.textAnswers.answers.0.value',
     },
   },
   NUVEM_SHOP: {
-    NEW_CONTACT: {
+    UPSERT_CONTACT: {
       email: 'contact.email',
       name: 'contact.name',
       phone: 'contact.phone',
-    },
-    NEW_DEAL: {
-      email: 'contact.email',
-      dealTitle: 'order.number',
-      dealValue: 'order.total',
     },
   },
 }
@@ -85,11 +55,7 @@ export const PLATFORM_LABELS: Record<WebhookPlatform, string> = {
 }
 
 export const EVENT_TYPE_LABELS: Record<WebhookEventType, string> = {
-  NEW_CONTACT: 'Novo contato',
-  UPDATE_CONTACT: 'Atualizar contato',
-  NEW_DEAL: 'Novo deal',
-  UPDATE_DEAL: 'Atualizar deal',
-  DEAL_CLOSED: 'Deal fechado',
+  UPSERT_CONTACT: 'Contato (criar ou atualizar)',
 }
 
 export const PLATFORM_HMAC_HINTS: Record<WebhookPlatform, string | null> = {

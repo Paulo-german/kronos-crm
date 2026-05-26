@@ -87,7 +87,7 @@ export function UpsertWebhookSheetContent({
       : {
           name: '',
           platform: 'GENERIC',
-          eventType: 'NEW_CONTACT',
+          eventType: 'UPSERT_CONTACT',
           fieldMapping: {},
           isActive: true,
           squadId: null,
@@ -147,7 +147,7 @@ export function UpsertWebhookSheetContent({
   const watchedPlatform = form.watch('platform') as WebhookPlatform
   const watchedEventType = form.watch('eventType') as WebhookEventType
   const watchedFieldMapping = form.watch('fieldMapping') as Record<string, string>
-  const showSquadField = watchedEventType === 'NEW_DEAL' || watchedEventType === 'NEW_CONTACT'
+  const showSquadField = watchedEventType === 'UPSERT_CONTACT'
 
   const template = PLATFORM_TEMPLATES[watchedPlatform]?.[watchedEventType]
   const hasTemplate =

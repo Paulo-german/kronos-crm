@@ -1,11 +1,7 @@
 import { z } from 'zod'
 
 export const webhookEventTypeSchema = z.enum([
-  'NEW_CONTACT',
-  'UPDATE_CONTACT',
-  'NEW_DEAL',
-  'UPDATE_DEAL',
-  'DEAL_CLOSED',
+  'UPSERT_CONTACT',
 ])
 
 export const webhookPlatformSchema = z.enum([
@@ -102,12 +98,16 @@ export const replayWebhookLogSchema = z.object({
   logId: z.string().uuid(),
 })
 
+// WebhookEventType do Prisma inclui valores legados (NEW_CONTACT, UPDATE_CONTACT, NEW_DEAL etc.)
+// que não são mais expostos na UI mas podem existir em registros antigos
+export type WebhookEventTypeValue = z.infer<typeof webhookEventTypeSchema> | string
+
 export interface WebhookSourceDto {
   id: string
   name: string
   token: string
   platform: z.infer<typeof webhookPlatformSchema>
-  eventType: z.infer<typeof webhookEventTypeSchema>
+  eventType: WebhookEventTypeValue
   fieldMapping: Record<string, string>
   isActive: boolean
   squadId: string | null
