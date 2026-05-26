@@ -41,6 +41,7 @@ import { z } from 'zod'
 import { FieldMappingEditor } from './field-mapping-editor'
 import { WebhookUrlDisplay } from './webhook-url-display'
 import { WebhookPayloadTester } from './webhook-payload-tester'
+import { WebhookFieldDetector } from './webhook-field-detector'
 import {
   PLATFORM_LABELS,
   EVENT_TYPE_LABELS,
@@ -332,6 +333,14 @@ export function UpsertWebhookSheetContent({
                 </Button>
               )}
             </div>
+
+            {isEditing && source && (
+              <WebhookFieldDetector
+                webhookSourceId={source.id}
+                token={source.token}
+                onApply={(mapping) => form.setValue('fieldMapping', mapping)}
+              />
+            )}
 
             <FormField
               control={form.control}

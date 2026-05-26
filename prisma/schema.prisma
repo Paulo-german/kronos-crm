@@ -2231,10 +2231,12 @@ model WebhookSource {
   eventType      WebhookEventType @map("event_type")
   // Mapa dot-notation: { "email": "data.customer.email", ... }
   fieldMapping   Json             @default("{}") @map("field_mapping")
-  isActive       Boolean          @default(true) @map("is_active")
-  lastReceivedAt DateTime?        @map("last_received_at")
-  createdAt      DateTime         @default(now()) @map("created_at")
-  updatedAt      DateTime         @updatedAt @map("updated_at")
+  isActive        Boolean          @default(true) @map("is_active")
+  lastReceivedAt  DateTime?        @map("last_received_at")
+  lastTestPayload Json?            @map("last_test_payload")
+  lastTestAt      DateTime?        @map("last_test_at")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
 
   organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   squad        Squad?         @relation(fields: [squadId], references: [id], onDelete: SetNull)
