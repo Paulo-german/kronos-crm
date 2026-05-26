@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
-import { Wand2, Loader2, ShieldCheck, ShieldOff } from 'lucide-react'
+import { Wand2, Loader2, ShieldCheck, ShieldOff, ArrowRight, ArrowLeft } from 'lucide-react'
 import {
   SheetContent,
   SheetDescription,
@@ -31,6 +31,7 @@ import { Input } from '@/_components/ui/input'
 import { Button } from '@/_components/ui/button'
 import { Separator } from '@/_components/ui/separator'
 import { Badge } from '@/_components/ui/badge'
+import { cn } from '@/_lib/utils'
 import { createWebhookSource } from '@/_actions/webhook-source/create-webhook-source'
 import { updateWebhookSource } from '@/_actions/webhook-source/update-webhook-source'
 import {
@@ -65,14 +66,48 @@ interface UpsertWebhookSheetContentProps {
 const PLATFORMS = Object.keys(PLATFORM_LABELS) as WebhookPlatform[]
 const EVENT_TYPES = Object.keys(EVENT_TYPE_LABELS) as WebhookEventType[]
 
+function CreateWizardStepper({ step }: { step: 'step1' | 'step2' }) {
+  return (
+    <div className="flex items-center gap-2 mt-1">
+      <span
+        className={cn(
+          'rounded-full px-2.5 py-0.5 text-xs font-medium',
+          step === 'step1'
+            ? 'bg-primary text-primary-foreground'
+            : 'bg-muted text-muted-foreground',
+        )}
+      >
+        1. Configuração
+      </span>
+      <ArrowRight className="h-3 w-3 text-muted-foreground" />
+      <span
+        className={cn(
+          'rounded-full px-2.5 py-0.5 text-xs font-medium',
+          step === 'step2'
+            ? 'bg-primary text-primary-foreground'
+            : 'bg-muted text-muted-foreground',
+        )}
+      >
+        2. Mapeamento
+      </span>
+    </div>
+  )
+}
+
 export function UpsertWebhookSheetContent({
   source,
   squads,
   onSuccess,
 }: UpsertWebhookSheetContentProps) {
   const isEditing = !!source?.id
+  const [step, setStep] = useState<'step1' | 'step2'>('step1')
   const [createdToken, setCreatedToken] = useState<string | null>(null)
+  const [createdSourceId, setCreatedSourceId] = useState<string | null>(null)
   const [clearSecretKey, setClearSecretKey] = useState(false)
+  const [wizardMapping, setWizardMapping] = useState<Record<string, string>>({})
+  // controla o comportamento do executeUpdate dependendo do contexto de chamada:
+  // 'edit' → atualiza e fecha | 'wizard' → salva mapping e fecha | 'wizard-back' → atualiza e volta ao step 2
+  const updateContextRef = useRef<'edit' | 'wizard' | 'wizard-back'>('edit')
 
   const form = useForm<CreateWebhookInput>({
     resolver: zodResolver(createWebhookSourceSchema),
@@ -99,12 +134,11 @@ export function UpsertWebhookSheetContent({
     createWebhookSource,
     {
       onSuccess: ({ data }) => {
-        if (data?.token) {
+        if (data?.token && data?.id) {
           setCreatedToken(data.token)
+          setCreatedSourceId(data.id)
+          setStep('step2')
         }
-        toast.success('Webhook criado! Copie a URL abaixo antes de fechar.')
-        // Não fecha automaticamente: usuário precisa copiar a URL gerada
-        // form.reset() omitido — sheet fecha ao clicar em "Fechar" via onSuccess()
       },
       onError: ({ error }) => {
         toast.error(error.serverError ?? 'Erro ao criar webhook.')
@@ -116,11 +150,19 @@ export function UpsertWebhookSheetContent({
     updateWebhookSource,
     {
       onSuccess: () => {
-        toast.success('Webhook atualizado com sucesso!')
+        if (updateContextRef.current === 'wizard-back') {
+          setStep('step2')
+          return
+        }
+        toast.success(
+          updateContextRef.current === 'wizard'
+            ? 'Mapeamento salvo com sucesso!'
+            : 'Webhook atualizado com sucesso!',
+        )
         onSuccess?.()
       },
       onError: ({ error }) => {
-        toast.error(error.serverError ?? 'Erro ao atualizar webhook.')
+        toast.error(error.serverError ?? 'Erro ao salvar webhook.')
       },
     },
   )
@@ -138,11 +180,30 @@ export function UpsertWebhookSheetContent({
   }, [form])
 
   const onSubmit = (data: CreateWebhookInput) => {
+    const mapping = data.fieldMapping as Record<string, string>
+    const fieldMapping = Object.keys(mapping).length > 0 ? mapping : undefined
+
     if (isEditing && source?.id) {
-      executeUpdate({ id: source.id, ...data, clearSecretKey })
+      // Passa undefined quando vazio para que o update ignore o campo (fieldMapping é optional no server)
+      // Evita falha no fieldMappingRequiredSchema quando o webhook ainda não tem mapeamento configurado
+      executeUpdate({ id: source.id, ...data, fieldMapping, clearSecretKey })
+    } else if (createdSourceId) {
+      // voltou do step 2 para editar configuração básica — atualiza e retorna ao step 2
+      updateContextRef.current = 'wizard-back'
+      executeUpdate({ id: createdSourceId, ...data, fieldMapping })
     } else {
-      executeCreate(data)
+      executeCreate({ ...data, fieldMapping: {} })
     }
+  }
+
+  const handleSaveMapping = () => {
+    if (!createdSourceId) return
+    if (Object.keys(wizardMapping).length === 0) {
+      toast.warning('Adicione pelo menos um campo mapeado antes de salvar.')
+      return
+    }
+    updateContextRef.current = 'wizard'
+    executeUpdate({ id: createdSourceId, fieldMapping: wizardMapping })
   }
 
   const watchedPlatform = form.watch('platform') as WebhookPlatform
@@ -163,12 +224,123 @@ export function UpsertWebhookSheetContent({
     toast.info('Template aplicado! Ajuste os caminhos se necessário.')
   }
 
+  // Modo CREATE step 2: mapeamento após criação do webhook
+  if (!isEditing && step === 'step2' && createdToken && createdSourceId) {
+    return (
+      <SheetContent className="flex flex-col overflow-y-auto sm:max-w-2xl">
+        <SheetHeader>
+          <SheetTitle>Novo Webhook</SheetTitle>
+          <CreateWizardStepper step="step2" />
+          <SheetDescription>
+            Configure como os campos do payload serão mapeados para o CRM.
+          </SheetDescription>
+        </SheetHeader>
+
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground">
+            URL do endpoint
+          </label>
+          <WebhookUrlDisplay token={createdToken} />
+          <p className="text-xs text-muted-foreground">
+            Configure esta URL no sistema externo e envie um payload de teste para detectar os campos automaticamente.
+          </p>
+        </div>
+
+        <Separator />
+
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Mapeamento de campos</p>
+              <p className="text-xs text-muted-foreground">
+                Mapeie os campos do payload externo para os campos do CRM.
+              </p>
+            </div>
+            {hasTemplate && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setWizardMapping(template as Record<string, string>)
+                  toast.info('Template aplicado! Ajuste os caminhos se necessário.')
+                }}
+                className="gap-1.5 shrink-0"
+              >
+                <Wand2 className="h-3.5 w-3.5" />
+                Usar template
+              </Button>
+            )}
+          </div>
+
+          <WebhookFieldDetector
+            webhookSourceId={createdSourceId}
+            token={createdToken}
+            onApply={(mapping) => setWizardMapping(mapping)}
+          />
+
+          <FieldMappingEditor
+            value={wizardMapping}
+            onChange={setWizardMapping}
+          />
+        </div>
+
+        {Object.keys(wizardMapping).length > 0 && (
+          <>
+            <Separator />
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Testar mapeamento</p>
+              <WebhookPayloadTester fieldMapping={wizardMapping} />
+            </div>
+          </>
+        )}
+
+        <div className="flex justify-between gap-2 pt-2">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isUpdating}
+            onClick={() => setStep('step1')}
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Voltar
+          </Button>
+          <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={isUpdating}
+            onClick={() => onSuccess?.()}
+          >
+            Pular por agora
+          </Button>
+          <Button
+            type="button"
+            disabled={isUpdating}
+            onClick={handleSaveMapping}
+          >
+            {isUpdating ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Salvando...
+              </span>
+            ) : (
+              'Salvar mapeamento'
+            )}
+          </Button>
+          </div>
+        </div>
+      </SheetContent>
+    )
+  }
+
   return (
     <SheetContent className="flex flex-col overflow-y-auto sm:max-w-2xl">
       <SheetHeader>
         <SheetTitle>
           {isEditing ? 'Editar Webhook' : 'Novo Webhook'}
         </SheetTitle>
+        {!isEditing && <CreateWizardStepper step="step1" />}
         <SheetDescription>
           {isEditing
             ? 'Atualize as configurações do endpoint de webhook.'
@@ -176,26 +348,6 @@ export function UpsertWebhookSheetContent({
         </SheetDescription>
       </SheetHeader>
 
-      {/* URL gerada após criação — oculta o formulário até o usuário fechar */}
-      {createdToken ? (
-        <div className="rounded-lg border border-green-500/30 bg-green-500/5 p-4 space-y-3">
-          <p className="text-sm font-medium text-green-700 dark:text-green-400">
-            Webhook criado! Copie a URL abaixo e configure no sistema externo.
-          </p>
-          <WebhookUrlDisplay token={createdToken} />
-          <div className="flex justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => onSuccess?.()}
-            >
-              Fechar
-            </Button>
-          </div>
-        </div>
-      ) : (
-      <>
       {/* URL do webhook em edição */}
       {isEditing && source && (
         <div className="space-y-1.5">
@@ -310,62 +462,67 @@ export function UpsertWebhookSheetContent({
             />
           )}
 
-          <Separator />
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">Mapeamento de campos</p>
-                <p className="text-xs text-muted-foreground">
-                  Mapeie os campos do payload externo para os campos do CRM.
-                </p>
-              </div>
-              {hasTemplate && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleApplyTemplate}
-                  className="gap-1.5 shrink-0"
-                >
-                  <Wand2 className="h-3.5 w-3.5" />
-                  Usar template
-                </Button>
-              )}
-            </div>
-
-            {isEditing && source && (
-              <WebhookFieldDetector
-                webhookSourceId={source.id}
-                token={source.token}
-                onApply={(mapping) => form.setValue('fieldMapping', mapping)}
-              />
-            )}
-
-            <FormField
-              control={form.control}
-              name="fieldMapping"
-              render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                    <FieldMappingEditor
-                      value={field.value as Record<string, string>}
-                      onChange={field.onChange}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-
-          {Object.keys(watchedFieldMapping).length > 0 && (
+          {/* Mapeamento de campos — exibido apenas no modo EDIT */}
+          {isEditing && (
             <>
               <Separator />
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Testar mapeamento</p>
-                <WebhookPayloadTester fieldMapping={watchedFieldMapping} />
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium">Mapeamento de campos</p>
+                    <p className="text-xs text-muted-foreground">
+                      Mapeie os campos do payload externo para os campos do CRM.
+                    </p>
+                  </div>
+                  {hasTemplate && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleApplyTemplate}
+                      className="gap-1.5 shrink-0"
+                    >
+                      <Wand2 className="h-3.5 w-3.5" />
+                      Usar template
+                    </Button>
+                  )}
+                </div>
+
+                {source && (
+                  <WebhookFieldDetector
+                    webhookSourceId={source.id}
+                    token={source.token}
+                    onApply={(mapping) => form.setValue('fieldMapping', mapping)}
+                  />
+                )}
+
+                <FormField
+                  control={form.control}
+                  name="fieldMapping"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <FieldMappingEditor
+                          value={field.value as Record<string, string>}
+                          onChange={field.onChange}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
+
+              {Object.keys(watchedFieldMapping).length > 0 && (
+                <>
+                  <Separator />
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Testar mapeamento</p>
+                    <WebhookPayloadTester fieldMapping={watchedFieldMapping} />
+                  </div>
+                </>
+              )}
             </>
           )}
 
@@ -476,14 +633,15 @@ export function UpsertWebhookSheetContent({
               ) : isEditing ? (
                 'Salvar alterações'
               ) : (
-                'Criar webhook'
+                <span className="flex items-center gap-2">
+                  Continuar
+                  <ArrowRight className="h-4 w-4" />
+                </span>
               )}
             </Button>
           </div>
         </form>
       </Form>
-      </>
-      )}
     </SheetContent>
   )
 }

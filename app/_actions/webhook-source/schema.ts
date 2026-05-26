@@ -38,13 +38,15 @@ const VALID_MAPPING_KEYS = new Set(fieldMappingKeySchema.options)
 export const fieldMappingSchema = z
   .record(z.string(), z.string().trim().min(1, 'O path do payload é obrigatório'))
   .refine(
-    (obj) => Object.keys(obj).length > 0,
-    { message: 'Adicione pelo menos um campo mapeado' },
-  )
-  .refine(
     (obj) => Object.keys(obj).every((k) => VALID_MAPPING_KEYS.has(k as FieldMappingKey)),
     { message: 'Chave de mapeamento inválida' },
   )
+
+// Versão com validação de tamanho mínimo — usada no update explícito de fieldMapping
+export const fieldMappingRequiredSchema = fieldMappingSchema.refine(
+  (obj) => Object.keys(obj).length > 0,
+  { message: 'Adicione pelo menos um campo mapeado' },
+)
 
 // String vazia significa "sem novo valor" — validação de tamanho só para strings não-vazias
 const secretKeyField = z
@@ -60,7 +62,7 @@ export const createWebhookSourceSchema = z.object({
   name: z.string().trim().min(1, 'Nome é obrigatório').max(120),
   platform: webhookPlatformSchema.default('GENERIC'),
   eventType: webhookEventTypeSchema,
-  fieldMapping: fieldMappingSchema,
+  fieldMapping: fieldMappingSchema.default({}),
   isActive: z.boolean().default(true),
   secretKey: secretKeyField,
   squadId: z.string().uuid().nullable().optional(),
@@ -71,7 +73,7 @@ export const updateWebhookSourceSchema = z.object({
   name: z.string().trim().min(1).max(120).optional(),
   platform: webhookPlatformSchema.optional(),
   eventType: webhookEventTypeSchema.optional(),
-  fieldMapping: fieldMappingSchema.optional(),
+  fieldMapping: fieldMappingRequiredSchema.optional(),
   isActive: z.boolean().optional(),
   secretKey: secretKeyField,
   clearSecretKey: z.boolean().optional(),
