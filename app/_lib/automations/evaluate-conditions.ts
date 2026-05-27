@@ -1,5 +1,10 @@
 import 'server-only'
-import type { AutomationCondition, DealForEvaluation } from './types'
+import type {
+  AutomationCondition,
+  AutomationSubjectKind,
+  ContactForEvaluation,
+  DealForEvaluation,
+} from './types'
 
 // ─────────────────────────────────────────────────────────────
 // Helpers internos
@@ -27,6 +32,28 @@ function resolveDealField(
       return deal.value
     case 'pipelineId':
       return deal.pipelineId
+    default:
+      return null
+  }
+}
+
+/**
+ * Extrai o valor do contato para o campo especificado na condition.
+ * Retorna null quando o campo não se aplica a contatos ou o valor é nulo (falha segura).
+ */
+function resolveContactField(
+  contact: ContactForEvaluation,
+  field: AutomationCondition['field'],
+): string | number | null {
+  switch (field) {
+    case 'assignedTo':
+      return contact.assignedTo
+    case 'lifecycleStage':
+      return contact.lifecycleStage
+    case 'source':
+      return contact.firstCaptureChannel
+    default:
+      return null
   }
 }
 
@@ -89,18 +116,22 @@ function evaluateOperator(
  * Usa early-return na primeira condição não satisfeita para evitar checks desnecessários.
  */
 export function evaluateConditions(
-  deal: DealForEvaluation,
+  subject: DealForEvaluation | ContactForEvaluation,
   conditions: AutomationCondition[],
+  kind: AutomationSubjectKind,
 ): boolean {
   if (conditions.length === 0) return true
 
   for (const condition of conditions) {
-    const dealValue = resolveDealField(deal, condition.field)
+    const fieldValue =
+      kind === 'deal'
+        ? resolveDealField(subject as DealForEvaluation, condition.field)
+        : resolveContactField(subject as ContactForEvaluation, condition.field)
 
     // Campos nulos nunca satisfazem condições (falha segura)
-    if (dealValue === null) return false
+    if (fieldValue === null) return false
 
-    const satisfied = evaluateOperator(dealValue, condition.operator, condition.value)
+    const satisfied = evaluateOperator(fieldValue, condition.operator, condition.value)
     if (!satisfied) return false
   }
 

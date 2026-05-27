@@ -227,6 +227,7 @@ model Contact {
   lifecycleHistory ContactLifecycleHistory[]
   scoreHistory     ContactScoreHistory[]
   companies        CompanyContact[]
+  automationExecutions AutomationExecution[]
   @@index([organizationId, assignedTo, createdAt(sort: Desc)])
   @@index([organizationId, name])
   @@index([organizationId, email])
@@ -1867,6 +1868,8 @@ enum AutomationTrigger {
   ACTIVITY_CREATED
   // WON, LOST, PAUSED, OPEN (reaberto), etc
   DEAL_STATUS_CHANGED
+  // Contato criado (manualmente, via webhook ou API)
+  CONTACT_CREATED
 }
 
 enum AutomationAction {
@@ -1923,6 +1926,7 @@ model AutomationExecution {
   automationId   String                    @map("automation_id")
   organizationId String                    @map("organization_id")
   dealId         String?                   @map("deal_id")
+  contactId      String?                   @map("contact_id")
   status         AutomationExecutionStatus
   triggerPayload Json?                     @map("trigger_payload")
   actionResult   Json?                     @map("action_result")
@@ -1933,10 +1937,12 @@ model AutomationExecution {
   automation     Automation                @relation(fields: [automationId], references: [id], onDelete: Cascade)
   organization   Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   deal           Deal?                     @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  contact        Contact?                  @relation(fields: [contactId], references: [id], onDelete: SetNull)
 
   @@index([automationId, executedAt(sort: Desc)])
   @@index([organizationId, executedAt(sort: Desc)])
   @@index([automationId, dealId, executedAt(sort: Desc)])
+  @@index([automationId, contactId, executedAt(sort: Desc)])
   @@map("automation_executions")
 }
 

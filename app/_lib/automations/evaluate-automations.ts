@@ -7,6 +7,9 @@ import { getExecutor } from './executors'
 import { automationConditionSchema } from '@/_actions/automation/create-automation/schema'
 import type {
   AutomationEvent,
+  AutomationSubjectKind,
+  ContactCreatedConfig,
+  ContactForEvaluation,
   DealForEvaluation,
   DealMovedConfig,
   DealCreatedConfig,
@@ -70,6 +73,25 @@ async function fetchDealForEvaluation(dealId: string): Promise<DealForEvaluation
     value: deal.value !== null ? Number(deal.value) : null,
     contacts: deal.contacts,
   }
+}
+
+/**
+ * Busca o contato do banco para avaliação de condições.
+ * Lazy pelo orquestrador para não adicionar queries extras nas actions/webhooks.
+ */
+async function fetchContactForEvaluation(contactId: string): Promise<ContactForEvaluation | null> {
+  return db.contact.findUnique({
+    where: { id: contactId },
+    select: {
+      id: true,
+      name: true,
+      phone: true,
+      email: true,
+      assignedTo: true,
+      lifecycleStage: true,
+      firstCaptureChannel: true,
+    },
+  })
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -137,6 +159,16 @@ function triggerConfigMatches(
     return true
   }
 
+  if (triggerType === 'CONTACT_CREATED') {
+    const config = triggerConfig as Partial<ContactCreatedConfig>
+    if (config.lifecycleStage && payload.lifecycleStage !== config.lifecycleStage) return false
+    if (config.sources && config.sources.length > 0) {
+      const source = payload.source as string | undefined
+      if (!source || !(config.sources as string[]).includes(source)) return false
+    }
+    return true
+  }
+
   return true
 }
 
@@ -145,19 +177,22 @@ function triggerConfigMatches(
 // ─────────────────────────────────────────────────────────────
 
 /**
- * Verifica se já existe uma execução recente para o mesmo par automationId + dealId.
+ * Verifica se já existe uma execução recente para o mesmo par automationId + subject.
  * Previne dupla execução entre event-hooks e cron ticks.
  */
 async function isDuplicate(
   automationId: string,
-  dealId: string,
+  subjectKind: AutomationSubjectKind,
+  subjectId: string,
   windowMs: number,
 ): Promise<boolean> {
   const since = new Date(Date.now() - windowMs)
+  const subjectFilter =
+    subjectKind === 'deal' ? { dealId: subjectId } : { contactId: subjectId }
   const existing = await db.automationExecution.findFirst({
     where: {
       automationId,
-      dealId,
+      ...subjectFilter,
       status: 'SUCCESS',
       executedAt: { gt: since },
     },
@@ -188,13 +223,22 @@ export async function evaluateAutomations(event: AutomationEvent): Promise<void>
 
   if (automations.length === 0) return
 
-  const deal = await fetchDealForEvaluation(event.dealId)
-  if (!deal) {
-    console.error(
-      `[automation-engine] Deal ${event.dealId} não encontrado para o evento ${event.triggerType}`,
-    )
+  const subject =
+    event.subjectKind === 'deal'
+      ? await fetchDealForEvaluation(event.dealId)
+      : await fetchContactForEvaluation(event.contactId)
+
+  if (!subject) {
+    console.error(`[automation-engine] Subject não encontrado para evento ${event.triggerType}`)
     return
   }
+
+  const subjectId = event.subjectKind === 'deal' ? event.dealId : event.contactId
+  const subjectIdField =
+    event.subjectKind === 'deal' ? { dealId: event.dealId } : { contactId: event.contactId }
+
+  const deal = event.subjectKind === 'deal' ? (subject as DealForEvaluation) : null
+  const contact = event.subjectKind === 'contact' ? (subject as ContactForEvaluation) : null
 
   for (const automation of automations) {
     const startedAt = Date.now()
@@ -219,7 +263,7 @@ export async function evaluateAutomations(event: AutomationEvent): Promise<void>
           data: {
             automationId: automation.id,
             organizationId: event.orgId,
-            dealId: event.dealId,
+            ...subjectIdField,
             status: 'SKIPPED',
             triggerPayload: event.payload as Prisma.InputJsonValue,
             actionResult: { reason: 'trigger_config_mismatch' } as Prisma.InputJsonValue,
@@ -230,13 +274,13 @@ export async function evaluateAutomations(event: AutomationEvent): Promise<void>
       }
 
       // 1. Avaliação de condições
-      const conditionsMet = evaluateConditions(deal, conditions)
+      const conditionsMet = evaluateConditions(subject, conditions, event.subjectKind)
       if (!conditionsMet) {
         await db.automationExecution.create({
           data: {
             automationId: automation.id,
             organizationId: event.orgId,
-            dealId: event.dealId,
+            ...subjectIdField,
             status: 'SKIPPED',
             triggerPayload: event.payload as Prisma.InputJsonValue,
             actionResult: { reason: 'conditions_not_met' } as Prisma.InputJsonValue,
@@ -246,11 +290,16 @@ export async function evaluateAutomations(event: AutomationEvent): Promise<void>
         continue
       }
 
-      // 2. Deduplicação: previne re-execução para o mesmo deal na janela de 60min
-      const duplicate = await isDuplicate(automation.id, event.dealId, DEFAULT_DEDUP_WINDOW_MS)
+      // 2. Deduplicação: previne re-execução para o mesmo subject na janela de 60min
+      const duplicate = await isDuplicate(
+        automation.id,
+        event.subjectKind,
+        subjectId,
+        DEFAULT_DEDUP_WINDOW_MS,
+      )
       if (duplicate) {
         console.info(
-          `[automation-engine] Dedup: automação ${automation.id} já executou para deal ${event.dealId} nos últimos 60min`,
+          `[automation-engine] Dedup: automação ${automation.id} já executou para ${event.subjectKind} ${subjectId} nos últimos 60min`,
         )
         continue
       }
@@ -261,7 +310,9 @@ export async function evaluateAutomations(event: AutomationEvent): Promise<void>
         orgId: event.orgId,
         automationId: automation.id,
         automationName: automation.name,
+        subjectKind: event.subjectKind,
         deal,
+        contact,
         actionConfig: automation.actionConfig,
       })
 
@@ -270,7 +321,7 @@ export async function evaluateAutomations(event: AutomationEvent): Promise<void>
         data: {
           automationId: automation.id,
           organizationId: event.orgId,
-          dealId: event.dealId,
+          ...subjectIdField,
           status: 'SUCCESS',
           triggerPayload: event.payload as Prisma.InputJsonValue,
           actionResult: result.summary as Prisma.InputJsonValue,
@@ -296,7 +347,7 @@ export async function evaluateAutomations(event: AutomationEvent): Promise<void>
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
       console.error(
-        `[automation-engine] Falha ao executar automação ${automation.id} para deal ${event.dealId}:`,
+        `[automation-engine] Falha ao executar automação ${automation.id} para ${event.subjectKind} ${subjectId}:`,
         errorMessage,
       )
 
@@ -304,7 +355,7 @@ export async function evaluateAutomations(event: AutomationEvent): Promise<void>
         data: {
           automationId: automation.id,
           organizationId: event.orgId,
-          dealId: event.dealId,
+          ...subjectIdField,
           status: 'FAILED',
           triggerPayload: event.payload as Prisma.InputJsonValue,
           errorMessage,

@@ -9,24 +9,20 @@ import { resolveTemplate } from '../template-resolver'
 import { redis } from '@/_lib/redis'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 import { INBOX_SELECT, SENTINEL_DEAL_INBOX, type InboxRow } from './_lib/inbox-select'
-import { executeSendWhatsappFollowupContact } from './send-whatsapp-followup-contact'
 import type { ExecutorContext, ExecutorResult, SendWhatsappFollowupConfig } from '../types'
 
 // TTL do dedup Redis em segundos — evita reprocessamento do webhook como mensagem do cliente
 const DEDUP_TTL_SECONDS = 300
 
 /**
- * Dispatcher do executor SEND_WHATSAPP_FOLLOWUP.
- * Despacha para a variante de contato (CONTACT_CREATED) ou de deal (demais triggers).
+ * Variante do executor SEND_WHATSAPP_FOLLOWUP para o trigger CONTACT_CREATED.
+ * Opera sobre o contato (sem deal), buscando/criando a conversa direta por contactId.
  */
-export async function executeSendWhatsappFollowup(ctx: ExecutorContext): Promise<ExecutorResult> {
-  if (ctx.subjectKind === 'contact') return executeSendWhatsappFollowupContact(ctx)
-  return executeSendWhatsappFollowupDeal(ctx)
-}
-
-async function executeSendWhatsappFollowupDeal(ctx: ExecutorContext): Promise<ExecutorResult> {
-  if (!ctx.deal) return { summary: { skipped: true, reason: 'subject_not_deal' } }
-  const deal = ctx.deal
+export async function executeSendWhatsappFollowupContact(
+  ctx: ExecutorContext,
+): Promise<ExecutorResult> {
+  if (!ctx.contact) return { summary: { skipped: true, reason: 'subject_not_contact' } }
+  const contact = ctx.contact
 
   const config = ctx.actionConfig as unknown as SendWhatsappFollowupConfig
 
@@ -36,8 +32,7 @@ async function executeSendWhatsappFollowupDeal(ctx: ExecutorContext): Promise<Ex
     return { summary: { skipped: true, reason: 'quota_exceeded' } }
   }
 
-  const primary = deal.contacts.find((contact) => contact.isPrimary) ?? deal.contacts[0]
-  if (!primary?.contact.phone) return { summary: { skipped: true, reason: 'no_phone' } }
+  if (!contact.phone) return { summary: { skipped: true, reason: 'no_phone' } }
 
   // Resolve inbox e conversa de acordo com o modo de seleção
   let inbox: InboxRow
@@ -48,7 +43,7 @@ async function executeSendWhatsappFollowupDeal(ctx: ExecutorContext): Promise<Ex
     const existing = await db.conversation.findFirst({
       where: {
         organizationId: ctx.orgId,
-        contactId: primary.contactId,
+        contactId: contact.id,
         channel: 'WHATSAPP',
         inbox: { isActive: true, channel: 'WHATSAPP' },
       },
@@ -73,60 +68,50 @@ async function executeSendWhatsappFollowupDeal(ctx: ExecutorContext): Promise<Ex
     inbox = found
   }
 
-  // Meta Cloud API não suportado nesta ação — requer templates pré-aprovados
-  if (inbox.connectionType === 'META_CLOUD') {
-    return { summary: { skipped: true, reason: 'meta_not_supported' } }
+  // Apenas provedores selfhosted são suportados para CONTACT_CREATED.
+  // EVOLUTION (sem URL própria) é a instância interna da Kronos — não exposta ao cliente.
+  // META_CLOUD exige templates pré-aprovados e não suporta texto livre.
+  // SIMULATOR não é um provedor real.
+  const SUPPORTED_PROVIDERS = new Set(['EVOLUTION_JS', 'EVOLUTION_GO', 'Z_API'])
+  if (!SUPPORTED_PROVIDERS.has(inbox.connectionType)) {
+    return { summary: { skipped: true, reason: 'provider_not_supported' } }
   }
 
-  const [stageRow, assigneeRow] = await Promise.all([
-    deal.stageId
-      ? db.pipelineStage.findUnique({ where: { id: deal.stageId }, select: { name: true } })
-      : null,
-    deal.assignedTo
-      ? db.user.findUnique({ where: { id: deal.assignedTo }, select: { fullName: true } })
-      : null,
-  ])
+  const assigneeRow = contact.assignedTo
+    ? await db.user.findUnique({ where: { id: contact.assignedTo }, select: { fullName: true } })
+    : null
 
-  const stageName = stageRow?.name ?? ''
   const assigneeName = assigneeRow?.fullName ?? ''
-  const contactFullName = primary.contact.name
+  const contactFullName = contact.name
   const contactFirstName = contactFullName.split(' ')[0] ?? ''
 
   const body = resolveTemplate(config.messageTemplate, {
-    deal: {
-      title: deal.title,
-      stage: stageName,
-      assignee: assigneeName,
-      status: deal.status,
-      priority: deal.priority,
-      value: deal.value != null ? String(deal.value) : '',
-    },
     contact: { name: contactFullName, firstName: contactFirstName },
     user: { name: assigneeName },
   })
 
   // No modo sentinela a conversa já foi encontrada — evita nova query
   let conversation = preloadedConversation ?? await db.conversation.findFirst({
-    where: { inboxId: inbox.id, contactId: primary.contactId, channel: 'WHATSAPP' },
+    where: { inboxId: inbox.id, contactId: contact.id, channel: 'WHATSAPP' },
     select: { id: true, remoteJid: true },
   })
 
   if (!conversation) {
-    if (config.noConversationBehavior === 'skip') {
+    // Trata undefined como 'skip' — safe default para dados persistidos antes do campo existir
+    if (!config.noConversationBehavior || config.noConversationBehavior === 'skip') {
       return { summary: { skipped: true, reason: 'no_conversation' } }
     }
 
-    const jid = normalizePhoneToJid(primary.contact.phone)
+    const jid = normalizePhoneToJid(contact.phone)
     if (!jid) return { summary: { skipped: true, reason: 'invalid_phone' } }
 
     conversation = await db.conversation.create({
       data: {
         inboxId: inbox.id,
-        contactId: primary.contactId,
+        contactId: contact.id,
         channel: 'WHATSAPP',
         remoteJid: jid,
         organizationId: ctx.orgId,
-        ...(deal.id ? { dealId: deal.id } : {}),
       },
       select: { id: true, remoteJid: true },
     })
@@ -174,12 +159,13 @@ async function executeSendWhatsappFollowupDeal(ctx: ExecutorContext): Promise<Ex
 
   revalidateTag(`conversations:${ctx.orgId}`)
   revalidateTag(`conversation-messages:${conversation.id}`)
+  revalidateTag(`contact:${contact.id}`)
 
   return {
     summary: {
       messageIds,
       conversationId: conversation.id,
-      contactId: primary.contactId,
+      contactId: contact.id,
     },
   }
 }

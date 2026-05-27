@@ -12,6 +12,7 @@ import type { ExecutorContext, ExecutorResult, UpdateContactLifecycleConfig } fr
 export async function executeUpdateContactLifecycle(
   ctx: ExecutorContext,
 ): Promise<ExecutorResult> {
+  if (!ctx.deal) return { summary: { skipped: true, reason: 'subject_not_deal' } }
   const config = ctx.actionConfig as unknown as UpdateContactLifecycleConfig
 
   const contactIds = ctx.deal.contacts.map((dealContact) => dealContact.contactId)

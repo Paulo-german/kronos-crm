@@ -9,6 +9,7 @@ import type { ExecutorContext, ExecutorResult, MarkDealLostConfig } from '../typ
  * Não executa se o deal já estiver num estado final (WON, LOST).
  */
 export async function executeMarkDealLost(ctx: ExecutorContext): Promise<ExecutorResult> {
+  if (!ctx.deal) return { summary: { skipped: true, reason: 'subject_not_deal' } }
   const config = ctx.actionConfig as unknown as MarkDealLostConfig
 
   // Previne marcar como LOST um deal que já encerrou

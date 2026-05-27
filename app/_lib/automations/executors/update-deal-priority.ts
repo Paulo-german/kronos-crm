@@ -9,6 +9,7 @@ import type { ExecutorContext, ExecutorResult, UpdateDealPriorityConfig } from '
  * Não executa quando o deal já possui a prioridade alvo.
  */
 export async function executeUpdateDealPriority(ctx: ExecutorContext): Promise<ExecutorResult> {
+  if (!ctx.deal) return { summary: { skipped: true, reason: 'subject_not_deal' } }
   const config = ctx.actionConfig as unknown as UpdateDealPriorityConfig
 
   if (ctx.deal.priority === config.targetPriority) {

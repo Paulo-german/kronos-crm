@@ -94,6 +94,8 @@ async function resolveLeastDealsTarget(
  * Valida o pool contra membros ACCEPTED antes de executar.
  */
 export async function executeReassignDeal(ctx: ExecutorContext): Promise<ExecutorResult> {
+  if (!ctx.deal) return { summary: { skipped: true, reason: 'subject_not_deal' } }
+  const deal = ctx.deal
   const config = ctx.actionConfig as unknown as ReassignDealConfig
 
   const rawPool = config.targetUserIds ?? []
@@ -127,7 +129,7 @@ export async function executeReassignDeal(ctx: ExecutorContext): Promise<Executo
     targetUserId = await resolveLeastDealsTarget(
       ctx.orgId,
       filteredPool,
-      ctx.deal.assignedTo,
+      deal.assignedTo,
       excludeCurrent,
     )
   } else {
@@ -135,7 +137,7 @@ export async function executeReassignDeal(ctx: ExecutorContext): Promise<Executo
     targetUserId = await resolveRoundRobinTarget(
       ctx.automationId,
       filteredPool,
-      ctx.deal.assignedTo,
+      deal.assignedTo,
       excludeCurrent,
     )
   }
@@ -145,12 +147,12 @@ export async function executeReassignDeal(ctx: ExecutorContext): Promise<Executo
   }
 
   // Sem mudança real: deal já está com o usuário alvo
-  if (targetUserId === ctx.deal.assignedTo) {
+  if (targetUserId === deal.assignedTo) {
     return { summary: { skipped: true, reason: 'already_assigned', assignedTo: targetUserId } }
   }
 
   await db.deal.update({
-    where: { id: ctx.deal.id },
+    where: { id: deal.id },
     data: { assignedTo: targetUserId },
   })
 
@@ -158,14 +160,14 @@ export async function executeReassignDeal(ctx: ExecutorContext): Promise<Executo
     data: {
       type: 'assignee_changed',
       content: `Deal reatribuído automaticamente pela automação "${ctx.automationName}"`,
-      dealId: ctx.deal.id,
+      dealId: deal.id,
       // performedBy null = ação de sistema (ver padrão do plano)
       performedBy: null,
       metadata: {
         source: 'automation',
         automationId: ctx.automationId,
         automationName: ctx.automationName,
-        previousAssignee: ctx.deal.assignedTo,
+        previousAssignee: deal.assignedTo,
         newAssignee: targetUserId,
       },
     },
@@ -179,15 +181,15 @@ export async function executeReassignDeal(ctx: ExecutorContext): Promise<Executo
       userId: targetUserId,
       type: 'USER_ACTION',
       title: 'Deal atribuído a você',
-      body: `O deal "${ctx.deal.title}" foi reatribuído a você pela automação "${ctx.automationName}".`,
-      actionUrl: slug ? `/org/${slug}/crm/deals/${ctx.deal.id}` : undefined,
+      body: `O deal "${deal.title}" foi reatribuído a você pela automação "${ctx.automationName}".`,
+      actionUrl: slug ? `/org/${slug}/crm/deals/${deal.id}` : undefined,
       resourceType: 'deal',
-      resourceId: ctx.deal.id,
+      resourceId: deal.id,
     })
   })
 
   revalidateTag(`deals:${ctx.orgId}`)
-  revalidateTag(`deal:${ctx.deal.id}`)
+  revalidateTag(`deal:${deal.id}`)
   revalidateTag(`pipeline:${ctx.orgId}`)
 
   return { summary: { assignedTo: targetUserId, strategy: config.strategy } }

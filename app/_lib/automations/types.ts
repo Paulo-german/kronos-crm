@@ -1,5 +1,5 @@
 import 'server-only'
-import type { AutomationTrigger, DealPriority, DealStatus, LifecycleStage } from '@prisma/client'
+import type { AutomationTrigger, CaptureChannel, DealPriority, DealStatus, LifecycleStage } from '@prisma/client'
 import type { AutomationCondition } from '@/_actions/automation/create-automation/schema'
 
 // Re-exporta para que os executors e o evaluator usem a mesma fonte de verdade
@@ -7,15 +7,29 @@ export type { AutomationCondition }
 
 // ─────────────────────────────────────────────────────────────
 // Evento disparado pelas actions existentes (event-hooks) ou cron
+// Union discriminada por subjectKind: deal vs contact
 // ─────────────────────────────────────────────────────────────
 
-export interface AutomationEvent {
+export type AutomationSubjectKind = 'deal' | 'contact'
+
+interface AutomationEventBase {
   orgId: string
   triggerType: AutomationTrigger
-  dealId: string
   /** Dados de contexto do evento (stageId anterior, novo status, activityType, etc) */
   payload: Record<string, unknown>
 }
+
+export interface DealAutomationEvent extends AutomationEventBase {
+  subjectKind: 'deal'
+  dealId: string
+}
+
+export interface ContactAutomationEvent extends AutomationEventBase {
+  subjectKind: 'contact'
+  contactId: string
+}
+
+export type AutomationEvent = DealAutomationEvent | ContactAutomationEvent
 
 // ─────────────────────────────────────────────────────────────
 // Snapshot do deal usado na avaliação de condições
@@ -41,6 +55,21 @@ export interface DealForEvaluation {
       phone: string | null
     }
   }>
+}
+
+// ─────────────────────────────────────────────────────────────
+// Snapshot do contato usado na avaliação de condições
+// Buscado sob demanda pelo orquestrador (lazy)
+// ─────────────────────────────────────────────────────────────
+
+export interface ContactForEvaluation {
+  id: string
+  name: string
+  phone: string | null
+  email: string | null
+  assignedTo: string | null
+  lifecycleStage: LifecycleStage
+  firstCaptureChannel: CaptureChannel | null
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -77,6 +106,11 @@ export interface ActivityCreatedConfig {
 export interface DealStatusChangedConfig {
   statuses?: DealStatus[]
   pipelineId?: string
+}
+
+export interface ContactCreatedConfig {
+  lifecycleStage?: LifecycleStage
+  sources?: CaptureChannel[]
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -150,7 +184,9 @@ export interface ExecutorContext {
   orgId: string
   automationId: string
   automationName: string
-  deal: DealForEvaluation
+  subjectKind: AutomationSubjectKind
+  deal: DealForEvaluation | null
+  contact: ContactForEvaluation | null
   actionConfig: Record<string, unknown>
 }
 

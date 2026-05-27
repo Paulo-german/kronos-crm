@@ -15,6 +15,8 @@ import type { ExecutorContext, ExecutorResult, NotifyUserConfig, NotifyChannel }
  * (envia para o telefone pessoal do user usando o primeiro inbox WhatsApp ativo da org).
  */
 export async function executeNotifyUser(ctx: ExecutorContext): Promise<ExecutorResult> {
+  if (!ctx.deal) return { summary: { skipped: true, reason: 'subject_not_deal' } }
+  const deal = ctx.deal
   const config = ctx.actionConfig as unknown as NotifyUserConfig
   const channels: NotifyChannel[] = config.channels && config.channels.length > 0
     ? config.channels
@@ -23,30 +25,30 @@ export async function executeNotifyUser(ctx: ExecutorContext): Promise<ExecutorR
   // Resolve nomes para substituição no template
   const [stage, assigneeUser] = await Promise.all([
     db.pipelineStage.findUnique({
-      where: { id: ctx.deal.stageId },
+      where: { id: deal.stageId },
       select: { name: true },
     }),
     db.user.findUnique({
-      where: { id: ctx.deal.assignedTo },
+      where: { id: deal.assignedTo },
       select: { fullName: true },
     }),
   ])
 
-  const stageName = stage?.name ?? ctx.deal.stageId
-  const assigneeName = assigneeUser?.fullName ?? ctx.deal.assignedTo
+  const stageName = stage?.name ?? deal.stageId
+  const assigneeName = assigneeUser?.fullName ?? deal.assignedTo
 
-  const primaryContact = ctx.deal.contacts.find((contact) => contact.isPrimary) ?? ctx.deal.contacts[0]
+  const primaryContact = deal.contacts.find((contact) => contact.isPrimary) ?? deal.contacts[0]
   const contactFullName = primaryContact?.contact.name ?? ''
   const contactFirstName = contactFullName.split(' ')[0] ?? ''
 
   const resolvedBody = resolveTemplate(config.messageTemplate, {
     deal: {
-      title: ctx.deal.title,
+      title: deal.title,
       stage: stageName,
       assignee: assigneeName,
-      status: ctx.deal.status,
-      priority: ctx.deal.priority,
-      value: ctx.deal.value != null ? String(ctx.deal.value) : '',
+      status: deal.status,
+      priority: deal.priority,
+      value: deal.value != null ? String(deal.value) : '',
     },
     contact: { name: contactFullName, firstName: contactFirstName },
     user: { name: assigneeName },
@@ -56,7 +58,7 @@ export async function executeNotifyUser(ctx: ExecutorContext): Promise<ExecutorR
   let recipientIds: string[] = []
 
   if (config.targetType === 'deal_assignee') {
-    recipientIds = [ctx.deal.assignedTo]
+    recipientIds = [deal.assignedTo]
   } else if (config.targetType === 'specific_users' && config.targetUserIds) {
     recipientIds = config.targetUserIds
   } else if (config.targetType === 'org_admins') {
@@ -97,7 +99,7 @@ export async function executeNotifyUser(ctx: ExecutorContext): Promise<ExecutorR
   // ── Canal in-app ───────────────────────────────────────────
   if (channels.includes('in_app')) {
     const orgSlug = await getOrgSlug(ctx.orgId)
-    const actionUrl = orgSlug ? `/org/${orgSlug}/crm/deals/${ctx.deal.id}` : undefined
+    const actionUrl = orgSlug ? `/org/${orgSlug}/crm/deals/${deal.id}` : undefined
     const notificationTitle = `Automação: ${ctx.automationName}`
 
     const results = await Promise.allSettled(
@@ -110,7 +112,7 @@ export async function executeNotifyUser(ctx: ExecutorContext): Promise<ExecutorR
           body: resolvedBody,
           actionUrl,
           resourceType: 'deal',
-          resourceId: ctx.deal.id,
+          resourceId: deal.id,
         }),
       ),
     )

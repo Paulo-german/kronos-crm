@@ -61,7 +61,7 @@ async function runAutomationForDeal(
   deal: DealForEvaluation,
   triggerPayload: Record<string, unknown>,
 ): Promise<'executed' | 'skipped' | 'duplicate' | 'failed'> {
-  const conditionsMet = evaluateConditions(deal, automation.conditions)
+  const conditionsMet = evaluateConditions(deal, automation.conditions, 'deal')
   if (!conditionsMet) {
     await db.automationExecution.create({
       data: {
@@ -87,7 +87,9 @@ async function runAutomationForDeal(
       orgId: automation.orgId,
       automationId: automation.id,
       automationName: automation.name,
+      subjectKind: 'deal',
       deal,
+      contact: null,
       actionConfig: automation.actionConfig,
     })
 

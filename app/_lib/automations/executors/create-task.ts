@@ -24,6 +24,8 @@ const END_OF_DAY_MINUTES = 59
  * Notifica o responsável após o response, mesmo padrão de executeReassignDeal.
  */
 export async function executeCreateTask(ctx: ExecutorContext): Promise<ExecutorResult> {
+  if (!ctx.deal) return { summary: { skipped: true, reason: 'subject_not_deal' } }
+  const deal = ctx.deal
   const config = ctx.actionConfig as unknown as CreateTaskActionConfig
 
   // 1. Resolver responsável da task
@@ -41,28 +43,28 @@ export async function executeCreateTask(ctx: ExecutorContext): Promise<ExecutorR
   // 2. Resolver template do título (reusa o resolver compartilhado)
   const [stage, assigneeUser] = await Promise.all([
     db.pipelineStage.findUnique({
-      where: { id: ctx.deal.stageId },
+      where: { id: deal.stageId },
       select: { name: true },
     }),
     db.user.findUnique({
-      where: { id: ctx.deal.assignedTo },
+      where: { id: deal.assignedTo },
       select: { fullName: true },
     }),
   ])
 
   const primaryContact =
-    ctx.deal.contacts.find((contact) => contact.isPrimary) ?? ctx.deal.contacts[0]
+    deal.contacts.find((contact) => contact.isPrimary) ?? deal.contacts[0]
   const contactFullName = primaryContact?.contact.name ?? ''
   const contactFirstName = contactFullName.split(' ')[0] ?? ''
 
   const resolvedTitle = resolveTemplate(config.titleTemplate, {
     deal: {
-      title: ctx.deal.title,
-      stage: stage?.name ?? ctx.deal.stageId,
-      assignee: assigneeUser?.fullName ?? ctx.deal.assignedTo,
-      status: ctx.deal.status,
-      priority: ctx.deal.priority,
-      value: ctx.deal.value != null ? String(ctx.deal.value) : '',
+      title: deal.title,
+      stage: stage?.name ?? deal.stageId,
+      assignee: assigneeUser?.fullName ?? deal.assignedTo,
+      status: deal.status,
+      priority: deal.priority,
+      value: deal.value != null ? String(deal.value) : '',
     },
     contact: { name: contactFullName, firstName: contactFirstName },
     user: { name: assigneeUser?.fullName ?? '' },
@@ -84,7 +86,7 @@ export async function executeCreateTask(ctx: ExecutorContext): Promise<ExecutorR
       organizationId: ctx.orgId,
       title: resolvedTitle,
       dueDate,
-      dealId: ctx.deal.id,
+      dealId: deal.id,
       assignedTo,
       createdBy: assignedTo,
       type: taskType,
@@ -96,7 +98,7 @@ export async function executeCreateTask(ctx: ExecutorContext): Promise<ExecutorR
     data: {
       type: 'task_created',
       content: resolvedTitle,
-      dealId: ctx.deal.id,
+      dealId: deal.id,
       // performedBy null = ação de sistema (mesmo padrão dos outros executors)
       performedBy: null,
       metadata: {
@@ -114,11 +116,11 @@ export async function executeCreateTask(ctx: ExecutorContext): Promise<ExecutorR
 
   // 5. Invalidar caches da listagem de tasks e do deal
   revalidateTag(`tasks:${ctx.orgId}`)
-  revalidateTag(`deal:${ctx.deal.id}`)
+  revalidateTag(`deal:${deal.id}`)
   revalidateTag(`deals:${ctx.orgId}`)
   revalidatePath('/crm/tasks')
   revalidatePath('/crm/deals/pipeline')
-  revalidatePath(`/crm/deals/${ctx.deal.id}`)
+  revalidatePath(`/crm/deals/${deal.id}`)
 
   // 6. Notificar responsável após o response (paridade com executeReassignDeal)
   after(async () => {
@@ -129,7 +131,7 @@ export async function executeCreateTask(ctx: ExecutorContext): Promise<ExecutorR
       type: 'USER_ACTION',
       title: 'Nova tarefa criada pela automação',
       body: `A tarefa "${resolvedTitle}" foi atribuída a você pela automação "${ctx.automationName}".`,
-      actionUrl: slug ? `/org/${slug}/crm/deals/${ctx.deal.id}` : undefined,
+      actionUrl: slug ? `/org/${slug}/crm/deals/${deal.id}` : undefined,
       resourceType: 'task',
       resourceId: task.id,
     })
@@ -156,7 +158,7 @@ async function resolveAssignee(
   config: CreateTaskActionConfig,
 ): Promise<string | null> {
   if (config.assignTo === 'deal_assignee') {
-    return ctx.deal.assignedTo
+    return ctx.deal?.assignedTo ?? null
   }
 
   if (!config.assignToUserId) return null

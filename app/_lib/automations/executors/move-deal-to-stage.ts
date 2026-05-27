@@ -9,6 +9,7 @@ import type { ExecutorContext, ExecutorResult, MoveDealToStageConfig } from '../
  * Valida que o stage alvo pertence ao mesmo pipeline do deal antes de mover.
  */
 export async function executeMoveDealToStage(ctx: ExecutorContext): Promise<ExecutorResult> {
+  if (!ctx.deal) return { summary: { skipped: true, reason: 'subject_not_deal' } }
   const config = ctx.actionConfig as unknown as MoveDealToStageConfig
 
   // Verifica que o stage alvo existe e pertence ao pipeline do deal
