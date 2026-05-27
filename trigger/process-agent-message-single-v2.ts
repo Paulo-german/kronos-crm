@@ -1,14 +1,16 @@
-import { task, logger, metadata as triggerMetadata, AbortTaskRunError } from '@trigger.dev/sdk/v3'
+import {
+  task,
+  logger,
+  metadata as triggerMetadata,
+  AbortTaskRunError,
+} from '@trigger.dev/sdk/v3'
 import { observe, updateActiveTrace } from '@langfuse/tracing'
 import { flushLangfuse, langfuseTracer } from './lib/langfuse'
 import { buildDispatcherCtx } from './lib/build-dispatcher-ctx'
 import type { ProcessAgentMessagePayload } from './lib/build-dispatcher-ctx'
 import { handleAgentTaskFailure } from './lib/handle-task-failure'
-import { generateText, generateObject, Output, stepCountIs } from 'ai'
-import type { ModelMessage } from 'ai'
-import { z } from 'zod'
+import { generateText, stepCountIs } from 'ai'
 import { getModel } from '@/_lib/ai/provider'
-import { STEP_CLASSIFIER_MODEL_ID } from '@/_lib/ai/models'
 import { db } from '@/_lib/prisma'
 import { estimateMaxCost } from '@/_lib/ai/pricing'
 import { debitCredits } from '@/_lib/billing/credit-utils'
@@ -24,8 +26,6 @@ import { buildToolSet } from './tools'
 import { isSingleV2OverhaulEnabled } from './lib/feature-flags'
 import { buildPromptBaseContext } from './lib/prompt-base-context'
 import { compileSingleSystemPrompt } from './lib/prompt-single-compiler'
-import { applyLifecycleTrigger } from './lib/apply-lifecycle-trigger'
-import { applyStepAutoActions } from './lib/apply-step-auto-actions'
 import type { GroupToolConfig } from './tools'
 import {
   createConversationEvent,
@@ -36,10 +36,12 @@ import type {
   ProcessingErrorSubtype,
 } from '@/_lib/conversation-events/types'
 import { prefixAttendantName } from '@/_lib/inbox/prefix-attendant-name'
-import { getFollowUpsForStep } from '@/_data-access/follow-up/get-follow-ups-for-step'
 import { revalidateConversationCache } from './lib/revalidate-cache'
 import { emitAgentStatus } from './lib/emit-agent-status'
-import { saveAgentResponseSent, saveAgentResponseFailed } from './lib/save-agent-response'
+import {
+  saveAgentResponseSent,
+  saveAgentResponseFailed,
+} from './lib/save-agent-response'
 import type { ToolContext } from './tools/types'
 import type { DispatcherCtx } from './dispatcher-types'
 import { GENERIC_SAFE_FALLBACK } from './lib/two-phase-types'
@@ -48,345 +50,20 @@ import { runSingleFallback } from './agent/single-fallback'
 import { runSingleGuard } from './agent/single-guard'
 import { getProductCatalogForGuard } from './lib/product-catalog-cache'
 import { createRetryableFetch } from './lib/retryable-fetch'
+import {
+  CALL1_EXECUTION_DIRECTIVE,
+  CLASSIFIER_HISTORY_TURNS,
+  IDEMPOTENT_TOOL_NAMES,
+  LLM_TEMPERATURE,
+  MAX_OUTPUT_TOKENS,
+  MESSAGE_HISTORY_LIMIT,
+} from './lib/pipeline-single-v2/constants'
+import { buildLlmMessages, stripLeakedToolCalls } from './lib/pipeline-single-v2/message-utils'
+import { runStepClassifier } from './lib/pipeline-single-v2/step-classifier'
+import { runResponder } from './lib/pipeline-single-v2/responder'
+import { applyStepAdvance } from './lib/pipeline-single-v2/step-advance'
 
-// Limite de mensagens carregadas no histórico para context LLM
-const MESSAGE_HISTORY_LIMIT = 50
 
-// Tool names que o LLM pode vazar como texto JSON em vez de usar tool calling estruturado
-const KNOWN_TOOL_NAMES = new Set([
-  'move_deal',
-  'update_contact',
-  'update_deal',
-  'create_task',
-  'search_knowledge',
-  'list_availability',
-  'create_event',
-  'update_event',
-  'hand_off_to_human',
-  'search_products',
-  'send_product_media',
-  'send_media',
-  'transfer_to_agent',
-])
-
-// Idêntico a tool-agent.ts:24-31 — executadas com sucesso uma vez, não devem repetir no mesmo turno.
-const IDEMPOTENT_TOOL_NAMES = [
-  'update_deal',
-  'move_deal',
-  'update_contact',
-  'update_event',
-  'hand_off_to_human',
-  'transfer_to_agent',
-] as const
-
-// Parâmetros do LLM — centralizados aqui para serem visíveis e configuráveis
-const MAX_OUTPUT_TOKENS = 3072
-const LLM_TEMPERATURE = 0.4
-
-// Quantas mensagens recentes vão ao classificador. 6 cobre 3 turnos de
-// conversa (user→assistant), suficiente para inferir a etapa atual sem
-// inflar o prompt.
-const CLASSIFIER_HISTORY_TURNS = 6
-
-// Classificador só precisa devolver um UUID — 64 tokens é mais do que suficiente.
-const CLASSIFIER_MAX_OUTPUT_TOKENS = 64
-
-// Diretiva injetada apenas no system prompt da Call 1 para evitar que o modelo
-// gaste tokens gerando texto que será descartado (o texto final é responsabilidade do Responder).
-const CALL1_EXECUTION_DIRECTIVE =
-  '\n\n## Modo de execução deste turno\n' +
-  'Sua única responsabilidade agora é identificar e executar as ferramentas ' +
-  'necessárias para atender o cliente. NÃO gere texto de resposta — a mensagem ' +
-  'final ao cliente será produzida em uma etapa separada com base nos resultados ' +
-  'das suas ações. Apenas chame as ferramentas apropriadas.'
-
-// Action tools: efeito colateral — Call 2 só precisa saber que foram executadas.
-const ACTION_TOOL_LABELS: Record<string, string> = {
-  hand_off_to_human: 'Notificação de atendente humano enviada',
-  move_deal: 'Negócio movido no pipeline',
-  update_deal: 'Dados do negócio atualizados',
-  update_contact: 'Dados do contato atualizados',
-  create_task: 'Tarefa criada',
-  create_event: 'Evento criado na agenda',
-  update_event: 'Evento atualizado na agenda',
-  transfer_to_agent: 'Transferência para agente iniciada',
-  send_media: 'Mídia enviada',
-  send_product_media: 'Mídia de produto enviada',
-}
-
-// Query tools: retornam conteúdo que o Call 2 precisa para gerar a resposta.
-// O resultado é formatado como texto legível em vez de ser descartado.
-const QUERY_TOOL_NAMES = new Set(['search_products', 'search_knowledge', 'list_availability'])
-
-// ---------------------------------------------------------------------------
-// Interfaces e helpers do Step Classifier (Call 3)
-// ---------------------------------------------------------------------------
-
-interface ClassifierResult {
-  classifiedId: string | undefined
-  usage: { inputTokens: number; outputTokens: number }
-}
-
-interface ResponderResult {
-  message: string
-  usage: { inputTokens: number; outputTokens: number }
-}
-
-interface BuildClassifierMessagesArgs {
-  steps: Array<{ id: string; order: number; name: string }>
-  // O system prompt completo NÃO é repassado — só o que o classificador precisa.
-  // Reutiliza as mensagens já normalizadas (sem o system prompt do agente).
-  recentHistory: Array<{ role: 'user' | 'assistant'; content: string }>
-  contactName: string
-  // Resposta gerada pelo agente neste turno (Call 2). Incluída como última mensagem
-  // assistant para que o classificador veja o turno completo antes de decidir o step.
-  agentResponse?: string
-}
-
-function buildClassifierMessages(args: BuildClassifierMessagesArgs): ModelMessage[] {
-  const { steps, recentHistory, contactName, agentResponse } = args
-
-  const sortedSteps = [...steps].sort((a, b) => a.order - b.order)
-  const stepsBlock = sortedSteps
-    .map((step, index) => `${index + 1}. ${step.name} — id: \`${step.id}\``)
-    .join('\n')
-
-  const historyMessages = recentHistory.map((msg) => ({
-    role: msg.role,
-    content: msg.content,
-  }))
-
-  if (agentResponse) {
-    historyMessages.push({ role: 'assistant', content: agentResponse })
-  }
-
-  return [
-    {
-      role: 'system',
-      content:
-        'Sua única função é classificar em qual etapa do funil de atendimento a conversa se encontra. ' +
-        'Regras: (1) a etapa só avança, nunca retrocede; (2) retorne null se nenhuma etapa se aplica claramente; ' +
-        `(3) o contato se chama "${contactName}".`,
-    },
-    {
-      role: 'system',
-      content: `Etapas do funil (em ordem):\n${stepsBlock}`,
-    },
-    ...historyMessages,
-  ] as ModelMessage[]
-}
-
-function buildClassifierSchema(stepIds: [string, ...string[]]) {
-  return z.object({
-    currentStep: z
-      .enum(stepIds)
-      .nullable()
-      .describe(
-        'UUID exato da etapa atual após esta interação. Só avança, nunca retrocede. ' +
-        'Retorne null se nenhuma das etapas se aplica.',
-      ),
-  })
-}
-
-// Combina message + currentStep — mesmo shape do responderSchema antigo (pré-split).
-// Pode ter os dois campos porque o fallback não tem tools, eliminando o conflito
-// tools+Output.object que motivou a separação Call 1 / Call 2 na v2.
-function buildFallbackSchema(stepIds: [string, ...string[]] | null) {
-  const base = { message: z.string() }
-  if (!stepIds) return z.object(base)
-  return z.object({
-    ...base,
-    currentStep: z.enum(stepIds).nullable(),
-  })
-}
-
-function formatQueryToolResult(toolName: string, outputValue: unknown): string | null {
-  if (toolName === 'search_products') {
-    const val = outputValue as Record<string, unknown> | null
-    if (!val || typeof val !== 'object') return null
-    const products = val.products
-    if (!Array.isArray(products) || products.length === 0) {
-      return 'Nenhum produto encontrado para esta busca.'
-    }
-    const lines = products.map((p: unknown) => {
-      const product = p as Record<string, unknown>
-      const name = typeof product.name === 'string' ? product.name : '?'
-      const price = typeof product.price === 'number'
-        ? `R$ ${product.price.toFixed(2).replace('.', ',')}`
-        : null
-      const description = typeof product.description === 'string' && product.description
-        ? product.description
-        : null
-      const parts = [name, price].filter(Boolean).join(': ')
-      return description ? `- ${parts} — ${description}` : `- ${parts}`
-    })
-    return `Produtos encontrados:\n${lines.join('\n')}`
-  }
-
-  if (toolName === 'search_knowledge') {
-    const val = outputValue as Record<string, unknown> | null
-    if (!val || typeof val !== 'object') return null
-    const results = val.results
-    if (!Array.isArray(results) || results.length === 0) {
-      return 'Nenhum resultado encontrado na base de conhecimento.'
-    }
-    const contents = results
-      .map((r: unknown) => {
-        const result = r as Record<string, unknown>
-        return typeof result.content === 'string' ? result.content.trim() : ''
-      })
-      .filter(Boolean)
-    return `Informações da base de conhecimento:\n${contents.join('\n\n')}`
-  }
-
-  if (toolName === 'list_availability') {
-    const val = outputValue as Record<string, unknown> | null
-    if (!val || typeof val !== 'object') return null
-    const message = typeof val.message === 'string' ? val.message : ''
-    const slots = val.slots
-    if (!Array.isArray(slots) || slots.length === 0) {
-      return message || 'Nenhum horário disponível.'
-    }
-    const lines = slots.map((s: unknown) => {
-      const slot = s as Record<string, unknown>
-      const dayOfWeek = typeof slot.dayOfWeek === 'string' ? slot.dayOfWeek : ''
-      const date = typeof slot.date === 'string' ? slot.date : ''
-      const startTime = typeof slot.startTime === 'string' ? slot.startTime : ''
-      const endTime = typeof slot.endTime === 'string' ? slot.endTime : ''
-      return `- ${dayOfWeek}, ${date} às ${startTime}–${endTime}`
-    })
-    return `${message}\n${lines.join('\n')}`
-  }
-
-  return null
-}
-
-/**
- * Filtra as mensagens do Call 1 para o Responder (Call 2) — Opção B: Call 2 gera do zero.
- *
- * Mantém apenas pares tool-call/tool-result com resultado útil; descarta o resto:
- * - Texto final do assistant (Call 1) → descartado (Call 2 gera sem viés do Call 1).
- * - Par query tool com resultado → mantido (Call 2 usa os dados para responder).
- * - Par action tool com resultado → mantido (Call 2 sabe o que foi executado).
- * - Par com resultado vazio (ex: search sem resultados) → descartado (ambos do par).
- */
-function sanitizeToolMessages(messages: ModelMessage[]): ModelMessage[] {
-  // Passo 1: identificar quais tool-call IDs têm resultado útil.
-  // Necessário para decidir se o par (assistant tool-call + tool result) deve ser mantido ou descartado junto.
-  const toolCallIdsWithContent = new Set<string>()
-  for (const message of messages) {
-    if (message.role !== 'tool' || !Array.isArray(message.content)) continue
-    for (const part of message.content) {
-      if (part.type !== 'tool-result') continue
-      const outputValue = part.output.type === 'json' ? part.output.value : null
-      const hasContent = QUERY_TOOL_NAMES.has(part.toolName)
-        ? !!formatQueryToolResult(part.toolName, outputValue)
-        : !!(
-            outputValue &&
-            typeof outputValue === 'object' &&
-            !Array.isArray(outputValue) &&
-            Object.keys(outputValue as object).length > 0
-          )
-      if (hasContent) toolCallIdsWithContent.add(part.toolCallId)
-    }
-  }
-
-  // Passo 2: filtrar e transformar mensagens preservando pares tool-call/tool-result.
-  return messages.flatMap((message) => {
-    // Mensagens assistant podem conter tool calls no content array
-    if (message.role === 'assistant' && Array.isArray(message.content)) {
-      const textParts: string[] = []
-      const toolCallPartsWithContent = message.content.filter(
-        (part) => part.type === 'tool-call' && toolCallIdsWithContent.has(part.toolCallId),
-      )
-
-      for (const part of message.content) {
-        if (part.type === 'text') {
-          if (part.text.trim()) textParts.push(part.text.trim())
-        } else if (part.type === 'tool-call' && !toolCallIdsWithContent.has(part.toolCallId)) {
-          // Tool-call sem resultado útil: action tools viram label de texto; query tools são ignoradas
-          const label = ACTION_TOOL_LABELS[part.toolName]
-          if (!QUERY_TOOL_NAMES.has(part.toolName)) {
-            textParts.push(label ? `[Ação executada: ${label}]` : `[Ação executada: ${part.toolName}]`)
-          }
-        }
-      }
-
-      if (toolCallPartsWithContent.length > 0) {
-        // Há tool-calls com resultado — preservar mensagem com content filtrado para manter o par
-        const filteredContent = message.content.filter(
-          (part) =>
-            (part.type === 'text' && part.text.trim()) ||
-            (part.type === 'tool-call' && toolCallIdsWithContent.has(part.toolCallId)),
-        )
-        return [{ ...message, content: filteredContent } as ModelMessage]
-      }
-
-      if (textParts.length === 0) return []
-      return [{ role: 'assistant', content: textParts.join('\n') } as ModelMessage]
-    }
-
-    // Mensagens tool: manter original somente se há resultado útil (par intacto com o assistant acima)
-    if (message.role === 'tool' && Array.isArray(message.content)) {
-      const hasContent = message.content.some(
-        (part) => part.type === 'tool-result' && toolCallIdsWithContent.has(part.toolCallId),
-      )
-      return hasContent ? [message] : []
-    }
-
-    // Texto final do Call 1: assistant com content string (sem tool-calls) → descartar.
-    // O Responder gera o texto do zero; manter esse texto criaria viés e invalidaria o propósito do Call 2.
-    if (message.role === 'assistant') return []
-
-    return [message]
-  })
-}
-
-/**
- * Strip JSON tool calls que o LLM vazou como texto puro.
- * Alguns modelos (ex: Gemini) geram `{"tool":"update_deal","title":"..."}` inline
- * em vez de usar o mecanismo de tool calling do SDK.
- */
-function stripLeakedToolCalls(text: string): string {
-  // Padrão 1: JSON com chave "tool"/"function"/"action"/"name" nomeando tool conhecida
-  let cleaned = text.replace(
-    /\{[^{}]*"(?:tool|function|action)"\s*:\s*"([a-z_]+)"[^{}]*\}/g,
-    (match, toolName: string) => {
-      if (KNOWN_TOOL_NAMES.has(toolName)) {
-        return ''
-      }
-      return match
-    },
-  )
-
-  // Padrão 2: blocos markdown (```) contendo JSON de tool call
-  cleaned = cleaned.replace(
-    /```(?:json)?\s*\n?\{[^`]*"(?:tool|function|action)"\s*:\s*"([a-z_]+)"[^`]*\}[\s\n]*```/g,
-    (match, toolName: string) => {
-      if (KNOWN_TOOL_NAMES.has(toolName)) {
-        return ''
-      }
-      return match
-    },
-  )
-
-  // Padrão 3: formato {"recipientname":"functions.handofftohuman","parameters":{...}}
-  // Alguns modelos emitem tool calls em texto puro com esta estrutura em vez de usar
-  // o mecanismo estruturado do SDK. Suporta um nível de aninhamento em "parameters".
-  cleaned = cleaned.replace(
-    /\{[^{}]*"recipientname"\s*:\s*"functions\.[^"]*"[^{}]*(?:\{[^{}]*\}[^{}]*)?\}/g,
-    '',
-  )
-
-  // Padrão 4: `currentStep` <uuid> — campo do generateObject vazado dentro do campo message.
-  // O LLM às vezes inclui a classificação de step como texto livre no campo message.
-  cleaned = cleaned.replace(
-    /\n?`currentStep`\s+[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\n?/g,
-    '',
-  )
-
-  return cleaned
-}
 
 // ---------------------------------------------------------------------------
 // Tipos auxiliares do guard pipeline
@@ -449,16 +126,17 @@ async function applyGuardPipeline(params: {
 
   try {
     // Passo 1: produtos retornados diretamente por search_products nos steps
-    const searchProductsResults = steps.flatMap((step) =>
-      step.toolCalls
-        ?.filter((tc) => tc.toolName === 'search_products')
-        .map((tc) => {
-          const toolResult = step.toolResults?.find(
-            (tr) => tr.toolName === tc.toolName,
-          )
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-          return toolResult?.output
-        }) ?? [],
+    const searchProductsResults = steps.flatMap(
+      (step) =>
+        step.toolCalls
+          ?.filter((tc) => tc.toolName === 'search_products')
+          .map((tc) => {
+            const toolResult = step.toolResults?.find(
+              (tr) => tr.toolName === tc.toolName,
+            )
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+            return toolResult?.output
+          }) ?? [],
     )
 
     const productIdsFromTools = new Set<string>()
@@ -518,10 +196,16 @@ async function applyGuardPipeline(params: {
       triggerMetadata.set('priceValidationSkipped', true)
     }
   } catch (catalogError) {
-    logger.warn('single-guard: failed to load product catalog, skipping price validation', {
-      conversationId,
-      error: catalogError instanceof Error ? catalogError.message : String(catalogError),
-    })
+    logger.warn(
+      'single-guard: failed to load product catalog, skipping price validation',
+      {
+        conversationId,
+        error:
+          catalogError instanceof Error
+            ? catalogError.message
+            : String(catalogError),
+      },
+    )
     triggerMetadata.set('priceValidationSkipped', true)
   }
 
@@ -539,7 +223,11 @@ async function applyGuardPipeline(params: {
   // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
   const guard1Approved: boolean = guardResult1.approved === true
   // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-  const guard1Violations: Array<{ type: string; details: string; confidence: number }> =
+  const guard1Violations: Array<{
+    type: string
+    details: string
+    confidence: number
+  }> =
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     Array.isArray(guardResult1.violations) ? guardResult1.violations : []
 
@@ -553,10 +241,7 @@ async function applyGuardPipeline(params: {
   })
 
   triggerMetadata.set('guardApprovedOnFirstAttempt', guard1Approved)
-  triggerMetadata.set(
-    'guardViolationType',
-    guard1Violations[0]?.type ?? null,
-  )
+  triggerMetadata.set('guardViolationType', guard1Violations[0]?.type ?? null)
 
   if (!guard1Approved) {
     // Guard rejeitou — invocar fallback para reescrita
@@ -582,13 +267,18 @@ async function applyGuardPipeline(params: {
     }).catch((fallbackError) => {
       logger.warn('single-fallback call failed', {
         conversationId,
-        error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
+        error:
+          fallbackError instanceof Error
+            ? fallbackError.message
+            : String(fallbackError),
       })
       return null
     })
 
     const fallbackRawText = fallbackResult?.text
-      ? stripLeakedToolCalls(fallbackResult.text).replace(/\n{3,}/g, '\n\n').trim()
+      ? stripLeakedToolCalls(fallbackResult.text)
+          .replace(/\n{3,}/g, '\n\n')
+          .trim()
       : ''
 
     if (fallbackRawText) {
@@ -611,8 +301,8 @@ async function applyGuardPipeline(params: {
         approved: guardResult2.approved,
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
         violationTypes: Array.isArray(guardResult2.violations)
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-          ? guardResult2.violations.map((v: { type: string }) => v.type)
+          ? // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+            guardResult2.violations.map((v: { type: string }) => v.type)
           : [],
         attempt: 2,
       })
@@ -624,22 +314,26 @@ async function applyGuardPipeline(params: {
       } else {
         // Degraded path: 2 rejeições consecutivas — escalar para humano
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-        const lastViolations: Array<{ type: string; details: string }> = Array.isArray(
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-          guardResult2.violations,
-        )
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return
-          ? guardResult2.violations.map((v: { type: string; details: string }) => ({
-              type: v.type,
-              details: v.details,
-            }))
-          : []
+        const lastViolations: Array<{ type: string; details: string }> =
+          Array.isArray(
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            guardResult2.violations,
+          )
+            ? // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return
+              guardResult2.violations.map(
+                (v: { type: string; details: string }) => ({
+                  type: v.type,
+                  details: v.details,
+                }),
+              )
+            : []
 
         responseText = GENERIC_SAFE_FALLBACK
         pendingHumanHandoff = {
           conversationId,
           organizationId,
-          reason: 'Guard bloqueou resposta 2x consecutivas. Conversa encaminhada para atendente.',
+          reason:
+            'Guard bloqueou resposta 2x consecutivas. Conversa encaminhada para atendente.',
           phaseTraceId: conversationId,
         }
 
@@ -715,66 +409,70 @@ export async function runSingleV2(
 
   // No caminho de overhaul (Fase 2) a query de summary é feita separadamente;
   // no caminho legacy o summary já vem embutido no retorno de buildSystemPrompt.
-  const [promptContext, messageHistory, conversation] =
-    await Promise.all([
-      useOverhaul
-        ? buildPromptBaseContext(
-            ctx.effectiveAgentId,
-            ctx.conversationId,
-            ctx.organizationId,
-            ctx.groupPromptContext
-              ? {
-                  groupId: ctx.groupPromptContext.groupId,
-                  currentAgentId: ctx.effectiveAgentId,
-                  workers: ctx.groupPromptContext.workers,
-                }
-              : null,
-          ).then(async (base) => {
-            const { summary } = await db.conversation.findUniqueOrThrow({
-              where: { id: ctx.conversationId },
-              select: { summary: true },
-            })
-            return compileSingleSystemPrompt(base, { summary })
+  const [promptContext, messageHistory, conversation] = await Promise.all([
+    useOverhaul
+      ? buildPromptBaseContext(
+          ctx.effectiveAgentId,
+          ctx.conversationId,
+          ctx.organizationId,
+          ctx.groupPromptContext
+            ? {
+                groupId: ctx.groupPromptContext.groupId,
+                currentAgentId: ctx.effectiveAgentId,
+                workers: ctx.groupPromptContext.workers,
+              }
+            : null,
+        ).then(async (base) => {
+          const { summary } = await db.conversation.findUniqueOrThrow({
+            where: { id: ctx.conversationId },
+            select: { summary: true },
           })
-        : buildSystemPrompt(ctx.effectiveAgentId, ctx.conversationId, ctx.organizationId, ctx.groupPromptContext),
-      db.message.findMany({
-        where: {
-          conversationId: ctx.conversationId,
-          isArchived: false,
-        },
-        orderBy: { createdAt: 'asc' },
-        take: MESSAGE_HISTORY_LIMIT,
-        select: {
-          role: true,
-          content: true,
-          metadata: true,
-        },
-      }),
-      db.conversation.findUniqueOrThrow({
-        where: { id: ctx.conversationId },
-        select: {
-          contactId: true,
-          dealId: true,
-          // Dados do inbox para resolver provider em send_product_media
-          inbox: {
-            select: {
-              connectionType: true,
-              channel: true,
-              evolutionInstanceName: true,
-              evolutionApiUrl: true,
-              evolutionApiKey: true,
-              metaPhoneNumberId: true,
-              metaAccessToken: true,
-              metaIgUserId: true,
-              zapiInstanceId: true,
-              zapiToken: true,
-              zapiClientToken: true,
-              showAttendantName: true,
-            },
+          return compileSingleSystemPrompt(base, { summary })
+        })
+      : buildSystemPrompt(
+          ctx.effectiveAgentId,
+          ctx.conversationId,
+          ctx.organizationId,
+          ctx.groupPromptContext,
+        ),
+    db.message.findMany({
+      where: {
+        conversationId: ctx.conversationId,
+        isArchived: false,
+      },
+      orderBy: { createdAt: 'asc' },
+      take: MESSAGE_HISTORY_LIMIT,
+      select: {
+        role: true,
+        content: true,
+        metadata: true,
+      },
+    }),
+    db.conversation.findUniqueOrThrow({
+      where: { id: ctx.conversationId },
+      select: {
+        contactId: true,
+        dealId: true,
+        // Dados do inbox para resolver provider em send_product_media
+        inbox: {
+          select: {
+            connectionType: true,
+            channel: true,
+            evolutionInstanceName: true,
+            evolutionApiUrl: true,
+            evolutionApiKey: true,
+            metaPhoneNumberId: true,
+            metaAccessToken: true,
+            metaIgUserId: true,
+            zapiInstanceId: true,
+            zapiToken: true,
+            zapiClientToken: true,
+            showAttendantName: true,
           },
         },
-      }),
-    ])
+      },
+    }),
+  ])
 
   ctx.log('step:4 context_loaded', 'PASS', {
     model: promptContext.modelId,
@@ -830,58 +528,11 @@ export async function runSingleV2(
   // -----------------------------------------------------------------------
   // 4a. Build LLM messages (prompt dinâmico + summary + history)
   // -----------------------------------------------------------------------
-  const llmMessages: Array<{
-    role: 'system' | 'user' | 'assistant'
-    content: string
-  }> = []
-
-  llmMessages.push({
-    role: 'system',
-    content: promptContext.systemPrompt,
-  })
-
-  if (promptContext.summary) {
-    llmMessages.push({
-      role: 'system',
-      content: `Resumo da conversa anterior:\n${promptContext.summary}`,
-    })
-  }
-
-  for (const msg of messageHistory) {
-    if (msg.role === 'user' || msg.role === 'assistant') {
-      let messageContent = msg.content
-
-      // Enriquecer mensagens outbound com transcrição de mídia
-      if (msg.role === 'assistant' && msg.metadata) {
-        const meta = msg.metadata as Record<string, unknown>
-        if (typeof meta.mediaTranscription === 'string' && meta.mediaTranscription.length > 0) {
-          const mediaInfo = meta.media as Record<string, unknown> | undefined
-          const mimetype = mediaInfo?.mimetype as string | undefined
-          const fileName = mediaInfo?.fileName as string | undefined
-          const hasCaption = msg.content !== '[Imagem]'
-            && msg.content !== '[Vídeo]'
-            && !msg.content.startsWith('[Documento:')
-
-          const captionPart = hasCaption
-            ? ` com mensagem: "${msg.content}"`
-            : ''
-
-          if (mimetype?.startsWith('image/')) {
-            messageContent = `[Imagem enviada pelo atendente${captionPart} — conteúdo da imagem: ${meta.mediaTranscription}]`
-          } else if (fileName) {
-            messageContent = `[Documento "${fileName}" enviado pelo atendente${captionPart} — conteúdo extraído:\n${meta.mediaTranscription}]`
-          } else {
-            messageContent = `[Mídia enviada pelo atendente${captionPart} — conteúdo: ${meta.mediaTranscription}]`
-          }
-        }
-      }
-
-      llmMessages.push({
-        role: msg.role,
-        content: messageContent,
-      })
-    }
-  }
+  const llmMessages = buildLlmMessages(
+    promptContext.systemPrompt,
+    promptContext.summary,
+    messageHistory,
+  )
 
   // -----------------------------------------------------------------------
   // 4b. Optimistic credit debit (antes do LLM para evitar race condition)
@@ -919,8 +570,7 @@ export async function runSingleV2(
     await createConversationEvent({
       conversationId: ctx.conversationId,
       type: 'PROCESSING_ERROR',
-      content:
-        'Créditos de IA insuficientes para processar esta mensagem.',
+      content: 'Créditos de IA insuficientes para processar esta mensagem.',
       metadata: {
         subtype: 'NO_CREDITS' satisfies ProcessingErrorSubtype,
         estimatedCost,
@@ -990,7 +640,8 @@ export async function runSingleV2(
     {
       hasActiveProducts: promptContext.hasActiveProducts,
       hasActiveProductsWithMedia: promptContext.hasActiveProductsWithMedia,
-      hasActiveServicesWithProfessionals: promptContext.hasActiveServicesWithProfessionals,
+      hasActiveServicesWithProfessionals:
+        promptContext.hasActiveServicesWithProfessionals,
       hasKnowledgeBase: promptContext.hasKnowledgeBase,
       agentMode: promptContext.agentMode,
     },
@@ -1099,18 +750,14 @@ export async function runSingleV2(
     // (só executa quando TODOS os retries falharam).
     ctx.log('step:5 llm_call', 'EXIT', {
       reason: 'llm_error',
-      error:
-        llmError instanceof Error ? llmError.message : String(llmError),
+      error: llmError instanceof Error ? llmError.message : String(llmError),
     })
     ctx.tracker.addStep({
       type: 'LLM_CALL',
       status: 'FAILED',
       output: {
         reason: 'llm_error',
-        error:
-          llmError instanceof Error
-            ? llmError.message
-            : String(llmError),
+        error: llmError instanceof Error ? llmError.message : String(llmError),
       },
     })
     await settleCredits({
@@ -1135,237 +782,65 @@ export async function runSingleV2(
   const llmDurationMs = Date.now() - llmStartMs
 
   // result.text descartado — alguns modelos vazam "thinking" como texto; responseText vem do Call 2.
-  let responseText = ''
-
-  // Capturam a mensagem dos erros para propagação às 3 camadas de observabilidade
-  // (Trigger.dev step output, Langfuse trace metadata, plataforma conversation event).
-  let responderErrorMsg: string | undefined
-  let classifierErrorMsg: string | undefined
-  let fallbackErrorMsg: string | undefined
-
-  // Call 2 (texto) e Call 3 (step classifier) rodam em paralelo — independentes.
-  // Cada uma tem try/catch próprio para que falha isolada não derrube a outra.
-
-  const responderSchema = z.object({
-    message: z
-      .string()
-      .describe(
-        'Sua resposta ao cliente. Texto natural que será enviado diretamente ao lead. ' +
-        'NUNCA inclua JSONs, nomes de ferramentas, UUIDs ou qualquer metadado técnico neste campo.',
-      ),
-  })
 
   // Filtra apenas mensagens user/assistant para o classificador — sem system prompt do agente
   // e sem tool messages, que o classificador não precisa ver.
   const recentHistory = llmMessages
     .filter((msg) => msg.role === 'user' || msg.role === 'assistant')
-    .slice(-CLASSIFIER_HISTORY_TURNS) as Array<{ role: 'user' | 'assistant'; content: string }>
+    .slice(-CLASSIFIER_HISTORY_TURNS) as Array<{
+    role: 'user' | 'assistant'
+    content: string
+  }>
 
-  const runResponder = async (): Promise<ResponderResult | null> => {
-    try {
-      const responderResult = await generateObject({
-        model: getModel(promptContext.modelId),
-        // System prompt original + histórico + trajetória do turno (tool-calls/results)
-        messages: [
-          ...llmMessages,
-          ...sanitizeToolMessages(result.response.messages),
-        ],
-        schema: responderSchema,
-        temperature: LLM_TEMPERATURE,
-        maxOutputTokens: MAX_OUTPUT_TOKENS,
-        experimental_telemetry: {
-          isEnabled: true,
-          tracer: langfuseTracer,
-          functionId: 'chat-completion-responder',
-          metadata: {
-            agentId: ctx.effectiveAgentId,
-            conversationId: ctx.conversationId,
-            model: promptContext.modelId,
-            stage: 'responder',
-          },
-        },
+  const stepIds = hasSteps
+    ? (promptContext.steps.map((step) => step.id) as [string, ...string[]])
+    : null
+
+  // Call 2: Responder + tool_only_fallback embutido. Aguarda antes de iniciar Call 3.
+  const responderOutput = await runResponder({
+    toolCallSteps: result.steps,
+    toolCallResponseMessages: result.response.messages,
+    llmMessages,
+    hasSteps,
+    stepIds,
+    modelId: promptContext.modelId,
+    agentId: ctx.effectiveAgentId,
+    conversationId: ctx.conversationId,
+    organizationId: ctx.organizationId,
+  })
+
+  let responseText = responderOutput.message
+  const responderErrorMsg = responderOutput.responderError
+  const fallbackErrorMsg = responderOutput.fallbackError
+  // classifiedId do fallback — sobrescrito pelo Call 3 se bem-sucedido
+  let classifiedId: string | undefined = responderOutput.fallbackClassifiedId
+  // classifierErrorMsg — preenchida após await classifierPromise; undefined no empty_response path
+  let classifierErrorMsg: string | undefined
+
+  if (responderOutput.usedFallback) {
+    ctx.traceTags.push('fallback')
+    if (responseText) {
+      ctx.log('step:5b tool_only_fallback', 'PASS', {
+        responseLength: responseText.length,
       })
-      return {
-        message: responderResult.object.message ?? '',
-        usage: {
-          inputTokens: responderResult.usage?.inputTokens ?? 0,
-          outputTokens: responderResult.usage?.outputTokens ?? 0,
-        },
-      }
-    } catch (responderError) {
-      // Falha graceful: responseText permanece vazio → cai no tool_only_fallback.
-      responderErrorMsg = responderError instanceof Error ? responderError.message : String(responderError)
-      logger.warn('Responder (Call 2) failed — falling back', {
-        conversationId: ctx.conversationId,
-        organizationId: ctx.organizationId,
-        error: responderErrorMsg,
+      ctx.tracker.addStep({
+        type: 'FALLBACK_LLM_CALL',
+        status: 'PASSED',
+        output: { responseLength: responseText.length },
       })
-      ctx.traceTags.push('responder_failed')
-      return null
     }
   }
-
-  const runStepClassifier = async (agentResponse?: string): Promise<ClassifierResult | null> => {
-    if (!hasSteps) return null
-
-    const stepIds = promptContext.steps.map((step) => step.id) as [string, ...string[]]
-    const classifierSchema = buildClassifierSchema(stepIds)
-
-    try {
-      const classifierResult = await generateObject({
-        model: getModel(STEP_CLASSIFIER_MODEL_ID),
-        messages: buildClassifierMessages({
-          steps: promptContext.steps,
-          recentHistory,
-          contactName: promptContext.contactName,
-          agentResponse,
-        }),
-        schema: classifierSchema,
-        temperature: 0, // determinístico — classificação enum, não há criatividade necessária
-        maxOutputTokens: CLASSIFIER_MAX_OUTPUT_TOKENS,
-        experimental_telemetry: {
-          isEnabled: true,
-          tracer: langfuseTracer,
-          functionId: 'chat-completion-step-classifier',
-          metadata: {
-            agentId: ctx.effectiveAgentId,
-            conversationId: ctx.conversationId,
-            model: STEP_CLASSIFIER_MODEL_ID,
-            stage: 'step-classifier',
-            stepCount: promptContext.steps.length,
-            historySize: recentHistory.length,
-          },
-        },
-      })
-      return {
-        classifiedId: classifierResult.object.currentStep ?? undefined,
-        usage: {
-          inputTokens: classifierResult.usage?.inputTokens ?? 0,
-          outputTokens: classifierResult.usage?.outputTokens ?? 0,
-        },
-      }
-    } catch (classifierError) {
-      // Falha graceful: mantém promptContext.currentStepOrder — sem regressão de step.
-      classifierErrorMsg = classifierError instanceof Error ? classifierError.message : String(classifierError)
-      logger.warn('Step classifier (Call 3) failed — keeping current step', {
-        conversationId: ctx.conversationId,
-        organizationId: ctx.organizationId,
-        currentStepOrder: promptContext.currentStepOrder,
-        error: classifierErrorMsg,
-      })
-      ctx.traceTags.push('step_classifier_failed')
-      return null
-    }
+  // Tag independente do fallback — Call 2 pode falhar mesmo com fallback acionado
+  if (responderErrorMsg) {
+    ctx.traceTags.push('responder_failed')
   }
-
-  // Call 2: aguarda resposta antes de iniciar Call 3.
-  const responder = await runResponder()
-  responseText = responder?.message ?? ''
 
   // Tokens de Call 1 + Call 2 para accounting de créditos no caminho crítico.
   // Call 3 (classificador) roda em paralelo ao guard+send — custo negligível
   // (~64 tokens out) é somado ao totalUsage após o send, antes do step advance.
-  const responderUsage = responder?.usage ?? { inputTokens: 0, outputTokens: 0 }
   let totalUsage = {
-    inputTokens: (result.usage?.inputTokens ?? 0) + responderUsage.inputTokens,
-    outputTokens: (result.usage?.outputTokens ?? 0) + responderUsage.outputTokens,
-  }
-
-  // classifiedId é let: pode ser preenchido pelo tool_only_fallback ou pelo
-  // classificador (Call 3) — Call 3 sempre tem prioridade quando bem-sucedido.
-  let classifiedId: string | undefined = undefined
-
-  // Se o LLM gastou todos os steps em tool calls e não gerou texto,
-  // faz uma chamada extra SEM tools para gerar a resposta ao cliente.
-  if (!responseText) {
-    const hasToolCalls = result.steps?.some(
-      (step) => step.toolCalls && step.toolCalls.length > 0,
-    )
-
-    if (hasToolCalls) {
-      ctx.traceTags.push('fallback')
-      ctx.log('step:5b tool_only_fallback', 'PASS', {
-        steps: result.steps?.length,
-        toolCalls: result.steps?.flatMap(
-          (step) => step.toolCalls?.map((tc) => tc.toolName) ?? [],
-        ),
-      })
-
-      // Incluir a trajetória do turno (tool-calls + tool-results do Call 1) para que
-      // o modelo de fallback saiba o que as tools fizeram e possa descrevê-lo ao cliente.
-      // Sem result.response.messages o fallback gerava resposta sem contexto das ações.
-      const fallbackMessages = [
-        ...llmMessages,
-        ...sanitizeToolMessages(result.response.messages),
-        {
-          role: 'user' as const,
-          content:
-            '[Sistema: as ferramentas foram executadas. Gere agora a resposta final ao cliente ' +
-            'de forma natural, com base no que foi feito. Seja breve e objetivo.]',
-        },
-      ]
-
-      const fallbackStepIds = hasSteps
-        ? (promptContext.steps.map((step) => step.id) as [string, ...string[]])
-        : null
-      const fallbackSchema = buildFallbackSchema(fallbackStepIds)
-
-      // Output.object funciona aqui porque o fallback não tem tools — é exatamente
-      // a ausência de tools que permite combinar Output.object com generateText
-      // (foi esse conflito que motivou a separação Call 1 / Call 2 na v2).
-      const fallbackResult = await generateText({
-        model: getModel(promptContext.modelId),
-        messages: fallbackMessages,
-        output: hasSteps ? Output.object({ schema: fallbackSchema }) : undefined,
-        temperature: LLM_TEMPERATURE,
-        maxOutputTokens: MAX_OUTPUT_TOKENS,
-        experimental_telemetry: {
-          isEnabled: true,
-          tracer: langfuseTracer,
-          functionId: 'chat-completion-fallback',
-          metadata: {
-            agentId: ctx.effectiveAgentId,
-            conversationId: ctx.conversationId,
-            reason: 'tool_only_fallback',
-          },
-        },
-      }).catch((fallbackError) => {
-        fallbackErrorMsg = fallbackError instanceof Error ? fallbackError.message : String(fallbackError)
-        logger.warn('Tool-only fallback LLM call failed', {
-          conversationId: ctx.conversationId,
-          organizationId: ctx.organizationId,
-          error: fallbackErrorMsg,
-        })
-        return null
-      })
-
-      // Output.object garante extração tipada — sem risco de JSON cru ao cliente.
-      // Para o branch sem steps (output undefined), usa .text como fallback.
-      // O cast para o shape ampliado é seguro: buildFallbackSchema inclui currentStep
-      // quando hasSteps=true — o mesmo flag que controla qual schema foi passado.
-      const fallbackOutput = fallbackResult?.output as
-        | { message: string; currentStep?: string | null }
-        | undefined
-
-      responseText = fallbackOutput?.message ?? fallbackResult?.text ?? ''
-
-      // Classificação de recuperação do fallback — Call 3 ainda não disparou aqui.
-      // Se Call 3 bem-sucedido sobrescreverá este valor no bloco "Aguarda Call 3".
-      if (fallbackOutput?.currentStep) {
-        classifiedId = fallbackOutput.currentStep
-      }
-
-      if (responseText) {
-        ctx.log('step:5b tool_only_fallback', 'PASS', {
-          responseLength: responseText.length,
-        })
-        ctx.tracker.addStep({
-          type: 'FALLBACK_LLM_CALL',
-          status: 'PASSED',
-          output: { responseLength: responseText.length },
-        })
-      }
-    }
+    inputTokens: (result.usage?.inputTokens ?? 0) + responderOutput.usage.inputTokens,
+    outputTokens: (result.usage?.outputTokens ?? 0) + responderOutput.usage.outputTokens,
   }
 
   // Strip tool calls vazados como texto puro pelo LLM (ex: Gemini)
@@ -1414,9 +889,10 @@ export async function runSingleV2(
 
   if (!responseText) {
     // Genuinamente sem resposta (sem tool calls ou fallback falhou)
-    const hadToolCalls = result.steps?.some(
-      (step) => step.toolCalls && step.toolCalls.length > 0,
-    ) ?? false
+    const hadToolCalls =
+      result.steps?.some(
+        (step) => step.toolCalls && step.toolCalls.length > 0,
+      ) ?? false
     const emptyUsage = {
       inputTokens: totalUsage.inputTokens,
       outputTokens: totalUsage.outputTokens,
@@ -1444,7 +920,8 @@ export async function runSingleV2(
       await createConversationEvent({
         conversationId: ctx.conversationId,
         type: 'PROCESSING_ERROR',
-        content: 'Falha ao gerar resposta — Responder e fallback retornaram erro.',
+        content:
+          'Falha ao gerar resposta — Responder e fallback retornaram erro.',
         visibleToUser: false,
         metadata: {
           subtype: 'LLM_ERROR' satisfies ProcessingErrorSubtype,
@@ -1458,9 +935,11 @@ export async function runSingleV2(
     ctx.traceTags.push('empty_response')
     triggerMetadata.set('model', promptContext.modelId)
     // Trigger.dev: set na run metadata para visibilidade no painel sem precisar baixar log
-    if (responderErrorMsg) triggerMetadata.set('responderError', responderErrorMsg)
+    if (responderErrorMsg)
+      triggerMetadata.set('responderError', responderErrorMsg)
     if (fallbackErrorMsg) triggerMetadata.set('fallbackError', fallbackErrorMsg)
-    if (classifierErrorMsg) triggerMetadata.set('classifierError', classifierErrorMsg)
+    if (classifierErrorMsg)
+      triggerMetadata.set('classifierError', classifierErrorMsg)
     // Langfuse: inclui mensagens de erro na metadata do trace para diagnóstico sem download
     ctx.finalizeTrace('empty_response', {
       metadata: {
@@ -1497,9 +976,10 @@ export async function runSingleV2(
         outputTokens: totalUsage.outputTokens,
         inputTokens: totalUsage.inputTokens,
         stepsCount: result.steps?.length ?? 0,
-        toolCalls: result.steps?.flatMap(
-          (step) => step.toolCalls?.map((tc) => tc.toolName) ?? [],
-        ) ?? [],
+        toolCalls:
+          result.steps?.flatMap(
+            (step) => step.toolCalls?.map((tc) => tc.toolName) ?? [],
+          ) ?? [],
         fallbackAttempted: hadToolCalls,
         ...(responderErrorMsg && { responderError: responderErrorMsg }),
         ...(fallbackErrorMsg && { fallbackError: fallbackErrorMsg }),
@@ -1539,8 +1019,7 @@ export async function runSingleV2(
     steps: result.steps?.length ?? 1,
     toolCalls:
       result.steps?.flatMap(
-        (step) =>
-          step.toolCalls?.map((toolCall) => toolCall.toolName) ?? [],
+        (step) => step.toolCalls?.map((toolCall) => toolCall.toolName) ?? [],
       ) ?? [],
   })
   ctx.tracker.addStep({
@@ -1559,18 +1038,14 @@ export async function runSingleV2(
       const toolResult = aiStep.toolResults?.find(
         (result) => result.toolName === toolCall.toolName,
       )
-      const toolOutput = toolResult?.output as
-        | { success?: boolean }
-        | undefined
+      const toolOutput = toolResult?.output as { success?: boolean } | undefined
       const isToolSuccess = toolOutput?.success !== false
       ctx.tracker.addStep({
         type: 'TOOL_CALL',
         status: isToolSuccess ? 'PASSED' : 'FAILED',
         toolName: toolCall.toolName,
         input: toolCall.input as Record<string, unknown>,
-        output: toolResult?.output as
-          | Record<string, unknown>
-          | undefined,
+        output: toolResult?.output as Record<string, unknown> | undefined,
       })
     }
   }
@@ -1671,7 +1146,9 @@ export async function runSingleV2(
       status: 'SKIPPED',
       output: { reason: 'ai_paused_during_generation' },
     })
-    ctx.finalizeTrace('ai_paused_during_generation', { metadata: { creditsCost: pausedActualCost } })
+    ctx.finalizeTrace('ai_paused_during_generation', {
+      metadata: { creditsCost: pausedActualCost },
+    })
     await ctx.tracker.skip({
       reason: 'ai_paused_during_generation',
       modelId: promptContext.modelId,
@@ -1739,9 +1216,7 @@ export async function runSingleV2(
   })
 
   if (!conversation.inbox) {
-    throw new Error(
-      `Inbox not found for conversation: ${ctx.conversationId}`,
-    )
+    throw new Error(`Inbox not found for conversation: ${ctx.conversationId}`)
   }
 
   // retry.fetch do Trigger.dev: retenta 429/5xx no nível HTTP sem re-executar o pipeline
@@ -1751,7 +1226,18 @@ export async function runSingleV2(
   // Roda em paralelo ao envio WhatsApp para reduzir latência percebida pelo lead.
   // Texto final (pós-strip + pós-guard) garante que não há tokens gastos em vão.
   // Aguardado logo após o send — ver bloco "Aguarda Call 3" abaixo.
-  const classifierPromise = runStepClassifier(responseText || undefined)
+  const classifierPromise = hasSteps
+    ? runStepClassifier({
+        steps: promptContext.steps,
+        recentHistory,
+        contactName: promptContext.contactName,
+        agentResponse: responseText || undefined,
+        agentId: ctx.effectiveAgentId,
+        conversationId: ctx.conversationId,
+        organizationId: ctx.organizationId,
+        currentStepOrder: promptContext.currentStepOrder,
+      })
+    : Promise.resolve(null)
 
   let lastSentId: string | null = null
 
@@ -1774,7 +1260,10 @@ export async function runSingleV2(
         ssrfBlockedCount: inlineResult.ssrfBlockedUrls.length,
       })
 
-      triggerMetadata.set('ssrfBlockedCount', inlineResult.ssrfBlockedUrls.length)
+      triggerMetadata.set(
+        'ssrfBlockedCount',
+        inlineResult.ssrfBlockedUrls.length,
+      )
 
       ctx.log('step:9 whatsapp_sent', 'PASS', {
         responseLength: responseText.length,
@@ -1874,7 +1363,8 @@ export async function runSingleV2(
       status: 'FAILED',
       output: {
         provider: ctx.message.provider,
-        error: sendError instanceof Error ? sendError.message : String(sendError),
+        error:
+          sendError instanceof Error ? sendError.message : String(sendError),
       },
     })
 
@@ -1900,25 +1390,15 @@ export async function runSingleV2(
   if (classifier?.classifiedId) {
     classifiedId = classifier.classifiedId
   }
+  classifierErrorMsg = classifier?.error
+  if (classifierErrorMsg) ctx.traceTags.push('step_classifier_failed')
+
   // Agrega tokens do classificador ao totalUsage para logging final.
   const classifierUsage = classifier?.usage ?? { inputTokens: 0, outputTokens: 0 }
   totalUsage = {
     inputTokens: totalUsage.inputTokens + classifierUsage.inputTokens,
     outputTokens: totalUsage.outputTokens + classifierUsage.outputTokens,
   }
-
-  // Guard de monotonicidade: step só avança, nunca regride.
-  const classifiedStep = classifiedId
-    ? promptContext.steps.find((step) => step.id === classifiedId)?.order
-    : undefined
-  const newStepOrder =
-    classifiedStep !== undefined
-      ? Math.max(
-          promptContext.currentStepOrder,
-          Math.min(classifiedStep, promptContext.totalSteps - 1),
-        )
-      : promptContext.currentStepOrder
-  const stepAdvanced = newStepOrder > promptContext.currentStepOrder
 
   // -----------------------------------------------------------------------
   // 10a-guard. Handoff humano pendente do degraded path do guard
@@ -1928,158 +1408,69 @@ export async function runSingleV2(
     await triggerHumanHandoff(pendingHumanHandoff).catch((handoffError) => {
       logger.error('single-guard: triggerHumanHandoff failed', {
         conversationId: ctx.conversationId,
-        error: handoffError instanceof Error ? handoffError.message : String(handoffError),
+        error:
+          handoffError instanceof Error
+            ? handoffError.message
+            : String(handoffError),
       })
     })
   }
 
   // -----------------------------------------------------------------------
-  // 10b. Schedule follow-up (se agente tem regras de FUP para o step atual)
-  // Non-fatal: falha no agendamento nao bloqueia o fluxo principal
+  // 10b. Step advance + lifecycle + auto-ações + follow-up
+  // Non-fatal individualmente — falhas logadas sem bloquear o fluxo.
   // -----------------------------------------------------------------------
-  try {
-    // Persistir avanço de step antes de buscar FUPs — garante que o step
-    // correto é usado no agendamento e reseta o ciclo de FUP anterior
-    if (stepAdvanced) {
-      await db.conversation.update({
-        where: { id: ctx.conversationId },
-        data: {
-          currentStepOrder: newStepOrder,
-          // Limpar ciclo de FUP do step anterior ao avançar
-          nextFollowUpAt: null,
-          followUpCount: 0,
-        },
-      })
+  const stepAdvanceResult = await applyStepAdvance({
+    classifiedId,
+    currentStepOrder: promptContext.currentStepOrder,
+    totalSteps: promptContext.totalSteps,
+    steps: promptContext.steps,
+    conversationId: ctx.conversationId,
+    organizationId: ctx.organizationId,
+    agentId: ctx.effectiveAgentId,
+    agentName: promptContext.agentName,
+    contactId: promptContext.conversationContactId ?? null,
+    dealId: conversation.dealId,
+  })
 
-      await createConversationEvent({
-        conversationId: ctx.conversationId,
-        type: 'INFO',
-        content: `Conversa avançou para etapa ${newStepOrder + 1}`,
-        metadata: {
-          subtype: 'STEP_ADVANCED' satisfies InfoSubtype,
-          previousStep: promptContext.currentStepOrder,
-          newStep: newStepOrder,
-          newStepId: promptContext.steps[newStepOrder]?.id,
-          newStepName: promptContext.steps[newStepOrder]?.name,
-          classifiedByLlm: classifiedId ?? null,
-        },
-      })
+  const { newStepOrder, stepAdvanced, followUpScheduled, followUpFirstDelayMinutes, totalFollowUps } =
+    stepAdvanceResult
 
-      ctx.log('step:10a step_advanced', 'PASS', {
-        previousStep: promptContext.currentStepOrder,
-        newStep: newStepOrder,
-        classifiedId,
-        classifiedStep,
-      })
-
-      // Lifecycle trigger — non-fatal, não bloqueia step advance nem FUP
-      const newStep = promptContext.steps[newStepOrder]
-      if (newStep?.lifecycleTrigger && promptContext.conversationContactId) {
-        try {
-          await applyLifecycleTrigger({
-            conversationId: ctx.conversationId,
-            organizationId: ctx.organizationId,
-            contactId: promptContext.conversationContactId,
-            toStage: newStep.lifecycleTrigger,
-            dealPipelineId: newStep.lifecycleDealPipelineId,
-          })
-        } catch (lifecycleErr) {
-          logger.error('lifecycle:trigger_failed', {
-            conversationId: ctx.conversationId,
-            error: lifecycleErr instanceof Error ? lifecycleErr.message : String(lifecycleErr),
-          })
-        }
-      }
-
-      // Auto-ações do step — non-fatal, não bloqueia lifecycle nem FUP
-      if (newStep && (newStep.autoDealStageId || newStep.autoTasks)) {
-        try {
-          await applyStepAutoActions({
-            conversationId: ctx.conversationId,
-            organizationId: ctx.organizationId,
-            agentId: ctx.effectiveAgentId,
-            agentName: promptContext.agentName,
-            dealId: conversation.dealId,
-            autoDealStageId: newStep.autoDealStageId,
-            autoTasks: newStep.autoTasks,
-          })
-        } catch (autoActionsErr) {
-          logger.error('step:auto_actions_failed', {
-            conversationId: ctx.conversationId,
-            error: autoActionsErr instanceof Error ? autoActionsErr.message : String(autoActionsErr),
-          })
-        }
-      }
-    }
-
-    // newStepOrder já tem o valor correto (currentStepOrder ou avançado)
-    // — não precisa mais de findUnique para ler currentStepOrder
-    const followUps = await getFollowUpsForStep(
-      ctx.effectiveAgentId,
-      newStepOrder,
-    )
-
-    if (followUps.length > 0) {
-      const firstFollowUp = followUps[0] // order 0 — o primeiro da sequência
-      const nextFollowUpAt = new Date(
-        Date.now() + firstFollowUp.delayMinutes * 60 * 1000,
-      )
-
-      await db.conversation.update({
-        where: { id: ctx.conversationId },
-        data: {
-          nextFollowUpAt,
-          followUpCount: 0,
-        },
-      })
-
-      ctx.log('step:10b follow_up_scheduled', 'PASS', {
-        totalFollowUps: followUps.length,
-        firstDelayMinutes: firstFollowUp.delayMinutes,
-        nextFollowUpAt: nextFollowUpAt.toISOString(),
-      })
-      ctx.tracker.addStep({
-        type: 'FOLLOW_UP_SCHEDULE',
-        status: 'PASSED',
-        output: {
-          totalFollowUps: followUps.length,
-          firstDelayMinutes: firstFollowUp.delayMinutes,
-        },
-      })
-    } else {
-      // Nenhum follow-up cobre este step — limpar qualquer FUP pendente
-      await db.conversation.update({
-        where: { id: ctx.conversationId },
-        data: { nextFollowUpAt: null, followUpCount: 0 },
-      })
-      ctx.log('step:10b follow_up_scheduled', 'SKIP', {
-        reason: 'no_follow_ups_for_step',
-      })
-      ctx.tracker.addStep({
-        type: 'FOLLOW_UP_SCHEDULE',
-        status: 'SKIPPED',
-        output: { reason: 'no_follow_ups_for_step' },
-      })
-    }
-  } catch (fupError) {
-    logger.error('Follow-up scheduling failed', {
-      conversationId: ctx.conversationId,
-      error:
-        fupError instanceof Error ? fupError.message : String(fupError),
+  if (stepAdvanced) {
+    ctx.log('step:10a step_advanced', 'PASS', {
+      previousStep: promptContext.currentStepOrder,
+      newStep: newStepOrder,
+      classifiedId,
     })
-    // Limpar estado para evitar estado órfão que ficaria disparando o cron indefinidamente
-    await db.conversation
-      .update({
-        where: { id: ctx.conversationId },
-        data: { nextFollowUpAt: null, followUpCount: 0 },
-      })
-      .catch(() => {})
+  }
+
+  if (followUpScheduled && followUpFirstDelayMinutes !== undefined) {
+    ctx.log('step:10b follow_up_scheduled', 'PASS', {
+      totalFollowUps,
+      firstDelayMinutes: followUpFirstDelayMinutes,
+    })
+    ctx.tracker.addStep({
+      type: 'FOLLOW_UP_SCHEDULE',
+      status: 'PASSED',
+      output: { totalFollowUps, firstDelayMinutes: followUpFirstDelayMinutes },
+    })
+  } else {
+    ctx.log('step:10b follow_up_scheduled', 'SKIP', {
+      reason: 'no_follow_ups_for_step',
+    })
+    ctx.tracker.addStep({
+      type: 'FOLLOW_UP_SCHEDULE',
+      status: 'SKIPPED',
+      output: { reason: 'no_follow_ups_for_step' },
+    })
   }
 
   // -----------------------------------------------------------------------
   // 11. Memory compression — se >= threshold msgs, summarizar e arquivar
   // -----------------------------------------------------------------------
-  const memoryResult = await compressMemory({ conversationId: ctx.conversationId })
+  const memoryResult = await compressMemory({
+    conversationId: ctx.conversationId,
+  })
   ctx.tracker.addStep({
     type: 'MEMORY_COMPRESSION',
     status: memoryResult.compressed ? 'PASSED' : 'SKIPPED',
@@ -2142,26 +1533,32 @@ export const processAgentMessageSingleV2 = task({
   id: 'process-agent-message-single-v2',
   retry: { maxAttempts: 3 },
   run: async (payload: ProcessAgentMessagePayload, { ctx: triggerCtx }) => {
-    return observe(async () => {
-      const dispatchResult = await buildDispatcherCtx(payload, triggerCtx)
-      try {
-        if ('skipped' in dispatchResult) return dispatchResult
-        return await runSingleV2(dispatchResult.ctx)
-      } finally {
-        // Emite idle com failed antes do flushLangfuse — idempotente se completed já foi emitido
-        if (!('skipped' in dispatchResult)) {
-          await emitAgentStatus({
-            conversationId: dispatchResult.ctx.conversationId,
-            organizationId: dispatchResult.ctx.organizationId,
-            state: 'idle',
-            agentName: 'Agente',
-            terminalReason: 'failed',
-          })
+    return observe(
+      async () => {
+        const dispatchResult = await buildDispatcherCtx(payload, triggerCtx)
+        try {
+          if ('skipped' in dispatchResult) return dispatchResult
+          return await runSingleV2(dispatchResult.ctx)
+        } finally {
+          // Emite idle com failed antes do flushLangfuse — idempotente se completed já foi emitido
+          if (!('skipped' in dispatchResult)) {
+            await emitAgentStatus({
+              conversationId: dispatchResult.ctx.conversationId,
+              organizationId: dispatchResult.ctx.organizationId,
+              state: 'idle',
+              agentName: 'Agente',
+              terminalReason: 'failed',
+            })
+          }
+          await flushLangfuse()
         }
-        await flushLangfuse()
-      }
-    }, { name: 'process-agent-message-single-v2' })()
+      },
+      { name: 'process-agent-message-single-v2' },
+    )()
   },
   onFailure: async ({ payload, error }) =>
-    handleAgentTaskFailure('process-agent-message-single-v2', { payload, error }),
+    handleAgentTaskFailure('process-agent-message-single-v2', {
+      payload,
+      error,
+    }),
 })
