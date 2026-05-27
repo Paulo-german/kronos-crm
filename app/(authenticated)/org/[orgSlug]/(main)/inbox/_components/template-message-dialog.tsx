@@ -21,28 +21,11 @@ import { Label } from '@/_components/ui/label'
 import { cn } from '@/_lib/utils'
 import { sendTemplateMessage } from '@/_actions/inbox/send-template-message'
 import type { MetaTemplate } from '@/_lib/meta/types'
+import { extractVariableIndices, renderWithVariables } from '@/_lib/meta/template-variables'
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-/** Extrai índices de variáveis {{N}} de um texto */
-function extractVariableIndices(text: string): number[] {
-  const matches = text.matchAll(/\{\{(\d+)\}\}/g)
-  const indices = new Set<number>()
-  for (const match of matches) {
-    indices.add(parseInt(match[1], 10))
-  }
-  return Array.from(indices).sort((a, b) => a - b)
-}
-
-/** Substitui variáveis {{N}} pelos valores ou mantém o placeholder */
-function renderWithVariables(text: string, values: string[]): string {
-  return text.replace(/\{\{(\d+)\}\}/g, (_match, indexStr: string) => {
-    const index = parseInt(indexStr, 10) - 1
-    return values[index]?.trim() ? values[index] : `{{${indexStr}}}`
-  })
-}
 
 type StatusBadgeClassName = string
 const STATUS_CLASSES: Record<string, StatusBadgeClassName> = {
