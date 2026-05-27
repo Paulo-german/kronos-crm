@@ -61,7 +61,7 @@ const ConfirmationDialog = ({
             {description}
           </DialogDescription>
         </DialogHeader>
-        <DialogFooter>
+        <DialogFooter className="mt-4 justify-center sm:justify-center">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
