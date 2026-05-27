@@ -2,10 +2,11 @@ import 'server-only'
 import { after } from 'next/server'
 import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
-import { SalesDistributionModel } from '@prisma/client'
+import { CaptureChannel, SalesDistributionModel } from '@prisma/client'
 import { resolveSquadMember } from '@/_lib/distribution/resolve-squad-member'
 import { inferCaptureChannelFromInboxChannel } from '@/_lib/lifecycle/infer-capture-channel'
 import { matchCaptureEventToCampaign } from '@/_lib/lifecycle/match-capture-event-to-campaign'
+import { evaluateAutomations } from '@/_lib/automations/evaluate-automations'
 
 interface DealCreationContext {
   pipelineId: string | null
@@ -95,6 +96,8 @@ export async function resolveConversation(
     select: { id: true, name: true, assignedTo: true, firstCaptureAt: true },
   })
 
+  const isNewContact = !contact
+
   if (!contact) {
     contact = await db.contact.create({
       data: {
@@ -152,6 +155,16 @@ export async function resolveConversation(
       conversationId: conversation.id,
       contactFirstCaptureAt: contact.firstCaptureAt,
     })
+  }
+
+  if (isNewContact) {
+    after(() => evaluateAutomations({
+      subjectKind: 'contact',
+      orgId,
+      triggerType: 'CONTACT_CREATED',
+      contactId: contact.id,
+      payload: { source: CaptureChannel.WHATSAPP },
+    }))
   }
 
   return { conversationId: conversation.id, isNew: true }
