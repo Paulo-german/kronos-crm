@@ -224,7 +224,7 @@ export function AgentsCardGrid({
                       <AgentTableDropdownMenu
                         agentDetailHref={`/org/${orgSlug}/ai-agent/${agent.id}`}
                         executionsHref={`/org/${orgSlug}/ai-agent/${agent.id}/executions`}
-                        canViewExecutions={canManage}
+                        canViewExecutions={userRole === 'SUPPORT'}
                         onEdit={() => handleEdit(agent)}
                         onDelete={() => {
                           setDeletingAgent(agent)

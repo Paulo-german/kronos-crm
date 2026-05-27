@@ -2,7 +2,6 @@ import { notFound } from 'next/navigation'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getAgentById } from '@/_data-access/agent/get-agent-by-id'
 import { getAgentExecutions } from '@/_data-access/agent-execution/get-agent-executions'
-import { canPerformAction } from '@/_lib/rbac/guards'
 import ExecutionsList from './_components/executions-list'
 import type { AgentExecutionStatus } from '@prisma/client'
 
@@ -43,9 +42,8 @@ const ExecutionsPage = async ({
   const { orgSlug, agentId } = await params
   const ctx = await getOrgContext(orgSlug)
 
-  // RBAC: apenas OWNER e ADMIN podem visualizar execuções
-  const permission = canPerformAction(ctx, 'agent', 'update')
-  if (!permission.allowed) {
+  // Execuções são exclusivas para o role SUPPORT
+  if (ctx.userRole !== 'SUPPORT') {
     notFound()
   }
 
