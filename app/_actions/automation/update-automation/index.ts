@@ -15,6 +15,7 @@ import {
   dealCreatedConfigSchema,
   activityCreatedConfigSchema,
   dealStatusChangedConfigSchema,
+  contactCreatedConfigSchema,
   reassignDealConfigSchema,
   moveDealToStageConfigSchema,
   markDealLostConfigSchema,
@@ -24,6 +25,7 @@ import {
   updateContactLifecycleConfigSchema,
   createTaskConfigSchema,
 } from './schema'
+import { SENTINEL_DEAL_INBOX } from '@/_actions/automation/create-automation/schema'
 
 const TRIGGER_VALIDATORS: Record<AutomationTrigger, z.ZodTypeAny> = {
   [AutomationTrigger.DEAL_STALE]: dealStaleConfigSchema,
@@ -32,6 +34,7 @@ const TRIGGER_VALIDATORS: Record<AutomationTrigger, z.ZodTypeAny> = {
   [AutomationTrigger.DEAL_CREATED]: dealCreatedConfigSchema,
   [AutomationTrigger.ACTIVITY_CREATED]: activityCreatedConfigSchema,
   [AutomationTrigger.DEAL_STATUS_CHANGED]: dealStatusChangedConfigSchema,
+  [AutomationTrigger.CONTACT_CREATED]: contactCreatedConfigSchema,
 }
 
 const ACTION_VALIDATORS: Record<AutomationAction, z.ZodTypeAny> = {
@@ -135,6 +138,15 @@ function validateConfigAgainstTypes(
       )
     }
   }
+
+  // Valida compatibilidade entre triggerType e actionType (mesmo que parcial)
+  const CONTACT_TRIGGERS = new Set<AutomationTrigger>([AutomationTrigger.CONTACT_CREATED])
+  const CONTACT_SUPPORTED_ACTIONS = new Set<AutomationAction>([AutomationAction.SEND_WHATSAPP_FOLLOWUP])
+  if (CONTACT_TRIGGERS.has(effectiveTriggerType) && !CONTACT_SUPPORTED_ACTIONS.has(effectiveActionType)) {
+    throw new Error(
+      `O trigger ${effectiveTriggerType} só é compatível com: ${[...CONTACT_SUPPORTED_ACTIONS].join(', ')}`,
+    )
+  }
 }
 
 /**
@@ -167,7 +179,8 @@ async function validatePartialCrossEntityReferences(
   }
 
   // Valida inboxId no actionConfig (SEND_WHATSAPP_FOLLOWUP)
-  if (typeof actionConfig?.inboxId === 'string') {
+  // Sentinel 'deal_inbox'/'contact_inbox' é resolvido em runtime — não existe no banco
+  if (typeof actionConfig?.inboxId === 'string' && actionConfig.inboxId !== SENTINEL_DEAL_INBOX) {
     await requireWhatsappInboxInOrg(actionConfig.inboxId, orgId)
   }
 

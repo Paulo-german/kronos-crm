@@ -52,6 +52,7 @@ export async function markDealLostFromBooking(params: MarkDealLostFromBookingPar
 
   after(() =>
     evaluateAutomations({
+      subjectKind: 'deal',
       orgId,
       triggerType: 'DEAL_STATUS_CHANGED',
       dealId,

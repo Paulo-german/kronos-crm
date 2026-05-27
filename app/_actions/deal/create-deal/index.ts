@@ -117,6 +117,7 @@ export const createDeal = orgActionClient
     // Automações rodam depois da resposta mas dentro do contexto do request,
     // para que revalidateTag/revalidatePath dos executores funcionem corretamente
     after(() => evaluateAutomations({
+      subjectKind: 'deal',
       orgId: ctx.orgId,
       triggerType: 'DEAL_CREATED',
       dealId: deal.id,

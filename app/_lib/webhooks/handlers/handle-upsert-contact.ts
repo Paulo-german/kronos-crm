@@ -1,3 +1,5 @@
+import 'server-only'
+import { CaptureChannel } from '@prisma/client'
 import { db } from '@/_lib/prisma'
 import { resolveSquadMember } from '@/_lib/distribution/resolve-squad-member'
 import { resolveCompanyId } from './resolve-company-id'
@@ -11,6 +13,7 @@ interface HandlerInput {
 interface ProcessResult {
   status: 'PROCESSED' | 'IGNORED' | 'ERROR'
   contactId?: string
+  created?: boolean
   errorMessage?: string
 }
 
@@ -47,7 +50,7 @@ export async function handleUpsertContact({
           ...(companyId ? { companyId } : {}),
         },
       })
-      return { status: 'PROCESSED', contactId: existing.id }
+      return { status: 'PROCESSED', contactId: existing.id, created: false }
     }
   }
 
@@ -69,7 +72,7 @@ export async function handleUpsertContact({
   }
 
   if (email) {
-    const created = await db.contact.create({
+    const newContact = await db.contact.create({
       data: {
         organizationId: orgId,
         email,
@@ -78,10 +81,12 @@ export async function handleUpsertContact({
         cpf,
         companyId,
         assignedTo: assignedUserId,
+        firstCaptureChannel: CaptureChannel.API,
+        lastCaptureChannel: CaptureChannel.API,
       },
       select: { id: true },
     })
-    return { status: 'PROCESSED', contactId: created.id }
+    return { status: 'PROCESSED', contactId: newContact.id, created: true }
   }
 
   // Sem email mas com phone — tenta deduplicar por telefone antes de criar
@@ -99,7 +104,7 @@ export async function handleUpsertContact({
         ...(companyId ? { companyId } : {}),
       },
     })
-    return { status: 'PROCESSED', contactId: existingByPhone.id }
+    return { status: 'PROCESSED', contactId: existingByPhone.id, created: false }
   }
 
   const contact = await db.contact.create({
@@ -110,8 +115,10 @@ export async function handleUpsertContact({
       cpf,
       companyId,
       assignedTo: assignedUserId,
+      firstCaptureChannel: CaptureChannel.API,
+      lastCaptureChannel: CaptureChannel.API,
     },
     select: { id: true },
   })
-  return { status: 'PROCESSED', contactId: contact.id }
+  return { status: 'PROCESSED', contactId: contact.id, created: true }
 }

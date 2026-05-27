@@ -57,6 +57,7 @@ export async function markDealWonFromBooking(params: MarkDealWonFromBookingParam
 
   after(() =>
     evaluateAutomations({
+      subjectKind: 'deal',
       orgId,
       triggerType: 'DEAL_STATUS_CHANGED',
       dealId,

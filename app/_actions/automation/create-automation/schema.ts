@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { ActivityType, AutomationTrigger, AutomationAction, LifecycleStage } from '@prisma/client'
+import { ActivityType, AutomationTrigger, AutomationAction, CaptureChannel, LifecycleStage } from '@prisma/client'
 
 // ─────────────────────────────────────────────────────────────
 // Schemas para condições
@@ -8,7 +8,7 @@ import { ActivityType, AutomationTrigger, AutomationAction, LifecycleStage } fro
 const CONDITION_OPERATORS = ['equals', 'not_equals', 'gt', 'lt', 'gte', 'lte', 'in', 'not_in'] as const
 type ConditionOperator = (typeof CONDITION_OPERATORS)[number]
 
-const CONDITION_FIELDS = ['stageId', 'assignedTo', 'priority', 'status', 'value', 'pipelineId'] as const
+const CONDITION_FIELDS = ['stageId', 'assignedTo', 'priority', 'status', 'value', 'pipelineId', 'lifecycleStage', 'source'] as const
 
 export const automationConditionSchema = z.object({
   field: z.enum(CONDITION_FIELDS),
@@ -53,6 +53,11 @@ export const activityCreatedConfigSchema = z.object({
 export const dealStatusChangedConfigSchema = z.object({
   statuses: z.array(z.enum(['OPEN', 'WON', 'LOST', 'PAUSED', 'IN_PROGRESS'])).optional(),
   pipelineId: z.string().uuid().optional(),
+})
+
+export const contactCreatedConfigSchema = z.object({
+  lifecycleStage: z.nativeEnum(LifecycleStage).optional(),
+  sources: z.array(z.nativeEnum(CaptureChannel)).optional(),
 })
 
 // ─────────────────────────────────────────────────────────────
@@ -180,6 +185,7 @@ export const createAutomationSchema = z.object({
     [AutomationTrigger.DEAL_CREATED]: dealCreatedConfigSchema,
     [AutomationTrigger.ACTIVITY_CREATED]: activityCreatedConfigSchema,
     [AutomationTrigger.DEAL_STATUS_CHANGED]: dealStatusChangedConfigSchema,
+    [AutomationTrigger.CONTACT_CREATED]: contactCreatedConfigSchema,
   }
 
   const triggerResult = triggerValidators[data.triggerType].safeParse(data.triggerConfig)
@@ -209,6 +215,18 @@ export const createAutomationSchema = z.object({
       code: z.ZodIssueCode.custom,
       path: ['actionConfig'],
       message: `Configuração inválida para ação ${data.actionType}: ${actionResult.error.message}`,
+    })
+  }
+
+  // Valida compatibilidade entre triggerType e actionType
+  // Triggers de contato só suportam ações que operam sem um deal
+  const CONTACT_TRIGGERS = new Set<AutomationTrigger>([AutomationTrigger.CONTACT_CREATED])
+  const CONTACT_SUPPORTED_ACTIONS = new Set<AutomationAction>([AutomationAction.SEND_WHATSAPP_FOLLOWUP])
+  if (CONTACT_TRIGGERS.has(data.triggerType) && !CONTACT_SUPPORTED_ACTIONS.has(data.actionType)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['actionType'],
+      message: `O trigger ${data.triggerType} só é compatível com: ${[...CONTACT_SUPPORTED_ACTIONS].join(', ')}`,
     })
   }
 })

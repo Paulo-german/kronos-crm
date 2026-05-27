@@ -1,5 +1,6 @@
 import { revalidateTag } from 'next/cache'
 import { db } from '@/_lib/prisma'
+import { CaptureChannel } from '@prisma/client'
 import type { WebhookPlatform, WebhookEventType } from '@prisma/client'
 import { resolveFieldMapping } from './resolve-field-mapping'
 import { persistWebhookLog } from './persist-webhook-log'
@@ -9,10 +10,12 @@ import { handleUpdateContact } from './handlers/handle-update-contact'
 import { handleNewDeal } from './handlers/handle-new-deal'
 import { handleUpdateDeal } from './handlers/handle-update-deal'
 import { handleDealClosed } from './handlers/handle-deal-closed'
+import { evaluateAutomations } from '@/_lib/automations/evaluate-automations'
 
 interface ProcessResult {
   status: 'PROCESSED' | 'IGNORED' | 'ERROR'
   contactId?: string
+  created?: boolean
   dealId?: string
   errorMessage?: string
 }
@@ -102,6 +105,22 @@ export async function processInboundWebhook(input: ProcessInput): Promise<{ id: 
     revalidateTag(`companies:${source.organizationId}`)
   }
   if (result.dealId) revalidateTag(`deals:${source.organizationId}`)
+
+  // Dispara automações de CONTACT_CREATED apenas quando o webhook criou um novo contato.
+  // Fire-and-forget: falha aqui não compromete o log persistido acima.
+  if (result.status === 'PROCESSED' && result.created && result.contactId) {
+    try {
+      await evaluateAutomations({
+        subjectKind: 'contact',
+        orgId: source.organizationId,
+        triggerType: 'CONTACT_CREATED',
+        contactId: result.contactId,
+        payload: { source: CaptureChannel.API, lifecycleStage: 'LEAD' },
+      })
+    } catch {
+      // swallow: o log é a fonte de verdade; automação é colateral
+    }
+  }
 
   return { id: log.id }
 }

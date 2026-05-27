@@ -5,6 +5,7 @@ import { orgActionClient } from '@/_lib/safe-action'
 import { contactSchema } from './schema'
 import { db } from '@/_lib/prisma'
 import { revalidateTag } from 'next/cache'
+import { after } from 'next/server'
 import {
   canPerformAction,
   requirePermission,
@@ -12,6 +13,7 @@ import {
   requireQuota,
 } from '@/_lib/rbac'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
+import { evaluateAutomations } from '@/_lib/automations/evaluate-automations'
 
 export const createContact = orgActionClient
   .schema(contactSchema)
@@ -146,6 +148,20 @@ export const createContact = orgActionClient
       revalidateTag(`deals-options:${ctx.orgId}`)
       revalidateTag(`dashboard:${ctx.orgId}`)
     }
+
+    // Automações de CONTACT_CREATED rodam após a resposta, mas dentro do contexto
+    // do request, para que revalidateTag/revalidatePath dos executores funcionem.
+    after(() => evaluateAutomations({
+      subjectKind: 'contact',
+      orgId: ctx.orgId,
+      triggerType: 'CONTACT_CREATED',
+      contactId: txResult.contact.id,
+      payload: {
+        lifecycleStage: txResult.contact.lifecycleStage,
+        assignedTo: txResult.contact.assignedTo,
+        source: txResult.contact.firstCaptureChannel,
+      },
+    }))
 
     const quota = await checkPlanQuota(ctx.orgId, 'contact')
 

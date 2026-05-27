@@ -36,6 +36,7 @@ export const createActivity = orgActionClient
     // para que revalidateTag/revalidatePath dos executores funcionem corretamente.
     // stageId e pipelineId são resolvidos pelo motor via lazy-load do deal
     after(() => evaluateAutomations({
+      subjectKind: 'deal',
       orgId: ctx.orgId,
       triggerType: 'ACTIVITY_CREATED',
       dealId: data.dealId,

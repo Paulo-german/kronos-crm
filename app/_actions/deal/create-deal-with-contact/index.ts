@@ -87,10 +87,11 @@ export const createDealWithContact = orgActionClient
 
     // 5. Operação no banco
     let deal: { id: string }
+    let newContactId: string | null = null
 
     if (data.contactMode === 'new') {
       // Transação atômica: se qualquer operação falhar, NADA é persistido
-      deal = await db.$transaction(async (tx) => {
+      const result = await db.$transaction(async (tx) => {
         const newContact = await tx.contact.create({
           data: {
             organizationId: ctx.orgId,
@@ -102,7 +103,7 @@ export const createDealWithContact = orgActionClient
           },
         })
 
-        return tx.deal.create({
+        const newDeal = await tx.deal.create({
           data: {
             organizationId: ctx.orgId,
             title: data.title,
@@ -120,7 +121,12 @@ export const createDealWithContact = orgActionClient
             },
           },
         })
+
+        return { deal: newDeal, contactId: newContact.id }
       })
+
+      deal = result.deal
+      newContactId = result.contactId
     } else {
       // Modo "existing": cria deal com ou sem contato, igual ao createDeal original
       deal = await db.deal.create({
@@ -178,6 +184,7 @@ export const createDealWithContact = orgActionClient
     // Automações rodam depois da resposta mas dentro do contexto do request,
     // para que revalidateTag/revalidatePath dos executores funcionem corretamente
     after(() => evaluateAutomations({
+      subjectKind: 'deal',
       orgId: ctx.orgId,
       triggerType: 'DEAL_CREATED',
       dealId: deal.id,
@@ -187,6 +194,18 @@ export const createDealWithContact = orgActionClient
         assignedTo,
       },
     }))
+
+    // Dispara CONTACT_CREATED para o contato criado inline — o contato é novo
+    // e deve participar do motor de automações como qualquer outro contato criado
+    if (newContactId) {
+      after(() => evaluateAutomations({
+        subjectKind: 'contact',
+        orgId: ctx.orgId,
+        triggerType: 'CONTACT_CREATED',
+        contactId: newContactId,
+        payload: { lifecycleStage: 'LEAD', assignedTo },
+      }))
+    }
 
     after(async () => {
       const org = await db.organization.findUnique({

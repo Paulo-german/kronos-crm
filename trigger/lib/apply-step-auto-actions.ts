@@ -159,6 +159,7 @@ async function moveDeal(params: {
 
   await safeBestEffort(
     () => evaluateAutomations({
+      subjectKind: 'deal',
       orgId: organizationId,
       triggerType: 'DEAL_MOVED',
       dealId,

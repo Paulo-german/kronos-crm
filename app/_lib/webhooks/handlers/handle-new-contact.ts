@@ -1,3 +1,5 @@
+import 'server-only'
+import { CaptureChannel } from '@prisma/client'
 import { db } from '@/_lib/prisma'
 import { resolveSquadMember } from '@/_lib/distribution/resolve-squad-member'
 import { resolveCompanyId } from './resolve-company-id'
@@ -11,6 +13,7 @@ interface HandlerInput {
 interface ProcessResult {
   status: 'PROCESSED' | 'IGNORED' | 'ERROR'
   contactId?: string
+  created?: boolean
   errorMessage?: string
 }
 
@@ -67,10 +70,10 @@ export async function handleNewContact({
           ...(companyId ? { companyId } : {}),
         },
       })
-      return { status: 'PROCESSED', contactId: existing.id }
+      return { status: 'PROCESSED', contactId: existing.id, created: false }
     }
 
-    const created = await db.contact.create({
+    const newContact = await db.contact.create({
       data: {
         organizationId: orgId,
         email,
@@ -79,10 +82,12 @@ export async function handleNewContact({
         cpf,
         companyId,
         assignedTo: assignedUserId,
+        firstCaptureChannel: CaptureChannel.API,
+        lastCaptureChannel: CaptureChannel.API,
       },
       select: { id: true },
     })
-    return { status: 'PROCESSED', contactId: created.id }
+    return { status: 'PROCESSED', contactId: newContact.id, created: true }
   }
 
   // Sem email mas com phone — cria sempre (não há identidade estável sem email)
@@ -94,8 +99,10 @@ export async function handleNewContact({
       cpf,
       companyId,
       assignedTo: assignedUserId,
+      firstCaptureChannel: CaptureChannel.API,
+      lastCaptureChannel: CaptureChannel.API,
     },
     select: { id: true },
   })
-  return { status: 'PROCESSED', contactId: contact.id }
+  return { status: 'PROCESSED', contactId: contact.id, created: true }
 }

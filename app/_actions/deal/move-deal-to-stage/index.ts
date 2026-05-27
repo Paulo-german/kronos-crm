@@ -81,6 +81,7 @@ export const moveDealToStage = orgActionClient
     // Automações rodam depois da resposta mas dentro do contexto do request,
     // para que revalidateTag/revalidatePath dos executores funcionem corretamente
     after(() => evaluateAutomations({
+      subjectKind: 'deal',
       orgId: ctx.orgId,
       triggerType: 'DEAL_MOVED',
       dealId: data.dealId,
