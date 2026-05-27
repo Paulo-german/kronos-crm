@@ -5,7 +5,6 @@ import { getOrgPipelines } from '@/_data-access/pipeline/get-org-pipelines'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 import { createDefaultPipeline } from '@/_data-access/pipeline/create-default-pipeline'
-import { getTutorialCompletions } from '@/_data-access/tutorial/get-tutorial-completions'
 import { parseDealListParams } from './_lib/deal-list-params'
 import { DealsListClient } from './_components/deals-list-client'
 
@@ -36,11 +35,10 @@ const DealsListPage = async ({ params, searchParams }: DealsListPageProps) => {
     pipelineId: pipelineRaw ? (listParams.pipelineId ?? pipeline.id) : undefined,
   }
 
-  const [result, members, quota, completedTutorialIds] = await Promise.all([
+  const [result, members, quota] = await Promise.all([
     getDealsPaginated(ctx, effectiveParams),
     getOrganizationMembers(ctx.orgId),
     checkPlanQuota(ctx.orgId, 'deal'),
-    getTutorialCompletions(ctx.userId, ctx.orgId),
   ])
 
   return (
@@ -59,7 +57,6 @@ const DealsListPage = async ({ params, searchParams }: DealsListPageProps) => {
       userRole={ctx.userRole}
       withinQuota={quota.withinQuota}
       orgSlug={orgSlug}
-      isTutorialCompleted={completedTutorialIds.includes('pipeline')}
     />
   )
 }

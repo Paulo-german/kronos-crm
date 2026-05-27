@@ -15,7 +15,6 @@ import { DealFilterBadges } from './deal-filter-badges'
 import { ViewToggle } from '../../_components/view-toggle'
 import { PipelineSelector } from '../../_components/pipeline-selector'
 import { PipelineSettingsButton } from '../../_components/pipeline-settings-button'
-import { TutorialTriggerButton } from '@/_components/tutorials/tutorial-trigger-button'
 import CreateDealButton from '../../_components/create-deal-button'
 import { ExportDealsButton } from './export-deals-button'
 import { DEAL_SORT_OPTIONS } from '../_lib/deal-list-params'
@@ -50,7 +49,6 @@ interface DealsToolbarProps {
   onAssignedToChange: (value: string | null) => void
   search: string
   onSearchChange: (value: string | null) => void
-  isTutorialCompleted: boolean
 }
 
 export function DealsToolbar({
@@ -74,7 +72,6 @@ export function DealsToolbar({
   onAssignedToChange,
   search,
   onSearchChange,
-  isTutorialCompleted,
 }: DealsToolbarProps) {
   const isMember = userRole === 'MEMBER'
   const isElevated = userRole === 'ADMIN' || userRole === 'OWNER' || userRole === 'SUPPORT'
@@ -201,11 +198,6 @@ export function DealsToolbar({
 
         <div className="ml-auto flex items-center gap-2">
           <ViewToggle activeView="list" />
-
-          <TutorialTriggerButton
-            tutorialId="pipeline"
-            isCompleted={isTutorialCompleted}
-          />
 
           {isElevated && (
             <PipelineSettingsButton pipeline={pipeline} />

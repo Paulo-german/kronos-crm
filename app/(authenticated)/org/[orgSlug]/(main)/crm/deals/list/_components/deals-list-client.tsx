@@ -36,7 +36,6 @@ interface DealsListClientProps {
   userRole: MemberRole
   withinQuota: boolean
   orgSlug: string
-  isTutorialCompleted: boolean
 }
 
 export function DealsListClient({
@@ -54,7 +53,6 @@ export function DealsListClient({
   userRole,
   withinQuota,
   orgSlug,
-  isTutorialCompleted,
 }: DealsListClientProps) {
   const {
     filters,
@@ -184,7 +182,6 @@ export function DealsListClient({
           onAssignedToChange={setAssignedTo}
           search={search}
           onSearchChange={setSearch}
-          isTutorialCompleted={isTutorialCompleted}
         />
 
         {showEmptyState ? (

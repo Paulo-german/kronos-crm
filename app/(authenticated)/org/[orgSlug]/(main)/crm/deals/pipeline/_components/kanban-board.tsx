@@ -68,7 +68,6 @@ interface KanbanBoardProps {
   viewToggle: React.ReactNode
   pipelineSelector?: React.ReactNode
   refreshButton?: React.ReactNode
-  tutorialButton?: React.ReactNode
   settingsButton: React.ReactNode
   createButton: React.ReactNode
   filtersSheet: React.ReactNode
@@ -105,7 +104,6 @@ export function KanbanBoard({
   viewToggle,
   pipelineSelector,
   refreshButton,
-  tutorialButton,
   settingsButton,
   createButton,
   filtersSheet,
@@ -405,7 +403,6 @@ export function KanbanBoard({
         {viewToggle}
         <div className="flex-1" />
         {refreshButton}
-        {tutorialButton}
         {settingsButton}
         {createButton}
       </div>

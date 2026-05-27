@@ -28,7 +28,6 @@ const PipelinePage = async ({ params, searchParams }: PipelinePageProps) => {
   const finalPipeline =
     pipeline || (await createDefaultPipeline({ orgId: ctx.orgId }))
 
-  // Busca deals, membros e tutoriais em paralelo (com contexto RBAC)
   const [dealsByStage, orgMembers, completedTutorialIds] = await Promise.all([
     finalPipeline
       ? getDealsByPipeline(
@@ -55,7 +54,6 @@ const PipelinePage = async ({ params, searchParams }: PipelinePageProps) => {
           members={members}
           currentUserId={ctx.userId}
           userRole={ctx.userRole}
-          isPipelineTutorialCompleted={completedTutorialIds.includes('pipeline')}
         />
       </div>
       <PipelineIntroTrigger

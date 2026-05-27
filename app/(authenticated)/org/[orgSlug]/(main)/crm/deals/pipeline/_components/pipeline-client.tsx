@@ -24,7 +24,6 @@ import type { MemberRole } from '@prisma/client'
 import { Settings2Icon } from 'lucide-react'
 import { PageTourTrigger } from '@/_components/onboarding/page-tour-trigger'
 import { DEALS_TOUR_STEPS } from '@/_lib/onboarding/tours/deals-tour'
-import { TutorialTriggerButton } from '@/_components/tutorials/tutorial-trigger-button'
 import { PipelineSelector } from '../../_components/pipeline-selector'
 import { RefreshPipelineButton } from './refresh-pipeline-button'
 
@@ -41,7 +40,6 @@ interface PipelineClientProps {
   members: MemberOption[]
   currentUserId: string
   userRole: MemberRole
-  isPipelineTutorialCompleted: boolean
 }
 
 interface DealDialogState {
@@ -57,7 +55,6 @@ export const PipelineClient = ({
   members,
   currentUserId,
   userRole,
-  isPipelineTutorialCompleted,
 }: PipelineClientProps) => {
   const router = useRouter()
   const params = useParams<{ orgSlug: string }>()
@@ -133,12 +130,6 @@ export const PipelineClient = ({
           />
         }
         refreshButton={<RefreshPipelineButton />}
-        tutorialButton={
-          <TutorialTriggerButton
-            tutorialId="pipeline"
-            isCompleted={isPipelineTutorialCompleted}
-          />
-        }
         settingsButton={
           canManagePipeline ? (
             <Button
