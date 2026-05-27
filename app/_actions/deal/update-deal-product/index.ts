@@ -73,6 +73,7 @@ export const updateDealProduct = orgActionClient
     revalidateTag(`deal:${dealProduct.dealId}`)
     revalidateTag(`dashboard:${ctx.orgId}`)
     revalidatePath('/crm/deals/pipeline')
+    revalidatePath(`/crm/deals/${dealProduct.dealId}`)
 
     return { success: true, dealProductId: updated.id }
   })
