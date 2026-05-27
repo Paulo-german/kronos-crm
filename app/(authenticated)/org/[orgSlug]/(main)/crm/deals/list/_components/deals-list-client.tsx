@@ -160,16 +160,6 @@ export function DealsListClient({
     )
     .map((member) => ({ userId: member.userId, name: member.user!.fullName! }))
 
-  if (showEmptyState) {
-    return (
-      <DealsEmptyState
-        stages={stages}
-        members={dealMembers}
-        withinQuota={withinQuota}
-      />
-    )
-  }
-
   return (
     <>
       <div className="flex flex-col gap-4">
@@ -197,22 +187,32 @@ export function DealsListClient({
           isTutorialCompleted={isTutorialCompleted}
         />
 
-        <DealsDataTable
-          deals={deals}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          onBulkDelete={handleBulkDelete}
-          orgSlug={orgSlug}
-        />
+        {showEmptyState ? (
+          <DealsEmptyState
+            stages={stages}
+            members={dealMembers}
+            withinQuota={withinQuota}
+          />
+        ) : (
+          <>
+            <DealsDataTable
+              deals={deals}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onBulkDelete={handleBulkDelete}
+              orgSlug={orgSlug}
+            />
 
-        <DealsPagination
-          page={page}
-          pageSize={pageSize}
-          total={total}
-          totalPages={totalPages}
-          onPageChange={setPage}
-          onPageSizeChange={setPageSize}
-        />
+            <DealsPagination
+              page={page}
+              pageSize={pageSize}
+              total={total}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
+          </>
+        )}
       </div>
 
       {/* Sheet de edição — estado elevado para sobreviver a re-renders */}

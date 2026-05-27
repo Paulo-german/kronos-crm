@@ -22,7 +22,7 @@ export function DealsEmptyState({
   const [isOpen, setIsOpen] = useState(false)
 
   return (
-    <div className="flex h-[60vh] flex-col items-center justify-center gap-6 px-4">
+    <div className="flex h-[50vh] flex-col items-center justify-center gap-6 px-4">
       <div className="relative">
         <div className="absolute inset-0 animate-pulse rounded-full bg-primary/20 blur-2xl" />
         <div className="relative flex size-20 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/25">
