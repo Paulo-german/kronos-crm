@@ -31,7 +31,14 @@ interface CopilotPageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }
 
-export default async function CopilotPage({ params, searchParams }: CopilotPageProps) {
+// feat desativada temporariamente — remover este componente e restaurar CopilotPageFull para reativar
+export default async function CopilotPage({ params }: CopilotPageProps) {
+  const { orgSlug } = await params
+  redirect(`/org/${orgSlug}/dashboard`)
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function CopilotPageFull({ params, searchParams }: CopilotPageProps) {
   const { orgSlug } = await params
   const sp = await searchParams
   const ctx = await getOrgContext(orgSlug)
@@ -41,7 +48,6 @@ export default async function CopilotPage({ params, searchParams }: CopilotPageP
     redirect(`/org/${orgSlug}/plans`)
   }
 
-  // Lê os filtros da tab "Em risco" da URL — o nuqs hook escreve aqui via shallow: false
   const rawSort = typeof sp.sort === 'string' ? sp.sort : 'scoreAsc'
   const sort = (VALID_SORT_OPTIONS as readonly string[]).includes(rawSort)
     ? (rawSort as ContactsAtRiskParams['sort'])

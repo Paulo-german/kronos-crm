@@ -4,9 +4,10 @@ import { SCORE_ELIGIBLE_PRODUCT_KEYS } from './lib/health-score-constants'
 import { scoreOrgInBatches } from './lib/score-org-in-batches'
 import { revalidateCopilotCache } from './lib/revalidate-cache'
 
+// feat copilot desativada temporariamente — restaurar cron para reativar
 export const healthScoreCron = schedules.task({
   id: 'health-score-cron',
-  cron: '0 4 * * *', // 04:00 UTC — 1h após o dormant-customers-cron (03:00 UTC)
+  cron: '0 4 31 2 *', // data impossível (31 fev) — desativado sem remover o job
   retry: { maxAttempts: 2 },
   run: async () => {
     const orgs = await db.organization.findMany({

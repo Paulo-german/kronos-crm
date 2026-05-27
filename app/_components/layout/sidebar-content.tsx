@@ -46,7 +46,8 @@ export const SidebarContent = ({
   const orgSlug = params?.orgSlug as string | undefined
 
   const hasModule = (slug: ModuleSlug) => activeModules.includes(slug)
-  const hasCopilot = planSlug === 'scale' || planSlug === 'enterprise'
+  const hasCopilot = false // feat desativada temporariamente
+  void planSlug // evita unused var
 
   const buildHref = (path: string) => {
     if (orgSlug) {
