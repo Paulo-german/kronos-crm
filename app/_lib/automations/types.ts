@@ -151,8 +151,16 @@ export interface UpdateContactLifecycleConfig {
 
 export interface SendWhatsappFollowupConfig {
   inboxId: string
-  messageTemplate: string
   noConversationBehavior: 'create' | 'skip'
+  // Modo selfhosted
+  messageTemplate?: string
+  // Modo Meta Cloud
+  metaTemplateName?: string
+  metaTemplateLanguage?: string
+  /** Valores posicionais das variáveis do body: índice 0 = {{1}} */
+  metaBodyParams?: string[]
+  /** Valores posicionais das variáveis do header: índice 0 = {{1}} */
+  metaHeaderParams?: string[]
 }
 
 export type CreateTaskAssignStrategy = 'deal_assignee' | 'specific_user'

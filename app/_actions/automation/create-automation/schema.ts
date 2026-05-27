@@ -116,14 +116,41 @@ export const updateDealPriorityConfigSchema = z.object({
 
 export const SENTINEL_DEAL_INBOX = 'deal_inbox' as const
 
-export const sendWhatsappFollowupConfigSchema = z.object({
-  inboxId: z.union([
-    z.literal(SENTINEL_DEAL_INBOX),
-    z.string().uuid('ID do inbox inválido'),
-  ]),
-  messageTemplate: z.string().trim().min(1, 'Mensagem é obrigatória').max(1000, 'Máximo de 1000 caracteres'),
-  noConversationBehavior: z.enum(['create', 'skip'], { message: 'Comportamento inválido' }),
-})
+export const sendWhatsappFollowupConfigSchema = z
+  .object({
+    inboxId: z.union([
+      z.literal(SENTINEL_DEAL_INBOX),
+      z.string().uuid('ID do inbox inválido'),
+    ]),
+    noConversationBehavior: z.enum(['create', 'skip'], { message: 'Comportamento inválido' }),
+    // Modo selfhosted: texto livre com placeholders CRM
+    messageTemplate: z.string().trim().max(1000, 'Máximo de 1000 caracteres').optional(),
+    // Modo Meta Cloud: template pré-aprovado com variáveis posicionais
+    metaTemplateName: z.string().trim().optional(),
+    metaTemplateLanguage: z.string().trim().optional(),
+    metaBodyParams: z.array(z.string()).optional(),
+    metaHeaderParams: z.array(z.string()).optional(),
+  })
+  .superRefine((data, ctx) => {
+    const isMeta = !!data.metaTemplateName
+    if (isMeta) {
+      if (!data.metaTemplateLanguage) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['metaTemplateLanguage'],
+          message: 'Idioma do template é obrigatório',
+        })
+      }
+    } else {
+      if (!data.messageTemplate || data.messageTemplate.trim().length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['messageTemplate'],
+          message: 'Mensagem é obrigatória',
+        })
+      }
+    }
+  })
 
 export const updateContactLifecycleConfigSchema = z.object({
   targetStage: z.nativeEnum(LifecycleStage),

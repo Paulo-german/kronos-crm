@@ -23,18 +23,21 @@ import { Label } from '@/_components/ui/label'
 import { ACTION_LABELS, REASSIGN_STRATEGY_LABELS, NOTIFY_TARGET_LABELS, PRIORITY_OPTIONS, LIFECYCLE_STAGE_OPTIONS, TASK_ACTION_TYPE_OPTIONS, TASK_ASSIGN_OPTIONS, CONTACT_TRIGGER_SET } from './automation-labels'
 import { Badge } from '@/_components/ui/badge'
 import { cn } from '@/_lib/utils'
-import { UserPlus, ArrowRight, XCircle, Bell, AlertTriangle, MessageCircle, UserCheck, Braces, ListChecks } from 'lucide-react'
-import React, { useRef } from 'react'
+import { UserPlus, ArrowRight, XCircle, Bell, AlertTriangle, MessageCircle, UserCheck, Braces, ListChecks, Loader2, CheckCircle2 } from 'lucide-react'
+import React, { useRef, useState, useEffect, useCallback } from 'react'
+import { toast } from 'sonner'
 import type { AutomationTrigger } from '@prisma/client'
 import type { AutomationFormValues } from './wizard-form-types'
 import type { PipelineStageOption } from '@/_data-access/pipeline/get-pipeline-stages'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import type { DealLostReasonDto } from '@/_data-access/settings/get-lost-reasons'
 import type { WhatsappInboxOption } from '@/_data-access/inbox/get-whatsapp-inboxes-for-automation'
+import type { MetaTemplate } from '@/_lib/meta/types'
 import { SENTINEL_DEAL_INBOX } from '@/_actions/automation/create-automation/schema'
 import { Separator } from '@/_components/ui/separator'
 import { Checkbox } from '@/_components/ui/checkbox'
 import { SelectSeparator } from '@/_components/ui/select'
+import { extractVariableIndices, renderWithVariables } from '@/_lib/meta/template-variables'
 
 const ACTION_ICONS: Record<AutomationAction, React.ElementType> = {
   REASSIGN_DEAL: UserPlus,
@@ -113,6 +116,41 @@ interface WizardStepActionProps {
   showConfigErrors?: boolean
 }
 
+// ---------------------------------------------------------------------------
+// Helpers de preview de template Meta
+// ---------------------------------------------------------------------------
+
+interface MetaTemplatePreviewProps {
+  template: MetaTemplate
+  bodyValues: string[]
+  headerValues: string[]
+}
+
+function MetaTemplatePreview({ template, bodyValues, headerValues }: MetaTemplatePreviewProps) {
+  const bodyComp = template.components.find((c) => c.type === 'BODY')
+  const headerComp = template.components.find((c) => c.type === 'HEADER' && c.format === 'TEXT')
+  const footerComp = template.components.find((c) => c.type === 'FOOTER')
+
+  const previewBody = bodyComp?.text ? renderWithVariables(bodyComp.text, bodyValues) : ''
+  const previewHeader = headerComp?.text ? renderWithVariables(headerComp.text, headerValues) : ''
+  const footerText = footerComp?.text ?? ''
+
+  return (
+    <div className="rounded-xl p-3" style={{ background: 'linear-gradient(135deg, #e5ddd5 0%, #dcd5cc 100%)' }}>
+      <div className="ml-auto max-w-[90%]">
+        <div className="relative rounded-2xl rounded-tr-sm px-3 pb-2 pt-2.5 shadow-sm" style={{ backgroundColor: '#dcf8c6' }}>
+          {previewHeader && <p className="mb-1.5 text-sm font-bold text-gray-800">{previewHeader}</p>}
+          {previewBody && <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-800">{previewBody}</p>}
+          {footerText && <p className="mt-1.5 text-xs text-gray-500">{footerText}</p>}
+          <div className="mt-1 flex justify-end">
+            <span className="text-[10px] text-gray-500">preview</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function WizardStepAction({ stageOptions, members, lossReasons, whatsappInboxes, showConfigErrors = false }: WizardStepActionProps) {
   const form = useFormContext<AutomationFormValues>()
   const actionType = form.watch('actionType')
@@ -124,11 +162,15 @@ export function WizardStepAction({ stageOptions, members, lossReasons, whatsappI
     ? Object.values(AutomationAction).filter((action) => CONTACT_AVAILABLE_ACTIONS.has(action))
     : Object.values(AutomationAction)
 
+  // Estado de templates Meta para o select de follow-up
+  const [metaTemplates, setMetaTemplates] = useState<MetaTemplate[]>([])
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(false)
+
   const handleActionChange = (value: AutomationAction) => {
     form.setValue('actionType', value)
     form.setValue('actionConfig', {})
-    // Limpa os erros de config ao trocar de ação
     form.clearErrors('actionConfig')
+    setMetaTemplates([])
   }
 
   const setActionConfigValue = (key: string, value: unknown) => {
@@ -158,6 +200,43 @@ export function WizardStepAction({ stageOptions, members, lossReasons, whatsappI
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const followupTextareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Detecta se inbox selecionado é Meta Cloud
+  const selectedInboxId = getConfigString('inboxId')
+  const selectedInbox = whatsappInboxes.find((inbox) => inbox.id === selectedInboxId)
+  const isMetaInbox = selectedInbox?.connectionType === 'META_CLOUD'
+
+  // Carrega templates quando um inbox Meta é selecionado
+  const loadMetaTemplates = useCallback(async (inboxId: string) => {
+    setIsLoadingTemplates(true)
+    try {
+      const response = await fetch(`/api/inbox/templates?inboxId=${inboxId}`)
+      if (!response.ok) throw new Error('Falha ao carregar templates')
+      const data = (await response.json()) as { templates: MetaTemplate[] }
+      // A rota já filtra APPROVED server-side — usa direto
+      setMetaTemplates(data.templates)
+    } catch {
+      toast.error('Erro ao carregar templates Meta. Tente novamente.')
+    } finally {
+      setIsLoadingTemplates(false)
+    }
+  }, [])
+
+  // Sincronização com API externa (Meta Graph API) ao selecionar inbox Meta
+  useEffect(() => {
+    if (isMetaInbox && selectedInboxId && selectedInboxId !== SENTINEL_DEAL_INBOX) {
+      loadMetaTemplates(selectedInboxId)
+    } else {
+      setMetaTemplates([])
+    }
+  }, [isMetaInbox, selectedInboxId, loadMetaTemplates])
+
+  // Estado derivado: template selecionado a partir do actionConfig + templates carregados
+  const metaTemplateName = getConfigString('metaTemplateName')
+  const metaTemplateLanguage = getConfigString('metaTemplateLanguage')
+  const selectedMetaTemplate = metaTemplateName && metaTemplateLanguage
+    ? (metaTemplates.find((t) => t.name === metaTemplateName && t.language === metaTemplateLanguage) ?? null)
+    : null
 
   const insertVariable = (token: string) => {
     const textarea = textareaRef.current
@@ -562,11 +641,14 @@ export function WizardStepAction({ stageOptions, members, lossReasons, whatsappI
           className="space-y-4 rounded-md border bg-muted/30 p-4"
           data-error={(() => {
             if (!showConfigErrors) return undefined
-            const isSentinel = getConfigString('inboxId') === SENTINEL_DEAL_INBOX
+            const inboxId = getConfigString('inboxId')
+            const isSentinel = inboxId === SENTINEL_DEAL_INBOX
             const missingBehavior = !isSentinel && !getConfigString('noConversationBehavior')
-            return (!getConfigString('inboxId') || !getConfigString('messageTemplate') || missingBehavior)
-              ? 'true'
-              : undefined
+            const isMeta = whatsappInboxes.find((i) => i.id === inboxId)?.connectionType === 'META_CLOUD'
+            if (isMeta) {
+              return (!inboxId || !getConfigString('metaTemplateName') || missingBehavior) ? 'true' : undefined
+            }
+            return (!inboxId || !getConfigString('messageTemplate') || missingBehavior) ? 'true' : undefined
           })()}
         >
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -582,13 +664,19 @@ export function WizardStepAction({ stageOptions, members, lossReasons, whatsappI
                   <Label>Inbox para envio *</Label>
                   <p className="text-xs text-muted-foreground">
                     {isContactKind
-                      ? 'Apenas inboxes selfhosted (Evolution JS/GO e Z-API) são suportados para este trigger. Inboxes internos da Kronos e API Oficial (Meta) não estão disponíveis.'
-                      : 'Apenas inboxes Evolution e Z-API são suportados. A API Oficial (Meta) exige templates pré-aprovados — em breve.'}
+                      ? 'Inboxes selfhosted (Evolution JS/GO e Z-API) enviam texto livre. API Oficial (Meta) exige um template pré-aprovado. Inboxes internos da Kronos não estão disponíveis.'
+                      : 'Inboxes Evolution e Z-API enviam texto livre. API Oficial (Meta) exige um template pré-aprovado.'}
                   </p>
                   <Select
                     value={getConfigString('inboxId')}
                     onValueChange={(val) => {
                       setActionConfigValue('inboxId', val)
+                      // Limpa campos de template ao trocar de inbox
+                      setActionConfigValue('metaTemplateName', undefined)
+                      setActionConfigValue('metaTemplateLanguage', undefined)
+                      setActionConfigValue('metaBodyParams', undefined)
+                      setActionConfigValue('metaHeaderParams', undefined)
+                      setActionConfigValue('messageTemplate', undefined)
                       form.clearErrors('actionConfig')
                     }}
                   >
@@ -607,10 +695,10 @@ export function WizardStepAction({ stageOptions, members, lossReasons, whatsappI
                       </SelectItem>
                       {whatsappInboxes.length > 0 && <SelectSeparator />}
                       {whatsappInboxes.map((inbox) => {
-                        const isMeta = inbox.connectionType === 'META_CLOUD'
-                        const isKronosInternal = isContactKind && inbox.connectionType === 'EVOLUTION'
+                        const isKronosInternal = inbox.connectionType === 'EVOLUTION'
                         const isInactive = !inbox.isActive
-                        const isDisabled = isMeta || isKronosInternal || isInactive
+                        const isDisabled = isKronosInternal || isInactive
+                        const isMeta = inbox.connectionType === 'META_CLOUD'
                         return (
                           <SelectItem
                             key={inbox.id}
@@ -620,9 +708,9 @@ export function WizardStepAction({ stageOptions, members, lossReasons, whatsappI
                           >
                             <span className="flex items-center gap-2">
                               {inbox.name}
-                              {isMeta && (
+                              {isMeta && !isDisabled && (
                                 <Badge variant="outline" className="text-[10px] px-1 py-0">
-                                  API Oficial — em breve
+                                  API Oficial
                                 </Badge>
                               )}
                               {isKronosInternal && (
@@ -630,7 +718,7 @@ export function WizardStepAction({ stageOptions, members, lossReasons, whatsappI
                                   Apenas selfhosted
                                 </Badge>
                               )}
-                              {isInactive && !isMeta && !isKronosInternal && (
+                              {isInactive && !isKronosInternal && (
                                 <Badge variant="outline" className="text-[10px] px-1 py-0">
                                   Inativo
                                 </Badge>
@@ -708,43 +796,201 @@ export function WizardStepAction({ stageOptions, members, lossReasons, whatsappI
 
           <Separator />
 
-          {/* Template de mensagem */}
-          <div className="space-y-2">
-            <Label>Mensagem *</Label>
-            <VariableInserter onInsert={insertFollowupVariable} isContactKind={isContactKind} />
-            <Textarea
-              ref={followupTextareaRef}
-              placeholder={isContactKind
-                ? 'Ex: Olá {{contact.firstName}}, seja bem-vindo! Como posso ajudar?'
-                : 'Ex: Olá {{contact.firstName}}, tudo bem? Queria retomar a conversa sobre {{deal.title}}.'}
-
-              className={`resize-none ${showConfigErrors && !getConfigString('messageTemplate') ? 'border-destructive' : ''}`}
-              rows={4}
-              maxLength={1000}
-              value={getConfigString('messageTemplate')}
-              onChange={(event) => {
-                setActionConfigValue('messageTemplate', event.target.value)
-                form.clearErrors('actionConfig')
-              }}
-            />
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-destructive">
-                {showConfigErrors && !getConfigString('messageTemplate') ? 'Digite a mensagem' : ''}
-              </span>
-              <span
-                className={cn(
-                  'text-xs tabular-nums',
-                  getConfigString('messageTemplate').length > 1000
-                    ? 'text-destructive'
-                    : getConfigString('messageTemplate').length > 900
-                      ? 'text-amber-600'
-                      : 'text-muted-foreground',
+          {/* Conteúdo da mensagem: Meta = seletor de template / selfhosted = textarea */}
+          {isMetaInbox && selectedInboxId !== SENTINEL_DEAL_INBOX ? (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Template *</Label>
+                <p className="text-xs text-muted-foreground">
+                  Selecione um template aprovado pelo Meta. Apenas templates com status APPROVED podem ser enviados.
+                </p>
+                {isLoadingTemplates ? (
+                  <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Carregando templates...
+                  </div>
+                ) : metaTemplates.length === 0 ? (
+                  <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+                    Nenhum template aprovado encontrado para este inbox. Crie e aprove templates nas configurações do inbox.
+                  </div>
+                ) : (
+                  <Select
+                    value={getConfigString('metaTemplateName') ? `${getConfigString('metaTemplateName')}::${getConfigString('metaTemplateLanguage')}` : ''}
+                    onValueChange={(val) => {
+                      const [name, language] = val.split('::')
+                      const template = metaTemplates.find((t) => t.name === name && t.language === language)
+                      setActionConfigValue('metaTemplateName', name)
+                      setActionConfigValue('metaTemplateLanguage', language)
+                      // Inicializa arrays de params com strings vazias para cada variável do template
+                      if (template) {
+                        const bodyComp = template.components.find((c) => c.type === 'BODY')
+                        const headerComp = template.components.find((c) => c.type === 'HEADER' && c.format === 'TEXT')
+                        const bodyVars = bodyComp?.text ? extractVariableIndices(bodyComp.text) : []
+                        const headerVars = headerComp?.text ? extractVariableIndices(headerComp.text) : []
+                        const bodySize = bodyVars.length > 0 ? Math.max(...bodyVars) : 0
+                        const headerSize = headerVars.length > 0 ? Math.max(...headerVars) : 0
+                        setActionConfigValue('metaBodyParams', new Array(bodySize).fill(''))
+                        setActionConfigValue('metaHeaderParams', new Array(headerSize).fill(''))
+                      }
+                      form.clearErrors('actionConfig')
+                    }}
+                  >
+                    <SelectTrigger className={showConfigErrors && !getConfigString('metaTemplateName') ? 'border-destructive' : ''}>
+                      <SelectValue placeholder="Selecione o template" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {metaTemplates.map((template) => (
+                        <SelectItem key={`${template.name}::${template.language}`} value={`${template.name}::${template.language}`}>
+                          <span className="flex items-center gap-2">
+                            <CheckCircle2 className="h-3 w-3 text-kronos-green shrink-0" />
+                            <span className="font-mono text-sm">{template.name}</span>
+                            <Badge variant="outline" className="text-[10px] px-1 py-0 font-mono">{template.language}</Badge>
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 )}
-              >
-                {getConfigString('messageTemplate').length}/1000
-              </span>
+                {showConfigErrors && !getConfigString('metaTemplateName') && (
+                  <p className="text-sm text-destructive">Selecione o template</p>
+                )}
+              </div>
+
+              {/* Variáveis do template selecionado */}
+              {selectedMetaTemplate && (() => {
+                const bodyComp = selectedMetaTemplate.components.find((c) => c.type === 'BODY')
+                const headerComp = selectedMetaTemplate.components.find((c) => c.type === 'HEADER' && c.format === 'TEXT')
+                const bodyVarIndices = bodyComp?.text ? extractVariableIndices(bodyComp.text) : []
+                const headerVarIndices = headerComp?.text ? extractVariableIndices(headerComp.text) : []
+                const hasVars = bodyVarIndices.length > 0 || headerVarIndices.length > 0
+
+                if (!hasVars) return null
+
+                const bodyParams = getConfigArray('metaBodyParams')
+                const headerParams = getConfigArray('metaHeaderParams')
+
+                const updateBodyParam = (varIndex: number, token: string) => {
+                  const updated = [...bodyParams]
+                  updated[varIndex - 1] = (updated[varIndex - 1] ?? '') + token
+                  setActionConfigValue('metaBodyParams', updated)
+                }
+
+                const updateHeaderParam = (varIndex: number, token: string) => {
+                  const updated = [...headerParams]
+                  updated[varIndex - 1] = (updated[varIndex - 1] ?? '') + token
+                  setActionConfigValue('metaHeaderParams', updated)
+                }
+
+                return (
+                  <div className="space-y-4">
+                    <Separator />
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      Variáveis do template
+                    </p>
+
+                    {headerVarIndices.length > 0 && (
+                      <div className="space-y-3">
+                        <p className="text-xs font-semibold text-muted-foreground">Cabeçalho</p>
+                        {headerVarIndices.map((varIndex) => (
+                          <div key={`header-${varIndex}`} className="space-y-1.5">
+                            <Label className="text-xs font-mono">{`{{${varIndex}}}`}</Label>
+                            <VariableInserter
+                              onInsert={(token) => updateHeaderParam(varIndex, token)}
+                              isContactKind={isContactKind}
+                            />
+                            <Input
+                              value={headerParams[varIndex - 1] ?? ''}
+                              onChange={(event) => {
+                                const updated = [...headerParams]
+                                updated[varIndex - 1] = event.target.value
+                                setActionConfigValue('metaHeaderParams', updated)
+                                form.clearErrors('actionConfig')
+                              }}
+                              placeholder={`Valor para {{${varIndex}}} — use os chips acima ou digite texto`}
+                              className="h-9 font-mono text-sm"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {bodyVarIndices.length > 0 && (
+                      <div className="space-y-3">
+                        <p className="text-xs font-semibold text-muted-foreground">Corpo</p>
+                        {bodyVarIndices.map((varIndex) => (
+                          <div key={`body-${varIndex}`} className="space-y-1.5">
+                            <Label className="text-xs font-mono">{`{{${varIndex}}}`}</Label>
+                            <VariableInserter
+                              onInsert={(token) => updateBodyParam(varIndex, token)}
+                              isContactKind={isContactKind}
+                            />
+                            <Input
+                              value={bodyParams[varIndex - 1] ?? ''}
+                              onChange={(event) => {
+                                const updated = [...bodyParams]
+                                updated[varIndex - 1] = event.target.value
+                                setActionConfigValue('metaBodyParams', updated)
+                                form.clearErrors('actionConfig')
+                              }}
+                              placeholder={`Valor para {{${varIndex}}} — use os chips acima ou digite texto`}
+                              className="h-9 font-mono text-sm"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Preview em tempo real */}
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Preview</p>
+                      <MetaTemplatePreview
+                        template={selectedMetaTemplate}
+                        bodyValues={bodyParams}
+                        headerValues={headerParams}
+                      />
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
-          </div>
+          ) : (
+            /* Modo selfhosted: textarea de texto livre */
+            <div className="space-y-2">
+              <Label>Mensagem *</Label>
+              <VariableInserter onInsert={insertFollowupVariable} isContactKind={isContactKind} />
+              <Textarea
+                ref={followupTextareaRef}
+                placeholder={isContactKind
+                  ? 'Ex: Olá {{contact.firstName}}, seja bem-vindo! Como posso ajudar?'
+                  : 'Ex: Olá {{contact.firstName}}, tudo bem? Queria retomar a conversa sobre {{deal.title}}.'}
+                className={`resize-none ${showConfigErrors && !getConfigString('messageTemplate') && !isMetaInbox ? 'border-destructive' : ''}`}
+                rows={4}
+                maxLength={1000}
+                value={getConfigString('messageTemplate')}
+                onChange={(event) => {
+                  setActionConfigValue('messageTemplate', event.target.value)
+                  form.clearErrors('actionConfig')
+                }}
+              />
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-destructive">
+                  {showConfigErrors && !getConfigString('messageTemplate') && !isMetaInbox ? 'Digite a mensagem' : ''}
+                </span>
+                <span
+                  className={cn(
+                    'text-xs tabular-nums',
+                    getConfigString('messageTemplate').length > 1000
+                      ? 'text-destructive'
+                      : getConfigString('messageTemplate').length > 900
+                        ? 'text-amber-600'
+                        : 'text-muted-foreground',
+                  )}
+                >
+                  {getConfigString('messageTemplate').length}/1000
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

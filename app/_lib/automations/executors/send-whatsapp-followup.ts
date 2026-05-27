@@ -10,6 +10,7 @@ import { redis } from '@/_lib/redis'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 import { INBOX_SELECT, SENTINEL_DEAL_INBOX, type InboxRow } from './_lib/inbox-select'
 import { executeSendWhatsappFollowupContact } from './send-whatsapp-followup-contact'
+import type { MetaTemplateSendComponent } from '@/_lib/meta/types'
 import type { ExecutorContext, ExecutorResult, SendWhatsappFollowupConfig } from '../types'
 
 // TTL do dedup Redis em segundos — evita reprocessamento do webhook como mensagem do cliente
@@ -73,11 +74,6 @@ async function executeSendWhatsappFollowupDeal(ctx: ExecutorContext): Promise<Ex
     inbox = found
   }
 
-  // Meta Cloud API não suportado nesta ação — requer templates pré-aprovados
-  if (inbox.connectionType === 'META_CLOUD') {
-    return { summary: { skipped: true, reason: 'meta_not_supported' } }
-  }
-
   const [stageRow, assigneeRow] = await Promise.all([
     deal.stageId
       ? db.pipelineStage.findUnique({ where: { id: deal.stageId }, select: { name: true } })
@@ -92,7 +88,7 @@ async function executeSendWhatsappFollowupDeal(ctx: ExecutorContext): Promise<Ex
   const contactFullName = primary.contact.name
   const contactFirstName = contactFullName.split(' ')[0] ?? ''
 
-  const body = resolveTemplate(config.messageTemplate, {
+  const templateVars = {
     deal: {
       title: deal.title,
       stage: stageName,
@@ -103,7 +99,7 @@ async function executeSendWhatsappFollowupDeal(ctx: ExecutorContext): Promise<Ex
     },
     contact: { name: contactFullName, firstName: contactFirstName },
     user: { name: assigneeName },
-  })
+  }
 
   // No modo sentinela a conversa já foi encontrada — evita nova query
   let conversation = preloadedConversation ?? await db.conversation.findFirst({
@@ -136,7 +132,58 @@ async function executeSendWhatsappFollowupDeal(ctx: ExecutorContext): Promise<Ex
   if (!remoteJid) return { summary: { skipped: true, reason: 'missing_remote_jid' } }
 
   const provider = resolveWhatsAppProvider(inbox)
-  const messageIds = await withRetry(() => provider.sendText(remoteJid, body))
+
+  let messageIds: string[]
+  let messageContent: string
+
+  if (inbox.connectionType === 'META_CLOUD') {
+    const { metaTemplateName, metaTemplateLanguage } = config
+    if (!metaTemplateName || !metaTemplateLanguage) {
+      return { summary: { skipped: true, reason: 'meta_template_missing' } }
+    }
+
+    const resolvedBodyParams = (config.metaBodyParams ?? []).map((param) =>
+      resolveTemplate(param, templateVars),
+    )
+    const resolvedHeaderParams = (config.metaHeaderParams ?? []).map((param) =>
+      resolveTemplate(param, templateVars),
+    )
+
+    const components: MetaTemplateSendComponent[] = []
+    if (resolvedHeaderParams.length > 0) {
+      components.push({
+        type: 'header',
+        parameters: resolvedHeaderParams.map((text) => ({ type: 'text', text })),
+      })
+    }
+    if (resolvedBodyParams.length > 0) {
+      components.push({
+        type: 'body',
+        parameters: resolvedBodyParams.map((text) => ({ type: 'text', text })),
+      })
+    }
+
+    const wamid = await withRetry(() =>
+      provider.sendTemplate(
+        remoteJid,
+        metaTemplateName,
+        metaTemplateLanguage,
+        components.length > 0 ? components : undefined,
+      ),
+    )
+    messageIds = [wamid]
+    messageContent =
+      resolvedBodyParams.length > 0
+        ? `[Template: ${metaTemplateName}] ${resolvedBodyParams.join(' | ')}`
+        : `[Template: ${metaTemplateName}]`
+  } else {
+    if (!config.messageTemplate) {
+      return { summary: { skipped: true, reason: 'missing_message_template' } }
+    }
+    const body = resolveTemplate(config.messageTemplate, templateVars)
+    messageIds = await withRetry(() => provider.sendText(remoteJid, body))
+    messageContent = body
+  }
 
   const lastMessageId = messageIds[messageIds.length - 1]
 
@@ -144,7 +191,7 @@ async function executeSendWhatsappFollowupDeal(ctx: ExecutorContext): Promise<Ex
     data: {
       conversationId: conversation.id,
       role: 'assistant',
-      content: body,
+      content: messageContent,
       providerMessageId: lastMessageId,
       deliveryStatus: 'sent',
       // source: 'follow_up' é obrigatório — o contador de quota follow_up_monthly

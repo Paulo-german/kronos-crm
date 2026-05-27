@@ -9,10 +9,15 @@ import { resolveTemplate } from '../template-resolver'
 import { redis } from '@/_lib/redis'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 import { INBOX_SELECT, SENTINEL_DEAL_INBOX, type InboxRow } from './_lib/inbox-select'
+import type { MetaTemplateSendComponent } from '@/_lib/meta/types'
 import type { ExecutorContext, ExecutorResult, SendWhatsappFollowupConfig } from '../types'
 
 // TTL do dedup Redis em segundos — evita reprocessamento do webhook como mensagem do cliente
 const DEDUP_TTL_SECONDS = 300
+
+// EVOLUTION = instância interna da Kronos (sem URL própria, não exposta ao cliente)
+// SIMULATOR = não é um provedor real
+const UNSUPPORTED_PROVIDERS = new Set(['EVOLUTION', 'SIMULATOR'])
 
 /**
  * Variante do executor SEND_WHATSAPP_FOLLOWUP para o trigger CONTACT_CREATED.
@@ -68,12 +73,7 @@ export async function executeSendWhatsappFollowupContact(
     inbox = found
   }
 
-  // Apenas provedores selfhosted são suportados para CONTACT_CREATED.
-  // EVOLUTION (sem URL própria) é a instância interna da Kronos — não exposta ao cliente.
-  // META_CLOUD exige templates pré-aprovados e não suporta texto livre.
-  // SIMULATOR não é um provedor real.
-  const SUPPORTED_PROVIDERS = new Set(['EVOLUTION_JS', 'EVOLUTION_GO', 'Z_API'])
-  if (!SUPPORTED_PROVIDERS.has(inbox.connectionType)) {
+  if (UNSUPPORTED_PROVIDERS.has(inbox.connectionType)) {
     return { summary: { skipped: true, reason: 'provider_not_supported' } }
   }
 
@@ -85,10 +85,10 @@ export async function executeSendWhatsappFollowupContact(
   const contactFullName = contact.name
   const contactFirstName = contactFullName.split(' ')[0] ?? ''
 
-  const body = resolveTemplate(config.messageTemplate, {
+  const templateVars = {
     contact: { name: contactFullName, firstName: contactFirstName },
     user: { name: assigneeName },
-  })
+  }
 
   // No modo sentinela a conversa já foi encontrada — evita nova query
   let conversation = preloadedConversation ?? await db.conversation.findFirst({
@@ -121,7 +121,58 @@ export async function executeSendWhatsappFollowupContact(
   if (!remoteJid) return { summary: { skipped: true, reason: 'missing_remote_jid' } }
 
   const provider = resolveWhatsAppProvider(inbox)
-  const messageIds = await withRetry(() => provider.sendText(remoteJid, body))
+
+  let messageIds: string[]
+  let messageContent: string
+
+  if (inbox.connectionType === 'META_CLOUD') {
+    const { metaTemplateName, metaTemplateLanguage } = config
+    if (!metaTemplateName || !metaTemplateLanguage) {
+      return { summary: { skipped: true, reason: 'meta_template_missing' } }
+    }
+
+    const resolvedBodyParams = (config.metaBodyParams ?? []).map((param) =>
+      resolveTemplate(param, templateVars),
+    )
+    const resolvedHeaderParams = (config.metaHeaderParams ?? []).map((param) =>
+      resolveTemplate(param, templateVars),
+    )
+
+    const components: MetaTemplateSendComponent[] = []
+    if (resolvedHeaderParams.length > 0) {
+      components.push({
+        type: 'header',
+        parameters: resolvedHeaderParams.map((text) => ({ type: 'text', text })),
+      })
+    }
+    if (resolvedBodyParams.length > 0) {
+      components.push({
+        type: 'body',
+        parameters: resolvedBodyParams.map((text) => ({ type: 'text', text })),
+      })
+    }
+
+    const wamid = await withRetry(() =>
+      provider.sendTemplate(
+        remoteJid,
+        metaTemplateName,
+        metaTemplateLanguage,
+        components.length > 0 ? components : undefined,
+      ),
+    )
+    messageIds = [wamid]
+    messageContent =
+      resolvedBodyParams.length > 0
+        ? `[Template: ${metaTemplateName}] ${resolvedBodyParams.join(' | ')}`
+        : `[Template: ${metaTemplateName}]`
+  } else {
+    if (!config.messageTemplate) {
+      return { summary: { skipped: true, reason: 'missing_message_template' } }
+    }
+    const body = resolveTemplate(config.messageTemplate, templateVars)
+    messageIds = await withRetry(() => provider.sendText(remoteJid, body))
+    messageContent = body
+  }
 
   const lastMessageId = messageIds[messageIds.length - 1]
 
@@ -129,7 +180,7 @@ export async function executeSendWhatsappFollowupContact(
     data: {
       conversationId: conversation.id,
       role: 'assistant',
-      content: body,
+      content: messageContent,
       providerMessageId: lastMessageId,
       deliveryStatus: 'sent',
       // source: 'follow_up' é obrigatório — o contador de quota follow_up_monthly
