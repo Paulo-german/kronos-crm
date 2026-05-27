@@ -252,10 +252,21 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
 
   const existing = await db.subscription.findUnique({
     where: { stripeSubscriptionId: subscriptionId },
-    select: { organizationId: true },
+    select: { organizationId: true, status: true },
   })
 
   if (!existing) return
+
+  // Bloqueia e notifica apenas na primeira falha — retries do Stripe não renotificam
+  if (existing.status === 'past_due' || existing.status === 'canceled') return
+
+  await db.subscription.update({
+    where: { stripeSubscriptionId: subscriptionId },
+    data: { status: 'past_due' },
+  })
+
+  revalidateTag(`subscriptions:${existing.organizationId}`)
+  revalidateTag(`modules:${existing.organizationId}`)
 
   await notifyOrgAdmins({
     orgId: existing.organizationId,
