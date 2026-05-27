@@ -21,7 +21,11 @@ import {
   CONDITION_FIELD_LABELS,
   CONDITION_OPERATOR_LABELS,
   PRIORITY_OPTIONS,
+  LIFECYCLE_STAGE_CONDITION_OPTIONS,
+  CAPTURE_CHANNEL_OPTIONS,
+  CONTACT_TRIGGER_SET,
 } from './automation-labels'
+import type { AutomationTrigger } from '@prisma/client'
 import type { AutomationFormValues } from './wizard-form-types'
 import type { PipelineStageOption } from '@/_data-access/pipeline/get-pipeline-stages'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
@@ -51,6 +55,40 @@ function ConditionValueInput({
   members,
 }: ConditionValueInputProps) {
   const showArrayValue = operator === 'in' || operator === 'not_in'
+
+  if (conditionField === 'lifecycleStage') {
+    return (
+      <Select value={value as string} onValueChange={onChange}>
+        <SelectTrigger className="h-8">
+          <SelectValue placeholder="Selecione a etapa" />
+        </SelectTrigger>
+        <SelectContent>
+          {LIFECYCLE_STAGE_CONDITION_OPTIONS.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    )
+  }
+
+  if (conditionField === 'source') {
+    return (
+      <Select value={value as string} onValueChange={onChange}>
+        <SelectTrigger className="h-8">
+          <SelectValue placeholder="Selecione a origem" />
+        </SelectTrigger>
+        <SelectContent>
+          {CAPTURE_CHANNEL_OPTIONS.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    )
+  }
 
   if (conditionField === 'stageId') {
     return (
@@ -152,13 +190,19 @@ function ConditionValueInput({
   )
 }
 
-const CONDITION_FIELDS = [
+const DEAL_CONDITION_FIELDS = [
   'stageId',
   'assignedTo',
   'priority',
   'status',
   'value',
   'pipelineId',
+] as const
+
+const CONTACT_CONDITION_FIELDS = [
+  'lifecycleStage',
+  'assignedTo',
+  'source',
 ] as const
 
 const CONDITION_OPERATORS = [
@@ -179,6 +223,8 @@ const SELECTION_FIELDS = new Set([
   'priority',
   'status',
   'pipelineId',
+  'lifecycleStage',
+  'source',
 ])
 
 // Mapa de operadores permitidos por tipo de campo
@@ -221,6 +267,11 @@ export function WizardStepConditions({
   members,
 }: WizardStepConditionsProps) {
   const form = useFormContext<AutomationFormValues>()
+  const triggerType = form.watch('triggerType') as AutomationTrigger | undefined
+
+  const isContactKind = triggerType ? CONTACT_TRIGGER_SET.has(triggerType) : false
+  const conditionFields = isContactKind ? CONTACT_CONDITION_FIELDS : DEAL_CONDITION_FIELDS
+  const defaultConditionField = isContactKind ? 'lifecycleStage' : 'stageId'
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -229,7 +280,7 @@ export function WizardStepConditions({
 
   const handleAddCondition = () => {
     if (fields.length >= MAX_CONDITIONS) return
-    append({ field: 'stageId', operator: 'equals', value: '' })
+    append({ field: defaultConditionField, operator: 'equals', value: '' })
   }
 
   return (
@@ -237,9 +288,8 @@ export function WizardStepConditions({
       <div className="space-y-1">
         <h3 className="text-base font-semibold">Condições (Se)</h3>
         <p className="text-sm text-muted-foreground">
-          Defina filtros opcionais que a negociação deve atender para a
-          automação ser executada. Todas as condições serão aplicadas juntas
-          (lógica E).
+          Defina filtros opcionais que devem ser atendidos para a automação ser
+          executada. Todas as condições são aplicadas juntas (lógica E).
         </p>
       </div>
 
@@ -248,7 +298,7 @@ export function WizardStepConditions({
           <p className="text-sm text-muted-foreground">
             Nenhuma condição definida — a automação será executada para{' '}
             <span className="font-medium text-foreground">
-              todas as negociações
+              {isContactKind ? 'todos os contatos' : 'todas as negociações'}
             </span>{' '}
             que ativarem o gatilho.
           </p>
@@ -309,7 +359,7 @@ export function WizardStepConditions({
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {CONDITION_FIELDS.map((condField) => (
+                              {conditionFields.map((condField) => (
                                 <SelectItem key={condField} value={condField}>
                                   {CONDITION_FIELD_LABELS[condField]}
                                 </SelectItem>

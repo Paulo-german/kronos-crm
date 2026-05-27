@@ -20,11 +20,12 @@ import {
 } from '@/_components/ui/select'
 import { RadioGroup, RadioGroupItem } from '@/_components/ui/radio-group'
 import { Label } from '@/_components/ui/label'
-import { ACTION_LABELS, REASSIGN_STRATEGY_LABELS, NOTIFY_TARGET_LABELS, PRIORITY_OPTIONS, LIFECYCLE_STAGE_OPTIONS, TASK_ACTION_TYPE_OPTIONS, TASK_ASSIGN_OPTIONS } from './automation-labels'
+import { ACTION_LABELS, REASSIGN_STRATEGY_LABELS, NOTIFY_TARGET_LABELS, PRIORITY_OPTIONS, LIFECYCLE_STAGE_OPTIONS, TASK_ACTION_TYPE_OPTIONS, TASK_ASSIGN_OPTIONS, CONTACT_TRIGGER_SET } from './automation-labels'
 import { Badge } from '@/_components/ui/badge'
 import { cn } from '@/_lib/utils'
 import { UserPlus, ArrowRight, XCircle, Bell, AlertTriangle, MessageCircle, UserCheck, Braces, ListChecks } from 'lucide-react'
 import React, { useRef } from 'react'
+import type { AutomationTrigger } from '@prisma/client'
 import type { AutomationFormValues } from './wizard-form-types'
 import type { PipelineStageOption } from '@/_data-access/pipeline/get-pipeline-stages'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
@@ -46,7 +47,7 @@ const ACTION_ICONS: Record<AutomationAction, React.ElementType> = {
   CREATE_TASK: ListChecks,
 }
 
-const MESSAGE_VARIABLES = [
+const DEAL_MESSAGE_VARIABLES = [
   { token: '{{deal.title}}',        label: 'Título',        group: 'Negócio' },
   { token: '{{deal.stage}}',        label: 'Estágio',       group: 'Negócio' },
   { token: '{{deal.assignee}}',     label: 'Responsável',   group: 'Negócio' },
@@ -56,36 +57,53 @@ const MESSAGE_VARIABLES = [
   { token: '{{user.name}}',         label: 'Meu nome',      group: 'Você' },
 ] as const
 
-const VARIABLE_GROUPS = ['Negócio', 'Contato', 'Você'] as const
+const CONTACT_MESSAGE_VARIABLES = [
+  { token: '{{contact.name}}',      label: 'Nome completo', group: 'Contato' },
+  { token: '{{contact.firstName}}', label: 'Primeiro nome', group: 'Contato' },
+  { token: '{{user.name}}',         label: 'Meu nome',      group: 'Você' },
+] as const
 
-const VariableInserter = ({ onInsert }: { onInsert: (token: string) => void }) => (
-  <div className="space-y-1">
-    <span className="text-xs text-muted-foreground">Inserir variável:</span>
-    <div className="flex flex-col gap-1">
-      {VARIABLE_GROUPS.map((group) => {
-        const vars = MESSAGE_VARIABLES.filter((variable) => variable.group === group)
-        return (
-          <div key={group} className="flex flex-wrap items-center gap-1">
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/50 w-12 shrink-0">
-              {group}
-            </span>
-            {vars.map((variable) => (
-              <button
-                key={variable.token}
-                type="button"
-                onClick={() => onInsert(variable.token)}
-                className="inline-flex items-center gap-1 rounded border border-primary/25 bg-primary/5 px-1.5 py-0.5 text-[11px] font-medium text-primary/75 transition-colors hover:border-primary/50 hover:bg-primary/10 hover:text-primary"
-              >
-                <Braces className="h-2.5 w-2.5 shrink-0" />
-                {variable.label}
-              </button>
-            ))}
-          </div>
-        )
-      })}
+// Ações disponíveis para triggers de contato
+const CONTACT_AVAILABLE_ACTIONS = new Set<AutomationAction>([AutomationAction.SEND_WHATSAPP_FOLLOWUP])
+
+interface VariableInserterProps {
+  onInsert: (token: string) => void
+  isContactKind?: boolean
+}
+
+const VariableInserter = ({ onInsert, isContactKind = false }: VariableInserterProps) => {
+  const variables = isContactKind ? CONTACT_MESSAGE_VARIABLES : DEAL_MESSAGE_VARIABLES
+  const groups = [...new Set(variables.map((variable) => variable.group))]
+
+  return (
+    <div className="space-y-1">
+      <span className="text-xs text-muted-foreground">Inserir variável:</span>
+      <div className="flex flex-col gap-1">
+        {groups.map((group) => {
+          const vars = variables.filter((variable) => variable.group === group)
+          return (
+            <div key={group} className="flex flex-wrap items-center gap-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/50 w-12 shrink-0">
+                {group}
+              </span>
+              {vars.map((variable) => (
+                <button
+                  key={variable.token}
+                  type="button"
+                  onClick={() => onInsert(variable.token)}
+                  className="inline-flex items-center gap-1 rounded border border-primary/25 bg-primary/5 px-1.5 py-0.5 text-[11px] font-medium text-primary/75 transition-colors hover:border-primary/50 hover:bg-primary/10 hover:text-primary"
+                >
+                  <Braces className="h-2.5 w-2.5 shrink-0" />
+                  {variable.label}
+                </button>
+              ))}
+            </div>
+          )
+        })}
+      </div>
     </div>
-  </div>
-)
+  )
+}
 
 interface WizardStepActionProps {
   stageOptions: PipelineStageOption[]
@@ -99,6 +117,12 @@ export function WizardStepAction({ stageOptions, members, lossReasons, whatsappI
   const form = useFormContext<AutomationFormValues>()
   const actionType = form.watch('actionType')
   const actionConfig = form.watch('actionConfig') as Record<string, unknown>
+  const triggerType = form.watch('triggerType') as AutomationTrigger | undefined
+
+  const isContactKind = triggerType ? CONTACT_TRIGGER_SET.has(triggerType) : false
+  const availableActions = isContactKind
+    ? Object.values(AutomationAction).filter((action) => CONTACT_AVAILABLE_ACTIONS.has(action))
+    : Object.values(AutomationAction)
 
   const handleActionChange = (value: AutomationAction) => {
     form.setValue('actionType', value)
@@ -198,7 +222,7 @@ export function WizardStepAction({ stageOptions, members, lossReasons, whatsappI
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                {Object.values(AutomationAction).map((action) => {
+                {availableActions.map((action) => {
                   const Icon = ACTION_ICONS[action]
                   return (
                     <SelectItem key={action} value={action}>
@@ -557,7 +581,9 @@ export function WizardStepAction({ stageOptions, members, lossReasons, whatsappI
                 <div className="space-y-2">
                   <Label>Inbox para envio *</Label>
                   <p className="text-xs text-muted-foreground">
-                    Apenas inboxes Evolution e Z-API são suportados. A API Oficial (Meta) exige templates pré-aprovados — em breve.
+                    {isContactKind
+                      ? 'Apenas inboxes selfhosted (Evolution JS/GO e Z-API) são suportados para este trigger. Inboxes internos da Kronos e API Oficial (Meta) não estão disponíveis.'
+                      : 'Apenas inboxes Evolution e Z-API são suportados. A API Oficial (Meta) exige templates pré-aprovados — em breve.'}
                   </p>
                   <Select
                     value={getConfigString('inboxId')}
@@ -582,8 +608,9 @@ export function WizardStepAction({ stageOptions, members, lossReasons, whatsappI
                       {whatsappInboxes.length > 0 && <SelectSeparator />}
                       {whatsappInboxes.map((inbox) => {
                         const isMeta = inbox.connectionType === 'META_CLOUD'
+                        const isKronosInternal = isContactKind && inbox.connectionType === 'EVOLUTION'
                         const isInactive = !inbox.isActive
-                        const isDisabled = isMeta || isInactive
+                        const isDisabled = isMeta || isKronosInternal || isInactive
                         return (
                           <SelectItem
                             key={inbox.id}
@@ -598,7 +625,12 @@ export function WizardStepAction({ stageOptions, members, lossReasons, whatsappI
                                   API Oficial — em breve
                                 </Badge>
                               )}
-                              {isInactive && !isMeta && (
+                              {isKronosInternal && (
+                                <Badge variant="outline" className="text-[10px] px-1 py-0">
+                                  Apenas selfhosted
+                                </Badge>
+                              )}
+                              {isInactive && !isMeta && !isKronosInternal && (
                                 <Badge variant="outline" className="text-[10px] px-1 py-0">
                                   Inativo
                                 </Badge>
@@ -618,9 +650,19 @@ export function WizardStepAction({ stageOptions, members, lossReasons, whatsappI
 
                 {/* Comportamento sem conversa — irrelevante no modo sentinela */}
                 {isSentinel ? (
-                  <p className="text-sm text-muted-foreground">
-                    Se o contato não tiver nenhuma conversa, a execução será pulada automaticamente.
-                  </p>
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">
+                      Se o contato não tiver nenhuma conversa, a execução será pulada automaticamente.
+                    </p>
+                    {isContactKind && (
+                      <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+                        <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+                        <span>
+                          Contatos recém-criados raramente têm conversa prévia. Nesse modo, a automação será pulada na maioria dos casos. Prefira selecionar um inbox fixo com &quot;Criar conversa e enviar&quot;.
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <div className="space-y-3">
                     <Label>Se não houver conversa com o contato *</Label>
@@ -669,10 +711,13 @@ export function WizardStepAction({ stageOptions, members, lossReasons, whatsappI
           {/* Template de mensagem */}
           <div className="space-y-2">
             <Label>Mensagem *</Label>
-            <VariableInserter onInsert={insertFollowupVariable} />
+            <VariableInserter onInsert={insertFollowupVariable} isContactKind={isContactKind} />
             <Textarea
               ref={followupTextareaRef}
-              placeholder="Ex: Olá {{contact.firstName}}, tudo bem? Queria retomar a conversa sobre {{deal.title}}."
+              placeholder={isContactKind
+                ? 'Ex: Olá {{contact.firstName}}, seja bem-vindo! Como posso ajudar?'
+                : 'Ex: Olá {{contact.firstName}}, tudo bem? Queria retomar a conversa sobre {{deal.title}}.'}
+
               className={`resize-none ${showConfigErrors && !getConfigString('messageTemplate') ? 'border-destructive' : ''}`}
               rows={4}
               maxLength={1000}

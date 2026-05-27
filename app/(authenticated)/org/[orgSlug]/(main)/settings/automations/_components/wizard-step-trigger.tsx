@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { useFormContext } from 'react-hook-form'
-import { AutomationTrigger } from '@prisma/client'
+import { AutomationAction, AutomationTrigger } from '@prisma/client'
 import {
   FormControl,
   FormField,
@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/_components/ui/select'
-import { TRIGGER_LABELS } from './automation-labels'
+import { TRIGGER_LABELS, LIFECYCLE_STAGE_CONDITION_OPTIONS, CAPTURE_CHANNEL_OPTIONS, CONTACT_TRIGGER_SET } from './automation-labels'
 import {
   Plus,
   ArrowRightLeft,
@@ -30,6 +30,7 @@ import {
   Timer,
   Activity,
   RefreshCw,
+  UserPlus,
 } from 'lucide-react'
 import type { AutomationFormValues } from './wizard-form-types'
 import type { OrgPipelineDto } from '@/_data-access/pipeline/get-org-pipelines'
@@ -84,6 +85,10 @@ const TIME_TRIGGERS = [
   AutomationTrigger.DEAL_IDLE_IN_STAGE,
 ]
 
+const CONTACT_TRIGGERS = [
+  AutomationTrigger.CONTACT_CREATED,
+]
+
 const TRIGGER_ICONS: Record<AutomationTrigger, React.ElementType> = {
   DEAL_CREATED: Plus,
   DEAL_MOVED: ArrowRightLeft,
@@ -91,6 +96,7 @@ const TRIGGER_ICONS: Record<AutomationTrigger, React.ElementType> = {
   DEAL_IDLE_IN_STAGE: Timer,
   ACTIVITY_CREATED: Activity,
   DEAL_STATUS_CHANGED: RefreshCw,
+  CONTACT_CREATED: UserPlus,
 }
 
 export function WizardStepTrigger({ pipelines, stageOptions, showConfigErrors = false }: WizardStepTriggerProps) {
@@ -99,10 +105,24 @@ export function WizardStepTrigger({ pipelines, stageOptions, showConfigErrors = 
   const triggerConfig = form.watch('triggerConfig') as Record<string, unknown>
 
   const handleTriggerChange = (value: AutomationTrigger) => {
+    const previousTrigger = form.getValues('triggerType')
+    const kindChanged =
+      CONTACT_TRIGGER_SET.has(value) !== CONTACT_TRIGGER_SET.has(previousTrigger as AutomationTrigger)
+
     form.setValue('triggerType', value)
     form.setValue('triggerConfig', {})
-    // Limpa os erros de config ao trocar de gatilho
     form.clearErrors('triggerConfig')
+
+    // Ao trocar de kind (deal ↔ contato), limpa conditions e action para evitar
+    // valores incompatíveis armazenados (ex: REASSIGN_DEAL em trigger de contato)
+    if (kindChanged) {
+      form.setValue('conditions', [])
+      // '' faz o Select voltar ao placeholder — cast necessário pois o tipo formal é enum
+      form.setValue('actionType', '' as AutomationAction)
+      form.setValue('actionConfig', {})
+      form.clearErrors('actionType')
+      form.clearErrors('actionConfig')
+    }
   }
 
   const setTriggerConfigValue = (key: string, value: unknown) => {
@@ -224,6 +244,20 @@ export function WizardStepTrigger({ pipelines, stageOptions, showConfigErrors = 
                 <SelectGroup>
                   <SelectLabel>Por tempo</SelectLabel>
                   {TIME_TRIGGERS.map((trigger) => {
+                    const Icon = TRIGGER_ICONS[trigger]
+                    return (
+                      <SelectItem key={trigger} value={trigger}>
+                        <span className="flex items-center gap-2">
+                          <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                          {TRIGGER_LABELS[trigger]}
+                        </span>
+                      </SelectItem>
+                    )
+                  })}
+                </SelectGroup>
+                <SelectGroup>
+                  <SelectLabel>Por contato</SelectLabel>
+                  {CONTACT_TRIGGERS.map((trigger) => {
                     const Icon = TRIGGER_ICONS[trigger]
                     return (
                       <SelectItem key={trigger} value={trigger}>
@@ -545,6 +579,58 @@ export function WizardStepTrigger({ pipelines, stageOptions, showConfigErrors = 
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CONTACT_CREATED */}
+      {triggerType === AutomationTrigger.CONTACT_CREATED && (
+        <div className="space-y-4 rounded-md border bg-muted/30 p-4">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            Filtros opcionais (Contato criado)
+          </p>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Etapa do ciclo (opcional)</Label>
+              <Select
+                value={getConfigString('lifecycleStage')}
+                onValueChange={(val) =>
+                  setTriggerConfigValue('lifecycleStage', val === 'any' ? undefined : val)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Qualquer etapa" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="any">Qualquer etapa</SelectItem>
+                  {LIFECYCLE_STAGE_CONDITION_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Origens (deixe vazio para todas)</Label>
+              <div className="flex flex-wrap gap-2 pt-1">
+                {CAPTURE_CHANNEL_OPTIONS.map((option) => {
+                  const currentSources = getConfigArray('sources')
+                  const isSelected = currentSources.includes(option.value)
+                  return (
+                    <Button
+                      key={option.value}
+                      type="button"
+                      size="sm"
+                      variant={isSelected ? 'default' : 'outline'}
+                      onClick={() => handleMultiToggle('sources', option.value)}
+                    >
+                      {option.label}
+                    </Button>
+                  )
+                })}
+              </div>
             </div>
           </div>
         </div>

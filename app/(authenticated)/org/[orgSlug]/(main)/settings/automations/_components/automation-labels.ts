@@ -1,4 +1,8 @@
-import type { AutomationAction, AutomationTrigger } from '@prisma/client'
+import { AutomationTrigger } from '@prisma/client'
+import type { AutomationAction } from '@prisma/client'
+
+// Fonte canônica dos triggers de contato — importada por todos os steps do wizard
+export const CONTACT_TRIGGER_SET = new Set<AutomationTrigger>([AutomationTrigger.CONTACT_CREATED])
 
 export const TRIGGER_LABELS: Record<AutomationTrigger, string> = {
   DEAL_CREATED: 'Negociação criada',
@@ -7,6 +11,7 @@ export const TRIGGER_LABELS: Record<AutomationTrigger, string> = {
   DEAL_IDLE_IN_STAGE: 'Negociação parada em estágio',
   ACTIVITY_CREATED: 'Atividade registrada',
   DEAL_STATUS_CHANGED: 'Status da negociação alterado',
+  CONTACT_CREATED: 'Contato criado',
 }
 
 export const ACTION_LABELS: Record<AutomationAction, string> = {
@@ -27,6 +32,8 @@ export const CONDITION_FIELD_LABELS: Record<string, string> = {
   status: 'Status',
   value: 'Valor',
   pipelineId: 'Pipeline',
+  lifecycleStage: 'Etapa do ciclo',
+  source: 'Origem',
 }
 
 export const CONDITION_OPERATOR_LABELS: Record<string, string> = {
@@ -86,6 +93,30 @@ export const LIFECYCLE_STAGE_OPTIONS: { label: string; value: string; descriptio
   { label: 'Qualificado', value: 'QUALIFIED', description: 'Demonstrou interesse e fit' },
   { label: 'Oportunidade', value: 'OPPORTUNITY', description: 'Em negociação ativa' },
   { label: 'Cliente', value: 'CUSTOMER', description: 'Conversão realizada' },
+]
+
+// Inclui LEAD (para uso em conditions de CONTACT_CREATED)
+export const LIFECYCLE_STAGE_CONDITION_OPTIONS: { label: string; value: string }[] = [
+  { label: 'Lead', value: 'LEAD' },
+  { label: 'Qualificado', value: 'QUALIFIED' },
+  { label: 'Oportunidade', value: 'OPPORTUNITY' },
+  { label: 'Cliente', value: 'CUSTOMER' },
+]
+
+export const CAPTURE_CHANNEL_OPTIONS: { label: string; value: string }[] = [
+  { label: 'Site / Chat', value: 'WEBSITE_CHAT' },
+  { label: 'Formulário embutido', value: 'EMBED_FORM' },
+  { label: 'WhatsApp', value: 'WHATSAPP' },
+  { label: 'Instagram', value: 'INSTAGRAM' },
+  { label: 'Facebook Lead', value: 'FACEBOOK_LEAD' },
+  { label: 'API / Webhook', value: 'API' },
+  { label: 'Ligação', value: 'PHONE_CALL' },
+  { label: 'Presencial', value: 'IN_PERSON' },
+  { label: 'Evento', value: 'EVENT' },
+  { label: 'E-mail', value: 'EMAIL' },
+  { label: 'Indicação', value: 'REFERRAL' },
+  { label: 'Importação', value: 'IMPORT' },
+  { label: 'Não identificado', value: 'UNKNOWN' },
 ]
 
 export const TASK_ACTION_TYPE_OPTIONS: { label: string; value: string }[] = [
