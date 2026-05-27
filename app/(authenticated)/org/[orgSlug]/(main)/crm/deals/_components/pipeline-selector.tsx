@@ -64,7 +64,7 @@ export function PipelineSelector({
   return (
     <div className="ml-1">
       <Select value={activePipelineId} onValueChange={handleChange}>
-        <SelectTrigger className="w-[300px] bg-background">
+        <SelectTrigger className="w-72 bg-background">
           <FunnelIcon className="mr-2 h-4 w-4 text-muted-foreground" />
           <SelectValue placeholder="Selecione o funil" />
         </SelectTrigger>

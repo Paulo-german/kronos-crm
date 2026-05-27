@@ -114,7 +114,20 @@ export function DealsToolbar({
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Linha 1: Search com largura total */}
+      {/* Linha 1: ViewToggle + PipelineSettings + Criar */}
+      <div className="flex items-center gap-2">
+        <ViewToggle activeView="list" />
+        <div className="flex-1" />
+        {isElevated && (
+          <PipelineSettingsButton pipeline={pipeline} />
+        )}
+        <CreateDealButton
+          stages={stages}
+          withinQuota={withinQuota}
+        />
+      </div>
+
+      {/* Linha 2: Search com largura total */}
       <div className="relative w-full">
         <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -125,61 +138,59 @@ export function DealsToolbar({
         />
       </div>
 
-      {/* Linha 2: PipelineSelector + Sort + Responsável + Filtros + ViewToggle + Tutorial + PipelineSettings + Criar */}
-      <div className="flex flex-wrap items-center gap-2">
-        {/* Seletor de funil — hierarquia primária: escolhe funil antes de ordenar/filtrar */}
-        <PipelineSelector
-          pipelines={pipelines}
-          activePipelineId={activePipelineId}
-          onChange={onPipelineChange}
-        />
+      {/* Linha 3: Filtros + Export */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <PipelineSelector
+            pipelines={pipelines}
+            activePipelineId={activePipelineId}
+            onChange={onPipelineChange}
+          />
 
-        {/* Select de Ordenação */}
-        <Select value={sort} onValueChange={handleSortChange}>
-          <SelectTrigger className="w-[200px] bg-background">
-            <ArrowUpDown className="mr-2 h-4 w-4 text-muted-foreground" />
-            <SelectValue placeholder="Ordenar por" />
-          </SelectTrigger>
-          <SelectContent>
-            {Object.entries(DEAL_SORT_OPTIONS).map(([key, option]) => (
-              <SelectItem key={key} value={key}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <Select value={sort} onValueChange={handleSortChange}>
+            <SelectTrigger className="w-72 bg-background">
+              <ArrowUpDown className="mr-2 h-4 w-4 text-muted-foreground" />
+              <SelectValue placeholder="Ordenar por" />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(DEAL_SORT_OPTIONS).map(([key, option]) => (
+                <SelectItem key={key} value={key}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        {/* Select de Responsável */}
-        <Select
-          value={isMember ? currentUserId : (assignedTo ?? 'all')}
-          onValueChange={handleAssigneeChange}
-          disabled={isMember}
-        >
-          <SelectTrigger className="w-[200px] bg-background">
-            <UserIcon className="mr-2 h-4 w-4 text-muted-foreground" />
-            <SelectValue placeholder="Responsável" />
-          </SelectTrigger>
-          <SelectContent>
-            {!isMember && (
-              <SelectItem value="all">Todos os responsáveis</SelectItem>
-            )}
-            {members.map((member) => (
-              <SelectItem
-                key={member.userId ?? member.id}
-                value={member.userId ?? currentUserId}
-              >
-                {member.user?.fullName ?? member.email}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <Select
+            value={isMember ? currentUserId : (assignedTo ?? 'all')}
+            onValueChange={handleAssigneeChange}
+            disabled={isMember}
+          >
+            <SelectTrigger className="w-72 bg-background">
+              <UserIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+              <SelectValue placeholder="Responsável" />
+            </SelectTrigger>
+            <SelectContent>
+              {!isMember && (
+                <SelectItem value="all">Todos os responsáveis</SelectItem>
+              )}
+              {members.map((member) => (
+                <SelectItem
+                  key={member.userId ?? member.id}
+                  value={member.userId ?? currentUserId}
+                >
+                  {member.user?.fullName ?? member.email}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        {/* Botão Filtros Avançados */}
-        <DealsFiltersSheet
-          filters={filters}
-          onFiltersChange={onApplyFilters}
-          activeFilterCount={activeFilterCount}
-        />
+          <DealsFiltersSheet
+            filters={filters}
+            onFiltersChange={onApplyFilters}
+            activeFilterCount={activeFilterCount}
+          />
+        </div>
 
         <ExportDealsButton
           filters={{
@@ -195,19 +206,6 @@ export function DealsToolbar({
             pipelineId: pipelineId ?? undefined,
           }}
         />
-
-        <div className="ml-auto flex items-center gap-2">
-          <ViewToggle activeView="list" />
-
-          {isElevated && (
-            <PipelineSettingsButton pipeline={pipeline} />
-          )}
-
-          <CreateDealButton
-            stages={stages}
-            withinQuota={withinQuota}
-          />
-        </div>
       </div>
 
       {/* Linha 3: Badges de filtros ativos */}
