@@ -3,6 +3,7 @@ import { resolveCanonicalAgentVersion } from '../../app/_lib/agent/agent-version
 import { updateActiveTrace } from '@langfuse/tracing'
 import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
+import { hasActivePlan } from '@/_lib/billing/has-active-plan'
 import { resolveEvolutionCredentialsByInstanceName } from '@/_lib/evolution-js/resolve-credentials'
 import { routeConversation } from './route-conversation'
 import { checkBusinessHours } from '@/_lib/agent/check-business-hours'
@@ -152,6 +153,15 @@ export async function buildDispatcherCtx(
   let debounceCheckWarning: string | undefined
 
   try {
+    // -----------------------------------------------------------------------
+    // 0. Guard de assinatura — aborta antes de qualquer débito se sem plano
+    // -----------------------------------------------------------------------
+    if (!(await hasActivePlan(organizationId))) {
+      log('step:0 plan_check', 'EXIT', { reason: 'no_active_subscription' })
+      finalizeTrace('skipped:no_active_subscription')
+      return { skipped: true, reason: 'no_active_subscription' }
+    }
+
     // -----------------------------------------------------------------------
     // 1. Debounce check
     // -----------------------------------------------------------------------
