@@ -5,6 +5,7 @@ import { createClient } from '@/_lib/supabase/server'
 import { actionClient } from '@/_lib/safe-action'
 import { forgotPasswordSchema } from './schema'
 
+// Rate limiting via Supabase Auth (Auth > Rate Limits no dashboard) — rate-limiter.ts em memória não funciona em serverless.
 export const forgotPassword = actionClient
   .schema(forgotPasswordSchema)
   .action(async ({ parsedInput: { email } }) => {

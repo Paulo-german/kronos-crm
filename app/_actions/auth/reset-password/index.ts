@@ -9,6 +9,12 @@ import { resetPasswordSchema } from './schema'
 export const resetPassword = authActionClient
   .schema(resetPasswordSchema)
   .action(async ({ parsedInput: { password } }) => {
+    const cookieStore = await cookies()
+
+    if (cookieStore.get('recovery_in_progress')?.value !== '1') {
+      throw new Error('Sessão de recuperação inválida ou expirada. Solicite um novo link.')
+    }
+
     const supabase = await createClient()
 
     const { error } = await supabase.auth.updateUser({ password })
@@ -17,9 +23,8 @@ export const resetPassword = authActionClient
       throw new Error('Erro ao redefinir senha. Tente novamente.')
     }
 
-    await supabase.auth.signOut()
+    await supabase.auth.signOut({ scope: 'global' })
 
-    const cookieStore = await cookies()
     cookieStore.delete('recovery_in_progress')
 
     redirect('/login?reset=success')
