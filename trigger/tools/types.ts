@@ -27,4 +27,7 @@ export interface ToolContext {
   // Necessários para send_product_media
   remoteJid: string | null
   inboxProvider: InboxProviderContext | null
+  // Callback chamado quando hand_off_to_human executa com mode='transfer' com sucesso.
+  // Permite detectar o hand-off mesmo quando result.steps fica vazio (ex: NoOutputGeneratedError fallback).
+  onHandOffTransfer?: () => void
 }

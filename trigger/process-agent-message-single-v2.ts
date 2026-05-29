@@ -609,6 +609,8 @@ export async function runSingleV2(
   // -----------------------------------------------------------------------
   // 4c. Build tool set (filtrado pelo toolsEnabled do agent)
   // -----------------------------------------------------------------------
+  let handOffCalledByAgentThisRun = false
+
   const toolContext: ToolContext = {
     organizationId: ctx.organizationId,
     agentId: ctx.effectiveAgentId,
@@ -619,6 +621,7 @@ export async function runSingleV2(
     pipelineIds: promptContext.pipelineIds,
     remoteJid: ctx.message.remoteJid,
     inboxProvider: conversation.inbox ?? null,
+    onHandOffTransfer: () => { handOffCalledByAgentThisRun = true },
   }
 
   const effectiveToolsEnabled = promptContext.toolsEnabled
@@ -1081,12 +1084,19 @@ export async function runSingleV2(
   // 7. Double-check anti-atropelamento — re-query aiPaused
   //    Pula se o próprio agente disparou hand_off_to_human nesta execução,
   //    caso contrário a resposta final nunca seria enviada ao lead.
+  //
+  //    Usa DUAS fontes de detecção para cobrir o caso de fallback (NoOutputGeneratedError /
+  //    NoObjectGeneratedError) onde result.steps fica [] e não reflete as tool calls reais:
+  //    1. handOffCalledByAgentThisRun: closure setado dentro do execute da tool (mais confiável)
+  //    2. result.steps: fonte secundária para o caminho normal (sem fallback)
   // -----------------------------------------------------------------------
-  const agentTriggeredHandOff = result.steps?.some((aiStep) =>
-    aiStep.toolCalls?.some(
-      (toolCall) => toolCall.toolName === 'hand_off_to_human',
-    ),
-  )
+  const agentTriggeredHandOff =
+    handOffCalledByAgentThisRun ||
+    result.steps?.some((aiStep) =>
+      aiStep.toolCalls?.some(
+        (toolCall) => toolCall.toolName === 'hand_off_to_human',
+      ),
+    )
 
   const freshConversation = agentTriggeredHandOff
     ? null

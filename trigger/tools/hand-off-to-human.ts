@@ -436,6 +436,10 @@ export function createHandOffToHumanTool(
           if (result.count === 0) {
             return { success: false, message: 'Conversa não encontrada nesta organização.' }
           }
+
+          // Notifica o caller que o hand-off de transferência ocorreu com sucesso.
+          // Permite detectar o hand-off mesmo quando result.steps fica [] (ex: NoOutputGeneratedError fallback).
+          ctx.onHandOffTransfer?.()
         }
         // No modo 'notify' — não mexer em aiPaused. A IA segue ativa.
 
