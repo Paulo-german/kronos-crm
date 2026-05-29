@@ -7,7 +7,7 @@ import { revalidateCopilotCache } from './lib/revalidate-cache'
 // feat copilot desativada temporariamente — restaurar cron para reativar
 export const healthScoreCron = schedules.task({
   id: 'health-score-cron',
-  cron: '0 4 31 2 *', // data impossível (31 fev) — desativado sem remover o job
+  cron: '0 4 1 1 *', // 1 jan às 04h — frequência mínima, efetivamente desativado
   retry: { maxAttempts: 2 },
   run: async () => {
     const orgs = await db.organization.findMany({
