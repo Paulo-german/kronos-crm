@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     }
 
     console.error('Erro ao trocar code por sessão:', error.message)
-    return NextResponse.redirect(new URL('/auth/auth-code-error', request.url))
+    return NextResponse.redirect(new URL('/auth/auth-code-error?reason=signup', request.url))
   }
 
   // OTP flow (token_hash + type)
@@ -45,6 +45,16 @@ export async function GET(request: NextRequest) {
     }
 
     console.error('Erro na confirmação de email:', error.message)
+
+    if (type === 'recovery') {
+      return NextResponse.redirect(new URL('/auth/auth-code-error?reason=recovery', request.url))
+    }
+
+    if (type === 'signup' || type === 'email') {
+      return NextResponse.redirect(new URL('/auth/auth-code-error?reason=signup', request.url))
+    }
+
+    return NextResponse.redirect(new URL('/auth/auth-code-error', request.url))
   }
 
   return NextResponse.redirect(new URL('/auth/auth-code-error', request.url))

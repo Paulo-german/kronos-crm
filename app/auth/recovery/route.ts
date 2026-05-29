@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code')
 
   if (!code) {
-    return NextResponse.redirect(new URL('/auth/auth-code-error', request.url))
+    return NextResponse.redirect(new URL('/auth/auth-code-error?reason=recovery', request.url))
   }
 
   const supabase = await createClient()
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 
   if (error) {
     console.error('Erro ao trocar code por sessão (recovery):', error.message)
-    return NextResponse.redirect(new URL('/auth/auth-code-error', request.url))
+    return NextResponse.redirect(new URL('/auth/auth-code-error?reason=recovery', request.url))
   }
 
   const response = NextResponse.redirect(new URL('/reset-password', request.url))
