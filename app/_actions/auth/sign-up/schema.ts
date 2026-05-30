@@ -1,4 +1,9 @@
 import { z } from 'zod'
+import { BLUEPRINTS } from '@/_lib/onboarding/blueprints'
+
+const SIGNUP_NICHE_KEYS = BLUEPRINTS
+  .filter((blueprint) => blueprint.key !== 'ai_generated')
+  .map((blueprint) => blueprint.key) as [string, ...string[]]
 
 export const passwordRules = [
   { label: 'Mínimo de 8 caracteres', regex: /.{8,}/ },
@@ -70,6 +75,7 @@ export const signUpSchema = z.object({
       'Informe um site válido ou perfil do Instagram (@usuario)',
     ),
   phone: z.string().min(10, 'Telefone inválido').max(20, 'Telefone muito longo'),
+  niche: z.enum(SIGNUP_NICHE_KEYS, { message: 'Selecione um segmento' }),
   email: z.string().email('Por favor, insira um e-mail válido'),
   password: passwordRules.reduce(
     (schema, rule) =>

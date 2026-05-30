@@ -28,7 +28,7 @@ export const signUp = actionClient
   .schema(signUpSchema)
   .action(
     async ({
-      parsedInput: { fullName, companyName, websiteOrInstagram, phone, email, password, captchaToken },
+      parsedInput: { fullName, companyName, websiteOrInstagram, phone, niche, email, password, captchaToken },
     }: {
       parsedInput: SignUpSchema
     }) => {
@@ -88,6 +88,7 @@ export const signUp = actionClient
             name: companyName,
             slug,
             website,
+            niche,
           },
         })
 
