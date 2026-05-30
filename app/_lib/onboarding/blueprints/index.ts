@@ -44,6 +44,106 @@ const REAL_ESTATE_BUSINESS_HOURS: BusinessHoursConfig = {
   sunday: { enabled: false, start: '08:00', end: '12:00' },
 }
 
+// Base compartilhada para nichos sem blueprint dedicado ainda.
+// Ao criar um blueprint real para o nicho, substitui o spread por conteúdo próprio.
+const PLACEHOLDER_BLUEPRINT_BASE: Omit<NicheBlueprint, 'key' | 'label' | 'description' | 'icon'> = {
+  businessHoursEnabled: false,
+  businessHoursConfig: DEFAULT_BUSINESS_HOURS,
+  outOfHoursMessage: OUT_OF_HOURS_MESSAGE,
+  pipelineStages: [
+    { name: 'Novo Contato', position: 0, color: '#6366f1' },
+    { name: 'Triagem e Qualificação', position: 1, color: '#8b5cf6' },
+    { name: 'Apresentação / Orçamento', position: 2, color: '#f59e0b' },
+    { name: 'Negociação Ativa', position: 3, color: '#f97316' },
+    { name: 'Negócio Fechado', position: 4, color: '#22c55e' },
+  ],
+  agentConfig: {
+    role: 'sdr',
+    tone: 'professional',
+    responseLength: 'medium',
+    useEmojis: false,
+    language: 'pt-BR',
+    guidelines: [
+      'Qualifique leads com perguntas abertas sobre necessidades',
+      'Consulte a base de conhecimento para tirar dúvidas de preço ou produto',
+      'Avance o cliente para o seu funil de vendas desejado',
+      'Registre objeções e detalhes específicos nas anotações do negócio',
+    ],
+    restrictions: [
+      'Não faça promessas que não possam ser cumpridas na prestação do serviço',
+      'Escale para um humano quando o atendimento fugir do escopo',
+      'Não invente informações se não tiver contexto',
+    ],
+  },
+  lostReasons: [
+    'Preço inviável',
+    'Timing inadequado',
+    'Escolheu concorrente',
+    'Sem resposta do lead',
+    'Fora do perfil da empresa',
+    'Outros',
+  ],
+  systemPrompt: `Você é um assistente virtual de atendimento e vendas da [NOME DA SUA EMPRESA]. Nós oferecemos [INSIRA AQUI O SEU PRODUTO/SERVIÇO PRINCIPAL] para [INSIRA AQUI O SEU PÚBLICO-ALVO]. Sua missão é entender as necessidades do cliente, apresentar nossa solução caso faça sentido, e direcionar rapidamente para o próximo passo do nosso processo.
+
+ABORDAGEM GERAL:
+- Comece sempre de forma acolhedora. Pergunte o nome da pessoa e o que a trouxe até nós.
+- Mapeamento: Descubra: 1. Qual o principal problema/necessidade que a pessoa enfrenta? 2. Qual o nível de urgência? Faça isso em formato de conversa, uma pergunta por vez.
+- Apresentação Base: Se o lead perguntar sobre um produto ou serviço específico, utilize sua base de conhecimento para informá-lo corretamente. Nossos principais diferenciais no mercado são [INSIRA AQUI SEU MAIOR DIFERENCIAL, EX: Agilidade, Produto exclusivo, Suporte 24h].
+- Foco em Conversão: O seu grande objetivo após a qualificação do lead é [INSIRA A SUA CHAMADA PARA AÇÃO: EX: "agendar uma reunião com o time" OU "enviar o nosso catálogo" OU "pedir o e-mail para enviar orçamento"].
+
+TRATAMENTO DE OBJEÇÕES:
+- "Gostei, mas o preço está alto / preciso pensar" → Entenda o motivo ("Ficou alguma dúvida sobre o valor que entregamos?"). Sugira manter contato ou apresentar uma condição especial dependendo da base.
+- Dúvidas fora do escopo: Se o lead fizer perguntas que você não sabe responder, informe que vai acionar um especialista da equipe humana.
+- Regras de negócio restritas: [INSIRA QUAISQUER REGRAS ESPECÍFICAS DA SUA EMPRESA, EX: "Não atendemos pessoas físicas", "Não aceitamos boleto"].
+
+LINGUAGEM E OUTRAS INSTRUÇÕES:
+- O tom da nossa marca é [INSIRA O SEU TOM DA MARCA: EX: Formal e direto OU Descontraído e prestativo].
+- Seja claro, objetivo e não sobrecarregue o cliente com parágrafos enormes.`,
+  agentSteps: [
+    {
+      name: 'Abertura e Boas-vindas',
+      objective: 'Apresente-se e descubra com quem está falando e qual a principal demanda inicial do lead.',
+      keyQuestion: 'Olá! Como posso te ajudar hoje? Por favor, me informe seu nome e o que você está buscando.',
+      messageTemplate: null,
+      actions: [{ type: 'update_deal', trigger: 'Ao identificar o nome do lead e o motivo geral do contato', allowedFields: ['title', 'notes'], allowedStatuses: [] }],
+      order: 0,
+    },
+    {
+      name: 'Qualificação Aberta',
+      objective: 'Aprofunde a necessidade do lead: o que ele busca, qual o problema real, nível de urgência ou orçamento pretendido.',
+      keyQuestion: 'Perfeito, {nome}! Para que eu possa te atender da melhor forma, pode me contar mais detalhes sobre o que você precisa resolver?',
+      messageTemplate: null,
+      actions: [
+        { type: 'update_deal', trigger: 'Ao coletar necessidade pontual, requisitos específicos, prazo ou urgência', allowedFields: ['title', 'value', 'priority', 'notes'], allowedStatuses: [] },
+        { type: 'move_deal', trigger: 'Ao entender o que o cliente quer, finalizando a etapa de coleta', targetStagePosition: 1 },
+      ],
+      order: 1,
+    },
+    {
+      name: 'Apresentação / Oferta',
+      objective: 'Construída a necessidade, apresente a solução que a empresa oferece usando seus diferenciais de catálogo. Parta para o Call to Action.',
+      keyQuestion: null,
+      messageTemplate: 'Com base no que você relatou, a melhor opção no nosso caso é {solução}. Ela visa resolver isso com {diferencial}. O que você acha de darmos o próximo passo com o especialista?',
+      actions: [
+        { type: 'update_deal', trigger: 'Ao apresentar uma proposta técnica ou orçamentária', allowedFields: ['value', 'notes', 'expectedCloseDate'], allowedStatuses: [] },
+        { type: 'move_deal', trigger: 'Após enviar o orçamento/proposta de solução para o lead', targetStagePosition: 2 },
+      ],
+      order: 2,
+    },
+    {
+      name: 'Call to Action Final',
+      objective: 'Redirecione efetivamente o cliente para a conversão final, transferindo para o humano se exigido.',
+      keyQuestion: null,
+      messageTemplate: 'Ótimo! Vou conectar nossa conversa agora com a equipe para dar continuidade e finalizarmos as partes técnicas da sua demanda.',
+      actions: [
+        { type: 'create_task', trigger: 'Se o cliente parar de responder no momento final', title: 'Reaquecimento: Retomar lead que avaliava proposta', dueDaysOffset: 2 },
+        { type: 'hand_off_to_human', trigger: 'Sempre que o cliente aceitar falar com o consultor ou tentar negociar', notifyTarget: 'deal_assignee', notificationMessage: 'Time! Lead quente ({contactName}) solicitou atendimento humano: {dealTitle}' },
+      ],
+      order: 3,
+    },
+  ],
+}
+
 export const BLUEPRINTS: NicheBlueprint[] = [
   {
     key: 'b2b_services',
@@ -1158,6 +1258,10 @@ LINGUAGEM:
       },
     ],
   },
+  { ...PLACEHOLDER_BLUEPRINT_BASE, key: 'agency', label: 'Agência', description: 'Agências de marketing, publicidade, social media e criação', icon: 'Megaphone' },
+  { ...PLACEHOLDER_BLUEPRINT_BASE, key: 'legal', label: 'Advocacia & Jurídico', description: 'Escritórios de advocacia, assessoria jurídica e consultoria legal', icon: 'Scale' },
+  { ...PLACEHOLDER_BLUEPRINT_BASE, key: 'beauty', label: 'Beleza & Estética', description: 'Salões, barbearias, clínicas de estética e profissionais de beleza', icon: 'Sparkles' },
+  { ...PLACEHOLDER_BLUEPRINT_BASE, key: 'consulting', label: 'Consultoria', description: 'Consultorias financeiras, de RH, estratégicas e de gestão', icon: 'BriefcaseBusiness' },
   {
     key: 'custom',
     label: 'Outro Segmento',
