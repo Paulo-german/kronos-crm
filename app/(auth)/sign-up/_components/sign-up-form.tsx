@@ -20,7 +20,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/_components/ui/select'
-import type { NumberFormatValues } from 'react-number-format'
 import { Button } from '@/_components/ui/button'
 import InputPassword from '../../_components/input-password'
 import {
@@ -158,9 +157,7 @@ const SignUpForm = () => {
                       <PhoneInput
                         placeholder="(11) 99999-9999"
                         value={field.value || ''}
-                        onValueChange={(values: NumberFormatValues) =>
-                          field.onChange(values.value)
-                        }
+                        onChange={(value) => field.onChange(value)}
                       />
                     </FormControl>
                     <FormMessage />

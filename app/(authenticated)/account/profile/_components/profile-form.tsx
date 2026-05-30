@@ -22,7 +22,6 @@ import {
 } from '@/_components/ui/form'
 import { Input } from '@/_components/ui/input'
 import { PhoneInput } from '@/_components/form-controls/phone-input'
-import type { NumberFormatValues } from 'react-number-format'
 import { Button } from '@/_components/ui/button'
 import { Label } from '@/_components/ui/label'
 import { Avatar, AvatarFallback, AvatarImage } from '@/_components/ui/avatar'
@@ -166,9 +165,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
                     <PhoneInput
                       placeholder="(11) 99999-9999"
                       value={field.value || ''}
-                      onValueChange={(values: NumberFormatValues) =>
-                        field.onChange(values.value)
-                      }
+                      onChange={(value) => field.onChange(value)}
                     />
                   </FormControl>
                   <FormMessage />

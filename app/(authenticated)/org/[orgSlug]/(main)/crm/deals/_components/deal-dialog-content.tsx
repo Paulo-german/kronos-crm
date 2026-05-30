@@ -13,7 +13,6 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 import { Check, ChevronsUpDown, Loader2 } from 'lucide-react'
-import type { NumberFormatValues } from 'react-number-format'
 import { cn } from '@/_lib/utils'
 import {
   SheetContent,
@@ -618,9 +617,7 @@ export function DealDialogContent({
                                 placeholder="(11) 99999-9999"
                                 disabled={isPending}
                                 value={field.value || ''}
-                                onValueChange={(values: NumberFormatValues) =>
-                                  field.onChange(values.value)
-                                }
+                                onChange={(value) => field.onChange(value)}
                               />
                             </FormControl>
                             <FormMessage />

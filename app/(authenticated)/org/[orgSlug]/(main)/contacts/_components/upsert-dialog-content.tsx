@@ -6,7 +6,6 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useAction } from 'next-safe-action/hooks'
 import { useParams, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import type { NumberFormatValues } from 'react-number-format'
 import {
   SheetContent,
   SheetDescription,
@@ -201,9 +200,7 @@ const UpsertContactDialogContent = ({
                       <PhoneInput
                         placeholder="(11) 99999-9999"
                         value={field.value || ''}
-                        onValueChange={(values: NumberFormatValues) =>
-                          field.onChange(values.value)
-                        }
+                        onChange={(value) => field.onChange(value)}
                       />
                     </FormControl>
                     <FormMessage />

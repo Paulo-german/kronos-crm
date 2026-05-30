@@ -453,9 +453,7 @@ export function OrganizationSettingsForm({
                       <FormControl>
                         <PhoneInput
                           value={field.value || ''}
-                          onValueChange={(values) =>
-                            field.onChange(values.value)
-                          }
+                          onChange={(value) => field.onChange(value)}
                         />
                       </FormControl>
                       <FormMessage />

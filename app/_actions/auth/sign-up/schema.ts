@@ -74,7 +74,7 @@ export const signUpSchema = z.object({
       },
       'Informe um site válido ou perfil do Instagram (@usuario)',
     ),
-  phone: z.string().min(10, 'Telefone inválido').max(20, 'Telefone muito longo'),
+  phone: z.string().regex(/^\+[1-9]\d{6,14}$/, 'Telefone inválido'),
   niche: z.enum(SIGNUP_NICHE_KEYS, { message: 'Selecione um segmento' }),
   email: z.string().email('Por favor, insira um e-mail válido'),
   password: passwordRules.reduce(

@@ -1,67 +1,115 @@
 'use client'
 
 import { forwardRef } from 'react'
+import ReactPhoneInput, {
+  type Value,
+  type Country,
+  getCountryCallingCode,
+} from 'react-phone-number-input'
 import {
-  NumberFormatBase,
-  type NumberFormatBaseProps,
-} from 'react-number-format'
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/_components/ui/select'
 import { Input } from '@/_components/ui/input'
 import { cn } from '@/_lib/utils'
 
-export interface PhoneInputProps extends Omit<NumberFormatBaseProps, 'format'> {
+export interface PhoneInputProps {
+  value: string
+  onChange: (value: string) => void
+  placeholder?: string
+  disabled?: boolean
   className?: string
 }
 
-const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(
-  ({ className, ...props }, ref) => {
-    // Formatação manual robusta que não bloqueia o 11º dígito
-    const format = (value: string) => {
-      // 1. Remove qualquer caractere que não seja número
-      const numbers = value.replace(/\D/g, '')
+const getFlagEmoji = (countryCode: string) =>
+  countryCode
+    .toUpperCase()
+    .replace(/./g, (char) => String.fromCodePoint(127397 + char.charCodeAt(0)))
 
-      // 2. Limita a 11 dígitos para evitar números infinitos
-      const limited = numbers.substring(0, 11)
+interface CountrySelectorProps {
+  value?: Country
+  onChange: (country?: Country) => void
+  options: readonly { value?: Country; label: string; divider?: boolean }[]
+  iconComponent: React.ComponentType<unknown>
+  disabled?: boolean
+}
 
-      // 3. Aplica a formatação baseada no tamanho
-      if (limited.length === 0) return ''
+const CountrySelector = ({ value, onChange, options, disabled }: CountrySelectorProps) => {
+  const callingCode = value ? getCountryCallingCode(value) : null
 
-      // (XX
-      if (limited.length <= 2) {
-        return `(${limited}`
-      }
+  return (
+    <Select
+      value={value ?? ''}
+      onValueChange={(val) => onChange(val ? (val as Country) : undefined)}
+      disabled={disabled}
+    >
+      <SelectTrigger className="w-[88px] shrink-0 rounded-r-none border-r-0 px-2 focus:ring-0 focus:ring-offset-0">
+        <SelectValue>
+          {value ? (
+            <span className="flex items-center gap-1 text-sm">
+              <span>{getFlagEmoji(value)}</span>
+              <span className="text-muted-foreground">+{callingCode}</span>
+            </span>
+          ) : (
+            <span className="text-muted-foreground text-base">🌐</span>
+          )}
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent className="max-h-72 w-64">
+        {options
+          .filter((option) => !option.divider && option.value)
+          .map((option) => (
+            <SelectItem key={option.value} value={option.value!}>
+              <span className="flex items-center gap-2">
+                <span>{getFlagEmoji(option.value!)}</span>
+                <span>{option.label}</span>
+                <span className="ml-auto text-muted-foreground">
+                  +{getCountryCallingCode(option.value!)}
+                </span>
+              </span>
+            </SelectItem>
+          ))}
+      </SelectContent>
+    </Select>
+  )
+}
 
-      // (XX) ZZZZ
-      if (limited.length <= 6) {
-        return `(${limited.substring(0, 2)}) ${limited.substring(2)}`
-      }
-
-      // (XX) ZZZZ-ZZZZ (Fixo - até 10 dígitos)
-      if (limited.length <= 10) {
-        return `(${limited.substring(0, 2)}) ${limited.substring(
-          2,
-          6,
-        )}-${limited.substring(6)}`
-      }
-
-      // (XX) 9ZZZZ-ZZZZ (Celular - 11 dígitos)
-      return `(${limited.substring(0, 2)}) ${limited.substring(
-        2,
-        7,
-      )}-${limited.substring(7)}`
-    }
-
-    return (
-      <NumberFormatBase
-        getInputRef={ref}
-        format={format}
-        customInput={Input}
-        className={cn(className)}
-        {...props}
-      />
-    )
-  },
+const InputField = forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
+  ({ className, ...props }, ref) => (
+    <Input
+      {...props}
+      ref={ref}
+      className={cn(
+        'rounded-l-none border-l-0 focus-visible:ring-0 focus-visible:ring-offset-0',
+        className,
+      )}
+    />
+  ),
 )
+InputField.displayName = 'PhoneInputField'
 
-PhoneInput.displayName = 'PhoneInput'
-
-export { PhoneInput }
+export function PhoneInput({ value, onChange, placeholder, disabled, className }: PhoneInputProps) {
+  return (
+    <div
+      className={cn(
+        'flex rounded-md ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2',
+        disabled && 'cursor-not-allowed opacity-50',
+        className,
+      )}
+    >
+      <ReactPhoneInput
+        defaultCountry="BR"
+        value={(value || '') as Value}
+        onChange={(val) => onChange(val ?? '')}
+        inputComponent={InputField}
+        countrySelectComponent={CountrySelector}
+        disabled={disabled}
+        placeholder={placeholder}
+        className="flex w-full"
+      />
+    </div>
+  )
+}
