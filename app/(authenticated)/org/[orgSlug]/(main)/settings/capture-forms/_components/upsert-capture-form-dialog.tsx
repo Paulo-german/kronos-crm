@@ -34,7 +34,7 @@ import {
 import { Separator } from '@/_components/ui/separator'
 import { createCaptureForm } from '@/_actions/capture-form/create-capture-form'
 import { createCaptureFormSchema, updateCaptureFormSchema } from '@/_actions/capture-form/schema'
-import { DEFAULT_CAPTURE_FIELDS, CAPTURE_FIELD_KEYS } from '@/_lib/capture-form/field-config'
+import { DEFAULT_CAPTURE_FIELDS, CAPTURE_FIELD_KEYS, type CaptureFieldKey } from '@/_lib/capture-form/field-config'
 import type { CaptureFormDto } from '@/_data-access/capture-form/get-capture-forms'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 
@@ -50,7 +50,7 @@ interface UpsertCaptureFormDialogProps {
   isUpdating?: boolean
 }
 
-const FIELD_LABELS: Record<string, string> = {
+const FIELD_LABELS: Record<CaptureFieldKey, string> = {
   name: 'Nome',
   email: 'E-mail',
   phone: 'Telefone',
@@ -223,8 +223,8 @@ export const UpsertCaptureFormDialog = ({
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="none">Sem responsável</SelectItem>
-                        {members.map((member) => (
-                          <SelectItem key={member.userId ?? member.email} value={member.userId ?? ''}>
+                        {members.filter((member) => member.userId !== null).map((member) => (
+                          <SelectItem key={member.userId!} value={member.userId!}>
                             {member.user?.fullName ?? member.email}
                           </SelectItem>
                         ))}

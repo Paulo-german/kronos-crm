@@ -66,10 +66,6 @@ export const CaptureFormsDataTable = ({ forms, members }: CaptureFormsDataTableP
     },
   })
 
-  const handleUpdate = (data: UpdateInput) => {
-    executeUpdate(data)
-  }
-
   const columns: ColumnDef<CaptureFormDto>[] = [
     {
       accessorKey: 'name',
@@ -150,7 +146,7 @@ export const CaptureFormsDataTable = ({ forms, members }: CaptureFormsDataTableP
         onOpenChange={setIsEditOpen}
         defaultValues={editingForm ?? undefined}
         members={members}
-        onUpdate={handleUpdate}
+        onUpdate={executeUpdate}
         isUpdating={isUpdating}
       />
 

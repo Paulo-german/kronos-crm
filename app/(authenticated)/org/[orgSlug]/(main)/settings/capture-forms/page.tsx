@@ -19,7 +19,7 @@ const CaptureFormsPage = async ({ params }: CaptureFormsPageProps) => {
   const { orgSlug } = await params
   const ctx = await getOrgContext(orgSlug)
 
-  if (ctx.userRole === 'MEMBER' || ctx.userRole === 'SUPPORT') {
+  if (ctx.userRole === 'MEMBER') {
     redirect(`/org/${orgSlug}/settings`)
   }
 
