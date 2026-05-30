@@ -38,12 +38,6 @@ export const seedOrganization = orgActionClient
     let agentName: string
 
     if (data.generatedBlueprint) {
-      // Caminho IA: marca o niche como 'ai_generated'
-      await db.organization.update({
-        where: { id: ctx.orgId },
-        data: { niche: 'ai_generated' },
-      })
-
       const gen = data.generatedBlueprint
 
       blueprint = {
