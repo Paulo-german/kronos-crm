@@ -16,6 +16,7 @@ import { deleteCaptureForm } from '@/_actions/capture-form/delete-capture-form'
 import { toggleCaptureFormStatus } from '@/_actions/capture-form/toggle-capture-form-status'
 import type { CaptureFormDto } from '@/_data-access/capture-form/get-capture-forms'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
+import type { SquadDto } from '@/_data-access/squad/get-squads'
 import CaptureFormDropdownMenu from './table-dropdown-menu'
 import { UpsertCaptureFormDialog } from './upsert-capture-form-dialog'
 import { EmbedSnippetDialog } from './embed-snippet-dialog'
@@ -23,9 +24,10 @@ import { EmbedSnippetDialog } from './embed-snippet-dialog'
 interface CaptureFormsDataTableProps {
   forms: CaptureFormDto[]
   members: AcceptedMemberDto[]
+  squads: SquadDto[]
 }
 
-export const CaptureFormsDataTable = ({ forms, members }: CaptureFormsDataTableProps) => {
+export const CaptureFormsDataTable = ({ forms, members, squads }: CaptureFormsDataTableProps) => {
   const [editingForm, setEditingForm] = useState<CaptureFormDto | null>(null)
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [embedForm, setEmbedForm] = useState<CaptureFormDto | null>(null)
@@ -78,13 +80,21 @@ export const CaptureFormsDataTable = ({ forms, members }: CaptureFormsDataTableP
       ),
     },
     {
-      accessorKey: 'assigneeName',
-      header: 'Responsável padrão',
-      cell: ({ row }) => (
-        <span className="text-sm text-muted-foreground">
-          {row.original.assigneeName ?? '—'}
-        </span>
-      ),
+      id: 'distribution',
+      header: 'Distribuição',
+      cell: ({ row }) => {
+        if (row.original.squadName) {
+          return <span className="text-sm text-muted-foreground">{row.original.squadName}</span>
+        }
+        if (row.original.distributionUserIds.length > 0) {
+          return (
+            <span className="text-sm text-muted-foreground">
+              {row.original.distributionUserIds.length} membro(s) · round-robin
+            </span>
+          )
+        }
+        return <span className="text-sm text-muted-foreground">—</span>
+      },
     },
     {
       accessorKey: 'isActive',
@@ -142,6 +152,7 @@ export const CaptureFormsDataTable = ({ forms, members }: CaptureFormsDataTableP
         onOpenChange={setIsEditOpen}
         defaultValues={editingForm ?? undefined}
         members={members}
+        squads={squads}
         onUpdate={executeUpdate}
         isUpdating={isUpdating}
       />

@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getCaptureFormsByOrg } from '@/_data-access/capture-form/get-capture-forms'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
+import { getSquads } from '@/_data-access/squad/get-squads'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 import { Button } from '@/_components/ui/button'
 import { QuotaHint } from '@/_components/trial/quota-hint'
@@ -23,9 +24,10 @@ const CaptureFormsPage = async ({ params }: CaptureFormsPageProps) => {
     redirect(`/org/${orgSlug}/settings`)
   }
 
-  const [forms, members, quota] = await Promise.all([
+  const [forms, members, squads, quota] = await Promise.all([
     getCaptureFormsByOrg(ctx.orgId),
     getOrganizationMembers(ctx.orgId),
+    getSquads(ctx),
     checkPlanQuota(ctx.orgId, 'capture_form'),
   ])
 
@@ -49,11 +51,15 @@ const CaptureFormsPage = async ({ params }: CaptureFormsPageProps) => {
           <QuotaHint orgId={ctx.orgId} entity="capture_form" />
         </HeaderLeft>
         <HeaderRight>
-          <CreateCaptureFormButton withinQuota={quota.withinQuota} members={members.accepted} />
+          <CreateCaptureFormButton
+            withinQuota={quota.withinQuota}
+            members={members.accepted}
+            squads={squads}
+          />
         </HeaderRight>
       </Header>
 
-      <CaptureFormsDataTable forms={forms} members={members.accepted} />
+      <CaptureFormsDataTable forms={forms} members={members.accepted} squads={squads} />
     </div>
   )
 }

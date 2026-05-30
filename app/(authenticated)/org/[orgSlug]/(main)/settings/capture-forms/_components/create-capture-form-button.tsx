@@ -6,13 +6,15 @@ import { Button } from '@/_components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/_components/ui/tooltip'
 import { UpsertCaptureFormDialog } from './upsert-capture-form-dialog'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
+import type { SquadDto } from '@/_data-access/squad/get-squads'
 
 interface CreateCaptureFormButtonProps {
   withinQuota: boolean
   members: AcceptedMemberDto[]
+  squads: SquadDto[]
 }
 
-const CreateCaptureFormButton = ({ withinQuota, members }: CreateCaptureFormButtonProps) => {
+const CreateCaptureFormButton = ({ withinQuota, members, squads }: CreateCaptureFormButtonProps) => {
   const [isOpen, setIsOpen] = useState(false)
 
   if (!withinQuota) {
@@ -37,7 +39,7 @@ const CreateCaptureFormButton = ({ withinQuota, members }: CreateCaptureFormButt
         <Plus className="mr-2 h-4 w-4" />
         Novo formulário
       </Button>
-      <UpsertCaptureFormDialog open={isOpen} onOpenChange={setIsOpen} members={members} />
+      <UpsertCaptureFormDialog open={isOpen} onOpenChange={setIsOpen} members={members} squads={squads} />
     </>
   )
 }
