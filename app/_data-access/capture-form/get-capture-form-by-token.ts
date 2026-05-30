@@ -12,37 +12,41 @@ export interface PublicCaptureFormDto {
   successMessage: string
   redirectUrl: string | null
   captureSourceId: string
-  assignedTo: string | null
+  distributionUserIds: string[]
+  squadId: string | null
   isActive: boolean
   organizationIsReadOnly: boolean
 }
 
-export const getCaptureFormByToken = cache(async (token: string): Promise<PublicCaptureFormDto | null> => {
-  const getCached = unstable_cache(
-    async () => {
-      const form = await db.captureForm.findUnique({
-        where: { publicToken: token },
-        include: { organization: { select: { isReadOnly: true } } },
-      })
+export const getCaptureFormByToken = cache(
+  async (token: string): Promise<PublicCaptureFormDto | null> => {
+    const getCached = unstable_cache(
+      async () => {
+        const form = await db.captureForm.findUnique({
+          where: { publicToken: token },
+          include: { organization: { select: { isReadOnly: true } } },
+        })
 
-      if (!form) return null
+        if (!form) return null
 
-      return {
-        id: form.id,
-        organizationId: form.organizationId,
-        fields: form.fields as unknown as CaptureFields,
-        buttonLabel: form.buttonLabel,
-        successMessage: form.successMessage,
-        redirectUrl: form.redirectUrl,
-        captureSourceId: form.captureSourceId,
-        assignedTo: form.assignedTo,
-        isActive: form.isActive,
-        organizationIsReadOnly: form.organization.isReadOnly,
-      }
-    },
-    [`capture-form-token-${token}`],
-    { tags: [`capture-form-token:${token}`], revalidate: 60 },
-  )
+        return {
+          id: form.id,
+          organizationId: form.organizationId,
+          fields: form.fields as unknown as CaptureFields,
+          buttonLabel: form.buttonLabel,
+          successMessage: form.successMessage,
+          redirectUrl: form.redirectUrl,
+          captureSourceId: form.captureSourceId,
+          distributionUserIds: form.distributionUserIds,
+          squadId: form.squadId,
+          isActive: form.isActive,
+          organizationIsReadOnly: form.organization.isReadOnly,
+        }
+      },
+      [`capture-form-token-${token}`],
+      { tags: [`capture-form-token:${token}`], revalidate: 60 },
+    )
 
-  return getCached()
-})
+    return getCached()
+  },
+)

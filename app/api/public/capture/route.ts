@@ -4,6 +4,7 @@ import { CaptureChannel, LifecycleCauseType, LifecycleStage } from '@prisma/clie
 import { db } from '@/_lib/prisma'
 import { revalidateTag } from 'next/cache'
 import { getCaptureFormByToken } from '@/_data-access/capture-form/get-capture-form-by-token'
+import { resolveCaptureFormAssignee } from '@/_lib/distribution/resolve-capture-form-assignee'
 import { CAPTURE_FIELD_KEYS } from '@/_lib/capture-form/field-config'
 
 const RATE_LIMIT_MAX = 5
@@ -74,11 +75,18 @@ export async function POST(req: Request) {
 
   const capturedAt = new Date()
 
+  const assignedTo = await resolveCaptureFormAssignee({
+    orgId: form.organizationId,
+    formId: form.id,
+    distributionUserIds: form.distributionUserIds,
+    squadId: form.squadId,
+  })
+
   await db.$transaction(async (tx) => {
     const contact = await tx.contact.create({
       data: {
         organizationId: form.organizationId,
-        assignedTo: form.assignedTo,
+        assignedTo,
         name: (data.name ?? '').trim(),
         email: data.email?.trim() || null,
         phone: data.phone?.trim() || null,

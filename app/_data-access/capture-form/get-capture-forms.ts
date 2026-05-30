@@ -12,8 +12,9 @@ export interface CaptureFormDto {
   buttonLabel: string
   successMessage: string
   redirectUrl: string | null
-  assignedTo: string | null
-  assigneeName: string | null
+  distributionUserIds: string[]
+  squadId: string | null
+  squadName: string | null
   isActive: boolean
   captureSourceId: string
   submissionCount: number
@@ -28,7 +29,7 @@ export const getCaptureFormsByOrg = cache(async (orgId: string): Promise<Capture
         where: { organizationId: orgId },
         orderBy: { createdAt: 'desc' },
         include: {
-          assignee: { select: { fullName: true } },
+          squad: { select: { name: true } },
           captureSource: { select: { _count: { select: { events: true } } } },
         },
       })
@@ -41,8 +42,9 @@ export const getCaptureFormsByOrg = cache(async (orgId: string): Promise<Capture
         buttonLabel: form.buttonLabel,
         successMessage: form.successMessage,
         redirectUrl: form.redirectUrl,
-        assignedTo: form.assignedTo,
-        assigneeName: form.assignee?.fullName ?? null,
+        distributionUserIds: form.distributionUserIds,
+        squadId: form.squadId,
+        squadName: form.squad?.name ?? null,
         isActive: form.isActive,
         captureSourceId: form.captureSourceId,
         submissionCount: form.captureSource._count.events,

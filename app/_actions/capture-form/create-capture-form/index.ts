@@ -16,12 +16,12 @@ export const createCaptureForm = orgActionClient
     // Nome é sempre visível e obrigatório — invariante do sistema
     const fields = { ...data.fields, name: { ...data.fields.name, visible: true, required: true } }
 
-    if (data.assignedTo) {
-      const member = await db.member.findFirst({
-        where: { organizationId: ctx.orgId, userId: data.assignedTo },
+    if (data.squadId) {
+      const squad = await db.squad.findFirst({
+        where: { id: data.squadId, organizationId: ctx.orgId },
         select: { id: true },
       })
-      if (!member) throw new Error('Usuário não encontrado na organização.')
+      if (!squad) throw new Error('Time não encontrado na organização.')
     }
 
     const form = await db.$transaction(async (tx) => {
@@ -44,7 +44,8 @@ export const createCaptureForm = orgActionClient
           buttonLabel: data.buttonLabel,
           successMessage: data.successMessage,
           redirectUrl: data.redirectUrl || null,
-          assignedTo: data.assignedTo || null,
+          distributionUserIds: data.distributionUserIds,
+          squadId: data.squadId ?? null,
           isActive: data.isActive,
           captureSourceId: source.id,
         },

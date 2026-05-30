@@ -37,7 +37,6 @@ model User {
   changelogEntries        ChangelogEntry[]
   professional            Professional?     @relation("ProfessionalUser")
   goals                   Goal[]
-  captureForms            CaptureForm[]     @relation("CaptureFormAssignee")
   @@map("users")
 }
 
@@ -321,8 +320,10 @@ model CaptureForm {
   buttonLabel     String   @default("Enviar") @map("button_label")
   successMessage  String   @default("Obrigado! Recebemos seus dados.") @map("success_message")
   redirectUrl     String?  @map("redirect_url")
-  // Responsável padrão para contatos gerados por este form (nullable = sem responsável)
-  assignedTo      String?  @map("assigned_to")
+  // Distribuição round-robin: lista de membros que recebem leads em rodízio (vazio = sem membros)
+  distributionUserIds String[] @default([]) @map("distribution_user_ids") @db.Uuid
+  // Distribuição via squad: usa o distributionModel do próprio squad (mutuamente exclusivo com distributionUserIds)
+  squadId             String?  @map("squad_id")
   isActive        Boolean  @default(true) @map("is_active")
   // CaptureSource gerada automaticamente ao criar o form (1:1 lógico)
   captureSourceId String   @map("capture_source_id")
@@ -331,12 +332,13 @@ model CaptureForm {
   updatedAt DateTime @updatedAt      @map("updated_at")
 
   organization  Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  assignee      User?         @relation("CaptureFormAssignee", fields: [assignedTo], references: [id], onDelete: SetNull)
   // Restrict: não deixa deletar a source enquanto o form existir — o delete do form trata a source explicitamente na action
   captureSource CaptureSource @relation(fields: [captureSourceId], references: [id], onDelete: Restrict)
+  squad         Squad?        @relation(fields: [squadId], references: [id], onDelete: SetNull)
 
   @@index([organizationId, isActive])
   @@index([organizationId, createdAt(sort: Desc)])
+  @@index([squadId])
   @@map("capture_forms")
 }
 
@@ -1161,6 +1163,7 @@ model Squad {
   inboxes           Inbox[]
   deals             Deal[]
   webhookSources    WebhookSource[]
+  captureForms      CaptureForm[]
 
   @@index([organizationId])
   @@map("squads")
