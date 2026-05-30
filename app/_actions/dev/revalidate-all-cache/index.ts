@@ -36,6 +36,8 @@ const CACHE_TAG_PREFIXES_BY_ORG = [
   'automations',
   'follow-ups-org',
   'integrations',
+  // Captura de leads
+  'capture-forms',
   // Billing / Plano
   'subscriptions',
   'credits',
@@ -65,6 +67,9 @@ export const revalidateAllCache = orgActionClient.action(async ({ ctx }) => {
   for (const prefix of CACHE_TAG_PREFIXES_BY_ORG) {
     revalidateTag(`${prefix}:${ctx.orgId}`)
   }
+
+  // Tags globais (sem prefixo de org)
+  revalidateTag('plan-limits')
 
   // organization usa slug como chave (não orgId) — tratado separadamente.
   revalidateTag(`organization:${ctx.orgSlug}`)
