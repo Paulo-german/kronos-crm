@@ -16,13 +16,9 @@ import { deleteCaptureForm } from '@/_actions/capture-form/delete-capture-form'
 import { toggleCaptureFormStatus } from '@/_actions/capture-form/toggle-capture-form-status'
 import type { CaptureFormDto } from '@/_data-access/capture-form/get-capture-forms'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
-import type { z } from 'zod'
-import type { updateCaptureFormSchema } from '@/_actions/capture-form/schema'
 import CaptureFormDropdownMenu from './table-dropdown-menu'
 import { UpsertCaptureFormDialog } from './upsert-capture-form-dialog'
 import { EmbedSnippetDialog } from './embed-snippet-dialog'
-
-type UpdateInput = z.infer<typeof updateCaptureFormSchema>
 
 interface CaptureFormsDataTableProps {
   forms: CaptureFormDto[]
