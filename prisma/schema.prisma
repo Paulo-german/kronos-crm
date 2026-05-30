@@ -37,6 +37,7 @@ model User {
   changelogEntries        ChangelogEntry[]
   professional            Professional?     @relation("ProfessionalUser")
   goals                   Goal[]
+  captureForms            CaptureForm[]     @relation("CaptureFormAssignee")
   @@map("users")
 }
 
@@ -123,6 +124,7 @@ model Organization {
   scoreHistory                 ContactScoreHistory[]
   companyContacts              CompanyContact[]
   webhookSources               WebhookSource[]
+  captureForms                 CaptureForm[]
 
   @@map("organizations")
 }
@@ -298,6 +300,7 @@ model CaptureSource {
   organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   events       CaptureEvent[]
   inboxes      Inbox[]
+  captureForms CaptureForm[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt      @map("updated_at")
@@ -305,6 +308,36 @@ model CaptureSource {
   @@index([organizationId, channel, isActive])
   @@index([organizationId, isAdHoc])
   @@map("capture_sources")
+}
+
+model CaptureForm {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  // Token público usado na URL /f/[token] — único, regenerável sem trocar a PK
+  publicToken     String   @unique @default(uuid()) @map("public_token")
+  name            String
+  // Config dos campos: { name:{visible,required,label?}, email:{...}, phone:{...}, role:{...} }
+  fields          Json     @default("{}")
+  buttonLabel     String   @default("Enviar") @map("button_label")
+  successMessage  String   @default("Obrigado! Recebemos seus dados.") @map("success_message")
+  redirectUrl     String?  @map("redirect_url")
+  // Responsável padrão para contatos gerados por este form (nullable = sem responsável)
+  assignedTo      String?  @map("assigned_to")
+  isActive        Boolean  @default(true) @map("is_active")
+  // CaptureSource gerada automaticamente ao criar o form (1:1 lógico)
+  captureSourceId String   @map("capture_source_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  organization  Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assignee      User?         @relation("CaptureFormAssignee", fields: [assignedTo], references: [id], onDelete: SetNull)
+  // Restrict: não deixa deletar a source enquanto o form existir — o delete do form trata a source explicitamente na action
+  captureSource CaptureSource @relation(fields: [captureSourceId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, isActive])
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@map("capture_forms")
 }
 
 model Campaign {
