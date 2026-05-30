@@ -33,6 +33,7 @@ async function seedFeaturesAndPlans() {
     { key: 'crm.max_automations', name: 'Automações', type: 'STATIC' as const, valueType: 'NUMBER' as const },
     { key: 'crm.max_pipelines', name: 'Funis de Vendas', type: 'STATIC' as const, valueType: 'NUMBER' as const },
     { key: 'crm.max_squads', name: 'Squads', type: 'STATIC' as const, valueType: 'NUMBER' as const },
+    { key: 'crm.max_capture_forms', name: 'Formulários de Captura', type: 'STATIC' as const, valueType: 'NUMBER' as const },
   ]
 
   const featureRecords: Record<string, { id: string }> = {}
@@ -173,6 +174,12 @@ async function seedFeaturesAndPlans() {
     { planSlug: 'essential', featureKey: 'crm.max_squads', valueNumber: 2 },
     { planSlug: 'scale', featureKey: 'crm.max_squads', valueNumber: 5 },
     { planSlug: 'enterprise', featureKey: 'crm.max_squads', valueNumber: 999 },
+
+    // Formulários de Captura (Light = 0 bloqueado; Essential+ = 99 ilimitado)
+    { planSlug: 'light', featureKey: 'crm.max_capture_forms', valueNumber: 0 },
+    { planSlug: 'essential', featureKey: 'crm.max_capture_forms', valueNumber: 99 },
+    { planSlug: 'scale', featureKey: 'crm.max_capture_forms', valueNumber: 99 },
+    { planSlug: 'enterprise', featureKey: 'crm.max_capture_forms', valueNumber: 99 },
   ]
 
   // Resolver IDs do DB para os limites

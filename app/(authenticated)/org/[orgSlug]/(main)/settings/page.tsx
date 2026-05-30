@@ -4,6 +4,7 @@ import {
   CalendarDays,
   CreditCard,
   FunnelIcon,
+  FormInput,
   LayoutGrid,
   Plug,
   Settings2,
@@ -167,6 +168,15 @@ const SettingsPage = async ({ params }: SettingsPageProps) => {
                     orgSlug={orgSlug}
                   >
                     <Zap size={20} />
+                  </CardSettings>
+                )}
+                {isAdmin && (
+                  <CardSettings
+                    title="Formulários de Captura"
+                    href="settings/capture-forms"
+                    orgSlug={orgSlug}
+                  >
+                    <FormInput size={20} />
                   </CardSettings>
                 )}
               </div>

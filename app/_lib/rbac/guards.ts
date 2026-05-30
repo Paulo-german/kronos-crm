@@ -156,6 +156,8 @@ function getEntityLabel(entity: RBACEntity): string {
     webhookSource: 'webhooks de entrada',
     // Squads
     squad: 'squads',
+    // Formulários de captura
+    captureForm: 'formulários de captura',
   }
   return labels[entity]
 }

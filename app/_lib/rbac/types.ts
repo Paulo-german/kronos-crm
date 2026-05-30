@@ -43,6 +43,8 @@ export type RBACEntity =
   | 'webhookSource'
   // Squads
   | 'squad'
+  // Formulários de captura embeddable
+  | 'captureForm'
 
 /**
  * Ações possíveis em cada entidade

@@ -4,7 +4,7 @@ import type { Plan } from '@prisma/client'
 import { db } from '@/_lib/prisma'
 
 // Mapeamento de entidade RBAC para feature key no catálogo
-export type QuotaEntity = 'contact' | 'deal' | 'product' | 'member' | 'agent' | 'inbox' | 'follow_up_monthly' | 'follow_up' | 'automation' | 'agent_group' | 'pipeline' | 'squad'
+export type QuotaEntity = 'contact' | 'deal' | 'product' | 'member' | 'agent' | 'inbox' | 'follow_up_monthly' | 'follow_up' | 'automation' | 'agent_group' | 'pipeline' | 'squad' | 'capture_form'
 
 // Slug do plano efetivo (usado pela UI)
 export type PlanType = 'light' | 'essential' | 'scale' | 'enterprise'
@@ -23,6 +23,7 @@ const ENTITY_FEATURE_MAP: Record<QuotaEntity, string> = {
   agent_group: 'ai.max_agents',
   pipeline: 'crm.max_pipelines',
   squad: 'crm.max_squads',
+  capture_form: 'crm.max_capture_forms',
 }
 
 /**
@@ -116,6 +117,7 @@ const ENTITY_COUNT_TAGS: Record<QuotaEntity, (orgId: string) => string[]> = {
   agent_group: (orgId) => [`agentGroups:${orgId}`],
   pipeline: (orgId) => [`pipeline:${orgId}`],
   squad: (orgId) => [`squads:${orgId}`],
+  capture_form: (orgId) => [`capture-forms:${orgId}`],
 }
 
 /**
@@ -168,6 +170,8 @@ async function countRecords(orgId: string, entity: QuotaEntity): Promise<number>
           return db.pipeline.count({ where: { organizationId: orgId } })
         case 'squad':
           return db.squad.count({ where: { organizationId: orgId } })
+        case 'capture_form':
+          return db.captureForm.count({ where: { organizationId: orgId } })
         default:
           return 0
       }
@@ -261,6 +265,7 @@ export async function requireQuota(orgId: string, entity: QuotaEntity): Promise<
       agent_group: 'equipes de agentes',
       pipeline: 'funis de vendas',
       squad: 'squads',
+      capture_form: 'formulários de captura',
     }
 
     throw new Error(

@@ -194,6 +194,15 @@ const PERMISSION_MATRIX: Record<RBACEntity, Record<RBACAction, MemberRole[]>> = 
     delete: ['OWNER', 'ADMIN'],
     transfer: [],
   },
+  // Formulários de captura embeddable — configuração estratégica da org
+  // MEMBER vê para saber quais forms existem; só ADMIN+ cria/edita/deleta
+  captureForm: {
+    create: ['OWNER', 'ADMIN'],
+    read: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'],
+    update: ['OWNER', 'ADMIN'],
+    delete: ['OWNER', 'ADMIN'],
+    transfer: [],
+  },
 }
 
 /**
