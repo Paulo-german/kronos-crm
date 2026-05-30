@@ -18,7 +18,8 @@ interface EmbedSnippetDialogProps {
   publicToken: string
 }
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? ''
+// NEXT_PUBLIC_APP_URL em produção; window.location.origin como fallback seguro no dev
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? (typeof window !== 'undefined' ? window.location.origin : '')
 
 export const EmbedSnippetDialog = ({
   open,

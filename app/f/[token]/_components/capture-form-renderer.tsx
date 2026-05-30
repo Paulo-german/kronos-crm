@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -11,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import type { PublicCaptureFormDto } from '@/_data-access/capture-form/get-capture-form-by-token'
 import { CAPTURE_FIELD_KEYS } from '@/_lib/capture-form/field-config'
 
-type CaptureFormRendererProps = {
+interface CaptureFormRendererProps {
   form: PublicCaptureFormDto
   publicToken: string
 }
@@ -38,7 +38,8 @@ export const CaptureFormRenderer = ({ form, publicToken }: CaptureFormRendererPr
   const [submitted, setSubmitted] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
 
-  const schema = buildFormSchema(form)
+  // Memoizado para evitar reconstrução do schema a cada render
+  const schema = useMemo(() => buildFormSchema(form), [form])
   const rhf = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
     defaultValues: Object.fromEntries(CAPTURE_FIELD_KEYS.map((key) => [key, ''])),

@@ -79,7 +79,7 @@ export async function POST(req: Request) {
       data: {
         organizationId: form.organizationId,
         assignedTo: form.assignedTo,
-        name: data.name!.trim(),
+        name: (data.name ?? '').trim(),
         email: data.email?.trim() || null,
         phone: data.phone?.trim() || null,
         role: data.role?.trim() || null,

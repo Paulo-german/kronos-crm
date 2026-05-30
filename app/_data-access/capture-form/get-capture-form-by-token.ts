@@ -1,4 +1,5 @@
 import 'server-only'
+import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 import type { CaptureFields } from '@/_lib/capture-form/field-config'
@@ -16,7 +17,7 @@ export interface PublicCaptureFormDto {
   organizationIsReadOnly: boolean
 }
 
-export const getCaptureFormByToken = async (token: string): Promise<PublicCaptureFormDto | null> => {
+export const getCaptureFormByToken = cache(async (token: string): Promise<PublicCaptureFormDto | null> => {
   const getCached = unstable_cache(
     async () => {
       const form = await db.captureForm.findUnique({
@@ -44,4 +45,4 @@ export const getCaptureFormByToken = async (token: string): Promise<PublicCaptur
   )
 
   return getCached()
-}
+})

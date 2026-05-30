@@ -1,4 +1,5 @@
 import 'server-only'
+import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 import type { CaptureFields } from '@/_lib/capture-form/field-config'
@@ -20,7 +21,7 @@ export interface CaptureFormDto {
   updatedAt: Date
 }
 
-export const getCaptureFormsByOrg = async (orgId: string): Promise<CaptureFormDto[]> => {
+export const getCaptureFormsByOrg = cache(async (orgId: string): Promise<CaptureFormDto[]> => {
   const getCached = unstable_cache(
     async () => {
       const forms = await db.captureForm.findMany({
@@ -54,4 +55,4 @@ export const getCaptureFormsByOrg = async (orgId: string): Promise<CaptureFormDt
   )
 
   return getCached()
-}
+})
