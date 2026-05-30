@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { db } from '@/_lib/prisma'
 import { logger } from '@trigger.dev/sdk/v3'
 import { resolveWhatsAppProvider } from '@/_lib/whatsapp/provider'
+import { normalizePhoneToDigits } from '@/_lib/whatsapp/normalize-phone'
 import { revalidateTags } from './lib/revalidate-tags'
 import { withRetry, safeBestEffort } from './lib/with-retry'
 import {
@@ -318,12 +319,14 @@ async function sendHandOffNotification(
     return
   }
 
-  // Normalizar telefone: remover caracteres não-numéricos e garantir código do país
-  recipientPhone = recipientPhone.replace(/\D/g, '')
-  if (recipientPhone.length <= 11) {
-    // Número BR sem código de país (ex: 21969990030) — adicionar 55
-    recipientPhone = `55${recipientPhone}`
+  const normalizedPhone = normalizePhoneToDigits(recipientPhone)
+  if (!normalizedPhone) {
+    logger.warn('hand_off_to_human: telefone inválido após normalização, pulando notificacao', {
+      rawPhone: recipientPhone,
+    })
+    return
   }
+  recipientPhone = normalizedPhone
 
   const maskedPhone = recipientPhone.length > 4
     ? `${recipientPhone.slice(0, 4)}***${recipientPhone.slice(-2)}`
