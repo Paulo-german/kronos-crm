@@ -1,5 +1,6 @@
 import { FieldType } from '@prisma/client'
 import { onlyNumbers } from '@/_lib/utils'
+import { CUSTOM_FIELD_VALUE_MAX } from '@/_lib/constants/field-limits'
 import type { FieldOption } from './types'
 
 /**
@@ -60,6 +61,11 @@ export function serializeFieldValue(
 
   if (trimmed === '') {
     return { ok: true, value: null }
+  }
+
+  const maxLength = CUSTOM_FIELD_VALUE_MAX[type]
+  if (maxLength !== undefined && trimmed.length > maxLength) {
+    return { ok: false, value: null, error: `Máximo de ${maxLength} caracteres.` }
   }
 
   switch (type) {

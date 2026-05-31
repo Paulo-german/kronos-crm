@@ -49,7 +49,13 @@ import type { MemberRole } from '@prisma/client'
 import { CaptureChannel, LifecycleStage } from '@prisma/client'
 import type { PipelineStageSimple } from '@/_data-access/pipeline/get-default-pipeline-with-stages'
 import type { FieldDefinitionDto } from '@/_lib/custom-fields/types'
-import { CustomFieldInput } from './custom-field-input'
+import { CustomFieldInput } from '@/_components/custom-fields/custom-field-input'
+import {
+  CONTACT_NAME_MAX,
+  CONTACT_EMAIL_MAX,
+  CONTACT_ROLE_MAX,
+  CONTACT_INLINE_DEAL_TITLE_MAX,
+} from '@/_lib/constants/field-limits'
 
 interface UpsertContactDialogContentProps {
   defaultValues?: ContactInput & { id?: string }
@@ -245,7 +251,7 @@ const UpsertContactDialogContent = ({
               <FormItem>
                 <FormLabel>Nome *</FormLabel>
                 <FormControl>
-                  <Input placeholder="Nome completo" {...field} />
+                  <Input placeholder="Nome completo" maxLength={CONTACT_NAME_MAX} {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -268,6 +274,7 @@ const UpsertContactDialogContent = ({
                       <Input
                         type="email"
                         placeholder="email@exemplo.com"
+                        maxLength={CONTACT_EMAIL_MAX}
                         value={field.value || ''}
                         onChange={field.onChange}
                       />
@@ -325,6 +332,7 @@ const UpsertContactDialogContent = ({
                   <FormControl>
                     <Input
                       placeholder="Ex: Diretor"
+                      maxLength={CONTACT_ROLE_MAX}
                       value={field.value || ''}
                       onChange={field.onChange}
                     />
@@ -428,6 +436,7 @@ const UpsertContactDialogContent = ({
                         <FormControl>
                           <Input
                             placeholder="Ex: Proposta de serviço anual"
+                            maxLength={CONTACT_INLINE_DEAL_TITLE_MAX}
                             value={field.value || ''}
                             onChange={field.onChange}
                           />

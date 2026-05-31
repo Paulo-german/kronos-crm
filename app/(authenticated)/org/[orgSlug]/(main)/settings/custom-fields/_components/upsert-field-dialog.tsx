@@ -37,6 +37,11 @@ import { createFieldDefinition } from '@/_actions/field-definition/create-field-
 import { updateFieldDefinition } from '@/_actions/field-definition/update-field-definition'
 import { CUSTOM_FIELD_TYPES } from '@/_lib/custom-fields/types'
 import type { FieldDefinitionDto } from '@/_lib/custom-fields/types'
+import {
+  FIELD_DEFINITION_LABEL_MAX,
+  FIELD_OPTION_LABEL_MAX,
+  FIELD_OPTION_VALUE_MAX,
+} from '@/_lib/constants/field-limits'
 
 // Labels PT-BR para os tipos de campo
 const FIELD_TYPE_LABELS: Record<FieldType, string> = {
@@ -190,7 +195,7 @@ export const UpsertFieldDialog = ({
                 <FormItem>
                   <FormLabel>Nome do campo *</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ex: Origem do Lead" {...field} />
+                    <Input placeholder="Ex: Origem do Lead" maxLength={FIELD_DEFINITION_LABEL_MAX} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -294,7 +299,7 @@ export const UpsertFieldDialog = ({
                               Rótulo da opção {index + 1}
                             </FormLabel>
                             <FormControl>
-                              <Input placeholder="Rótulo" {...field} />
+                              <Input placeholder="Rótulo" maxLength={FIELD_OPTION_LABEL_MAX} {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -311,6 +316,7 @@ export const UpsertFieldDialog = ({
                             <FormControl>
                               <Input
                                 placeholder="Valor interno"
+                                maxLength={FIELD_OPTION_VALUE_MAX}
                                 disabled={isEditing}
                                 title={
                                   isEditing
