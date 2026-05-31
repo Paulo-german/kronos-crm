@@ -36,7 +36,9 @@ END $$;
 DO $$ BEGIN
   ALTER TABLE "capture_forms" ADD CONSTRAINT "capture_forms_assigned_to_fkey"
     FOREIGN KEY ("assigned_to") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+  WHEN undefined_column THEN NULL;
 END $$;
 
 DO $$ BEGIN
