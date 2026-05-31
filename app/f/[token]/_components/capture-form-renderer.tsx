@@ -19,6 +19,7 @@ import {
   CONTACT_PHONE_MAX,
   CONTACT_ROLE_MAX,
   CUSTOM_FIELD_VALUE_MAX,
+  CUSTOM_FIELD_VALUE_SCHEMA_MAX,
 } from '@/_lib/constants/field-limits'
 
 interface CaptureFormRendererProps {
@@ -37,15 +38,15 @@ function buildFieldZodType(fieldType: FieldType, required: boolean): z.ZodTypeAn
 
   switch (fieldType) {
     case FieldType.EMAIL:
-      return wrap(str.email('E-mail inválido').max(CUSTOM_FIELD_VALUE_MAX[FieldType.EMAIL]!))
+      return wrap(str.email('E-mail inválido').max(CUSTOM_FIELD_VALUE_MAX[FieldType.EMAIL] ?? CUSTOM_FIELD_VALUE_SCHEMA_MAX))
     case FieldType.URL:
-      return wrap(str.url('URL inválida').max(CUSTOM_FIELD_VALUE_MAX[FieldType.URL]!))
+      return wrap(str.url('URL inválida').max(CUSTOM_FIELD_VALUE_MAX[FieldType.URL] ?? CUSTOM_FIELD_VALUE_SCHEMA_MAX))
     case FieldType.NUMBER:
-      return wrap(str.regex(/^-?\d*\.?\d*$/, 'Número inválido').max(CUSTOM_FIELD_VALUE_MAX[FieldType.NUMBER]!))
+      return wrap(str.regex(/^-?\d*\.?\d*$/, 'Número inválido').max(CUSTOM_FIELD_VALUE_MAX[FieldType.NUMBER] ?? CUSTOM_FIELD_VALUE_SCHEMA_MAX))
     case FieldType.DATE:
       return wrap(str.regex(/^\d{4}-\d{2}-\d{2}$/, 'Data inválida'))
     default:
-      return wrap(str.max(CUSTOM_FIELD_VALUE_MAX[FieldType.TEXT]!))
+      return wrap(str.max(CUSTOM_FIELD_VALUE_MAX[FieldType.TEXT] ?? CUSTOM_FIELD_VALUE_SCHEMA_MAX))
   }
 }
 
@@ -80,6 +81,7 @@ function buildFormSchema(form: PublicCaptureFormDto) {
 
 export const CaptureFormRenderer = ({ form, publicToken }: CaptureFormRendererProps) => {
   const formRef = useRef<HTMLDivElement>(null)
+  const honeypotRef = useRef<HTMLInputElement>(null)
   const [submitted, setSubmitted] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
 
@@ -114,6 +116,12 @@ export const CaptureFormRenderer = ({ form, publicToken }: CaptureFormRendererPr
   const onSubmit = async (values: z.infer<typeof schema>) => {
     setServerError(null)
 
+    // Honeypot: bot preencheu o campo oculto → simular sucesso sem enviar
+    if (honeypotRef.current?.value) {
+      setSubmitted(true)
+      return
+    }
+
     // Separar campos fixos dos campos custom
     const systemData: Record<string, string> = {}
     const customFields: Array<{ fieldDefinitionId: string; value: string | null }> = []
@@ -137,6 +145,7 @@ export const CaptureFormRenderer = ({ form, publicToken }: CaptureFormRendererPr
         token: publicToken,
         data: systemData,
         customFields,
+        hp: honeypotRef.current?.value ?? '',
       }),
     })
 
@@ -191,6 +200,19 @@ export const CaptureFormRenderer = ({ form, publicToken }: CaptureFormRendererPr
     <div ref={formRef}>
       <Form {...rhf}>
         <form onSubmit={rhf.handleSubmit(onSubmit)}>
+          {/* Honeypot: oculto para humanos via CSS, visível para crawlers */}
+          <div aria-hidden="true" className="absolute -left-[9999px] h-0 overflow-hidden opacity-0">
+            <label htmlFor="hp_website">Website</label>
+            <input
+              id="hp_website"
+              name="website"
+              type="text"
+              tabIndex={-1}
+              autoComplete="nope"
+              ref={honeypotRef}
+            />
+          </div>
+
           <CaptureFormView
             appearance={form.appearance}
             fields={form.fields}
