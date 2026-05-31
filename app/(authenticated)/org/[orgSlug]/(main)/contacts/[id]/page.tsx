@@ -1,9 +1,12 @@
 import { redirect } from 'next/navigation'
+import { EntityType } from '@prisma/client'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getContactById } from '@/_data-access/contact/get-contact-by-id'
 import { getContactLifecycleHistory } from '@/_data-access/contact/get-contact-lifecycle-history'
 import { getCompanies } from '@/_data-access/company/get-companies'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
+import { getFieldDefinitions } from '@/_data-access/field-definition/get-field-definitions'
+import { getContactCustomFieldValues } from '@/_data-access/contact/get-contact-custom-field-values'
 import ContactDetailClient from './_components/contact-detail-client'
 
 interface ContactDetailPageProps {
@@ -19,11 +22,18 @@ const ContactDetailPage = async ({ params }: ContactDetailPageProps) => {
     redirect(`/org/${orgSlug}/contacts`)
   }
 
-  const [companies, members, lifecycleHistory] = await Promise.all([
+  const [companies, members, lifecycleHistory, allFieldDefinitions, customFieldValues] = await Promise.all([
     getCompanies(ctx.orgId),
     getOrganizationMembers(ctx.orgId),
     getContactLifecycleHistory(id, ctx),
+    getFieldDefinitions(ctx.orgId, EntityType.CONTACT),
+    getContactCustomFieldValues(id, ctx.orgId),
   ])
+
+  // Apenas campos personalizados (isSystem: false) são passados ao formulário de edição
+  const customFieldDefinitions = allFieldDefinitions.filter(
+    (definition) => !definition.isSystem,
+  )
 
   return (
     <ContactDetailClient
@@ -35,6 +45,8 @@ const ContactDetailPage = async ({ params }: ContactDetailPageProps) => {
       hidePiiFromMembers={ctx.hidePiiFromMembers ?? false}
       orgSlug={orgSlug}
       lifecycleHistory={lifecycleHistory}
+      customFieldDefinitions={customFieldDefinitions}
+      customFieldValues={customFieldValues}
     />
   )
 }

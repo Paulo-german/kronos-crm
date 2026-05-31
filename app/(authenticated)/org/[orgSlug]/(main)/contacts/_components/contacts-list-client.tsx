@@ -25,6 +25,7 @@ import type { CompanyDto } from '@/_data-access/company/get-companies'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import type { PipelineStageSimple } from '@/_data-access/pipeline/get-default-pipeline-with-stages'
 import type { MemberRole } from '@prisma/client'
+import type { FieldDefinitionDto } from '@/_lib/custom-fields/types'
 
 interface ContactsListClientProps {
   contacts: ContactDto[]
@@ -42,6 +43,7 @@ interface ContactsListClientProps {
   isScoreEnabled: boolean
   lifecycleCounts: ContactsLifecycleCounts
   pipelineStages: PipelineStageSimple[]
+  customFieldDefinitions?: FieldDefinitionDto[]
 }
 
 export function ContactsListClient({
@@ -60,6 +62,7 @@ export function ContactsListClient({
   isScoreEnabled,
   lifecycleCounts,
   pipelineStages,
+  customFieldDefinitions = [],
 }: ContactsListClientProps) {
   const { filters, setFilters, clearFilters, activeFilterCount, hasActiveFilters } =
     useContactFilters()
@@ -172,6 +175,7 @@ export function ContactsListClient({
           activeFilterCount={activeFilterCount}
           isScoreEnabled={isScoreEnabled}
           pipelineStages={pipelineStages}
+          customFieldDefinitions={customFieldDefinitions}
         />
 
         <ContactsDataTable
@@ -219,6 +223,10 @@ export function ContactsListClient({
             isUpdating={isUpdating}
             userRole={userRole}
             hidePiiFromMembers={hidePiiFromMembers}
+            // customFieldDefinitions intencionalmente omitido: a listagem não carrega
+            // os valores atuais de cada contato, então passar as definições aqui causaria
+            // envio de null para todos os campos no submit, apagando os dados salvos.
+            // Edição de campos personalizados disponível apenas na página de detalhe do contato.
           />
         )}
       </Sheet>

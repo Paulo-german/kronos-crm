@@ -21,6 +21,7 @@ import type { CompanyDto } from '@/_data-access/company/get-companies'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import type { PipelineStageSimple } from '@/_data-access/pipeline/get-default-pipeline-with-stages'
 import type { MemberRole } from '@prisma/client'
+import type { FieldDefinitionDto } from '@/_lib/custom-fields/types'
 
 const SEARCH_DEBOUNCE_MS = 300
 
@@ -37,6 +38,7 @@ interface ContactsToolbarProps {
   activeFilterCount: number
   isScoreEnabled: boolean
   pipelineStages: PipelineStageSimple[]
+  customFieldDefinitions?: FieldDefinitionDto[]
 }
 
 export function ContactsToolbar({
@@ -52,6 +54,7 @@ export function ContactsToolbar({
   activeFilterCount,
   isScoreEnabled,
   pipelineStages,
+  customFieldDefinitions = [],
 }: ContactsToolbarProps) {
   const isMember = userRole === 'MEMBER'
   const searchParams = useSearchParams()
@@ -206,6 +209,7 @@ export function ContactsToolbar({
             companyOptions={companyOptions}
             withinQuota={withinQuota}
             pipelineStages={pipelineStages}
+            customFieldDefinitions={customFieldDefinitions}
           />
         </div>
       </div>

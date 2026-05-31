@@ -8,17 +8,20 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/_components/ui/toolti
 import UpsertContactDialogContent from './upsert-dialog-content'
 import { CompanyDto } from '@/_data-access/company/get-companies'
 import type { PipelineStageSimple } from '@/_data-access/pipeline/get-default-pipeline-with-stages'
+import type { FieldDefinitionDto } from '@/_lib/custom-fields/types'
 
 interface CreateContactButtonProps {
   companyOptions: CompanyDto[]
   withinQuota?: boolean
   pipelineStages?: PipelineStageSimple[]
+  customFieldDefinitions?: FieldDefinitionDto[]
 }
 
 const CreateContactButton = ({
   companyOptions,
   withinQuota = true,
   pipelineStages = [],
+  customFieldDefinitions = [],
 }: CreateContactButtonProps) => {
   const [isOpen, setIsOpen] = useState(false)
 
@@ -50,6 +53,7 @@ const CreateContactButton = ({
         setIsOpen={setIsOpen}
         companyOptions={companyOptions}
         pipelineStages={pipelineStages}
+        customFieldDefinitions={customFieldDefinitions}
       />
     </Sheet>
   )

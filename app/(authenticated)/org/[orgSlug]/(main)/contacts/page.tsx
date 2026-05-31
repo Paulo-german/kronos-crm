@@ -1,3 +1,4 @@
+import { EntityType } from '@prisma/client'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getContactsPaginated } from '@/_data-access/contact/get-contacts'
 import { getContactsLifecycleCounts } from '@/_data-access/contact/get-contacts-lifecycle-counts'
@@ -7,6 +8,7 @@ import { checkPlanQuota, getPlanLimits } from '@/_lib/rbac/plan-limits'
 import { SCORE_ELIGIBLE_PRODUCT_KEYS } from '@/../trigger/lib/health-score-constants'
 import { getDefaultPipelineWithStages } from '@/_data-access/pipeline/get-default-pipeline-with-stages'
 import { getTutorialCompletions } from '@/_data-access/tutorial/get-tutorial-completions'
+import { getFieldDefinitions } from '@/_data-access/field-definition/get-field-definitions'
 import { LifecycleIntroTrigger } from '@/_components/tutorials/lifecycle-intro-trigger'
 import { ContactsListClient } from './_components/contacts-list-client'
 import { parseContactListParams } from './_lib/contact-list-params'
@@ -22,7 +24,7 @@ const ContactsPage = async ({ params, searchParams }: ContactsPageProps) => {
   const ctx = await getOrgContext(orgSlug)
   const listParams = parseContactListParams(resolvedSearchParams)
 
-  const [result, companies, quota, members, planInfo, lifecycleCounts, pipelineStages, completedTutorialIds] =
+  const [result, companies, quota, members, planInfo, lifecycleCounts, pipelineStages, completedTutorialIds, allFieldDefinitions] =
     await Promise.all([
       getContactsPaginated(ctx, listParams),
       getCompanies(ctx.orgId),
@@ -32,7 +34,13 @@ const ContactsPage = async ({ params, searchParams }: ContactsPageProps) => {
       getContactsLifecycleCounts(ctx, listParams),
       getDefaultPipelineWithStages(ctx.orgId),
       getTutorialCompletions(ctx.userId, ctx.orgId),
+      getFieldDefinitions(ctx.orgId, EntityType.CONTACT),
     ])
+
+  // Apenas campos personalizados (isSystem: false) são passados ao formulário de criação
+  const customFieldDefinitions = allFieldDefinitions.filter(
+    (definition) => !definition.isSystem,
+  )
 
   const isScoreEnabled = planInfo.plan
     ? (SCORE_ELIGIBLE_PRODUCT_KEYS as readonly string[]).includes(planInfo.plan)
@@ -56,6 +64,7 @@ const ContactsPage = async ({ params, searchParams }: ContactsPageProps) => {
         isScoreEnabled={isScoreEnabled}
         lifecycleCounts={lifecycleCounts}
         pipelineStages={pipelineStages}
+        customFieldDefinitions={customFieldDefinitions}
       />
       <LifecycleIntroTrigger
         hasSeenLifecycleIntro={completedTutorialIds.includes('lifecycle-intro')}

@@ -56,6 +56,8 @@ import { LifecycleStatusCard } from './lifecycle-status-card'
 import { CaptureSourceCard } from './capture-source-card'
 import { ContactLifecycleTimeline } from './contact-lifecycle-timeline'
 import type { MemberRole } from '@prisma/client'
+import { FieldType } from '@prisma/client'
+import type { FieldDefinitionDto } from '@/_lib/custom-fields/types'
 
 interface ContactDetailClientProps {
   contact: ContactDetailDto
@@ -66,6 +68,8 @@ interface ContactDetailClientProps {
   hidePiiFromMembers: boolean
   orgSlug: string
   lifecycleHistory: LifecycleHistoryItemDto[]
+  customFieldDefinitions?: FieldDefinitionDto[]
+  customFieldValues?: Record<string, string | null>
 }
 
 const ContactDetailClient = ({
@@ -77,6 +81,8 @@ const ContactDetailClient = ({
   hidePiiFromMembers,
   orgSlug,
   lifecycleHistory,
+  customFieldDefinitions = [],
+  customFieldValues = {},
 }: ContactDetailClientProps) => {
   const isPiiRestricted = userRole === 'MEMBER' && hidePiiFromMembers
   const { handleBack } = useSmartNavigation({ fallbackPath: `/org/${orgSlug}/contacts` })
@@ -336,6 +342,42 @@ const ContactDetailClient = ({
                 </li>
               ))}
             </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Campos personalizados — exibe apenas quando há campos configurados com valores */}
+      {customFieldDefinitions.length > 0 && (
+        <Card className="border-border/50 bg-card">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base font-semibold">
+              Campos personalizados
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <dl className="grid gap-3 sm:grid-cols-2">
+              {customFieldDefinitions.map((definition) => {
+                const rawValue = customFieldValues[definition.id]
+                // Em campos SELECT exibimos o rótulo da opção, não o valor interno armazenado
+                const displayValue =
+                  definition.type === FieldType.SELECT && rawValue
+                    ? (definition.options?.find((option) => option.value === rawValue)?.label ??
+                      rawValue)
+                    : rawValue
+                return (
+                  <div key={definition.id} className="space-y-0.5">
+                    <dt className="text-xs font-medium text-muted-foreground">
+                      {definition.label}
+                    </dt>
+                    <dd className="text-sm">
+                      {displayValue ?? (
+                        <span className="text-muted-foreground/50">—</span>
+                      )}
+                    </dd>
+                  </div>
+                )
+              })}
+            </dl>
           </CardContent>
         </Card>
       )}

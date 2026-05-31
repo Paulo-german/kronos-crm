@@ -36,6 +36,7 @@ import {
   type ContactInput,
 } from '@/_actions/contact/create-contact/schema'
 import type { UpdateContactInput } from '@/_actions/contact/update-contact/schema'
+import { updateContactCustomFields } from '@/_actions/contact/update-contact-custom-fields'
 import { CompanyCombobox } from './company-combobox'
 import { PhoneInput } from '@/_components/form-controls/phone-input'
 import {
@@ -47,6 +48,8 @@ import { Loader2 } from 'lucide-react'
 import type { MemberRole } from '@prisma/client'
 import { CaptureChannel, LifecycleStage } from '@prisma/client'
 import type { PipelineStageSimple } from '@/_data-access/pipeline/get-default-pipeline-with-stages'
+import type { FieldDefinitionDto } from '@/_lib/custom-fields/types'
+import { CustomFieldInput } from './custom-field-input'
 
 interface UpsertContactDialogContentProps {
   defaultValues?: ContactInput & { id?: string }
@@ -57,6 +60,8 @@ interface UpsertContactDialogContentProps {
   userRole?: MemberRole
   hidePiiFromMembers?: boolean
   pipelineStages?: PipelineStageSimple[]
+  customFieldDefinitions?: FieldDefinitionDto[]
+  customFieldValues?: Record<string, string | null>
 }
 
 const UpsertContactDialogContent = ({
@@ -68,6 +73,8 @@ const UpsertContactDialogContent = ({
   userRole,
   hidePiiFromMembers = false,
   pipelineStages = [],
+  customFieldDefinitions = [],
+  customFieldValues = {},
 }: UpsertContactDialogContentProps) => {
   const isEditing = !!defaultValues?.id
   const router = useRouter()
@@ -92,6 +99,50 @@ const UpsertContactDialogContent = ({
     },
   })
 
+  // Form separado apenas para campos personalizados — evita conflito com zodResolver do form principal
+  const customFieldsForm = useForm<{ customFields: Record<string, string> }>({
+    defaultValues: {
+      customFields: customFieldDefinitions.reduce<Record<string, string>>(
+        (map, definition) => {
+          const existingValue = customFieldValues[definition.id]
+          map[definition.id] = existingValue ?? ''
+          return map
+        },
+        {},
+      ),
+    },
+  })
+
+  const { execute: executeUpdateCustomFields } = useAction(updateContactCustomFields, {
+    onError: ({ error }) => {
+      toast.error(error.serverError ?? 'Erro ao salvar campos personalizados.')
+    },
+  })
+
+  // No modo edição enviamos todos os campos (vazio → null) para permitir limpar valores.
+  // No modo criação ignoramos vazios, pois não há valor anterior a limpar.
+  const buildCustomFieldsPayload = (
+    contactId: string,
+    mode: 'create' | 'edit',
+  ) => {
+    const rawCustomFields = customFieldsForm.getValues('customFields')
+    const entries = Object.entries(rawCustomFields)
+
+    const values =
+      mode === 'edit'
+        ? entries.map(([fieldDefinitionId, value]) => ({
+            fieldDefinitionId,
+            value: value === '' ? null : value,
+          }))
+        : entries
+            .filter(([, value]) => value !== '' && value !== null && value !== undefined)
+            .map(([fieldDefinitionId, value]) => ({ fieldDefinitionId, value }))
+
+    if (values.length === 0) return
+
+    executeUpdateCustomFields({ contactId, values })
+  }
+
   const { execute: executeCreate, isPending: isCreating } = useAction(
     createContact,
     {
@@ -106,7 +157,14 @@ const UpsertContactDialogContent = ({
             )
           }
         }
+
+        // Encadeia a gravação dos campos personalizados após a criação do contato
+        if (data?.contactId && customFieldDefinitions.length > 0) {
+          buildCustomFieldsPayload(data.contactId, 'create')
+        }
+
         form.reset()
+        customFieldsForm.reset()
         setIsOpen(false)
         if (data?.dealId) {
           router.push(`/org/${params.orgSlug}/crm/deals/${data.dealId}`)
@@ -118,16 +176,46 @@ const UpsertContactDialogContent = ({
     },
   )
 
+  const validateRequiredCustomFields = (): boolean => {
+    // Limpa erros anteriores antes de revalidar para não manter mensagens stale
+    customFieldsForm.clearErrors('customFields')
+
+    const rawCustomFields = customFieldsForm.getValues('customFields')
+    const missingFields = customFieldDefinitions.filter(
+      (definition) =>
+        definition.isRequired &&
+        (!rawCustomFields[definition.id] || rawCustomFields[definition.id] === ''),
+    )
+
+    missingFields.forEach((definition) => {
+      customFieldsForm.setError(`customFields.${definition.id}`, {
+        type: 'required',
+        message: 'Campo obrigatório.',
+      })
+    })
+
+    return missingFields.length === 0
+  }
+
   const onSubmit = (data: ContactInput) => {
+    if (!validateRequiredCustomFields()) return
+
     if (isEditing && defaultValues?.id) {
+      // Edição: atualiza campos base E campos personalizados em paralelo
       onUpdate?.({ id: defaultValues.id, ...data })
-    } else {
-      executeCreate(data)
+      if (customFieldDefinitions.length > 0) {
+        buildCustomFieldsPayload(defaultValues.id, 'edit')
+      }
+      return
     }
+
+    // Criação: executeCreate → onSuccess encadeia updateContactCustomFields
+    executeCreate(data)
   }
 
   const handleCloseDialog = () => {
     form.reset()
+    customFieldsForm.reset()
     setIsOpen(false)
   }
 
@@ -421,6 +509,23 @@ const UpsertContactDialogContent = ({
               )}
             />
           </div>
+
+          {/* Campos personalizados — form separado para evitar conflito com zodResolver do form principal */}
+          {customFieldDefinitions.length > 0 && (
+            <div className="space-y-4">
+              <p className="text-sm font-medium text-foreground">Campos personalizados</p>
+              <div className="grid gap-4 md:grid-cols-2">
+                {customFieldDefinitions.map((definition) => (
+                  <CustomFieldInput
+                    key={definition.id}
+                    definition={definition}
+                    control={customFieldsForm.control}
+                    name={`customFields.${definition.id}`}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={handleCloseDialog}>
