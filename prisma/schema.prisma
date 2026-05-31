@@ -229,6 +229,7 @@ model Contact {
   scoreHistory     ContactScoreHistory[]
   companies        CompanyContact[]
   automationExecutions AutomationExecution[]
+  captureSubmissions   CaptureSubmission[]
   @@index([organizationId, assignedTo, createdAt(sort: Desc)])
   @@index([organizationId, name])
   @@index([organizationId, email])
@@ -333,10 +334,12 @@ model CaptureForm {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt      @map("updated_at")
 
-  organization  Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   // Restrict: não deixa deletar a source enquanto o form existir — o delete do form trata a source explicitamente na action
-  captureSource CaptureSource @relation(fields: [captureSourceId], references: [id], onDelete: Restrict)
-  squad         Squad?        @relation(fields: [squadId], references: [id], onDelete: SetNull)
+  captureSource     CaptureSource      @relation(fields: [captureSourceId], references: [id], onDelete: Restrict)
+  squad             Squad?             @relation(fields: [squadId], references: [id], onDelete: SetNull)
+  captureFormFields CaptureFormField[]
+  captureSubmissions CaptureSubmission[]
 
   @@index([organizationId, isActive])
   @@index([organizationId, createdAt(sort: Desc)])
@@ -388,6 +391,7 @@ model CaptureEvent {
   campaign     Campaign?     @relation(fields: [campaignId],      references: [id])
   referredBy   Contact?      @relation("ReferredByContact",       fields: [referredByContactId], references: [id], onDelete: SetNull)
   deals        DealCaptureEvent[]
+  captureSubmission CaptureSubmission?
 
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -2351,12 +2355,45 @@ model FieldDefinition {
   createdAt      DateTime   @default(now()) @map("created_at")
   updatedAt      DateTime   @updatedAt @map("updated_at")
 
-  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  values       CustomFieldValue[]
+  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  values            CustomFieldValue[]
+  captureFormFields CaptureFormField[]
 
   @@unique([organizationId, entityType, key])
   @@index([organizationId, entityType, isActive, position])
   @@map("field_definitions")
+}
+
+model CaptureFormField {
+  captureFormId     String  @map("capture_form_id")
+  fieldDefinitionId String  @map("field_definition_id")
+  required          Boolean @default(false)
+  labelOverride     String? @map("label_override")
+  position          Int
+
+  captureForm     CaptureForm     @relation(fields: [captureFormId],     references: [id], onDelete: Cascade)
+  fieldDefinition FieldDefinition @relation(fields: [fieldDefinitionId], references: [id], onDelete: Cascade)
+
+  @@id([captureFormId, fieldDefinitionId])
+  @@index([captureFormId, position])
+  @@map("capture_form_fields")
+}
+
+model CaptureSubmission {
+  id             String   @id @default(uuid())
+  captureFormId  String   @map("capture_form_id")
+  captureEventId String   @unique @map("capture_event_id")
+  contactId      String?  @map("contact_id")
+  snapshot       Json
+  submittedAt    DateTime @default(now()) @map("submitted_at")
+
+  captureForm  CaptureForm  @relation(fields: [captureFormId],  references: [id], onDelete: Cascade)
+  captureEvent CaptureEvent @relation(fields: [captureEventId], references: [id], onDelete: Cascade)
+  contact      Contact?     @relation(fields: [contactId],      references: [id], onDelete: SetNull)
+
+  @@index([captureFormId, submittedAt(sort: Desc)])
+  @@index([contactId])
+  @@map("capture_submissions")
 }
 
 model CustomFieldValue {
