@@ -62,6 +62,14 @@ export const CaptureFormView = ({
 
       {/* Botão (slot) */}
       {submitButton}
+
+      {/* Branding */}
+      <p
+        className="mt-5 text-center text-[11px]"
+        style={{ color: appearance.primaryColor, opacity: 0.3 }}
+      >
+        Powered by Kronos Hub
+      </p>
     </div>
   )
 }
