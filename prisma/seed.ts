@@ -34,6 +34,7 @@ async function seedFeaturesAndPlans() {
     { key: 'crm.max_pipelines', name: 'Funis de Vendas', type: 'STATIC' as const, valueType: 'NUMBER' as const },
     { key: 'crm.max_squads', name: 'Squads', type: 'STATIC' as const, valueType: 'NUMBER' as const },
     { key: 'crm.max_capture_forms', name: 'Formulários de Captura', type: 'STATIC' as const, valueType: 'NUMBER' as const },
+    { key: 'crm.max_custom_fields', name: 'Campos Personalizados', type: 'STATIC' as const, valueType: 'NUMBER' as const },
   ]
 
   const featureRecords: Record<string, { id: string }> = {}
@@ -180,6 +181,12 @@ async function seedFeaturesAndPlans() {
     { planSlug: 'essential', featureKey: 'crm.max_capture_forms', valueNumber: 99 },
     { planSlug: 'scale', featureKey: 'crm.max_capture_forms', valueNumber: 99 },
     { planSlug: 'enterprise', featureKey: 'crm.max_capture_forms', valueNumber: 99 },
+
+    // Campos Personalizados (Light = 0 bloqueado; Essential = 10, Scale = 25, Enterprise = 50)
+    { planSlug: 'light', featureKey: 'crm.max_custom_fields', valueNumber: 0 },
+    { planSlug: 'essential', featureKey: 'crm.max_custom_fields', valueNumber: 10 },
+    { planSlug: 'scale', featureKey: 'crm.max_custom_fields', valueNumber: 25 },
+    { planSlug: 'enterprise', featureKey: 'crm.max_custom_fields', valueNumber: 50 },
   ]
 
   // Resolver IDs do DB para os limites
