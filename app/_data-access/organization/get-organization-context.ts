@@ -5,7 +5,7 @@ import { validateMembership } from '@/_data-access/organization/validate-members
 import { getOrgPiiSetting } from '@/_data-access/organization/get-org-pii-setting'
 import type { MemberRole } from '@prisma/client'
 
-interface OrgContext {
+export interface OrgContext {
   userId: string
   orgId: string
   userRole: MemberRole
