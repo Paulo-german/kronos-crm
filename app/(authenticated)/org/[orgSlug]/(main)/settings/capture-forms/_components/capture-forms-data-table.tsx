@@ -17,6 +17,7 @@ import { toggleCaptureFormStatus } from '@/_actions/capture-form/toggle-capture-
 import type { CaptureFormDto } from '@/_data-access/capture-form/get-capture-forms'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import type { SquadDto } from '@/_data-access/squad/get-squads'
+import type { FieldDefinitionDto } from '@/_lib/custom-fields/types'
 import CaptureFormDropdownMenu from './table-dropdown-menu'
 import { UpsertCaptureFormDialog } from './upsert-capture-form-dialog'
 import { EmbedSnippetDialog } from './embed-snippet-dialog'
@@ -25,9 +26,10 @@ interface CaptureFormsDataTableProps {
   forms: CaptureFormDto[]
   members: AcceptedMemberDto[]
   squads: SquadDto[]
+  fieldDefinitions: FieldDefinitionDto[]
 }
 
-export const CaptureFormsDataTable = ({ forms, members, squads }: CaptureFormsDataTableProps) => {
+export const CaptureFormsDataTable = ({ forms, members, squads, fieldDefinitions }: CaptureFormsDataTableProps) => {
   const [editingForm, setEditingForm] = useState<CaptureFormDto | null>(null)
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [embedForm, setEmbedForm] = useState<CaptureFormDto | null>(null)
@@ -153,6 +155,7 @@ export const CaptureFormsDataTable = ({ forms, members, squads }: CaptureFormsDa
         defaultValues={editingForm ?? undefined}
         members={members}
         squads={squads}
+        fieldDefinitions={fieldDefinitions}
         onUpdate={executeUpdate}
         isUpdating={isUpdating}
       />

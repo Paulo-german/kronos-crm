@@ -27,6 +27,17 @@ export const updateCaptureForm = orgActionClient
       if (!squad) throw new Error('Time não encontrado na organização.')
     }
 
+    // Valida que todos os campos custom pertencem à org — nunca confiar no client
+    const customFieldIds = data.customFields.map((field) => field.fieldDefinitionId)
+    if (customFieldIds.length > 0) {
+      const validCount = await db.fieldDefinition.count({
+        where: { id: { in: customFieldIds }, organizationId: ctx.orgId },
+      })
+      if (validCount !== customFieldIds.length) {
+        throw new Error('Um ou mais campos personalizados são inválidos.')
+      }
+    }
+
     await db.$transaction(async (tx) => {
       await tx.captureForm.update({
         where: { id: data.id },
@@ -47,6 +58,21 @@ export const updateCaptureForm = orgActionClient
         where: { id: existing.captureSourceId },
         data: { name: data.name },
       })
+
+      // Replace-all: deleta a config atual e recria — chave composta torna o diff
+      // manual (upsert/delete seletivo) mais complexo e propenso a erro que o replace
+      await tx.captureFormField.deleteMany({ where: { captureFormId: data.id } })
+      if (data.customFields.length > 0) {
+        await tx.captureFormField.createMany({
+          data: data.customFields.map((field) => ({
+            captureFormId: data.id,
+            fieldDefinitionId: field.fieldDefinitionId,
+            required: field.required,
+            labelOverride: field.labelOverride ?? null,
+            position: field.position,
+          })),
+        })
+      }
     })
 
     revalidateTag(`capture-forms:${ctx.orgId}`)

@@ -24,6 +24,17 @@ export const createCaptureForm = orgActionClient
       if (!squad) throw new Error('Time não encontrado na organização.')
     }
 
+    // Valida que todos os campos custom pertencem à org — nunca confiar no client
+    const customFieldIds = data.customFields.map((field) => field.fieldDefinitionId)
+    if (customFieldIds.length > 0) {
+      const validCount = await db.fieldDefinition.count({
+        where: { id: { in: customFieldIds }, organizationId: ctx.orgId },
+      })
+      if (validCount !== customFieldIds.length) {
+        throw new Error('Um ou mais campos personalizados são inválidos.')
+      }
+    }
+
     const form = await db.$transaction(async (tx) => {
       const source = await tx.captureSource.create({
         data: {
@@ -36,7 +47,7 @@ export const createCaptureForm = orgActionClient
         },
       })
 
-      return tx.captureForm.create({
+      const created = await tx.captureForm.create({
         data: {
           organizationId: ctx.orgId,
           name: data.name,
@@ -51,6 +62,20 @@ export const createCaptureForm = orgActionClient
           captureSourceId: source.id,
         },
       })
+
+      if (data.customFields.length > 0) {
+        await tx.captureFormField.createMany({
+          data: data.customFields.map((field) => ({
+            captureFormId: created.id,
+            fieldDefinitionId: field.fieldDefinitionId,
+            required: field.required,
+            labelOverride: field.labelOverride ?? null,
+            position: field.position,
+          })),
+        })
+      }
+
+      return created
     })
 
     revalidateTag(`capture-forms:${ctx.orgId}`)

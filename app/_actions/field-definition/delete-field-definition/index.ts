@@ -26,8 +26,13 @@ export const deleteFieldDefinition = orgActionClient
 
     // Hard-delete dos valores + soft-delete da definição em transação atômica.
     // O admin confirmou que tem ciência da perda dos dados preenchidos.
+    // O soft-delete (isActive: false) não dispara cascade na FK do CaptureFormField
+    // (só hard-delete faz), por isso removemos a config dos forms explicitamente.
     await db.$transaction([
       db.customFieldValue.deleteMany({
+        where: { fieldDefinitionId: definition.id },
+      }),
+      db.captureFormField.deleteMany({
         where: { fieldDefinitionId: definition.id },
       }),
       db.fieldDefinition.update({
@@ -37,6 +42,7 @@ export const deleteFieldDefinition = orgActionClient
     ])
 
     revalidateTag(`field-definitions:${ctx.orgId}`)
+    revalidateTag(`capture-forms:${ctx.orgId}`)
 
     return { success: true }
   })

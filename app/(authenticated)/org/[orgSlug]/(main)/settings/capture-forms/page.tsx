@@ -5,6 +5,7 @@ import { getOrgContext } from '@/_data-access/organization/get-organization-cont
 import { getCaptureFormsByOrg } from '@/_data-access/capture-form/get-capture-forms'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
 import { getSquads } from '@/_data-access/squad/get-squads'
+import { getFieldDefinitions } from '@/_data-access/field-definition/get-field-definitions'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 import { Button } from '@/_components/ui/button'
 import { QuotaHint } from '@/_components/trial/quota-hint'
@@ -24,11 +25,12 @@ const CaptureFormsPage = async ({ params }: CaptureFormsPageProps) => {
     redirect(`/org/${orgSlug}/settings`)
   }
 
-  const [forms, members, squads, quota] = await Promise.all([
+  const [forms, members, squads, quota, fieldDefinitions] = await Promise.all([
     getCaptureFormsByOrg(ctx.orgId),
     getOrganizationMembers(ctx.orgId),
     getSquads(ctx),
     checkPlanQuota(ctx.orgId, 'capture_form'),
+    getFieldDefinitions(ctx.orgId, 'CONTACT'),
   ])
 
   return (
@@ -55,11 +57,12 @@ const CaptureFormsPage = async ({ params }: CaptureFormsPageProps) => {
             withinQuota={quota.withinQuota}
             members={members.accepted}
             squads={squads}
+            fieldDefinitions={fieldDefinitions}
           />
         </HeaderRight>
       </Header>
 
-      <CaptureFormsDataTable forms={forms} members={members.accepted} squads={squads} />
+      <CaptureFormsDataTable forms={forms} members={members.accepted} squads={squads} fieldDefinitions={fieldDefinitions} />
     </div>
   )
 }

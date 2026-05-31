@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { captureFieldsSchema } from '@/_lib/capture-form/field-config'
 import { captureAppearanceSchema } from '@/_lib/capture-form/appearance-config'
+import { captureFormCustomFieldsSchema } from '@/_lib/capture-form/custom-fields-config'
 
 // Base sem refine para permitir .extend() e uso como resolver no react-hook-form
 export const captureFormBaseSchema = z.object({
@@ -13,6 +14,7 @@ export const captureFormBaseSchema = z.object({
   distributionUserIds: z.array(z.string().uuid()),
   squadId: z.string().uuid().nullable().optional(),
   isActive: z.boolean(),
+  customFields: captureFormCustomFieldsSchema.optional().default([]),
 })
 
 // Membros específicos e squad são mutuamente exclusivos

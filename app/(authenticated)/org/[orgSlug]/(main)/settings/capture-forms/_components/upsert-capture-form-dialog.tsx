@@ -1,12 +1,26 @@
 'use client'
 
-import { useEffect } from 'react'
-import { useForm } from 'react-hook-form'
+import { useEffect, useId, useState } from 'react'
+import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
-import { Loader2, Users, CheckIcon } from 'lucide-react'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { Loader2, Users, CheckIcon, Plus } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -38,19 +52,24 @@ import {
   PopoverTrigger,
 } from '@/_components/ui/popover'
 import { Checkbox } from '@/_components/ui/checkbox'
+import { Label } from '@/_components/ui/label'
 import { Separator } from '@/_components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/_components/ui/tabs'
 import { createCaptureForm } from '@/_actions/capture-form/create-capture-form'
 import { captureFormBaseSchema, updateCaptureFormSchema } from '@/_actions/capture-form/schema'
+import { MAX_CUSTOM_FIELDS_PER_FORM } from '@/_lib/capture-form/custom-fields-config'
 import { DEFAULT_CAPTURE_FIELDS, CAPTURE_FIELD_KEYS, type CaptureFieldKey } from '@/_lib/capture-form/field-config'
 import { DEFAULT_CAPTURE_APPEARANCE } from '@/_lib/capture-form/appearance-config'
 import { CaptureFormView, getVisibleFieldKeys } from '@/_components/capture-form/capture-form-view'
 import type { CaptureFormDto } from '@/_data-access/capture-form/get-capture-forms'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import type { SquadDto } from '@/_data-access/squad/get-squads'
+import type { FieldDefinitionDto } from '@/_lib/custom-fields/types'
+import { CaptureFormFieldRow } from './capture-form-field-row'
 
-type CreateInput = z.infer<typeof captureFormBaseSchema>
-type UpdateInput = z.infer<typeof updateCaptureFormSchema>
+// z.input<> expõe o shape de entrada do RHF (campos com .default() ficam opcionais no input)
+type CreateInput = z.input<typeof captureFormBaseSchema>
+type UpdateInput = z.input<typeof updateCaptureFormSchema>
 
 interface UpsertCaptureFormDialogProps {
   open: boolean
@@ -58,6 +77,7 @@ interface UpsertCaptureFormDialogProps {
   defaultValues?: CaptureFormDto
   members: AcceptedMemberDto[]
   squads: SquadDto[]
+  fieldDefinitions: FieldDefinitionDto[]
   onUpdate?: (data: UpdateInput) => void
   isUpdating?: boolean
 }
@@ -79,6 +99,7 @@ const FORM_DEFAULTS: CreateInput = {
   distributionUserIds: [],
   squadId: null,
   isActive: true,
+  customFields: [],
 }
 
 export const UpsertCaptureFormDialog = ({
@@ -87,14 +108,22 @@ export const UpsertCaptureFormDialog = ({
   defaultValues,
   members,
   squads,
+  fieldDefinitions,
   onUpdate,
   isUpdating = false,
 }: UpsertCaptureFormDialogProps) => {
   const isEditing = !!defaultValues?.id
+  const dndContextId = useId()
+  const [isAddFieldOpen, setIsAddFieldOpen] = useState(false)
 
   const form = useForm<CreateInput>({
     resolver: zodResolver(captureFormBaseSchema),
     defaultValues: FORM_DEFAULTS,
+  })
+
+  const { fields: customFieldItems, append, remove, move } = useFieldArray({
+    control: form.control,
+    name: 'customFields',
   })
 
   const distributionUserIds = form.watch('distributionUserIds')
@@ -120,6 +149,12 @@ export const UpsertCaptureFormDialog = ({
         distributionUserIds: defaultValues.distributionUserIds,
         squadId: defaultValues.squadId ?? null,
         isActive: defaultValues.isActive,
+        customFields: defaultValues.customFields.map((customField) => ({
+          fieldDefinitionId: customField.fieldDefinitionId,
+          required: customField.required,
+          labelOverride: customField.labelOverride ?? null,
+          position: customField.position,
+        })),
       })
       return
     }
@@ -137,11 +172,20 @@ export const UpsertCaptureFormDialog = ({
   })
 
   const onSubmit = (data: CreateInput) => {
+    // Normalizar positions pelo índice atual antes de enviar
+    const normalizedData: CreateInput = {
+      ...data,
+      customFields: data.customFields?.map((customField, index) => ({
+        ...customField,
+        position: index,
+      })) ?? [],
+    }
+
     if (isEditing && onUpdate) {
-      onUpdate({ ...data, id: defaultValues!.id })
+      onUpdate({ ...normalizedData, id: defaultValues!.id })
       return
     }
-    executeCreate(data)
+    executeCreate(normalizedData)
   }
 
   const handleToggleMember = (userId: string) => {
@@ -152,7 +196,48 @@ export const UpsertCaptureFormDialog = ({
     form.setValue('distributionUserIds', updated, { shouldDirty: true })
   }
 
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  )
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    const oldIndex = customFieldItems.findIndex((item) => item.fieldDefinitionId === active.id)
+    const newIndex = customFieldItems.findIndex((item) => item.fieldDefinitionId === over.id)
+    if (oldIndex === -1 || newIndex === -1) return
+
+    move(oldIndex, newIndex)
+  }
+
+  // IDs de campos já adicionados ao form
+  const addedFieldIds = new Set(customFieldItems.map((item) => item.fieldDefinitionId))
+
+  // FieldDefinitions disponíveis para adicionar (não adicionadas ainda)
+  const availableDefinitions = fieldDefinitions.filter(
+    (definition) => !addedFieldIds.has(definition.id),
+  )
+
+  const handleAddField = (definition: FieldDefinitionDto) => {
+    append({
+      fieldDefinitionId: definition.id,
+      required: false,
+      labelOverride: null,
+      position: customFieldItems.length,
+    })
+    setIsAddFieldOpen(false)
+  }
+
   const isPending = isCreating || isUpdating
+
+  // Mapa de label por fieldDefinitionId (para o row component)
+  const definitionLabelById = new Map(
+    fieldDefinitions.map((definition) => [definition.id, definition.label]),
+  )
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -164,9 +249,9 @@ export const UpsertCaptureFormDialog = ({
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
             <Tabs defaultValue="content" className="w-full">
-              <TabsList className="mb-5 mt-2 grid w-full grid-cols-2">
-                <TabsTrigger value="content">Conteúdo</TabsTrigger>
-                <TabsTrigger value="appearance">Aparência</TabsTrigger>
+              <TabsList className="mb-5 mt-2 grid w-full grid-cols-2 h-12 border border-border/50 bg-tab/30 rounded-md">
+                <TabsTrigger value="content" className="data-[state=active]:bg-card/80 rounded-md py-2">Conteúdo</TabsTrigger>
+                <TabsTrigger value="appearance" className="data-[state=active]:bg-card/80 rounded-md py-2">Aparência</TabsTrigger>
               </TabsList>
 
               {/* ── Aba Conteúdo ── */}
@@ -187,6 +272,7 @@ export const UpsertCaptureFormDialog = ({
 
                 <Separator />
 
+                {/* Campos fixos */}
                 <div className="space-y-3">
                   <p className="text-sm font-medium">Campos do formulário</p>
                   <div className="space-y-2">
@@ -230,6 +316,97 @@ export const UpsertCaptureFormDialog = ({
                       </div>
                     ))}
                   </div>
+                </div>
+
+                <Separator />
+
+                {/* Campos personalizados */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">Campos personalizados</p>
+                      <p className="text-xs text-muted-foreground">
+                        Adicione campos customizados da organização ao formulário.
+                      </p>
+                    </div>
+
+                    <Popover open={isAddFieldOpen} onOpenChange={setIsAddFieldOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={
+                            customFieldItems.length >= MAX_CUSTOM_FIELDS_PER_FORM ||
+                            availableDefinitions.length === 0
+                          }
+                        >
+                          <Plus className="mr-1.5 h-3.5 w-3.5" />
+                          Adicionar campo
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-64 p-2" align="end">
+                        {availableDefinitions.length === 0 ? (
+                          <p className="px-2 py-1 text-sm text-muted-foreground">
+                            Todos os campos já foram adicionados.
+                          </p>
+                        ) : (
+                          availableDefinitions.map((definition) => (
+                            <button
+                              key={definition.id}
+                              type="button"
+                              onClick={() => handleAddField(definition)}
+                              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
+                            >
+                              <span className="flex-1 truncate text-left">{definition.label}</span>
+                              <Badge variant="secondary" className="text-xs">
+                                {definition.type}
+                              </Badge>
+                            </button>
+                          ))
+                        )}
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  {customFieldItems.length > 0 && (
+                    <DndContext
+                      id={dndContextId}
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={handleDragEnd}
+                    >
+                      <SortableContext
+                        items={customFieldItems.map((item) => item.fieldDefinitionId)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        <div className="space-y-2">
+                          {customFieldItems.map((item, index) => (
+                            <CaptureFormFieldRow
+                              key={item.fieldDefinitionId}
+                              fieldDefinitionId={item.fieldDefinitionId}
+                              fieldLabel={definitionLabelById.get(item.fieldDefinitionId) ?? item.fieldDefinitionId}
+                              index={index}
+                              control={form.control}
+                              onRemove={() => remove(index)}
+                            />
+                          ))}
+                        </div>
+                      </SortableContext>
+                    </DndContext>
+                  )}
+
+                  {customFieldItems.length === 0 && fieldDefinitions.length === 0 && (
+                    <p className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
+                      Nenhum campo personalizado criado para contatos ainda.
+                    </p>
+                  )}
+
+                  {customFieldItems.length === 0 && fieldDefinitions.length > 0 && (
+                    <p className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
+                      Clique em &quot;Adicionar campo&quot; para incluir campos personalizados.
+                    </p>
+                  )}
                 </div>
 
                 <Separator />
@@ -279,7 +456,7 @@ export const UpsertCaptureFormDialog = ({
 
                     {/* Multi-select de membros */}
                     <div className="space-y-2">
-                      <label className="text-sm font-medium leading-none">Membros específicos</label>
+                      <Label>Membros específicos</Label>
                       <Popover>
                         <PopoverTrigger asChild>
                           <Button
