@@ -44,6 +44,7 @@ import type { ContactDetailDto } from '@/_data-access/contact/get-contact-by-id'
 import type { CompanyDto } from '@/_data-access/company/get-companies'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import type { LifecycleHistoryItemDto } from '@/_data-access/lifecycle/types'
+import type { ContactPrivacyDto } from '@/_data-access/privacy/get-contact-privacy'
 import { InlineTextField } from '@/_components/form-controls/inline-text-field'
 import { CompanyCombobox } from '../../_components/company-combobox'
 import { useContactFieldUpdate } from '../_hooks/use-contact-field-update'
@@ -55,6 +56,7 @@ import { CUSTOMER_STATUS_CONFIG } from '@/_lib/lifecycle/customer-status-config'
 import { LifecycleStatusCard } from './lifecycle-status-card'
 import { CaptureSourceCard } from './capture-source-card'
 import { ContactLifecycleTimeline } from './contact-lifecycle-timeline'
+import { ContactPrivacyCard } from './contact-privacy-card'
 import type { MemberRole } from '@prisma/client'
 import { FieldType } from '@prisma/client'
 import type { FieldDefinitionDto } from '@/_lib/custom-fields/types'
@@ -70,6 +72,7 @@ interface ContactDetailClientProps {
   lifecycleHistory: LifecycleHistoryItemDto[]
   customFieldDefinitions?: FieldDefinitionDto[]
   customFieldValues?: Record<string, string | null>
+  privacy: ContactPrivacyDto | null
 }
 
 const ContactDetailClient = ({
@@ -83,6 +86,7 @@ const ContactDetailClient = ({
   lifecycleHistory,
   customFieldDefinitions = [],
   customFieldValues = {},
+  privacy,
 }: ContactDetailClientProps) => {
   const isPiiRestricted = userRole === 'MEMBER' && hidePiiFromMembers
   const { handleBack } = useSmartNavigation({ fallbackPath: `/org/${orgSlug}/contacts` })
@@ -364,6 +368,13 @@ const ContactDetailClient = ({
           </CardContent>
         </Card>
       )}
+
+      {/* Privacidade & Consentimento (LGPD/GDPR/CCPA) */}
+      <ContactPrivacyCard
+        privacy={privacy}
+        contactId={contact.id}
+        userRole={userRole}
+      />
 
       {/* Histórico de Lifecycle */}
       <ContactLifecycleTimeline items={lifecycleHistory} />

@@ -7,6 +7,7 @@ import { getCompanies } from '@/_data-access/company/get-companies'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
 import { getFieldDefinitions } from '@/_data-access/field-definition/get-field-definitions'
 import { getContactCustomFieldValues } from '@/_data-access/contact/get-contact-custom-field-values'
+import { getContactPrivacy } from '@/_data-access/privacy/get-contact-privacy'
 import ContactDetailClient from './_components/contact-detail-client'
 
 interface ContactDetailPageProps {
@@ -22,12 +23,13 @@ const ContactDetailPage = async ({ params }: ContactDetailPageProps) => {
     redirect(`/org/${orgSlug}/contacts`)
   }
 
-  const [companies, members, lifecycleHistory, allFieldDefinitions, customFieldValues] = await Promise.all([
+  const [companies, members, lifecycleHistory, allFieldDefinitions, customFieldValues, privacy] = await Promise.all([
     getCompanies(ctx.orgId),
     getOrganizationMembers(ctx.orgId),
     getContactLifecycleHistory(id, ctx),
     getFieldDefinitions(ctx.orgId, EntityType.CONTACT),
     getContactCustomFieldValues(id, ctx.orgId),
+    getContactPrivacy(ctx, id),
   ])
 
   // Apenas campos personalizados (isSystem: false) são passados ao formulário de edição
@@ -47,6 +49,7 @@ const ContactDetailPage = async ({ params }: ContactDetailPageProps) => {
       lifecycleHistory={lifecycleHistory}
       customFieldDefinitions={customFieldDefinitions}
       customFieldValues={customFieldValues}
+      privacy={privacy}
     />
   )
 }
