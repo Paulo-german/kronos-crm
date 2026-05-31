@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
+import { Badge } from '@/_components/ui/badge'
 import { Tabs, TabsList, TabsTrigger } from '@/_components/ui/tabs'
 
 interface CustomFieldsLayoutProps {
@@ -53,6 +54,7 @@ const CustomFieldsLayout = async ({
               disabled
             >
               Negociações
+              <Badge variant="secondary" className="ml-2 text-xs">Em breve</Badge>
             </TabsTrigger>
             <TabsTrigger
               value="company"
@@ -60,6 +62,7 @@ const CustomFieldsLayout = async ({
               disabled
             >
               Empresas
+              <Badge variant="secondary" className="ml-2 text-xs">Em breve</Badge>
             </TabsTrigger>
           </TabsList>
         </Tabs>
