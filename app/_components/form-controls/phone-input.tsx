@@ -22,6 +22,7 @@ export interface PhoneInputProps {
   placeholder?: string
   disabled?: boolean
   className?: string
+  maxLength?: number
 }
 
 const getFlagEmoji = (countryCode: string) =>
@@ -91,7 +92,7 @@ const InputField = forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLIn
 )
 InputField.displayName = 'PhoneInputField'
 
-export function PhoneInput({ value, onChange, placeholder, disabled, className }: PhoneInputProps) {
+export function PhoneInput({ value, onChange, placeholder, disabled, className, maxLength }: PhoneInputProps) {
   return (
     <div
       className={cn(
@@ -109,6 +110,7 @@ export function PhoneInput({ value, onChange, placeholder, disabled, className }
         disabled={disabled}
         placeholder={placeholder}
         className="flex w-full"
+        maxLength={maxLength}
       />
     </div>
   )

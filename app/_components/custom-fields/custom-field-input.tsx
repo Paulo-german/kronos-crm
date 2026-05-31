@@ -84,7 +84,6 @@ function renderInput(
         <Input
           type="number"
           placeholder="0"
-          maxLength={CUSTOM_FIELD_VALUE_MAX[FieldType.NUMBER]}
           value={value}
           onChange={(event) => field.onChange(event.target.value)}
           onBlur={field.onBlur}
@@ -122,6 +121,7 @@ function renderInput(
       return (
         <PhoneInput
           placeholder="(11) 99999-9999"
+          maxLength={CUSTOM_FIELD_VALUE_MAX[FieldType.PHONE]}
           value={value}
           onChange={(newValue) => field.onChange(newValue ?? '')}
         />

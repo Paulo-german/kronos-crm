@@ -53,6 +53,7 @@ import { CustomFieldInput } from '@/_components/custom-fields/custom-field-input
 import {
   CONTACT_NAME_MAX,
   CONTACT_EMAIL_MAX,
+  CONTACT_PHONE_MAX,
   CONTACT_ROLE_MAX,
   CONTACT_INLINE_DEAL_TITLE_MAX,
 } from '@/_lib/constants/field-limits'
@@ -293,6 +294,7 @@ const UpsertContactDialogContent = ({
                     <FormControl>
                       <PhoneInput
                         placeholder="(11) 99999-9999"
+                        maxLength={CONTACT_PHONE_MAX}
                         value={field.value || ''}
                         onChange={(value) => field.onChange(value)}
                       />
