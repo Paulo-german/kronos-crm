@@ -3,6 +3,7 @@ import { CaptureChannel } from '@prisma/client'
 import { db } from '@/_lib/prisma'
 import { resolveSquadMember } from '@/_lib/distribution/resolve-squad-member'
 import { resolveCompanyId } from './resolve-company-id'
+import { createContactPrivacy } from '@/_lib/privacy/create-contact-privacy'
 
 interface HandlerInput {
   orgId: string
@@ -15,6 +16,21 @@ interface ProcessResult {
   contactId?: string
   created?: boolean
   errorMessage?: string
+}
+
+// Contato criado via webhook nasce com base legal de legítimo interesse.
+// Falha de privacy não deve derrubar o processamento do webhook.
+async function createApiContactPrivacy(contactId: string): Promise<void> {
+  try {
+    await createContactPrivacy(db, {
+      contactId,
+      legalBasis: 'LEGITIMATE_INTEREST',
+      legalBasisSource: 'API',
+      performedBy: null,
+    })
+  } catch (error) {
+    console.warn('[privacy] Falha ao criar ContactPrivacy para contato via webhook', error)
+  }
 }
 
 export async function handleNewContact({
@@ -84,6 +100,7 @@ export async function handleNewContact({
       },
       select: { id: true },
     })
+    await createApiContactPrivacy(newContact.id)
     return { status: 'PROCESSED', contactId: newContact.id, created: true }
   }
 
@@ -100,5 +117,6 @@ export async function handleNewContact({
     },
     select: { id: true },
   })
+  await createApiContactPrivacy(contact.id)
   return { status: 'PROCESSED', contactId: contact.id, created: true }
 }

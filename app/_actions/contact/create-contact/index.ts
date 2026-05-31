@@ -14,6 +14,8 @@ import {
 } from '@/_lib/rbac'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 import { evaluateAutomations } from '@/_lib/automations/evaluate-automations'
+import { createContactPrivacy } from '@/_lib/privacy/create-contact-privacy'
+import { resolveLegalBasisForChannel } from '@/_lib/privacy/legal-basis-map'
 
 export const createContact = orgActionClient
   .schema(contactSchema)
@@ -111,6 +113,14 @@ export const createContact = orgActionClient
         data: historyChain.map((record) => ({ ...record, contactId: newContact.id })),
       })
 
+      // Base legal derivada do canal; source explícito MANUAL_CREATION (origem é a action manual)
+      await createContactPrivacy(tx, {
+        contactId: newContact.id,
+        legalBasis: resolveLegalBasisForChannel(captureChannel).legalBasis,
+        legalBasisSource: 'MANUAL_CREATION',
+        performedBy: ctx.userId,
+      })
+
       // Criar negociação inline para OPPORTUNITY e CUSTOMER
       let inlineDealId: string | null = null
       if (needsInlineDeal && data.inlineDealTitle?.trim() && data.inlineDealPipelineStageId) {
@@ -140,6 +150,7 @@ export const createContact = orgActionClient
     })
 
     revalidateTag(`contacts:${ctx.orgId}`)
+    revalidateTag(`privacy:${txResult.contact.id}`)
 
     if (txResult.dealId) {
       revalidateTag(`pipeline:${ctx.orgId}`)

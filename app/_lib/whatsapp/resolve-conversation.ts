@@ -7,6 +7,7 @@ import { resolveSquadMember } from '@/_lib/distribution/resolve-squad-member'
 import { inferCaptureChannelFromInboxChannel } from '@/_lib/lifecycle/infer-capture-channel'
 import { matchCaptureEventToCampaign } from '@/_lib/lifecycle/match-capture-event-to-campaign'
 import { evaluateAutomations } from '@/_lib/automations/evaluate-automations'
+import { createContactPrivacy } from '@/_lib/privacy/create-contact-privacy'
 
 interface DealCreationContext {
   pipelineId: string | null
@@ -107,6 +108,20 @@ export async function resolveConversation(
       },
       select: { id: true, name: true, assignedTo: true, firstCaptureAt: true },
     })
+  }
+
+  if (isNewContact) {
+    try {
+      await createContactPrivacy(db, {
+        contactId: contact.id,
+        legalBasis: 'LEGITIMATE_INTEREST',
+        legalBasisSource: 'WHATSAPP_INBOUND',
+        performedBy: null,
+      })
+    } catch (error) {
+      console.warn('[privacy] Falha ao criar ContactPrivacy para contato WhatsApp', error)
+      // Não relança — falha de privacy não derruba a conversa
+    }
   }
 
   // 3. Criar Conversation herdando assignedTo do contato existente

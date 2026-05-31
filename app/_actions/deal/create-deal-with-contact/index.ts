@@ -16,6 +16,7 @@ import { getOrgSlug } from '@/_lib/notifications/get-org-slug'
 import { evaluateAutomations } from '@/_lib/automations/evaluate-automations'
 import { advanceContactLifecycle } from '@/_lib/lifecycle/advance-contact-lifecycle'
 import { ensureDealHasPrimaryCaptureEvent } from '@/_lib/lifecycle/ensure-deal-capture-event'
+import { createContactPrivacy } from '@/_lib/privacy/create-contact-privacy'
 import { LifecycleCauseType, LifecycleStage } from '@prisma/client'
 
 export const createDealWithContact = orgActionClient
@@ -103,6 +104,14 @@ export const createDealWithContact = orgActionClient
           },
         })
 
+        // Operador criou o contato junto com o deal → legítimo interesse / criação manual
+        await createContactPrivacy(tx, {
+          contactId: newContact.id,
+          legalBasis: 'LEGITIMATE_INTEREST',
+          legalBasisSource: 'MANUAL_CREATION',
+          performedBy: ctx.userId,
+        })
+
         const newDeal = await tx.deal.create({
           data: {
             organizationId: ctx.orgId,
@@ -160,8 +169,9 @@ export const createDealWithContact = orgActionClient
     revalidateTag(`dashboard:${ctx.orgId}`)
 
     // Contato recém-criado invalida a lista de contatos para o combobox e a página
-    if (data.contactMode === 'new') {
+    if (data.contactMode === 'new' && newContactId) {
       revalidateTag(`contacts:${ctx.orgId}`)
+      revalidateTag(`privacy:${newContactId}`)
     }
 
     // Notificar responsável quando o deal é atribuído a outro usuário
