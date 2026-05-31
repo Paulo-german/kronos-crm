@@ -48,6 +48,7 @@ export interface SerializeResult {
  * - NUMBER → string numérica normalizada
  * - DATE → ISO (YYYY-MM-DD ou ISO completo)
  * - SELECT → deve pertencer às opções
+ * - CPF → persiste apenas os 11 dígitos (sem máscara)
  * - EMAIL/URL/PHONE/TEXT → trim, validação de formato quando aplicável
  */
 export function serializeFieldValue(

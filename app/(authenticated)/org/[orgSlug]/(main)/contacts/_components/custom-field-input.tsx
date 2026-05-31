@@ -128,7 +128,7 @@ function renderInput(
           value={value}
           onValueChange={(values) => field.onChange(values.value)}
           onBlur={field.onBlur}
-          getInputRef={field.ref as React.Ref<HTMLInputElement>}
+          ref={field.ref as React.Ref<HTMLInputElement>}
         />
       )
 
