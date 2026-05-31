@@ -15,6 +15,7 @@ const ENTITY_LABELS: Record<QuotaEntity, string> = {
   pipeline: 'funis de vendas',
   squad: 'squads',
   capture_form: 'formulários de captura',
+  custom_field: 'campos personalizados',
 }
 
 interface QuotaHintProps {

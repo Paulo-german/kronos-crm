@@ -5,6 +5,7 @@ import { createOrganizationSchema } from './schema'
 import { db } from '@/_lib/prisma'
 import { revalidateTag } from 'next/cache'
 import { generateSlug, ensureUniqueSlug } from '@/_lib/slug'
+import { seedSystemFieldsForOrg } from '@/_lib/custom-fields/seed-system-fields'
 
 export const createOrganization = authActionClient
   .schema(createOrganizationSchema)
@@ -52,6 +53,9 @@ export const createOrganization = authActionClient
           planBalance: 0,
         },
       })
+
+      // Seed dos campos do sistema (name, email, phone, role, cpf) para CONTACT
+      await seedSystemFieldsForOrg(tx, org.id)
 
       return org
     })

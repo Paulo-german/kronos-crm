@@ -4,7 +4,7 @@ import type { Plan } from '@prisma/client'
 import { db } from '@/_lib/prisma'
 
 // Mapeamento de entidade RBAC para feature key no catálogo
-export type QuotaEntity = 'contact' | 'deal' | 'product' | 'member' | 'agent' | 'inbox' | 'follow_up_monthly' | 'follow_up' | 'automation' | 'agent_group' | 'pipeline' | 'squad' | 'capture_form'
+export type QuotaEntity = 'contact' | 'deal' | 'product' | 'member' | 'agent' | 'inbox' | 'follow_up_monthly' | 'follow_up' | 'automation' | 'agent_group' | 'pipeline' | 'squad' | 'capture_form' | 'custom_field'
 
 // Slug do plano efetivo (usado pela UI)
 export type PlanType = 'light' | 'essential' | 'scale' | 'enterprise'
@@ -24,6 +24,7 @@ const ENTITY_FEATURE_MAP: Record<QuotaEntity, string> = {
   pipeline: 'crm.max_pipelines',
   squad: 'crm.max_squads',
   capture_form: 'crm.max_capture_forms',
+  custom_field: 'crm.max_custom_fields',
 }
 
 /**
@@ -118,6 +119,7 @@ const ENTITY_COUNT_TAGS: Record<QuotaEntity, (orgId: string) => string[]> = {
   pipeline: (orgId) => [`pipeline:${orgId}`],
   squad: (orgId) => [`squads:${orgId}`],
   capture_form: (orgId) => [`capture-forms:${orgId}`],
+  custom_field: (orgId) => [`field-definitions:${orgId}`],
 }
 
 /**
@@ -172,6 +174,11 @@ async function countRecords(orgId: string, entity: QuotaEntity): Promise<number>
           return db.squad.count({ where: { organizationId: orgId } })
         case 'capture_form':
           return db.captureForm.count({ where: { organizationId: orgId } })
+        case 'custom_field':
+          // Apenas campos custom consomem quota; campos do sistema não contam
+          return db.fieldDefinition.count({
+            where: { organizationId: orgId, isSystem: false, isActive: true },
+          })
         default:
           return 0
       }
@@ -266,6 +273,7 @@ export async function requireQuota(orgId: string, entity: QuotaEntity): Promise<
       pipeline: 'funis de vendas',
       squad: 'squads',
       capture_form: 'formulários de captura',
+      custom_field: 'campos personalizados',
     }
 
     throw new Error(
