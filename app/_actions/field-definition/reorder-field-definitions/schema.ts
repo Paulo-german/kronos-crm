@@ -10,7 +10,8 @@ export const reorderFieldDefinitionsSchema = z.object({
         position: z.number().int().min(0),
       }),
     )
-    .min(1),
+    .min(1)
+    .max(200),
 })
 
 export type ReorderFieldDefinitionsInput = z.infer<typeof reorderFieldDefinitionsSchema>

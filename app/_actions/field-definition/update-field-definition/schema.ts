@@ -5,9 +5,9 @@ import { fieldOptionSchema } from '@/_lib/custom-fields/types'
 // valores já gravados em CustomFieldValue.
 export const updateFieldDefinitionSchema = z.object({
   id: z.string().uuid(),
-  label: z.string().trim().min(1, 'Nome do campo é obrigatório').optional(),
+  label: z.string().trim().min(1, 'Nome do campo é obrigatório').max(100).optional(),
   isRequired: z.boolean().optional(),
-  options: z.array(fieldOptionSchema).optional(),
+  options: z.array(fieldOptionSchema).max(50).optional(),
 })
 
 export type UpdateFieldDefinitionInput = z.infer<typeof updateFieldDefinitionSchema>

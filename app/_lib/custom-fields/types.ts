@@ -13,8 +13,8 @@ export const CUSTOM_FIELD_TYPES = [
 ] as const
 
 export const fieldOptionSchema = z.object({
-  label: z.string().trim().min(1),
-  value: z.string().trim().min(1),
+  label: z.string().trim().min(1).max(100),
+  value: z.string().trim().min(1).max(100),
 })
 
 export interface FieldOption {

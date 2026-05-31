@@ -96,6 +96,10 @@ export function serializeFieldValue(
     case FieldType.URL: {
       try {
         const url = new URL(trimmed)
+        // Bloqueia javascript:, data:, etc — previne XSS se o valor for usado em <a href>
+        if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+          return { ok: false, value: null, error: 'URL deve usar http ou https.' }
+        }
         return { ok: true, value: url.toString() }
       } catch {
         return { ok: false, value: null, error: 'URL inválida.' }

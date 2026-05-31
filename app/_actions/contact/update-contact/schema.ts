@@ -3,11 +3,10 @@ import { z } from 'zod'
 export const updateContactSchema = z
   .object({
     id: z.string().uuid(),
-    name: z.string().min(1, 'Nome não pode ser vazio').optional(),
-    email: z.string().email('Email inválido').optional().or(z.literal('')),
-    phone: z.string().optional(),
-    role: z.string().optional(),
-    cpf: z.string().optional(),
+    name: z.string().min(1, 'Nome não pode ser vazio').max(70).optional(),
+    email: z.string().email('Email inválido').max(120).optional().or(z.literal('')),
+    phone: z.string().max(20).optional(),
+    role: z.string().max(100).optional(),
     companyId: z.string().uuid().optional().nullable(),
     isDecisionMaker: z.boolean().optional(),
     assignedTo: z.string().uuid().optional().nullable(), // RBAC: transferência de ownership

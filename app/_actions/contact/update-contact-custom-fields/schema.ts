@@ -6,10 +6,11 @@ export const updateContactCustomFieldsSchema = z.object({
     .array(
       z.object({
         fieldDefinitionId: z.string().uuid(),
-        value: z.string().nullable(),
+        value: z.string().max(5000).nullable(),
       }),
     )
-    .min(1),
+    .min(1)
+    .max(100),
 })
 
 export type UpdateContactCustomFieldsInput = z.infer<typeof updateContactCustomFieldsSchema>
