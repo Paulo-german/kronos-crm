@@ -8,6 +8,7 @@ import { FieldType } from '@prisma/client'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import { Input } from '@/_components/ui/input'
+import { Checkbox } from '@/_components/ui/checkbox'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/_components/ui/form'
 import type { PublicCaptureFormDto } from '@/_data-access/capture-form/get-capture-form-by-token'
 import { CAPTURE_FIELD_KEYS } from '@/_lib/capture-form/field-config'
@@ -84,6 +85,7 @@ export const CaptureFormRenderer = ({ form, publicToken }: CaptureFormRendererPr
   const honeypotRef = useRef<HTMLInputElement>(null)
   const [submitted, setSubmitted] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
+  const [consentAccepted, setConsentAccepted] = useState(false)
 
   // Memoizado para evitar reconstrução do schema e dos defaults a cada render
   const schema = useMemo(() => buildFormSchema(form), [form])
@@ -146,6 +148,7 @@ export const CaptureFormRenderer = ({ form, publicToken }: CaptureFormRendererPr
         data: systemData,
         customFields,
         hp: honeypotRef.current?.value ?? '',
+        consentAccepted: form.consentRequired ? consentAccepted : undefined,
       }),
     })
 
@@ -182,18 +185,38 @@ export const CaptureFormRenderer = ({ form, publicToken }: CaptureFormRendererPr
   const { primaryColor, borderStyle } = form.appearance
   const fieldRadius = borderStyle === 'square' ? 'rounded-none' : ''
 
+  const isSubmitDisabled =
+    rhf.formState.isSubmitting || (form.consentRequired && !consentAccepted)
+
   const submitButton = (
-    <Button
-      type="submit"
-      className={`mt-4 w-full border text-white ${fieldRadius}`}
-      style={{ backgroundColor: primaryColor, borderColor: primaryColor }}
-      disabled={rhf.formState.isSubmitting}
-    >
-      {rhf.formState.isSubmitting ? (
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-      ) : null}
-      {form.buttonLabel}
-    </Button>
+    <div className="mt-4 space-y-3">
+      {form.consentRequired && (
+        <div className="flex items-start gap-3">
+          <Checkbox
+            id="consent"
+            checked={consentAccepted}
+            onCheckedChange={(checked) => setConsentAccepted(checked === true)}
+          />
+          <label
+            htmlFor="consent"
+            className="cursor-pointer text-sm leading-relaxed text-muted-foreground"
+          >
+            {form.consentText ?? 'Concordo com o tratamento dos meus dados pessoais.'}
+          </label>
+        </div>
+      )}
+      <Button
+        type="submit"
+        className={`w-full border text-white ${fieldRadius}`}
+        style={{ backgroundColor: primaryColor, borderColor: primaryColor }}
+        disabled={isSubmitDisabled}
+      >
+        {rhf.formState.isSubmitting ? (
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        ) : null}
+        {form.buttonLabel}
+      </Button>
+    </div>
   )
 
   return (

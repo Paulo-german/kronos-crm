@@ -11,6 +11,7 @@ import {
   Loader2,
   Building2,
   Users,
+  ShieldCheck,
 } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
@@ -32,11 +33,21 @@ import {
 import { Badge } from '@/_components/ui/badge'
 import { Alert, AlertDescription } from '@/_components/ui/alert'
 import { Label } from '@/_components/ui/label'
+import { Checkbox } from '@/_components/ui/checkbox'
 import { importContacts } from '@/_actions/contact/import-contacts'
 import { importRowSchema, type ImportRow } from '@/_actions/contact/import-contacts/schema'
 import type { CompanyDto } from '@/_data-access/company/get-companies'
 import { LIFECYCLE_STAGE_CONFIG, LIFECYCLE_STAGE_ORDER } from '@/_lib/lifecycle/lifecycle-stage-config'
-import type { LifecycleStage } from '@prisma/client'
+import type { LegalBasis, LifecycleStage } from '@prisma/client'
+
+const LEGAL_BASIS_OPTIONS: { value: LegalBasis; label: string }[] = [
+  { value: 'LEGITIMATE_INTEREST', label: 'Legítimo Interesse' },
+  { value: 'CONSENT', label: 'Consentimento' },
+  { value: 'CONTRACT', label: 'Contrato' },
+  { value: 'LEGAL_OBLIGATION', label: 'Obrigação Legal' },
+  { value: 'VITAL_INTERESTS', label: 'Interesses Vitais' },
+  { value: 'PUBLIC_TASK', label: 'Tarefa de Interesse Público' },
+]
 
 interface ValidationResult {
   valid: boolean
@@ -72,15 +83,21 @@ export function PreviewStep({
   const router = useRouter()
   const { orgSlug } = useParams<{ orgSlug: string }>()
   const [lifecycleStage, setLifecycleStage] = useState<LifecycleStage>('LEAD')
+  const [legalBasis, setLegalBasis] = useState<LegalBasis>('LEGITIMATE_INTEREST')
+  const [legalBasisConfirmed, setLegalBasisConfirmed] = useState(false)
 
   const { execute, isPending } = useAction(importContacts, {
     onSuccess: ({ data }) => {
+      const skipped = data?.skipped ?? 0
       toast.success(
         `${data?.count} contato(s) importado(s) com sucesso!` +
           (data?.companiesCreated
             ? ` ${data.companiesCreated} empresa(s) criada(s).`
             : ''),
       )
+      if (skipped > 0) {
+        toast.warning(`${skipped} contato(s) ignorado(s) por estarem na lista de bloqueio.`)
+      }
       router.push(`/org/${orgSlug}/contacts`)
     },
     onError: ({ error }) => {
@@ -116,7 +133,7 @@ export function PreviewStep({
   const quotaExceeded = quotaCurrent + mappedRows.length > quotaLimit
 
   const handleImport = () => {
-    execute({ rows: mappedRows, lifecycleStage })
+    execute({ rows: mappedRows, lifecycleStage, legalBasis, legalBasisConfirmed: true })
   }
 
   return (
@@ -259,6 +276,50 @@ export function PreviewStep({
           </Table>
         </div>
 
+        {/* Base legal do lote */}
+        <div className="space-y-3 rounded-lg border p-4">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium">Base legal para tratamento de dados</span>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Selecione a base legal que justifica o tratamento dos dados pessoais deste lote (LGPD / GDPR).
+          </p>
+          <div className="flex items-center gap-3">
+            <Label htmlFor="legal-basis-select" className="shrink-0 text-sm">
+              Base legal
+            </Label>
+            <Select
+              value={legalBasis}
+              onValueChange={(value) => setLegalBasis(value as LegalBasis)}
+            >
+              <SelectTrigger id="legal-basis-select" className="w-64">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {LEGAL_BASIS_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-start gap-3 pt-1">
+            <Checkbox
+              id="legal-basis-confirmed"
+              checked={legalBasisConfirmed}
+              onCheckedChange={(checked) => setLegalBasisConfirmed(checked === true)}
+            />
+            <label
+              htmlFor="legal-basis-confirmed"
+              className="cursor-pointer text-sm leading-relaxed text-muted-foreground"
+            >
+              Confirmo que possuo base legal para tratar os dados deste lote.
+            </label>
+          </div>
+        </div>
+
         {/* Ações */}
         <div className="flex justify-between pt-4">
           <Button variant="outline" onClick={onBack} disabled={isPending}>
@@ -267,7 +328,7 @@ export function PreviewStep({
           </Button>
           <Button
             onClick={handleImport}
-            disabled={!allValid || quotaExceeded || isPending}
+            disabled={!allValid || quotaExceeded || isPending || !legalBasisConfirmed}
           >
             {isPending ? (
               <>
