@@ -1,4 +1,4 @@
-import { LifecycleStage } from '@prisma/client'
+import { LegalBasis, LifecycleStage } from '@prisma/client'
 import { z } from 'zod'
 import {
   CONTACT_NAME_MAX,
@@ -21,6 +21,10 @@ export const importContactsSchema = z.object({
   // Cap no schema evita exaustão de memória antes da verificação de quota na action
   rows: z.array(importRowSchema).min(1, 'Envie ao menos 1 contato').max(5000),
   lifecycleStage: z.nativeEnum(LifecycleStage).default('LEAD'),
+  // Base legal selecionada pelo operador para o lote inteiro
+  legalBasis: z.nativeEnum(LegalBasis),
+  // z.literal(true) força a confirmação explícita da base legal no parse
+  legalBasisConfirmed: z.literal(true),
 })
 
 export type ImportRow = z.infer<typeof importRowSchema>

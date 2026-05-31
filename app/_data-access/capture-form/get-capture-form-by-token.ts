@@ -20,6 +20,8 @@ export interface PublicCaptureFormDto {
   squadId: string | null
   isActive: boolean
   organizationIsReadOnly: boolean
+  consentRequired: boolean
+  consentText: string | null
   customFields: CaptureFormFieldDto[]
 }
 
@@ -58,6 +60,8 @@ export const getCaptureFormByToken = cache(
           squadId: form.squadId,
           isActive: form.isActive,
           organizationIsReadOnly: form.organization.isReadOnly,
+          consentRequired: form.consentRequired,
+          consentText: form.consentText,
           customFields: form.captureFormFields.map((field) => ({
             fieldDefinitionId: field.fieldDefinitionId,
             required: field.required,

@@ -10,6 +10,8 @@ import { serializeFieldValue } from '@/_lib/custom-fields/serialize'
 import { buildSubmissionSnapshot } from '@/_lib/capture-form/custom-fields-config'
 import { CUSTOM_FIELD_VALUE_SCHEMA_MAX } from '@/_lib/constants/field-limits'
 import { redis } from '@/_lib/redis'
+import { createContactPrivacy } from '@/_lib/privacy/create-contact-privacy'
+
 
 interface ResolvedCustomField {
   fieldDefinitionId: string
@@ -47,6 +49,8 @@ const captureSubmissionSchema = z.object({
     .optional(),
   // Honeypot: deve chegar vazio — bots tendem a preencher campos de texto que encontram
   hp: z.string().optional(),
+  // Aceite do checkbox de consentimento (quando o form exige consentimento)
+  consentAccepted: z.boolean().optional(),
 })
 
 async function checkRateLimit(key: string): Promise<boolean> {
@@ -72,7 +76,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'invalid_payload' }, { status: 400 })
   }
 
-  const { token, data, customFields, metadata, hp } = parsed.data
+  const { token, data, customFields, metadata, hp, consentAccepted } = parsed.data
 
   // Honeypot: bot preencheu o campo oculto → silently discard (não revela ao bot que foi bloqueado)
   if (hp?.trim()) {
@@ -138,6 +142,11 @@ export async function POST(req: Request) {
     })
   }
 
+  // Validar consentimento antes de qualquer operação no banco
+  if (form.consentRequired && !consentAccepted) {
+    return NextResponse.json({ error: 'consent_required' }, { status: 400 })
+  }
+
   const capturedAt = new Date()
 
   const assignedTo = await resolveCaptureFormAssignee({
@@ -163,6 +172,17 @@ export async function POST(req: Request) {
         lastCaptureChannel: CaptureChannel.EMBED_FORM,
         lastCaptureAt: capturedAt,
       },
+    })
+
+    // Base legal derivada do toggle do form (não do canal):
+    // consentRequired = CONSENT (ação afirmativa do titular); senão LEGITIMATE_INTEREST.
+    await createContactPrivacy(tx, {
+      contactId: contact.id,
+      legalBasis: form.consentRequired ? 'CONSENT' : 'LEGITIMATE_INTEREST',
+      legalBasisSource: 'EMBED_FORM',
+      consentText: form.consentRequired ? (form.consentText ?? undefined) : undefined,
+      consentIp: form.consentRequired ? ip : undefined,
+      performedBy: null,
     })
 
     await tx.contactLifecycleHistory.create({
@@ -238,6 +258,7 @@ export async function POST(req: Request) {
   }
 
   revalidateTag(`contacts:${form.organizationId}`)
+  revalidateTag(`privacy:${form.organizationId}`)
 
   return NextResponse.json({ success: true }, { status: 201 })
 }
