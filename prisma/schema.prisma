@@ -124,6 +124,7 @@ model Organization {
   companyContacts              CompanyContact[]
   webhookSources               WebhookSource[]
   captureForms                 CaptureForm[]
+  fieldDefinitions             FieldDefinition[]
 
   @@map("organizations")
 }
@@ -317,6 +318,8 @@ model CaptureForm {
   name            String
   // Config dos campos: { name:{visible,required,label?}, email:{...}, phone:{...}, role:{...} }
   fields          Json     @default("{}")
+  // Aparência visual: cores, título, descrição, logo e estilo de bordas
+  appearance      Json     @default("{}") @map("appearance")
   buttonLabel     String   @default("Enviar") @map("button_label")
   successMessage  String   @default("Obrigado! Recebemos seus dados.") @map("success_message")
   redirectUrl     String?  @map("redirect_url")
@@ -2311,5 +2314,63 @@ model WebhookLog {
   @@index([organizationId, status, receivedAt(sort: Desc)])
   // Índice único parcial criado via SQL manual na migration (Prisma não suporta)
   @@map("webhook_logs")
+}
+
+enum EntityType {
+  CONTACT
+  DEAL
+  COMPANY
+
+  @@map("entity_type")
+}
+
+enum FieldType {
+  TEXT
+  NUMBER
+  SELECT
+  DATE
+  PHONE
+  EMAIL
+  URL
+
+  @@map("field_type")
+}
+
+model FieldDefinition {
+  id             String     @id @default(uuid())
+  organizationId String     @map("organization_id")
+  entityType     EntityType @map("entity_type")
+  key            String // "name", "email"... ou "cf_<uuid>" para custom
+  label          String
+  type           FieldType
+  isSystem       Boolean    @default(false) @map("is_system")
+  isRequired     Boolean    @default(false) @map("is_required")
+  options        Json? // SELECT: [{ label: string, value: string }]
+  position       Int
+  isActive       Boolean    @default(true) @map("is_active")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  values       CustomFieldValue[]
+
+  @@unique([organizationId, entityType, key])
+  @@index([organizationId, entityType, isActive, position])
+  @@map("field_definitions")
+}
+
+model CustomFieldValue {
+  id                String   @id @default(uuid())
+  fieldDefinitionId String   @map("field_definition_id")
+  entityId          String   @map("entity_id") // ID do Contact (polimórfico p/ futuro)
+  value             String? // serializado: number "42", date ISO, select = value da opção
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  fieldDefinition FieldDefinition @relation(fields: [fieldDefinitionId], references: [id], onDelete: Cascade)
+
+  @@unique([fieldDefinitionId, entityId])
+  @@index([entityId])
+  @@map("custom_field_values")
 }
 
