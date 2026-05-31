@@ -445,11 +445,11 @@ const InboxDetailClient = ({
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid h-12 w-full grid-cols-2 rounded-md border border-border/50">
-          <TabsTrigger value="general" className="rounded-md py-2">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="general">
             Geral
           </TabsTrigger>
-          <TabsTrigger value="connection" className="rounded-md py-2">
+          <TabsTrigger value="connection">
             Conexão
           </TabsTrigger>
         </TabsList>

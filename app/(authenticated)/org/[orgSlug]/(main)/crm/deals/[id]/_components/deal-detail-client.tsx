@@ -346,7 +346,7 @@ const DealDetailClient = ({
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="h-fit">
-        <TabsList className="grid h-12 w-full grid-cols-4 rounded-md border border-border/50">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger
             value="summary"
             className="rounded-md py-2"

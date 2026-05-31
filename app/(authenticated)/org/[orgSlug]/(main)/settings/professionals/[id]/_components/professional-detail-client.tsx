@@ -93,17 +93,17 @@ const ProfessionalDetailClient = ({
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid h-12 w-full grid-cols-4 rounded-md border border-border/50">
-            <TabsTrigger value="geral" className="rounded-md py-2">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="geral">
               Geral
             </TabsTrigger>
-            <TabsTrigger value="servicos" className="rounded-md py-2">
+            <TabsTrigger value="servicos">
               Serviços
             </TabsTrigger>
-            <TabsTrigger value="jornada" className="rounded-md py-2">
+            <TabsTrigger value="jornada">
               Jornada
             </TabsTrigger>
-            <TabsTrigger value="excecoes" className="rounded-md py-2">
+            <TabsTrigger value="excecoes">
               Exceções
             </TabsTrigger>
           </TabsList>

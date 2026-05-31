@@ -447,7 +447,7 @@ export function DealDialogContent({
                   }
                 }}
               >
-                <TabsList className="grid h-12 w-full grid-cols-2 rounded-md border border-border/50">
+                <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger
                     value="existing"
                     className="rounded-md py-2"

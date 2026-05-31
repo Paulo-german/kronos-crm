@@ -24,7 +24,7 @@ const PlansPage = async () => {
       </Header>
 
       <Tabs defaultValue="plans">
-        <TabsList className="grid h-12 w-full grid-cols-3 rounded-md border border-border/50">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger
             value="plans"
             className="rounded-md py-2"

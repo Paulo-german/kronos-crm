@@ -234,11 +234,11 @@ const UpsertProfessionalDialogContent = ({
           {/* Seletor de modo — apenas no modo criação */}
           {!isEditing && (
             <Tabs value={mode} onValueChange={handleModeChange}>
-              <TabsList className="grid h-12 w-full grid-cols-2 rounded-md border border-border/50 bg-tab/30">
-                <TabsTrigger value="new" className="rounded-md py-2 data-[state=active]:bg-card/80">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="new">
                   Nova pessoa
                 </TabsTrigger>
-                <TabsTrigger value="member" className="rounded-md py-2 data-[state=active]:bg-card/80">
+                <TabsTrigger value="member">
                   Membro da equipe
                 </TabsTrigger>
               </TabsList>

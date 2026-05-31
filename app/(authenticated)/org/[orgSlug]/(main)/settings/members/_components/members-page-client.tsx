@@ -20,7 +20,7 @@ export function MembersPageClient({
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab}>
-      <TabsList className="mb-6 grid h-12 w-full grid-cols-2 rounded-md border border-border/50">
+      <TabsList className="mb-6 grid w-full grid-cols-2">
         <TabsTrigger
           value="members"
           className="flex items-center gap-2 rounded-md py-2"

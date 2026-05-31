@@ -196,25 +196,24 @@ const AgentDetailClient = ({
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList
               data-tour="agent-tabs"
-              className="grid h-12 w-full grid-cols-5 rounded-md"
+              className="grid w-full grid-cols-5"
             >
-              <TabsTrigger value="general" className="rounded-md py-2">
+              <TabsTrigger value="general">
                 Geral
               </TabsTrigger>
-              <TabsTrigger value="process" className="rounded-md py-2">
+              <TabsTrigger value="process">
                 Processo
               </TabsTrigger>
               <TabsTrigger
                 value="knowledge"
                 data-tour="agent-knowledge"
-                className="rounded-md py-2"
-              >
+                             >
                 Conhecimento
               </TabsTrigger>
-              <TabsTrigger value="connection" className="rounded-md py-2">
+              <TabsTrigger value="connection">
                 Conexão
               </TabsTrigger>
-              <TabsTrigger value="follow-ups" className="rounded-md py-2">
+              <TabsTrigger value="follow-ups">
                 Follow-ups
               </TabsTrigger>
             </TabsList>

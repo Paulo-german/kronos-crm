@@ -117,7 +117,7 @@ export function WebhookLogDetailDialog({
         )}
 
         <Tabs defaultValue="payload">
-          <TabsList className="grid h-12 w-full grid-cols-2 border-b border-border/50 bg-tab/30">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger
               value="payload"
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent"

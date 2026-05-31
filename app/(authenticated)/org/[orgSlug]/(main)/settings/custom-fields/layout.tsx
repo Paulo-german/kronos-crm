@@ -38,7 +38,7 @@ const CustomFieldsLayout = async ({
         </div>
 
         <Tabs value={ACTIVE_TAB} className="w-full">
-          <TabsList className="grid h-12 w-full grid-cols-3 rounded-md border border-border/50 bg-tab/30">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger
               value="contact"
               className="data-[state=active]:bg-card/80 rounded-md py-2"

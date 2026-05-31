@@ -371,7 +371,7 @@ const ComponentsContent = ({
         Tabs — padrao do projeto
       </p>
       <Tabs defaultValue="tab1" className="w-full max-w-md">
-        <TabsList className="grid h-12 w-full grid-cols-3 rounded-md border border-border/50">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger
             value="tab1"
             className="rounded-md py-2"

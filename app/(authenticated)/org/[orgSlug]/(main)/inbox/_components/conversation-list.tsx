@@ -297,25 +297,25 @@ export function ConversationList({
           onValueChange={(value) => onFilterChange(value as FilterTab)}
           className="mb-3"
         >
-          <TabsList className="grid h-10 w-full grid-cols-3 rounded-md border border-border/50">
-            <TabsTrigger value="all" className="rounded-md py-1.5">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="all">
               Todas
             </TabsTrigger>
-            <TabsTrigger value="unread" className="gap-1.5 rounded-md py-1.5">
+            <TabsTrigger value="unread" className="gap-1.5">
               Não lidas
               {totalUnread > 0 && (
-                <Badge className="flex h-5 min-w-5 items-center justify-center rounded-full bg-kronos-green px-1 text-[10px] font-medium text-white">
+                <Badge className="pointer-events-none flex h-5 min-w-5 items-center justify-center rounded-full bg-kronos-green px-1 text-[10px] font-medium text-white hover:bg-kronos-green">
                   {totalUnread > 9 ? '9+' : totalUnread}
                 </Badge>
               )}
             </TabsTrigger>
             <TabsTrigger
               value="unanswered"
-              className="gap-1.5 rounded-md py-1.5"
+              className="gap-1.5"
             >
               Sem resp.
               {totalUnanswered > 0 && (
-                <Badge className="flex h-5 min-w-5 items-center justify-center rounded-full bg-kronos-yellow px-1 text-[10px] font-medium text-white">
+                <Badge className="pointer-events-none flex h-5 min-w-5 items-center justify-center rounded-full bg-kronos-yellow px-1 text-[10px] font-medium text-white hover:bg-kronos-yellow">
                   {totalUnanswered > 9 ? '9+' : totalUnanswered}
                 </Badge>
               )}

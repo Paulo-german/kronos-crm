@@ -19,14 +19,14 @@ export function DashboardTabs({ activeTab }: DashboardTabsProps) {
 
   return (
     <Tabs value={activeTab} onValueChange={handleTabChange}>
-      <TabsList className="grid h-12 w-full grid-cols-3 rounded-md border border-border/50 bg-tab">
-        <TabsTrigger value="reports" className="py-2">
+      <TabsList className="grid w-full grid-cols-3">
+        <TabsTrigger value="reports">
           Relatórios
         </TabsTrigger>
-        <TabsTrigger value="inbox" className="py-2">
+        <TabsTrigger value="inbox">
           Inbox
         </TabsTrigger>
-        <TabsTrigger value="ai" className="py-2">
+        <TabsTrigger value="ai">
           IA
         </TabsTrigger>
       </TabsList>

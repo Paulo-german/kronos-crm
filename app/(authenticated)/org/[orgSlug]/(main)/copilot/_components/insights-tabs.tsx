@@ -32,8 +32,8 @@ export function InsightsTabs({
 }: InsightsTabsProps) {
   return (
     <Tabs defaultValue="at-risk" className="flex-1">
-      <TabsList className="grid h-12 w-full grid-cols-4 rounded-md border border-border/50 bg-tab/30">
-        <TabsTrigger value="at-risk" className="rounded-md py-2 data-[state=active]:bg-tab-active data-[state=active]:text-tab-foreground data-[state=active]:shadow-sm">
+      <TabsList className="grid w-full grid-cols-4">
+        <TabsTrigger value="at-risk">
           <span className="flex items-center gap-1.5">
             Em risco
             {totalAtRisk > 0 && (
@@ -43,7 +43,7 @@ export function InsightsTabs({
             )}
           </span>
         </TabsTrigger>
-        <TabsTrigger value="stalled" className="rounded-md py-2 data-[state=active]:bg-tab-active data-[state=active]:text-tab-foreground data-[state=active]:shadow-sm">
+        <TabsTrigger value="stalled">
           <span className="flex items-center gap-1.5">
             Pipeline estagnado
             <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
@@ -51,7 +51,7 @@ export function InsightsTabs({
             </Badge>
           </span>
         </TabsTrigger>
-        <TabsTrigger value="reactivation" className="rounded-md py-2 data-[state=active]:bg-tab-active data-[state=active]:text-tab-foreground data-[state=active]:shadow-sm">
+        <TabsTrigger value="reactivation">
           <span className="flex items-center gap-1.5">
             Reativação
             <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
@@ -59,7 +59,7 @@ export function InsightsTabs({
             </Badge>
           </span>
         </TabsTrigger>
-        <TabsTrigger value="automations" className="rounded-md py-2 data-[state=active]:bg-tab-active data-[state=active]:text-tab-foreground data-[state=active]:shadow-sm">
+        <TabsTrigger value="automations">
           Automações
         </TabsTrigger>
       </TabsList>
