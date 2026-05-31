@@ -3,11 +3,13 @@ import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 import type { CaptureFields } from '@/_lib/capture-form/field-config'
+import { type CaptureAppearance, DEFAULT_CAPTURE_APPEARANCE } from '@/_lib/capture-form/appearance-config'
 
 export interface PublicCaptureFormDto {
   id: string
   organizationId: string
   fields: CaptureFields
+  appearance: CaptureAppearance
   buttonLabel: string
   successMessage: string
   redirectUrl: string | null
@@ -33,6 +35,7 @@ export const getCaptureFormByToken = cache(
           id: form.id,
           organizationId: form.organizationId,
           fields: form.fields as unknown as CaptureFields,
+          appearance: { ...DEFAULT_CAPTURE_APPEARANCE, ...(form.appearance as object) } as CaptureAppearance,
           buttonLabel: form.buttonLabel,
           successMessage: form.successMessage,
           redirectUrl: form.redirectUrl,

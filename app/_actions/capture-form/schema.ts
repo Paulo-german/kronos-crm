@@ -1,10 +1,12 @@
 import { z } from 'zod'
 import { captureFieldsSchema } from '@/_lib/capture-form/field-config'
+import { captureAppearanceSchema } from '@/_lib/capture-form/appearance-config'
 
 // Base sem refine para permitir .extend() e uso como resolver no react-hook-form
 export const captureFormBaseSchema = z.object({
   name: z.string().trim().min(1).max(120),
   fields: captureFieldsSchema,
+  appearance: captureAppearanceSchema,
   buttonLabel: z.string().trim().min(1).max(40),
   successMessage: z.string().trim().min(1).max(280),
   redirectUrl: z.string().url().optional().or(z.literal('')),

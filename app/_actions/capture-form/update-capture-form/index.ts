@@ -33,6 +33,7 @@ export const updateCaptureForm = orgActionClient
         data: {
           name: data.name,
           fields,
+          appearance: data.appearance,
           buttonLabel: data.buttonLabel,
           successMessage: data.successMessage,
           redirectUrl: data.redirectUrl || null,
