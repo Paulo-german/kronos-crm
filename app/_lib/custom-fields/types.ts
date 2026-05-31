@@ -1,5 +1,9 @@
 import { z } from 'zod'
 import { EntityType, FieldType } from '@prisma/client'
+import {
+  FIELD_OPTION_LABEL_MAX,
+  FIELD_OPTION_VALUE_MAX,
+} from '@/_lib/constants/field-limits'
 
 // Tipos de campo personalizáveis no MVP (evita magic strings espalhadas)
 export const CUSTOM_FIELD_TYPES = [
@@ -14,8 +18,8 @@ export const CUSTOM_FIELD_TYPES = [
 ] as const
 
 export const fieldOptionSchema = z.object({
-  label: z.string().trim().min(1).max(100),
-  value: z.string().trim().min(1).max(100),
+  label: z.string().trim().min(1).max(FIELD_OPTION_LABEL_MAX),
+  value: z.string().trim().min(1).max(FIELD_OPTION_VALUE_MAX),
 })
 
 export interface FieldOption {

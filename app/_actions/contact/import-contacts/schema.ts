@@ -1,12 +1,19 @@
 import { LifecycleStage } from '@prisma/client'
 import { z } from 'zod'
+import {
+  CONTACT_NAME_MAX,
+  CONTACT_EMAIL_MAX,
+  CONTACT_PHONE_MAX,
+  CONTACT_ROLE_MAX,
+  CONTACT_COMPANY_NAME_MAX,
+} from '@/_lib/constants/field-limits'
 
 export const importRowSchema = z.object({
-  name: z.string().min(1, 'Nome é obrigatório').max(70),
-  email: z.string().email('Email inválido').max(120).optional().or(z.literal('')),
-  phone: z.string().max(20).optional(),
-  role: z.string().max(100).optional(),
-  companyName: z.string().max(200).optional(),
+  name: z.string().min(1, 'Nome é obrigatório').max(CONTACT_NAME_MAX),
+  email: z.string().email('Email inválido').max(CONTACT_EMAIL_MAX).optional().or(z.literal('')),
+  phone: z.string().max(CONTACT_PHONE_MAX).optional(),
+  role: z.string().max(CONTACT_ROLE_MAX).optional(),
+  companyName: z.string().max(CONTACT_COMPANY_NAME_MAX).optional(),
   isDecisionMaker: z.boolean().default(false),
 })
 

@@ -1,18 +1,25 @@
 import { z } from 'zod'
 import { CaptureChannel, LifecycleStage } from '@prisma/client'
+import {
+  CONTACT_NAME_MAX,
+  CONTACT_EMAIL_MAX,
+  CONTACT_PHONE_MAX,
+  CONTACT_ROLE_MAX,
+  CONTACT_INLINE_DEAL_TITLE_MAX,
+} from '@/_lib/constants/field-limits'
 
 export const contactSchema = z
   .object({
-    name: z.string().min(1, 'Nome é obrigatório').max(70),
-    email: z.string().email('Email inválido').max(120).optional().or(z.literal('')),
-    phone: z.string().max(20).optional(),
-    role: z.string().max(100).optional(),
+    name: z.string().min(1, 'Nome é obrigatório').max(CONTACT_NAME_MAX),
+    email: z.string().email('Email inválido').max(CONTACT_EMAIL_MAX).optional().or(z.literal('')),
+    phone: z.string().max(CONTACT_PHONE_MAX).optional(),
+    role: z.string().max(CONTACT_ROLE_MAX).optional(),
     companyId: z.string().uuid().optional().nullable(),
     isDecisionMaker: z.boolean(),
     assignedTo: z.string().uuid().optional().nullable(),
     lifecycleStage: z.nativeEnum(LifecycleStage).optional(),
     firstCaptureChannel: z.nativeEnum(CaptureChannel).optional().nullable(),
-    inlineDealTitle: z.string().max(80).optional().nullable(),
+    inlineDealTitle: z.string().max(CONTACT_INLINE_DEAL_TITLE_MAX).optional().nullable(),
     inlineDealPipelineStageId: z.string().uuid().optional().nullable(),
   })
   .superRefine((data, ctx) => {
