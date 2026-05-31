@@ -10,6 +10,7 @@ export const CUSTOM_FIELD_TYPES = [
   FieldType.PHONE,
   FieldType.EMAIL,
   FieldType.URL,
+  FieldType.CPF,
 ] as const
 
 export const fieldOptionSchema = z.object({

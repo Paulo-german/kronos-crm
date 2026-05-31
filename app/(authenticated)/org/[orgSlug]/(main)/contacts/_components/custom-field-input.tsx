@@ -18,6 +18,7 @@ import {
 } from '@/_components/ui/select'
 import { Input } from '@/_components/ui/input'
 import { PhoneInput } from '@/_components/form-controls/phone-input'
+import { CpfInput } from '@/_components/form-controls/cpf-input'
 import type { FieldDefinitionDto } from '@/_lib/custom-fields/types'
 
 interface CustomFieldInputProps<TFieldValues extends FieldValues> {
@@ -118,6 +119,16 @@ function renderInput(
           placeholder="(11) 99999-9999"
           value={value}
           onChange={(newValue) => field.onChange(newValue ?? '')}
+        />
+      )
+
+    case FieldType.CPF:
+      return (
+        <CpfInput
+          value={value}
+          onValueChange={(values) => field.onChange(values.value)}
+          onBlur={field.onBlur}
+          getInputRef={field.ref as React.Ref<HTMLInputElement>}
         />
       )
 

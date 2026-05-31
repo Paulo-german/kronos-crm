@@ -47,6 +47,7 @@ const FIELD_TYPE_LABELS: Record<FieldType, string> = {
   PHONE: 'Telefone',
   EMAIL: 'Email',
   URL: 'URL',
+  CPF: 'CPF',
 }
 
 // Schema para o formulário de criação com options como array de objetos

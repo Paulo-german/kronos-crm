@@ -56,6 +56,7 @@ const FIELD_TYPE_LABELS: Record<FieldType, string> = {
   PHONE: 'Telefone',
   EMAIL: 'Email',
   URL: 'URL',
+  CPF: 'CPF',
 }
 
 interface SortableFieldRowProps {

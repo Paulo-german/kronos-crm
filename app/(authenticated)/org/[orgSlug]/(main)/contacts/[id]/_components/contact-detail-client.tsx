@@ -48,6 +48,7 @@ import { InlineTextField } from '@/_components/form-controls/inline-text-field'
 import { CompanyCombobox } from '../../_components/company-combobox'
 import { useContactFieldUpdate } from '../_hooks/use-contact-field-update'
 import { formatPhone } from '@/_utils/format-phone'
+import { formatCpf } from '@/_lib/utils'
 import { transferContact } from '@/_actions/contact/transfer-contact'
 import { LIFECYCLE_STAGE_CONFIG } from '@/_lib/lifecycle/lifecycle-stage-config'
 import { CUSTOMER_STATUS_CONFIG } from '@/_lib/lifecycle/customer-status-config'
@@ -338,12 +339,14 @@ const ContactDetailClient = ({
             <dl className="grid gap-3 sm:grid-cols-2">
               {customFieldDefinitions.map((definition) => {
                 const rawValue = customFieldValues[definition.id]
-                // Em campos SELECT exibimos o rótulo da opção, não o valor interno armazenado
+                // SELECT → rótulo da opção; CPF → formatado com máscara; demais → valor bruto
                 const displayValue =
                   definition.type === FieldType.SELECT && rawValue
                     ? (definition.options?.find((option) => option.value === rawValue)?.label ??
                       rawValue)
-                    : rawValue
+                    : definition.type === FieldType.CPF && rawValue
+                      ? formatCpf(rawValue)
+                      : rawValue
                 return (
                   <div key={definition.id} className="space-y-0.5">
                     <dt className="text-xs font-medium text-muted-foreground">

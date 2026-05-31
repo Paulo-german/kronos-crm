@@ -2331,6 +2331,7 @@ enum FieldType {
   PHONE
   EMAIL
   URL
+  CPF
 
   @@map("field_type")
 }

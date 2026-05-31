@@ -1,4 +1,5 @@
 import { FieldType } from '@prisma/client'
+import { onlyNumbers } from '@/_lib/utils'
 import type { FieldOption } from './types'
 
 /**
@@ -104,6 +105,15 @@ export function serializeFieldValue(
       } catch {
         return { ok: false, value: null, error: 'URL inválida.' }
       }
+    }
+
+    case FieldType.CPF: {
+      const digits = onlyNumbers(trimmed)
+      if (digits.length !== 11) {
+        return { ok: false, value: null, error: 'CPF deve ter 11 dígitos.' }
+      }
+      // Persiste apenas os dígitos, sem máscara
+      return { ok: true, value: digits }
     }
 
     case FieldType.PHONE:
