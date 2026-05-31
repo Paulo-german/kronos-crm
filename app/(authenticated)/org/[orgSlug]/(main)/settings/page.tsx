@@ -6,6 +6,7 @@ import {
   FunnelIcon,
   FormInput,
   LayoutGrid,
+  ListChecks,
   Plug,
   Settings2,
   Sparkles,
@@ -100,6 +101,13 @@ const SettingsPage = async ({ params }: SettingsPageProps) => {
                   orgSlug={orgSlug}
                 >
                   <Ban size={20} />
+                </CardSettings>
+                <CardSettings
+                  title="Campos Personalizados"
+                  href="settings/custom-fields"
+                  orgSlug={orgSlug}
+                >
+                  <ListChecks size={20} />
                 </CardSettings>
               </div>
             </section>
