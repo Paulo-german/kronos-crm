@@ -20,7 +20,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
-import { Loader2, Users, CheckIcon, Plus } from 'lucide-react'
+import { Loader2, Users, CheckIcon, Plus, ShieldCheck } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -36,6 +36,7 @@ import {
   FormMessage,
 } from '@/_components/ui/form'
 import { Input } from '@/_components/ui/input'
+import { Textarea } from '@/_components/ui/textarea'
 import { Button } from '@/_components/ui/button'
 import { Switch } from '@/_components/ui/switch'
 import { Badge } from '@/_components/ui/badge'
@@ -100,6 +101,8 @@ const FORM_DEFAULTS: CreateInput = {
   squadId: null,
   isActive: true,
   customFields: [],
+  consentRequired: true,
+  consentText: 'Concordo com o tratamento dos meus dados pessoais conforme a Política de Privacidade.',
 }
 
 export const UpsertCaptureFormDialog = ({
@@ -128,6 +131,7 @@ export const UpsertCaptureFormDialog = ({
 
   const distributionUserIds = form.watch('distributionUserIds')
   const squadId = form.watch('squadId')
+  const consentRequired = form.watch('consentRequired')
 
   // Valores observados para o preview ao vivo
   const watchedAppearance = form.watch('appearance')
@@ -155,6 +159,8 @@ export const UpsertCaptureFormDialog = ({
           labelOverride: customField.labelOverride ?? null,
           position: customField.position,
         })),
+        consentRequired: defaultValues.consentRequired ?? true,
+        consentText: defaultValues.consentText ?? '',
       })
       return
     }
@@ -172,6 +178,14 @@ export const UpsertCaptureFormDialog = ({
   })
 
   const onSubmit = (data: CreateInput) => {
+    // Cross-validation: consentRequired exige consentText não-vazio (captureFormBaseSchema não tem refine)
+    if (data.consentRequired && !data.consentText?.trim()) {
+      form.setError('consentText', {
+        message: 'O texto do consentimento é obrigatório quando o consentimento é exigido.',
+      })
+      return
+    }
+
     // Normalizar positions pelo índice atual antes de enviar
     const normalizedData: CreateInput = {
       ...data,
@@ -566,6 +580,61 @@ export const UpsertCaptureFormDialog = ({
                     </FormItem>
                   )}
                 />
+
+                <Separator />
+
+                {/* Seção de Consentimento LGPD/GDPR */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+                    <p className="text-sm font-medium">Consentimento & Privacidade</p>
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="consentRequired"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start gap-3 rounded-lg border p-4">
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <div className="space-y-1">
+                          <FormLabel>Exigir consentimento do lead</FormLabel>
+                          <p className="text-xs text-muted-foreground">
+                            Quando ativo, um checkbox de aceite é exibido no formulário público. Base legal = Consentimento (LGPD Art. 7º, II / GDPR Art. 6º(1)(a)). Quando desativado, base legal = Legítimo Interesse.
+                          </p>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+
+                  {consentRequired && (
+                    <FormField
+                      control={form.control}
+                      name="consentText"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Texto do consentimento</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Concordo com o tratamento dos meus dados pessoais conforme a Política de Privacidade."
+                              className="resize-none"
+                              rows={3}
+                              {...field}
+                            />
+                          </FormControl>
+                          <p className="text-xs text-muted-foreground">
+                            Este texto será exibido ao lado do checkbox no formulário público. Máximo de 1000 caracteres.
+                          </p>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                </div>
               </TabsContent>
 
               {/* ── Aba Aparência ── */}

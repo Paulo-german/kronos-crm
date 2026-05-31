@@ -38,6 +38,8 @@ export interface CaptureFormDto {
   captureSourceId: string
   submissionCount: number
   customFields: CaptureFormFieldDto[]
+  consentRequired: boolean
+  consentText: string | null
   createdAt: Date
   updatedAt: Date
 }
@@ -90,6 +92,8 @@ export const getCaptureFormsByOrg = cache(async (orgId: string): Promise<Capture
             options: parseFieldOptions(field.fieldDefinition.options),
           },
         })),
+        consentRequired: form.consentRequired,
+        consentText: form.consentText,
         createdAt: form.createdAt,
         updatedAt: form.updatedAt,
       }))

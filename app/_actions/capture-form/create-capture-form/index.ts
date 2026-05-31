@@ -60,6 +60,8 @@ export const createCaptureForm = orgActionClient
           squadId: data.squadId ?? null,
           isActive: data.isActive,
           captureSourceId: source.id,
+          consentRequired: data.consentRequired ?? true,
+          consentText: data.consentText || null,
         },
       })
 
