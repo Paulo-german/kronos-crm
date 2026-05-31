@@ -91,7 +91,6 @@ export const importContacts = orgActionClient
             email: row.email || null,
             phone: row.phone || null,
             role: row.role || null,
-            cpf: row.cpf || null,
             companyId,
             isDecisionMaker: row.isDecisionMaker ?? false,
             lifecycleStage: data.lifecycleStage,

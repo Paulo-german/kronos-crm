@@ -30,7 +30,6 @@ export async function handleUpdateContact({
   const updateData: Record<string, unknown> = {}
   if (typeof resolved.name === 'string') updateData.name = resolved.name
   if (typeof resolved.phone === 'string') updateData.phone = resolved.phone
-  if (typeof resolved.cpf === 'string') updateData.cpf = resolved.cpf
 
   if (typeof resolved.companyName === 'string') {
     const companyId = await resolveCompanyId(orgId, resolved.companyName)

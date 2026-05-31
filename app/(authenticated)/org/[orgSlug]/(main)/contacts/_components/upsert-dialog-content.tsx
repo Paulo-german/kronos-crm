@@ -89,7 +89,6 @@ const UpsertContactDialogContent = ({
       email: '',
       phone: '',
       role: '',
-      cpf: '',
       companyId: undefined,
       isDecisionMaker: false,
       lifecycleStage: undefined,
@@ -255,7 +254,7 @@ const UpsertContactDialogContent = ({
 
           {isPiiRestricted ? (
             <p className="col-span-full rounded-md border border-border/50 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-              Informações de contato (email, telefone, CPF) são gerenciadas por administradores.
+              Informações de contato (email, telefone) são gerenciadas por administradores.
             </p>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
@@ -471,26 +470,6 @@ const UpsertContactDialogContent = ({
           )}
 
           <div className="grid gap-4 md:grid-cols-2">
-            {!isPiiRestricted && (
-              <FormField
-                control={form.control}
-                name="cpf"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>CPF</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="000.000.000-00"
-                        value={field.value || ''}
-                        onChange={field.onChange}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-
             <FormField
               control={form.control}
               name="isDecisionMaker"

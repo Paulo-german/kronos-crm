@@ -54,7 +54,7 @@ export const createOrganization = authActionClient
         },
       })
 
-      // Seed dos campos do sistema (name, email, phone, role, cpf) para CONTACT
+      // Seed dos campos do sistema (name, email, phone, role) para CONTACT
       await seedSystemFieldsForOrg(tx, org.id)
 
       return org

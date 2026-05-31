@@ -213,7 +213,6 @@ export function ContactsListClient({
               email: editingContact.email || '',
               phone: editingContact.phone || '',
               role: editingContact.role || '',
-              cpf: editingContact.cpf || '',
               companyId: editingContact.companyId || undefined,
               isDecisionMaker: editingContact.isDecisionMaker,
             }}

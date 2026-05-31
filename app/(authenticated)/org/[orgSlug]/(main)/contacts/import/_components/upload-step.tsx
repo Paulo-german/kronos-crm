@@ -19,9 +19,9 @@ const downloadTemplate = async () => {
   const XLSX = await import('xlsx')
 
   const rows = [
-    ['Nome', 'Email', 'Telefone', 'Empresa', 'Cargo', 'CPF', 'Decisor'],
-    ['Maria Silva', 'maria@empresa.com', '11999990000', 'Empresa Ltda', 'Gerente', '123.456.789-00', 'Sim'],
-    ['João Souza', 'joao@cliente.com.br', '21988887777', '', 'Diretor', '', 'Não'],
+    ['Nome', 'Email', 'Telefone', 'Empresa', 'Cargo', 'Decisor'],
+    ['Maria Silva', 'maria@empresa.com', '11999990000', 'Empresa Ltda', 'Gerente', 'Sim'],
+    ['João Souza', 'joao@cliente.com.br', '21988887777', '', 'Diretor', 'Não'],
   ]
 
   const worksheet = XLSX.utils.aoa_to_sheet(rows)

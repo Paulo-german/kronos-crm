@@ -23,15 +23,12 @@ export function formatCnpj(value: string | null | undefined): string {
   )
 }
 
-/**
- * Formata CPF: 12345678901 → 123.456.789-01
- */
+/** Formata CPF: "12345678901" → "123.456.789-01" */
 export function formatCpf(value: string | null | undefined): string {
   if (!value) return ''
-  const numbers = value.replace(/\D/g, '')
-  if (numbers.length !== 11) return value
-
-  return numbers.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4')
+  const digits = value.replace(/\D/g, '')
+  if (digits.length !== 11) return value
+  return digits.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4')
 }
 
 /**

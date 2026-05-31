@@ -25,7 +25,6 @@ export async function handleNewContact({
   const email = typeof resolved.email === 'string' ? resolved.email : null
   const phone = typeof resolved.phone === 'string' ? resolved.phone : null
   const name = typeof resolved.name === 'string' ? resolved.name : null
-  const cpf = typeof resolved.cpf === 'string' ? resolved.cpf : null
   const companyName =
     typeof resolved.companyName === 'string' ? resolved.companyName : null
 
@@ -66,7 +65,6 @@ export async function handleNewContact({
         data: {
           ...(name ? { name } : {}),
           ...(phone ? { phone } : {}),
-          ...(cpf ? { cpf } : {}),
           ...(companyId ? { companyId } : {}),
         },
       })
@@ -79,7 +77,6 @@ export async function handleNewContact({
         email,
         name: name ?? email,
         phone,
-        cpf,
         companyId,
         assignedTo: assignedUserId,
         firstCaptureChannel: CaptureChannel.API,
@@ -96,7 +93,6 @@ export async function handleNewContact({
       organizationId: orgId,
       name: name ?? phone!,
       phone,
-      cpf,
       companyId,
       assignedTo: assignedUserId,
       firstCaptureChannel: CaptureChannel.API,

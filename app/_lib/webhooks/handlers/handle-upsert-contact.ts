@@ -25,7 +25,6 @@ export async function handleUpsertContact({
   const email = typeof resolved.email === 'string' ? resolved.email : null
   const phone = typeof resolved.phone === 'string' ? resolved.phone : null
   const name = typeof resolved.name === 'string' ? resolved.name : null
-  const cpf = typeof resolved.cpf === 'string' ? resolved.cpf : null
   const companyName = typeof resolved.companyName === 'string' ? resolved.companyName : null
 
   if (!email && !phone) {
@@ -46,7 +45,6 @@ export async function handleUpsertContact({
         data: {
           ...(name ? { name } : {}),
           ...(phone ? { phone } : {}),
-          ...(cpf ? { cpf } : {}),
           ...(companyId ? { companyId } : {}),
         },
       })
@@ -78,7 +76,6 @@ export async function handleUpsertContact({
         email,
         name: name ?? email,
         phone,
-        cpf,
         companyId,
         assignedTo: assignedUserId,
         firstCaptureChannel: CaptureChannel.API,
@@ -100,7 +97,6 @@ export async function handleUpsertContact({
       where: { id: existingByPhone.id },
       data: {
         ...(name ? { name } : {}),
-        ...(cpf ? { cpf } : {}),
         ...(companyId ? { companyId } : {}),
       },
     })
@@ -112,7 +108,6 @@ export async function handleUpsertContact({
       organizationId: orgId,
       name: name ?? phone!,
       phone,
-      cpf,
       companyId,
       assignedTo: assignedUserId,
       firstCaptureChannel: CaptureChannel.API,

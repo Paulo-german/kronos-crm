@@ -6,11 +6,7 @@ import type { RBACContext } from '@/_lib/rbac'
 import { isElevated } from '@/_lib/rbac'
 import { maskEmail } from '@/_lib/pii-mask'
 import type { GlobalSearchResult, SearchResultItem, SearchResultGroup } from '@/_data-access/search/types'
-import {
-  tokenizeQuery,
-  looksLikeDocument,
-  normalizeDocument,
-} from '@/_data-access/search/search-utils'
+import { tokenizeQuery } from '@/_data-access/search/search-utils'
 
 const LIMITS = {
   contacts: 5,
@@ -53,7 +49,6 @@ interface RawCountResult {
  */
 function buildContactTokenConditions(
   tokens: string[],
-  isDocumentQuery: boolean,
   masked: boolean,
 ): Prisma.Sql[] {
   return tokens.map((token) => {
@@ -62,17 +57,6 @@ function buildContactTokenConditions(
     // MEMBER com toggle ativo: busca restrita ao nome para não vazar PII
     if (masked) {
       return Prisma.sql`(unaccent(c.name) ILIKE unaccent(${pattern}))`
-    }
-
-    if (isDocumentQuery) {
-      // Busca por documento: inclui o campo cpf normalizado (sem pontos e traços)
-      const normalizedPattern = `%${normalizeDocument(token)}%`
-      return Prisma.sql`(
-        unaccent(c.name) ILIKE unaccent(${pattern})
-        OR unaccent(COALESCE(c.email, '')) ILIKE unaccent(${pattern})
-        OR unaccent(COALESCE(c.phone, '')) ILIKE unaccent(${pattern})
-        OR REPLACE(REPLACE(COALESCE(c.cpf, ''), '.', ''), '-', '') ILIKE ${normalizedPattern}
-      )`
     }
 
     return Prisma.sql`(
@@ -122,10 +106,9 @@ async function searchContacts(
   userId: string,
   elevated: boolean,
   tokens: string[],
-  isDocumentQuery: boolean,
   masked: boolean,
 ): Promise<{ items: RawContact[]; totalCount: number }> {
-  const tokenConditions = buildContactTokenConditions(tokens, isDocumentQuery, masked)
+  const tokenConditions = buildContactTokenConditions(tokens, masked)
   const whereTokens = Prisma.join(tokenConditions, ' AND ')
 
   const rbacCondition = elevated
@@ -275,13 +258,12 @@ export async function globalSearch(
 
   const elevated = isElevated(ctx.userRole)
   const masked = !elevated && (ctx.hidePiiFromMembers ?? false)
-  const isDocumentQuery = looksLikeDocument(query)
 
   // Todas as queries (incluindo resolução do slug) rodam em paralelo
   const [orgSlug, contactsResult, companiesResult, dealsResult] =
     await Promise.all([
       getOrgSlug(ctx.orgId),
-      searchContacts(ctx.orgId, ctx.userId, elevated, tokens, isDocumentQuery, masked),
+      searchContacts(ctx.orgId, ctx.userId, elevated, tokens, masked),
       searchCompanies(ctx.orgId, tokens),
       searchDeals(ctx.orgId, ctx.userId, elevated, tokens),
     ])

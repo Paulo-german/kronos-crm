@@ -21,7 +21,7 @@ import { FIELD_MAPPING_KEY_LABELS, type FieldMappingKey } from '../_lib/platform
 const POLL_INTERVAL_MS = 2000
 const POLL_TIMEOUT_MS = 5 * 60 * 1000
 
-const CRM_KEYS: FieldMappingKey[] = ['name', 'email', 'phone', 'cpf', 'companyName']
+const CRM_KEYS: FieldMappingKey[] = ['name', 'email', 'phone', 'companyName']
 
 interface DetectionRow {
   path: string

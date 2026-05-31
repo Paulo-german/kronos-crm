@@ -4,7 +4,7 @@ import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 import type { RBACContext } from '@/_lib/rbac'
 import { isElevated } from '@/_lib/rbac'
-import { maskEmail, maskPhone, maskCpf } from '@/_lib/pii-mask'
+import { maskEmail, maskPhone } from '@/_lib/pii-mask'
 import type { CaptureChannel, CustomerStatus, DealStatus, LifecycleStage } from '@prisma/client'
 
 export interface ContactDetailDto {
@@ -13,7 +13,6 @@ export interface ContactDetailDto {
   email: string | null
   phone: string | null
   role: string | null
-  cpf: string | null
   isDecisionMaker: boolean
   companyId: string | null
   assignedTo: string | null
@@ -61,7 +60,6 @@ const fetchContactByIdFromDb = async (
       email: true,
       phone: true,
       role: true,
-      cpf: true,
       isDecisionMaker: true,
       companyId: true,
       assignedTo: true,
@@ -108,7 +106,6 @@ const fetchContactByIdFromDb = async (
     email: masked ? maskEmail(contact.email) : contact.email,
     phone: masked ? maskPhone(contact.phone) : contact.phone,
     role: contact.role,
-    cpf: masked ? maskCpf(contact.cpf) : contact.cpf,
     isDecisionMaker: contact.isDecisionMaker,
     companyId: contact.companyId,
     assignedTo: contact.assignedTo,

@@ -4,7 +4,7 @@ import { db } from '@/_lib/prisma'
 import type { Prisma, LifecycleStage, CustomerStatus } from '@prisma/client'
 import type { RBACContext } from '@/_lib/rbac'
 import { isElevated } from '@/_lib/rbac'
-import { maskEmail, maskPhone, maskCpf } from '@/_lib/pii-mask'
+import { maskEmail, maskPhone } from '@/_lib/pii-mask'
 
 export interface ContactDto {
   id: string
@@ -12,7 +12,6 @@ export interface ContactDto {
   email: string | null
   phone: string | null
   role: string | null
-  cpf: string | null
   isDecisionMaker: boolean
   companyId: string | null
   companyName: string | null
@@ -105,7 +104,6 @@ const fetchContactsFromDb = async (
     email: masked ? maskEmail(contact.email) : contact.email,
     phone: masked ? maskPhone(contact.phone) : contact.phone,
     role: contact.role,
-    cpf: masked ? maskCpf(contact.cpf) : contact.cpf,
     isDecisionMaker: contact.isDecisionMaker,
     companyId: contact.companyId,
     companyName: contact.company?.name ?? null,
@@ -253,7 +251,6 @@ const fetchContactsPaginatedFromDb = async (
       email: masked ? maskEmail(contact.email) : contact.email,
       phone: masked ? maskPhone(contact.phone) : contact.phone,
       role: contact.role,
-      cpf: masked ? maskCpf(contact.cpf) : contact.cpf,
       isDecisionMaker: contact.isDecisionMaker,
       companyId: contact.companyId,
       companyName: contact.company?.name ?? null,

@@ -39,7 +39,7 @@ export const updateContact = orgActionClient
     // 4. Bloquear edição de campos PII para MEMBER quando o toggle de proteção está ativo
     if (!isElevated(ctx.userRole) && ctx.hidePiiFromMembers) {
       const hasPiiUpdate =
-        data.email !== undefined || data.phone !== undefined || data.cpf !== undefined
+        data.email !== undefined || data.phone !== undefined
       if (hasPiiUpdate) {
         throw new Error('Apenas administradores podem editar informações de contato sensíveis.')
       }
@@ -71,7 +71,6 @@ export const updateContact = orgActionClient
         ...(data.email !== undefined && { email: data.email || null }),
         ...(data.phone !== undefined && { phone: data.phone || null }),
         ...(data.role !== undefined && { role: data.role || null }),
-        ...(data.cpf !== undefined && { cpf: data.cpf || null }),
         ...(data.companyId !== undefined && { companyId: data.companyId }),
         ...(data.isDecisionMaker !== undefined && {
           isDecisionMaker: data.isDecisionMaker,

@@ -21,7 +21,6 @@ const FIELD_OPTIONS = [
   { value: 'phone', label: 'Telefone' },
   { value: 'companyName', label: 'Empresa' },
   { value: 'role', label: 'Cargo' },
-  { value: 'cpf', label: 'CPF' },
   { value: 'isDecisionMaker', label: 'Decisor' },
 ] as const
 
@@ -49,9 +48,6 @@ const AUTO_DETECT_PATTERNS: Record<string, FieldValue> = {
   função: 'role',
   funcao: 'role',
   position: 'role',
-  cpf: 'cpf',
-  documento: 'cpf',
-  document: 'cpf',
   decisor: 'isDecisionMaker',
   'decision maker': 'isDecisionMaker',
   decisão: 'isDecisionMaker',

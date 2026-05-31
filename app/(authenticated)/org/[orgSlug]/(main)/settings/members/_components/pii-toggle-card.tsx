@@ -56,7 +56,7 @@ export function PiiToggleCard({ defaultValue }: PiiToggleCardProps) {
               Ocultar dados de contato dos membros
             </Label>
             <p className="text-xs text-muted-foreground">
-              Quando ativado, membros não verão email, telefone e CPF dos contatos.
+              Quando ativado, membros não verão email e telefone dos contatos.
               Apenas administradores e proprietários terão acesso completo.
             </p>
           </div>

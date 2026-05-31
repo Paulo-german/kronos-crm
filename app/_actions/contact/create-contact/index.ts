@@ -96,7 +96,6 @@ export const createContact = orgActionClient
           email: data.email || null,
           phone: data.phone || null,
           role: data.role || null,
-          cpf: data.cpf || null,
           companyId: data.companyId || null,
           isDecisionMaker: data.isDecisionMaker,
           lifecycleStage: initialStage,

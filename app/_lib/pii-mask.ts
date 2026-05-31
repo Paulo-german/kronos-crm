@@ -30,15 +30,6 @@ export function maskPhone(phone: string | null): string | null {
   return `(**) *****-${lastFour}`
 }
 
-/** Mascara CPF: "12345678900" → "***.***-00" */
-export function maskCpf(cpf: string | null): string | null {
-  if (!cpf) return null
-  const digits = cpf.replace(/\D/g, '')
-  if (digits.length < 2) return '***'
-  const lastTwo = digits.slice(-2)
-  return `***.***-${lastTwo}`
-}
-
 /** Mascara remoteJid: "5511999991234@s.whatsapp.net" → "(**) *****-1234" */
 export function maskRemoteJid(jid: string | null): string | null {
   if (!jid) return null

@@ -31,7 +31,6 @@ const ALL_KEYS: FieldMappingKey[] = [
   'name',
   'email',
   'phone',
-  'cpf',
   'companyName',
   'dealTitle',
   'dealValue',

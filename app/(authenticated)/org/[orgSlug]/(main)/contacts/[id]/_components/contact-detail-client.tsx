@@ -11,7 +11,6 @@ import {
   Briefcase,
   Building2,
   CircleIcon,
-  CreditCard,
   Loader2,
   Mail,
   Phone,
@@ -257,25 +256,6 @@ const ContactDetailClient = ({
                 <InlineTextField
                   value={formatPhone(contact.phone)}
                   onSave={(value) => updateField('phone', value)}
-                  isPending={isPending}
-                  placeholder="Adicionar"
-                  displayClassName="font-medium"
-                  inputClassName="h-7 w-[180px]"
-                />
-              )}
-            </div>
-
-            <div className="flex items-center justify-between text-sm">
-              <span className="flex items-center gap-1.5 text-muted-foreground">
-                <CreditCard className="h-3.5 w-3.5" />
-                CPF
-              </span>
-              {isPiiRestricted ? (
-                <span className="text-sm font-medium">{contact.cpf ?? '—'}</span>
-              ) : (
-                <InlineTextField
-                  value={contact.cpf}
-                  onSave={(value) => updateField('cpf', value)}
                   isPending={isPending}
                   placeholder="Adicionar"
                   displayClassName="font-medium"

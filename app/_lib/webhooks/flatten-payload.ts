@@ -55,7 +55,6 @@ export function suggestCrmField(path: string): FieldMappingKey | null {
   const lower = path.toLowerCase()
   if (lower.includes('email')) return 'email'
   if (lower.includes('phone') || lower.includes('telefone') || lower.includes('celular') || lower.includes('fone')) return 'phone'
-  if (lower.includes('cpf')) return 'cpf'
   if (lower.includes('company') || lower.includes('empresa') || lower.includes('cnpj')) return 'companyName'
   // 'name'/'nome' depois de 'company'/'empresa' para evitar falso positivo em 'companyName'
   if (lower.includes('name') || lower.includes('nome')) return 'name'

@@ -20,7 +20,6 @@ export const fieldMappingKeySchema = z.enum([
   'name',
   'email',
   'phone',
-  'cpf',
   'companyName',
   'dealTitle',
   'dealValue',

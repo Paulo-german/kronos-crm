@@ -14,7 +14,6 @@ const CONTACT_SYSTEM_FIELDS: Array<{
   { key: 'email', label: 'Email', type: FieldType.EMAIL, isRequired: false },
   { key: 'phone', label: 'Telefone', type: FieldType.PHONE, isRequired: false },
   { key: 'role', label: 'Cargo', type: FieldType.TEXT, isRequired: false },
-  { key: 'cpf', label: 'CPF', type: FieldType.TEXT, isRequired: false },
 ]
 
 /**

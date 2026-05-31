@@ -200,7 +200,6 @@ model Contact {
   email           String?
   phone           String?
   role            String?
-  cpf             String?
   isDecisionMaker Boolean        @default(false) @map("is_decision_maker")
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")

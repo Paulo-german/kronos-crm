@@ -71,7 +71,6 @@ export const FIELD_MAPPING_KEY_LABELS: Record<FieldMappingKey, string> = {
   name: 'Nome',
   email: 'Email',
   phone: 'Telefone',
-  cpf: 'CPF',
   companyName: 'Empresa',
   dealTitle: 'Título do deal',
   dealValue: 'Valor do deal',
