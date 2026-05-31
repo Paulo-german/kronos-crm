@@ -311,8 +311,7 @@ export function ConversationList({
             </TabsTrigger>
             <TabsTrigger
               value="unanswered"
-              className="gap-1.5"
-            >
+                         >
               Sem resp.
               {totalUnanswered > 0 && (
                 <Badge className="pointer-events-none flex h-5 min-w-5 items-center justify-center rounded-full bg-kronos-yellow px-1 text-[10px] font-medium text-white hover:bg-kronos-yellow">
