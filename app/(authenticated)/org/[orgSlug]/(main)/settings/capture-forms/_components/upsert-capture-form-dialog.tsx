@@ -39,9 +39,12 @@ import {
 } from '@/_components/ui/popover'
 import { Checkbox } from '@/_components/ui/checkbox'
 import { Separator } from '@/_components/ui/separator'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/_components/ui/tabs'
 import { createCaptureForm } from '@/_actions/capture-form/create-capture-form'
 import { captureFormBaseSchema, updateCaptureFormSchema } from '@/_actions/capture-form/schema'
 import { DEFAULT_CAPTURE_FIELDS, CAPTURE_FIELD_KEYS, type CaptureFieldKey } from '@/_lib/capture-form/field-config'
+import { DEFAULT_CAPTURE_APPEARANCE } from '@/_lib/capture-form/appearance-config'
+import { CaptureFormView, getVisibleFieldKeys } from '@/_components/capture-form/capture-form-view'
 import type { CaptureFormDto } from '@/_data-access/capture-form/get-capture-forms'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import type { SquadDto } from '@/_data-access/squad/get-squads'
@@ -69,6 +72,7 @@ const FIELD_LABELS: Record<CaptureFieldKey, string> = {
 const FORM_DEFAULTS: CreateInput = {
   name: '',
   fields: DEFAULT_CAPTURE_FIELDS,
+  appearance: DEFAULT_CAPTURE_APPEARANCE,
   buttonLabel: 'Enviar',
   successMessage: 'Obrigado! Recebemos seus dados.',
   redirectUrl: '',
@@ -96,6 +100,11 @@ export const UpsertCaptureFormDialog = ({
   const distributionUserIds = form.watch('distributionUserIds')
   const squadId = form.watch('squadId')
 
+  // Valores observados para o preview ao vivo
+  const watchedAppearance = form.watch('appearance')
+  const watchedFields = form.watch('fields')
+  const watchedButtonLabel = form.watch('buttonLabel')
+
   const assignableMembers = members.filter((member) => member.userId !== null)
 
   useEffect(() => {
@@ -104,6 +113,7 @@ export const UpsertCaptureFormDialog = ({
       form.reset({
         name: defaultValues.name,
         fields: defaultValues.fields,
+        appearance: defaultValues.appearance ?? DEFAULT_CAPTURE_APPEARANCE,
         buttonLabel: defaultValues.buttonLabel,
         successMessage: defaultValues.successMessage,
         redirectUrl: defaultValues.redirectUrl ?? '',
@@ -137,7 +147,7 @@ export const UpsertCaptureFormDialog = ({
   const handleToggleMember = (userId: string) => {
     const current = form.getValues('distributionUserIds')
     const updated = current.includes(userId)
-      ? current.filter((id) => id !== userId)
+      ? current.filter((existingId) => existingId !== userId)
       : [...current, userId]
     form.setValue('distributionUserIds', updated, { shouldDirty: true })
   }
@@ -146,233 +156,443 @@ export const UpsertCaptureFormDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Editar formulário' : 'Novo formulário de captura'}</DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nome interno</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Ex: Landing Page Produto X" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <Tabs defaultValue="content" className="w-full">
+              <TabsList className="mb-5 mt-2 grid w-full grid-cols-2">
+                <TabsTrigger value="content">Conteúdo</TabsTrigger>
+                <TabsTrigger value="appearance">Aparência</TabsTrigger>
+              </TabsList>
 
-            <Separator />
-
-            <div className="space-y-3">
-              <p className="text-sm font-medium">Campos do formulário</p>
-              <div className="space-y-2">
-                {CAPTURE_FIELD_KEYS.map((key) => (
-                  <div key={key} className="flex items-center gap-4 rounded-md border p-3">
-                    <span className="w-20 text-sm text-muted-foreground">{FIELD_LABELS[key]}</span>
-                    <div className="flex flex-1 items-center gap-6">
-                      <FormField
-                        control={form.control}
-                        name={`fields.${key}.visible`}
-                        render={({ field: f }) => (
-                          <FormItem className="flex flex-row items-center gap-2 space-y-0">
-                            <FormControl>
-                              <Switch
-                                checked={f.value}
-                                onCheckedChange={f.onChange}
-                                disabled={key === 'name'}
-                              />
-                            </FormControl>
-                            <FormLabel className="text-xs text-muted-foreground">Visível</FormLabel>
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name={`fields.${key}.required`}
-                        render={({ field: f }) => (
-                          <FormItem className="flex flex-row items-center gap-2 space-y-0">
-                            <FormControl>
-                              <Switch
-                                checked={f.value}
-                                onCheckedChange={f.onChange}
-                                disabled={key === 'name'}
-                              />
-                            </FormControl>
-                            <FormLabel className="text-xs text-muted-foreground">Obrigatório</FormLabel>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Distribuição de leads */}
-            <div className="space-y-3">
-              <div>
-                <p className="text-sm font-medium">Distribuição de leads</p>
-                <p className="text-xs text-muted-foreground">
-                  Escolha membros (round-robin) ou um time. Os dois modos são exclusivos.
-                </p>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                {/* Select de Squad */}
+              {/* ── Aba Conteúdo ── */}
+              <TabsContent value="content" className="space-y-5">
                 <FormField
                   control={form.control}
-                  name="squadId"
+                  name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Time</FormLabel>
-                      <Select
-                        onValueChange={(value) =>
-                          field.onChange(value === 'none' ? null : value)
-                        }
-                        value={field.value ?? 'none'}
-                        disabled={distributionUserIds.length > 0}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Sem time" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="none">Sem time</SelectItem>
-                          {squads.map((squad) => (
-                            <SelectItem key={squad.id} value={squad.id}>
-                              {squad.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormLabel>Nome interno</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ex: Landing Page Produto X" {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                {/* Multi-select de membros */}
-                <FormItem>
-                  <FormLabel>Membros específicos</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full justify-start font-normal"
-                        disabled={!!squadId}
-                      >
-                        <Users className="mr-2 h-4 w-4 text-muted-foreground" />
-                        {distributionUserIds.length === 0
-                          ? 'Selecionar membros'
-                          : `${distributionUserIds.length} membro(s)`}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-64 p-2" align="start">
-                      {assignableMembers.length === 0 ? (
-                        <p className="px-2 py-1 text-sm text-muted-foreground">
-                          Nenhum membro disponível.
-                        </p>
-                      ) : (
-                        assignableMembers.map((member) => {
-                          const isSelected = distributionUserIds.includes(member.userId!)
-                          return (
-                            <button
-                              key={member.userId}
-                              type="button"
-                              onClick={() => handleToggleMember(member.userId!)}
-                              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
-                            >
-                              <Checkbox checked={isSelected} className="pointer-events-none" />
-                              <span className="flex-1 truncate text-left">
-                                {member.user?.fullName ?? member.email}
-                              </span>
-                              {isSelected && <CheckIcon className="h-3.5 w-3.5 text-primary" />}
-                            </button>
-                          )
-                        })
-                      )}
-                    </PopoverContent>
-                  </Popover>
-                </FormItem>
-              </div>
+                <Separator />
 
-              {/* Badges dos membros selecionados */}
-              {distributionUserIds.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {distributionUserIds.map((userId) => {
-                    const member = assignableMembers.find((m) => m.userId === userId)
-                    return (
-                      <Badge
-                        key={userId}
-                        variant="secondary"
-                        className="cursor-pointer"
-                        onClick={() => handleToggleMember(userId)}
-                      >
-                        {member?.user?.fullName ?? member?.email ?? userId}
-                        <span className="ml-1 opacity-60">×</span>
-                      </Badge>
-                    )
-                  })}
+                <div className="space-y-3">
+                  <p className="text-sm font-medium">Campos do formulário</p>
+                  <div className="space-y-2">
+                    {CAPTURE_FIELD_KEYS.map((key) => (
+                      <div key={key} className="flex items-center gap-4 rounded-md border p-3">
+                        <span className="w-20 text-sm text-muted-foreground">{FIELD_LABELS[key]}</span>
+                        <div className="flex flex-1 items-center gap-6">
+                          <FormField
+                            control={form.control}
+                            name={`fields.${key}.visible`}
+                            render={({ field: f }) => (
+                              <FormItem className="flex flex-row items-center gap-2 space-y-0">
+                                <FormControl>
+                                  <Switch
+                                    checked={f.value}
+                                    onCheckedChange={f.onChange}
+                                    disabled={key === 'name'}
+                                  />
+                                </FormControl>
+                                <FormLabel className="text-xs text-muted-foreground">Visível</FormLabel>
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name={`fields.${key}.required`}
+                            render={({ field: f }) => (
+                              <FormItem className="flex flex-row items-center gap-2 space-y-0">
+                                <FormControl>
+                                  <Switch
+                                    checked={f.value}
+                                    onCheckedChange={f.onChange}
+                                    disabled={key === 'name'}
+                                  />
+                                </FormControl>
+                                <FormLabel className="text-xs text-muted-foreground">Obrigatório</FormLabel>
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              )}
-            </div>
 
-            <Separator />
+                <Separator />
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="buttonLabel"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Texto do botão</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enviar" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                {/* Distribuição de leads */}
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm font-medium">Distribuição de leads</p>
+                    <p className="text-xs text-muted-foreground">
+                      Escolha membros (round-robin) ou um time. Os dois modos são exclusivos.
+                    </p>
+                  </div>
 
-              <FormField
-                control={form.control}
-                name="successMessage"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Mensagem de sucesso</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Obrigado! Recebemos seus dados." {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {/* Select de Squad */}
+                    <FormField
+                      control={form.control}
+                      name="squadId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Time</FormLabel>
+                          <Select
+                            onValueChange={(value) =>
+                              field.onChange(value === 'none' ? null : value)
+                            }
+                            value={field.value ?? 'none'}
+                            disabled={distributionUserIds.length > 0}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Sem time" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="none">Sem time</SelectItem>
+                              {squads.map((squad) => (
+                                <SelectItem key={squad.id} value={squad.id}>
+                                  {squad.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-            <FormField
-              control={form.control}
-              name="redirectUrl"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>URL de redirecionamento (opcional)</FormLabel>
-                  <FormControl>
-                    <Input placeholder="https://..." {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    {/* Multi-select de membros */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium leading-none">Membros específicos</label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full justify-start font-normal"
+                            disabled={!!squadId}
+                          >
+                            <Users className="mr-2 h-4 w-4 text-muted-foreground" />
+                            {distributionUserIds.length === 0
+                              ? 'Selecionar membros'
+                              : `${distributionUserIds.length} membro(s)`}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-64 p-2" align="start">
+                          {assignableMembers.length === 0 ? (
+                            <p className="px-2 py-1 text-sm text-muted-foreground">
+                              Nenhum membro disponível.
+                            </p>
+                          ) : (
+                            assignableMembers.map((member) => {
+                              const isSelected = distributionUserIds.includes(member.userId!)
+                              return (
+                                <button
+                                  key={member.userId}
+                                  type="button"
+                                  onClick={() => handleToggleMember(member.userId!)}
+                                  className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
+                                >
+                                  <Checkbox checked={isSelected} className="pointer-events-none" />
+                                  <span className="flex-1 truncate text-left">
+                                    {member.user?.fullName ?? member.email}
+                                  </span>
+                                  {isSelected && <CheckIcon className="h-3.5 w-3.5 text-primary" />}
+                                </button>
+                              )
+                            })
+                          )}
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </div>
 
-            <div className="flex justify-end gap-2 pt-2">
+                  {/* Badges dos membros selecionados */}
+                  {distributionUserIds.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {distributionUserIds.map((userId) => {
+                        const member = assignableMembers.find((m) => m.userId === userId)
+                        return (
+                          <Badge
+                            key={userId}
+                            variant="secondary"
+                            className="cursor-pointer"
+                            onClick={() => handleToggleMember(userId)}
+                          >
+                            {member?.user?.fullName ?? member?.email ?? userId}
+                            <span className="ml-1 opacity-60">×</span>
+                          </Badge>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <Separator />
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="buttonLabel"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Texto do botão</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enviar" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="successMessage"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Mensagem de sucesso</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Obrigado! Recebemos seus dados." {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="redirectUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>URL de redirecionamento (opcional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="https://..." {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </TabsContent>
+
+              {/* ── Aba Aparência ── */}
+              <TabsContent value="appearance">
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                  {/* Controles (esquerda) */}
+                  <div className="space-y-5">
+                    {/* Cores */}
+                    <div className="space-y-4">
+                      <p className="text-sm font-medium">Cores</p>
+
+                      <FormField
+                        control={form.control}
+                        name="appearance.primaryColor"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Cor primária</FormLabel>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="color"
+                                value={field.value}
+                                onChange={(event) => field.onChange(event.target.value)}
+                                className="h-9 w-12 cursor-pointer rounded border p-1"
+                              />
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  className="font-mono uppercase"
+                                  maxLength={7}
+                                  onChange={(event) => {
+                                    const val = event.target.value
+                                    field.onChange(val.startsWith('#') ? val : `#${val}`)
+                                  }}
+                                />
+                              </FormControl>
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="appearance.backgroundColor"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Cor de fundo</FormLabel>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="color"
+                                value={field.value}
+                                onChange={(event) => field.onChange(event.target.value)}
+                                className="h-9 w-12 cursor-pointer rounded border p-1"
+                              />
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  className="font-mono uppercase"
+                                  maxLength={7}
+                                  onChange={(event) => {
+                                    const val = event.target.value
+                                    field.onChange(val.startsWith('#') ? val : `#${val}`)
+                                  }}
+                                />
+                              </FormControl>
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <Separator />
+
+                    {/* Texto e identidade */}
+                    <div className="space-y-4">
+                      <p className="text-sm font-medium">Texto e identidade</p>
+
+                      <FormField
+                        control={form.control}
+                        name="appearance.title"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Título (opcional)</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Ex: Fale com nossa equipe" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="appearance.description"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Descrição (opcional)</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Ex: Preencha e entraremos em contato." {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="appearance.logoUrl"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>URL do logo (opcional)</FormLabel>
+                            <FormControl>
+                              <Input placeholder="https://..." {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <Separator />
+
+                    {/* Estilo de bordas */}
+                    <FormField
+                      control={form.control}
+                      name="appearance.borderStyle"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Estilo de bordas</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="rounded">Arredondado</SelectItem>
+                              <SelectItem value="square">Quadrado</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Preview ao vivo (direita) */}
+                  <div className="rounded-lg border bg-muted/30 p-4">
+                    <p className="mb-3 text-xs text-muted-foreground">Preview</p>
+                    <CaptureFormView
+                      appearance={watchedAppearance}
+                      fields={watchedFields}
+                      buttonLabel={watchedButtonLabel}
+                      submitButton={
+                        <div
+                          className="mt-4 w-full py-2 text-center text-sm font-medium text-white"
+                          style={{
+                            backgroundColor: watchedAppearance.primaryColor,
+                            borderRadius: watchedAppearance.borderStyle === 'rounded' ? '6px' : '2px',
+                          }}
+                        >
+                          {watchedButtonLabel}
+                        </div>
+                      }
+                    >
+                      {/* Inputs fake para o preview — cores fixas, independente do tema */}
+                      <div className="space-y-3">
+                        {getVisibleFieldKeys(watchedFields).map((key) => {
+                          const config = watchedFields[key]
+                          return (
+                            <div key={key}>
+                              <label
+                                className="mb-1 block text-sm font-medium"
+                                style={{ color: watchedAppearance.primaryColor }}
+                              >
+                                {config.label ?? key}
+                                {config.required && (
+                                  <span className="ml-1 text-xs">*</span>
+                                )}
+                              </label>
+                              <div
+                                className="h-9 border px-3 py-2 text-sm"
+                                style={{
+                                  backgroundColor: '#f9fafb',
+                                  color: '#9ca3af',
+                                  borderColor: '#e5e7eb',
+                                  borderRadius: watchedAppearance.borderStyle === 'rounded' ? '6px' : '2px',
+                                }}
+                              >
+                                {config.label ?? key}...
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </CaptureFormView>
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+
+            {/* Rodapé com botões de ação — fora das tabs */}
+            <div className="mt-6 flex justify-end gap-2 border-t pt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>

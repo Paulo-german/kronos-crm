@@ -10,6 +10,7 @@ import { Input } from '@/_components/ui/input'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/_components/ui/form'
 import type { PublicCaptureFormDto } from '@/_data-access/capture-form/get-capture-form-by-token'
 import { CAPTURE_FIELD_KEYS } from '@/_lib/capture-form/field-config'
+import { CaptureFormView, getVisibleFieldKeys } from '@/_components/capture-form/capture-form-view'
 
 interface CaptureFormRendererProps {
   form: PublicCaptureFormDto
@@ -78,52 +79,80 @@ export const CaptureFormRenderer = ({ form, publicToken }: CaptureFormRendererPr
 
   if (submitted) {
     return (
-      <div ref={formRef} className="flex min-h-[200px] items-center justify-center p-8">
-        <p className="text-center text-sm text-muted-foreground">{form.successMessage}</p>
+      <div
+        ref={formRef}
+        className="flex min-h-[200px] items-center justify-center p-8"
+        style={{ backgroundColor: form.appearance.backgroundColor }}
+      >
+        <p className="text-center text-sm" style={{ color: form.appearance.primaryColor, opacity: 0.7 }}>
+          {form.successMessage}
+        </p>
       </div>
     )
   }
 
-  const visibleFields = CAPTURE_FIELD_KEYS.filter((key) => form.fields[key].visible)
+  const visibleKeys = getVisibleFieldKeys(form.fields)
+
+  const { primaryColor, borderStyle } = form.appearance
+  const fieldRadius = borderStyle === 'square' ? 'rounded-none' : ''
+
+  const submitButton = (
+    <Button
+      type="submit"
+      className={`mt-4 w-full border text-white ${fieldRadius}`}
+      style={{ backgroundColor: primaryColor, borderColor: primaryColor }}
+      disabled={rhf.formState.isSubmitting}
+    >
+      {rhf.formState.isSubmitting ? (
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+      ) : null}
+      {form.buttonLabel}
+    </Button>
+  )
 
   return (
-    <div ref={formRef} className="p-6">
+    <div ref={formRef}>
       <Form {...rhf}>
-        <form onSubmit={rhf.handleSubmit(onSubmit)} className="space-y-4">
-          {visibleFields.map((key) => (
-            <FormField
-              key={key}
-              control={rhf.control}
-              name={key as keyof z.infer<typeof schema>}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    {form.fields[key].label ?? key}
-                    {form.fields[key].required && <span className="ml-1 text-destructive">*</span>}
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      type={key === 'email' ? 'email' : key === 'phone' ? 'tel' : 'text'}
-                      value={field.value as string ?? ''}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+        <form onSubmit={rhf.handleSubmit(onSubmit)}>
+          <CaptureFormView
+            appearance={form.appearance}
+            fields={form.fields}
+            buttonLabel={form.buttonLabel}
+            submitButton={submitButton}
+          >
+            <div className="space-y-4">
+              {visibleKeys.map((key) => (
+                <FormField
+                  key={key}
+                  control={rhf.control}
+                  name={key as keyof z.infer<typeof schema>}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel style={{ color: primaryColor }}>
+                        {form.fields[key].label ?? key}
+                        {form.fields[key].required && (
+                          <span className="ml-1 text-xs">*</span>
+                        )}
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          type={key === 'email' ? 'email' : key === 'phone' ? 'tel' : 'text'}
+                          value={(field.value as string) ?? ''}
+                          className={fieldRadius}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ))}
+
+              {serverError && (
+                <p className="text-sm text-destructive">{serverError}</p>
               )}
-            />
-          ))}
-
-          {serverError && (
-            <p className="text-sm text-destructive">{serverError}</p>
-          )}
-
-          <Button type="submit" className="w-full" disabled={rhf.formState.isSubmitting}>
-            {rhf.formState.isSubmitting ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : null}
-            {form.buttonLabel}
-          </Button>
+            </div>
+          </CaptureFormView>
         </form>
       </Form>
     </div>
