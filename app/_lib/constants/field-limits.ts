@@ -7,6 +7,7 @@ export const CONTACT_PHONE_MAX = 20
 export const CONTACT_ROLE_MAX = 100
 export const CONTACT_INLINE_DEAL_TITLE_MAX = 80
 export const CONTACT_COMPANY_NAME_MAX = 200
+export const CONTACT_PRIVACY_NOTES_MAX = 1000
 
 // Definição de campo personalizado
 export const FIELD_DEFINITION_LABEL_MAX = 100
