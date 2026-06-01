@@ -13,13 +13,6 @@ interface PipelineDealsAtRiskCardProps {
   orgSlug: string
 }
 
-const PRIORITY_CONFIG: Record<string, { label: string; className: string }> = {
-  low: { label: 'Baixa', className: 'bg-muted text-muted-foreground border-border/50' },
-  medium: { label: 'Média', className: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400' },
-  high: { label: 'Alta', className: 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-400' },
-  urgent: { label: 'Urgente', className: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400' },
-}
-
 function DaysIdleBadge({ days }: { days: number }) {
   const isUrgent = days > 30
   const isWarning = days > 14
@@ -77,40 +70,31 @@ export function PipelineDealsAtRiskCard({ deals, total, orgSlug }: PipelineDeals
       </CardHeader>
       <CardContent className="p-0">
         <ul className="divide-y divide-border/40">
-          {visibleDeals.map((deal) => {
-            const priorityConfig = PRIORITY_CONFIG[deal.priority] ?? PRIORITY_CONFIG.low
-            return (
-              <li
-                key={deal.id}
-                className="flex items-center gap-3 px-6 py-3 transition-colors hover:bg-muted/30"
-              >
-                {/* Conteúdo principal */}
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate text-sm font-medium">{deal.title}</span>
-                    <Badge
-                      variant="outline"
-                      className={cn('shrink-0 text-[10px]', priorityConfig.className)}
-                    >
-                      {priorityConfig.label}
-                    </Badge>
-                  </div>
-                  <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
-                    <span className="truncate">{deal.assigneeName}</span>
-                    <span>·</span>
-                    <span className="truncate">{deal.stageName}</span>
-                    <span>·</span>
-                    <span className="font-medium text-foreground/70">
-                      {formatCompactCurrency(deal.value)}
-                    </span>
-                  </div>
+          {visibleDeals.map((deal) => (
+            <li
+              key={deal.id}
+              className="flex items-center gap-3 px-6 py-3 transition-colors hover:bg-muted/30"
+            >
+              {/* Conteúdo principal */}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="truncate text-sm font-medium">{deal.title}</span>
                 </div>
+                <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className="truncate">{deal.assigneeName}</span>
+                  <span>·</span>
+                  <span className="truncate">{deal.stageName}</span>
+                  <span>·</span>
+                  <span className="font-medium text-foreground/70">
+                    {formatCompactCurrency(deal.value)}
+                  </span>
+                </div>
+              </div>
 
-                {/* Badge de dias parado */}
-                <DaysIdleBadge days={deal.daysSinceUpdate} />
-              </li>
-            )
-          })}
+              {/* Badge de dias parado — único indicador de urgência (mede risco real) */}
+              <DaysIdleBadge days={deal.daysSinceUpdate} />
+            </li>
+          ))}
         </ul>
 
         {hasMore && (

@@ -16,7 +16,6 @@ export interface DealAtRisk {
   assigneeName: string
   stageName: string
   daysSinceUpdate: number
-  priority: string
 }
 
 interface DealsAtRiskOptions {
@@ -63,7 +62,6 @@ async function fetchDealsAtRisk(
         id: true,
         title: true,
         value: true,
-        priority: true,
         updatedAt: true,
         assignee: { select: { fullName: true } },
         stage: { select: { name: true } },
@@ -81,10 +79,9 @@ async function fetchDealsAtRisk(
       id: deal.id,
       title: deal.title,
       value: Number(deal.value),
-      assigneeName: deal.assignee.fullName ?? '',
+      assigneeName: deal.assignee?.fullName ?? '',
       stageName: deal.stage.name,
       daysSinceUpdate,
-      priority: deal.priority,
     }
   })
 

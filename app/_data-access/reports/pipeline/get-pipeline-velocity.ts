@@ -67,7 +67,12 @@ async function computePeriodMetrics(
   const ticketSum = wonDeals.reduce((sum, deal) => sum + Number(deal.value), 0)
   const avgTicket = wonCount > 0 ? ticketSum / wonCount : 0
 
-  // Proxy de ciclo: updatedAt - createdAt do WON. Não há histórico de stages persistido.
+  // LIMITAÇÃO CONHECIDA: o ciclo é estimado por (updatedAt - createdAt) dos deals WON, pois
+  // o schema não possui campo `wonAt`/`closedAt` que marque o instante exato do fechamento
+  // (`expectedCloseDate` é apenas a previsão e é nullable, não serve como timestamp real).
+  // Como `updatedAt` é tocado por qualquer mutação (notas, edição de campos), deals WON que
+  // recebem updates posteriores ao ganho terão o ciclo inflado. Trocar por um timestamp de
+  // fechamento dedicado depende de migration no model Deal — ver get-pipeline-velocity.
   const cycleSumMs = wonDeals.reduce(
     (sum, deal) => sum + (deal.updatedAt.getTime() - deal.createdAt.getTime()),
     0,
