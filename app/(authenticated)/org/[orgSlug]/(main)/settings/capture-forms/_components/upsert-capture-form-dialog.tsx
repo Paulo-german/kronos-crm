@@ -254,7 +254,7 @@ export const UpsertCaptureFormDialog = ({
   const handleAddField = (definition: FieldDefinitionDto) => {
     append({
       fieldDefinitionId: definition.id,
-      required: false,
+      required: definition.isRequired,
       labelOverride: null,
       position: customFieldItems.length,
     })
