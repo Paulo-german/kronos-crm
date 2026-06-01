@@ -188,15 +188,6 @@ const SettingsPage = async ({ params }: SettingsPageProps) => {
                     <FormInput size={20} />
                   </CardSettings>
                 )}
-                {isAdmin && (
-                  <CardSettings
-                    title="Privacidade & LGPD"
-                    href="settings/privacy"
-                    orgSlug={orgSlug}
-                  >
-                    <ShieldCheck size={20} />
-                  </CardSettings>
-                )}
               </div>
             </section>
           )}
