@@ -113,10 +113,10 @@ export const createContact = orgActionClient
         data: historyChain.map((record) => ({ ...record, contactId: newContact.id })),
       })
 
-      // Base legal derivada do canal; source explícito MANUAL_CREATION (origem é a action manual)
+      // legalBasis: usa o selecionado no form se fornecido, senão deriva do canal
       await createContactPrivacy(tx, {
         contactId: newContact.id,
-        legalBasis: resolveLegalBasisForChannel(captureChannel).legalBasis,
+        legalBasis: data.legalBasis ?? resolveLegalBasisForChannel(captureChannel).legalBasis,
         legalBasisSource: 'MANUAL_CREATION',
         performedBy: ctx.userId,
       })

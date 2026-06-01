@@ -15,6 +15,8 @@ import { formatPhone } from '@/_utils/format-phone'
 import { formatPhoneForWhatsApp } from '@/_utils/format-phone-whatsapp'
 import { LIFECYCLE_STAGE_CONFIG } from '@/_lib/lifecycle/lifecycle-stage-config'
 import { SCORE_RED_MAX, SCORE_YELLOW_MAX } from '@/../trigger/lib/health-score-constants'
+import { LEGAL_BASIS_CONFIG } from '@/_lib/privacy/consent-labels'
+import { ShieldCheck } from 'lucide-react'
 import ContactTableDropdownMenu from './table-dropdown-menu'
 import type { ContactDto } from '@/_data-access/contact/get-contacts'
 
@@ -186,6 +188,15 @@ export function ContactCardRow({
               <BriefcaseIcon className="size-2.5" />
               {contact.deals.length}{' '}
               {contact.deals.length === 1 ? 'negócio' : 'negócios'}
+            </Badge>
+          )}
+          {contact.legalBasis && (
+            <Badge
+              variant="outline"
+              className={cn('h-4 gap-1 px-1.5 py-0 text-[10px]', LEGAL_BASIS_CONFIG[contact.legalBasis].badgeClassName)}
+            >
+              <ShieldCheck className="size-2.5" />
+              {LEGAL_BASIS_CONFIG[contact.legalBasis].label}
             </Badge>
           )}
         </div>

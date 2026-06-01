@@ -38,6 +38,7 @@ export interface ContactDetailDto {
   qualifiedAt: Date | null
   becameOpportunityAt: Date | null
   becameCustomerAt: Date | null
+  anonymizedAt: Date | null
 }
 
 const fetchContactByIdFromDb = async (
@@ -76,6 +77,7 @@ const fetchContactByIdFromDb = async (
       qualifiedAt: true,
       becameOpportunityAt: true,
       becameCustomerAt: true,
+      anonymizedAt: true,
       company: {
         select: {
           id: true,
@@ -128,6 +130,7 @@ const fetchContactByIdFromDb = async (
     qualifiedAt: contact.qualifiedAt,
     becameOpportunityAt: contact.becameOpportunityAt,
     becameCustomerAt: contact.becameCustomerAt,
+    anonymizedAt: contact.anonymizedAt,
   }
 }
 

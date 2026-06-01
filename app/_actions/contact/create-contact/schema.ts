@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { CaptureChannel, LifecycleStage } from '@prisma/client'
+import { CaptureChannel, LegalBasis, LifecycleStage } from '@prisma/client'
 import {
   CONTACT_NAME_MAX,
   CONTACT_EMAIL_MAX,
@@ -19,6 +19,7 @@ export const contactSchema = z
     assignedTo: z.string().uuid().optional().nullable(),
     lifecycleStage: z.nativeEnum(LifecycleStage).optional(),
     firstCaptureChannel: z.nativeEnum(CaptureChannel).optional().nullable(),
+    legalBasis: z.nativeEnum(LegalBasis).optional().nullable(),
     inlineDealTitle: z.string().max(CONTACT_INLINE_DEAL_TITLE_MAX).optional().nullable(),
     inlineDealPipelineStageId: z.string().uuid().optional().nullable(),
   })

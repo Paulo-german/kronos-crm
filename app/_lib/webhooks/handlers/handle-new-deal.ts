@@ -1,6 +1,7 @@
 import { db } from '@/_lib/prisma'
 import { Prisma } from '@prisma/client'
 import { resolveSquadMember } from '@/_lib/distribution/resolve-squad-member'
+import { createContactPrivacy } from '@/_lib/privacy/create-contact-privacy'
 
 interface HandlerInput {
   orgId: string
@@ -88,6 +89,18 @@ export async function handleNewDeal({
       select: { id: true },
     })
     contactId = created.id
+
+    // Falha segura: privacidade não bloqueia criação do deal
+    try {
+      await createContactPrivacy(db, {
+        contactId: created.id,
+        legalBasis: 'LEGITIMATE_INTEREST',
+        legalBasisSource: 'API',
+        performedBy: null,
+      })
+    } catch {
+      // Registro de privacidade não crítico para o fluxo do deal
+    }
   }
 
   let dealValue: Prisma.Decimal | null = null

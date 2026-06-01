@@ -44,9 +44,11 @@ import {
   LIFECYCLE_STAGE_ORDER,
 } from '@/_lib/lifecycle/lifecycle-stage-config'
 import { CAPTURE_CHANNEL_CONFIG } from '@/_lib/lifecycle/capture-channel-config'
+import { LEGAL_BASIS_OPTIONS } from '@/_lib/privacy/consent-labels'
 import { Loader2 } from 'lucide-react'
 import type { MemberRole } from '@prisma/client'
-import { CaptureChannel, LifecycleStage } from '@prisma/client'
+import { CaptureChannel, LegalBasis, LifecycleStage } from '@prisma/client'
+
 import type { PipelineStageSimple } from '@/_data-access/pipeline/get-default-pipeline-with-stages'
 import type { FieldDefinitionDto } from '@/_lib/custom-fields/types'
 import { CustomFieldInput } from '@/_components/custom-fields/custom-field-input'
@@ -97,9 +99,11 @@ const UpsertContactDialogContent = ({
       phone: '',
       role: '',
       companyId: undefined,
+      assignedTo: undefined,
       isDecisionMaker: false,
       lifecycleStage: undefined,
       firstCaptureChannel: undefined,
+      legalBasis: undefined,
       inlineDealTitle: '',
       inlineDealPipelineStageId: pipelineStages[0]?.id ?? undefined,
     },
@@ -391,9 +395,7 @@ const UpsertContactDialogContent = ({
                       <FormLabel>Canal de captura</FormLabel>
                       <Select
                         value={field.value ?? ''}
-                        onValueChange={(value) =>
-                          field.onChange(value ? (value as CaptureChannel) : null)
-                        }
+                        onValueChange={(value) => field.onChange(value ? (value as CaptureChannel) : null)}
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -419,6 +421,41 @@ const UpsertContactDialogContent = ({
                   )}
                 />
               </div>
+
+              <FormField
+                control={form.control}
+                name="legalBasis"
+                render={({ field }) => {
+                  return (
+                    <FormItem>
+                      <FormLabel>Base legal (LGPD)</FormLabel>
+                      <Select
+                        value={field.value ?? ''}
+                        onValueChange={(value) =>
+                          field.onChange(value ? (value as LegalBasis) : null)
+                        }
+                      >
+                        <FormControl>
+                          <SelectTrigger className="h-auto min-h-9 py-2">
+                            <SelectValue placeholder="Selecione a base legal" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {LEGAL_BASIS_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value} textValue={option.label}>
+                              <span className="flex flex-col items-start gap-2">
+                                <span className="font-medium">{option.label}</span>
+                                <span className="text-xs text-muted-foreground">{option.description}</span>
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )
+                }}
+              />
 
               {needsInlineDeal && (
                 <div className="grid gap-4 md:grid-cols-2">
@@ -480,25 +517,28 @@ const UpsertContactDialogContent = ({
             </>
           )}
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <FormField
-              control={form.control}
-              name="isDecisionMaker"
-              render={({ field }) => (
-                <FormItem className={`${isPiiRestricted ? '' : 'mt-8'} flex flex-row items-center space-x-3 space-y-0 rounded-md border px-4`}>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                  <div className="leading-none">
-                    <FormLabel>Tomador de decisão</FormLabel>
-                  </div>
-                </FormItem>
-              )}
-            />
-          </div>
+          <FormField
+            control={form.control}
+            name="isDecisionMaker"
+            render={({ field }) => (
+              <FormItem className="flex items-center justify-between rounded-md border border-border/50 px-4 py-3">
+                <div className="space-y-0.5">
+                  <FormLabel className="cursor-pointer text-sm font-medium">
+                    Tomador de decisão
+                  </FormLabel>
+                  <p className="text-xs text-muted-foreground">
+                    Este contato tem poder de decisão na empresa.
+                  </p>
+                </div>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
 
           {/* Campos personalizados — form separado para evitar conflito com zodResolver do form principal */}
           {customFieldDefinitions.length > 0 && (

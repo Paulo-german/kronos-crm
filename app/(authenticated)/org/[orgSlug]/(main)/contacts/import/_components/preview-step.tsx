@@ -39,15 +39,7 @@ import { importRowSchema, type ImportRow } from '@/_actions/contact/import-conta
 import type { CompanyDto } from '@/_data-access/company/get-companies'
 import { LIFECYCLE_STAGE_CONFIG, LIFECYCLE_STAGE_ORDER } from '@/_lib/lifecycle/lifecycle-stage-config'
 import type { LegalBasis, LifecycleStage } from '@prisma/client'
-
-const LEGAL_BASIS_OPTIONS: { value: LegalBasis; label: string }[] = [
-  { value: 'LEGITIMATE_INTEREST', label: 'Legítimo Interesse' },
-  { value: 'CONSENT', label: 'Consentimento' },
-  { value: 'CONTRACT', label: 'Contrato' },
-  { value: 'LEGAL_OBLIGATION', label: 'Obrigação Legal' },
-  { value: 'VITAL_INTERESTS', label: 'Interesses Vitais' },
-  { value: 'PUBLIC_TASK', label: 'Tarefa de Interesse Público' },
-]
+import { LEGAL_BASIS_OPTIONS } from '@/_lib/privacy/consent-labels'
 
 interface ValidationResult {
   valid: boolean
@@ -88,15 +80,15 @@ export function PreviewStep({
 
   const { execute, isPending } = useAction(importContacts, {
     onSuccess: ({ data }) => {
-      const skipped = data?.skipped ?? 0
+      const blocklistCount = data?.blocklistCount ?? 0
       toast.success(
         `${data?.count} contato(s) importado(s) com sucesso!` +
           (data?.companiesCreated
             ? ` ${data.companiesCreated} empresa(s) criada(s).`
             : ''),
       )
-      if (skipped > 0) {
-        toast.warning(`${skipped} contato(s) ignorado(s) por estarem na lista de bloqueio.`)
+      if (blocklistCount > 0) {
+        toast.warning(`${blocklistCount} e-mail(s) importados constam na lista de saída. Verifique em Configurações → Privacidade.`)
       }
       router.push(`/org/${orgSlug}/contacts`)
     },

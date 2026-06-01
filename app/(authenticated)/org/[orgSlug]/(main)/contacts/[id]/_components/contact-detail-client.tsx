@@ -319,7 +319,7 @@ const ContactDetailClient = ({
               {contact.deals.map((deal) => (
                 <li key={deal.id} className="text-sm">
                   <Link
-                    href={`/crm/deals/${deal.id}`}
+                    href={`/org/${orgSlug}/crm/deals/${deal.id}`}
                     className="hover:text-primary hover:underline"
                   >
                     {deal.title}
@@ -374,6 +374,7 @@ const ContactDetailClient = ({
         privacy={privacy}
         contactId={contact.id}
         userRole={userRole}
+        anonymizedAt={contact.anonymizedAt}
       />
 
       {/* Histórico de Lifecycle */}

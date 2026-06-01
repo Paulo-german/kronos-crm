@@ -1,7 +1,7 @@
 import 'server-only'
 import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
-import type { Prisma, LifecycleStage, CustomerStatus } from '@prisma/client'
+import type { Prisma, LifecycleStage, CustomerStatus, LegalBasis } from '@prisma/client'
 import type { RBACContext } from '@/_lib/rbac'
 import { isElevated } from '@/_lib/rbac'
 import { maskEmail, maskPhone } from '@/_lib/pii-mask'
@@ -20,6 +20,7 @@ export interface ContactDto {
   lifecycleStage: LifecycleStage
   customerStatus: CustomerStatus
   healthScore: number | null
+  legalBasis: LegalBasis | null
   createdAt: Date
   updatedAt: Date
 }
@@ -90,6 +91,11 @@ const fetchContactsFromDb = async (
           },
         },
       },
+      privacy: {
+        select: {
+          legalBasis: true,
+        },
+      },
     },
     orderBy: {
       createdAt: 'desc',
@@ -112,6 +118,7 @@ const fetchContactsFromDb = async (
     lifecycleStage: contact.lifecycleStage,
     customerStatus: contact.customerStatus,
     healthScore: contact.healthScore,
+    legalBasis: contact.privacy?.legalBasis ?? null,
     createdAt: contact.createdAt,
     updatedAt: contact.updatedAt,
   }))
@@ -237,6 +244,11 @@ const fetchContactsPaginatedFromDb = async (
             },
           },
         },
+        privacy: {
+          select: {
+            legalBasis: true,
+          },
+        },
       },
       orderBy,
       skip: (params.page - 1) * params.pageSize,
@@ -259,6 +271,7 @@ const fetchContactsPaginatedFromDb = async (
       lifecycleStage: contact.lifecycleStage,
       customerStatus: contact.customerStatus,
       healthScore: contact.healthScore,
+      legalBasis: contact.privacy?.legalBasis ?? null,
       createdAt: contact.createdAt,
       updatedAt: contact.updatedAt,
     })),

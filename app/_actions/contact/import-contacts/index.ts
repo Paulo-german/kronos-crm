@@ -11,7 +11,6 @@ import {
 } from '@/_lib/rbac'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 import type { CustomerStatus, LifecycleStage } from '@prisma/client'
-import type { ImportRow } from './schema'
 
 function resolveLifecycleTimestamps(stage: LifecycleStage, now: Date) {
   return {
@@ -44,8 +43,8 @@ export const importContacts = orgActionClient
     // 3. Ownership: MEMBER forçado para si mesmo
     const assignedTo = resolveAssignedTo(ctx, null)
 
-    // 3.1 Blocklist: remover linhas cujo email foi removido a pedido do titular (LGPD/GDPR).
-    // Skip silencioso — não rejeita o lote inteiro por causa de linhas bloqueadas.
+    // 3.1 Blocklist: verificar quantos e-mails aparecem como registros históricos de exclusão.
+    // Informacional — não bloqueia o import. O admin vê a contagem e decide.
     const importEmails = data.rows
       .map((row) => row.email?.toLowerCase().trim())
       .filter((email): email is string => Boolean(email))
@@ -57,19 +56,7 @@ export const importContacts = orgActionClient
         })
       : []
 
-    const blockedEmails = new Set(blockedEmailRows.map((row) => row.email))
-
-    const allowedRows: ImportRow[] = data.rows.filter((row) => {
-      const normalizedEmail = row.email?.toLowerCase().trim()
-      if (!normalizedEmail) return true
-      return !blockedEmails.has(normalizedEmail)
-    })
-
-    const skipped = data.rows.length - allowedRows.length
-
-    if (allowedRows.length === 0) {
-      return { count: 0, companiesCreated: 0, skipped }
-    }
+    const blocklistCount = blockedEmailRows.length
 
     // 4. Buscar empresas existentes da org
     const existingCompanies = await db.company.findMany({
@@ -82,7 +69,7 @@ export const importContacts = orgActionClient
     )
 
     const newCompanyNames = new Set<string>()
-    for (const row of allowedRows) {
+    for (const row of data.rows) {
       if (!row.companyName) continue
       const normalized = row.companyName.toLowerCase().trim()
       if (normalized && !companyMap.has(normalized)) {
@@ -107,7 +94,7 @@ export const importContacts = orgActionClient
       }
 
       const createdContacts = await tx.contact.createManyAndReturn({
-        data: allowedRows.map((row) => {
+        data: data.rows.map((row) => {
           const companyId = row.companyName
             ? companyMap.get(row.companyName.toLowerCase().trim()) ?? null
             : null
@@ -166,13 +153,12 @@ export const importContacts = orgActionClient
         })),
       })
 
-      return { count: allowedRows.length, companiesCreated: newCompanyNames.size }
+      return { count: data.rows.length, companiesCreated: newCompanyNames.size }
     })
 
     // 6. Invalidar caches
     revalidateTag(`contacts:${ctx.orgId}`)
     revalidateTag(`companies:${ctx.orgId}`)
-    revalidateTag(`privacy:${ctx.orgId}`)
 
-    return { ...result, skipped }
+    return { ...result, blocklistCount }
   })
