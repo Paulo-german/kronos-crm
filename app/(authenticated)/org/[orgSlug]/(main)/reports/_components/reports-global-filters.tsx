@@ -5,9 +5,10 @@ import { DateRangePicker } from '@/(authenticated)/org/[orgSlug]/(main)/dashboar
 import { AssigneeFilter } from './assignee-filter'
 import type { MemberOption } from './assignee-filter'
 
+// start/end são gerenciados exclusivamente pelo DateRangePicker (que tem seu
+// próprio useQueryStates). Manter um segundo listener para os mesmos params aqui
+// causava conflito de state updates — por isso só gerenciamos `assignee`.
 const reportsGlobalParsers = {
-  start: parseAsString.withOptions({ shallow: false }),
-  end: parseAsString.withOptions({ shallow: false }),
   assignee: parseAsString.withOptions({ shallow: false }),
 }
 

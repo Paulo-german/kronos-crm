@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useParams, usePathname } from 'next/navigation'
+import { useParams, usePathname, useSearchParams } from 'next/navigation'
 import { cn } from '@/_lib/utils'
 import { REPORT_SECTIONS } from '../_config/report-sections'
 
@@ -12,7 +12,11 @@ interface ReportsNavTabsProps {
 export function ReportsNavTabs({ isElevated }: ReportsNavTabsProps) {
   const pathname = usePathname()
   const params = useParams()
+  const searchParams = useSearchParams()
   const orgSlug = params?.orgSlug as string
+
+  // Preserva os filtros globais (start/end/assignee) ao trocar de aba.
+  const queryString = searchParams.toString()
 
   const visibleSections = REPORT_SECTIONS.filter(
     (section) => !section.requiresElevated || isElevated,
@@ -24,12 +28,13 @@ export function ReportsNavTabs({ isElevated }: ReportsNavTabsProps) {
         {visibleSections.map((section) => {
           const href = `/org/${orgSlug}/reports/${section.slug}`
           const isActive = pathname === href || pathname.startsWith(`${href}/`)
+          const linkHref = queryString ? `${href}?${queryString}` : href
           const Icon = section.icon
 
           return (
             <Link
               key={section.slug}
-              href={href}
+              href={linkHref}
               className={cn(
                 'flex h-10 shrink-0 items-center gap-1.5 border-b-2 px-4 text-sm font-medium transition-colors',
                 isActive
