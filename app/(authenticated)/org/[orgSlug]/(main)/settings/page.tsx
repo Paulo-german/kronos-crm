@@ -15,7 +15,6 @@ import {
   UserIcon,
   Zap,
   Inbox,
-  ShieldCheck,
 } from 'lucide-react'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 
