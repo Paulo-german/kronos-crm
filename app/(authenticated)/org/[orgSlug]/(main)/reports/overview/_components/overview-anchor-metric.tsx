@@ -15,7 +15,7 @@ import { OverviewAnchorTable } from './overview-anchor-table'
 import type { AttributionModel, ChannelAttributionDto } from '@/_data-access/reports/overview/get-channel-attribution'
 
 const attributionParser = parseAsStringEnum<AttributionModel>(['first', 'last', 'per_deal'])
-  .withDefault('last')
+  .withDefault('first')
   .withOptions({ shallow: false })
 
 interface OverviewAnchorMetricProps {
