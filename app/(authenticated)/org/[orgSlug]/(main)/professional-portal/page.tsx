@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/_lib/supabase/server'
-import { requireProfessionalContext } from '@/_lib/rbac'
+import { requireProfessionalContext } from '@/_lib/rbac/professional-guards'
 import { getProfessionalById } from '@/_data-access/professional/get-professional-by-id'
 import { getProfessionalAppointments } from '@/_data-access/professional/get-professional-appointments'
 import { getOrganizationBySlug } from '@/_data-access/organization/get-organization-by-slug'

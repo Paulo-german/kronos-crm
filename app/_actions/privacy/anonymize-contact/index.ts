@@ -3,7 +3,7 @@
 import { revalidateTag } from 'next/cache'
 import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
-import { isElevated } from '@/_lib/rbac'
+import { isElevated } from '@/_lib/rbac/permissions'
 import { anonymizeContactSchema } from './schema'
 
 export const anonymizeContact = orgActionClient

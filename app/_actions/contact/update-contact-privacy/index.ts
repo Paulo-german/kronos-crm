@@ -4,7 +4,7 @@ import { orgActionClient } from '@/_lib/safe-action'
 import { updateContactPrivacySchema } from './schema'
 import { db } from '@/_lib/prisma'
 import { revalidateTag } from 'next/cache'
-import { isElevated } from '@/_lib/rbac'
+import { isElevated } from '@/_lib/rbac/permissions'
 import { createContactPrivacy } from '@/_lib/privacy/create-contact-privacy'
 import type { ConsentEventType, LegalBasis } from '@prisma/client'
 
