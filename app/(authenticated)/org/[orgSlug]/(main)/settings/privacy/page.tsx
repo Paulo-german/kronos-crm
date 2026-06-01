@@ -17,6 +17,10 @@ interface PrivacySettingsPageProps {
 
 const PrivacySettingsPage = async ({ params }: PrivacySettingsPageProps) => {
   const { orgSlug } = await params
+
+  // Página temporariamente desativada — em reestruturação
+  redirect(`/org/${orgSlug}/settings`)
+
   const ctx = await getOrgContext(orgSlug)
 
   if (!isElevated(ctx.userRole)) {
