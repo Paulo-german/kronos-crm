@@ -2,13 +2,23 @@ import { Target } from 'lucide-react'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getGoalsWithProgress } from '@/_data-access/goal/get-goals'
 import { GoalProgressCard } from '@/_components/goal-progress-card/goal-progress-card'
+import type { DateRange } from '@/_data-access/reports/shared/reports-types'
 
 interface TeamGoalsStripProps {
   orgSlug: string
+  // dateRange é propagado pela página para manter a tira de metas no mesmo contexto temporal do
+  // restante do relatório. Hoje não é consumido (ver LIMITAÇÃO CONHECIDA abaixo), mas faz parte do
+  // contrato do componente para quando getGoalsWithProgress passar a aceitar período.
+  dateRange: DateRange
 }
 
 export async function TeamGoalsStrip({ orgSlug }: TeamGoalsStripProps) {
   const ctx = await getOrgContext(orgSlug)
+
+  // LIMITAÇÃO CONHECIDA: getGoalsWithProgress só aceita `ctx` — não recebe dateRange nem filtros.
+  // O progresso é computado contra o próprio período da meta (periodStart/periodEnd), não contra o
+  // dateRange/assignee selecionados na página. Ajustar isso exige alterar a assinatura de
+  // getGoalsWithProgress/computeGoalProgress, o que está fora do escopo desta tarefa.
   const allGoals = await getGoalsWithProgress(ctx)
 
   const memberGoals = allGoals.filter((goal) => goal.scope === 'MEMBER')

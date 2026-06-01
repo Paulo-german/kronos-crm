@@ -144,8 +144,14 @@ async function fetchProductMix(
   for (const productId of productIds) {
     const current = currentBuckets.get(productId)
     const prev = prevBuckets.get(productId)
-    const name = current?.name ?? prev?.name ?? ''
     const revenue = current?.revenue ?? 0
+
+    // Produtos sem receita no período atual (só existiam no período anterior)
+    // poluiriam a tabela com linhas zeradas. A queda aparece implicitamente na
+    // variação negativa dos produtos que continuaram vendendo.
+    if (revenue <= 0) continue
+
+    const name = current?.name ?? prev?.name ?? ''
     const unitsSold = current?.unitsSold ?? 0
     const prevRevenue = prev?.revenue ?? 0
     const prevUnitsSold = prev?.unitsSold ?? 0

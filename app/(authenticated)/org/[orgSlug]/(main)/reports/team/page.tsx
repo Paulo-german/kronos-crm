@@ -32,10 +32,16 @@ export default async function TeamReportPage({ params, searchParams }: TeamRepor
   }
 
   const dateRange = parseDateRange(start, end)
-  const filters: ReportsFilters = { assignee }
+
+  // O ranking de team deve SEMPRE listar todos os membros. O `assignee` do filtro global é
+  // usado apenas para o spotlight/drawer do membro individual — por isso ele é deliberadamente
+  // omitido dos filtros passados para getTeamPerformance, evitando que a tabela colapse para 1 linha.
+  const rankingFilters: ReportsFilters = {}
 
   // Todas as queries independentes correm em paralelo: ranking + spotlight + drawer.
   // cache() do React deduplica automaticamente quando assignee === member.
+  // getTeamMemberTaskBreakdown só aceita (ctx, memberId, dateRange) — não recebe ReportsFilters,
+  // então o contexto temporal já está consistente com o resto da página.
   const spotlightFetch = assignee
     ? Promise.all([getTeamMemberTaskBreakdown(ctx, assignee, dateRange), getTeamMemberById(ctx.orgId, assignee)])
     : Promise.resolve(null)
@@ -45,7 +51,7 @@ export default async function TeamReportPage({ params, searchParams }: TeamRepor
     : Promise.resolve(null)
 
   const [teamData, spotlightResult, drawerResult] = await Promise.all([
-    getTeamPerformance(ctx, dateRange, filters),
+    getTeamPerformance(ctx, dateRange, rankingFilters),
     spotlightFetch,
     drawerFetch,
   ])
@@ -103,7 +109,7 @@ export default async function TeamReportPage({ params, searchParams }: TeamRepor
             </div>
           }
         >
-          <TeamGoalsStrip orgSlug={orgSlug} />
+          <TeamGoalsStrip orgSlug={orgSlug} dateRange={dateRange} />
         </Suspense>
       </div>
 

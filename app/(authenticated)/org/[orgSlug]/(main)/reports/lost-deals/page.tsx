@@ -19,7 +19,10 @@ export default async function LostDealsReportPage({ params, searchParams }: Lost
   const { dateRange, filters } = parseReportsSearchParams(resolvedSearchParams)
   const section = findReportSection('lost-deals')
 
-  const analysis = await getLostDealsAnalysis(ctx, dateRange, { pipelineId: filters.pipelineId })
+  const analysis = await getLostDealsAnalysis(ctx, dateRange, {
+    pipelineId: filters.pipelineId,
+    assignee: filters.assignee,
+  })
 
   return (
     <div className="flex flex-col gap-6">

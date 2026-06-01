@@ -161,13 +161,15 @@ function aggregateByReason(
   const map = new Map<string, LostDealsByReason>()
 
   const ensure = (reasonId: string | null): LostDealsByReason => {
-    const key = reasonId ?? UNKNOWN_REASON_BUCKET
+    // Resolve o label antes da chave: motivos null OU deletados (ausentes em reasonMeta)
+    // caem todos no mesmo bucket "unknown", evitando entradas "Sem motivo" duplicadas com UUIDs órfãos.
+    const resolvedLabel = reasonId ? reasonMeta.get(reasonId) : undefined
+    const key = reasonId && resolvedLabel ? reasonId : UNKNOWN_REASON_BUCKET
     const existing = map.get(key)
     if (existing) return existing
-    const label = reasonId ? reasonMeta.get(reasonId) ?? UNKNOWN_REASON_LABEL : UNKNOWN_REASON_LABEL
     const created: LostDealsByReason = {
       reasonId: key,
-      reasonLabel: label,
+      reasonLabel: resolvedLabel ?? UNKNOWN_REASON_LABEL,
       count: 0,
       value: 0,
       prevCount: 0,
@@ -248,13 +250,16 @@ export const getLostDealsAnalysis = cache(
   async (
     ctx: RBACContext,
     dateRange: DateRange,
-    filters: { pipelineId?: string },
+    filters: { pipelineId?: string; assignee?: string },
   ): Promise<LostDealsAnalysisDto> => {
     const elevated = isElevated(ctx.userRole)
     const prevRange = getPreviousPeriod(dateRange)
 
-    // Reaproveita a tipagem ReportsFilters dentro da query — só repassamos pipelineId
-    const reportsFilters: ReportsFilters = { pipelineId: filters.pipelineId }
+    // Repassa pipelineId e assignee — o assignee é honrado pelo buildReportsWhere apenas para usuários elevados
+    const reportsFilters: ReportsFilters = {
+      ...(filters.pipelineId && { pipelineId: filters.pipelineId }),
+      ...(filters.assignee && { assignee: filters.assignee }),
+    }
 
     const getCached = unstable_cache(
       async () =>
