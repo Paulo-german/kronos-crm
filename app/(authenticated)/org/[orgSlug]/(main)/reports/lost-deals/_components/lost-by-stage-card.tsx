@@ -2,29 +2,18 @@ import { Progress } from '@/_components/ui/progress'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import { cn } from '@/_lib/utils'
 import { formatVariation } from '@/_utils/date-range'
+import { formatCompactCurrency } from '@/_utils/format-currency'
 import { TrendingUp, TrendingDown } from 'lucide-react'
-
-export interface LostByStageEntry {
-  stageId: string
-  stageName: string
-  position: number
-  count: number
-  value: number
-  prevCount: number
-  prevValue: number
-}
+import type { LostDealsByStage } from '@/_data-access/reports/lost-deals/get-lost-deals-analysis'
 
 interface LostByStageCardProps {
-  stages: LostByStageEntry[]
+  stages: LostDealsByStage[]
   totalLost: number
   totalLostValue: number
 }
 
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(value)
-
 export function LostByStageCard({ stages, totalLost, totalLostValue }: LostByStageCardProps) {
-  const sortedStages = [...stages].sort((a, b) => b.count - a.count)
+  const sortedStages = [...stages].sort((stageA, stageB) => stageB.count - stageA.count)
   const maxCount = sortedStages.length > 0 ? sortedStages[0].count : 0
 
   return (
@@ -34,7 +23,7 @@ export function LostByStageCard({ stages, totalLost, totalLostValue }: LostBySta
           <CardTitle className="text-base">Perdas por Estágio</CardTitle>
           <div className="text-right">
             <p className="text-sm font-semibold tabular-nums">{totalLost} perdas</p>
-            <p className="text-xs text-muted-foreground">{formatCurrency(totalLostValue)}</p>
+            <p className="text-xs text-muted-foreground">{formatCompactCurrency(totalLostValue)}</p>
           </div>
         </div>
       </CardHeader>
@@ -79,7 +68,7 @@ export function LostByStageCard({ stages, totalLost, totalLostValue }: LostBySta
                           {stage.count}
                         </span>
                         <span className="ml-1 text-xs text-muted-foreground">
-                          {formatCurrency(stage.value)}
+                          {formatCompactCurrency(stage.value)}
                         </span>
                       </div>
                     </div>

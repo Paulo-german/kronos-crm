@@ -2,26 +2,12 @@ import { TrendingUp, TrendingDown, Gauge, Trophy, Banknote, Timer } from 'lucide
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import { cn } from '@/_lib/utils'
 import { formatVariation } from '@/_utils/date-range'
-
-export interface PipelineVelocityDto {
-  numDeals: number
-  winRate: number
-  avgTicket: number
-  avgCycleDays: number
-  velocity: number
-  prevNumDeals: number
-  prevWinRate: number
-  prevAvgTicket: number
-  prevAvgCycleDays: number
-  prevVelocity: number
-}
+import { formatCompactCurrency } from '@/_utils/format-currency'
+import type { PipelineVelocityDto } from '@/_data-access/reports/pipeline/get-pipeline-velocity'
 
 interface PipelineVelocityCardProps {
   data: PipelineVelocityDto
 }
-
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(value)
 
 interface MetricMiniCardProps {
   label: string
@@ -73,6 +59,10 @@ function MetricMiniCard({
 }
 
 export function PipelineVelocityCard({ data }: PipelineVelocityCardProps) {
+  const velocityVariation = formatVariation(data.velocity, data.prevVelocity)
+  // Para ciclo médio: menor é melhor → invertemos a comparação (prev vs current em vez de current vs prev)
+  const cycleVariation = formatVariation(data.prevAvgCycleDays, data.avgCycleDays)
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -83,32 +73,26 @@ export function PipelineVelocityCard({ data }: PipelineVelocityCardProps) {
               Receita gerada por dia de ciclo de vendas
             </p>
           </div>
-          {/* Métrica âncora: velocity em destaque */}
           <div className="text-right">
             <p className="text-2xl font-bold tabular-nums text-primary">
-              {formatCurrency(data.velocity)}
+              {formatCompactCurrency(data.velocity)}
               <span className="ml-1 text-sm font-normal text-muted-foreground">/dia</span>
             </p>
-            {(() => {
-              const variation = formatVariation(data.velocity, data.prevVelocity)
-              return (
-                <span
-                  className={cn(
-                    'inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
-                    variation.isPositive
-                      ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400'
-                      : 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400',
-                  )}
-                >
-                  {variation.isPositive ? (
-                    <TrendingUp className="size-2.5" />
-                  ) : (
-                    <TrendingDown className="size-2.5" />
-                  )}
-                  {variation.value} vs período anterior
-                </span>
-              )
-            })()}
+            <span
+              className={cn(
+                'inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
+                velocityVariation.isPositive
+                  ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400'
+                  : 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400',
+              )}
+            >
+              {velocityVariation.isPositive ? (
+                <TrendingUp className="size-2.5" />
+              ) : (
+                <TrendingDown className="size-2.5" />
+              )}
+              {velocityVariation.value} vs período anterior
+            </span>
           </div>
         </div>
       </CardHeader>
@@ -132,7 +116,7 @@ export function PipelineVelocityCard({ data }: PipelineVelocityCardProps) {
         />
         <MetricMiniCard
           label="Ticket médio"
-          value={formatCurrency(data.avgTicket)}
+          value={formatCompactCurrency(data.avgTicket)}
           variation={formatVariation(data.avgTicket, data.prevAvgTicket)}
           icon={Banknote}
           iconClassName="text-emerald-500"
@@ -141,11 +125,7 @@ export function PipelineVelocityCard({ data }: PipelineVelocityCardProps) {
         <MetricMiniCard
           label="Ciclo médio"
           value={`${data.avgCycleDays.toFixed(0)} dias`}
-          // Para ciclo: menor é melhor → invertemos a lógica de isPositive
-          variation={(() => {
-            const v = formatVariation(data.prevAvgCycleDays, data.avgCycleDays)
-            return v
-          })()}
+          variation={cycleVariation}
           icon={Timer}
           iconClassName="text-violet-500"
           iconBgClassName="bg-violet-500/10"

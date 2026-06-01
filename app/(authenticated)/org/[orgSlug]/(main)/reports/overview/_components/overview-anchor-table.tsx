@@ -4,6 +4,15 @@ import { formatVariation } from '@/_utils/date-range'
 import { formatCurrency } from '@/_utils/format-currency'
 import { cn } from '@/_lib/utils'
 import { TrendingUp, TrendingDown } from 'lucide-react'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/_components/ui/table'
 import type { ChannelAttributionDto } from '@/_data-access/reports/overview/get-channel-attribution'
 
 interface OverviewAnchorTableProps {
@@ -43,23 +52,23 @@ function DeltaBadge({ current, previous }: { current: number; previous: number }
 export function OverviewAnchorTable({ data, onDrillChannel }: OverviewAnchorTableProps) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-border/50 text-left">
-            <th className="pb-2 pr-4 font-medium text-muted-foreground">Canal</th>
-            <th className="pb-2 pr-4 text-right font-medium text-muted-foreground">Leads</th>
-            <th className="pb-2 pr-4 text-right font-medium text-muted-foreground">Clientes</th>
-            <th className="pb-2 pr-4 text-right font-medium text-muted-foreground">Conversão</th>
-            <th className="pb-2 text-right font-medium text-muted-foreground">Receita</th>
-          </tr>
-        </thead>
-        <tbody>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Canal</TableHead>
+            <TableHead className="text-right">Leads</TableHead>
+            <TableHead className="text-right">Clientes</TableHead>
+            <TableHead className="text-right">Conversão</TableHead>
+            <TableHead className="text-right">Receita</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {data.rows.map((row) => (
-            <tr
+            <TableRow
               key={row.channel}
               role="button"
               tabIndex={0}
-              className="cursor-pointer border-b border-border/30 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+              className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
               onClick={() => onDrillChannel(row.channel)}
               onKeyDown={(event) => {
                 if (event.key === 'Enter' || event.key === ' ') {
@@ -68,48 +77,48 @@ export function OverviewAnchorTable({ data, onDrillChannel }: OverviewAnchorTabl
                 }
               }}
             >
-              <td className="py-2.5 pr-4 font-medium">
+              <TableCell className="font-medium">
                 {CHANNEL_LABELS[row.channel] ?? row.channel}
-              </td>
-              <td className="py-2.5 pr-4 text-right tabular-nums">
+              </TableCell>
+              <TableCell className="text-right tabular-nums">
                 {row.leadsCount}
                 <DeltaBadge current={row.leadsCount} previous={row.prevLeadsCount} />
-              </td>
-              <td className="py-2.5 pr-4 text-right tabular-nums">
+              </TableCell>
+              <TableCell className="text-right tabular-nums">
                 {row.customersCount}
                 <DeltaBadge current={row.customersCount} previous={row.prevCustomersCount} />
-              </td>
-              <td className="py-2.5 pr-4 text-right tabular-nums">
+              </TableCell>
+              <TableCell className="text-right tabular-nums">
                 {row.conversionRate.toFixed(1)}%
                 <DeltaBadge current={row.conversionRate} previous={row.prevConversionRate} />
-              </td>
-              <td className="py-2.5 text-right tabular-nums">
+              </TableCell>
+              <TableCell className="text-right tabular-nums">
                 {formatCurrency(row.revenue)}
                 <DeltaBadge current={row.revenue} previous={row.prevRevenue} />
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
-        <tfoot>
-          <tr className="border-t border-border bg-muted/30">
-            <td className="py-2.5 pr-4 font-semibold">Total</td>
-            <td className="py-2.5 pr-4 text-right font-semibold tabular-nums">
+        </TableBody>
+        <TableFooter>
+          <TableRow>
+            <TableCell className="font-semibold">Total</TableCell>
+            <TableCell className="text-right font-semibold tabular-nums">
               {data.totalLeads}
-            </td>
-            <td className="py-2.5 pr-4 text-right font-semibold tabular-nums">
+            </TableCell>
+            <TableCell className="text-right font-semibold tabular-nums">
               {data.totalCustomers}
-            </td>
-            <td className="py-2.5 pr-4 text-right font-semibold tabular-nums">
+            </TableCell>
+            <TableCell className="text-right font-semibold tabular-nums">
               {data.totalLeads > 0
                 ? ((data.totalCustomers / data.totalLeads) * 100).toFixed(1)
                 : '0.0'}%
-            </td>
-            <td className="py-2.5 text-right font-semibold tabular-nums">
+            </TableCell>
+            <TableCell className="text-right font-semibold tabular-nums">
               {formatCurrency(data.totalRevenue)}
-            </td>
-          </tr>
-        </tfoot>
-      </table>
+            </TableCell>
+          </TableRow>
+        </TableFooter>
+      </Table>
     </div>
   )
 }

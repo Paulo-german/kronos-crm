@@ -2,36 +2,25 @@ import { Progress } from '@/_components/ui/progress'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import { cn } from '@/_lib/utils'
 import { formatVariation } from '@/_utils/date-range'
+import { formatCompactCurrency } from '@/_utils/format-currency'
 import { TrendingUp, TrendingDown } from 'lucide-react'
-
-export interface LostByReasonEntry {
-  reasonId: string
-  reasonLabel: string
-  count: number
-  value: number
-  prevCount: number
-  prevValue: number
-}
+import type { LostDealsByReason } from '@/_data-access/reports/lost-deals/get-lost-deals-analysis'
 
 interface LostByReasonCardProps {
-  reasons: LostByReasonEntry[]
+  reasons: LostDealsByReason[]
   totalLost: number
   totalLostValue: number
 }
 
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(value)
-
 export function LostByReasonCard({ reasons, totalLost, totalLostValue }: LostByReasonCardProps) {
   // "Sem motivo" (reasonId: 'unknown') sempre por último
-  const sortedReasons = [...reasons].sort((a, b) => {
-    if (a.reasonId === 'unknown') return 1
-    if (b.reasonId === 'unknown') return -1
-    return b.count - a.count
+  const sortedReasons = [...reasons].sort((reasonA, reasonB) => {
+    if (reasonA.reasonId === 'unknown') return 1
+    if (reasonB.reasonId === 'unknown') return -1
+    return reasonB.count - reasonA.count
   })
 
-  const maxCount = sortedReasons.length > 0 ? (sortedReasons[0].reasonId !== 'unknown' ? sortedReasons[0].count : 0) : 0
-  const effectiveMax = maxCount > 0 ? maxCount : Math.max(...sortedReasons.map((reason) => reason.count), 0)
+  const effectiveMax = sortedReasons.reduce((max, reason) => Math.max(max, reason.count), 0)
 
   return (
     <Card className="flex flex-col">
@@ -40,7 +29,7 @@ export function LostByReasonCard({ reasons, totalLost, totalLostValue }: LostByR
           <CardTitle className="text-base">Perdas por Motivo</CardTitle>
           <div className="text-right">
             <p className="text-sm font-semibold tabular-nums">{totalLost} perdas</p>
-            <p className="text-xs text-muted-foreground">{formatCurrency(totalLostValue)}</p>
+            <p className="text-xs text-muted-foreground">{formatCompactCurrency(totalLostValue)}</p>
           </div>
         </div>
       </CardHeader>
@@ -94,7 +83,7 @@ export function LostByReasonCard({ reasons, totalLost, totalLostValue }: LostByR
                           {reason.count}
                         </span>
                         <span className="ml-1 text-xs text-muted-foreground">
-                          {formatCurrency(reason.value)}
+                          {formatCompactCurrency(reason.value)}
                         </span>
                       </div>
                     </div>

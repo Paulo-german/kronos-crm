@@ -4,16 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import { Badge } from '@/_components/ui/badge'
 import { Button } from '@/_components/ui/button'
 import { cn } from '@/_lib/utils'
-
-export interface DealAtRisk {
-  id: string
-  title: string
-  value: number
-  assigneeName: string
-  stageName: string
-  daysSinceUpdate: number
-  priority: string
-}
+import { formatCompactCurrency } from '@/_utils/format-currency'
+import type { DealAtRisk } from '@/_data-access/reports/pipeline/get-deals-at-risk'
 
 interface PipelineDealsAtRiskCardProps {
   deals: DealAtRisk[]
@@ -27,9 +19,6 @@ const PRIORITY_CONFIG: Record<string, { label: string; className: string }> = {
   high: { label: 'Alta', className: 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-400' },
   urgent: { label: 'Urgente', className: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400' },
 }
-
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(value)
 
 function DaysIdleBadge({ days }: { days: number }) {
   const isUrgent = days > 30
@@ -112,7 +101,7 @@ export function PipelineDealsAtRiskCard({ deals, total, orgSlug }: PipelineDeals
                     <span className="truncate">{deal.stageName}</span>
                     <span>·</span>
                     <span className="font-medium text-foreground/70">
-                      {formatCurrency(deal.value)}
+                      {formatCompactCurrency(deal.value)}
                     </span>
                   </div>
                 </div>
