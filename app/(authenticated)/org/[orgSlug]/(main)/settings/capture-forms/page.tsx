@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getCaptureFormsByOrg } from '@/_data-access/capture-form/get-capture-forms'
+import { getOrganizationBySlug } from '@/_data-access/organization/get-organization-by-slug'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
 import { getSquads } from '@/_data-access/squad/get-squads'
 import { getFieldDefinitions } from '@/_data-access/field-definition/get-field-definitions'
@@ -25,13 +26,16 @@ const CaptureFormsPage = async ({ params }: CaptureFormsPageProps) => {
     redirect(`/org/${orgSlug}/settings`)
   }
 
-  const [forms, members, squads, quota, fieldDefinitions] = await Promise.all([
+  const [forms, members, squads, quota, fieldDefinitions, org] = await Promise.all([
     getCaptureFormsByOrg(ctx.orgId),
     getOrganizationMembers(ctx.orgId),
     getSquads(ctx),
     checkPlanQuota(ctx.orgId, 'capture_form'),
     getFieldDefinitions(ctx.orgId, 'CONTACT'),
+    getOrganizationBySlug(orgSlug),
   ])
+
+  const privacyPolicyUrl = org?.privacyPolicyUrl ?? null
 
   return (
     <div className="container mx-auto space-y-6 py-6">
@@ -58,11 +62,12 @@ const CaptureFormsPage = async ({ params }: CaptureFormsPageProps) => {
             members={members.accepted}
             squads={squads}
             fieldDefinitions={fieldDefinitions}
+            privacyPolicyUrl={privacyPolicyUrl}
           />
         </HeaderRight>
       </Header>
 
-      <CaptureFormsDataTable forms={forms} members={members.accepted} squads={squads} fieldDefinitions={fieldDefinitions} />
+      <CaptureFormsDataTable forms={forms} members={members.accepted} squads={squads} fieldDefinitions={fieldDefinitions} privacyPolicyUrl={privacyPolicyUrl} />
     </div>
   )
 }

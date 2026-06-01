@@ -52,7 +52,6 @@ export const updateCaptureForm = orgActionClient
           squadId: data.squadId ?? null,
           isActive: data.isActive,
           consentRequired: data.consentRequired ?? true,
-          consentText: data.consentText || null,
         },
       })
       // Mantém o nome do CaptureSource sincronizado para rastreabilidade

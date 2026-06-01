@@ -71,6 +71,7 @@ model Organization {
   niche                  String?                 @map("niche")
   onboardingCompleted    Boolean                 @default(false) @map("onboarding_completed")
   hidePiiFromMembers     Boolean                 @default(false) @map("hide_pii_from_members")
+  privacyPolicyUrl       String?                 @map("privacy_policy_url")
   businessModel      BusinessModel @default(B2C) @map("business_model")
   dormantAfterMonths Int           @default(12)  @map("dormant_after_months")
   bookingAutoDeal    Boolean       @default(false) @map("booking_auto_deal")
@@ -340,7 +341,6 @@ model CaptureForm {
   // Compliance: true = exibe checkbox obrigatório de consentimento no form público (base legal = CONSENT)
   // false = sem checkbox (base legal = LEGITIMATE_INTEREST)
   consentRequired Boolean  @default(true) @map("consent_required")
-  consentText     String?  @map("consent_text")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt      @map("updated_at")

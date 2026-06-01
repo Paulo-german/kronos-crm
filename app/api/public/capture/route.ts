@@ -11,7 +11,7 @@ import { buildSubmissionSnapshot } from '@/_lib/capture-form/custom-fields-confi
 import { CUSTOM_FIELD_VALUE_SCHEMA_MAX } from '@/_lib/constants/field-limits'
 import { redis } from '@/_lib/redis'
 import { createContactPrivacy } from '@/_lib/privacy/create-contact-privacy'
-
+import { CAPTURE_CONSENT_TEXT } from '@/_lib/capture-form/consent-config'
 
 interface ResolvedCustomField {
   fieldDefinitionId: string
@@ -156,6 +156,8 @@ export async function POST(req: Request) {
     squadId: form.squadId,
   })
 
+  let createdContactId: string | null = null
+
   try {
     await db.$transaction(async (tx) => {
     const contact = await tx.contact.create({
@@ -180,7 +182,7 @@ export async function POST(req: Request) {
       contactId: contact.id,
       legalBasis: form.consentRequired ? 'CONSENT' : 'LEGITIMATE_INTEREST',
       legalBasisSource: 'EMBED_FORM',
-      consentText: form.consentRequired ? (form.consentText ?? undefined) : undefined,
+      consentText: form.consentRequired ? CAPTURE_CONSENT_TEXT : undefined,
       consentIp: form.consentRequired ? ip : undefined,
       performedBy: null,
     })
@@ -252,13 +254,17 @@ export async function POST(req: Request) {
         snapshot: snapshot as unknown as Prisma.InputJsonValue,
       },
     })
+
+    createdContactId = contact.id
   })
   } catch {
     return NextResponse.json({ error: 'internal_error' }, { status: 500 })
   }
 
   revalidateTag(`contacts:${form.organizationId}`)
-  revalidateTag(`privacy:${form.organizationId}`)
+  if (createdContactId) {
+    revalidateTag(`privacy:${createdContactId}`)
+  }
 
   return NextResponse.json({ success: true }, { status: 201 })
 }

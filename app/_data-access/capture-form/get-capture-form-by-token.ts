@@ -21,7 +21,7 @@ export interface PublicCaptureFormDto {
   isActive: boolean
   organizationIsReadOnly: boolean
   consentRequired: boolean
-  consentText: string | null
+  privacyPolicyUrl: string | null
   customFields: CaptureFormFieldDto[]
 }
 
@@ -32,7 +32,7 @@ export const getCaptureFormByToken = cache(
         const form = await db.captureForm.findUnique({
           where: { publicToken: token },
           include: {
-            organization: { select: { isReadOnly: true } },
+            organization: { select: { isReadOnly: true, privacyPolicyUrl: true } },
             captureFormFields: {
               where: { fieldDefinition: { isActive: true } },
               orderBy: { position: 'asc' },
@@ -61,7 +61,7 @@ export const getCaptureFormByToken = cache(
           isActive: form.isActive,
           organizationIsReadOnly: form.organization.isReadOnly,
           consentRequired: form.consentRequired,
-          consentText: form.consentText,
+          privacyPolicyUrl: form.organization.privacyPolicyUrl ?? null,
           customFields: form.captureFormFields.map((field) => ({
             fieldDefinitionId: field.fieldDefinitionId,
             required: field.required,

@@ -17,7 +17,6 @@ export const captureFormBaseSchema = z.object({
   customFields: captureFormCustomFieldsSchema.optional().default([]),
   // Campos de consentimento LGPD/GDPR (Fase 3)
   consentRequired: z.boolean().default(true),
-  consentText: z.string().trim().max(1000).optional().or(z.literal('')),
 })
 
 // Membros específicos e squad são mutuamente exclusivos
@@ -29,25 +28,16 @@ const exclusiveDistributionError = {
   path: ['squadId'],
 }
 
-// Validação cross-field: consentRequired = true exige consentText não-vazio
-const consentTextRequired = (data: { consentRequired?: boolean; consentText?: string }) =>
-  !data.consentRequired || (!!data.consentText && data.consentText.trim().length > 0)
-
-const consentTextRequiredError = {
-  message: 'O texto do consentimento é obrigatório quando o consentimento é exigido.',
-  path: ['consentText'],
-}
-
-export const createCaptureFormSchema = captureFormBaseSchema
-  .refine(exclusiveDistribution, exclusiveDistributionError)
-  .refine(consentTextRequired, consentTextRequiredError)
+export const createCaptureFormSchema = captureFormBaseSchema.refine(
+  exclusiveDistribution,
+  exclusiveDistributionError,
+)
 
 export const updateCaptureFormSchema = captureFormBaseSchema
   .extend({
     id: z.string().uuid(),
   })
   .refine(exclusiveDistribution, exclusiveDistributionError)
-  .refine(consentTextRequired, consentTextRequiredError)
 
 export const deleteCaptureFormSchema = z.object({
   id: z.string().uuid(),

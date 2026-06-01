@@ -68,7 +68,7 @@ export const CaptureFormView = ({
         className="mt-5 text-center text-[11px]"
         style={{ color: appearance.primaryColor, opacity: 0.3 }}
       >
-        Powered by Kronos Hub
+        Powered by KRONOS HUB
       </p>
     </div>
   )

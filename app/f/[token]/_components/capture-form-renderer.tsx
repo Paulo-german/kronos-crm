@@ -12,6 +12,12 @@ import { Checkbox } from '@/_components/ui/checkbox'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/_components/ui/form'
 import type { PublicCaptureFormDto } from '@/_data-access/capture-form/get-capture-form-by-token'
 import { CAPTURE_FIELD_KEYS } from '@/_lib/capture-form/field-config'
+import {
+  CAPTURE_CONSENT_PREFIX,
+  CAPTURE_CONSENT_ANCHOR,
+  CAPTURE_CONSENT_SUFFIX,
+  CAPTURE_LEGITIMATE_INTEREST_NOTICE,
+} from '@/_lib/capture-form/consent-config'
 import { CaptureFormView, getVisibleFieldKeys } from '@/_components/capture-form/capture-form-view'
 import { CustomFieldInput } from '@/_components/custom-fields/custom-field-input'
 import {
@@ -190,6 +196,11 @@ export const CaptureFormRenderer = ({ form, publicToken }: CaptureFormRendererPr
 
   const submitButton = (
     <div className="mt-4 space-y-3">
+      {!form.consentRequired && (
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          {CAPTURE_LEGITIMATE_INTEREST_NOTICE}
+        </p>
+      )}
       {form.consentRequired && (
         <div className="flex items-start gap-3">
           <Checkbox
@@ -201,7 +212,21 @@ export const CaptureFormRenderer = ({ form, publicToken }: CaptureFormRendererPr
             htmlFor="consent"
             className="cursor-pointer text-sm leading-relaxed text-muted-foreground"
           >
-            {form.consentText ?? 'Concordo com o tratamento dos meus dados pessoais.'}
+            {CAPTURE_CONSENT_PREFIX}
+            {form.privacyPolicyUrl ? (
+              <a
+                href={form.privacyPolicyUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline"
+                style={{ color: primaryColor }}
+              >
+                {CAPTURE_CONSENT_ANCHOR}
+              </a>
+            ) : (
+              <span className="font-medium">{CAPTURE_CONSENT_ANCHOR}</span>
+            )}
+            {CAPTURE_CONSENT_SUFFIX}
           </label>
         </div>
       )}

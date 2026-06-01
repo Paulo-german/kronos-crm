@@ -32,6 +32,8 @@ async function fetchOrganizationBySlug(slug: string) {
       // Onboarding
       onboardingCompleted: true,
       niche: true,
+      // Compliance: link da Política de Privacidade aplicado a todos os capture forms
+      privacyPolicyUrl: true,
     },
   })
 }

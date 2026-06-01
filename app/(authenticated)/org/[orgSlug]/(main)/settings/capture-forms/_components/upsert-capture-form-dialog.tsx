@@ -20,7 +20,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
-import { Loader2, Users, CheckIcon, Plus, ShieldCheck } from 'lucide-react'
+import { Loader2, Users, CheckIcon, Plus, ShieldCheck, ExternalLink } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -36,7 +36,6 @@ import {
   FormMessage,
 } from '@/_components/ui/form'
 import { Input } from '@/_components/ui/input'
-import { Textarea } from '@/_components/ui/textarea'
 import { Button } from '@/_components/ui/button'
 import { Switch } from '@/_components/ui/switch'
 import { Badge } from '@/_components/ui/badge'
@@ -57,7 +56,14 @@ import { Label } from '@/_components/ui/label'
 import { Separator } from '@/_components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/_components/ui/tabs'
 import { createCaptureForm } from '@/_actions/capture-form/create-capture-form'
+import { updatePrivacyPolicyUrl } from '@/_actions/organization/update-privacy-policy-url'
 import { captureFormBaseSchema, updateCaptureFormSchema } from '@/_actions/capture-form/schema'
+import {
+  CAPTURE_CONSENT_PREFIX,
+  CAPTURE_CONSENT_ANCHOR,
+  CAPTURE_CONSENT_SUFFIX,
+  CAPTURE_LEGITIMATE_INTEREST_NOTICE,
+} from '@/_lib/capture-form/consent-config'
 import { MAX_CUSTOM_FIELDS_PER_FORM } from '@/_lib/capture-form/custom-fields-config'
 import { DEFAULT_CAPTURE_FIELDS, CAPTURE_FIELD_KEYS, type CaptureFieldKey } from '@/_lib/capture-form/field-config'
 import { DEFAULT_CAPTURE_APPEARANCE } from '@/_lib/capture-form/appearance-config'
@@ -79,6 +85,7 @@ interface UpsertCaptureFormDialogProps {
   members: AcceptedMemberDto[]
   squads: SquadDto[]
   fieldDefinitions: FieldDefinitionDto[]
+  privacyPolicyUrl: string | null
   onUpdate?: (data: UpdateInput) => void
   isUpdating?: boolean
 }
@@ -102,7 +109,6 @@ const FORM_DEFAULTS: CreateInput = {
   isActive: true,
   customFields: [],
   consentRequired: true,
-  consentText: 'Concordo com o tratamento dos meus dados pessoais conforme a Política de Privacidade.',
 }
 
 export const UpsertCaptureFormDialog = ({
@@ -112,12 +118,30 @@ export const UpsertCaptureFormDialog = ({
   members,
   squads,
   fieldDefinitions,
+  privacyPolicyUrl,
   onUpdate,
   isUpdating = false,
 }: UpsertCaptureFormDialogProps) => {
   const isEditing = !!defaultValues?.id
   const dndContextId = useId()
   const [isAddFieldOpen, setIsAddFieldOpen] = useState(false)
+  const [orgPrivacyUrl, setOrgPrivacyUrl] = useState(privacyPolicyUrl ?? '')
+
+  const { execute: executeSaveUrl, isPending: isSavingUrl } = useAction(updatePrivacyPolicyUrl, {
+    onSuccess: ({ data }) => {
+      toast.success('Política de privacidade salva na organização.')
+      setOrgPrivacyUrl(data?.privacyPolicyUrl ?? '')
+    },
+    onError: ({ error }) => {
+      toast.error(error.serverError ?? 'Erro ao salvar URL.')
+    },
+  })
+
+  const handleUrlBlur = () => {
+    const trimmed = orgPrivacyUrl.trim()
+    if (trimmed === (privacyPolicyUrl ?? '')) return
+    executeSaveUrl({ privacyPolicyUrl: trimmed })
+  }
 
   const form = useForm<CreateInput>({
     resolver: zodResolver(captureFormBaseSchema),
@@ -131,7 +155,7 @@ export const UpsertCaptureFormDialog = ({
 
   const distributionUserIds = form.watch('distributionUserIds')
   const squadId = form.watch('squadId')
-  const consentRequired = form.watch('consentRequired')
+  const watchedConsentRequired = form.watch('consentRequired')
 
   // Valores observados para o preview ao vivo
   const watchedAppearance = form.watch('appearance')
@@ -160,7 +184,6 @@ export const UpsertCaptureFormDialog = ({
           position: customField.position,
         })),
         consentRequired: defaultValues.consentRequired ?? true,
-        consentText: defaultValues.consentText ?? '',
       })
       return
     }
@@ -178,14 +201,6 @@ export const UpsertCaptureFormDialog = ({
   })
 
   const onSubmit = (data: CreateInput) => {
-    // Cross-validation: consentRequired exige consentText não-vazio (captureFormBaseSchema não tem refine)
-    if (data.consentRequired && !data.consentText?.trim()) {
-      form.setError('consentText', {
-        message: 'O texto do consentimento é obrigatório quando o consentimento é exigido.',
-      })
-      return
-    }
-
     // Normalizar positions pelo índice atual antes de enviar
     const normalizedData: CreateInput = {
       ...data,
@@ -247,6 +262,7 @@ export const UpsertCaptureFormDialog = ({
   }
 
   const isPending = isCreating || isUpdating
+  const isMissingPrivacyUrl = watchedConsentRequired && !orgPrivacyUrl
 
   // Mapa de label por fieldDefinitionId (para o row component)
   const definitionLabelById = new Map(
@@ -611,28 +627,60 @@ export const UpsertCaptureFormDialog = ({
                     )}
                   />
 
-                  {consentRequired && (
-                    <FormField
-                      control={form.control}
-                      name="consentText"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Texto do consentimento</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Concordo com o tratamento dos meus dados pessoais conforme a Política de Privacidade."
-                              className="resize-none"
-                              rows={3}
-                              {...field}
+                  {watchedConsentRequired ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-1.5">
+                        <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400">
+                          Base legal: Autorização do contato
+                        </Badge>
+                      </div>
+
+                      {orgPrivacyUrl ? (
+                        <div className="rounded-md border border-border/50 bg-muted/30 p-3 text-xs text-muted-foreground">
+                          {CAPTURE_CONSENT_PREFIX}
+                          <a
+                            href={orgPrivacyUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-0.5 text-foreground underline"
+                          >
+                            {CAPTURE_CONSENT_ANCHOR}
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                          {CAPTURE_CONSENT_SUFFIX}
+                        </div>
+                      ) : (
+                        <div className="space-y-2 rounded-md border border-destructive/50 bg-muted/30 p-3">
+                          <Label htmlFor="privacy-url" className="text-xs font-medium text-destructive">
+                            URL da Política de Privacidade *
+                          </Label>
+                          <div className="flex gap-2">
+                            <Input
+                              id="privacy-url"
+                              type="url"
+                              placeholder="https://suaempresa.com/privacidade"
+                              value={orgPrivacyUrl}
+                              onChange={(event) => setOrgPrivacyUrl(event.target.value)}
+                              onBlur={handleUrlBlur}
+                              disabled={isSavingUrl}
+                              className="h-8 text-xs border-destructive/50 focus-visible:ring-destructive"
                             />
-                          </FormControl>
-                          <p className="text-xs text-muted-foreground">
-                            Este texto será exibido ao lado do checkbox no formulário público. Máximo de 1000 caracteres.
+                            {isSavingUrl && (
+                              <Loader2 className="h-4 w-4 animate-spin self-center text-muted-foreground" />
+                            )}
+                          </div>
+                          <p className="text-xs text-destructive">
+                            Obrigatório para exigir consentimento. Será salvo na organização e aplicado a todos os formulários.
                           </p>
-                          <FormMessage />
-                        </FormItem>
+                        </div>
                       )}
-                    />
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5">
+                      <Badge variant="outline" className="border-blue-500/30 bg-blue-500/10 text-blue-400">
+                        Base legal: Interesse legítimo
+                      </Badge>
+                    </div>
                   )}
                 </div>
               </TabsContent>
@@ -790,14 +838,37 @@ export const UpsertCaptureFormDialog = ({
                       fields={watchedFields}
                       buttonLabel={watchedButtonLabel}
                       submitButton={
-                        <div
-                          className="mt-4 w-full py-2 text-center text-sm font-medium text-white"
-                          style={{
-                            backgroundColor: watchedAppearance.primaryColor,
-                            borderRadius: watchedAppearance.borderStyle === 'rounded' ? '6px' : '2px',
-                          }}
-                        >
-                          {watchedButtonLabel}
+                        <div className="mt-4 space-y-3">
+                          {!watchedConsentRequired && (
+                            <p className="text-xs leading-relaxed text-muted-foreground">
+                              {CAPTURE_LEGITIMATE_INTEREST_NOTICE}
+                            </p>
+                          )}
+                          {watchedConsentRequired && (
+                            <div className="flex items-start gap-2">
+                              <div className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded-sm border border-muted-foreground/40" />
+                              <p className="text-xs leading-relaxed text-muted-foreground">
+                                {CAPTURE_CONSENT_PREFIX}
+                                {orgPrivacyUrl ? (
+                                  <span className="underline" style={{ color: watchedAppearance.primaryColor }}>
+                                    {CAPTURE_CONSENT_ANCHOR}
+                                  </span>
+                                ) : (
+                                  <span className="font-medium">{CAPTURE_CONSENT_ANCHOR}</span>
+                                )}
+                                {CAPTURE_CONSENT_SUFFIX}
+                              </p>
+                            </div>
+                          )}
+                          <div
+                            className="w-full py-2 text-center text-sm font-medium text-white"
+                            style={{
+                              backgroundColor: watchedAppearance.primaryColor,
+                              borderRadius: watchedAppearance.borderStyle === 'rounded' ? '6px' : '2px',
+                            }}
+                          >
+                            {watchedButtonLabel}
+                          </div>
                         </div>
                       }
                     >
@@ -838,11 +909,16 @@ export const UpsertCaptureFormDialog = ({
             </Tabs>
 
             {/* Rodapé com botões de ação — fora das tabs */}
-            <div className="mt-6 flex justify-end gap-2 border-t pt-4">
+            <div className="mt-6 flex items-center justify-end gap-2 border-t pt-4">
+              {isMissingPrivacyUrl && (
+                <p className="mr-auto text-xs text-destructive">
+                  Adicione a URL da Política de Privacidade para continuar.
+                </p>
+              )}
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isPending}>
+              <Button type="submit" disabled={isPending || isMissingPrivacyUrl}>
                 {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isEditing ? 'Salvar' : 'Criar formulário'}
               </Button>

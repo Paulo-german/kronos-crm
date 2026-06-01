@@ -27,9 +27,10 @@ interface CaptureFormsDataTableProps {
   members: AcceptedMemberDto[]
   squads: SquadDto[]
   fieldDefinitions: FieldDefinitionDto[]
+  privacyPolicyUrl: string | null
 }
 
-export const CaptureFormsDataTable = ({ forms, members, squads, fieldDefinitions }: CaptureFormsDataTableProps) => {
+export const CaptureFormsDataTable = ({ forms, members, squads, fieldDefinitions, privacyPolicyUrl }: CaptureFormsDataTableProps) => {
   const [editingForm, setEditingForm] = useState<CaptureFormDto | null>(null)
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [embedForm, setEmbedForm] = useState<CaptureFormDto | null>(null)
@@ -156,6 +157,7 @@ export const CaptureFormsDataTable = ({ forms, members, squads, fieldDefinitions
         members={members}
         squads={squads}
         fieldDefinitions={fieldDefinitions}
+        privacyPolicyUrl={privacyPolicyUrl}
         onUpdate={executeUpdate}
         isUpdating={isUpdating}
       />

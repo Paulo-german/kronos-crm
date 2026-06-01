@@ -14,9 +14,10 @@ interface CreateCaptureFormButtonProps {
   members: AcceptedMemberDto[]
   squads: SquadDto[]
   fieldDefinitions: FieldDefinitionDto[]
+  privacyPolicyUrl: string | null
 }
 
-const CreateCaptureFormButton = ({ withinQuota, members, squads, fieldDefinitions }: CreateCaptureFormButtonProps) => {
+const CreateCaptureFormButton = ({ withinQuota, members, squads, fieldDefinitions, privacyPolicyUrl }: CreateCaptureFormButtonProps) => {
   const [isOpen, setIsOpen] = useState(false)
 
   if (!withinQuota) {
@@ -41,7 +42,7 @@ const CreateCaptureFormButton = ({ withinQuota, members, squads, fieldDefinition
         <Plus className="mr-2 h-4 w-4" />
         Novo formulário
       </Button>
-      <UpsertCaptureFormDialog open={isOpen} onOpenChange={setIsOpen} members={members} squads={squads} fieldDefinitions={fieldDefinitions} />
+      <UpsertCaptureFormDialog open={isOpen} onOpenChange={setIsOpen} members={members} squads={squads} fieldDefinitions={fieldDefinitions} privacyPolicyUrl={privacyPolicyUrl} />
     </>
   )
 }
