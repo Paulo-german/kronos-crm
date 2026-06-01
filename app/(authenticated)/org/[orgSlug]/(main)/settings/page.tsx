@@ -15,6 +15,7 @@ import {
   UserIcon,
   Zap,
   Inbox,
+  ShieldCheck,
 } from 'lucide-react'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 
@@ -185,6 +186,15 @@ const SettingsPage = async ({ params }: SettingsPageProps) => {
                     orgSlug={orgSlug}
                   >
                     <FormInput size={20} />
+                  </CardSettings>
+                )}
+                {isAdmin && (
+                  <CardSettings
+                    title="Privacidade & LGPD"
+                    href="settings/privacy"
+                    orgSlug={orgSlug}
+                  >
+                    <ShieldCheck size={20} />
                   </CardSettings>
                 )}
               </div>
