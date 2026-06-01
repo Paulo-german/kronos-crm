@@ -8,6 +8,7 @@ import { inferCaptureChannelFromInboxChannel } from '@/_lib/lifecycle/infer-capt
 import { matchCaptureEventToCampaign } from '@/_lib/lifecycle/match-capture-event-to-campaign'
 import { evaluateAutomations } from '@/_lib/automations/evaluate-automations'
 import { createContactPrivacy } from '@/_lib/privacy/create-contact-privacy'
+import { CHANNEL_DEFAULT_LEGAL_BASIS } from '@/_lib/privacy/legal-basis-map'
 
 interface DealCreationContext {
   pipelineId: string | null
@@ -50,10 +51,15 @@ export async function resolveConversation(
   // 1. Buscar conversa existente
   const existing = await db.conversation.findFirst({
     where: { inboxId, remoteJid },
-    select: { id: true },
+    select: { id: true, contactId: true },
   })
 
   if (existing) {
+    // Backfill não-bloqueante: garante que contatos legados tenham ContactPrivacy
+    after(() => ensureContactPrivacy(existing.contactId).catch((error) => {
+      console.warn('[privacy] Falha no backfill de ContactPrivacy para conversa existente', error)
+    }))
+
     // Atualizar nome do contato na primeira resposta inbound (quando nome é placeholder)
     if (!fromMe && pushName) {
       const contact = await db.contact.findFirst({
@@ -112,15 +118,17 @@ export async function resolveConversation(
 
   if (isNewContact) {
     try {
-      await createContactPrivacy(db, {
-        contactId: contact.id,
-        legalBasis: 'LEGITIMATE_INTEREST',
-        legalBasisSource: 'WHATSAPP_INBOUND',
-        performedBy: null,
-      })
+      const { legalBasis, legalBasisSource } = CHANNEL_DEFAULT_LEGAL_BASIS[CaptureChannel.WHATSAPP]
+      await createContactPrivacy(db, { contactId: contact.id, legalBasis, legalBasisSource, performedBy: null })
     } catch (error) {
       console.warn('[privacy] Falha ao criar ContactPrivacy para contato WhatsApp', error)
-      // Não relança — falha de privacy não derruba a conversa
+    }
+  } else {
+    // Backfill para contato legado (sem ContactPrivacy) iniciando nova conversa
+    try {
+      await ensureContactPrivacy(contact.id)
+    } catch (error) {
+      console.warn('[privacy] Falha no backfill de ContactPrivacy para contato legado', error)
     }
   }
 
@@ -462,6 +470,18 @@ async function resolveByUtilization(orgId: string, userIds: string[]): Promise<s
   }
 
   return selectedUser
+}
+
+// Garante que um contato tenha ContactPrivacy. Usado no backfill de contatos legados
+// criados antes da feature de privacidade existir. Idempotente: não cria duplicatas.
+async function ensureContactPrivacy(contactId: string): Promise<void> {
+  const hasPrivacy = await db.contactPrivacy.findUnique({
+    where: { contactId },
+    select: { contactId: true },
+  })
+  if (hasPrivacy) return
+  const { legalBasis, legalBasisSource } = CHANNEL_DEFAULT_LEGAL_BASIS[CaptureChannel.WHATSAPP]
+  await createContactPrivacy(db, { contactId, legalBasis, legalBasisSource, performedBy: null })
 }
 
 async function resolveOrgOwner(orgId: string): Promise<string | null> {
