@@ -47,6 +47,7 @@ export async function resolveConversation(
   dealContext?: DealCreationContext,
   contactAssignContext?: ContactAssignContext,
   fromMe?: boolean,
+  captureChannel: CaptureChannel = CaptureChannel.WHATSAPP,
 ): Promise<ResolveResult> {
   // 1. Buscar conversa existente
   const existing = await db.conversation.findFirst({
@@ -56,7 +57,7 @@ export async function resolveConversation(
 
   if (existing) {
     // Backfill não-bloqueante: garante que contatos legados tenham ContactPrivacy
-    after(() => ensureContactPrivacy(existing.contactId).catch((error) => {
+    after(() => ensureContactPrivacy(existing.contactId, captureChannel).catch((error) => {
       console.warn('[privacy] Falha no backfill de ContactPrivacy para conversa existente', error)
     }))
 
@@ -118,15 +119,15 @@ export async function resolveConversation(
 
   if (isNewContact) {
     try {
-      const { legalBasis, legalBasisSource } = CHANNEL_DEFAULT_LEGAL_BASIS[CaptureChannel.WHATSAPP]
+      const { legalBasis, legalBasisSource } = CHANNEL_DEFAULT_LEGAL_BASIS[captureChannel]
       await createContactPrivacy(db, { contactId: contact.id, legalBasis, legalBasisSource, performedBy: null })
     } catch (error) {
-      console.warn('[privacy] Falha ao criar ContactPrivacy para contato WhatsApp', error)
+      console.warn('[privacy] Falha ao criar ContactPrivacy para novo contato', error)
     }
   } else {
     // Backfill para contato legado (sem ContactPrivacy) iniciando nova conversa
     try {
-      await ensureContactPrivacy(contact.id)
+      await ensureContactPrivacy(contact.id, captureChannel)
     } catch (error) {
       console.warn('[privacy] Falha no backfill de ContactPrivacy para contato legado', error)
     }
@@ -474,13 +475,13 @@ async function resolveByUtilization(orgId: string, userIds: string[]): Promise<s
 
 // Garante que um contato tenha ContactPrivacy. Usado no backfill de contatos legados
 // criados antes da feature de privacidade existir. Idempotente: não cria duplicatas.
-async function ensureContactPrivacy(contactId: string): Promise<void> {
+async function ensureContactPrivacy(contactId: string, captureChannel: CaptureChannel): Promise<void> {
   const hasPrivacy = await db.contactPrivacy.findUnique({
     where: { contactId },
     select: { contactId: true },
   })
   if (hasPrivacy) return
-  const { legalBasis, legalBasisSource } = CHANNEL_DEFAULT_LEGAL_BASIS[CaptureChannel.WHATSAPP]
+  const { legalBasis, legalBasisSource } = CHANNEL_DEFAULT_LEGAL_BASIS[captureChannel]
   await createContactPrivacy(db, { contactId, legalBasis, legalBasisSource, performedBy: null })
 }
 

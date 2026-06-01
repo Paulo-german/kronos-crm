@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import type { Prisma } from '@prisma/client'
-import { SalesDistributionModel } from '@prisma/client'
+import { CaptureChannel, SalesDistributionModel } from '@prisma/client'
 import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
 import { verifyMetaWebhookSignature } from '@/_lib/meta/verify-webhook-signature'
@@ -1093,6 +1093,7 @@ async function processInstagramMessagingEvent(
       dealContext,
       contactAssignContext,
       false,
+      CaptureChannel.INSTAGRAM,
     )
 
     if (resolveResult.isNew) {
@@ -1170,6 +1171,7 @@ async function processInstagramMessagingEvent(
       dealContext,
       contactAssignContext,
       false,
+      CaptureChannel.INSTAGRAM,
     )
 
     if (resolveInactiveResult.isNew) {
@@ -1246,6 +1248,7 @@ async function processInstagramMessagingEvent(
         dealContext,
         contactAssignContext,
         false,
+        CaptureChannel.INSTAGRAM,
       )
 
       if (resolveResult.isNew) {
@@ -1344,6 +1347,7 @@ async function processInstagramMessagingEvent(
       dealContext,
       contactAssignContext,
       false,
+      CaptureChannel.INSTAGRAM,
     ),
   ])
 
