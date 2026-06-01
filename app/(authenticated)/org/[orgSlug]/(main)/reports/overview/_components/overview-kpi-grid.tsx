@@ -111,6 +111,7 @@ export function OverviewKpiGrid({ kpi, onDrillKpi }: OverviewKpiGridProps) {
         title="Valor do Pipeline"
         value={formatCurrency(kpi.totalPipelineValue)}
         icon={DollarSign}
+        variation={formatVariation(kpi.totalPipelineValue, kpi.prevPipelineValue)}
         iconClassName="text-emerald-500"
         iconBgClassName="bg-emerald-500/10"
         onClick={() => onDrillKpi('kpi-pipeline')}

@@ -3,8 +3,7 @@ import { getOrgContext } from '@/_data-access/organization/get-organization-cont
 import { getKpiMetricsForReports } from '@/_data-access/reports/overview/get-kpi-metrics-for-reports'
 import { getRevenueOverTimeForReports } from '@/_data-access/reports/overview/get-revenue-over-time-for-reports'
 import { getChannelAttribution } from '@/_data-access/reports/overview/get-channel-attribution'
-import { parseDateRange } from '@/_utils/date-range'
-import type { ReportsFilters } from '@/_data-access/reports/shared/reports-types'
+import { parseReportsSearchParams } from '@/_data-access/reports/shared/reports-filters'
 import { Skeleton } from '@/_components/ui/skeleton'
 import { findReportSection } from '../_config/report-sections'
 import { ReportsSectionHeader } from '../_components/reports-section-header'
@@ -15,30 +14,32 @@ import { OverviewRevenueChart } from './_components/overview-revenue-chart'
 
 interface OverviewPageProps {
   params: Promise<{ orgSlug: string }>
-  searchParams: Promise<{
-    start?: string
-    end?: string
-    assignee?: string
-    attribution?: string
-  }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }
 
 export default async function OverviewPage({ params, searchParams }: OverviewPageProps) {
   const { orgSlug } = await params
-  const { start, end, assignee, attribution } = await searchParams
+  const resolvedSearchParams = await searchParams
 
   const ctx = await getOrgContext(orgSlug)
-  const dateRange = parseDateRange(start, end)
-  const attributionModel = (attribution === 'last' || attribution === 'per_deal') ? attribution : 'first'
+  const { dateRange, filters } = parseReportsSearchParams(resolvedSearchParams)
 
-  const filters: ReportsFilters = {
-    assignee: assignee ?? undefined,
-  }
+  const attribution =
+    typeof resolvedSearchParams.attribution === 'string'
+      ? resolvedSearchParams.attribution
+      : undefined
+  const attributionModel =
+    attribution === 'last' || attribution === 'per_deal' ? attribution : 'first'
 
   const [kpi, revenueData, channelAttribution] = await Promise.all([
     getKpiMetricsForReports(ctx, dateRange, filters),
     getRevenueOverTimeForReports(ctx, dateRange, filters),
-    getChannelAttribution(ctx, dateRange, { model: attributionModel, includeManual: false }),
+    getChannelAttribution(
+      ctx,
+      dateRange,
+      { model: attributionModel, includeManual: false },
+      filters,
+    ),
   ])
 
   const section = findReportSection('overview')

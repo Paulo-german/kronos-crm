@@ -9,7 +9,7 @@ import type { RBACContext } from '@/_lib/rbac'
 import { SIMULATOR_CONTACT_PHONE } from '@/_lib/simulator'
 import { getPreviousPeriod } from '@/_utils/date-range'
 import { makeReportsCacheKey } from '../shared/reports-cache'
-import type { DateRange } from '../shared/reports-types'
+import type { DateRange, ReportsFilters } from '../shared/reports-types'
 
 const CACHE_REVALIDATE_SECONDS = 3600
 
@@ -55,6 +55,17 @@ function incrementMap<K>(map: Map<K, number>, key: K, delta: number) {
   map.set(key, (map.get(key) ?? 0) + delta)
 }
 
+// Resolve o assignedTo efetivo seguindo a mesma semântica de buildReportsWhere:
+// MEMBER (não elevado) vê apenas os próprios registros; elevado pode filtrar por membro.
+function resolveAssigneeFilter(
+  userId: string,
+  elevated: boolean,
+  filters: ReportsFilters,
+): string | undefined {
+  if (!elevated) return userId
+  return filters.assignee
+}
+
 // Agrupa por canal capturado no Contact (firstCaptureChannel ou lastCaptureChannel).
 // Clientes = contatos com pelo menos um Deal WON; Receita = soma dos values desses Deals WON.
 async function aggregateContactModel(
@@ -65,13 +76,15 @@ async function aggregateContactModel(
   channelField: 'firstCaptureChannel' | 'lastCaptureChannel',
   dateField: 'firstCaptureAt' | 'lastCaptureAt',
   includeManual: boolean,
+  filters: ReportsFilters,
 ): Promise<PeriodAggregate> {
+  const assigneeFilter = resolveAssigneeFilter(userId, elevated, filters)
   const baseWhere: Prisma.ContactWhereInput = {
     organizationId: orgId,
     phone: { not: SIMULATOR_CONTACT_PHONE },
     [channelField]: { not: null },
     [dateField]: { gte: range.start, lte: range.end },
-    ...(elevated ? {} : { assignedTo: userId }),
+    ...(assigneeFilter ? { assignedTo: assigneeFilter } : {}),
     // includeManual = false → apenas contatos cujo evento de captura foi automático
     ...(includeManual
       ? {}
@@ -111,12 +124,12 @@ async function aggregateContactModel(
 
     incrementMap(aggregate.leadsByChannel, channel, 1)
 
-    // Filtra deals respeitando o mesmo escopo RBAC do contato (defense in depth)
+    // Filtra deals respeitando o mesmo escopo de assignee do contato (defense in depth)
     const wonDeals = contact.deals.filter((dealLink) => {
       const deal = dealLink.deal
       if (deal.status !== 'WON') return false
       if (deal.organizationId !== orgId) return false
-      if (!elevated && deal.assignedTo !== userId) return false
+      if (assigneeFilter && deal.assignedTo !== assigneeFilter) return false
       return true
     })
 
@@ -141,7 +154,9 @@ async function aggregatePerDealModel(
   elevated: boolean,
   range: DateRange,
   includeManual: boolean,
+  filters: ReportsFilters,
 ): Promise<PeriodAggregate> {
+  const assigneeFilter = resolveAssigneeFilter(userId, elevated, filters)
   const events = await db.dealCaptureEvent.findMany({
     where: {
       attribution: 'PRIMARY',
@@ -149,7 +164,7 @@ async function aggregatePerDealModel(
       deal: {
         organizationId: orgId,
         contacts: { none: { contact: { phone: SIMULATOR_CONTACT_PHONE } } },
-        ...(elevated ? {} : { assignedTo: userId }),
+        ...(assigneeFilter ? { assignedTo: assigneeFilter } : {}),
         createdAt: { gte: range.start, lte: range.end },
       },
       captureEvent: {
@@ -171,6 +186,8 @@ async function aggregatePerDealModel(
 
   const aggregate = emptyAggregate()
   const leadsSeen = new Map<CaptureChannel, Set<string>>()
+  // Clientes únicos por canal: um contato com vários deals WON no mesmo canal conta uma vez só
+  const customersSeen = new Map<CaptureChannel, Set<string>>()
 
   for (const event of events) {
     const channel = event.captureEvent.channel
@@ -179,13 +196,23 @@ async function aggregatePerDealModel(
     // Leads únicos por canal: usamos contactIds do deal para evitar dupla contagem
     const contactIds = deal.contacts.map((dealContact) => dealContact.contactId)
     if (!leadsSeen.has(channel)) leadsSeen.set(channel, new Set())
-    const set = leadsSeen.get(channel)
-    if (set) {
-      for (const contactId of contactIds) set.add(contactId)
+    const leadSet = leadsSeen.get(channel)
+    if (leadSet) {
+      for (const contactId of contactIds) leadSet.add(contactId)
     }
 
     if (deal.status === 'WON') {
-      incrementMap(aggregate.customersByChannel, channel, 1)
+      if (!customersSeen.has(channel)) customersSeen.set(channel, new Set())
+      const customerSet = customersSeen.get(channel)
+      if (customerSet) {
+        // Só conta como novo cliente na primeira vez que o contactId aparece no canal
+        for (const contactId of contactIds) {
+          if (!customerSet.has(contactId)) {
+            customerSet.add(contactId)
+            incrementMap(aggregate.customersByChannel, channel, 1)
+          }
+        }
+      }
       incrementMap(aggregate.revenueByChannel, channel, Number(deal.value))
     }
   }
@@ -205,10 +232,11 @@ async function fetchChannelAttribution(
   prevRange: DateRange,
   model: AttributionModel,
   includeManual: boolean,
+  filters: ReportsFilters,
 ): Promise<ChannelAttributionDto> {
   const [current, previous] = await Promise.all([
     model === 'per_deal'
-      ? aggregatePerDealModel(orgId, userId, elevated, dateRange, includeManual)
+      ? aggregatePerDealModel(orgId, userId, elevated, dateRange, includeManual, filters)
       : aggregateContactModel(
           orgId,
           userId,
@@ -217,9 +245,10 @@ async function fetchChannelAttribution(
           model === 'first' ? 'firstCaptureChannel' : 'lastCaptureChannel',
           model === 'first' ? 'firstCaptureAt' : 'lastCaptureAt',
           includeManual,
+          filters,
         ),
     model === 'per_deal'
-      ? aggregatePerDealModel(orgId, userId, elevated, prevRange, includeManual)
+      ? aggregatePerDealModel(orgId, userId, elevated, prevRange, includeManual, filters)
       : aggregateContactModel(
           orgId,
           userId,
@@ -228,6 +257,7 @@ async function fetchChannelAttribution(
           model === 'first' ? 'firstCaptureChannel' : 'lastCaptureChannel',
           model === 'first' ? 'firstCaptureAt' : 'lastCaptureAt',
           includeManual,
+          filters,
         ),
   ])
 
@@ -276,6 +306,7 @@ export const getChannelAttribution = cache(
     ctx: RBACContext,
     dateRange: DateRange,
     options: { model: AttributionModel; includeManual: boolean },
+    filters: ReportsFilters,
   ): Promise<ChannelAttributionDto> => {
     const elevated = isElevated(ctx.userRole)
     const prevRange = getPreviousPeriod(dateRange)
@@ -290,8 +321,10 @@ export const getChannelAttribution = cache(
           prevRange,
           options.model,
           options.includeManual,
+          filters,
         ),
-      makeReportsCacheKey('channel-attribution', ctx, dateRange, options),
+      // Inclui filters na chave de cache para isolar resultados por assignee/filtros
+      makeReportsCacheKey('channel-attribution', ctx, dateRange, { ...options, ...filters }),
       {
         tags: [`reports:${ctx.orgId}`, `deals:${ctx.orgId}`],
         revalidate: CACHE_REVALIDATE_SECONDS,

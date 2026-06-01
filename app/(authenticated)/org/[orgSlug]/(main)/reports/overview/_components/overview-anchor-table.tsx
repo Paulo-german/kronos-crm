@@ -25,7 +25,7 @@ const CHANNEL_LABELS: Record<string, string> = {
   INSTAGRAM: 'Instagram',
   FACEBOOK: 'Facebook',
   EMAIL: 'E-mail',
-  WEBCHAT: 'Webchat',
+  WEBSITE_CHAT: 'Webchat',
 }
 
 function DeltaBadge({ current, previous }: { current: number; previous: number }) {
