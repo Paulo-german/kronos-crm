@@ -52,6 +52,7 @@ interface AgentsCardGridProps {
   allAgents: AgentDto[]
   singleV2OverhaulEnabled: boolean
   isSuperAdmin: boolean
+  isSupportAgent: boolean
 }
 
 export function AgentsCardGrid({
@@ -62,6 +63,7 @@ export function AgentsCardGrid({
   allAgents,
   singleV2OverhaulEnabled,
   isSuperAdmin,
+  isSupportAgent,
 }: AgentsCardGridProps) {
   const [editingAgent, setEditingAgent] = useState<AgentDto | null>(null)
   const [isEditOpen, setIsEditOpen] = useState(false)
@@ -224,7 +226,7 @@ export function AgentsCardGrid({
                       <AgentTableDropdownMenu
                         agentDetailHref={`/org/${orgSlug}/ai-agent/${agent.id}`}
                         executionsHref={`/org/${orgSlug}/ai-agent/${agent.id}/executions`}
-                        canViewExecutions={userRole === 'SUPPORT'}
+                        canViewExecutions={isSupportAgent}
                         onEdit={() => handleEdit(agent)}
                         onDelete={() => {
                           setDeletingAgent(agent)

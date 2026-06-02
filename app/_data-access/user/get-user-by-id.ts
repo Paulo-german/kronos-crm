@@ -12,6 +12,7 @@ async function fetchUserById(userId: string) {
       avatarUrl: true,
       phone: true,
       isSuperAdmin: true,
+      isSupportAgent: true,
       createdAt: true,
     },
   })

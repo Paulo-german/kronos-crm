@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/_lib/supabase/server'
 import { validateMembership } from '@/_data-access/organization/validate-membership'
 import { getOrgPiiSetting } from '@/_data-access/organization/get-org-pii-setting'
+import { getUserById } from '@/_data-access/user/get-user-by-id'
 import type { MemberRole } from '@prisma/client'
 
 export interface OrgContext {
@@ -10,6 +11,7 @@ export interface OrgContext {
   orgId: string
   userRole: MemberRole
   hidePiiFromMembers: boolean
+  isSupportAgent: boolean
 }
 
 /**
@@ -34,13 +36,17 @@ export const getOrgContext = cache(
     }
 
     const orgId = membership.orgId
-    const hidePiiFromMembers = await getOrgPiiSetting(orgId)
+    const [hidePiiFromMembers, dbUser] = await Promise.all([
+      getOrgPiiSetting(orgId),
+      getUserById(user.id),
+    ])
 
     return {
       userId: user.id,
       orgId,
       userRole: membership.userRole,
       hidePiiFromMembers,
+      isSupportAgent: dbUser?.isSupportAgent ?? false,
     }
   },
 )

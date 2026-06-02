@@ -42,8 +42,7 @@ const ExecutionsPage = async ({
   const { orgSlug, agentId } = await params
   const ctx = await getOrgContext(orgSlug)
 
-  // Execuções são exclusivas para o role SUPPORT
-  if (ctx.userRole !== 'SUPPORT') {
+  if (!ctx.isSupportAgent) {
     notFound()
   }
 
