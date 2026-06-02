@@ -13,13 +13,15 @@ import { cn } from '@/_lib/utils'
 interface AgentTabsNavProps {
   orgSlug: string
   canAccessGroups: boolean
+  basePath?: string
 }
 
-export function AgentTabsNav({ orgSlug, canAccessGroups }: AgentTabsNavProps) {
+export function AgentTabsNav({ orgSlug, canAccessGroups, basePath }: AgentTabsNavProps) {
   const pathname = usePathname()
 
-  const agentsPath = `/org/${orgSlug}/ai-agent`
-  const groupsPath = `/org/${orgSlug}/ai-agent/groups`
+  const resolvedBase = basePath ?? `/org/${orgSlug}/ai-agent`
+  const agentsPath = resolvedBase
+  const groupsPath = `${resolvedBase}/groups`
 
   // Esconder tabs nas páginas de detalhe (agente individual ou equipe específica)
   const uuidSegment =
