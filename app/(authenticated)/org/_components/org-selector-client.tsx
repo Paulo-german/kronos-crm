@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Building2, Plus, ArrowRight, Loader2 } from 'lucide-react'
+import { Building2, Plus, ArrowRight, Loader2, LayoutGrid, MessageSquare, Bot, ChevronRight } from 'lucide-react'
 import { cn } from '@/_lib/utils'
 import { Button } from '@/_components/ui/button'
 import { Badge } from '@/_components/ui/badge'
@@ -29,6 +29,11 @@ import {
   FormLabel,
   FormMessage,
 } from '@/_components/ui/form'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/_components/ui/popover'
 import { createOrganization } from '@/_actions/organization/create-organization'
 import { createOrganizationSchema } from '@/_actions/organization/create-organization/schema'
 import type { MemberRole } from '@prisma/client'
@@ -40,7 +45,15 @@ interface Organization {
   name: string
   slug: string
   role: MemberRole
+  grantType?: string | null
+  activeModules?: string[]
 }
+
+const PRODUCT_OPTIONS = [
+  { key: 'crm', label: 'Kronos CRM', icon: LayoutGrid, module: 'crm', href: (slug: string) => `/org/${slug}/crm/home` },
+  { key: 'inbox', label: 'Kronos Inbox', icon: MessageSquare, module: 'inbox', href: (slug: string) => `/org/${slug}/inbox/home` },
+  { key: 'agents', label: 'Kronos Agents', icon: Bot, module: 'ai-agent', href: (slug: string) => `/org/${slug}/agents/home` },
+]
 
 interface OrgSelectorClientProps {
   organizations: Organization[]
@@ -91,6 +104,55 @@ interface OrgListItemProps {
   onSelect: (slug: string) => void
 }
 
+function OrgListItemInternal({ org }: { org: Organization }) {
+  const router = useRouter()
+  const activeModules = org.activeModules ?? []
+  const availableProducts = PRODUCT_OPTIONS.filter((product) => activeModules.includes(product.module))
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="group flex w-full items-center gap-4 rounded-xl border border-border/50 bg-card p-4 text-left transition-all duration-150 hover:border-primary/40 hover:bg-primary/5"
+        >
+          <Avatar className="size-11 shrink-0">
+            <AvatarFallback className={cn('text-sm font-semibold text-white', getOrgColor(org.name))}>
+              {getOrgInitials(org.name)}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <p className="truncate text-sm font-medium leading-none">{org.name}</p>
+            <Badge variant={ROLE_VARIANTS[org.role]} className="shrink-0 text-xs">
+              {ROLE_LABELS[org.role]}
+            </Badge>
+          </div>
+          <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-52 p-1">
+        <p className="px-2 py-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Entrar em
+        </p>
+        {availableProducts.map((productOption) => {
+          const Icon = productOption.icon
+          return (
+            <button
+              key={productOption.key}
+              type="button"
+              onClick={() => router.push(productOption.href(org.slug))}
+              className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-accent"
+            >
+              <Icon className="size-4 text-muted-foreground" />
+              {productOption.label}
+            </button>
+          )
+        })}
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 function OrgListItem({ org, onSelect }: OrgListItemProps) {
   return (
     <button
@@ -127,6 +189,7 @@ export function OrgSelectorClient({
 }: OrgSelectorClientProps) {
   const router = useRouter()
   const [isSheetOpen, setIsSheetOpen] = useState(false)
+  const isInternalOrg = (org: Organization) => org.grantType === 'INTERNAL'
 
   const form = useForm<CreateOrganizationSchema>({
     resolver: zodResolver(createOrganizationSchema),
@@ -172,9 +235,13 @@ export function OrgSelectorClient({
 
       {hasOrgs && (
         <div className="space-y-2">
-          {organizations.map((org) => (
-            <OrgListItem key={org.id} org={org} onSelect={handleSelectOrg} />
-          ))}
+          {organizations.map((org) =>
+            isInternalOrg(org) ? (
+              <OrgListItemInternal key={org.id} org={org} />
+            ) : (
+              <OrgListItem key={org.id} org={org} onSelect={handleSelectOrg} />
+            ),
+          )}
         </div>
       )}
 

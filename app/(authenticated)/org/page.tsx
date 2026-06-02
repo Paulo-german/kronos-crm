@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/_lib/supabase/server'
-import { getUserOrganizations } from '@/_data-access/organization/get-user-organizations'
+import { getUserOrganizationsWithModules } from '@/_data-access/organization/get-user-organizations-with-modules'
 import { getUserById } from '@/_data-access/user/get-user-by-id'
 import { AccountTopBar } from '@/_components/layout/account-top-bar'
 import { OrgSelectorClient } from './_components/org-selector-client'
@@ -22,12 +22,15 @@ const OrgSelectorPage = async ({ searchParams }: OrgSelectorPageProps) => {
   }
 
   const [organizations, userData] = await Promise.all([
-    getUserOrganizations(user.id),
+    getUserOrganizationsWithModules(user.id),
     getUserById(user.id),
   ])
 
-  // Se o usuário tem apenas uma org, redireciona direto (exceto se veio do switcher)
-  if (organizations.length === 1 && show !== 'true') {
+  // Orgs internas nunca fazem auto-redirect — passam pelo hub de seleção de produto
+  const isInternalOrg = (grantType: string | null) => grantType === 'INTERNAL'
+
+  // Auto-redirect apenas para orgs externas com uma única org (exceto se veio do switcher)
+  if (organizations.length === 1 && show !== 'true' && !isInternalOrg(organizations[0].grantType)) {
     redirect(`/org/${organizations[0].slug}/home`)
   }
 
