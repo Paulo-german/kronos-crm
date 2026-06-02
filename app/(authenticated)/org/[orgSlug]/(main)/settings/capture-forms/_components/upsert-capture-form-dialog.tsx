@@ -187,8 +187,18 @@ export const UpsertCaptureFormDialog = ({
       })
       return
     }
-    form.reset(FORM_DEFAULTS)
-  }, [open, defaultValues, form])
+    // Pré-popula campos obrigatórios da organização ao criar novo form
+    const requiredFields = fieldDefinitions
+      .filter((definition) => definition.isRequired)
+      .map((definition, index) => ({
+        fieldDefinitionId: definition.id,
+        required: true,
+        labelOverride: null,
+        position: index,
+      }))
+
+    form.reset({ ...FORM_DEFAULTS, customFields: requiredFields })
+  }, [open, defaultValues, form, fieldDefinitions])
 
   const { execute: executeCreate, isExecuting: isCreating } = useAction(createCaptureForm, {
     onSuccess: () => {
