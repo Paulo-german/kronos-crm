@@ -3,13 +3,15 @@
 import Link from 'next/link'
 import { useParams, usePathname, useSearchParams } from 'next/navigation'
 import { cn } from '@/_lib/utils'
-import { REPORT_SECTIONS } from '../_config/report-sections'
+import { REPORT_SECTIONS, type ReportSection } from '../_config/report-sections'
 
 interface ReportsNavTabsProps {
   isElevated: boolean
+  basePath?: string
+  sections?: readonly ReportSection[]
 }
 
-export function ReportsNavTabs({ isElevated }: ReportsNavTabsProps) {
+export function ReportsNavTabs({ isElevated, basePath = 'reports', sections = REPORT_SECTIONS }: ReportsNavTabsProps) {
   const pathname = usePathname()
   const params = useParams()
   const searchParams = useSearchParams()
@@ -18,7 +20,7 @@ export function ReportsNavTabs({ isElevated }: ReportsNavTabsProps) {
   // Preserva os filtros globais (start/end/assignee) ao trocar de aba.
   const queryString = searchParams.toString()
 
-  const visibleSections = REPORT_SECTIONS.filter(
+  const visibleSections = sections.filter(
     (section) => !section.requiresElevated || isElevated,
   )
 
@@ -26,7 +28,7 @@ export function ReportsNavTabs({ isElevated }: ReportsNavTabsProps) {
     <div className="overflow-x-auto border-b border-border/50">
       <nav className="flex min-w-max">
         {visibleSections.map((section) => {
-          const href = `/org/${orgSlug}/reports/${section.slug}`
+          const href = `/org/${orgSlug}/${basePath}/${section.slug}`
           const isActive = pathname === href || pathname.startsWith(`${href}/`)
           const linkHref = queryString ? `${href}?${queryString}` : href
           const Icon = section.icon
