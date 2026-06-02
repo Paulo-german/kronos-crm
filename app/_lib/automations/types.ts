@@ -145,8 +145,21 @@ export interface UpdateDealPriorityConfig {
   targetPriority: DealPriority
 }
 
+export type DealAssignStrategy = 'contact_assignee' | 'specific_user'
+
 export interface UpdateContactLifecycleConfig {
   targetStage: LifecycleStage
+  // ── Criação opcional de deal vinculado ────────────────────────
+  createDeal?: boolean
+  dealPipelineId?: string
+  dealStageId?: string
+  /** Default '{{contact.name}}'. Suporta placeholders de contato/user. */
+  dealTitleTemplate?: string
+  dealAssignTo?: DealAssignStrategy
+  dealAssignToUserId?: string
+  /** Valor do deal em reais (mesma convenção de create-deal-with-contact). */
+  dealDefaultValue?: number
+  dealPriority?: 'low' | 'medium' | 'high' | 'urgent'
 }
 
 export interface SendWhatsappFollowupConfig {

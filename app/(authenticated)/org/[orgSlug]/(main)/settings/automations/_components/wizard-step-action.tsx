@@ -20,7 +20,8 @@ import {
 } from '@/_components/ui/select'
 import { RadioGroup, RadioGroupItem } from '@/_components/ui/radio-group'
 import { Label } from '@/_components/ui/label'
-import { ACTION_LABELS, REASSIGN_STRATEGY_LABELS, NOTIFY_TARGET_LABELS, PRIORITY_OPTIONS, LIFECYCLE_STAGE_OPTIONS, TASK_ACTION_TYPE_OPTIONS, TASK_ASSIGN_OPTIONS, CONTACT_TRIGGER_SET } from './automation-labels'
+import { ACTION_LABELS, REASSIGN_STRATEGY_LABELS, NOTIFY_TARGET_LABELS, PRIORITY_OPTIONS, LIFECYCLE_STAGE_OPTIONS, TASK_ACTION_TYPE_OPTIONS, TASK_ASSIGN_OPTIONS, DEAL_ASSIGN_OPTIONS, CONTACT_TRIGGER_SET } from './automation-labels'
+import { CONTACT_SUPPORTED_ACTION_VALUES } from '@/_lib/automations/contact-compatibility'
 import { Badge } from '@/_components/ui/badge'
 import { cn } from '@/_lib/utils'
 import { UserPlus, ArrowRight, XCircle, Bell, AlertTriangle, MessageCircle, UserCheck, Braces, ListChecks, Loader2, CheckCircle2 } from 'lucide-react'
@@ -66,8 +67,8 @@ const CONTACT_MESSAGE_VARIABLES = [
   { token: '{{user.name}}',         label: 'Meu nome',      group: 'Você' },
 ] as const
 
-// Ações disponíveis para triggers de contato
-const CONTACT_AVAILABLE_ACTIONS = new Set<AutomationAction>([AutomationAction.SEND_WHATSAPP_FOLLOWUP])
+// Ações disponíveis para triggers de contato — fonte única em contact-compatibility.ts
+const CONTACT_AVAILABLE_ACTIONS = new Set<AutomationAction>(CONTACT_SUPPORTED_ACTION_VALUES)
 
 interface VariableInserterProps {
   onInsert: (token: string) => void
@@ -502,14 +503,16 @@ export function WizardStepAction({ stageOptions, members, lossReasons, whatsappI
               }}
               className="space-y-2"
             >
-              {Object.entries(NOTIFY_TARGET_LABELS).map(([value, label]) => (
-                <div key={value} className="flex items-center gap-2">
-                  <RadioGroupItem value={value} id={`notify-${value}`} />
-                  <Label htmlFor={`notify-${value}`} className="cursor-pointer font-normal">
-                    {label}
-                  </Label>
-                </div>
-              ))}
+              {Object.entries(NOTIFY_TARGET_LABELS)
+                .filter(([value]) => !(isContactKind && value === 'deal_assignee'))
+                .map(([value, label]) => (
+                  <div key={value} className="flex items-center gap-2">
+                    <RadioGroupItem value={value} id={`notify-${value}`} />
+                    <Label htmlFor={`notify-${value}`} className="cursor-pointer font-normal">
+                      {label}
+                    </Label>
+                  </div>
+                ))}
             </RadioGroup>
             {showConfigErrors && !getConfigString('targetType') && (
               <p className="text-sm text-destructive">Selecione quem notificar</p>
@@ -601,10 +604,12 @@ export function WizardStepAction({ stageOptions, members, lossReasons, whatsappI
 
           <div className="space-y-2">
             <Label>Mensagem *</Label>
-            <VariableInserter onInsert={insertVariable} />
+            <VariableInserter onInsert={insertVariable} isContactKind={isContactKind} />
             <Textarea
               ref={textareaRef}
-              placeholder="Ex: A negociação {{deal.title}} está parada no estágio {{deal.stage}} há mais de 2 dias."
+              placeholder={isContactKind
+                ? 'Ex: Novo contato {{contact.name}} cadastrado. Dê as boas-vindas!'
+                : 'Ex: A negociação {{deal.title}} está parada no estágio {{deal.stage}} há mais de 2 dias.'}
               className={`resize-none ${showConfigErrors && !getConfigString('messageTemplate') ? 'border-destructive' : ''}`}
               rows={3}
               maxLength={500}
@@ -1034,7 +1039,15 @@ export function WizardStepAction({ stageOptions, members, lossReasons, whatsappI
       {actionType === AutomationAction.UPDATE_CONTACT_LIFECYCLE && (
         <div
           className="space-y-4 rounded-md border bg-muted/30 p-4"
-          data-error={showConfigErrors && !getConfigString('targetStage') ? 'true' : undefined}
+          data-error={
+            showConfigErrors && (
+              !getConfigString('targetStage') ||
+              (isContactKind && getConfigBoolean('createDeal') && (
+                !getConfigString('dealStageId') ||
+                (getConfigString('dealAssignTo') === 'specific_user' && !getConfigString('dealAssignToUserId'))
+              ))
+            ) ? 'true' : undefined
+          }
         >
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
             Configuração (Avançar ciclo do contato)
@@ -1069,6 +1082,172 @@ export function WizardStepAction({ stageOptions, members, lossReasons, whatsappI
               <p className="text-sm text-destructive">Selecione o estágio</p>
             )}
           </div>
+
+          {isContactKind && (
+            <>
+              <Separator />
+
+              {/* Toggle createDeal */}
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="lifecycle-create-deal"
+                  checked={getConfigBoolean('createDeal')}
+                  onCheckedChange={(checked) => {
+                    setActionConfigValue('createDeal', checked === true)
+                    form.clearErrors('actionConfig')
+                  }}
+                />
+                <Label htmlFor="lifecycle-create-deal" className="cursor-pointer font-normal">
+                  Também criar uma negociação vinculada ao contato
+                </Label>
+              </div>
+
+              {getConfigBoolean('createDeal') && (
+                <div className="space-y-4 rounded-md border bg-background p-3">
+                  {/* Pipeline + Estágio — o pipelineId é derivado do stage escolhido */}
+                  <div className="space-y-2">
+                    <Label>Pipeline e estágio *</Label>
+                    <Select
+                      value={getConfigString('dealStageId')}
+                      onValueChange={(val) => {
+                        const selectedStage = stageOptions.find((stage) => stage.stageId === val)
+                        setActionConfigValue('dealStageId', val)
+                        setActionConfigValue('dealPipelineId', selectedStage?.pipelineId)
+                        form.clearErrors('actionConfig')
+                      }}
+                    >
+                      <SelectTrigger className={showConfigErrors && !getConfigString('dealStageId') ? 'border-destructive' : ''}>
+                        <SelectValue placeholder="Selecione o estágio" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {stageOptions.map((stage) => (
+                          <SelectItem key={stage.stageId} value={stage.stageId}>
+                            {stage.pipelineName} → {stage.stageName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {showConfigErrors && !getConfigString('dealStageId') && (
+                      <p className="text-sm text-destructive">Selecione o estágio</p>
+                    )}
+                  </div>
+
+                  {/* Título da negociação (template) */}
+                  <div className="space-y-2">
+                    <Label>Título da negociação</Label>
+                    <VariableInserter
+                      onInsert={(token) => setActionConfigValue('dealTitleTemplate', getConfigString('dealTitleTemplate') + token)}
+                      isContactKind
+                    />
+                    <Input
+                      placeholder="{{contact.name}}"
+                      maxLength={200}
+                      value={getConfigString('dealTitleTemplate')}
+                      onChange={(event) => {
+                        setActionConfigValue('dealTitleTemplate', event.target.value)
+                        form.clearErrors('actionConfig')
+                      }}
+                    />
+                    <p className="text-xs text-muted-foreground">Vazio = usa o nome do contato.</p>
+                  </div>
+
+                  {/* Valor + Prioridade */}
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Valor inicial</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={getConfigNumber('dealDefaultValue', 0)}
+                        onChange={(event) =>
+                          setActionConfigValue('dealDefaultValue', event.target.value === '' ? 0 : Number(event.target.value))
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Prioridade</Label>
+                      <Select
+                        value={getConfigString('dealPriority') || 'medium'}
+                        onValueChange={(val) => setActionConfigValue('dealPriority', val)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PRIORITY_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Responsável: contact_assignee | specific_user */}
+                  <div className="space-y-3">
+                    <Label>Responsável pela negociação *</Label>
+                    <RadioGroup
+                      value={getConfigString('dealAssignTo') || 'contact_assignee'}
+                      onValueChange={(val) => {
+                        setActionConfigValue('dealAssignTo', val)
+                        if (val === 'contact_assignee') {
+                          setActionConfigValue('dealAssignToUserId', undefined)
+                        }
+                        form.clearErrors('actionConfig')
+                      }}
+                      className="space-y-2"
+                    >
+                      {DEAL_ASSIGN_OPTIONS.map((option) => (
+                        <div key={option.value} className="flex items-center gap-2">
+                          <RadioGroupItem value={option.value} id={`deal-assign-${option.value}`} />
+                          <Label htmlFor={`deal-assign-${option.value}`} className="cursor-pointer font-normal">
+                            {option.label}
+                          </Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                    {/* Aviso: contact_assignee exige contato com responsável */}
+                    {(getConfigString('dealAssignTo') || 'contact_assignee') === 'contact_assignee' && (
+                      <p className="text-xs text-muted-foreground">
+                        Se o contato não tiver responsável, a negociação não será criada (a etapa do ciclo ainda avança).
+                      </p>
+                    )}
+                  </div>
+
+                  {getConfigString('dealAssignTo') === 'specific_user' && (
+                    <div className="space-y-2">
+                      <Label>Membro responsável *</Label>
+                      <Select
+                        value={getConfigString('dealAssignToUserId')}
+                        onValueChange={(val) => {
+                          setActionConfigValue('dealAssignToUserId', val)
+                          form.clearErrors('actionConfig')
+                        }}
+                      >
+                        <SelectTrigger className={showConfigErrors && !getConfigString('dealAssignToUserId') ? 'border-destructive' : ''}>
+                          <SelectValue placeholder="Selecione o membro" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {members.map((member) => {
+                            const memberId = member.userId ?? member.id
+                            return (
+                              <SelectItem key={memberId} value={memberId}>
+                                {member.user?.fullName ?? member.email}
+                              </SelectItem>
+                            )
+                          })}
+                        </SelectContent>
+                      </Select>
+                      {showConfigErrors && !getConfigString('dealAssignToUserId') && (
+                        <p className="text-sm text-destructive">Selecione o membro</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
 

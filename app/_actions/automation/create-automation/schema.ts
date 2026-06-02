@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { ActivityType, AutomationTrigger, AutomationAction, CaptureChannel, LifecycleStage } from '@prisma/client'
+import { CONTACT_TRIGGER_VALUES, CONTACT_SUPPORTED_ACTION_VALUES } from '@/_lib/automations/contact-compatibility'
 
 // ─────────────────────────────────────────────────────────────
 // Schemas para condições
@@ -152,9 +153,44 @@ export const sendWhatsappFollowupConfigSchema = z
     }
   })
 
-export const updateContactLifecycleConfigSchema = z.object({
-  targetStage: z.nativeEnum(LifecycleStage),
-})
+export const updateContactLifecycleConfigSchema = z
+  .object({
+    targetStage: z.nativeEnum(LifecycleStage),
+    createDeal: z.boolean().optional(),
+    dealPipelineId: z.string().uuid().optional(),
+    dealStageId: z.string().uuid().optional(),
+    dealTitleTemplate: z.string().trim().max(200).optional(),
+    dealAssignTo: z.enum(['contact_assignee', 'specific_user']).optional(),
+    dealAssignToUserId: z.string().uuid().optional(),
+    dealDefaultValue: z.number().min(0).optional(),
+    dealPriority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
+  })
+  .superRefine((data, ctx) => {
+    // Sem deal → nenhum campo de criação de deal é exigido
+    if (!data.createDeal) return
+
+    if (!data.dealPipelineId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['dealPipelineId'],
+        message: 'Selecione o pipeline da negociação.',
+      })
+    }
+    if (!data.dealStageId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['dealStageId'],
+        message: 'Selecione o estágio da negociação.',
+      })
+    }
+    if (data.dealAssignTo === 'specific_user' && !data.dealAssignToUserId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['dealAssignToUserId'],
+        message: 'Selecione o responsável pela negociação.',
+      })
+    }
+  })
 
 export const createTaskConfigSchema = z
   .object({
@@ -247,14 +283,28 @@ export const createAutomationSchema = z.object({
 
   // Valida compatibilidade entre triggerType e actionType
   // Triggers de contato só suportam ações que operam sem um deal
-  const CONTACT_TRIGGERS = new Set<AutomationTrigger>([AutomationTrigger.CONTACT_CREATED])
-  const CONTACT_SUPPORTED_ACTIONS = new Set<AutomationAction>([AutomationAction.SEND_WHATSAPP_FOLLOWUP])
-  if (CONTACT_TRIGGERS.has(data.triggerType) && !CONTACT_SUPPORTED_ACTIONS.has(data.actionType)) {
+  const CONTACT_TRIGGERS = new Set<AutomationTrigger>(CONTACT_TRIGGER_VALUES)
+  const CONTACT_SUPPORTED_ACTIONS = new Set<AutomationAction>(CONTACT_SUPPORTED_ACTION_VALUES)
+  const isContactTrigger = CONTACT_TRIGGERS.has(data.triggerType)
+
+  if (isContactTrigger && !CONTACT_SUPPORTED_ACTIONS.has(data.actionType)) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['actionType'],
       message: `O trigger ${data.triggerType} só é compatível com: ${[...CONTACT_SUPPORTED_ACTIONS].join(', ')}`,
     })
+  }
+
+  // NOTIFY_USER em trigger de contato não pode notificar o responsável da negociação (não há deal)
+  if (isContactTrigger && data.actionType === AutomationAction.NOTIFY_USER) {
+    const target = (data.actionConfig as { targetType?: string }).targetType
+    if (target === 'deal_assignee') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['actionConfig'],
+        message: 'Triggers de contato não podem notificar o responsável pela negociação (não há negociação).',
+      })
+    }
   }
 })
 

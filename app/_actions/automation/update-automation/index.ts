@@ -26,6 +26,7 @@ import {
   createTaskConfigSchema,
 } from './schema'
 import { SENTINEL_DEAL_INBOX } from '@/_actions/automation/create-automation/schema'
+import { CONTACT_TRIGGER_VALUES, CONTACT_SUPPORTED_ACTION_VALUES } from '@/_lib/automations/contact-compatibility'
 
 const TRIGGER_VALIDATORS: Record<AutomationTrigger, z.ZodTypeAny> = {
   [AutomationTrigger.DEAL_STALE]: dealStaleConfigSchema,
@@ -57,12 +58,20 @@ export const updateAutomation = orgActionClient
     // 2. Verificar ownership + buscar tipos atuais do banco para validação cruzada de patches parciais
     const automation = await db.automation.findFirst({
       where: { id: data.id, organizationId: ctx.orgId },
-      select: { id: true, triggerType: true, actionType: true },
+      select: { id: true, triggerType: true, actionType: true, actionConfig: true },
     })
 
     if (!automation) {
       throw new Error('Automação não encontrada.')
     }
+
+    // Config efetiva de ação: patch quando presente, senão o salvo no banco.
+    // Necessária para a checagem de compatibilidade NOTIFY_USER + deal_assignee
+    // mesmo quando o usuário só altera o trigger.
+    const effectiveActionConfig =
+      (data.actionConfig as Record<string, unknown> | undefined) ??
+      (automation.actionConfig as Record<string, unknown> | null) ??
+      undefined
 
     // 3. Validação cruzada de config vs tipo:
     //    Quando apenas um dos lados do par (config/type) vem no patch,
@@ -72,6 +81,7 @@ export const updateAutomation = orgActionClient
       data.triggerType ?? automation.triggerType,
       data.actionConfig,
       data.actionType ?? automation.actionType,
+      effectiveActionConfig,
     )
 
     // 4. Validações cross-entity: IDs referenciados devem pertencer à org
@@ -120,6 +130,7 @@ function validateConfigAgainstTypes(
   effectiveTriggerType: AutomationTrigger,
   actionConfig: Record<string, unknown> | undefined,
   effectiveActionType: AutomationAction,
+  effectiveActionConfig: Record<string, unknown> | undefined,
 ): void {
   if (triggerConfig !== undefined) {
     const triggerResult = TRIGGER_VALIDATORS[effectiveTriggerType].safeParse(triggerConfig)
@@ -140,12 +151,24 @@ function validateConfigAgainstTypes(
   }
 
   // Valida compatibilidade entre triggerType e actionType (mesmo que parcial)
-  const CONTACT_TRIGGERS = new Set<AutomationTrigger>([AutomationTrigger.CONTACT_CREATED])
-  const CONTACT_SUPPORTED_ACTIONS = new Set<AutomationAction>([AutomationAction.SEND_WHATSAPP_FOLLOWUP])
-  if (CONTACT_TRIGGERS.has(effectiveTriggerType) && !CONTACT_SUPPORTED_ACTIONS.has(effectiveActionType)) {
+  const CONTACT_TRIGGERS = new Set<AutomationTrigger>(CONTACT_TRIGGER_VALUES)
+  const CONTACT_SUPPORTED_ACTIONS = new Set<AutomationAction>(CONTACT_SUPPORTED_ACTION_VALUES)
+  const isContactTrigger = CONTACT_TRIGGERS.has(effectiveTriggerType)
+
+  if (isContactTrigger && !CONTACT_SUPPORTED_ACTIONS.has(effectiveActionType)) {
     throw new Error(
       `O trigger ${effectiveTriggerType} só é compatível com: ${[...CONTACT_SUPPORTED_ACTIONS].join(', ')}`,
     )
+  }
+
+  // NOTIFY_USER em trigger de contato não pode notificar o responsável da negociação (não há deal)
+  if (isContactTrigger && effectiveActionType === AutomationAction.NOTIFY_USER) {
+    const target = (effectiveActionConfig as { targetType?: string } | undefined)?.targetType
+    if (target === 'deal_assignee') {
+      throw new Error(
+        'Triggers de contato não podem notificar o responsável pela negociação (não há negociação).',
+      )
+    }
   }
 }
 
@@ -187,6 +210,48 @@ async function validatePartialCrossEntityReferences(
   // Valida assignToUserId no actionConfig (CREATE_TASK)
   if (typeof actionConfig?.assignToUserId === 'string') {
     await requireUsersInOrg([actionConfig.assignToUserId], orgId)
+  }
+
+  // Valida campos de criação de deal no actionConfig (UPDATE_CONTACT_LIFECYCLE com createDeal)
+  const dealPipelineId = actionConfig?.dealPipelineId
+  const dealStageId = actionConfig?.dealStageId
+
+  if (typeof dealPipelineId === 'string') {
+    await requirePipelineInOrg(dealPipelineId, orgId)
+  }
+
+  // Coerência stage↔pipeline: quando ambos presentes, o estágio deve pertencer ao pipeline informado.
+  // Quando só o estágio é informado, valida apenas que pertence à org.
+  if (typeof dealStageId === 'string' && typeof dealPipelineId === 'string') {
+    await requireStageInPipeline(dealStageId, dealPipelineId, orgId)
+  } else if (typeof dealStageId === 'string') {
+    await requireStageInOrg(dealStageId, orgId)
+  }
+
+  if (typeof actionConfig?.dealAssignToUserId === 'string') {
+    await requireUsersInOrg([actionConfig.dealAssignToUserId], orgId)
+  }
+}
+
+async function requirePipelineInOrg(pipelineId: string, orgId: string): Promise<void> {
+  const pipeline = await db.pipeline.findFirst({
+    where: { id: pipelineId, organizationId: orgId },
+    select: { id: true },
+  })
+
+  if (!pipeline) {
+    throw new Error('Pipeline não encontrado ou não pertence à organização.')
+  }
+}
+
+async function requireStageInPipeline(stageId: string, pipelineId: string, orgId: string): Promise<void> {
+  const stage = await db.pipelineStage.findFirst({
+    where: { id: stageId, pipelineId, pipeline: { organizationId: orgId } },
+    select: { id: true },
+  })
+
+  if (!stage) {
+    throw new Error('Estágio não encontrado ou não pertence ao pipeline da organização.')
   }
 }
 

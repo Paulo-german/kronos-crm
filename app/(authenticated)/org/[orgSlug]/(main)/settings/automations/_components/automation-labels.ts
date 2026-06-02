@@ -132,3 +132,8 @@ export const TASK_ASSIGN_OPTIONS: { label: string; value: string }[] = [
   { label: 'Responsável pela negociação', value: 'deal_assignee' },
   { label: 'Membro específico', value: 'specific_user' },
 ]
+
+export const DEAL_ASSIGN_OPTIONS: { label: string; value: string }[] = [
+  { label: 'Responsável pelo contato', value: 'contact_assignee' },
+  { label: 'Membro específico', value: 'specific_user' },
+]

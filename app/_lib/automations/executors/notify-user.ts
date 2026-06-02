@@ -1,20 +1,20 @@
 import 'server-only'
 import { db } from '@/_lib/prisma'
-import { createNotification } from '@/_lib/notifications/create-notification'
 import { getOrgSlug } from '@/_lib/notifications/get-org-slug'
-import { resolveWhatsAppProvider } from '@/_lib/whatsapp/provider'
-import { withRetry } from '@/_lib/whatsapp/retry'
-import { normalizePhoneToJid } from '@/_lib/whatsapp/normalize-phone'
 import { resolveTemplate } from '../template-resolver'
+import { deliverNotification } from './_lib/notify-recipients'
+import { executeNotifyUserContact } from './notify-user-contact'
 import type { ExecutorContext, ExecutorResult, NotifyUserConfig, NotifyChannel } from '../types'
 
 /**
- * Executor de notificação — execução de sistema, sem RBAC.
+ * Dispatcher do executor NOTIFY_USER — execução de sistema, sem RBAC.
+ * Despacha para a variante de contato (subjectKind 'contact') ou de deal (demais triggers).
  * Suporta alvo: deal_assignee, specific_users e org_admins.
  * Suporta canais: in_app (via createNotification, respeita preferências) e whatsapp
  * (envia para o telefone pessoal do user usando o primeiro inbox WhatsApp ativo da org).
  */
 export async function executeNotifyUser(ctx: ExecutorContext): Promise<ExecutorResult> {
+  if (ctx.subjectKind === 'contact') return executeNotifyUserContact(ctx)
   if (!ctx.deal) return { summary: { skipped: true, reason: 'subject_not_deal' } }
   const deal = ctx.deal
   const config = ctx.actionConfig as unknown as NotifyUserConfig
@@ -87,102 +87,27 @@ export async function executeNotifyUser(ctx: ExecutorContext): Promise<ExecutorR
     }
   }
 
-  // Busca usuários (uma única query para evitar N+1 entre canais)
-  const recipients = await db.user.findMany({
-    where: { id: { in: recipientIds } },
-    select: { id: true, fullName: true, phone: true },
+  const orgSlug = await getOrgSlug(ctx.orgId)
+  const actionUrl = orgSlug ? `/org/${orgSlug}/crm/deals/${deal.id}` : undefined
+
+  const { inApp, whatsapp } = await deliverNotification({
+    orgId: ctx.orgId,
+    recipientIds,
+    channels,
+    resolvedBody,
+    notificationTitle: `Automação: ${ctx.automationName}`,
+    actionUrl,
+    resourceType: 'deal',
+    resourceId: deal.id,
   })
-
-  const inAppSummary = { sent: 0, failed: 0 }
-  const whatsappSummary = { sent: 0, failed: 0, skipped: 0 }
-
-  // ── Canal in-app ───────────────────────────────────────────
-  if (channels.includes('in_app')) {
-    const orgSlug = await getOrgSlug(ctx.orgId)
-    const actionUrl = orgSlug ? `/org/${orgSlug}/crm/deals/${deal.id}` : undefined
-    const notificationTitle = `Automação: ${ctx.automationName}`
-
-    const results = await Promise.allSettled(
-      recipients.map((user) =>
-        createNotification({
-          orgId: ctx.orgId,
-          userId: user.id,
-          type: 'USER_ACTION',
-          title: notificationTitle,
-          body: resolvedBody,
-          actionUrl,
-          resourceType: 'deal',
-          resourceId: deal.id,
-        }),
-      ),
-    )
-
-    inAppSummary.sent = results.filter((result) => result.status === 'fulfilled').length
-    inAppSummary.failed = results.filter((result) => result.status === 'rejected').length
-  }
-
-  // ── Canal WhatsApp ─────────────────────────────────────────
-  if (channels.includes('whatsapp')) {
-    // Pega o primeiro inbox WhatsApp ativo da org como remetente
-    const inbox = await db.inbox.findFirst({
-      where: {
-        organizationId: ctx.orgId,
-        isActive: true,
-        channel: 'WHATSAPP',
-      },
-      select: {
-        connectionType: true,
-        channel: true,
-        evolutionInstanceName: true,
-        evolutionApiUrl: true,
-        evolutionApiKey: true,
-        metaPhoneNumberId: true,
-        metaAccessToken: true,
-        metaIgUserId: true,
-        zapiInstanceId: true,
-        zapiToken: true,
-        zapiClientToken: true,
-      },
-    })
-
-    if (!inbox) {
-      // Sem inbox WhatsApp configurado — todas as notificações WhatsApp são puladas
-      whatsappSummary.skipped = recipients.length
-    } else {
-      const provider = resolveWhatsAppProvider(inbox)
-
-      const results = await Promise.allSettled(
-        recipients.map(async (user) => {
-          const jid = normalizePhoneToJid(user.phone)
-          if (!jid) {
-            return { skipped: true as const }
-          }
-          await withRetry(() => provider.sendText(jid, resolvedBody))
-          return { skipped: false as const }
-        }),
-      )
-
-      for (const result of results) {
-        if (result.status === 'fulfilled') {
-          if (result.value.skipped) {
-            whatsappSummary.skipped += 1
-          } else {
-            whatsappSummary.sent += 1
-          }
-        } else {
-          whatsappSummary.failed += 1
-        }
-      }
-    }
-  }
 
   return {
     summary: {
       targetType: config.targetType,
       recipientCount: recipientIds.length,
       channels,
-      inApp: inAppSummary,
-      whatsapp: whatsappSummary,
+      inApp,
+      whatsapp,
     },
   }
 }
