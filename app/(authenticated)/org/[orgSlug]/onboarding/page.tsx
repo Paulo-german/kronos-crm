@@ -24,7 +24,7 @@ const OnboardingPage = async ({ params }: OnboardingPageProps) => {
   }
 
   if (status.onboardingCompleted) {
-    redirect(`/org/${orgSlug}/home`)
+    redirect(`/org/${orgSlug}/crm/home`)
   }
 
   return <OnboardingWizardClient initialStatus={status} orgSlug={orgSlug} />

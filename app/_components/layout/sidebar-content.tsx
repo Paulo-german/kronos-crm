@@ -87,7 +87,7 @@ export const SidebarContent = ({
           {/* Globais - sempre visíveis */}
           <div className="min-w-0">
             <SidebarItem
-              href={buildHref('/home')}
+              href={buildHref('/crm/home')}
               label="Início"
               icon={<Home className="h-4 w-4" />}
               dataTour="home"

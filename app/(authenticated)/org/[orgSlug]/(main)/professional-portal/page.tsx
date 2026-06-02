@@ -33,7 +33,7 @@ const ProfessionalPortalPage = async ({ params }: ProfessionalPortalPageProps) =
     const ctx = await requireProfessionalContext(user.id, org.id)
     professionalId = ctx.professionalId
   } catch {
-    redirect(`/org/${orgSlug}/home`)
+    redirect(`/org/${orgSlug}/crm/home`)
   }
 
   const [professional, appointments] = await Promise.all([
@@ -42,7 +42,7 @@ const ProfessionalPortalPage = async ({ params }: ProfessionalPortalPageProps) =
   ])
 
   if (!professional) {
-    redirect(`/org/${orgSlug}/home`)
+    redirect(`/org/${orgSlug}/crm/home`)
   }
 
   return (

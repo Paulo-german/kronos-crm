@@ -31,7 +31,7 @@ const OrgSelectorPage = async ({ searchParams }: OrgSelectorPageProps) => {
 
   // Auto-redirect apenas para orgs externas com uma única org (exceto se veio do switcher)
   if (organizations.length === 1 && show !== 'true' && !isInternalOrg(organizations[0].grantType)) {
-    redirect(`/org/${organizations[0].slug}/home`)
+    redirect(`/org/${organizations[0].slug}/crm/home`)
   }
 
   const topBarUser = {
