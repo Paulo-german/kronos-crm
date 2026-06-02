@@ -4,7 +4,7 @@ import { parseDateRange } from '@/_utils/date-range'
 import type { DealStatus, DealPriority } from '@prisma/client'
 import type { ReportsFilters, DateRange } from './reports-types'
 
-const VALID_STATUSES: DealStatus[] = ['OPEN', 'IN_PROGRESS', 'WON', 'LOST']
+const VALID_STATUSES: DealStatus[] = ['OPEN', 'IN_PROGRESS', 'WON', 'LOST', 'PAUSED']
 const VALID_PRIORITIES: DealPriority[] = ['low', 'medium', 'high', 'urgent']
 
 export function parseReportsSearchParams(
@@ -23,19 +23,21 @@ export function parseReportsSearchParams(
   const productId =
     typeof searchParams.productId === 'string' ? searchParams.productId : undefined
 
+  // nuqs parseAsArrayOf serializa como vírgula separada: ?status=OPEN,WON
+  // Next.js searchParams pode retornar string (vírgula) ou string[] (chaves repetidas)
   const rawStatus = Array.isArray(searchParams.status)
-    ? searchParams.status
+    ? searchParams.status.flatMap((s) => s.split(','))
     : searchParams.status
-      ? [searchParams.status]
+      ? searchParams.status.split(',')
       : []
   const status = rawStatus.filter((value): value is DealStatus =>
     VALID_STATUSES.includes(value as DealStatus),
   )
 
   const rawPriority = Array.isArray(searchParams.priority)
-    ? searchParams.priority
+    ? searchParams.priority.flatMap((p) => p.split(','))
     : searchParams.priority
-      ? [searchParams.priority]
+      ? searchParams.priority.split(',')
       : []
   const priority = rawPriority.filter((value): value is DealPriority =>
     VALID_PRIORITIES.includes(value as DealPriority),
