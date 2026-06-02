@@ -8,6 +8,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
+import { cn } from '@/_lib/utils'
 import {
   Popover,
   PopoverContent,
@@ -28,20 +29,22 @@ interface NotificationBellProps {
   orgSlug: string
   initialUnreadCount: number
   initialNotifications: NotificationDto[]
+  notificationsHref?: string
 }
 
 export const NotificationBell = ({
   orgSlug,
   initialUnreadCount,
   initialNotifications,
+  notificationsHref,
 }: NotificationBellProps) => {
+  const resolvedNotificationsHref = notificationsHref ?? `/org/${orgSlug}/notifications`
   const router = useRouter()
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount)
   const [notifications, setNotifications] = useState<NotificationDto[]>(initialNotifications)
   const [open, setOpen] = useState(false)
   const [isFetchingList, setIsFetchingList] = useState(false)
 
-  // Busca lista de notificacoes recentes do servidor
   const fetchRecentNotifications = useCallback(async () => {
     setIsFetchingList(true)
     try {
@@ -57,7 +60,6 @@ export const NotificationBell = ({
     }
   }, [])
 
-  // Ao abrir o popover, buscar lista atualizada
   const handleOpenChange = useCallback(
     (isOpen: boolean) => {
       setOpen(isOpen)
@@ -68,7 +70,6 @@ export const NotificationBell = ({
     [fetchRecentNotifications],
   )
 
-  // Polling para manter badge atualizado
   useEffect(() => {
     const fetchUnreadCount = async () => {
       if (document.visibilityState !== 'visible') return
@@ -145,7 +146,6 @@ export const NotificationBell = ({
       </PopoverTrigger>
 
       <PopoverContent align="end" className="w-80 p-0">
-        {/* Header */}
         <div className="flex items-center justify-between px-4 py-3">
           <h4 className="font-semibold">Notificações</h4>
           {unreadCount > 0 && (
@@ -163,7 +163,6 @@ export const NotificationBell = ({
 
         <Separator />
 
-        {/* Lista de notificações */}
         <ScrollArea className="max-h-[400px]">
           {isFetchingList && notifications.length === 0 ? (
             <div className="flex items-center justify-center py-10">
@@ -184,12 +183,10 @@ export const NotificationBell = ({
                   <button
                     key={notification.id}
                     type="button"
-                    className={[
+                    className={cn(
                       'flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50',
-                      isAlert ? 'bg-amber-50/40 hover:bg-amber-50/60 dark:bg-amber-950/10 dark:hover:bg-amber-950/20' : '',
-                    ]
-                      .filter(Boolean)
-                      .join(' ')}
+                      isAlert && 'bg-amber-50/40 hover:bg-amber-50/60 dark:bg-amber-950/10 dark:hover:bg-amber-950/20',
+                    )}
                     onClick={() => handleNotificationClick(notification)}
                   >
                     <div className="mt-0.5 flex-shrink-0">
@@ -211,10 +208,10 @@ export const NotificationBell = ({
 
                     {!notification.readAt && (
                       <div
-                        className={[
+                        className={cn(
                           'mt-1.5 h-2 w-2 flex-shrink-0 rounded-full',
                           isAlert ? 'bg-amber-500' : 'bg-blue-500',
-                        ].join(' ')}
+                        )}
                       />
                     )}
                   </button>
@@ -234,7 +231,7 @@ export const NotificationBell = ({
                 className="w-full text-xs text-muted-foreground"
                 asChild
               >
-                <Link href={`/org/${orgSlug}/notifications`}>Ver todas →</Link>
+                <Link href={resolvedNotificationsHref}>Ver todas →</Link>
               </Button>
             </div>
           </>
