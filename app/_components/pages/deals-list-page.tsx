@@ -5,8 +5,8 @@ import { getOrgPipelines } from '@/_data-access/pipeline/get-org-pipelines'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 import { createDefaultPipeline } from '@/_data-access/pipeline/create-default-pipeline'
-import { parseDealListParams } from './_lib/deal-list-params'
-import { DealsListClient } from './_components/deals-list-client'
+import { parseDealListParams } from '@/(authenticated)/org/[orgSlug]/(main)/crm/deals/list/_lib/deal-list-params'
+import { DealsListClient } from '@/(authenticated)/org/[orgSlug]/(main)/crm/deals/list/_components/deals-list-client'
 
 interface DealsListPageProps {
   params: Promise<{ orgSlug: string }>
@@ -19,7 +19,6 @@ const DealsListPage = async ({ params, searchParams }: DealsListPageProps) => {
   const ctx = await getOrgContext(orgSlug)
   const listParams = parseDealListParams(resolvedSearchParams)
 
-  // listParams já inclui pipelineId via parseDealListParams (Zod valida UUID)
   const [pipelines, pipelineRaw] = await Promise.all([
     getOrgPipelines(ctx.orgId),
     getOrgPipeline(ctx.orgId, listParams.pipelineId),

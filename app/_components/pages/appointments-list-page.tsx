@@ -3,15 +3,13 @@ import { getAppointments } from '@/_data-access/appointment/get-appointments'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
 import { getContactsOptions } from '@/_data-access/contact/get-contacts-options'
 import { getServices } from '@/_data-access/service/get-services'
-import { AppointmentsCalendarClient } from '../_components/appointments-calendar-client'
+import { AppointmentsListClient } from '@/(authenticated)/org/[orgSlug]/(main)/crm/appointments/_components/appointments-list-client'
 
-interface AppointmentsCalendarPageProps {
+interface AppointmentsListPageProps {
   params: Promise<{ orgSlug: string }>
 }
 
-const AppointmentsCalendarPage = async ({
-  params,
-}: AppointmentsCalendarPageProps) => {
+const AppointmentsListPage = async ({ params }: AppointmentsListPageProps) => {
   const { orgSlug } = await params
   const ctx = await getOrgContext(orgSlug)
 
@@ -23,15 +21,16 @@ const AppointmentsCalendarPage = async ({
   ])
 
   return (
-    <AppointmentsCalendarClient
+    <AppointmentsListClient
       appointments={appointments}
       members={members.accepted}
       currentUserId={ctx.userId}
       userRole={ctx.userRole}
       contactOptions={contactOptions}
       services={services}
+      orgSlug={orgSlug}
     />
   )
 }
 
-export default AppointmentsCalendarPage
+export default AppointmentsListPage

@@ -5,35 +5,32 @@ import { getDealDetails } from '@/_data-access/deal/get-deal-details'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
 import { getDealLostReasons } from '@/_data-access/settings/get-lost-reasons'
 import { getTutorialCompletions } from '@/_data-access/tutorial/get-tutorial-completions'
-
-import DealDetailClient from './_components/deal-detail-client'
-import ContactWidgetServer from './_components/contact-widget-server'
-import TabProductsServer from './_components/tab-products-server'
-import TabTasksServer from './_components/tab-tasks-server'
-import TabAppointmentsServer from './_components/tab-appointments-server'
+import DealDetailClient from '@/(authenticated)/org/[orgSlug]/(main)/crm/deals/[id]/_components/deal-detail-client'
+import ContactWidgetServer from '@/(authenticated)/org/[orgSlug]/(main)/crm/deals/[id]/_components/contact-widget-server'
+import TabProductsServer from '@/(authenticated)/org/[orgSlug]/(main)/crm/deals/[id]/_components/tab-products-server'
+import TabTasksServer from '@/(authenticated)/org/[orgSlug]/(main)/crm/deals/[id]/_components/tab-tasks-server'
+import TabAppointmentsServer from '@/(authenticated)/org/[orgSlug]/(main)/crm/deals/[id]/_components/tab-appointments-server'
 import { DealDetailIntroTrigger } from '@/_components/tutorials/deal-detail-intro-trigger'
 import {
   ContactWidgetSkeleton,
   TabProductsSkeleton,
   TabTasksSkeleton,
   TabAppointmentsSkeleton,
-} from './_components/skeletons'
+} from '@/(authenticated)/org/[orgSlug]/(main)/crm/deals/[id]/_components/skeletons'
 
-interface DealPageProps {
+interface DealDetailPageProps {
   params: Promise<{ id: string; orgSlug: string }>
 }
 
-const DealPage = async ({ params }: DealPageProps) => {
+const DealDetailPage = async ({ params }: DealDetailPageProps) => {
   const { id, orgSlug } = await params
   const ctx = await getOrgContext(orgSlug)
 
-  // Critical path: dados necessários para header + resumo imediato
   const deal = await getDealDetails(id, ctx)
   if (!deal) {
     redirect(`/org/${orgSlug}/crm/deals/pipeline`)
   }
 
-  // Queries leves necessárias para dialogs (transfer + lost)
   const [members, lostReasons, completedTutorialIds] = await Promise.all([
     getOrganizationMembers(ctx.orgId),
     getDealLostReasons(ctx.orgId),
@@ -81,4 +78,4 @@ const DealPage = async ({ params }: DealPageProps) => {
   )
 }
 
-export default DealPage
+export default DealDetailPage

@@ -5,26 +5,24 @@ import { getDealsByPipeline } from '@/_data-access/deal/get-deals-by-pipeline'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
 import { getTutorialCompletions } from '@/_data-access/tutorial/get-tutorial-completions'
 import { PipelineIntroTrigger } from '@/_components/tutorials/pipeline-intro-trigger'
-import { PipelineClient } from './_components/pipeline-client'
+import { PipelineClient } from '@/(authenticated)/org/[orgSlug]/(main)/crm/deals/pipeline/_components/pipeline-client'
 import { createDefaultPipeline } from '@/_data-access/pipeline/create-default-pipeline'
 
-interface PipelinePageProps {
+interface DealsPipelinePageProps {
   params: Promise<{ orgSlug: string }>
   searchParams: Promise<{ pipelineId?: string }>
 }
 
-const PipelinePage = async ({ params, searchParams }: PipelinePageProps) => {
+const DealsPipelinePage = async ({ params, searchParams }: DealsPipelinePageProps) => {
   const { orgSlug } = await params
   const { pipelineId: selectedPipelineId } = await searchParams
   const ctx = await getOrgContext(orgSlug)
 
-  // Busca lista de pipelines (para seletor) + pipeline ativo em paralelo
   const [pipelines, pipeline] = await Promise.all([
     getOrgPipelines(ctx.orgId),
     getOrgPipeline(ctx.orgId, selectedPipelineId || undefined),
   ])
 
-  // Se não existir pipeline ativo, cria o default
   const finalPipeline =
     pipeline || (await createDefaultPipeline({ orgId: ctx.orgId }))
 
@@ -63,4 +61,4 @@ const PipelinePage = async ({ params, searchParams }: PipelinePageProps) => {
   )
 }
 
-export default PipelinePage
+export default DealsPipelinePage
