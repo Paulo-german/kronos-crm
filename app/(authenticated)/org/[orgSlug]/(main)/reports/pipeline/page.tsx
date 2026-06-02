@@ -1,6 +1,7 @@
 import { Suspense } from 'react'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getOrgPipelines } from '@/_data-access/pipeline/get-org-pipelines'
+import { getProducts } from '@/_data-access/product/get-products'
 import { getFunnelDataForReports } from '@/_data-access/reports/pipeline/get-funnel-data-for-reports'
 import { getPipelineVelocity } from '@/_data-access/reports/pipeline/get-pipeline-velocity'
 import { getDealsAtRisk } from '@/_data-access/reports/pipeline/get-deals-at-risk'
@@ -50,8 +51,9 @@ export default async function PipelineReportPage({ params, searchParams }: Pipel
 
   const inactiveDays = Number(resolvedSearchParams.inactiveDays) || 14
 
-  const [pipelines, funnelData, velocityData, dealsAtRiskData] = await Promise.all([
+  const [pipelines, products, funnelData, velocityData, dealsAtRiskData] = await Promise.all([
     getOrgPipelines(ctx.orgId),
+    getProducts(ctx.orgId),
     getFunnelDataForReports(ctx, dateRange, filters),
     getPipelineVelocity(ctx, dateRange, filters),
     getDealsAtRisk(ctx, {
@@ -74,24 +76,36 @@ export default async function PipelineReportPage({ params, searchParams }: Pipel
       />
 
       {/* Filtros locais de pipeline */}
-      <PipelineFilters pipelines={pipelineOptions} />
+      <PipelineFilters pipelines={pipelineOptions} products={products} />
 
       {/* Row 1: Velocidade do pipeline (full width) */}
       <Suspense fallback={<VelocityCardSkeleton />}>
         <PipelineVelocityCard data={velocityData} />
       </Suspense>
 
-      {/* Row 2: Funil (2/3) + Deals em Risco (1/3) */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <PipelineFunnelCard data={funnelData} />
+      {/* Row 2: Funil (2/3) + Deals em Risco (1/3) — funil só aparece com pipeline específico */}
+      {filters.pipelineId ? (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <PipelineFunnelCard data={funnelData} />
+          </div>
+          <PipelineDealsAtRiskCard
+            deals={dealsAtRiskData.deals}
+            total={dealsAtRiskData.total}
+            orgSlug={orgSlug}
+          />
         </div>
-        <PipelineDealsAtRiskCard
-          deals={dealsAtRiskData.deals}
-          total={dealsAtRiskData.total}
-          orgSlug={orgSlug}
-        />
-      </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-1">
+            <PipelineDealsAtRiskCard
+              deals={dealsAtRiskData.deals}
+              total={dealsAtRiskData.total}
+              orgSlug={orgSlug}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Row 3: Metas de pipeline */}
       <div className="flex flex-col gap-3">
