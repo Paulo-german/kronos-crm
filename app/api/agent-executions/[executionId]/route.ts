@@ -50,7 +50,7 @@ export async function GET(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  // RBAC: apenas OWNER e ADMIN podem visualizar execuções
+  // Permite acesso a OWNER/ADMIN (agent.update) ou usuários com isSupportAgent
   const permission = canPerformAction(
     { userId: user.id, orgId: member.organizationId, userRole: member.role as MemberRole },
     'agent',
@@ -58,7 +58,14 @@ export async function GET(
   )
 
   if (!permission.allowed) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    const dbUser = await db.user.findUnique({
+      where: { id: user.id },
+      select: { isSupportAgent: true },
+    })
+
+    if (!dbUser?.isSupportAgent) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
   }
 
   const execution = await getAgentExecutionById(executionId, member.organizationId)
