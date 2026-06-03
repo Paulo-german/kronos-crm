@@ -97,11 +97,11 @@ export function SettingsSidebar({ orgSlug }: SettingsSidebarProps) {
   ]
 
   return (
-    <aside className="hidden w-60 shrink-0 flex-col border-r border-border/50 bg-sidebar text-sidebar-foreground md:flex">
+    <aside className="hidden w-60 shrink-0 flex-col bg-primary-dark text-white md:flex">
       <nav className="flex flex-col gap-6 px-3 py-6">
         {sections.map((section) => (
           <div key={section.title} className="flex flex-col gap-1">
-            <span className="px-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">
+            <span className="px-2 text-[11px] font-semibold uppercase tracking-wider text-white/40">
               {section.title}
             </span>
             {section.items.map((item) => {
@@ -112,11 +112,14 @@ export function SettingsSidebar({ orgSlug }: SettingsSidebarProps) {
                 return (
                   <div
                     key={item.href}
-                    className="flex cursor-not-allowed items-center gap-3 rounded-md px-2 py-1.5 text-sm font-medium opacity-50"
+                    className="flex cursor-not-allowed items-center gap-3 rounded-md px-2 py-1.5 text-sm font-medium text-white/30"
                   >
                     <span className="h-4 w-4 shrink-0">{item.icon}</span>
                     {item.label}
-                    <Badge variant="secondary" className="ml-auto text-xs">
+                    <Badge
+                      variant="secondary"
+                      className="ml-auto bg-white/10 text-[10px] text-white/40 hover:bg-white/10"
+                    >
                       Em breve
                     </Badge>
                   </div>
@@ -128,10 +131,10 @@ export function SettingsSidebar({ orgSlug }: SettingsSidebarProps) {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    'flex items-center gap-3 rounded-md px-2 py-1.5 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground',
+                    'flex items-center gap-3 rounded-md px-2 py-1.5 text-sm font-medium transition-colors hover:bg-white/10 hover:text-white',
                     isActive
-                      ? 'bg-accent text-accent-foreground'
-                      : 'text-muted-foreground',
+                      ? 'bg-white/15 text-white'
+                      : 'text-white/70',
                   )}
                 >
                   <span className="h-4 w-4 shrink-0">{item.icon}</span>
