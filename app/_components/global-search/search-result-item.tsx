@@ -5,10 +5,25 @@ import { CommandItem } from '@/_components/ui/command'
 import { SearchResultItem, SearchResultType } from '@/_data-access/search/types'
 import { HighlightText } from './highlight-text'
 
-const iconMap: Record<SearchResultType, React.ElementType> = {
-  contact: User,
-  company: Building2,
-  deal: Kanban,
+const typeConfig: Record<
+  SearchResultType,
+  { icon: React.ElementType; iconClass: string; containerClass: string }
+> = {
+  contact: {
+    icon: User,
+    iconClass: 'text-blue-600',
+    containerClass: 'bg-blue-500/10',
+  },
+  company: {
+    icon: Building2,
+    iconClass: 'text-orange-600',
+    containerClass: 'bg-orange-500/10',
+  },
+  deal: {
+    icon: Kanban,
+    iconClass: 'text-emerald-600',
+    containerClass: 'bg-emerald-500/10',
+  },
 }
 
 interface SearchResultItemComponentProps {
@@ -22,13 +37,21 @@ export function SearchResultItemComponent({
   query,
   onSelect,
 }: SearchResultItemComponentProps) {
-  const Icon = iconMap[item.type]
+  const { icon: Icon, iconClass, containerClass } = typeConfig[item.type]
 
   return (
-    <CommandItem value={item.id} onSelect={() => onSelect(item.href)}>
-      <Icon className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
-      <div className="flex min-w-0 flex-col">
-        <span className="truncate">
+    <CommandItem
+      value={item.id}
+      onSelect={() => onSelect(item.href)}
+      className="flex items-center gap-3 rounded-md px-2 py-2"
+    >
+      <div
+        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${containerClass}`}
+      >
+        <Icon className={`h-4 w-4 ${iconClass}`} />
+      </div>
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <span className="truncate text-sm font-medium text-foreground">
           <HighlightText text={item.title} query={query} />
         </span>
         {item.subtitle && (
