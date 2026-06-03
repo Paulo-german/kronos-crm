@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Badge, type BadgeProps } from '@/_components/ui/badge'
 import { Button } from '@/_components/ui/button'
-import { CheckCircle2Icon, XCircleIcon, SkipForwardIcon, ClockIcon } from 'lucide-react'
+import { CheckCircle2Icon, XCircleIcon, SkipForwardIcon, ClockIcon, MessageCircleIcon, AlertCircleIcon } from 'lucide-react'
 import Link from 'next/link'
 import type { AutomationDetailDto } from '@/_data-access/automation/get-automation-by-id'
 import { formatDistanceToNow } from 'date-fns'
@@ -40,6 +40,49 @@ const STATUS_CONFIG: Record<
     variant: 'secondary',
     label: 'Ignorada',
   },
+}
+
+interface WhatsAppResult {
+  sent: number
+  failed: number
+  skipped: number
+}
+
+function parseWhatsAppResult(actionResult: Record<string, unknown> | null): WhatsAppResult | null {
+  if (!actionResult) return null
+  const whatsapp = actionResult.whatsapp
+  if (!whatsapp || typeof whatsapp !== 'object') return null
+  const w = whatsapp as Record<string, unknown>
+  if (typeof w.sent !== 'number' && typeof w.failed !== 'number' && typeof w.skipped !== 'number') return null
+  return {
+    sent: typeof w.sent === 'number' ? w.sent : 0,
+    failed: typeof w.failed === 'number' ? w.failed : 0,
+    skipped: typeof w.skipped === 'number' ? w.skipped : 0,
+  }
+}
+
+function WhatsAppSummary({ result }: { result: WhatsAppResult }) {
+  const hasIssue = result.failed > 0 || (result.skipped > 0 && result.sent === 0)
+
+  return (
+    <span className={`flex items-center gap-1 text-xs ${hasIssue ? 'text-amber-600' : 'text-muted-foreground'}`}>
+      {hasIssue
+        ? <AlertCircleIcon className="h-3 w-3 shrink-0" />
+        : <MessageCircleIcon className="h-3 w-3 shrink-0" />
+      }
+      WhatsApp:
+      {result.sent > 0 && <span className="text-emerald-600">{result.sent} enviado{result.sent > 1 ? 's' : ''}</span>}
+      {result.failed > 0 && <span className="text-destructive">{result.failed} falha{result.failed > 1 ? 's' : ''}</span>}
+      {result.skipped > 0 && (
+        <span>
+          {result.skipped} ignorado{result.skipped > 1 ? 's' : ''}
+          {result.sent === 0 && result.failed === 0 && (
+            <span className="text-amber-600"> — verifique telefone do usuário e inbox ativo</span>
+          )}
+        </span>
+      )}
+    </span>
+  )
 }
 
 interface ExecutionHistoryProps {
@@ -81,6 +124,7 @@ export function ExecutionHistory({ executions, orgSlug }: ExecutionHistoryProps)
         <div className="space-y-2">
           {filteredExecutions.map((execution) => {
             const config = STATUS_CONFIG[execution.status]
+            const whatsapp = parseWhatsAppResult(execution.actionResult)
             return (
               <div
                 key={execution.id}
@@ -109,6 +153,11 @@ export function ExecutionHistory({ executions, orgSlug }: ExecutionHistoryProps)
                   </div>
                   {execution.errorMessage && (
                     <p className="mt-1 text-xs text-destructive">{execution.errorMessage}</p>
+                  )}
+                  {whatsapp && (
+                    <div className="mt-1">
+                      <WhatsAppSummary result={whatsapp} />
+                    </div>
                   )}
                   <p className="mt-1 text-xs text-muted-foreground">
                     {formatDistanceToNow(new Date(execution.executedAt), {
