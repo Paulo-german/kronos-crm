@@ -1,3 +1,4 @@
+import { logger } from '@trigger.dev/sdk/v3'
 import { redis } from '@/_lib/redis'
 import {
   sendWhatsappMessage,
@@ -71,7 +72,15 @@ export async function sendOutboundMessage(
   if (credentials.connectionType !== 'SIMULATOR') {
     await Promise.all(
       sentIds.map((sentId) =>
-        redis.set(`dedup:${sentId}`, '1', 'EX', dedupTtlSeconds).catch(() => {}),
+        redis.set(`dedup:${sentId}`, '1', 'EX', dedupTtlSeconds).catch((redisError) => {
+          // Falha no Redis não bloqueia o envio, mas sem a dedup key o webhook pode
+          // tratar esta mensagem do agente como input do usuário e criar duplicata
+          logger.error('sendOutboundMessage: failed to register dedup key in Redis', {
+            sentId,
+            conversationId,
+            error: redisError instanceof Error ? redisError.message : String(redisError),
+          })
+        }),
       ),
     )
   }
