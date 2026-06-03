@@ -133,6 +133,11 @@ export async function runResponder(
   if (!hasToolCalls) {
     // Call 2 falhou ou retornou vazio sem tool calls — tenta uma última chamada
     // simples com o contexto da conversa, sem referência a ferramentas.
+    logger.info('Responder failed without tool calls — attempting last-resort fallback', {
+      conversationId,
+      organizationId,
+      reason: responderError ? 'responder_error' : 'empty_message',
+    })
     let lastResortError: string | undefined
     try {
       const lastResortResult = await generateText({

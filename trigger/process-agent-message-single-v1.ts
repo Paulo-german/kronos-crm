@@ -845,6 +845,11 @@ export async function runSingleV1(
       // Sem tool calls e sem texto, mas o modelo parou por max_tokens — tinha conteúdo
       // mas esgotou o limite processando o contexto. Retenta sem tools e com o dobro de tokens.
       ctx.traceTags.push('last_resort_fallback')
+      triggerMetadata.set('lastResortFallbackTriggered', true)
+      ctx.log('step:5b last_resort_fallback', 'TRIGGERED', {
+        finishReason: result.finishReason,
+        outputTokens: result.usage?.outputTokens,
+      })
       const lastResortResult = await generateText({
         model: getModel(promptContext.modelId),
         messages: [
@@ -888,11 +893,22 @@ export async function runSingleV1(
         }
         ctx.log('step:5b last_resort_fallback', 'PASS', {
           responseLength: responseText.length,
+          inputTokens: lastResortUsage.inputTokens,
+          outputTokens: lastResortUsage.outputTokens,
         })
         ctx.tracker.addStep({
           type: 'FALLBACK_LLM_CALL',
           status: 'PASSED',
           output: { responseLength: responseText.length, reason: 'last_resort_fallback' },
+        })
+      } else {
+        const failReason = lastResortResult ? 'empty_text' : 'llm_error'
+        ctx.log('step:5b last_resort_fallback', 'FAIL', { reason: failReason })
+        triggerMetadata.set('lastResortFallbackFailed', failReason)
+        ctx.tracker.addStep({
+          type: 'FALLBACK_LLM_CALL',
+          status: 'FAILED',
+          output: { reason: 'last_resort_fallback', failReason },
         })
       }
     }

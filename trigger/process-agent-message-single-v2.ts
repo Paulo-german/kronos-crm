@@ -823,6 +823,7 @@ export async function runSingleV2(
 
   if (responderOutput.usedLastResortFallback) {
     ctx.traceTags.push('last_resort_fallback')
+    triggerMetadata.set('lastResortFallbackTriggered', true)
     if (responseText) {
       ctx.log('step:5b last_resort_fallback', 'PASS', {
         responseLength: responseText.length,
@@ -831,6 +832,19 @@ export async function runSingleV2(
         type: 'FALLBACK_LLM_CALL',
         status: 'PASSED',
         output: { responseLength: responseText.length, reason: 'last_resort_fallback' },
+      })
+    } else {
+      ctx.log('step:5b last_resort_fallback', 'FAIL', {
+        responderError: responderOutput.responderError,
+        lastResortError: responderOutput.lastResortError,
+      })
+      ctx.tracker.addStep({
+        type: 'FALLBACK_LLM_CALL',
+        status: 'FAILED',
+        output: {
+          reason: 'last_resort_fallback',
+          ...(responderOutput.lastResortError && { lastResortError: responderOutput.lastResortError }),
+        },
       })
     }
   } else if (responderOutput.usedFallback) {
