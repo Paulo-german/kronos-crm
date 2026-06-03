@@ -755,6 +755,7 @@ export async function runSingleV1(
   let responseText = hasSteps
     ? (result.output?.message ?? '')
     : result.text
+  let lastResortUsage = { inputTokens: 0, outputTokens: 0 }
 
   // Guard de monotonicidade: step só avança, nunca regride.
   // O LLM retorna o UUID do step — convertemos para `order` via lookup no context.
@@ -838,6 +839,60 @@ export async function runSingleV1(
           type: 'FALLBACK_LLM_CALL',
           status: 'PASSED',
           output: { responseLength: responseText.length },
+        })
+      }
+    } else if (result.finishReason === 'length') {
+      // Sem tool calls e sem texto, mas o modelo parou por max_tokens — tinha conteúdo
+      // mas esgotou o limite processando o contexto. Retenta sem tools e com o dobro de tokens.
+      ctx.traceTags.push('last_resort_fallback')
+      const lastResortResult = await generateText({
+        model: getModel(promptContext.modelId),
+        messages: [
+          ...llmMessages,
+          {
+            role: 'system' as const,
+            content:
+              'Responda a última mensagem do cliente de forma natural e direta, ' +
+              'com base na conversa. Seja breve.',
+          },
+        ],
+        temperature: LLM_TEMPERATURE,
+        maxOutputTokens: MAX_OUTPUT_TOKENS * 2,
+        experimental_telemetry: {
+          isEnabled: true,
+          tracer: langfuseTracer,
+          functionId: 'chat-completion-last-resort',
+          metadata: {
+            agentId: ctx.effectiveAgentId,
+            conversationId: ctx.conversationId,
+            reason: 'last_resort_fallback',
+          },
+        },
+      }).catch((lastResortError) => {
+        logger.warn('Last-resort fallback LLM call failed', {
+          conversationId: ctx.conversationId,
+          organizationId: ctx.organizationId,
+          error:
+            lastResortError instanceof Error
+              ? lastResortError.message
+              : String(lastResortError),
+        })
+        return null
+      })
+
+      if (lastResortResult?.text?.trim()) {
+        responseText = lastResortResult.text.trim()
+        lastResortUsage = {
+          inputTokens: lastResortResult.usage?.inputTokens ?? 0,
+          outputTokens: lastResortResult.usage?.outputTokens ?? 0,
+        }
+        ctx.log('step:5b last_resort_fallback', 'PASS', {
+          responseLength: responseText.length,
+        })
+        ctx.tracker.addStep({
+          type: 'FALLBACK_LLM_CALL',
+          status: 'PASSED',
+          output: { responseLength: responseText.length, reason: 'last_resort_fallback' },
         })
       }
     }
@@ -1156,7 +1211,10 @@ export async function runSingleV1(
   // 9. Ajuste de créditos (refund se custo real < estimado, debit extra se >)
   // -----------------------------------------------------------------------
   const totalTokens =
-    (result.usage?.inputTokens ?? 0) + (result.usage?.outputTokens ?? 0)
+    (result.usage?.inputTokens ?? 0) +
+    (result.usage?.outputTokens ?? 0) +
+    lastResortUsage.inputTokens +
+    lastResortUsage.outputTokens
   const actualCost = calculateCreditCost(
     promptContext.modelId,
     totalTokens,
