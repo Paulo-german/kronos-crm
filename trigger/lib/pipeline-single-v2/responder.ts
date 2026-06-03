@@ -33,7 +33,9 @@ export interface RunResponderOutput {
   fallbackClassifiedId?: string
   responderError?: string
   fallbackError?: string
+  lastResortError?: string
   usedFallback: boolean
+  usedLastResortFallback?: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -129,12 +131,61 @@ export async function runResponder(
   )
 
   if (!hasToolCalls) {
-    // Sem tool calls e sem resposta — genuinamente vazio
-    return {
-      message: '',
-      usage: { inputTokens: 0, outputTokens: 0 },
-      usedFallback: false,
-      responderError,
+    // Call 2 falhou ou retornou vazio sem tool calls — tenta uma última chamada
+    // simples com o contexto da conversa, sem referência a ferramentas.
+    let lastResortError: string | undefined
+    try {
+      const lastResortResult = await generateText({
+        model: getModel(modelId),
+        messages: [
+          ...llmMessages,
+          {
+            role: 'system' as const,
+            content:
+              'Responda a última mensagem do cliente de forma natural e direta, ' +
+              'com base na conversa. Seja breve.',
+          },
+        ],
+        temperature: LLM_TEMPERATURE,
+        maxOutputTokens: MAX_OUTPUT_TOKENS,
+        experimental_telemetry: {
+          isEnabled: true,
+          tracer: langfuseTracer,
+          functionId: 'chat-completion-last-resort',
+          metadata: {
+            agentId,
+            conversationId,
+            reason: 'last_resort_fallback',
+          },
+        },
+      })
+
+      const message = lastResortResult.text.trim()
+      return {
+        message,
+        usage: {
+          inputTokens: lastResortResult.usage?.inputTokens ?? 0,
+          outputTokens: lastResortResult.usage?.outputTokens ?? 0,
+        },
+        responderError,
+        usedFallback: true,
+        usedLastResortFallback: true,
+      }
+    } catch (err) {
+      lastResortError = err instanceof Error ? err.message : String(err)
+      logger.warn('Last-resort fallback LLM call failed', {
+        conversationId,
+        organizationId,
+        error: lastResortError,
+      })
+      return {
+        message: '',
+        usage: { inputTokens: 0, outputTokens: 0 },
+        responderError,
+        lastResortError,
+        usedFallback: false,
+        usedLastResortFallback: true,
+      }
     }
   }
 

@@ -815,12 +815,25 @@ export async function runSingleV2(
   let responseText = responderOutput.message
   const responderErrorMsg = responderOutput.responderError
   const fallbackErrorMsg = responderOutput.fallbackError
+  const lastResortErrorMsg = responderOutput.lastResortError
   // classifiedId do fallback — sobrescrito pelo Call 3 se bem-sucedido
   let classifiedId: string | undefined = responderOutput.fallbackClassifiedId
   // classifierErrorMsg — preenchida após await classifierPromise; undefined no empty_response path
   let classifierErrorMsg: string | undefined
 
-  if (responderOutput.usedFallback) {
+  if (responderOutput.usedLastResortFallback) {
+    ctx.traceTags.push('last_resort_fallback')
+    if (responseText) {
+      ctx.log('step:5b last_resort_fallback', 'PASS', {
+        responseLength: responseText.length,
+      })
+      ctx.tracker.addStep({
+        type: 'FALLBACK_LLM_CALL',
+        status: 'PASSED',
+        output: { responseLength: responseText.length, reason: 'last_resort_fallback' },
+      })
+    }
+  } else if (responderOutput.usedFallback) {
     ctx.traceTags.push('fallback')
     if (responseText) {
       ctx.log('step:5b tool_only_fallback', 'PASS', {
@@ -919,7 +932,7 @@ export async function runSingleV2(
       metadata: { subtype: 'EMPTY_RESPONSE' satisfies InfoSubtype },
     })
     // Plataforma: se houve falha explícita de LLM, cria evento PROCESSING_ERROR visível ao operador
-    if (responderErrorMsg || fallbackErrorMsg) {
+    if (responderErrorMsg || fallbackErrorMsg || lastResortErrorMsg) {
       await createConversationEvent({
         conversationId: ctx.conversationId,
         type: 'PROCESSING_ERROR',
@@ -930,6 +943,7 @@ export async function runSingleV2(
           subtype: 'LLM_ERROR' satisfies ProcessingErrorSubtype,
           ...(responderErrorMsg && { responderError: responderErrorMsg }),
           ...(fallbackErrorMsg && { fallbackError: fallbackErrorMsg }),
+          ...(lastResortErrorMsg && { lastResortError: lastResortErrorMsg }),
           ...(classifierErrorMsg && { classifierError: classifierErrorMsg }),
         },
       })
@@ -941,6 +955,8 @@ export async function runSingleV2(
     if (responderErrorMsg)
       triggerMetadata.set('responderError', responderErrorMsg)
     if (fallbackErrorMsg) triggerMetadata.set('fallbackError', fallbackErrorMsg)
+    if (lastResortErrorMsg)
+      triggerMetadata.set('lastResortError', lastResortErrorMsg)
     if (classifierErrorMsg)
       triggerMetadata.set('classifierError', classifierErrorMsg)
     // Langfuse: inclui mensagens de erro na metadata do trace para diagnóstico sem download
@@ -952,6 +968,7 @@ export async function runSingleV2(
         responderMessageLength: responseText.length,
         ...(responderErrorMsg && { responderError: responderErrorMsg }),
         ...(fallbackErrorMsg && { fallbackError: fallbackErrorMsg }),
+        ...(lastResortErrorMsg && { lastResortError: lastResortErrorMsg }),
         ...(classifierErrorMsg && { classifierError: classifierErrorMsg }),
       },
     })
@@ -986,6 +1003,7 @@ export async function runSingleV2(
         fallbackAttempted: hadToolCalls,
         ...(responderErrorMsg && { responderError: responderErrorMsg }),
         ...(fallbackErrorMsg && { fallbackError: fallbackErrorMsg }),
+        ...(lastResortErrorMsg && { lastResortError: lastResortErrorMsg }),
         ...(classifierErrorMsg && { classifierError: classifierErrorMsg }),
       },
     })
