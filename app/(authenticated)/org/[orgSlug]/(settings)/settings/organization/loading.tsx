@@ -3,12 +3,7 @@ import { Card, CardContent, CardHeader } from '@/_components/ui/card'
 
 export default function OrganizationSettingsLoading() {
   return (
-    <div className="flex flex-col justify-center gap-2">
-      {/* Back button */}
-      <div className="mb-6">
-        <Skeleton className="h-9 w-24 rounded-md" />
-      </div>
-
+    <div className="flex flex-col gap-2 p-6 md:p-8">
       {/* Title */}
       <div className="mb-4">
         <Skeleton className="h-8 w-48" />

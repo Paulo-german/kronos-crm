@@ -29,7 +29,7 @@ const IntegrationCardSkeleton = () => (
 )
 
 const IntegrationsLoading = () => (
-  <div className="container mx-auto space-y-6 py-6">
+  <div className="space-y-6 p-6 md:p-8">
     <div className="space-y-2">
       <Skeleton className="h-8 w-32" />
       <Skeleton className="h-4 w-56" />

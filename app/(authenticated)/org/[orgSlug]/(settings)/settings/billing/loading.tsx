@@ -3,10 +3,7 @@ import { Card, CardContent, CardHeader } from '@/_components/ui/card'
 
 export default function BillingSettingsLoading() {
   return (
-    <div className="container mx-auto space-y-8 py-6">
-      {/* Back button */}
-      <Skeleton className="h-9 w-24 rounded-md" />
-
+    <div className="space-y-8 p-6 md:p-8">
       {/* Tabs */}
       <div className="grid h-12 w-full grid-cols-2 rounded-md border border-border/50 bg-tab p-1">
         <Skeleton className="h-full rounded-md" />

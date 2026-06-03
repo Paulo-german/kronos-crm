@@ -31,12 +31,7 @@ function MemberRowSkeleton() {
 
 export default function MembersLoading() {
   return (
-    <div className="container mx-auto space-y-6 py-6">
-      {/* Back button */}
-      <div className="mb-6">
-        <Skeleton className="h-9 w-24 rounded-md" />
-      </div>
-
+    <div className="space-y-6 p-6 md:p-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">

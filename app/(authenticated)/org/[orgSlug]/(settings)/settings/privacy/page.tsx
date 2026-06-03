@@ -30,7 +30,7 @@ const PrivacySettingsPage = async ({ params }: PrivacySettingsPageProps) => {
   ])
 
   return (
-    <div className="container mx-auto space-y-6 py-6">
+    <div className="space-y-6 p-6 md:p-8">
       <Header>
         <HeaderLeft>
           <HeaderTitle>Privacidade & LGPD</HeaderTitle>

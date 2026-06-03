@@ -68,7 +68,7 @@ export default async function BillingSettingsPage({
   const planName = plan ? (PLAN_LABELS[plan] ?? plan) : null
 
   return (
-    <div className="container mx-auto space-y-8 py-6">
+    <div className="space-y-8 p-6 md:p-8">
       <Header>
         <HeaderLeft>
           <HeaderTitle>Assinatura e Faturamento</HeaderTitle>
