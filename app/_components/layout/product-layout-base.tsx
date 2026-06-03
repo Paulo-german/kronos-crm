@@ -102,26 +102,26 @@ export const ProductLayoutBase = async ({
   }
 
   return (
-    <div className="flex h-dvh w-full flex-col bg-background">
+    <div className="flex h-dvh w-full flex-col bg-primary-dark">
       <TrialBanner orgId={orgId} orgSlug={orgSlug} userRole={userRole} />
+      <ProductTopBar
+        product={product}
+        orgSlug={orgSlug}
+        user={topBarUser}
+        activeModules={activeModuleSlugs}
+        initialUnreadCount={totalUnreadCount}
+        initialNotifications={mergedNotifications}
+        completedTutorialIds={completedTutorialIds}
+        isSuperAdmin={user?.isSuperAdmin ?? false}
+        credits={
+          creditBalance
+            ? { available: creditBalance.available, monthlyLimit: creditBalance.monthlyLimit }
+            : undefined
+        }
+      />
       <div className="flex min-h-0 flex-1">
         {sidebar}
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <ProductTopBar
-            product={product}
-            orgSlug={orgSlug}
-            user={topBarUser}
-            activeModules={activeModuleSlugs}
-            initialUnreadCount={totalUnreadCount}
-            initialNotifications={mergedNotifications}
-            completedTutorialIds={completedTutorialIds}
-            isSuperAdmin={user?.isSuperAdmin ?? false}
-            credits={
-              creditBalance
-                ? { available: creditBalance.available, monthlyLimit: creditBalance.monthlyLimit }
-                : undefined
-            }
-          />
           <ContentWrapper>{children}</ContentWrapper>
           {trialStatus.isOnTrial && trialStatus.daysRemaining <= 5 && (
             <TrialReminderDialog daysRemaining={trialStatus.daysRemaining} orgSlug={orgSlug} />

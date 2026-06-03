@@ -38,7 +38,7 @@ const PlatformLayout = async ({ children, params }: PlatformLayoutProps) => {
 
   return (
     <div className="flex h-dvh w-full flex-col bg-background">
-      <header className="flex h-12 shrink-0 items-center justify-between border-b border-border/50 bg-background px-4">
+      <header className="flex h-14 shrink-0 items-center justify-between border-b border-border/50 bg-background px-4">
         <div className="flex items-center gap-3">
           <BackButton orgSlug={orgSlug} />
           <Link href={`/org/${orgSlug}/crm/home`} className="flex items-center gap-2">

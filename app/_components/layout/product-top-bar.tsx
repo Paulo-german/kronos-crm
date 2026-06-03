@@ -2,6 +2,7 @@ import { ProductSwitcher } from '@/_components/layout/product-switcher'
 import { SecondaryMenu } from '@/_components/layout/secondary-menu'
 import { AccountMenu } from '@/_components/layout/account-menu'
 import { ProductMobileDrawer } from '@/_components/layout/product-mobile-drawer'
+import { GlobalSearch } from '@/_components/global-search'
 import type { NotificationDto } from '@/_data-access/notification/types'
 import type { ModuleSlug } from '@/_data-access/module/types'
 
@@ -38,7 +39,7 @@ export const ProductTopBar = ({
   credits,
 }: ProductTopBarProps) => {
   return (
-    <header className="flex h-12 shrink-0 items-center justify-between border-b border-border/50 bg-background px-3">
+    <header className="relative flex h-16 shrink-0 items-center justify-between bg-primary-dark px-3 text-white [&_button:hover]:bg-white/10 [&_button:hover]:text-white">
       <div className="flex items-center gap-1">
         <ProductMobileDrawer product={product} orgSlug={orgSlug} />
         <ProductSwitcher
@@ -48,17 +49,25 @@ export const ProductTopBar = ({
         />
       </div>
 
-      <SecondaryMenu
-        product={product}
-        orgSlug={orgSlug}
-        initialUnreadCount={initialUnreadCount}
-        initialNotifications={initialNotifications}
-        completedTutorialIds={completedTutorialIds}
-        isSuperAdmin={isSuperAdmin}
-        credits={credits}
-      />
+      {product === 'crm' && (
+        <div className="absolute left-1/2 -translate-x-1/2">
+          <GlobalSearch />
+        </div>
+      )}
 
-      <AccountMenu user={user} orgSlug={orgSlug} />
+      <div className="flex items-center">
+        <SecondaryMenu
+          product={product}
+          orgSlug={orgSlug}
+          initialUnreadCount={initialUnreadCount}
+          initialNotifications={initialNotifications}
+          completedTutorialIds={completedTutorialIds}
+          isSuperAdmin={isSuperAdmin}
+          credits={credits}
+        />
+        <div className="mx-1 h-5 w-px bg-white/20 dark:bg-border/50" />
+        <AccountMenu user={user} orgSlug={orgSlug} />
+      </div>
     </header>
   )
 }

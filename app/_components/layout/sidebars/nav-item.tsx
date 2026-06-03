@@ -19,12 +19,12 @@ export const NavItem = ({ href, icon, label, exact = false }: NavItemProps) => {
     <Link
       href={href}
       className={cn(
-        'flex h-9 items-center rounded-md px-2.5 text-sm font-medium transition-colors hover:bg-primary/10 hover:text-primary',
-        isActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground',
+        'ease-[cubic-bezier(0.25,0.76,0.35,1)] flex h-9 items-center rounded-md text-sm font-medium transition-colors hover:bg-white/10 hover:text-white dark:hover:bg-primary/10 dark:hover:text-primary',
+        isActive ? 'bg-white/15 text-white dark:bg-primary/10 dark:text-primary' : 'text-primary dark:text-muted-foreground',
       )}
     >
-      <div className="shrink-0">{icon}</div>
-      <span className="ml-3 overflow-hidden whitespace-nowrap opacity-0 transition-opacity delay-100 duration-150 group-hover/sidebar:opacity-100">
+      <div className="flex w-12 shrink-0 items-center justify-center">{icon}</div>
+      <span className="ease-[cubic-bezier(0.25,0.76,0.35,1)] max-w-0 overflow-hidden whitespace-nowrap pr-3 opacity-0 transition-all duration-300 group-hover/sidebar:max-w-[180px] group-hover/sidebar:opacity-100">
         {label}
       </span>
     </Link>

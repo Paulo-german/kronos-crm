@@ -51,18 +51,32 @@ export const UserAvatarDropdown = ({ user, orgSlug }: UserAvatarDropdownProps) =
         </button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{user.fullName ?? 'Usuário'}</p>
-            <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+      <DropdownMenuContent
+        align="end"
+        sideOffset={12}
+        className="w-72 border-0 bg-primary-dark p-2 text-white [--accent:0_0%_100%_/_0.10] [--accent-foreground:0_0%_100%]"
+      >
+        <DropdownMenuLabel className="px-2 py-3 font-normal">
+          <div className="flex items-center gap-3">
+            <Avatar className="size-10 shrink-0">
+              <AvatarImage src={user.avatarUrl ?? undefined} alt={user.fullName ?? user.email} />
+              <AvatarFallback className="bg-white/10 text-sm font-semibold text-white">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold leading-tight">
+                {user.fullName ?? 'Usuário'}
+              </p>
+              <p className="truncate text-xs text-white/50">{user.email}</p>
+            </div>
           </div>
         </DropdownMenuLabel>
 
-        <DropdownMenuSeparator />
+        <DropdownMenuSeparator className="bg-white/10" />
 
         <DropdownMenuItem asChild>
-          <Link href="/account/profile" className="cursor-pointer">
+          <Link href="/account/profile" className="cursor-pointer py-2.5">
             <User className="mr-2 size-4" />
             Meu Perfil
           </Link>
@@ -70,17 +84,17 @@ export const UserAvatarDropdown = ({ user, orgSlug }: UserAvatarDropdownProps) =
 
         {orgSlug && (
           <DropdownMenuItem asChild>
-            <Link href={`/org/${orgSlug}/notifications/preferences`} className="cursor-pointer">
+            <Link href={`/org/${orgSlug}/notifications/preferences`} className="cursor-pointer py-2.5">
               <Bell className="mr-2 size-4" />
               Notificações
             </Link>
           </DropdownMenuItem>
         )}
 
-        <DropdownMenuSeparator />
+        <DropdownMenuSeparator className="bg-white/10" />
 
         <DropdownMenuItem
-          className="cursor-pointer text-destructive focus:text-destructive"
+          className="cursor-pointer py-2.5 text-destructive focus:text-destructive"
           onClick={() => executeSignOut()}
         >
           <LogOut className="mr-2 size-4" />

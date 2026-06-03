@@ -7,12 +7,10 @@ import {
   Users,
   Plug,
   CreditCard,
-  Zap,
-  UserIcon,
-  Lock,
   Shield,
   Map,
   Gift,
+  BookMarked,
 } from 'lucide-react'
 import { cn } from '@/_lib/utils'
 import { Badge } from '@/_components/ui/badge'
@@ -55,6 +53,12 @@ export function SettingsSidebar({ orgSlug }: SettingsSidebarProps) {
           href: `/org/${orgSlug}/settings/integrations`,
           icon: <Plug className="h-4 w-4" />,
         },
+        {
+          label: 'Planos de Sucesso',
+          href: `/org/${orgSlug}/settings/success-plans`,
+          icon: <BookMarked className="h-4 w-4" />,
+          disabled: true,
+        },
       ],
     },
     {
@@ -65,26 +69,11 @@ export function SettingsSidebar({ orgSlug }: SettingsSidebarProps) {
           href: `/org/${orgSlug}/settings/billing`,
           icon: <CreditCard className="h-4 w-4" />,
         },
-        {
-          label: 'Créditos IA',
-          href: `/org/${orgSlug}/settings/credits`,
-          icon: <Zap className="h-4 w-4" />,
-        },
       ],
     },
     {
       title: 'Conta',
       items: [
-        {
-          label: 'Meu Perfil',
-          href: `/org/${orgSlug}/settings/profile`,
-          icon: <UserIcon className="h-4 w-4" />,
-        },
-        {
-          label: 'Privacidade',
-          href: `/org/${orgSlug}/settings/privacy`,
-          icon: <Lock className="h-4 w-4" />,
-        },
         {
           label: 'Segurança',
           href: `/org/${orgSlug}/settings/security`,

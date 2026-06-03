@@ -29,7 +29,7 @@ export const ContentWrapper = ({ children }: ContentWrapperProps) => {
   return (
     <main
       className={cn(
-        'min-h-0 flex-1',
+        'min-h-0 flex-1 rounded-tl-2xl rounded-bl-2xl bg-background',
         isAgentDetailPage ? 'flex overflow-hidden' : 'overflow-y-auto',
         !isFullBleed && 'p-4 md:p-8',
       )}

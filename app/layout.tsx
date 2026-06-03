@@ -48,8 +48,8 @@ export default function RootLayout({
         <GoogleTagManager />
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
-          enableSystem
+          defaultTheme="light"
+          forcedTheme="light"
           disableTransitionOnChange
         >
           <NuqsAdapter>

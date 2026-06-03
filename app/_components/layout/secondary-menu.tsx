@@ -5,7 +5,6 @@ import { Settings2, Radio, Zap, Shield } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import { NotificationBell } from '@/_components/layout/notification-bell'
 import { TutorialsPopoverButton } from '@/_components/layout/tutorials-popover-button'
-import { GlobalSearch } from '@/_components/global-search'
 import {
   Tooltip,
   TooltipContent,
@@ -29,8 +28,8 @@ interface SecondaryMenuProps {
 }
 
 const PRODUCT_SETTINGS_HREF: Record<Product, (slug: string) => string> = {
-  crm: (slug) => `/org/${slug}/crm/settings/pipelines`,
-  inbox: (slug) => `/org/${slug}/inbox/settings/inboxes`,
+  crm: (slug) => `/org/${slug}/crm/settings`,
+  inbox: (slug) => `/org/${slug}/inbox/settings`,
   agents: (slug) => `/org/${slug}/agents/settings`,
 }
 
@@ -54,9 +53,6 @@ export const SecondaryMenu = ({
 
   return (
     <div className="flex items-center gap-0.5">
-      {/* Busca global — apenas CRM */}
-      {product === 'crm' && <GlobalSearch />}
-
       {/* Canais — apenas Inbox */}
       {product === 'inbox' && (
         <Tooltip>
@@ -77,7 +73,7 @@ export const SecondaryMenu = ({
         <Tooltip>
           <TooltipTrigger asChild>
             <Button variant="ghost" size="icon" asChild>
-              <Link href={`/org/${orgSlug}/settings/credits`}>
+              <Link href={`/org/${orgSlug}/agents/settings/credits`}>
                 <Zap className="size-4" />
                 <span className="sr-only">Créditos IA</span>
               </Link>
@@ -103,7 +99,7 @@ export const SecondaryMenu = ({
         notificationsHref={notificationsHref}
       />
 
-      {/* Configurações do produto */}
+{/* Configurações do produto */}
       <Tooltip>
         <TooltipTrigger asChild>
           <Button variant="ghost" size="icon" asChild>
