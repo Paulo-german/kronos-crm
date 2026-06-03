@@ -6,12 +6,20 @@ import { Button } from '@/_components/ui/button'
 
 interface BackButtonProps {
   orgSlug?: string
+  href?: string
 }
 
-export const BackButton = ({ orgSlug }: BackButtonProps) => {
+export const BackButton = ({ orgSlug, href }: BackButtonProps) => {
   const router = useRouter()
 
   const handleBack = () => {
+    if (href) {
+      const origin = sessionStorage.getItem('settings-origin')
+      sessionStorage.removeItem('settings-origin')
+      router.push(origin ?? href)
+      return
+    }
+
     if (window.history.length > 1) {
       router.back()
     } else {

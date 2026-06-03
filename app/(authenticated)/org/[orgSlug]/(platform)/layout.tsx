@@ -40,7 +40,7 @@ const PlatformLayout = async ({ children, params }: PlatformLayoutProps) => {
     <div className="flex h-dvh w-full flex-col bg-background">
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-border/50 bg-background px-4">
         <div className="flex items-center gap-3">
-          <BackButton orgSlug={orgSlug} />
+          <BackButton href={`/org/${orgSlug}/crm/home`} />
           <Link href={`/org/${orgSlug}/crm/home`} className="flex items-center gap-2">
             <KronosLogo className="h-4 w-4 text-primary" />
             <span className="text-sm font-bold tracking-tight text-foreground">KRONOS</span>

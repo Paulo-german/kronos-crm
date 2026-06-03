@@ -12,6 +12,7 @@ import {
   ArrowLeftRight,
   Copy,
   Check,
+  Users,
 } from 'lucide-react'
 import { useState, useCallback } from 'react'
 import { useAction } from 'next-safe-action/hooks'
@@ -60,6 +61,12 @@ export const AccountMenu = ({ user, orgSlug }: AccountMenuProps) => {
   const { organization } = useOrganization()
   const [copied, setCopied] = useState(false)
   const { execute: executeSignOut } = useAction(signOut)
+
+  const storeSettingsOrigin = useCallback(() => {
+    if (!window.location.pathname.includes('/settings')) {
+      sessionStorage.setItem('settings-origin', window.location.pathname)
+    }
+  }, [])
 
   const handleCopyId = useCallback(
     async (event: React.MouseEvent) => {
@@ -138,6 +145,7 @@ export const AccountMenu = ({ user, orgSlug }: AccountMenuProps) => {
           <Link
             href={`/org/${orgSlug}/settings/organization`}
             className="cursor-pointer py-2.5"
+            onClick={storeSettingsOrigin}
           >
             <Building2 className="mr-2 h-4 w-4" />
             Conta
@@ -145,8 +153,19 @@ export const AccountMenu = ({ user, orgSlug }: AccountMenuProps) => {
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link
+            href={`/org/${orgSlug}/settings/members`}
+            className="cursor-pointer py-2.5"
+            onClick={storeSettingsOrigin}
+          >
+            <Users className="mr-2 h-4 w-4" />
+            Membros e Equipes
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link
             href={`/org/${orgSlug}/settings/billing`}
             className="cursor-pointer py-2.5"
+            onClick={storeSettingsOrigin}
           >
             <CreditCard className="mr-2 h-4 w-4" />
             Painel financeiro
@@ -165,6 +184,7 @@ export const AccountMenu = ({ user, orgSlug }: AccountMenuProps) => {
           <Link
             href={`/org/${orgSlug}/settings/integrations`}
             className="cursor-pointer py-2.5"
+            onClick={storeSettingsOrigin}
           >
             <Plug className="mr-2 h-4 w-4" />
             Integrações
