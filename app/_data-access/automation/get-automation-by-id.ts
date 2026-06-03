@@ -32,6 +32,7 @@ export interface AutomationDetailDto {
     executedAt: Date
     durationMs: number | null
     errorMessage: string | null
+    actionResult: Record<string, unknown> | null
     deal: { id: string; title: string } | null
   }>
   executionsTotalCount: number
@@ -73,6 +74,7 @@ const fetchAutomationByIdFromDb = async (
           executedAt: true,
           durationMs: true,
           errorMessage: true,
+          actionResult: true,
           deal: {
             select: { id: true, title: true },
           },
@@ -110,6 +112,7 @@ const fetchAutomationByIdFromDb = async (
       executedAt: execution.executedAt,
       durationMs: execution.durationMs,
       errorMessage: execution.errorMessage,
+      actionResult: execution.actionResult as Record<string, unknown> | null,
       deal: execution.deal,
     })),
     executionsTotalCount: automation._count.executions,

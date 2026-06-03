@@ -1,7 +1,7 @@
 import 'server-only'
 import { db } from '@/_lib/prisma'
 import { createNotification } from '@/_lib/notifications/create-notification'
-import { resolveWhatsAppProvider } from '@/_lib/whatsapp/provider'
+import { resolveWhatsAppProvider, type WhatsAppProvider } from '@/_lib/whatsapp/provider'
 import { withRetry } from '@/_lib/whatsapp/retry'
 import { normalizePhoneToJid } from '@/_lib/whatsapp/normalize-phone'
 import type { NotifyChannel } from '../../types'
@@ -82,15 +82,30 @@ export async function deliverNotification(params: DeliverNotificationParams): Pr
     })
 
     if (!inbox) {
-      // Sem inbox WhatsApp configurado — todas as notificações WhatsApp são puladas
+      console.warn(
+        `[notify-recipients] Nenhum inbox WhatsApp ativo encontrado para org ${params.orgId}. ${recipients.length} notificação(ões) WhatsApp ignorada(s).`,
+      )
       whatsapp.skipped = recipients.length
     } else {
-      const provider = resolveWhatsAppProvider(inbox)
+      let provider: WhatsAppProvider
+      try {
+        provider = resolveWhatsAppProvider(inbox)
+      } catch (providerError) {
+        const msg = providerError instanceof Error ? providerError.message : String(providerError)
+        console.error(
+          `[notify-recipients] Falha ao resolver provider WhatsApp para org ${params.orgId}: ${msg}`,
+        )
+        whatsapp.failed = recipients.length
+        return { inApp, whatsapp }
+      }
 
       const results = await Promise.allSettled(
         recipients.map(async (user) => {
           const jid = normalizePhoneToJid(user.phone)
           if (!jid) {
+            console.warn(
+              `[notify-recipients] Usuário ${user.id} (${user.fullName ?? 'sem nome'}) não tem telefone válido. Notificação WhatsApp ignorada.`,
+            )
             return { skipped: true as const }
           }
           await withRetry(() => provider.sendText(jid, params.resolvedBody))
