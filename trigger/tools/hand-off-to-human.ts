@@ -236,6 +236,8 @@ async function checkUserNotificationPreference(
 /**
  * Executa o envio da notificacao WhatsApp para o atendente.
  * Recebe os dados ja buscados da conversation para evitar query duplicada.
+ * Recebe `preResolvedPhone` para evitar segunda query ao banco quando o caller
+ * ja buscou o telefone do assignee para compor o output da tool.
  * O mode afeta o wording da mensagem enviada — transfer vs notify.
  * Lança erro em caso de falha — o caller deve capturar (best-effort).
  */
@@ -245,6 +247,7 @@ async function sendHandOffNotification(
   reason: string,
   conversationData: ConversationDataForNotification,
   mode: HandOffMode,
+  preResolvedPhone?: string,
 ): Promise<void> {
   const inbox = conversationData.inbox
   if (!inbox) {
@@ -278,7 +281,8 @@ async function sendHandOffNotification(
 
   const contactName = conversationData.contact?.name ?? 'Contato'
 
-  // Resolver o destinatario da notificacao WhatsApp
+  // Resolver o destinatario da notificacao WhatsApp.
+  // Usa preResolvedPhone quando disponível para evitar query duplicada ao banco.
   let recipientPhone: string | undefined
 
   if (config.notifyTarget === 'specific_number') {
@@ -290,29 +294,31 @@ async function sendHandOffNotification(
     }
     recipientPhone = config.specificPhone.trim()
   } else if (config.notifyTarget === 'deal_assignee') {
-    if (!ctx.dealId) {
-      logger.warn('hand_off_to_human: deal_assignee configurado mas ctx.dealId ausente, pulando notificacao', {
-        conversationId: ctx.conversationId,
+    if (preResolvedPhone) {
+      recipientPhone = preResolvedPhone
+    } else {
+      if (!ctx.dealId) {
+        logger.warn('hand_off_to_human: deal_assignee configurado mas ctx.dealId ausente, pulando notificacao', {
+          conversationId: ctx.conversationId,
+        })
+        return
+      }
+
+      const deal = await db.deal.findUnique({
+        where: { id: ctx.dealId },
+        select: { assignee: { select: { phone: true } } },
       })
-      return
+
+      if (!deal?.assignee?.phone?.trim()) {
+        logger.warn('hand_off_to_human: deal_assignee sem phone cadastrado, pulando notificacao', {
+          dealId: ctx.dealId,
+          conversationId: ctx.conversationId,
+        })
+        return
+      }
+
+      recipientPhone = deal.assignee.phone.trim()
     }
-
-    const deal = await db.deal.findUnique({
-      where: { id: ctx.dealId },
-      select: {
-        assignee: { select: { phone: true } },
-      },
-    })
-
-    if (!deal?.assignee?.phone?.trim()) {
-      logger.warn('hand_off_to_human: deal_assignee sem phone cadastrado, pulando notificacao', {
-        dealId: ctx.dealId,
-        conversationId: ctx.conversationId,
-      })
-      return
-    }
-
-    recipientPhone = deal.assignee.phone.trim()
   }
 
   if (!recipientPhone) {
@@ -529,7 +535,7 @@ export function createHandOffToHumanTool(
             : phone ?? 'desconhecido'
 
           try {
-            await sendHandOffNotification(ctx, config, reason, conversationData, mode)
+            await sendHandOffNotification(ctx, config, reason, conversationData, mode, phone)
             whatsappNotification = { sent: true, recipientPhone: masked }
           } catch (whatsappError) {
             const errorMsg = whatsappError instanceof Error

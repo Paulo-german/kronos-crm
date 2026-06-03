@@ -99,32 +99,46 @@ export async function notifyNoCredits(
     ? `/org/${organization.slug}/settings/billing`
     : null
 
-  // Criar notificações sem await — fire-and-forget para não bloquear o fluxo principal
-  for (const admin of orgAdmins) {
-    if (!admin.userId) continue
+  const eligibleAdmins = orgAdmins.filter((admin): admin is { userId: string } => admin.userId !== null)
 
-    void db.notification.create({
-      data: {
-        organizationId,
-        userId: admin.userId,
-        type: 'SYSTEM',
-        title: NOTIFICATION_TITLE,
-        body: NOTIFICATION_BODY,
-        actionUrl,
-        resourceType: 'credit',
-        resourceId: null,
-      },
+  const results = await Promise.allSettled(
+    eligibleAdmins.map((admin) =>
+      db.notification.create({
+        data: {
+          organizationId,
+          userId: admin.userId,
+          type: 'SYSTEM',
+          title: NOTIFICATION_TITLE,
+          body: NOTIFICATION_BODY,
+          actionUrl,
+          resourceType: 'credit',
+          resourceId: null,
+        },
+      }),
+    ),
+  )
+
+  const succeeded = results.filter((result) => result.status === 'fulfilled').length
+  const failed = results.filter((result) => result.status === 'rejected').length
+
+  if (failed > 0) {
+    logger.error('no-credits notification: failed to create some notifications', {
+      organizationId,
+      succeeded,
+      failed,
+      errors: results
+        .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+        .map((result) => result.reason instanceof Error ? result.reason.message : String(result.reason)),
     })
   }
 
-  const recipientCount = orgAdmins.filter((admin) => admin.userId !== null).length
-
   logger.info('no-credits notification', {
     organizationId,
-    notified: true,
-    recipientCount,
+    notified: succeeded > 0,
+    recipientCount: succeeded,
+    failed,
     estimatedCost,
   })
 
-  return { notified: true, recipientCount }
+  return { notified: succeeded > 0, recipientCount: succeeded }
 }
