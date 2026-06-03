@@ -35,6 +35,7 @@ import { prefixAttendantName } from '@/_lib/inbox/prefix-attendant-name'
 import { getFollowUpsForStep } from '@/_data-access/follow-up/get-follow-ups-for-step'
 import { revalidateConversationCache } from './lib/revalidate-cache'
 import { emitAgentStatus } from './lib/emit-agent-status'
+import { notifyNoCredits } from './lib/notify-no-credits'
 import { saveAgentResponseSent, saveAgentResponseFailed } from './lib/save-agent-response'
 import { applyLifecycleTrigger } from './lib/apply-lifecycle-trigger'
 import type { ToolContext } from './tools/types'
@@ -429,55 +430,7 @@ export async function runSingleV1(
       },
     })
 
-    // Notificar OWNER/ADMIN apenas se nao existe notificacao nao lida com mesmo titulo
-    // nas ultimas 24h — evita spam por cada mensagem sem credito
-    const recentCreditNotification = await db.notification.findFirst({
-      where: {
-        organizationId: ctx.organizationId,
-        type: 'SYSTEM',
-        title: 'Créditos de IA esgotados',
-        readAt: null,
-        createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
-      },
-    })
-
-    if (!recentCreditNotification) {
-      const [orgAdmins, organization] = await Promise.all([
-        db.member.findMany({
-          where: {
-            organizationId: ctx.organizationId,
-            role: { in: ['OWNER', 'ADMIN'] },
-            status: 'ACCEPTED',
-            userId: { not: null },
-          },
-          select: { userId: true },
-        }),
-        db.organization.findUnique({
-          where: { id: ctx.organizationId },
-          select: { slug: true },
-        }),
-      ])
-
-      if (orgAdmins.length > 0) {
-        // Criar notificacoes diretamente (sem import server-only — ambiente Trigger.dev)
-        for (const admin of orgAdmins) {
-          void db.notification.create({
-            data: {
-              organizationId: ctx.organizationId,
-              userId: admin.userId!,
-              type: 'SYSTEM',
-              title: 'Créditos de IA esgotados',
-              body: 'Seus créditos de IA acabaram. Recarregue para continuar usando o agente.',
-              actionUrl: organization
-                ? `/org/${organization.slug}/settings/billing`
-                : null,
-              resourceType: 'credit',
-              resourceId: null,
-            },
-          })
-        }
-      }
-    }
+    await notifyNoCredits({ organizationId: ctx.organizationId, estimatedCost })
 
     ctx.tracker.addStep({
       type: 'CREDIT_CHECK',
