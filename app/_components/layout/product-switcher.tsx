@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ChevronDown, LayoutGrid, MessageSquare, Bot } from 'lucide-react'
+import { ChevronDown, PanelsTopLeft, MessageSquare, Bot, Globe } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,6 +22,7 @@ const PRODUCT_CONFIG: Record<
     label: string
     badge: string
     icon: React.ReactNode
+    iconClass: string
     href: (slug: string) => string
     module: ModuleSlug | null
   }
@@ -29,7 +30,8 @@ const PRODUCT_CONFIG: Record<
   crm: {
     label: 'Kronos CRM',
     badge: 'CRM',
-    icon: <LayoutGrid className="h-4 w-4" />,
+    icon: <PanelsTopLeft className="h-4 w-4" />,
+    iconClass: 'bg-kronos-cyan/20 text-kronos-cyan',
     href: (slug) => `/org/${slug}/crm/home`,
     module: 'crm',
   },
@@ -37,6 +39,7 @@ const PRODUCT_CONFIG: Record<
     label: 'Kronos Inbox',
     badge: 'INBOX',
     icon: <MessageSquare className="h-4 w-4" />,
+    iconClass: 'bg-kronos-green/20 text-kronos-green',
     href: (slug) => `/org/${slug}/inbox/home`,
     module: 'inbox',
   },
@@ -44,6 +47,7 @@ const PRODUCT_CONFIG: Record<
     label: 'Kronos Agents',
     badge: 'AGENTS',
     icon: <Bot className="h-4 w-4" />,
+    iconClass: 'bg-kronos-purple/20 text-kronos-purple',
     href: (slug) => `/org/${slug}/agents/home`,
     module: 'ai-agent',
   },
@@ -101,7 +105,7 @@ export const ProductSwitcher = ({
         {availableProducts.map(([key, config]) => (
           <DropdownMenuItem key={key} asChild>
             <Link href={config.href(orgSlug)} className="cursor-pointer py-2.5">
-              <span className="mr-3 flex size-7 shrink-0 items-center justify-center rounded-md bg-white/10">
+              <span className={`mr-3 flex size-7 shrink-0 items-center justify-center rounded-md ${config.iconClass}`}>
                 {config.icon}
               </span>
               {config.label}
@@ -111,7 +115,7 @@ export const ProductSwitcher = ({
         <DropdownMenuSeparator className="bg-white/10" />
         <DropdownMenuItem disabled className="py-2.5 text-white/30">
           <span className="mr-3 flex size-7 shrink-0 items-center justify-center rounded-md bg-white/5">
-            <LayoutGrid className="h-4 w-4" />
+            <Globe className="h-4 w-4" />
           </span>
           Kronos Account (em breve)
         </DropdownMenuItem>
