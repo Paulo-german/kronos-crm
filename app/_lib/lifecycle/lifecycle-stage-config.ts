@@ -47,9 +47,9 @@ export const LIFECYCLE_STAGE_CONFIG: Record<LifecycleStage, LifecycleStageVisual
   [LifecycleStage.CUSTOMER]: {
     label: 'Cliente',
     icon: Crown,
-    colorClassName: 'text-primary',
-    badgeClassName: 'bg-primary/10 text-primary border-primary/20',
-    chartColor: 'hsl(var(--primary))',
+    colorClassName: 'text-kronos-purple',
+    badgeClassName: 'bg-kronos-purple/10 text-kronos-purple border-kronos-purple/20',
+    chartColor: 'hsl(var(--kronos-purple-hsl))',
   },
 }
 

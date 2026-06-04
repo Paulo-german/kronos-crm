@@ -16,9 +16,8 @@ export const ContentWrapper = ({ children }: ContentWrapperProps) => {
       pathname,
     )
 
-  // Inbox e detalhe do agente precisam de layout full-height sem padding
-  // Excluir /reports/inbox — usa o layout de reports, não o layout de conversas
-  const isInboxPage = /\/inbox(\/|$)/.test(pathname) && !pathname.includes('/reports/')
+  // Apenas a tela de conversas precisa de full-bleed — inbox root ou conversa específica (UUID)
+  const isInboxPage = /\/inbox(\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?$/.test(pathname)
   const isAgentDetailPage =
     /\/ai-agent\/(groups\/)?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(
       pathname,

@@ -19,7 +19,7 @@ const HomeGreeting = ({ firstName }: HomeGreetingProps) => {
             initial={{ opacity: 0, x: shouldReduce ? 0 : -8 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.15, ease: 'easeOut' }}
-            className="inline-block bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent"
+            className="inline-block text-primary"
           >
             {firstName}
           </motion.span>
