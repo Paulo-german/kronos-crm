@@ -28,7 +28,7 @@ function decodeState(stateParam: string): OAuthState | null {
 
 function buildInboxUrl(orgSlug: string, inboxId: string, params: string): string {
   if (!orgSlug || !inboxId) return `/settings?${params}`
-  return `/org/${orgSlug}/settings/inboxes/${inboxId}?${params}`
+  return `/org/${orgSlug}/inbox/settings/inboxes/${inboxId}?${params}`
 }
 
 /**
