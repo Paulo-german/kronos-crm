@@ -9,6 +9,7 @@ import { getProfessionals } from '@/_data-access/professional/get-professionals'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 import { QuotaHint } from '@/_components/trial/quota-hint'
 
+import { BackButton } from '@/_components/layout/back-button'
 import { parseProductListParams } from '@/(authenticated)/org/[orgSlug]/(main)/settings/catalog/_lib/product-list-params'
 import { parsePromotionListParams } from '@/(authenticated)/org/[orgSlug]/(main)/settings/catalog/_lib/promotion-list-params'
 import { CatalogTabs } from '@/(authenticated)/org/[orgSlug]/(main)/settings/catalog/_components/catalog-tabs'
@@ -62,6 +63,7 @@ const CatalogPage = async ({ params, searchParams }: CatalogPageProps) => {
 
   return (
     <div className="container mx-auto space-y-6 py-6">
+      <BackButton href={`/org/${orgSlug}/crm/settings`} />
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <div>

@@ -8,6 +8,7 @@ import Header, {
   HeaderTitle,
   HeaderSubTitle,
 } from '@/_components/header'
+import { BackButton } from '@/_components/layout/back-button'
 import { PipelinesSettingsClient } from '@/(authenticated)/org/[orgSlug]/(main)/settings/pipelines/_components/pipelines-settings-client'
 import { CreatePipelineButton } from '@/(authenticated)/org/[orgSlug]/(main)/settings/pipelines/_components/create-pipeline-button'
 
@@ -27,6 +28,7 @@ const PipelinesPage = async ({ params }: PipelinesPageProps) => {
 
   return (
     <div className="space-y-6">
+      <BackButton href={`/org/${orgSlug}/crm/settings`} />
       <Header>
         <HeaderLeft>
           <HeaderTitle>Funis de Vendas</HeaderTitle>

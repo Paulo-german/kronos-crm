@@ -10,6 +10,7 @@ import Header, {
   HeaderTitle,
   HeaderSubTitle,
 } from '@/_components/header'
+import { BackButton } from '@/_components/layout/back-button'
 import { CreateGoalButton } from '@/(authenticated)/org/[orgSlug]/(main)/settings/goals/_components/create-goal-button'
 import { GoalsDataTable } from '@/(authenticated)/org/[orgSlug]/(main)/settings/goals/_components/goals-data-table'
 import { GoalEmptyState } from '@/(authenticated)/org/[orgSlug]/(main)/settings/goals/_components/goal-empty-state'
@@ -36,6 +37,7 @@ const GoalsSettingsPage = async ({ params }: GoalsSettingsPageProps) => {
 
   return (
     <div className="space-y-6">
+      <BackButton href={`/org/${orgSlug}/crm/settings`} />
       <Header>
         <HeaderLeft>
           <HeaderTitle>Metas de Vendas</HeaderTitle>

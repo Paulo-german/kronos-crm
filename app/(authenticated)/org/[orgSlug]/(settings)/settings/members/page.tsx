@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { BackButton } from '@/_components/layout/back-button'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
 import { getSquads } from '@/_data-access/squad/get-squads'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
@@ -86,6 +87,7 @@ export default async function MembersPage({ params }: MembersPageProps) {
 
   return (
     <div className="space-y-6 p-6 md:p-8">
+      <BackButton href={`/org/${orgSlug}/settings`} />
       <MembersPageClient
         membersContent={membersContent}
         squadsContent={squadsContent}

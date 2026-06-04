@@ -1,5 +1,6 @@
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getConversationLabels } from '@/_data-access/conversation-label/get-conversation-labels'
+import { BackButton } from '@/_components/layout/back-button'
 import LabelsList from '@/(authenticated)/org/[orgSlug]/(main)/settings/labels/_components/labels-list'
 
 interface LabelsPageProps {
@@ -13,6 +14,7 @@ const LabelsPage = async ({ params }: LabelsPageProps) => {
 
   return (
     <div className="container mx-auto space-y-6 py-6">
+      <BackButton href={`/org/${orgSlug}/inbox/settings`} />
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">

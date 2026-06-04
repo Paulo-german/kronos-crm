@@ -17,6 +17,7 @@ import Header, {
   HeaderSubTitle,
   HeaderTitle,
 } from '@/_components/header'
+import { BackButton } from '@/_components/layout/back-button'
 import IntegrationCard from '@/(authenticated)/org/[orgSlug]/(main)/settings/integrations/_components/integration-card'
 import ConnectedToast from '@/(authenticated)/org/[orgSlug]/(main)/settings/integrations/_components/connected-toast'
 import { Suspense } from 'react'
@@ -51,6 +52,7 @@ const IntegrationsPage = async ({ params }: IntegrationsPageProps) => {
 
   return (
     <div className="space-y-6 p-6 md:p-8">
+      <BackButton href={`/org/${orgSlug}/settings`} />
       {/* Permite uso de useSearchParams em modo Suspense */}
       <Suspense>
         <ConnectedToast />

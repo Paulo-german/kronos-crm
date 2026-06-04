@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getSchedulingSettings } from '@/_data-access/organization/get-scheduling-settings'
 import { getProfessionals } from '@/_data-access/professional/get-professionals'
+import { BackButton } from '@/_components/layout/back-button'
 import { DistributionModelForm } from '@/(authenticated)/org/[orgSlug]/(main)/settings/scheduling/_components/distribution-model-form'
 
 interface SchedulingSettingsPageProps {
@@ -29,6 +30,7 @@ export default async function SchedulingSettingsPage({
 
   return (
     <div className="flex flex-col justify-center gap-2 p-6 md:p-8">
+      <BackButton href={`/org/${orgSlug}/crm/settings`} />
       <div className="mb-4">
         <h1 className="text-2xl font-bold">Distribuição de Agendamentos</h1>
         <p className="text-muted-foreground">

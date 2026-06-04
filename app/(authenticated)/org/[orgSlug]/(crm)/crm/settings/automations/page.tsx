@@ -16,6 +16,7 @@ import Header, {
   HeaderSubTitle,
 } from '@/_components/header'
 
+import { BackButton } from '@/_components/layout/back-button'
 import { AutomationsDataTable } from '@/(authenticated)/org/[orgSlug]/(main)/settings/automations/_components/automations-data-table'
 import CreateAutomationButton from '@/(authenticated)/org/[orgSlug]/(main)/settings/automations/_components/create-automation-button'
 
@@ -48,6 +49,7 @@ const AutomationsPage = async ({ params }: AutomationsPageProps) => {
 
   return (
     <div className="container mx-auto space-y-6 py-6">
+      <BackButton href={`/org/${orgSlug}/crm/settings`} />
       <Header>
         <HeaderLeft>
           <HeaderTitle>Automações</HeaderTitle>

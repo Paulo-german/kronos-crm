@@ -7,6 +7,7 @@ import { getSquads } from '@/_data-access/squad/get-squads'
 import { getFieldDefinitions } from '@/_data-access/field-definition/get-field-definitions'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 import { QuotaHint } from '@/_components/trial/quota-hint'
+import { BackButton } from '@/_components/layout/back-button'
 import Header, { HeaderLeft, HeaderRight, HeaderTitle, HeaderSubTitle } from '@/_components/header'
 import { CaptureFormsDataTable } from '@/(authenticated)/org/[orgSlug]/(main)/settings/capture-forms/_components/capture-forms-data-table'
 import CreateCaptureFormButton from '@/(authenticated)/org/[orgSlug]/(main)/settings/capture-forms/_components/create-capture-form-button'
@@ -36,6 +37,7 @@ const CaptureFormsPage = async ({ params }: CaptureFormsPageProps) => {
 
   return (
     <div className="container mx-auto space-y-6 py-6">
+      <BackButton href={`/org/${orgSlug}/inbox/settings`} />
       <Header>
         <HeaderLeft>
           <HeaderTitle>Formulários de Captura</HeaderTitle>

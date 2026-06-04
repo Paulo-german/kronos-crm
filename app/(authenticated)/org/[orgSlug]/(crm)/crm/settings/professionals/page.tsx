@@ -5,6 +5,7 @@ import { getProfessionals } from '@/_data-access/professional/get-professionals'
 import { getServices } from '@/_data-access/service/get-services'
 import { getAcceptedMembersWithoutProfessional } from '@/_data-access/professional/get-accepted-members-without-professional'
 
+import { BackButton } from '@/_components/layout/back-button'
 import { ProfessionalsDataTable } from '@/(authenticated)/org/[orgSlug]/(main)/settings/professionals/_components/professionals-data-table'
 import CreateProfessionalButton from '@/(authenticated)/org/[orgSlug]/(main)/settings/professionals/_components/create-professional-button'
 
@@ -33,6 +34,7 @@ const ProfessionalsPage = async ({ params }: ProfessionalsPageProps) => {
 
   return (
     <div className="container mx-auto space-y-6 py-6">
+      <BackButton href={`/org/${orgSlug}/crm/settings`} />
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl font-bold tracking-tight">Profissionais</h1>

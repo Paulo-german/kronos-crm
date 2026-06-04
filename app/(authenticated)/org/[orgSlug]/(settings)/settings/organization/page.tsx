@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getOrganizationBySlug } from '@/_data-access/organization/get-organization-by-slug'
 import { getPlanLimits } from '@/_lib/rbac/plan-limits'
+import { BackButton } from '@/_components/layout/back-button'
 import { OrganizationSettingsForm } from '@/(authenticated)/org/[orgSlug]/(main)/settings/organization/_components/organization-settings-form'
 
 interface OrganizationSettingsPageProps {
@@ -28,6 +29,7 @@ export default async function OrganizationSettingsPage({
 
   return (
     <div className="flex flex-col justify-center gap-2 p-6 md:p-8">
+      <BackButton href={`/org/${orgSlug}/settings`} />
       <div className="mb-4">
         <h1 className="text-2xl font-bold">Organização</h1>
         <p className="text-muted-foreground">

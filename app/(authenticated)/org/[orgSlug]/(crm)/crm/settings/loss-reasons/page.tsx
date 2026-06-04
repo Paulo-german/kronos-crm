@@ -1,5 +1,6 @@
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getAllDealLostReasons } from '@/_data-access/settings/get-lost-reasons'
+import { BackButton } from '@/_components/layout/back-button'
 import CreateLostReasonButton from '@/(authenticated)/org/[orgSlug]/(main)/settings/loss-reasons/_components/create-lost-reason-button'
 import { LostReasonsDataTable } from '@/(authenticated)/org/[orgSlug]/(main)/settings/loss-reasons/_components/lost-reasons-data-table'
 
@@ -14,6 +15,7 @@ const LossReasonsPage = async ({ params }: ReasonsPageProps) => {
 
   return (
     <div className="container mx-auto space-y-6 py-6">
+      <BackButton href={`/org/${orgSlug}/crm/settings`} />
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>

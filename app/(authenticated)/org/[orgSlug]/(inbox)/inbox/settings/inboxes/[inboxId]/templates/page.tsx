@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getInboxById } from '@/_data-access/inbox/get-inbox-by-id'
 import { getWhatsAppTemplates } from '@/_data-access/inbox/get-whatsapp-templates'
+import { BackButton } from '@/_components/layout/back-button'
 import { TemplatesList } from '@/(authenticated)/org/[orgSlug]/(main)/settings/inboxes/[inboxId]/templates/_components/templates-list'
 
 interface TemplatesPageProps {
@@ -32,6 +33,7 @@ export default async function TemplatesPage({ params }: TemplatesPageProps) {
 
   return (
     <div className="space-y-6 p-6">
+      <BackButton href={`/org/${orgSlug}/inbox/settings/inboxes/${inboxId}`} />
       <TemplatesList
         inboxId={inboxId}
         inboxName={inbox.name}

@@ -7,6 +7,7 @@ import { InboxesCardGrid } from '@/(authenticated)/org/[orgSlug]/(main)/settings
 import DiscoverInstancesButton from '@/(authenticated)/org/[orgSlug]/(main)/settings/inboxes/_components/discover-instances-button'
 import CreateInboxButton from '@/(authenticated)/org/[orgSlug]/(main)/settings/inboxes/_components/create-inbox-button'
 import { QuotaHint } from '@/_components/trial/quota-hint'
+import { BackButton } from '@/_components/layout/back-button'
 import Header, {
   HeaderLeft,
   HeaderTitle,
@@ -38,6 +39,7 @@ const InboxesPage = async ({ params }: InboxesPageProps) => {
 
   return (
     <div className="space-y-6">
+      <BackButton href={`/org/${orgSlug}/inbox/settings`} />
       <Header>
         <HeaderLeft>
           <HeaderTitle>Caixas de Entrada</HeaderTitle>
