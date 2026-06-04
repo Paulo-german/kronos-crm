@@ -44,10 +44,15 @@ export const CLASSIFIER_MAX_OUTPUT_TOKENS = 64
 // gaste tokens gerando texto que será descartado (o texto final é responsabilidade do Responder).
 export const CALL1_EXECUTION_DIRECTIVE =
   '\n\n## Modo de execução deste turno\n' +
-  'Sua única responsabilidade agora é identificar e executar as ferramentas ' +
-  'necessárias para atender o cliente. NÃO gere texto de resposta — a mensagem ' +
-  'final ao cliente será produzida em uma etapa separada com base nos resultados ' +
-  'das suas ações. Apenas chame as ferramentas apropriadas.'
+  'Sua única responsabilidade agora é chamar as ferramentas — SEM gerar texto de resposta.\n\n' +
+  '**Ferramentas de busca** (search_products, search_knowledge, list_availability): ' +
+  'execute quando precisar de dados para fundamentar a resposta.\n\n' +
+  '**Ferramentas de ação** (update_contact, update_deal, ' +
+  'create_event, update_event, hand_off_to_human, transfer_to_agent): execute conforme ' +
+  'as condições de disparo das etapas do funil forem atingidas neste turno. ' +
+  'Verifique o gatilho de cada ação ("→ execute X quando...") e chame a ferramenta se a condição for verdadeira.\n\n' +
+  'A mensagem final ao cliente será produzida em etapa separada com base nos resultados das suas chamadas. ' +
+  'Não escreva nada — apenas chame as ferramentas que se aplicam.'
 
 // Action tools: efeito colateral — Call 2 só precisa saber que foram executadas.
 export const ACTION_TOOL_LABELS: Record<string, string> = {

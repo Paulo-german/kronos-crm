@@ -240,10 +240,14 @@ export function buildResponderGroundingDirective(
   steps: Array<{ toolCalls?: Array<{ toolName: string }> }> | undefined,
 ): string {
   const queryToolsUsed = new Set<string>()
+  const actionToolsUsed: string[] = []
+
   for (const step of steps ?? []) {
     for (const toolCall of step.toolCalls ?? []) {
       if (QUERY_TOOL_NAMES.has(toolCall.toolName)) {
         queryToolsUsed.add(toolCall.toolName)
+      } else {
+        actionToolsUsed.push(toolCall.toolName)
       }
     }
   }
@@ -276,6 +280,21 @@ export function buildResponderGroundingDirective(
       '- Nenhuma busca foi feita neste turno. Não faça afirmações sobre produtos, preços, ' +
         'disponibilidade, prazos ou políticas da empresa. Se precisar dessas informações para ' +
         'responder ao cliente, diga que vai verificar.',
+    )
+  }
+
+  // Quando action tools foram chamadas, orientar o Responder a confirmar o resultado
+  // ao cliente com base no retorno de cada ferramenta (success/message).
+  if (actionToolsUsed.length > 0) {
+    const uniqueActions = [...new Set(actionToolsUsed)]
+    const labels = uniqueActions
+      .map((name) => ACTION_TOOL_LABELS[name] ?? name)
+      .join(', ')
+    constraints.push(
+      `- Ações realizadas neste turno: ${labels}. ` +
+        'Consulte o resultado de cada ferramenta acima: se success=true, confirme naturalmente ' +
+        'ao cliente o que foi feito (ex: "Já avancei o negócio para a próxima etapa"); ' +
+        'se success=false, explique o motivo com base na mensagem retornada pela ferramenta.',
     )
   }
 
