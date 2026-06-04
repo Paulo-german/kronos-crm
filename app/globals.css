@@ -79,7 +79,7 @@
     /* Primary: Kronos Purple */
     --primary: 261 74% 62%; /* hsl(261 74% 62%) */
     --primary-foreground: 0 0% 98%; /* hsl(0 0% 98%) */
-    --primary-dark: 261 74% 10%; /* hsl(261 74% 10%) */
+    --primary-dark: 261 74% 8%; /* hsl(261 74% 8%) */
 
     /* Secondary: Kronos Cyan-ish/Light Zinc */
     --secondary: 240 4.8% 80%; /* hsl(240 4.8% 80%) */
@@ -110,6 +110,9 @@
     --kronos-green-light: #04d361;
 
     --kronos-cyan: #61dafb;
+    --kronos-cyan-hsl: 200 100% 62%; /* hsl(200 100% 62%) - HEX: #61dafb */
+    --kronos-orange: #f97316;
+    --kronos-orange-hsl: 25 95% 53%; /* hsl(25 95% 53%) - HEX: #f97316 */
     --kronos-pink: #ff79c6;
 
     /* STATUS COLORS (HSL for Tailwind Opacity) */
@@ -183,6 +186,21 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Product theme — overrides --primary per product */
+/* TODO: ativar quando o design estiver finalizado — descomentar as regras abaixo */
+/* [data-product='crm'] {
+  --primary: var(--kronos-cyan-hsl);
+  --primary-dark: 200 100% 8%;
+}
+[data-product='inbox'] {
+  --primary: var(--kronos-green-hsl);
+  --primary-dark: 162 100% 3%;
+}
+[data-product='agents'] {
+  --primary: var(--kronos-purple-hsl);
+  --primary-dark: 261 74% 5%;
+} */
 
 /* Custom Kronos Utility Classes for Gradients and Glows */
 @layer utilities {

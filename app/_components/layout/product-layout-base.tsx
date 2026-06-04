@@ -14,6 +14,7 @@ import {
 import { getUserProfileStatus } from '@/_data-access/user-profile/get-user-profile-status'
 import { getTutorialCompletions } from '@/_data-access/tutorial/get-tutorial-completions'
 import { ProductTopBar } from '@/_components/layout/product-top-bar'
+import { ProductTheme } from '@/_components/layout/product-theme'
 import type { ModuleSlug } from '@/_data-access/module/types'
 import { ContentWrapper } from '@/(authenticated)/_components/content-wrapper'
 import { TrialBanner } from '@/_components/trial/trial-banner'
@@ -103,6 +104,7 @@ export const ProductLayoutBase = async ({
 
   return (
     <div className="flex h-dvh w-full flex-col bg-primary-dark">
+      <ProductTheme product={product} />
       <TrialBanner orgId={orgId} orgSlug={orgSlug} userRole={userRole} />
       <ProductTopBar
         product={product}

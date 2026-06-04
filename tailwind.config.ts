@@ -83,6 +83,7 @@ export default {
           'green-light': 'var(--kronos-green-light)',
 
           cyan: 'var(--kronos-cyan)',
+          orange: 'hsl(var(--kronos-orange-hsl))',
           pink: 'var(--kronos-pink)',
 
           // New Semantic Colors
