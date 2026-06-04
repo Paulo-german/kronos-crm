@@ -82,7 +82,7 @@ export default {
           green: 'hsl(var(--kronos-green-hsl))',
           'green-light': 'var(--kronos-green-light)',
 
-          cyan: 'var(--kronos-cyan)',
+          cyan: 'hsl(var(--kronos-cyan-hsl))',
           orange: 'hsl(var(--kronos-orange-hsl))',
           pink: 'var(--kronos-pink)',
 

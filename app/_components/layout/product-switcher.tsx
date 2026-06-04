@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ChevronDown, PanelsTopLeft, MessageSquare, Bot, Globe } from 'lucide-react'
+import { ChevronDown, PanelsTopLeft, MessageSquare, Bot, Telescope } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,6 +21,7 @@ const PRODUCT_CONFIG: Record<
   {
     label: string
     badge: string
+    badgeClass: string
     icon: React.ReactNode
     iconClass: string
     href: (slug: string) => string
@@ -28,8 +29,9 @@ const PRODUCT_CONFIG: Record<
   }
 > = {
   crm: {
-    label: 'Kronos CRM',
+    label: 'Kronos Crm',
     badge: 'CRM',
+    badgeClass: 'bg-kronos-cyan/15 text-kronos-cyan',
     icon: <PanelsTopLeft className="h-4 w-4" />,
     iconClass: 'bg-kronos-cyan/20 text-kronos-cyan',
     href: (slug) => `/org/${slug}/crm/home`,
@@ -38,6 +40,7 @@ const PRODUCT_CONFIG: Record<
   inbox: {
     label: 'Kronos Inbox',
     badge: 'INBOX',
+    badgeClass: 'bg-kronos-green/15 text-kronos-green',
     icon: <MessageSquare className="h-4 w-4" />,
     iconClass: 'bg-kronos-green/20 text-kronos-green',
     href: (slug) => `/org/${slug}/inbox/home`,
@@ -46,6 +49,7 @@ const PRODUCT_CONFIG: Record<
   agents: {
     label: 'Kronos Agents',
     badge: 'AGENTS',
+    badgeClass: 'bg-kronos-purple/15 text-kronos-purple',
     icon: <Bot className="h-4 w-4" />,
     iconClass: 'bg-kronos-purple/20 text-kronos-purple',
     href: (slug) => `/org/${slug}/agents/home`,
@@ -86,10 +90,10 @@ export const ProductSwitcher = ({
           <span className="hidden text-base font-bold tracking-tight md:inline">
             KRONOS
           </span>
-          <span className="hidden rounded bg-primary/15 px-1.5 py-0.5 text-[11px] font-semibold tracking-wide text-primary md:inline">
+          <span className={`hidden rounded px-1.5 py-0.5 text-[11px] font-semibold tracking-wide md:inline ${current.badgeClass}`}>
             {current.badge}
           </span>
-          <ChevronDown className="h-3.5 w-3.5 text-white/50" />
+          <ChevronDown className="h-3.5 w-3.5 text-white" />
         </Button>
       </DropdownMenuTrigger>
 
@@ -97,7 +101,7 @@ export const ProductSwitcher = ({
         align="start"
         alignOffset={100}
         sideOffset={16}
-        className="w-64 rounded-2xl border-0 bg-primary-dark p-2 text-white [--accent-foreground:0_0%_100%] [--accent:0_0%_100%_/_0.10]"
+        className="w-72 rounded-2xl border-0 bg-primary-dark p-2 text-white [--accent-foreground:0_0%_100%] [--accent:0_0%_100%_/_0.10]"
       >
         <DropdownMenuLabel className="px-2 py-2 text-xs font-medium uppercase tracking-wider text-white/40">
           Produtos
@@ -112,12 +116,20 @@ export const ProductSwitcher = ({
             </Link>
           </DropdownMenuItem>
         ))}
-        <DropdownMenuSeparator className="bg-white/10" />
-        <DropdownMenuItem disabled className="py-2.5 text-white/30">
-          <span className="mr-3 flex size-7 shrink-0 items-center justify-center rounded-md bg-white/5">
-            <Globe className="h-4 w-4" />
+        <DropdownMenuItem className="cursor-default pointer-events-none py-2.5 text-white">
+          <span className="mr-3 flex size-7 shrink-0 items-center justify-center rounded-md bg-kronos-orange/10 text-kronos-orange">
+            <Telescope className="h-4 w-4" />
           </span>
-          Kronos Account (em breve)
+          Kronos Prospection
+          <span className="ml-auto rounded bg-kronos-cyan/10 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-kronos-cyan">EM BREVE</span>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator className="bg-white/10" />
+        <DropdownMenuItem className="cursor-default pointer-events-none py-2.5 text-white">
+          <span className="mr-3 flex size-7 shrink-0 items-center justify-center rounded-md bg-white/5 text-white">
+            <KronosLogo className="h-4 w-4" />
+          </span>
+          Kronos Hub
+          <span className="ml-auto rounded bg-kronos-cyan/10 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-kronos-cyan">EM BREVE</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
