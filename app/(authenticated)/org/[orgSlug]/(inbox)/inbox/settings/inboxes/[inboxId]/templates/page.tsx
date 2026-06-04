@@ -3,7 +3,7 @@ import { getOrgContext } from '@/_data-access/organization/get-organization-cont
 import { getInboxById } from '@/_data-access/inbox/get-inbox-by-id'
 import { getWhatsAppTemplates } from '@/_data-access/inbox/get-whatsapp-templates'
 import { BackButton } from '@/_components/layout/back-button'
-import { TemplatesList } from '@/(authenticated)/org/[orgSlug]/(main)/settings/inboxes/[inboxId]/templates/_components/templates-list'
+import { TemplatesList } from '@/(authenticated)/org/[orgSlug]/(inbox)/inbox/settings/inboxes/[inboxId]/templates/_components/templates-list'
 
 interface TemplatesPageProps {
   params: Promise<{ orgSlug: string; inboxId: string }>

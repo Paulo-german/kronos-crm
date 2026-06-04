@@ -4,7 +4,7 @@ import { getOrgContext } from '@/_data-access/organization/get-organization-cont
 import { getNotificationPreferences } from '@/_data-access/notification/get-notification-preferences'
 import Header, { HeaderLeft, HeaderTitle, HeaderSubTitle, HeaderRight } from '@/_components/header'
 import { Button } from '@/_components/ui/button'
-import { NotificationPreferencesForm } from '@/(authenticated)/org/[orgSlug]/(main)/notifications/preferences/_components/notification-preferences-form'
+import { NotificationPreferencesForm } from '@/_components/notifications/preferences/_components/notification-preferences-form'
 
 interface NotificationPreferencesPageProps {
   params: Promise<{ orgSlug: string }>

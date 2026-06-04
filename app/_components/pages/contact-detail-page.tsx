@@ -8,7 +8,7 @@ import { getOrganizationMembers } from '@/_data-access/organization/get-organiza
 import { getFieldDefinitions } from '@/_data-access/field-definition/get-field-definitions'
 import { getContactCustomFieldValues } from '@/_data-access/contact/get-contact-custom-field-values'
 import { getContactPrivacy } from '@/_data-access/privacy/get-contact-privacy'
-import ContactDetailClient from '@/(authenticated)/org/[orgSlug]/(main)/contacts/[id]/_components/contact-detail-client'
+import ContactDetailClient from '@/_components/contacts/[id]/_components/contact-detail-client'
 
 interface ContactDetailPageProps {
   params: Promise<{ id: string; orgSlug: string }>

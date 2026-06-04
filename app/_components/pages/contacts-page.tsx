@@ -10,8 +10,8 @@ import { getDefaultPipelineWithStages } from '@/_data-access/pipeline/get-defaul
 import { getTutorialCompletions } from '@/_data-access/tutorial/get-tutorial-completions'
 import { getFieldDefinitions } from '@/_data-access/field-definition/get-field-definitions'
 import { LifecycleIntroTrigger } from '@/_components/tutorials/lifecycle-intro-trigger'
-import { ContactsListClient } from '@/(authenticated)/org/[orgSlug]/(main)/contacts/_components/contacts-list-client'
-import { parseContactListParams } from '@/(authenticated)/org/[orgSlug]/(main)/contacts/_lib/contact-list-params'
+import { ContactsListClient } from '@/_components/contacts/_components/contacts-list-client'
+import { parseContactListParams } from '@/_components/contacts/_lib/contact-list-params'
 
 interface ContactsPageProps {
   params: Promise<{ orgSlug: string }>

@@ -7,8 +7,8 @@ import Header, {
   HeaderSubTitle,
   HeaderRight,
 } from '@/_components/header'
-import { NotificationList } from '@/(authenticated)/org/[orgSlug]/(main)/notifications/_components/notification-list'
-import { MarkAllReadButton } from '@/(authenticated)/org/[orgSlug]/(main)/notifications/_components/mark-all-read-button'
+import { NotificationList } from '@/_components/notifications/_components/notification-list'
+import { MarkAllReadButton } from '@/_components/notifications/_components/mark-all-read-button'
 
 interface NotificationsPageProps {
   params: Promise<{ orgSlug: string }>

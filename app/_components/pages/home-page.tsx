@@ -1,15 +1,15 @@
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getUserById } from '@/_data-access/user/get-user-by-id'
 import { getOrgModules } from '@/_data-access/module/get-org-modules'
-import { deriveFirstName } from '@/(authenticated)/org/[orgSlug]/(main)/home/_lib/derive-first-name'
+import { deriveFirstName } from '@/_components/home/_lib/derive-first-name'
 import type { ModuleSlug } from '@/_data-access/module/types'
-import HomeGreeting from '@/(authenticated)/org/[orgSlug]/(main)/home/_components/home-greeting'
-import QuickAccessGrid from '@/(authenticated)/org/[orgSlug]/(main)/home/_components/quick-access-grid'
-import PlatformMap from '@/(authenticated)/org/[orgSlug]/(main)/home/_components/platform-map'
-import OnboardingChecklist from '@/(authenticated)/org/[orgSlug]/(main)/home/_components/onboarding-checklist'
-import EcosystemGrid from '@/(authenticated)/org/[orgSlug]/(main)/home/_components/ecosystem-grid'
-import AnimatedSection from '@/(authenticated)/org/[orgSlug]/(main)/home/_components/animated-section'
-import HomeTipsStrip from '@/(authenticated)/org/[orgSlug]/(main)/home/_components/home-tips-strip'
+import HomeGreeting from '@/_components/home/_components/home-greeting'
+import QuickAccessGrid from '@/_components/home/_components/quick-access-grid'
+import PlatformMap from '@/_components/home/_components/platform-map'
+import OnboardingChecklist from '@/_components/home/_components/onboarding-checklist'
+import EcosystemGrid from '@/_components/home/_components/ecosystem-grid'
+import AnimatedSection from '@/_components/home/_components/animated-section'
+import HomeTipsStrip from '@/_components/home/_components/home-tips-strip'
 
 interface HomePageProps {
   params: Promise<{ orgSlug: string }>
