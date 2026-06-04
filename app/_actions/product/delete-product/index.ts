@@ -3,7 +3,7 @@
 import { z } from 'zod'
 import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 import { invalidateProductCatalogCache } from '@/_lib/cache/invalidate-product-catalog'
 
@@ -35,7 +35,6 @@ export const deleteProduct = orgActionClient
 
     revalidateTag(`products:${ctx.orgId}`)
     revalidateTag(`deals:${ctx.orgId}`)
-    revalidatePath('/org/[orgSlug]/crm/settings/catalog', 'page')
     await invalidateProductCatalogCache(ctx.orgId)
 
     return { success: true }

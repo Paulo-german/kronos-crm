@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
@@ -33,7 +33,6 @@ export const deletePromotion = orgActionClient
     // 4. Invalidar cache; deals podem referenciar a promoção em DealLineItem
     revalidateTag(`promotions:${ctx.orgId}`)
     revalidateTag(`deals:${ctx.orgId}`)
-    revalidatePath('/org/[orgSlug]/crm/settings/catalog', 'page')
 
     return { success: true }
   })

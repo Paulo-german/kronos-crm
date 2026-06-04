@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import { superAdminActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { upsertChangelogEntrySchema } from './schema'
@@ -47,7 +47,6 @@ export const upsertChangelogEntry = superAdminActionClient
       })
 
       revalidateTag('changelog:public')
-      revalidatePath('/admin/changelog')
 
       return { success: true, entryId: updated.id }
     }
@@ -68,7 +67,6 @@ export const upsertChangelogEntry = superAdminActionClient
     })
 
     revalidateTag('changelog:public')
-    revalidatePath('/admin/changelog')
 
     return { success: true, entryId: created.id }
   })

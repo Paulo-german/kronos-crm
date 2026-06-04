@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
@@ -59,7 +59,6 @@ export const updatePromotion = orgActionClient
 
     // 4. Invalidar cache da listagem de promoções da org
     revalidateTag(`promotions:${ctx.orgId}`)
-    revalidatePath('/org/[orgSlug]/crm/settings/catalog', 'page')
 
     return { success: true }
   })

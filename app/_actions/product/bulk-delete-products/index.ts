@@ -2,7 +2,7 @@
 
 import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import { bulkDeleteProductsSchema } from './schema'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 import { invalidateProductCatalogCache } from '@/_lib/cache/invalidate-product-catalog'
@@ -24,8 +24,6 @@ export const bulkDeleteProducts = orgActionClient
     // 3. Revalidação
     revalidateTag(`products:${ctx.orgId}`)
     revalidateTag(`deals:${ctx.orgId}`)
-    revalidatePath('/org/[orgSlug]/crm/settings/catalog', 'page')
-    revalidatePath('/org/[orgSlug]/crm/deals/pipeline', 'page')
     await invalidateProductCatalogCache(ctx.orgId)
 
     return { count: result.count }

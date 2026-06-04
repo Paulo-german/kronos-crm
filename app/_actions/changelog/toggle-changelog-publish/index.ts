@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import { superAdminActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { toggleChangelogPublishSchema } from './schema'
@@ -39,7 +39,6 @@ export const toggleChangelogPublish = superAdminActionClient
     })
 
     revalidateTag('changelog:public')
-    revalidatePath('/admin/changelog')
 
     return { success: true }
   })

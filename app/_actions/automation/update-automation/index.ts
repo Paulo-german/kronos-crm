@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import { orgActionClient } from '@/_lib/safe-action'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 import { db } from '@/_lib/prisma'
@@ -116,7 +116,6 @@ export const updateAutomation = orgActionClient
 
     revalidateTag(`automations:${ctx.orgId}`)
     revalidateTag(`automation:${data.id}`)
-    revalidatePath('/org/[orgSlug]/crm/settings/automations', 'page')
 
     return { success: true }
   })

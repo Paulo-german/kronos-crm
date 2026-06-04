@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidateTag, revalidatePath } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import type { GoalPeriod } from '@prisma/client'
 import { orgActionClient } from '@/_lib/safe-action'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
@@ -53,6 +53,5 @@ export const updateGoal = orgActionClient
     })
 
     revalidateTag(`goals:${ctx.orgId}`)
-    revalidatePath('/org/[orgSlug]/crm/settings/goals', 'page')
     return { success: true }
   })

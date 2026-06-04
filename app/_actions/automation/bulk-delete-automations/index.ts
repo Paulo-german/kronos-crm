@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import { orgActionClient } from '@/_lib/safe-action'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 import { db } from '@/_lib/prisma'
@@ -25,7 +25,6 @@ export const bulkDeleteAutomations = orgActionClient
     for (const id of data.ids) {
       revalidateTag(`automation:${id}`)
     }
-    revalidatePath('/org/[orgSlug]/crm/settings/automations', 'page')
 
     return { success: true, deleted: result.count }
   })
