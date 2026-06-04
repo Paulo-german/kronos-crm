@@ -13,6 +13,7 @@ const emptyResult: GlobalSearchResult = {
   contacts: { items: [], totalCount: 0 },
   companies: { items: [], totalCount: 0 },
   deals: { items: [], totalCount: 0 },
+  conversations: { items: [], totalCount: 0 },
   totalCount: 0,
   query: '',
 }

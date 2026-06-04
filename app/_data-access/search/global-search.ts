@@ -12,7 +12,16 @@ const LIMITS = {
   contacts: 5,
   companies: 5,
   deals: 5,
+  conversations: 3,
 }
+
+const CHANNEL_LABEL: Record<string, string> = {
+  WHATSAPP: 'WhatsApp',
+  WEB_CHAT: 'Web Chat',
+  INSTAGRAM_DM: 'Instagram DM',
+}
+
+const MAX_LAST_MESSAGE_LENGTH = 80
 
 // ─── Tipos para linhas brutas retornadas pelo $queryRaw ────────────────────────
 
@@ -34,6 +43,14 @@ interface RawDeal {
   title: string
   stage_name: string | null
   primary_contact_name: string | null
+}
+
+interface RawConversation {
+  id: string
+  contact_id: string
+  contact_name: string
+  channel: string
+  last_message: string | null
 }
 
 interface RawCountResult {
@@ -108,6 +125,30 @@ function buildDealTokenConditions(tokens: string[]): Prisma.Sql[] {
         WHERE co.id = d.company_id
           AND unaccent(co.name) ILIKE unaccent(${pattern})
       )
+    )`
+  })
+}
+
+/**
+ * Constrói as condições WHERE de tokens para a busca de conversas.
+ * Usa o contato vinculado como campo de busca (nome, e email/telefone quando não masked).
+ */
+function buildConversationTokenConditions(
+  tokens: string[],
+  masked: boolean,
+): Prisma.Sql[] {
+  return tokens.map((token) => {
+    const pattern = `%${token}%`
+
+    // MEMBER com toggle ativo: busca restrita ao nome para não vazar PII
+    if (masked) {
+      return Prisma.sql`(unaccent(c.name) ILIKE unaccent(${pattern}))`
+    }
+
+    return Prisma.sql`(
+      unaccent(c.name) ILIKE unaccent(${pattern})
+      OR unaccent(COALESCE(c.email, '')) ILIKE unaccent(${pattern})
+      OR unaccent(COALESCE(c.phone, '')) ILIKE unaccent(${pattern})
     )`
   })
 }
@@ -240,6 +281,61 @@ async function searchDeals(
   }
 }
 
+async function searchConversations(
+  orgId: string,
+  userId: string,
+  elevated: boolean,
+  tokens: string[],
+  masked: boolean,
+): Promise<{ items: RawConversation[]; totalCount: number }> {
+  const tokenConditions = buildConversationTokenConditions(tokens, masked)
+  const whereTokens = Prisma.join(tokenConditions, ' AND ')
+
+  const rbacCondition = elevated
+    ? Prisma.sql`TRUE`
+    : Prisma.sql`cv.assigned_to = ${userId}`
+
+  const [items, countResult] = await Promise.all([
+    db.$queryRaw<RawConversation[]>(Prisma.sql`
+      SELECT
+        cv.id,
+        cv.contact_id,
+        c.name AS contact_name,
+        cv.channel,
+        (
+          SELECT m.content
+          FROM messages m
+          WHERE m.conversation_id = cv.id
+            AND m.is_archived = FALSE
+          ORDER BY m.created_at DESC
+          LIMIT 1
+        ) AS last_message
+      FROM conversations cv
+      JOIN contacts c ON c.id = cv.contact_id
+      WHERE cv.organization_id = ${orgId}
+        AND cv.status = 'OPEN'
+        AND ${rbacCondition}
+        AND (${whereTokens})
+      ORDER BY cv.updated_at DESC
+      LIMIT ${LIMITS.conversations}
+    `),
+    db.$queryRaw<RawCountResult[]>(Prisma.sql`
+      SELECT COUNT(*) AS count
+      FROM conversations cv
+      JOIN contacts c ON c.id = cv.contact_id
+      WHERE cv.organization_id = ${orgId}
+        AND cv.status = 'OPEN'
+        AND ${rbacCondition}
+        AND (${whereTokens})
+    `),
+  ])
+
+  return {
+    items,
+    totalCount: Number(countResult[0]?.count ?? 0),
+  }
+}
+
 // ─── Função pública de busca global ───────────────────────────────────────────
 
 const EMPTY_GROUP: SearchResultGroup = { items: [], totalCount: 0 }
@@ -264,6 +360,7 @@ export async function globalSearch(
       contacts: EMPTY_GROUP,
       companies: EMPTY_GROUP,
       deals: EMPTY_GROUP,
+      conversations: EMPTY_GROUP,
       totalCount: 0,
       query,
     }
@@ -273,12 +370,13 @@ export async function globalSearch(
   const masked = !elevated && (ctx.hidePiiFromMembers ?? false)
 
   // Todas as queries (incluindo resolução do slug) rodam em paralelo
-  const [orgSlug, contactsResult, companiesResult, dealsResult] =
+  const [orgSlug, contactsResult, companiesResult, dealsResult, conversationsResult] =
     await Promise.all([
       getOrgSlug(ctx.orgId),
       searchContacts(ctx.orgId, ctx.userId, elevated, tokens, masked),
       searchCompanies(ctx.orgId, tokens),
       searchDeals(ctx.orgId, ctx.userId, elevated, tokens),
+      searchConversations(ctx.orgId, ctx.userId, elevated, tokens, masked),
     ])
 
   const contactItems: SearchResultItem[] = contactsResult.items.map(
@@ -312,6 +410,27 @@ export async function globalSearch(
     href: `/org/${orgSlug}/crm/deals/${deal.id}`,
   }))
 
+  const conversationItems: SearchResultItem[] = conversationsResult.items.map(
+    (conversation) => {
+      const channelLabel = CHANNEL_LABEL[conversation.channel] ?? conversation.channel
+
+      // Quando masked: exibir apenas o canal para não vazar conteúdo do chat
+      const subtitle = masked
+        ? channelLabel
+        : (conversation.last_message
+            ? conversation.last_message.slice(0, MAX_LAST_MESSAGE_LENGTH)
+            : channelLabel)
+
+      return {
+        id: conversation.id,
+        type: 'conversation',
+        title: conversation.contact_name,
+        subtitle,
+        href: `/org/${orgSlug}/inbox?contactId=${conversation.contact_id}`,
+      }
+    },
+  )
+
   const contacts: SearchResultGroup = {
     items: contactItems,
     totalCount: contactsResult.totalCount,
@@ -327,12 +446,18 @@ export async function globalSearch(
     totalCount: dealsResult.totalCount,
   }
 
+  const conversations: SearchResultGroup = {
+    items: conversationItems,
+    totalCount: conversationsResult.totalCount,
+  }
+
   return {
     contacts,
     companies,
     deals,
+    conversations,
     totalCount:
-      contacts.totalCount + companies.totalCount + deals.totalCount,
+      contacts.totalCount + companies.totalCount + deals.totalCount + conversations.totalCount,
     query,
   }
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { User, Building2, Kanban } from 'lucide-react'
+import { User, Building2, Kanban, MessageSquare } from 'lucide-react'
 import { CommandItem } from '@/_components/ui/command'
 import { SearchResultItem, SearchResultType } from '@/_data-access/search/types'
 import { HighlightText } from './highlight-text'
@@ -23,6 +23,11 @@ const typeConfig: Record<
     icon: Kanban,
     iconClass: 'text-emerald-600',
     containerClass: 'bg-emerald-500/10',
+  },
+  conversation: {
+    icon: MessageSquare,
+    iconClass: 'text-violet-600',
+    containerClass: 'bg-violet-500/10',
   },
 }
 

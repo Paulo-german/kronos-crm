@@ -1,4 +1,4 @@
-export type SearchResultType = 'contact' | 'company' | 'deal'
+export type SearchResultType = 'contact' | 'company' | 'deal' | 'conversation'
 
 export interface SearchResultItem {
   id: string
@@ -21,7 +21,8 @@ export interface GlobalSearchResult {
   contacts: SearchResultGroup
   companies: SearchResultGroup
   deals: SearchResultGroup
-  /** Soma dos totalCount dos 3 grupos */
+  conversations: SearchResultGroup
+  /** Soma dos totalCount de todos os grupos */
   totalCount: number
   /** O termo buscado, retornado para o frontend usar no highlight */
   query: string
