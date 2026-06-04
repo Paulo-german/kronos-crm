@@ -866,6 +866,7 @@ export async function buildSystemPrompt(
       lifecycleDealPipelineId: step.lifecycleDealPipelineId,
       autoDealStageId: null,
       autoTasks: null,
+      actions: [],
     })),
     conversationContactId: conversation.contactId,
   } satisfies SingleSystemPrompt

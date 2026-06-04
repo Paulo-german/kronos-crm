@@ -650,6 +650,7 @@ export async function runSingleV2(
     },
     groupToolConfig,
     /* omitLegacyMediaTools */ useOverhaul,
+    /* omitDeterministicStepTools */ useOverhaul,
   )
 
   // -----------------------------------------------------------------------
@@ -1473,6 +1474,7 @@ export async function runSingleV2(
     agentName: promptContext.agentName,
     contactId: promptContext.conversationContactId ?? null,
     dealId: conversation.dealId,
+    isV2: useOverhaul,
   })
 
   const { newStepOrder, stepAdvanced, followUpScheduled, followUpFirstDelayMinutes, totalFollowUps } =

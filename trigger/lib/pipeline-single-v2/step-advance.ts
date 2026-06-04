@@ -8,6 +8,7 @@ import { applyStepAutoActions } from '../apply-step-auto-actions'
 import { getFollowUpsForStep } from '@/_data-access/follow-up/get-follow-ups-for-step'
 import { createConversationEvent } from '../create-conversation-event'
 import type { InfoSubtype } from '@/_lib/conversation-events/types'
+import type { StepAction } from '@/_actions/agent/shared/step-action-schema'
 
 // ---------------------------------------------------------------------------
 // Tipos
@@ -21,6 +22,7 @@ interface StepInfo {
   lifecycleDealPipelineId: string | null
   autoDealStageId: string | null
   autoTasks: Array<{ title: string; dueInDays: number }> | null
+  actions: StepAction[]
 }
 
 export interface ApplyStepAdvanceInput {
@@ -34,6 +36,7 @@ export interface ApplyStepAdvanceInput {
   agentName: string
   contactId: string | null
   dealId: string | null
+  isV2?: boolean
 }
 
 export interface ApplyStepAdvanceOutput {
@@ -65,6 +68,7 @@ export async function applyStepAdvance(
     agentName,
     contactId,
     dealId,
+    isV2 = false,
   } = input
 
   // Guard de monotonicidade: step só avança, nunca regride.
@@ -150,6 +154,38 @@ export async function applyStepAdvance(
                 ? autoActionsErr.message
                 : String(autoActionsErr),
           })
+        }
+      }
+
+      // v2: move_deal e create_task saem do LLM e passam a executar aqui,
+      // deterministicamente, com os parâmetros já configurados no step builder.
+      if (isV2 && newStep) {
+        const moveDealAction = newStep.actions.find(
+          (action): action is Extract<StepAction, { type: 'move_deal' }> => action.type === 'move_deal',
+        )
+        const createTaskActions = newStep.actions.filter(
+          (action): action is Extract<StepAction, { type: 'create_task' }> => action.type === 'create_task',
+        )
+
+        if (moveDealAction || createTaskActions.length > 0) {
+          try {
+            await applyStepAutoActions({
+              conversationId,
+              organizationId,
+              agentId,
+              agentName,
+              dealId,
+              autoDealStageId: moveDealAction?.targetStage ?? null,
+              autoTasks: createTaskActions.length > 0
+                ? createTaskActions.map((action) => ({ title: action.title, dueInDays: action.dueDaysOffset }))
+                : null,
+            })
+          } catch (v2ActionsErr) {
+            logger.error('step:v2_step_actions_failed', {
+              conversationId,
+              error: v2ActionsErr instanceof Error ? v2ActionsErr.message : String(v2ActionsErr),
+            })
+          }
         }
       }
     }

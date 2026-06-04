@@ -51,7 +51,7 @@ export const stepActionSchema = z.discriminatedUnion('type', [
     ...baseFields,
     type: z.literal('create_task'),
     title: z.string().min(1),
-    dueDaysOffset: z.number().int().positive().optional(),
+    dueDaysOffset: z.number().int().positive().default(1),
   }),
 
   // Consulta slots disponíveis na agenda — config vem do step builder, não do LLM

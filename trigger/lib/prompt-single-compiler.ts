@@ -30,6 +30,7 @@ export interface SingleSystemPrompt {
     lifecycleDealPipelineId: string | null
     autoDealStageId: string | null
     autoTasks: Array<{ title: string; dueInDays: number }> | null
+    actions: StepAction[]
   }>
   currentStepOrder: number
   totalSteps: number
@@ -568,6 +569,7 @@ export function compileSingleSystemPrompt(
       lifecycleDealPipelineId: step.lifecycleDealPipelineId,
       autoDealStageId: step.autoDealStageId,
       autoTasks: step.autoTasks,
+      actions: step.actions,
     })),
     currentStepOrder: base.currentStepOrder,
     totalSteps: base.steps.length,

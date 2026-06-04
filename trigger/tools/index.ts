@@ -44,6 +44,10 @@ const SIMPLE_TOOL_REGISTRY = {
   create_task: createCreateTaskTool,
 } as const
 
+// Em v2, move_deal e create_task são executadas deterministicamente via applyStepAdvance
+// ao classificar a etapa — não são mais chamadas pelo LLM.
+const V2_DETERMINISTIC_TOOLS = new Set(['move_deal', 'create_task'])
+
 type SimpleToolName = keyof typeof SIMPLE_TOOL_REGISTRY
 
 /**
@@ -69,6 +73,7 @@ export function buildToolSet(
   globalFlags?: GlobalToolFlags,
   groupConfig?: GroupToolConfig,
   omitLegacyMediaTools = false,
+  omitDeterministicStepTools = false,
 ) {
   const tools: Record<
     string,
@@ -182,6 +187,7 @@ export function buildToolSet(
     // Tools simples — injetam ctx + triggerHint via opts
     const factory = SIMPLE_TOOL_REGISTRY[toolName as SimpleToolName]
     if (factory) {
+      if (omitDeterministicStepTools && V2_DETERMINISTIC_TOOLS.has(toolName)) continue
       const configs = stepActionsByType.get(toolName) ?? []
       if (configs.length > 0) {
         configs.forEach((config, indexInGroup) => {

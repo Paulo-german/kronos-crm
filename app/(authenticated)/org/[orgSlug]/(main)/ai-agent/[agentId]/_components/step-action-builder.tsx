@@ -79,7 +79,7 @@ const buildDefaultAction = (type: string): StepAction => {
     case 'move_deal':
       return { type: 'move_deal', trigger: '', targetStage: '' }
     case 'create_task':
-      return { type: 'create_task', trigger: '', title: '' }
+      return { type: 'create_task', trigger: '', title: '', dueDaysOffset: 1 }
     case 'update_contact':
       return { type: 'update_contact', trigger: '' }
     case 'update_deal':
