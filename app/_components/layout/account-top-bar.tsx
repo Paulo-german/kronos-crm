@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { KronosLogo } from '@/_components/icons/kronos-logo'
 import { UserAvatarDropdown } from '@/_components/layout/user-avatar-dropdown'
-import { ThemeToggle } from '@/_components/theme-toggle'
 
 interface AccountTopBarProps {
   user: {
@@ -23,7 +22,6 @@ export function AccountTopBar({ user }: AccountTopBarProps) {
       </Link>
 
       <div className="flex items-center gap-1">
-        <ThemeToggle />
         <UserAvatarDropdown user={user} />
       </div>
     </header>
