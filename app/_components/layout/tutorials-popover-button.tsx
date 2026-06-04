@@ -45,7 +45,7 @@ export const TutorialsPopoverButton = ({
     <>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button variant="ghost" size="icon" aria-label="Tutoriais">
+          <Button variant="ghost" size="icon" className="text-white/70 hover:bg-white/10 hover:text-white" aria-label="Tutoriais">
             <BookOpen className="size-4" />
           </Button>
         </PopoverTrigger>
