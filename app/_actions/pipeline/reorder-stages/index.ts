@@ -3,7 +3,7 @@
 import { orgActionClient } from '@/_lib/safe-action'
 import { reorderStagesSchema } from './schema'
 import { db } from '@/_lib/prisma'
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 
 export const reorderStages = orgActionClient
@@ -34,7 +34,6 @@ export const reorderStages = orgActionClient
 
     await db.$transaction(updates)
 
-    revalidatePath('/crm/deals/pipeline')
     revalidateTag(`pipeline:${ctx.orgId}`)
 
     return { success: true }

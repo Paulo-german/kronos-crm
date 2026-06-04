@@ -39,7 +39,7 @@ export const createProduct = orgActionClient
     }
 
     revalidateTag(`products:${ctx.orgId}`)
-    revalidatePath('/org/[orgSlug]/settings/products', 'page')
+    revalidatePath('/org/[orgSlug]/crm/settings/catalog', 'page')
     await invalidateProductCatalogCache(ctx.orgId)
 
     return { success: true, productId: product.id }

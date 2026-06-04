@@ -4,7 +4,7 @@ import { after } from 'next/server'
 import { orgActionClient } from '@/_lib/safe-action'
 import { reopenDealSchema } from './schema'
 import { db } from '@/_lib/prisma'
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import { ActivityType } from '@prisma/client'
 import {
   findDealWithRBAC,
@@ -38,9 +38,6 @@ export const reopenDeal = orgActionClient
       },
     })
 
-    revalidatePath('/crm/deals/pipeline')
-    revalidatePath('/crm/deals/list')
-    revalidatePath(`/crm/deals/${data.dealId}`)
     revalidateTag(`pipeline:${ctx.orgId}`)
     revalidateTag(`deals:${ctx.orgId}`)
     revalidateTag(`deals-options:${ctx.orgId}`)

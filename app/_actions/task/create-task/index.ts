@@ -4,7 +4,7 @@ import { after } from 'next/server'
 import { orgActionClient } from '@/_lib/safe-action'
 import { createTaskSchema } from './schema'
 import { db } from '@/_lib/prisma'
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import {
   canPerformAction,
   requirePermission,
@@ -64,9 +64,6 @@ export const createTask = orgActionClient
     revalidateTag(`tasks:${ctx.orgId}`)
     revalidateTag(`deal:${data.dealId}`)
     revalidateTag(`deals:${ctx.orgId}`)
-    revalidatePath('/crm/tasks')
-    revalidatePath('/crm/deals/pipeline')
-    revalidatePath(`/crm/deals/${data.dealId}`)
 
     // Notificar responsável quando a tarefa é atribuída a outro usuário
     if (assignedTo !== ctx.userId) {

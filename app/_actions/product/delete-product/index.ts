@@ -35,7 +35,7 @@ export const deleteProduct = orgActionClient
 
     revalidateTag(`products:${ctx.orgId}`)
     revalidateTag(`deals:${ctx.orgId}`)
-    revalidatePath('/org/[orgSlug]/settings/products', 'page')
+    revalidatePath('/org/[orgSlug]/crm/settings/catalog', 'page')
     await invalidateProductCatalogCache(ctx.orgId)
 
     return { success: true }

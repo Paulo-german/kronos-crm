@@ -4,7 +4,7 @@ import { after } from 'next/server'
 import { orgActionClient } from '@/_lib/safe-action'
 import { updateTaskSchema } from './schema'
 import { db } from '@/_lib/prisma'
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import {
   canPerformAction,
   canAccessRecord,
@@ -79,12 +79,6 @@ export const updateTask = orgActionClient
     revalidateTag(`deals:${ctx.orgId}`)
     if (existingTask.dealId !== data.dealId) {
       revalidateTag(`deal:${existingTask.dealId}`)
-    }
-    revalidatePath('/crm/tasks')
-    revalidatePath('/crm/deals/pipeline')
-    revalidatePath(`/crm/deals/${data.dealId}`)
-    if (existingTask.dealId !== data.dealId) {
-      revalidatePath(`/crm/deals/${existingTask.dealId}`)
     }
 
     // Notificar novo responsável quando há transferência de ownership para outro usuário

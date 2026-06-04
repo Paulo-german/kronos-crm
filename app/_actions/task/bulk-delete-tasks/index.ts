@@ -2,7 +2,7 @@
 
 import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import { bulkDeleteTasksSchema } from './schema'
 import { canPerformAction, requirePermission, isElevated } from '@/_lib/rbac'
 
@@ -28,8 +28,6 @@ export const bulkDeleteTasks = orgActionClient
     // 3. Revalidação
     revalidateTag(`tasks:${ctx.orgId}`)
     revalidateTag(`deals:${ctx.orgId}`)
-    revalidatePath('/crm/tasks')
-    revalidatePath('/crm/deals/pipeline')
 
     return { count: result.count }
   })

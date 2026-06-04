@@ -3,7 +3,7 @@
 import { orgActionClient } from '@/_lib/safe-action'
 import { deleteDealSchema } from './schema'
 import { db } from '@/_lib/prisma'
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 
 export const deleteDeal = orgActionClient
@@ -28,8 +28,6 @@ export const deleteDeal = orgActionClient
       where: { id: data.id },
     })
 
-    revalidatePath('/crm/deals/pipeline')
-    revalidatePath('/crm/deals/list')
     revalidateTag(`pipeline:${ctx.orgId}`)
     revalidateTag(`deals:${ctx.orgId}`)
     revalidateTag(`deals-options:${ctx.orgId}`)

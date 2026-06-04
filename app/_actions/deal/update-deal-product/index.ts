@@ -3,7 +3,7 @@
 import { orgActionClient } from '@/_lib/safe-action'
 import { updateDealProductSchema } from './schema'
 import { db } from '@/_lib/prisma'
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import { formatCurrency } from '@/_utils/format-currency'
 import {
   findDealWithRBAC,
@@ -72,8 +72,6 @@ export const updateDealProduct = orgActionClient
     revalidateTag(`pipeline:${ctx.orgId}`)
     revalidateTag(`deal:${dealProduct.dealId}`)
     revalidateTag(`dashboard:${ctx.orgId}`)
-    revalidatePath('/crm/deals/pipeline')
-    revalidatePath(`/crm/deals/${dealProduct.dealId}`)
 
     return { success: true, dealProductId: updated.id }
   })

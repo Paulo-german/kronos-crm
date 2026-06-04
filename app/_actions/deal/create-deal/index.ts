@@ -4,7 +4,7 @@ import { after } from 'next/server'
 import { orgActionClient } from '@/_lib/safe-action'
 import { createDealSchema } from './schema'
 import { db } from '@/_lib/prisma'
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import {
   canPerformAction,
   requirePermission,
@@ -90,8 +90,6 @@ export const createDeal = orgActionClient
       },
     })
 
-    revalidatePath('/crm/deals/pipeline')
-    revalidatePath('/crm/deals/list')
     revalidateTag(`pipeline:${ctx.orgId}`)
     revalidateTag(`deals:${ctx.orgId}`)
     revalidateTag(`deals-options:${ctx.orgId}`)

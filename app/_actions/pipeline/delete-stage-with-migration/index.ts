@@ -3,7 +3,7 @@
 import { orgActionClient } from '@/_lib/safe-action'
 import { deleteStageWithMigrationSchema } from './schema'
 import { db } from '@/_lib/prisma'
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 
 export const deleteStageWithMigration = orgActionClient
@@ -61,7 +61,6 @@ export const deleteStageWithMigration = orgActionClient
       where: { id: data.stageId },
     })
 
-    revalidatePath('/crm/deals/pipeline')
     revalidateTag(`pipeline:${ctx.orgId}`)
 
     return {

@@ -3,7 +3,7 @@
 import { orgActionClient } from '@/_lib/safe-action'
 import { updateContactSchema } from './schema'
 import { db } from '@/_lib/prisma'
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import {
   canPerformAction,
   canAccessRecord,
@@ -81,7 +81,6 @@ export const updateContact = orgActionClient
 
     revalidateTag(`contacts:${ctx.orgId}`)
     revalidateTag(`contact:${data.id}`)
-    revalidatePath('/contacts')
 
     return { success: true }
   })

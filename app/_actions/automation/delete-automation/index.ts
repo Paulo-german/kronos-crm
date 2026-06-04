@@ -27,7 +27,7 @@ export const deleteAutomation = orgActionClient
 
     revalidateTag(`automations:${ctx.orgId}`)
     revalidateTag(`automation:${data.id}`)
-    revalidatePath('/settings/automations')
+    revalidatePath('/org/[orgSlug]/crm/settings/automations', 'page')
 
     return { success: true }
   })

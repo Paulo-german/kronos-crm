@@ -3,7 +3,7 @@
 import { orgActionClient } from '@/_lib/safe-action'
 import { deleteTaskSchema } from './schema'
 import { db } from '@/_lib/prisma'
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import {
   canPerformAction,
   canAccessRecord,
@@ -38,9 +38,6 @@ export const deleteTask = orgActionClient
     revalidateTag(`tasks:${ctx.orgId}`)
     if (task.dealId) revalidateTag(`deal:${task.dealId}`)
     revalidateTag(`deals:${ctx.orgId}`)
-    revalidatePath('/crm/tasks')
-    revalidatePath('/crm/deals/pipeline')
-    if (task.dealId) revalidatePath(`/crm/deals/${task.dealId}`)
 
     return { success: true }
   })

@@ -3,7 +3,7 @@
 import { orgActionClient } from '@/_lib/safe-action'
 import { toggleTaskStatusSchema } from './schema'
 import { db } from '@/_lib/prisma'
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import { findTaskWithRBAC, canPerformAction, requirePermission } from '@/_lib/rbac'
 
 export const toggleTaskStatus = orgActionClient
@@ -40,9 +40,6 @@ export const toggleTaskStatus = orgActionClient
 
     revalidateTag(`tasks:${ctx.orgId}`)
     if (task.dealId) revalidateTag(`deal:${task.dealId}`)
-    revalidatePath('/crm/tasks')
-    revalidatePath('/crm/deals/pipeline')
-    if (task.dealId) revalidatePath(`/crm/deals/${task.dealId}`)
 
     return { success: true, isCompleted: willBeCompleted }
   })

@@ -3,7 +3,7 @@
 import { orgActionClient } from '@/_lib/safe-action'
 import { updateDealPrioritySchema } from './schema'
 import { db } from '@/_lib/prisma'
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import {
   findDealWithRBAC,
   canPerformAction,
@@ -38,7 +38,6 @@ export const updateDealPriority = orgActionClient
       })
     })
 
-    revalidatePath('/crm/deals/pipeline')
     revalidateTag(`deals:${ctx.orgId}`)
     revalidateTag(`pipeline:${ctx.orgId}`)
     revalidateTag(`deal:${data.dealId}`)

@@ -3,7 +3,7 @@
 import { z } from 'zod'
 import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 
 const deleteContactSchema = z.object({
@@ -34,7 +34,6 @@ export const deleteContact = orgActionClient
 
     revalidateTag(`contacts:${ctx.orgId}`)
     revalidateTag(`deals:${ctx.orgId}`)
-    revalidatePath('/contacts')
 
     return { success: true }
   })

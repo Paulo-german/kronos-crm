@@ -3,7 +3,7 @@
 import { orgActionClient } from '@/_lib/safe-action'
 import { removeDealLineItemSchema } from './schema'
 import { db } from '@/_lib/prisma'
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import {
   findDealWithRBAC,
   canPerformAction,
@@ -42,8 +42,6 @@ export const removeDealLineItem = orgActionClient
     await recalculateDealValue(lineItem.dealId)
 
     // 6. Invalidar cache
-    revalidatePath('/crm/deals/pipeline')
-    revalidatePath(`/crm/deals/${lineItem.dealId}`)
     revalidateTag(`deals:${ctx.orgId}`)
     revalidateTag(`deal:${lineItem.dealId}`)
     revalidateTag(`dashboard:${ctx.orgId}`)

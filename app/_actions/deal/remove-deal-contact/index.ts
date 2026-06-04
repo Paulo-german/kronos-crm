@@ -3,7 +3,7 @@
 import { orgActionClient } from '@/_lib/safe-action'
 import { removeDealContactSchema } from './schema'
 import { db } from '@/_lib/prisma'
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import {
   findDealWithRBAC,
   findContactWithRBAC,
@@ -48,8 +48,6 @@ export const removeDealContact = orgActionClient
     revalidateTag(`pipeline:${ctx.orgId}`)
     revalidateTag(`deals:${ctx.orgId}`)
     revalidateTag(`deal:${data.dealId}`)
-    revalidatePath('/crm/deals/pipeline')
-    revalidatePath(`/crm/deals/${data.dealId}`)
 
     return { success: true }
   })

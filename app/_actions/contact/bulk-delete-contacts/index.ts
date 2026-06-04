@@ -2,7 +2,7 @@
 
 import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import { bulkDeleteContactsSchema } from './schema'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 
@@ -24,7 +24,6 @@ export const bulkDeleteContacts = orgActionClient
     // 3. Revalidação
     revalidateTag(`contacts:${ctx.orgId}`)
     revalidateTag(`deals:${ctx.orgId}`)
-    revalidatePath('/contacts')
 
     return { count: result.count }
   })

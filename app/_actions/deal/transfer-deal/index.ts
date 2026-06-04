@@ -4,7 +4,7 @@ import { after } from 'next/server'
 import { orgActionClient } from '@/_lib/safe-action'
 import { transferDealSchema } from './schema'
 import { db } from '@/_lib/prisma'
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import {
   canPerformAction,
   canAccessRecord,
@@ -118,15 +118,12 @@ export const transferDeal = orgActionClient
     revalidateTag(`deal:${data.dealId}`)
     revalidateTag(`pipeline:${ctx.orgId}`)
     revalidateTag(`dashboard:${ctx.orgId}`)
-    revalidatePath('/crm/deals/pipeline')
-    revalidatePath('/crm/deals/list')
 
     if (cascadedContactIds.length > 0) {
       revalidateTag(`contacts:${ctx.orgId}`)
       for (const contactId of cascadedContactIds) {
         revalidateTag(`contact:${contactId}`)
       }
-      revalidatePath('/contacts')
     }
 
     // 7. Notificar novo responsável (somente se for diferente do executor)

@@ -59,7 +59,7 @@ export const updatePromotion = orgActionClient
 
     // 4. Invalidar cache da listagem de promoções da org
     revalidateTag(`promotions:${ctx.orgId}`)
-    revalidatePath('/org/[orgSlug]/settings/catalog', 'page')
+    revalidatePath('/org/[orgSlug]/crm/settings/catalog', 'page')
 
     return { success: true }
   })

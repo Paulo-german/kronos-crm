@@ -20,6 +20,6 @@ export const deleteGoal = orgActionClient
     await db.goal.delete({ where: { id } })
 
     revalidateTag(`goals:${ctx.orgId}`)
-    revalidatePath('/settings/goals')
+    revalidatePath('/org/[orgSlug]/crm/settings/goals', 'page')
     return { success: true }
   })

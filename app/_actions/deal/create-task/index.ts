@@ -3,7 +3,7 @@
 import { orgActionClient } from '@/_lib/safe-action'
 import { createTaskSchema } from './schema'
 import { db } from '@/_lib/prisma'
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import {
   findDealWithRBAC,
   canPerformAction,
@@ -44,8 +44,6 @@ export const createTask = orgActionClient
       },
     })
 
-    revalidatePath('/crm/deals/pipeline')
-    revalidatePath(`/crm/deals/${data.dealId}`)
     revalidateTag(`tasks:${ctx.orgId}`)
     revalidateTag(`deal:${data.dealId}`)
 

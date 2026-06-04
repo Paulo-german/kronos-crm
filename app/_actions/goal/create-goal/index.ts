@@ -58,6 +58,6 @@ export const createGoal = orgActionClient
     })
 
     revalidateTag(`goals:${ctx.orgId}`)
-    revalidatePath('/settings/goals')
+    revalidatePath('/org/[orgSlug]/crm/settings/goals', 'page')
     return { success: true, goalId: goal.id }
   })

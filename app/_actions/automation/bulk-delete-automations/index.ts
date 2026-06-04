@@ -25,7 +25,7 @@ export const bulkDeleteAutomations = orgActionClient
     for (const id of data.ids) {
       revalidateTag(`automation:${id}`)
     }
-    revalidatePath('/settings/automations')
+    revalidatePath('/org/[orgSlug]/crm/settings/automations', 'page')
 
     return { success: true, deleted: result.count }
   })

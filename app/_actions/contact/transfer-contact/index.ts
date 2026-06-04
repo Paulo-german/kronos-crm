@@ -4,7 +4,7 @@ import { after } from 'next/server'
 import { orgActionClient } from '@/_lib/safe-action'
 import { transferContactSchema } from './schema'
 import { db } from '@/_lib/prisma'
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import {
   canPerformAction,
   canAccessRecord,
@@ -120,7 +120,6 @@ export const transferContact = orgActionClient
       // 6. Invalidar cache de todas as tags afetadas
       revalidateTag(`contacts:${ctx.orgId}`)
       revalidateTag(`contact:${data.contactId}`)
-      revalidatePath('/contacts')
 
       if (cascadedDealIds.length > 0) {
         revalidateTag(`deals:${ctx.orgId}`)
@@ -129,8 +128,6 @@ export const transferContact = orgActionClient
         for (const dealId of cascadedDealIds) {
           revalidateTag(`deal:${dealId}`)
         }
-        revalidatePath('/crm/deals/pipeline')
-        revalidatePath('/crm/deals/list')
       }
 
       // 7. Notificar novo responsável (somente se for diferente do executor)

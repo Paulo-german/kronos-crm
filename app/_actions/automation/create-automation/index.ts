@@ -36,7 +36,7 @@ export const createAutomation = orgActionClient
     })
 
     revalidateTag(`automations:${ctx.orgId}`)
-    revalidatePath('/settings/automations')
+    revalidatePath('/org/[orgSlug]/crm/settings/automations', 'page')
 
     return { success: true, automationId: automation.id }
   })

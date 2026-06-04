@@ -33,7 +33,7 @@ export const deletePromotion = orgActionClient
     // 4. Invalidar cache; deals podem referenciar a promoção em DealLineItem
     revalidateTag(`promotions:${ctx.orgId}`)
     revalidateTag(`deals:${ctx.orgId}`)
-    revalidatePath('/org/[orgSlug]/settings/catalog', 'page')
+    revalidatePath('/org/[orgSlug]/crm/settings/catalog', 'page')
 
     return { success: true }
   })

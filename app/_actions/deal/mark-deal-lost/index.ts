@@ -59,12 +59,9 @@ export const markDealLost = orgActionClient
     })
 
     if (org?.slug) {
-      revalidatePath(`/org/${org.slug}/settings/loss-reasons`)
+      revalidatePath(`/org/${org.slug}/crm/settings/loss-reasons`)
     }
 
-    revalidatePath('/crm/deals/pipeline')
-    revalidatePath('/crm/deals/list')
-    revalidatePath(`/crm/deals/${data.dealId}`)
     revalidateTag(`pipeline:${ctx.orgId}`)
     revalidateTag(`deals:${ctx.orgId}`)
     revalidateTag(`deals-options:${ctx.orgId}`)
