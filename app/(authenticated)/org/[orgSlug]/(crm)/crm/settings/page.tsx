@@ -80,8 +80,7 @@ const CrmSettingsPage = async ({ params }: CrmSettingsPageProps) => {
         </HeaderLeft>
       </Header>
 
-      <div className="px-6">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {settingsItems.map((item) => {
             const Icon = item.icon
             return (
@@ -101,7 +100,6 @@ const CrmSettingsPage = async ({ params }: CrmSettingsPageProps) => {
             )
           })}
         </div>
-      </div>
     </div>
   )
 }
