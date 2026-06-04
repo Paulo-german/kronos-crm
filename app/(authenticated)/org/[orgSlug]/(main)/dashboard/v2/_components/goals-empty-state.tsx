@@ -30,7 +30,7 @@ export function GoalsEmptyState({ isElevated, orgSlug }: GoalsEmptyStateProps) {
       </div>
       {isElevated && (
         <Button variant="outline" size="sm" asChild>
-          <Link href={`/org/${orgSlug}/settings/goals`}>Criar primeira meta</Link>
+          <Link href={`/org/${orgSlug}/crm/settings/goals`}>Criar primeira meta</Link>
         </Button>
       )}
     </div>

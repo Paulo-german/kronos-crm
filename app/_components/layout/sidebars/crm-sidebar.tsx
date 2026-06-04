@@ -1,4 +1,4 @@
-import { Home, Users, Kanban, CheckSquare, CalendarClock, BarChart3 } from 'lucide-react'
+import { Home, Users, Kanban, CheckSquare, CalendarClock, BarChart3, LayoutDashboard } from 'lucide-react'
 import { NavItem } from '@/_components/layout/sidebars/nav-item'
 
 interface CrmSidebarProps {
@@ -12,6 +12,7 @@ export const CrmSidebar = ({ orgSlug }: CrmSidebarProps) => {
     <aside className="group/sidebar relative hidden h-full w-16 flex-col overflow-hidden bg-primary-dark text-white transition-[width] duration-300 ease-in-out hover:w-60 md:flex">
       <nav className="flex flex-1 flex-col gap-1 px-2 py-4">
         <NavItem href={`${base}/home`} icon={<Home className="h-4 w-4" />} label="Início" />
+        <NavItem href={`${base}/dashboard`} icon={<LayoutDashboard className="h-4 w-4" />} label="Dashboard" />
         <NavItem href={`${base}/contacts`} icon={<Users className="h-4 w-4" />} label="Contatos" />
         <NavItem href={`${base}/reports/overview`} icon={<BarChart3 className="h-4 w-4" />} label="Analisar" />
 

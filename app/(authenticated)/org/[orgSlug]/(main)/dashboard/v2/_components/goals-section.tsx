@@ -34,7 +34,7 @@ export async function GoalsSection({ ctx, orgSlug }: GoalsSectionProps) {
               variant="compact"
               primaryAction={
                 elevated
-                  ? { label: 'Ver detalhes', href: `/org/${orgSlug}/settings/goals` }
+                  ? { label: 'Ver detalhes', href: `/org/${orgSlug}/crm/settings/goals` }
                   : undefined
               }
             />
