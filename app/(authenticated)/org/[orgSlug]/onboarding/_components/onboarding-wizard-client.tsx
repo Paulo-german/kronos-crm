@@ -99,7 +99,7 @@ export function OnboardingWizardClient({
   function handleSkipOnboarding() {
     startSkipTransition(async () => {
       await completeOnboarding()
-      router.push(`/org/${orgSlug}/dashboard`)
+      router.push(`/org/${orgSlug}/crm/home`)
     })
   }
 
@@ -209,7 +209,7 @@ export function OnboardingWizardClient({
       localStorage.removeItem(key)
     }
 
-    router.push(`/org/${orgSlug}/dashboard`)
+    router.push(`/org/${orgSlug}/crm/home`)
   }, [router, orgSlug, initialStatus.hasInbox])
 
   const handleBack = useCallback(() => {

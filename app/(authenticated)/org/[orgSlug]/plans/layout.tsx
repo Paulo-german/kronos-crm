@@ -41,7 +41,7 @@ export default async function PlansLayout({ children, params }: PlansLayoutProps
           <div className="flex items-center gap-2">
             {!trialStatus.isExpired && (
               <Button variant="ghost" size="sm" asChild>
-                <Link href={`/org/${orgSlug}/dashboard`}>
+                <Link href={`/org/${orgSlug}/crm/home`}>
                   <ArrowLeft className="mr-2 size-4" />
                   Voltar ao painel
                 </Link>

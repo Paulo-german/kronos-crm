@@ -38,7 +38,7 @@ export function InviteHandlerClient({
     onSuccess: ({ data }) => {
       if (data?.success && data.orgSlug) {
         toast.success(`Bem-vindo à ${orgName}!`)
-        router.push(`/org/${data.orgSlug}/dashboard`)
+        router.push(`/org/${data.orgSlug}/crm/home`)
       }
     },
     onError: ({ error }) => {

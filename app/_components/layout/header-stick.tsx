@@ -20,7 +20,7 @@ const HeaderStick = ({ userEmail }: HeaderStickProps) => {
   return (
     <header className="flex h-14 shrink-0 items-center justify-between border-b border-border/50 bg-background px-6">
       <Link
-        href={orgSlug ? `/org/${orgSlug}/dashboard` : '/'}
+        href={orgSlug ? `/org/${orgSlug}/crm/home` : '/'}
         className="flex items-center gap-2 font-bold text-foreground"
       >
         <KronosLogo className="text-primary" />

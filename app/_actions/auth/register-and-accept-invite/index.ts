@@ -95,5 +95,5 @@ export const registerAndAcceptInvite = actionClient
     revalidateTag(`org-members:${member.organizationId}`)
 
     // 8. Redirect server-side (evita race condition com revalidateTag)
-    redirect(`/org/${member.organization.slug}/dashboard`)
+    redirect(`/org/${member.organization.slug}/crm/home`)
   })

@@ -71,7 +71,7 @@ export async function updateSession(request: NextRequest) {
       const lastOrgSlug = request.cookies.get(LAST_ORG_COOKIE)?.value
       if (lastOrgSlug) {
         return NextResponse.redirect(
-          new URL(`/org/${lastOrgSlug}/dashboard`, request.url),
+          new URL(`/org/${lastOrgSlug}/crm/home`, request.url),
         )
       }
       // Sem org salva, vai para seleção de org
@@ -92,6 +92,10 @@ export async function updateSession(request: NextRequest) {
     // Redirecionar para última org ou seleção de org
     const lastOrgSlug = request.cookies.get(LAST_ORG_COOKIE)?.value
     if (lastOrgSlug) {
+      // /dashboard é rota extinta — vai direto para /crm/home sem hop extra
+      if (pathname === '/dashboard') {
+        return NextResponse.redirect(new URL(`/org/${lastOrgSlug}/crm/home`, request.url))
+      }
       const newPath = pathname.replace(/^\//, `/org/${lastOrgSlug}/`)
       return NextResponse.redirect(new URL(newPath, request.url))
     }
@@ -153,7 +157,7 @@ export async function updateSession(request: NextRequest) {
     const lastOrgSlug = request.cookies.get(LAST_ORG_COOKIE)?.value
     if (lastOrgSlug) {
       return NextResponse.redirect(
-        new URL(`/org/${lastOrgSlug}/dashboard`, request.url),
+        new URL(`/org/${lastOrgSlug}/crm/home`, request.url),
       )
     }
     return NextResponse.redirect(new URL('/org', request.url))
