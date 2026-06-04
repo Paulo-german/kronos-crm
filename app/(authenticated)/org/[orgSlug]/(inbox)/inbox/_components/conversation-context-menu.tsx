@@ -1,0 +1,411 @@
+'use client'
+
+import { useState } from 'react'
+import Link from 'next/link'
+import { Check, CheckCircle2, Clipboard, ClipboardCheck, Mail, MailOpen, Pin, RotateCcw, Settings2, Tag, UserCog } from 'lucide-react'
+import { cn } from '@/_lib/utils'
+import { getLabelColor } from '@/_lib/constants/label-colors'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuTrigger,
+} from '@/_components/ui/context-menu'
+import {
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+} from '@/_components/ui/dropdown-menu'
+import type { ConversationListDto, ConversationLabelDto } from '@/_data-access/conversation/get-conversations'
+import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+type MemberWithUserId = AcceptedMemberDto & { userId: string }
+
+function hasUserId(member: AcceptedMemberDto): member is MemberWithUserId {
+  return member.userId !== null
+}
+
+// ---------------------------------------------------------------------------
+// Tipos
+// ---------------------------------------------------------------------------
+
+interface ConversationMenuItemsProps {
+  conversation: ConversationListDto
+  onToggleRead: (id: string) => void
+  onResolve: (id: string) => void
+  onReopen: (id: string) => void
+  onToggleLabel: (conversationId: string, labelId: string) => void
+  onAssign: (conversationId: string, userId: string) => void
+  availableLabels: ConversationLabelDto[]
+  members: AcceptedMemberDto[]
+  isElevated: boolean
+  orgSlug: string
+  isPending: boolean
+  variant: 'context' | 'dropdown'
+}
+
+// ---------------------------------------------------------------------------
+// Sub-componente reutilizável de items (usado tanto pelo ContextMenu quanto
+// pelo DropdownMenu do botão 3 pontinhos)
+// ---------------------------------------------------------------------------
+
+export function ConversationMenuItems({
+  conversation,
+  onToggleRead,
+  onResolve,
+  onReopen,
+  onToggleLabel,
+  onAssign,
+  availableLabels,
+  members,
+  isElevated,
+  orgSlug,
+  isPending,
+  variant,
+}: ConversationMenuItemsProps) {
+  const [copied, setCopied] = useState(false)
+
+  async function handleCopyId(event: React.MouseEvent) {
+    event.stopPropagation()
+    try {
+      await navigator.clipboard.writeText(conversation.id)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // clipboard indisponível (contexto não-HTTPS ou permissão negada) — ignora silenciosamente
+    }
+  }
+
+  const isUnread = conversation.unreadCount > 0
+  const label = isUnread ? 'Marcar como lida' : 'Marcar como não lida'
+  const Icon = isUnread ? MailOpen : Mail
+  const isOpen = conversation.status === 'OPEN'
+  const conversationLabelIds = new Set(conversation.labels.map((label) => label.id))
+
+  if (variant === 'context') {
+    return (
+      <>
+        <ContextMenuItem
+          disabled={isPending}
+          onClick={() => onToggleRead(conversation.id)}
+          className="gap-2"
+        >
+          <Icon className="h-3.5 w-3.5" />
+          {label}
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        {isOpen ? (
+          <ContextMenuItem
+            onClick={() => onResolve(conversation.id)}
+            className="gap-2"
+          >
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            Resolver conversa
+          </ContextMenuItem>
+        ) : (
+          <ContextMenuItem
+            onClick={() => onReopen(conversation.id)}
+            className="gap-2"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            Reabrir conversa
+          </ContextMenuItem>
+        )}
+        <ContextMenuSeparator />
+        <ContextMenuSub>
+          <ContextMenuSubTrigger className="gap-2">
+            <Tag className="h-3.5 w-3.5" />
+            Etiquetas
+          </ContextMenuSubTrigger>
+          <ContextMenuSubContent className="w-48">
+            {availableLabels.length > 0 ? (
+              availableLabels.map((availableLabel) => {
+                const colorConfig = getLabelColor(availableLabel.color)
+                const isActive = conversationLabelIds.has(availableLabel.id)
+                return (
+                  <ContextMenuItem
+                    key={availableLabel.id}
+                    onClick={() => onToggleLabel(conversation.id, availableLabel.id)}
+                    className="gap-2"
+                  >
+                    <span className={cn('h-2.5 w-2.5 shrink-0 rounded-full', colorConfig.dot)} />
+                    <span className="flex-1 truncate">{availableLabel.name}</span>
+                    {isActive && <Check className="h-3.5 w-3.5 text-primary" />}
+                  </ContextMenuItem>
+                )
+              })
+            ) : (
+              <>
+                <div className="px-2 py-3 text-center text-xs text-muted-foreground">
+                  Nenhuma etiqueta criada
+                </div>
+                <ContextMenuSeparator />
+                <ContextMenuItem asChild>
+                  <Link href={`/org/${orgSlug}/settings/labels`} className="gap-2">
+                    <Settings2 className="h-3.5 w-3.5" />
+                    Configurar etiquetas
+                  </Link>
+                </ContextMenuItem>
+              </>
+            )}
+          </ContextMenuSubContent>
+        </ContextMenuSub>
+        {isElevated && (
+          <>
+            <ContextMenuSeparator />
+            <ContextMenuSub>
+              <ContextMenuSubTrigger className="gap-2">
+                <UserCog className="h-3.5 w-3.5" />
+                Atribuir para
+              </ContextMenuSubTrigger>
+              <ContextMenuSubContent className="w-48">
+                {members.filter(hasUserId).map((member) => {
+                  const isActive = conversation.assignedTo === member.userId
+                  return (
+                    <ContextMenuItem
+                      key={member.id}
+                      onClick={() => onAssign(conversation.id, member.userId)}
+                      className="gap-2"
+                    >
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-medium text-primary">
+                        {member.user?.fullName
+                          ? member.user.fullName.split(' ').slice(0, 2).map((word) => word[0]).join('').toUpperCase()
+                          : '?'}
+                      </span>
+                      <span className="flex-1 truncate">{member.user?.fullName ?? member.email}</span>
+                      {isActive && <Check className="h-3.5 w-3.5 text-primary" />}
+                    </ContextMenuItem>
+                  )
+                })}
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+          </>
+        )}
+        <ContextMenuSeparator />
+        <ContextMenuItem disabled className="gap-2 text-muted-foreground">
+          <Pin className="h-3.5 w-3.5" />
+          Fixar conversa
+          <span className="ml-auto text-[10px] text-muted-foreground/60">
+            Em breve
+          </span>
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem onClick={handleCopyId} className="gap-2">
+          {copied ? (
+            <ClipboardCheck className="h-3.5 w-3.5 text-green-500" />
+          ) : (
+            <Clipboard className="h-3.5 w-3.5" />
+          )}
+          {copied ? 'ID copiado!' : 'Copiar ID da conversa'}
+        </ContextMenuItem>
+      </>
+    )
+  }
+
+  return (
+    <>
+      <DropdownMenuItem
+        disabled={isPending}
+        onClick={(event) => {
+          event.stopPropagation()
+          onToggleRead(conversation.id)
+        }}
+        className="gap-2"
+      >
+        <Icon className="h-3.5 w-3.5" />
+        {label}
+      </DropdownMenuItem>
+      <DropdownMenuSeparator />
+      {isOpen ? (
+        <DropdownMenuItem
+          onClick={(event) => {
+            event.stopPropagation()
+            onResolve(conversation.id)
+          }}
+          className="gap-2"
+        >
+          <CheckCircle2 className="h-3.5 w-3.5" />
+          Resolver conversa
+        </DropdownMenuItem>
+      ) : (
+        <DropdownMenuItem
+          onClick={(event) => {
+            event.stopPropagation()
+            onReopen(conversation.id)
+          }}
+          className="gap-2"
+        >
+          <RotateCcw className="h-3.5 w-3.5" />
+          Reabrir conversa
+        </DropdownMenuItem>
+      )}
+      <DropdownMenuSeparator />
+      <DropdownMenuSub>
+        <DropdownMenuSubTrigger
+          className="gap-2"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <Tag className="h-3.5 w-3.5" />
+          Etiquetas
+        </DropdownMenuSubTrigger>
+        <DropdownMenuSubContent className="w-48">
+          {availableLabels.length > 0 ? (
+            availableLabels.map((availableLabel) => {
+              const colorConfig = getLabelColor(availableLabel.color)
+              const isActive = conversationLabelIds.has(availableLabel.id)
+              return (
+                <DropdownMenuItem
+                  key={availableLabel.id}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    onToggleLabel(conversation.id, availableLabel.id)
+                  }}
+                  className="gap-2"
+                >
+                  <span className={cn('h-2.5 w-2.5 shrink-0 rounded-full', colorConfig.dot)} />
+                  <span className="flex-1 truncate">{availableLabel.name}</span>
+                  {isActive && <Check className="h-3.5 w-3.5 text-primary" />}
+                </DropdownMenuItem>
+              )
+            })
+          ) : (
+            <>
+              <div className="px-2 py-3 text-center text-xs text-muted-foreground">
+                Nenhuma etiqueta criada
+              </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild onClick={(event) => event.stopPropagation()}>
+                <Link href={`/org/${orgSlug}/settings/labels`} className="gap-2">
+                  <Settings2 className="h-3.5 w-3.5" />
+                  Configurar etiquetas
+                </Link>
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenuSubContent>
+      </DropdownMenuSub>
+      {isElevated && (
+        <>
+          <DropdownMenuSeparator />
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger
+              className="gap-2"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <UserCog className="h-3.5 w-3.5" />
+              Atribuir para
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className="w-48">
+              {members.filter(hasUserId).map((member) => {
+                const isActive = conversation.assignedTo === member.userId
+                return (
+                  <DropdownMenuItem
+                    key={member.id}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      onAssign(conversation.id, member.userId)
+                    }}
+                    className="gap-2"
+                  >
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-medium text-primary">
+                      {member.user?.fullName
+                        ? member.user.fullName.split(' ').slice(0, 2).map((word) => word[0]).join('').toUpperCase()
+                        : '?'}
+                    </span>
+                    <span className="flex-1 truncate">{member.user?.fullName ?? member.email}</span>
+                    {isActive && <Check className="h-3.5 w-3.5 text-primary" />}
+                  </DropdownMenuItem>
+                )
+              })}
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        </>
+      )}
+      <DropdownMenuSeparator />
+      <DropdownMenuItem
+        disabled
+        className="gap-2 text-muted-foreground"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <Pin className="h-3.5 w-3.5" />
+        Fixar conversa
+        <span className="ml-auto text-[10px] text-muted-foreground/60">
+          Em breve
+        </span>
+      </DropdownMenuItem>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem onClick={handleCopyId} className="gap-2">
+        {copied ? (
+          <ClipboardCheck className="h-3.5 w-3.5 text-green-500" />
+        ) : (
+          <Clipboard className="h-3.5 w-3.5" />
+        )}
+        {copied ? 'ID copiado!' : 'Copiar ID da conversa'}
+      </DropdownMenuItem>
+    </>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Componente principal: ContextMenu (botão direito)
+// ---------------------------------------------------------------------------
+
+interface ConversationContextMenuProps {
+  conversation: ConversationListDto
+  onToggleRead: (id: string) => void
+  onResolve: (id: string) => void
+  onReopen: (id: string) => void
+  onToggleLabel: (conversationId: string, labelId: string) => void
+  onAssign: (conversationId: string, userId: string) => void
+  availableLabels: ConversationLabelDto[]
+  members: AcceptedMemberDto[]
+  isElevated: boolean
+  orgSlug: string
+  children: React.ReactNode
+}
+
+export function ConversationContextMenu({
+  conversation,
+  onToggleRead,
+  onResolve,
+  onReopen,
+  onToggleLabel,
+  onAssign,
+  availableLabels,
+  members,
+  isElevated,
+  orgSlug,
+  children,
+}: ConversationContextMenuProps) {
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
+      <ContextMenuContent className="w-52">
+        <ConversationMenuItems
+          conversation={conversation}
+          onToggleRead={onToggleRead}
+          onResolve={onResolve}
+          onReopen={onReopen}
+          onToggleLabel={onToggleLabel}
+          onAssign={onAssign}
+          availableLabels={availableLabels}
+          members={members}
+          isElevated={isElevated}
+          orgSlug={orgSlug}
+          isPending={false}
+          variant="context"
+        />
+      </ContextMenuContent>
+    </ContextMenu>
+  )
+}

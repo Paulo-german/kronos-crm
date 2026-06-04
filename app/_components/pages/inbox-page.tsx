@@ -6,7 +6,7 @@ import { getOrganizationMembers } from '@/_data-access/organization/get-organiza
 import { getConversationLabels } from '@/_data-access/conversation-label/get-conversation-labels'
 import { getUserById } from '@/_data-access/user/get-user-by-id'
 import { getAgents } from '@/_data-access/agent/get-agents'
-import { InboxClient } from '@/(authenticated)/org/[orgSlug]/(main)/inbox/_components/inbox-client'
+import { InboxClient } from '@/(authenticated)/org/[orgSlug]/(inbox)/inbox/_components/inbox-client'
 
 interface InboxPageProps {
   params: Promise<{ orgSlug: string }>

@@ -9,7 +9,7 @@ import { getSquads } from '@/_data-access/squad/get-squads'
 import { getAgentConnectionStats } from '@/_data-access/agent/get-agent-connection-stats'
 import { getEvolutionInstanceInfo } from '@/_lib/evolution-js/instance-management'
 import { resolveEvolutionCredentials } from '@/_lib/evolution-js/resolve-credentials'
-import InboxDetailClient from '@/(authenticated)/org/[orgSlug]/(main)/settings/inboxes/[inboxId]/_components/inbox-detail-client'
+import InboxDetailClient from '@/(authenticated)/org/[orgSlug]/(inbox)/inbox/settings/inboxes/[inboxId]/_components/inbox-detail-client'
 
 interface InboxDetailPageProps {
   params: Promise<{ orgSlug: string; inboxId: string }>

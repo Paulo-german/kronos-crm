@@ -9,8 +9,8 @@ import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 import { QuotaHint } from '@/_components/trial/quota-hint'
 import { BackButton } from '@/_components/layout/back-button'
 import Header, { HeaderLeft, HeaderRight, HeaderTitle, HeaderSubTitle } from '@/_components/header'
-import { CaptureFormsDataTable } from '@/(authenticated)/org/[orgSlug]/(main)/settings/capture-forms/_components/capture-forms-data-table'
-import CreateCaptureFormButton from '@/(authenticated)/org/[orgSlug]/(main)/settings/capture-forms/_components/create-capture-form-button'
+import { CaptureFormsDataTable } from '@/(authenticated)/org/[orgSlug]/(inbox)/inbox/settings/capture-forms/_components/capture-forms-data-table'
+import CreateCaptureFormButton from '@/(authenticated)/org/[orgSlug]/(inbox)/inbox/settings/capture-forms/_components/create-capture-form-button'
 
 interface CaptureFormsPageProps {
   params: Promise<{ orgSlug: string }>

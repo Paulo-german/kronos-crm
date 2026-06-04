@@ -1,0 +1,606 @@
+'use client'
+
+import { useState, useRef, useCallback, useEffect } from 'react'
+import { toast } from 'sonner'
+import { format } from 'date-fns'
+import { cn } from '@/_lib/utils'
+import { AlertTriangle, Bot, Check, CheckCheck, Copy, FileDown, FileText, Loader2, MoreVertical, Pause, Pencil, Play, RotateCw, UserRound, X } from 'lucide-react'
+import { Button } from '@/_components/ui/button'
+import { Badge } from '@/_components/ui/badge'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/_components/ui/dropdown-menu'
+import { Textarea } from '@/_components/ui/textarea'
+import { renderWhatsappText } from './whatsapp-text'
+
+function formatAudioDuration(seconds: number): string {
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.floor(seconds % 60)
+  return `${mins}:${secs.toString().padStart(2, '0')}`
+}
+
+function AudioPlayer({ src, isUser, initialDuration = 0 }: { src: string; isUser: boolean; initialDuration?: number }) {
+  const audioRef = useRef<HTMLAudioElement>(null)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [hasError, setHasError] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [duration, setDuration] = useState(initialDuration)
+
+  const togglePlay = useCallback(async () => {
+    const audio = audioRef.current
+    if (!audio || hasError) return
+
+    if (isPlaying) {
+      audio.pause()
+      return
+    }
+
+    try {
+      await audio.play()
+    } catch {
+      setHasError(true)
+      toast.error('Não foi possível reproduzir o áudio.')
+    }
+  }, [isPlaying, hasError])
+
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!audio) return
+
+    const handlePlay = () => setIsPlaying(true)
+    const handlePause = () => setIsPlaying(false)
+    const handleEnded = () => {
+      setIsPlaying(false)
+      setProgress(0)
+    }
+    const handleTimeUpdate = () => {
+      const fileDuration = isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 0
+      const effectiveDuration = fileDuration || initialDuration
+      if (effectiveDuration > 0) {
+        setProgress((audio.currentTime / effectiveDuration) * 100)
+      }
+    }
+    const handleLoadedMetadata = () => {
+      // Prefere duração real do arquivo; mantém initialDuration como fallback
+      if (isFinite(audio.duration) && audio.duration > 0) {
+        setDuration(audio.duration)
+      }
+    }
+    // Erro ao carregar (disparado pelo play, não pelo preload — preload="none")
+    const handleError = () => {
+      setHasError(true)
+    }
+
+    audio.addEventListener('play', handlePlay)
+    audio.addEventListener('pause', handlePause)
+    audio.addEventListener('ended', handleEnded)
+    audio.addEventListener('timeupdate', handleTimeUpdate)
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata)
+    audio.addEventListener('error', handleError)
+
+    return () => {
+      audio.removeEventListener('play', handlePlay)
+      audio.removeEventListener('pause', handlePause)
+      audio.removeEventListener('ended', handleEnded)
+      audio.removeEventListener('timeupdate', handleTimeUpdate)
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata)
+      audio.removeEventListener('error', handleError)
+    }
+  }, [initialDuration])
+
+  const handleSeek = (event: React.MouseEvent<HTMLDivElement>) => {
+    const audio = audioRef.current
+    if (!audio) return
+    const seekTarget = isFinite(audio.duration) && audio.duration > 0 ? audio.duration : initialDuration
+    if (!seekTarget) return
+
+    const rect = event.currentTarget.getBoundingClientRect()
+    const percent = (event.clientX - rect.left) / rect.width
+    audio.currentTime = percent * seekTarget
+  }
+
+  if (hasError) {
+    return (
+      <div
+        className={cn(
+          'mb-1 flex min-w-[220px] items-center gap-2 rounded-lg px-3 py-2',
+          isUser ? 'bg-secondary/40' : 'bg-white/10',
+        )}
+      >
+        <AlertTriangle className={cn('h-4 w-4 shrink-0', isUser ? 'text-muted-foreground' : 'text-white/60')} />
+        <span className={cn('text-xs', isUser ? 'text-muted-foreground' : 'text-white/60')}>
+          Áudio indisponível
+        </span>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className={cn(
+        'mb-1 flex min-w-[220px] items-center gap-2.5 rounded-lg px-3 py-2',
+        isUser ? 'bg-secondary/40' : 'bg-white/10',
+      )}
+    >
+      <button
+        type="button"
+        onClick={togglePlay}
+        className={cn(
+          'flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors',
+          isUser
+            ? 'bg-primary/10 text-primary hover:bg-primary/20'
+            : 'bg-white/20 text-white hover:bg-white/30',
+        )}
+      >
+        {isPlaying ? (
+          <Pause className="h-3.5 w-3.5" />
+        ) : (
+          <Play className="h-3.5 w-3.5 translate-x-[1px]" />
+        )}
+      </button>
+
+      <div className="flex flex-1 flex-col gap-1">
+        <div
+          className={cn(
+            'h-1 cursor-pointer rounded-full',
+            isUser ? 'bg-border' : 'bg-white/20',
+          )}
+          onClick={handleSeek}
+        >
+          <div
+            className={cn(
+              'h-full rounded-full transition-all',
+              isUser ? 'bg-primary' : 'bg-white/70',
+            )}
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      </div>
+
+      <span
+        className={cn(
+          'text-[10px] tabular-nums',
+          isUser ? 'text-muted-foreground' : 'text-white/60',
+        )}
+      >
+        {duration > 0 ? formatAudioDuration(duration) : '0:00'}
+      </span>
+
+      <audio ref={audioRef} src={src} preload="none" />
+    </div>
+  )
+}
+
+interface MediaMetadata {
+  url?: string
+  mimetype?: string
+  fileName?: string
+  seconds?: number
+  storedInSupabase?: boolean
+  storedExternally?: boolean
+}
+
+interface TemplateMetadata {
+  name: string
+  language: string
+  headerParameters?: Array<{ type: string; text: string }>
+  bodyParameters?: Array<{ type: string; text: string }>
+}
+
+interface DeliveryError {
+  code?: number
+  title?: string
+  message?: string
+  userMessage?: string
+}
+
+interface MessageMetadata {
+  media?: MediaMetadata
+  sentBy?: string
+  sentByName?: string
+  sentFrom?: string
+  template?: TemplateMetadata
+  deliveryError?: DeliveryError
+  editedAt?: string
+  [key: string]: unknown
+}
+
+// TODO: remove legacy map after 2026-05-08
+// Fallback para mensagens salvas no banco antes do deploy do parseProviderError expandido
+const LEGACY_META_ERROR_MESSAGES: Record<number, string> = {
+  130429: 'Limite de envio atingido. Tente novamente em breve.',
+  131009: 'Parâmetro inválido na mensagem.',
+  131021: 'O destinatário não pode ser o próprio remetente.',
+  131026: 'Número não está no WhatsApp.',
+  131031: 'Conta do destinatário bloqueada.',
+  131042: 'Pagamento não configurado na conta Meta. Configure um método de pagamento.',
+  131045: 'Conta Meta sem elegibilidade para envio.',
+  131047: 'Janela de 24h expirada. Envie um template.',
+  131048: 'Limite de spam atingido. Aguarde antes de reenviar.',
+  131051: 'Tipo de mensagem não suportado.',
+  131056: 'Muitas mensagens para o mesmo número. Aguarde.',
+  131057: 'Conta em manutenção. Tente novamente mais tarde.',
+  132000: 'Quantidade de variáveis não corresponde ao template.',
+  132001: 'Template não encontrado.',
+  132005: 'Texto do template excede o limite.',
+  132012: 'Formato de variável inválido.',
+  132015: 'Template pausado pelo Meta.',
+  132016: 'Template desativado pelo Meta.',
+}
+
+function DeliveryStatusIcon({ status }: { status: string | null }) {
+  if (!status) return null
+
+  switch (status) {
+    case 'sent':
+      return <Check className="h-3 w-3 text-white/50" />
+    case 'delivered':
+      return <CheckCheck className="h-3 w-3 text-white/50" />
+    case 'read':
+      return <CheckCheck className="h-3 w-3 text-blue-400" />
+    case 'failed':
+      return <X className="h-3 w-3 text-red-400" />
+    default:
+      return null
+  }
+}
+
+function resolveErrorMessage(metadata: MessageMetadata | null): string {
+  const error = metadata?.deliveryError
+  if (!error) return 'Falha na entrega'
+
+  // userMessage vem preenchido do backend (parseProviderError)
+  if (error.userMessage) return error.userMessage
+
+  // Fallback para mensagens salvas antes do deploy (retrocompatibilidade)
+  if (error.code && LEGACY_META_ERROR_MESSAGES[error.code]) {
+    return LEGACY_META_ERROR_MESSAGES[error.code]
+  }
+
+  return error.title ?? error.message ?? 'Falha na entrega'
+}
+
+interface FailedMessageBannerProps {
+  metadata: MessageMetadata | null
+  onRetry?: () => void
+  isRetrying?: boolean
+}
+
+function FailedMessageBanner({ metadata, onRetry, isRetrying }: FailedMessageBannerProps) {
+  const errorMessage = resolveErrorMessage(metadata)
+  const isAudio = metadata?.media?.mimetype?.startsWith('audio/')
+  const canRetry = !isAudio && !!onRetry
+
+  return (
+    <div className="mt-2 flex items-center gap-2 rounded-lg border border-red-400/30 bg-red-950/50 px-2.5 py-1.5">
+      <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-red-300" />
+      <span className="flex-1 text-[11px] leading-tight text-red-200 line-clamp-1">
+        {errorMessage}
+      </span>
+      {canRetry && (
+        <button
+          type="button"
+          onClick={onRetry}
+          disabled={isRetrying}
+          className="inline-flex shrink-0 items-center gap-1 rounded-md bg-white/10 px-2 py-0.5 text-[11px] font-medium text-white transition-colors hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50 whitespace-nowrap"
+        >
+          {isRetrying ? (
+            <>
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Reenviando...
+            </>
+          ) : (
+            <>
+              <RotateCw className="h-3 w-3" />
+              Reenviar
+            </>
+          )}
+        </button>
+      )}
+    </div>
+  )
+}
+
+interface MessageBubbleProps {
+  id: string
+  conversationId: string
+  role: string
+  content: string
+  metadata: unknown
+  deliveryStatus: string | null
+  createdAt: Date | string
+  isAiGenerated: boolean
+  onRetry?: (messageId: string) => void
+  isRetrying?: boolean
+  canEdit?: boolean
+  onEdit?: (messageId: string, conversationId: string, newText: string) => void
+  isEditing?: boolean
+}
+
+export function MessageBubble({ id, conversationId, role, content, metadata, deliveryStatus, createdAt, isAiGenerated, onRetry, isRetrying, canEdit, onEdit, isEditing }: MessageBubbleProps) {
+  const isUser = role === 'user'
+  const meta = metadata as MessageMetadata | null
+  const media = meta?.media
+  const hasAudio = media?.mimetype?.startsWith('audio/') && id && conversationId
+  const hasImage = media?.mimetype?.startsWith('image/') && id && conversationId
+  const hasDocument =
+    media?.mimetype &&
+    !media.mimetype.startsWith('audio/') &&
+    !media.mimetype.startsWith('image/') &&
+    id &&
+    conversationId
+  const remoteUrl = (media?.storedInSupabase || media?.storedExternally) ? media?.url : undefined
+  const mediaSrc = remoteUrl ?? `/api/inbox/${conversationId}/media/${id}`
+  const isMediaPlaceholder =
+    (hasAudio || hasImage || hasDocument) &&
+    /^\[(Áudio \d+s|Imagem[^\]]*|Documento[^\]]*)\]$/.test(content)
+  const timestamp = format(new Date(createdAt), 'HH:mm')
+  const isFromInbox = meta?.sentFrom === 'inbox'
+  const isFromPhone = meta?.sentFrom === 'whatsapp_phone'
+  const isAiMessage = isAiGenerated
+  const isTemplateMessage = !!meta?.template
+
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [draft, setDraft] = useState(content)
+
+  // Sincronizar draft e fechar modo de edição quando content mudar externamente
+  // (refetch pós-edição bem-sucedida traz o novo conteúdo — esse é o sinal de fechamento)
+  const prevContentRef = useRef(content)
+  useEffect(() => {
+    if (prevContentRef.current !== content) {
+      prevContentRef.current = content
+      if (isEditMode) {
+        setIsEditMode(false)
+      }
+      setDraft(content)
+    }
+  }, [content, isEditMode])
+
+  const handleCopy = useCallback(async () => {
+    if (!content || isMediaPlaceholder) return
+    try {
+      await navigator.clipboard.writeText(content)
+      toast.success('Mensagem copiada')
+    } catch {
+      toast.error('Erro ao copiar')
+    }
+  }, [content, isMediaPlaceholder])
+
+  const handleStartEdit = useCallback(() => {
+    setDraft(content)
+    setIsEditMode(true)
+  }, [content])
+
+  const handleCancelEdit = useCallback(() => {
+    setIsEditMode(false)
+    setDraft(content)
+  }, [content])
+
+  const handleSaveEdit = useCallback(() => {
+    const trimmed = draft.trim()
+    if (!trimmed || trimmed === content) {
+      setIsEditMode(false)
+      return
+    }
+    onEdit?.(id, conversationId, trimmed)
+  }, [draft, content, id, conversationId, onEdit])
+
+  return (
+    <div
+      className={cn(
+        'group/bubble flex w-full',
+        isUser ? 'justify-start' : 'justify-end',
+      )}
+    >
+      {/* Menu de ações no hover — aparece ao lado da bolha (lado esquerdo para user, direito para assistant) */}
+      {!isMediaPlaceholder && (
+        <div
+          className={cn(
+            'flex shrink-0 items-end pb-2 opacity-0 transition-opacity duration-150 group-hover/bubble:opacity-100',
+            isUser ? 'order-last pl-1' : 'order-first pr-1',
+          )}
+        >
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="Ações da mensagem"
+                className="h-6 w-6 text-muted-foreground/60 hover:text-foreground"
+              >
+                <MoreVertical className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align={isUser ? 'start' : 'end'} className="w-36">
+              <DropdownMenuItem onClick={handleCopy}>
+                <Copy className="mr-2 h-3.5 w-3.5" />
+                Copiar
+              </DropdownMenuItem>
+              {canEdit && (
+                <DropdownMenuItem onClick={handleStartEdit}>
+                  <Pencil className="mr-2 h-3.5 w-3.5" />
+                  Editar
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
+      <div
+        className={cn(
+          'max-w-[75%] rounded-2xl px-4 py-2',
+          isUser
+            ? 'rounded-bl-md border border-border/30 bg-secondary/60 shadow-sm'
+            : 'rounded-br-md bg-primary text-white shadow-sm',
+        )}
+      >
+        {/* Mídia */}
+        {hasImage && (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={mediaSrc}
+            alt="Imagem"
+            loading="lazy"
+            className="mb-2 max-h-64 rounded-lg object-contain shadow-sm transition-all hover:ring-2 hover:ring-primary/20"
+          />
+        )}
+
+        {hasAudio && (
+          <AudioPlayer
+            src={mediaSrc}
+            isUser={isUser}
+            initialDuration={typeof media?.seconds === 'number' ? media.seconds : 0}
+          />
+        )}
+
+        {hasDocument && (
+          <Button
+            variant="outline"
+            size="sm"
+            asChild
+            className={cn(
+              'mb-2 w-full justify-start gap-2 text-xs',
+              isUser
+                ? 'border-border/50 bg-primary/5 hover:bg-primary/10'
+                : 'border-white/20 bg-white/10 text-white hover:bg-white/15 hover:text-white',
+            )}
+          >
+            <a
+              href={mediaSrc}
+              target="_blank"
+              rel="noopener noreferrer"
+              download={media?.fileName ?? true}
+            >
+              <FileDown className="h-4 w-4 shrink-0" />
+              <span className="truncate">{media?.fileName ?? 'Documento'}</span>
+            </a>
+          </Button>
+        )}
+
+        {/* Badge de template message */}
+        {isTemplateMessage && (
+          <div className="mb-1.5 flex items-center gap-1">
+            <Badge
+              variant="outline"
+              className={cn(
+                'h-4 gap-1 px-1.5 text-[10px] font-semibold',
+                isUser
+                  ? 'border-border/50 text-muted-foreground'
+                  : 'border-white/30 text-white/70',
+              )}
+            >
+              <FileText className="h-2.5 w-2.5" />
+              Template
+            </Badge>
+          </div>
+        )}
+
+        {/* Texto — esconde placeholder de áudio quando o player está visível */}
+        {!isMediaPlaceholder && (
+          isEditMode ? (
+            <div className="flex flex-col gap-2">
+              <Textarea
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault()
+                    handleSaveEdit()
+                  }
+                  if (event.key === 'Escape') {
+                    handleCancelEdit()
+                  }
+                }}
+                className={cn(
+                  'min-h-[60px] resize-none border-0 bg-transparent p-0 text-sm shadow-none focus-visible:ring-0',
+                  !isUser && 'text-white placeholder:text-white/50',
+                )}
+                autoFocus
+                disabled={isEditing}
+              />
+              <div className="flex justify-end gap-1.5">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCancelEdit}
+                  disabled={isEditing}
+                  className={cn(
+                    'h-6 px-2 text-xs',
+                    !isUser && 'text-white/70 hover:bg-white/10 hover:text-white',
+                  )}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleSaveEdit}
+                  disabled={isEditing || !draft.trim() || draft.trim() === content}
+                  className={cn(
+                    'h-6 px-2 text-xs',
+                    !isUser && 'bg-white/20 text-white hover:bg-white/30',
+                  )}
+                >
+                  {isEditing ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Salvar'}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <p className={cn(
+              'whitespace-pre-wrap text-sm',
+              hasAudio && 'italic opacity-80',
+            )}>{renderWhatsappText(content)}</p>
+          )
+        )}
+
+        {/* Banner de erro para mensagens falhadas */}
+        {!isUser && deliveryStatus === 'failed' && (
+          <FailedMessageBanner
+            metadata={meta}
+            onRetry={onRetry ? () => onRetry(id) : undefined}
+            isRetrying={isRetrying}
+          />
+        )}
+
+        {/* Timestamp */}
+        <div
+          className={cn(
+            'mt-1 flex items-center gap-1 text-[10px]',
+            isUser ? 'text-muted-foreground' : 'text-white/70',
+          )}
+        >
+          <span>{timestamp}</span>
+          {meta?.editedAt && (
+            <span className="opacity-70">(editada)</span>
+          )}
+          {!isUser && deliveryStatus && (
+            <DeliveryStatusIcon status={deliveryStatus} />
+          )}
+          {isAiMessage && (
+            <span className="ml-1 flex items-center gap-0.5 text-white/50">
+              <Bot className="h-3 w-3" />
+              IA
+            </span>
+          )}
+          {isFromInbox && (
+            <span className="ml-1 flex items-center gap-0.5 text-white/50">
+              <UserRound className="h-3 w-3" />
+              {meta?.sentByName ?? 'via inbox'}
+            </span>
+          )}
+          {isFromPhone && (
+            <span className="ml-1 flex items-center gap-0.5 text-white/50">
+              <UserRound className="h-3 w-3" />
+              via celular
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}

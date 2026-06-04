@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { hasModuleAccess } from '@/_data-access/module/check-module-access'
-import { InboxQueryProvider } from '@/(authenticated)/org/[orgSlug]/(main)/inbox/_components/inbox-query-provider'
+import { InboxQueryProvider } from '@/(authenticated)/org/[orgSlug]/(inbox)/inbox/_components/inbox-query-provider'
 
 interface InboxLayoutProps {
   children: React.ReactNode

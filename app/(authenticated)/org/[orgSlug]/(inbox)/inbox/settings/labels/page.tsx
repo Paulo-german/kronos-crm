@@ -1,7 +1,7 @@
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getConversationLabels } from '@/_data-access/conversation-label/get-conversation-labels'
 import { BackButton } from '@/_components/layout/back-button'
-import LabelsList from '@/(authenticated)/org/[orgSlug]/(main)/settings/labels/_components/labels-list'
+import LabelsList from '@/(authenticated)/org/[orgSlug]/(inbox)/inbox/settings/labels/_components/labels-list'
 
 interface LabelsPageProps {
   params: Promise<{ orgSlug: string }>

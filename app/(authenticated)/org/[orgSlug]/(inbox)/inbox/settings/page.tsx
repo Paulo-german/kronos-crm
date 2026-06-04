@@ -36,7 +36,7 @@ const InboxSettingsPage = async ({ params }: InboxSettingsPageProps) => {
         <HeaderLeft>
           <HeaderTitle>Configurações</HeaderTitle>
           <HeaderSubTitle>
-            Configure os canais e automações do seu Inbox.
+            Configure os canais do seu Inbox.
           </HeaderSubTitle>
         </HeaderLeft>
       </Header>
