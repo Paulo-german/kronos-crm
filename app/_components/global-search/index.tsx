@@ -84,14 +84,11 @@ export function GlobalSearch() {
 
   const hasMoreContacts =
     results.contacts.totalCount > results.contacts.items.length
-  const hasMoreCompanies =
-    results.companies.totalCount > results.companies.items.length
   const hasMoreDeals = results.deals.totalCount > results.deals.items.length
 
   const encodedQuery = encodeURIComponent(query)
-  const contactsViewAllHref = `/org/${orgSlug}/contacts?search=${encodedQuery}`
-  const companiesViewAllHref = `/org/${orgSlug}/contacts?search=${encodedQuery}`
-  const dealsViewAllHref = `/org/${orgSlug}/crm/deals/list`
+  const contactsViewAllHref = `/org/${orgSlug}/crm/contacts?search=${encodedQuery}`
+  const dealsViewAllHref = `/org/${orgSlug}/crm/deals/list?search=${encodedQuery}`
 
   const renderGroup = (
     group: SearchResultGroup,
@@ -211,9 +208,9 @@ export function GlobalSearch() {
                   {renderGroup(
                     results.companies,
                     'Empresas',
-                    hasMoreCompanies,
-                    companiesViewAllHref,
-                    'empresas',
+                    false,
+                    '',
+                    '',
                   )}
                   {renderGroup(
                     results.deals,
