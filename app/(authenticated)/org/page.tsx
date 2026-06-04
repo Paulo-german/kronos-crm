@@ -5,13 +5,7 @@ import { getUserById } from '@/_data-access/user/get-user-by-id'
 import { AccountTopBar } from '@/_components/layout/account-top-bar'
 import { OrgSelectorClient } from './_components/org-selector-client'
 
-interface OrgSelectorPageProps {
-  searchParams: Promise<{ show?: string }>
-}
-
-const OrgSelectorPage = async ({ searchParams }: OrgSelectorPageProps) => {
-  const { show } = await searchParams
-
+const OrgSelectorPage = async () => {
   const supabase = await createClient()
   const {
     data: { user },
@@ -25,14 +19,6 @@ const OrgSelectorPage = async ({ searchParams }: OrgSelectorPageProps) => {
     getUserOrganizationsWithModules(user.id),
     getUserById(user.id),
   ])
-
-  // Orgs internas nunca fazem auto-redirect — passam pelo hub de seleção de produto
-  const isInternalOrg = (grantType: string | null) => grantType === 'INTERNAL'
-
-  // Auto-redirect apenas para orgs externas com uma única org (exceto se veio do switcher)
-  if (organizations.length === 1 && show !== 'true' && !isInternalOrg(organizations[0].grantType)) {
-    redirect(`/org/${organizations[0].slug}/crm/home`)
-  }
 
   const topBarUser = {
     fullName: userData?.fullName ?? null,

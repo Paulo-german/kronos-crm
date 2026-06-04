@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Building2, Plus, ArrowRight, Loader2, LayoutGrid, MessageSquare, Bot, ChevronRight } from 'lucide-react'
+import { Building2, Plus, Loader2, PanelsTopLeft, MessageSquare, Bot, ChevronRight } from 'lucide-react'
 import { cn } from '@/_lib/utils'
 import { Button } from '@/_components/ui/button'
 import { Badge } from '@/_components/ui/badge'
@@ -50,9 +50,9 @@ interface Organization {
 }
 
 const PRODUCT_OPTIONS = [
-  { key: 'crm', label: 'Kronos CRM', icon: LayoutGrid, module: 'crm', href: (slug: string) => `/org/${slug}/crm/home` },
-  { key: 'inbox', label: 'Kronos Inbox', icon: MessageSquare, module: 'inbox', href: (slug: string) => `/org/${slug}/inbox/home` },
-  { key: 'agents', label: 'Kronos Agents', icon: Bot, module: 'ai-agent', href: (slug: string) => `/org/${slug}/agents/home` },
+  { key: 'crm', label: 'Kronos Crm', icon: PanelsTopLeft, iconClass: 'bg-kronos-cyan/20 text-kronos-cyan', module: 'crm', href: (slug: string) => `/org/${slug}/crm/home` },
+  { key: 'inbox', label: 'Kronos Inbox', icon: MessageSquare, iconClass: 'bg-kronos-green/20 text-kronos-green', module: 'inbox', href: (slug: string) => `/org/${slug}/inbox/home` },
+  { key: 'agents', label: 'Kronos Agents', icon: Bot, iconClass: 'bg-kronos-purple/20 text-kronos-purple', module: 'ai-agent', href: (slug: string) => `/org/${slug}/agents/home` },
 ]
 
 interface OrgSelectorClientProps {
@@ -99,11 +99,6 @@ function getOrgInitials(name: string): string {
     .slice(0, 2)
 }
 
-interface OrgListItemProps {
-  org: Organization
-  onSelect: (slug: string) => void
-}
-
 function OrgListItemInternal({ org }: { org: Organization }) {
   const router = useRouter()
   const activeModules = org.activeModules ?? []
@@ -130,8 +125,8 @@ function OrgListItemInternal({ org }: { org: Organization }) {
           <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-52 p-1">
-        <p className="px-2 py-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+      <PopoverContent align="end" className="w-56 rounded-2xl border-0 bg-primary-dark p-2 text-white [--accent-foreground:0_0%_100%] [--accent:0_0%_100%_/_0.10]">
+        <p className="px-2 py-1.5 text-xs font-medium uppercase tracking-wider text-white/40">
           Entrar em
         </p>
         {availableProducts.map((productOption) => {
@@ -141,9 +136,11 @@ function OrgListItemInternal({ org }: { org: Organization }) {
               key={productOption.key}
               type="button"
               onClick={() => router.push(productOption.href(org.slug))}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-accent"
+              className="flex w-full items-center gap-2.5 rounded-md px-2 py-2.5 text-sm transition-colors hover:bg-white/10"
             >
-              <Icon className="size-4 text-muted-foreground" />
+              <span className={`flex size-7 shrink-0 items-center justify-center rounded-md ${productOption.iconClass}`}>
+                <Icon className="size-4" />
+              </span>
               {productOption.label}
             </button>
           )
@@ -153,43 +150,12 @@ function OrgListItemInternal({ org }: { org: Organization }) {
   )
 }
 
-function OrgListItem({ org, onSelect }: OrgListItemProps) {
-  return (
-    <button
-      type="button"
-      onClick={() => onSelect(org.slug)}
-      className="group flex w-full items-center gap-4 rounded-xl border border-border/50 bg-card p-4 text-left transition-all duration-150 hover:border-primary/40 hover:bg-primary/5"
-    >
-      <Avatar className="size-11 shrink-0">
-        <AvatarFallback
-          className={cn(
-            'text-sm font-semibold text-white',
-            getOrgColor(org.name),
-          )}
-        >
-          {getOrgInitials(org.name)}
-        </AvatarFallback>
-      </Avatar>
-
-      <div className="flex min-w-0 flex-1 items-center gap-2">
-        <p className="truncate text-sm font-medium leading-none">{org.name}</p>
-        <Badge variant={ROLE_VARIANTS[org.role]} className="shrink-0 text-xs">
-          {ROLE_LABELS[org.role]}
-        </Badge>
-      </div>
-
-      <ArrowRight className="size-4 shrink-0 translate-x-2 text-muted-foreground opacity-0 transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100" />
-    </button>
-  )
-}
-
 export function OrgSelectorClient({
   organizations,
   userFirstName,
 }: OrgSelectorClientProps) {
   const router = useRouter()
   const [isSheetOpen, setIsSheetOpen] = useState(false)
-  const isInternalOrg = (org: Organization) => org.grantType === 'INTERNAL'
 
   const form = useForm<CreateOrganizationSchema>({
     resolver: zodResolver(createOrganizationSchema),
@@ -202,7 +168,7 @@ export function OrgSelectorClient({
         toast.success('Organização criada com sucesso!')
         setIsSheetOpen(false)
         form.reset()
-        router.push(`/org/${data.slug}/dashboard`)
+        router.push(`/org/${data.slug}/crm/home`)
       }
     },
     onError: ({ error }) => {
@@ -212,10 +178,6 @@ export function OrgSelectorClient({
 
   const onSubmit = (data: CreateOrganizationSchema) => {
     execute(data)
-  }
-
-  const handleSelectOrg = (slug: string) => {
-    router.push(`/org/${slug}/dashboard`)
   }
 
   const hasOrgs = organizations.length > 0
@@ -235,13 +197,9 @@ export function OrgSelectorClient({
 
       {hasOrgs && (
         <div className="space-y-2">
-          {organizations.map((org) =>
-            isInternalOrg(org) ? (
-              <OrgListItemInternal key={org.id} org={org} />
-            ) : (
-              <OrgListItem key={org.id} org={org} onSelect={handleSelectOrg} />
-            ),
-          )}
+          {organizations.map((org) => (
+            <OrgListItemInternal key={org.id} org={org} />
+          ))}
         </div>
       )}
 
