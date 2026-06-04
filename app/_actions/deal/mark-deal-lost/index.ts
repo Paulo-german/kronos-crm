@@ -4,7 +4,7 @@ import { after } from 'next/server'
 import { orgActionClient } from '@/_lib/safe-action'
 import { markDealLostSchema } from './schema'
 import { db } from '@/_lib/prisma'
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import { ActivityType } from '@prisma/client'
 import {
   findDealWithRBAC,
@@ -51,17 +51,7 @@ export const markDealLost = orgActionClient
       },
     })
 
-    // 5. Invalida paths e tags
-    // Precisamos do slug para invalidar a rota de configurações (Client Router Cache)
-    const org = await db.organization.findUnique({
-      where: { id: ctx.orgId },
-      select: { slug: true },
-    })
-
-    if (org?.slug) {
-      revalidatePath(`/org/${org.slug}/crm/settings/loss-reasons`)
-    }
-
+    // 5. Invalida tags — deal-lost-reasons já cobre a página de configurações
     revalidateTag(`pipeline:${ctx.orgId}`)
     revalidateTag(`deals:${ctx.orgId}`)
     revalidateTag(`deals-options:${ctx.orgId}`)

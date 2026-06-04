@@ -120,11 +120,9 @@ export function MappingStep({ headers, rows, onMapped, onBack }: MappingStepProp
         const colIndex = Number(colIndexStr)
         const value = row[colIndex] ?? ''
 
-        if (field === 'isDecisionMaker') {
-          mapped[field] = TRUTHY_VALUES.has(value.toLowerCase().trim())
-        } else {
-          mapped[field] = value
-        }
+        mapped[field] = field === 'isDecisionMaker'
+          ? TRUTHY_VALUES.has(value.toLowerCase().trim())
+          : value
       }
 
       // Garantir defaults
@@ -151,7 +149,7 @@ export function MappingStep({ headers, rows, onMapped, onBack }: MappingStepProp
         <div className="space-y-3">
           {headers.map((header, index) => (
             <div
-              key={index}
+              key={header}
               className="flex items-center gap-4"
             >
               <span className="w-48 truncate text-sm font-medium" title={header}>

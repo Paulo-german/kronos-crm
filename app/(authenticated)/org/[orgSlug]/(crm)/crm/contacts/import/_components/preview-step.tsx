@@ -90,7 +90,7 @@ export function PreviewStep({
       if (blocklistCount > 0) {
         toast.warning(`${blocklistCount} e-mail(s) importados constam na lista de saída. Verifique em Configurações → Privacidade.`)
       }
-      router.push(`/org/${orgSlug}/contacts`)
+      router.push(`/org/${orgSlug}/crm/contacts`)
     },
     onError: ({ error }) => {
       toast.error(error.serverError || 'Erro ao importar contatos.')
@@ -227,7 +227,7 @@ export function PreviewStep({
                   newCompanyNames.has(row.companyName.trim())
 
                 return (
-                  <TableRow key={index}>
+                  <TableRow key={`row-${index}-${row.email ?? row.name ?? index}`}>
                     <TableCell className="text-muted-foreground">
                       {index + 1}
                     </TableCell>
