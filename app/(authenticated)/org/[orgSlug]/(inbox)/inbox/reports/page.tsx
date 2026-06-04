@@ -5,23 +5,23 @@ import { parseDateRange } from '@/_utils/date-range'
 import { isElevated } from '@/_lib/rbac/permissions'
 import type { InboxDashboardFilters } from '@/_data-access/dashboard'
 import type { InboxChannel, ConversationStatus } from '@prisma/client'
-import { findReportSection } from '@/(authenticated)/org/[orgSlug]/(main)/reports/_config/report-sections'
-import { ReportsSectionHeader } from '@/(authenticated)/org/[orgSlug]/(main)/reports/_components/reports-section-header'
-import { InboxFilters } from '@/(authenticated)/org/[orgSlug]/(main)/reports/inbox/_components/inbox-filters'
-import { InboxKpiGrid } from '@/(authenticated)/org/[orgSlug]/(main)/dashboard/v1/_components/inbox-kpi-grid'
-import { InboxVolumeSection } from '@/(authenticated)/org/[orgSlug]/(main)/dashboard/v1/_components/inbox-volume-section'
-import { InboxChannelSection } from '@/(authenticated)/org/[orgSlug]/(main)/dashboard/v1/_components/inbox-channel-section'
-import { InboxHeatmapSection } from '@/(authenticated)/org/[orgSlug]/(main)/dashboard/v1/_components/inbox-heatmap-section'
-import { InboxTopLabelsSection } from '@/(authenticated)/org/[orgSlug]/(main)/dashboard/v1/_components/inbox-top-labels-section'
-import { InboxAiHumanSection } from '@/(authenticated)/org/[orgSlug]/(main)/dashboard/v1/_components/inbox-ai-human-section'
-import { InboxAttendantSection } from '@/(authenticated)/org/[orgSlug]/(main)/dashboard/v1/_components/inbox-attendant-section'
+import { findReportSection } from '@/_components/reports/_config/report-sections'
+import { ReportsSectionHeader } from '@/_components/reports/_components/reports-section-header'
+import { InboxFilters } from '@/_components/reports/inbox/_components/inbox-filters'
+import { InboxKpiGrid } from '@/_components/dashboard/v1/_components/inbox-kpi-grid'
+import { InboxVolumeSection } from '@/_components/dashboard/v1/_components/inbox-volume-section'
+import { InboxChannelSection } from '@/_components/dashboard/v1/_components/inbox-channel-section'
+import { InboxHeatmapSection } from '@/_components/dashboard/v1/_components/inbox-heatmap-section'
+import { InboxTopLabelsSection } from '@/_components/dashboard/v1/_components/inbox-top-labels-section'
+import { InboxAiHumanSection } from '@/_components/dashboard/v1/_components/inbox-ai-human-section'
+import { InboxAttendantSection } from '@/_components/dashboard/v1/_components/inbox-attendant-section'
 import {
   InboxKpiSkeleton,
   PipelineStatusSkeleton,
   InboxChartSkeleton,
   InboxHeatmapSkeleton,
   InboxBottomSkeleton,
-} from '@/(authenticated)/org/[orgSlug]/(main)/dashboard/v1/_components/skeletons'
+} from '@/_components/dashboard/v1/_components/skeletons'
 
 interface InboxReportPageProps {
   params: Promise<{ orgSlug: string }>

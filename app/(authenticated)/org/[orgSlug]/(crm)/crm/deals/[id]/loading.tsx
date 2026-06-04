@@ -5,7 +5,7 @@ import {
   CompanyOwnerSkeleton,
   NotesSkeleton,
   ActivityTimelineSkeleton,
-} from '@/(authenticated)/org/[orgSlug]/(main)/crm/deals/[id]/_components/skeletons'
+} from '@/(authenticated)/org/[orgSlug]/(crm)/crm/deals/[id]/_components/skeletons'
 
 export default function DealDetailLoading() {
   return (

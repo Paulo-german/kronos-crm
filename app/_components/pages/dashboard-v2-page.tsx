@@ -3,17 +3,17 @@ import { subDays, startOfDay, endOfDay } from 'date-fns'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { parseDateRange } from '@/_utils/date-range'
 import { DASHBOARD_V2_DEFAULT_DAYS } from '@/_lib/lifecycle/dashboard-v2-constants'
-import { DateRangePicker } from '@/(authenticated)/org/[orgSlug]/(main)/dashboard/_shared/date-range-picker'
-import { LifecycleFunnelSection } from '@/(authenticated)/org/[orgSlug]/(main)/dashboard/v2/_components/lifecycle-funnel-section'
-import { AttentionSection } from '@/(authenticated)/org/[orgSlug]/(main)/dashboard/v2/_components/attention-section'
-import { GoalsSection } from '@/(authenticated)/org/[orgSlug]/(main)/dashboard/v2/_components/goals-section'
-import { RecentMovementSection } from '@/(authenticated)/org/[orgSlug]/(main)/dashboard/v2/_components/recent-movement-section'
+import { DateRangePicker } from '@/_components/dashboard/_shared/date-range-picker'
+import { LifecycleFunnelSection } from '@/_components/dashboard/v2/_components/lifecycle-funnel-section'
+import { AttentionSection } from '@/_components/dashboard/v2/_components/attention-section'
+import { GoalsSection } from '@/_components/dashboard/v2/_components/goals-section'
+import { RecentMovementSection } from '@/_components/dashboard/v2/_components/recent-movement-section'
 import {
   LifecycleFunnelSkeleton,
   AttentionSectionSkeleton,
   GoalsSectionSkeleton,
   RecentMovementSkeleton,
-} from '@/(authenticated)/org/[orgSlug]/(main)/dashboard/v2/_components/skeletons'
+} from '@/_components/dashboard/v2/_components/skeletons'
 
 interface DashboardV2PageProps {
   params: Promise<{ orgSlug: string }>

@@ -1,5 +1,5 @@
 import { Skeleton } from '@/_components/ui/skeleton'
-import { LifecycleFunnelSkeleton } from '@/(authenticated)/org/[orgSlug]/(main)/dashboard/v2/_components/skeletons'
+import { LifecycleFunnelSkeleton } from '@/_components/dashboard/v2/_components/skeletons'
 
 export default function DashboardLoading() {
   return (
