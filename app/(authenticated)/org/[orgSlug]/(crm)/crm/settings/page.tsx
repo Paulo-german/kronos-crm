@@ -7,6 +7,7 @@ import {
   Package,
   Briefcase,
   CalendarDays,
+  Zap,
 } from 'lucide-react'
 import Header, { HeaderLeft, HeaderTitle, HeaderSubTitle } from '@/_components/header'
 
@@ -56,6 +57,12 @@ const settingsItems = [
     label: 'Agendamento',
     description: 'Configure tipos de compromisso e disponibilidade.',
     icon: CalendarDays,
+  },
+  {
+    key: 'automations',
+    label: 'Automações',
+    description: 'Configure regras automáticas para negócios e contatos.',
+    icon: Zap,
   },
 ]
 

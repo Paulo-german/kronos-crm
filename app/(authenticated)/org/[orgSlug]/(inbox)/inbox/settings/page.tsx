@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { MessageSquare, Tag, Zap, FileText } from 'lucide-react'
+import { MessageSquare, Tag, FileText } from 'lucide-react'
 import Header, { HeaderLeft, HeaderTitle, HeaderSubTitle } from '@/_components/header'
 
 interface InboxSettingsPageProps {
@@ -18,12 +18,6 @@ const settingsItems = [
     label: 'Labels',
     description: 'Organize conversas com etiquetas personalizadas.',
     icon: Tag,
-  },
-  {
-    key: 'automations',
-    label: 'Automações',
-    description: 'Configure regras automáticas para suas conversas.',
-    icon: Zap,
   },
   {
     key: 'capture-forms',
