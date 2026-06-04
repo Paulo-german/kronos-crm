@@ -5,7 +5,7 @@ import Header, {
   HeaderTitle,
   HeaderSubTitle,
 } from '@/_components/header'
-import { TutorialsHub } from '@/(authenticated)/org/[orgSlug]/(main)/tutorials/_components/tutorials-hub'
+import { TutorialsHub } from '@/(authenticated)/org/[orgSlug]/(platform)/tutorials/_components/tutorials-hub'
 
 interface TutorialsPageProps {
   params: Promise<{ orgSlug: string }>
