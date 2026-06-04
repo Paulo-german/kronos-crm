@@ -189,12 +189,12 @@ const nextConfig: NextConfig = {
       },
       {
         source: '/org/:slug/settings/automations',
-        destination: '/org/:slug/inbox/settings/automations',
+        destination: '/org/:slug/crm/settings/automations',
         permanent: true,
       },
       {
         source: '/org/:slug/settings/automations/:path*',
-        destination: '/org/:slug/inbox/settings/automations/:path*',
+        destination: '/org/:slug/crm/settings/automations/:path*',
         permanent: true,
       },
       {
