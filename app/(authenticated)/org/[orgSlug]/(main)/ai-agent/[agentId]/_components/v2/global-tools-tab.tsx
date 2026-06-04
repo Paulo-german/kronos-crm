@@ -42,7 +42,7 @@ const GlobalToolsTab = ({ agent, canManage, onSaveSuccess }: GlobalToolsTabProps
         </p>
       </div>
 
-      <GlobalToolBuilder value={tools} onChange={setTools} />
+      <GlobalToolBuilder value={tools} onChange={setTools} steps={agent.steps} />
 
       {canManage && (
         <div className="flex justify-end pt-2">

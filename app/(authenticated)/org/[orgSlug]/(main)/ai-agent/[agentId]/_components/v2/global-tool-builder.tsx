@@ -5,6 +5,8 @@ import {
   BellOff,
   ChevronDown,
   Clock,
+  Globe,
+  ListChecks,
   Phone,
   Plus,
   User,
@@ -14,6 +16,7 @@ import {
 import { Button } from '@/_components/ui/button'
 import { Badge } from '@/_components/ui/badge'
 import { Card, CardContent } from '@/_components/ui/card'
+import { Checkbox } from '@/_components/ui/checkbox'
 import { Input } from '@/_components/ui/input'
 import { Label } from '@/_components/ui/label'
 import {
@@ -35,9 +38,16 @@ import UpdateDealConfig from '../tool-config/update-deal-config'
 import UpdateContactConfig from '../tool-config/update-contact-config'
 import CreateTaskConfig from '../tool-config/create-task-config'
 
+interface StepOption {
+  id: string
+  name: string
+  order: number
+}
+
 interface GlobalToolBuilderProps {
   value: GlobalTool[]
   onChange: (tools: GlobalTool[]) => void
+  steps?: StepOption[]
 }
 
 const TRIGGER_PLACEHOLDERS: Record<string, string> = {
@@ -58,15 +68,15 @@ const DEAL_FIELD_LABELS: Record<string, string> = {
 const buildDefaultGlobalTool = (type: string): GlobalTool => {
   switch (type) {
     case 'hand_off_to_human':
-      return { type: 'hand_off_to_human', trigger: '', notifyTarget: 'none' }
+      return { type: 'hand_off_to_human', trigger: '', notifyTarget: 'none', scope: 'global', stepIds: [] }
     case 'update_contact':
-      return { type: 'update_contact', trigger: '' }
+      return { type: 'update_contact', trigger: '', scope: 'global', stepIds: [] }
     case 'update_deal':
-      return { type: 'update_deal', trigger: '', allowedFields: [], allowedStatuses: [] }
+      return { type: 'update_deal', trigger: '', allowedFields: [], allowedStatuses: [], scope: 'global', stepIds: [] }
     case 'create_task':
-      return { type: 'create_task', trigger: '', title: '' }
+      return { type: 'create_task', trigger: '', title: '', scope: 'global', stepIds: [] }
     default:
-      return { type: 'update_contact', trigger: '' }
+      return { type: 'update_contact', trigger: '', scope: 'global', stepIds: [] }
   }
 }
 
@@ -127,7 +137,7 @@ const getToolSummary = (tool: GlobalTool): ToolSummary => {
   }
 }
 
-const GlobalToolBuilder = ({ value, onChange }: GlobalToolBuilderProps) => {
+const GlobalToolBuilder = ({ value, onChange, steps = [] }: GlobalToolBuilderProps) => {
   // Indexado por id de instância (não por type) para permitir abrir/fechar
   // cards individuais quando há múltiplas instâncias do mesmo type.
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
@@ -275,6 +285,79 @@ const GlobalToolBuilder = ({ value, onChange }: GlobalToolBuilderProps) => {
                           }
                         />
                       </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Disponibilidade</Label>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => updateTool(toolId, { scope: 'global', stepIds: [] })}
+                            className={cn(
+                              'flex flex-1 items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-xs transition-colors',
+                              (tool.scope ?? 'global') === 'global'
+                                ? 'border-primary bg-primary/10 text-primary'
+                                : 'border-border text-muted-foreground hover:border-primary/50',
+                            )}
+                          >
+                            <Globe className="h-3.5 w-3.5" />
+                            Todas as etapas
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updateTool(toolId, { scope: 'steps' })}
+                            className={cn(
+                              'flex flex-1 items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-xs transition-colors',
+                              tool.scope === 'steps'
+                                ? 'border-primary bg-primary/10 text-primary'
+                                : 'border-border text-muted-foreground hover:border-primary/50',
+                            )}
+                          >
+                            <ListChecks className="h-3.5 w-3.5" />
+                            Etapas específicas
+                          </button>
+                        </div>
+                      </div>
+
+                      {tool.scope === 'steps' && steps.length > 0 && (
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Etapas</Label>
+                          <div className="space-y-1.5 rounded-md border p-3">
+                            {steps
+                              .slice()
+                              .sort((stepA, stepB) => stepA.order - stepB.order)
+                              .map((step) => {
+                                const checked = (tool.stepIds ?? []).includes(step.id)
+                                return (
+                                  <div key={step.id} className="flex items-center gap-2">
+                                    <Checkbox
+                                      id={`${toolId}-step-${step.id}`}
+                                      checked={checked}
+                                      onCheckedChange={(isChecked) => {
+                                        const current = tool.stepIds ?? []
+                                        const next = isChecked
+                                          ? [...current, step.id]
+                                          : current.filter((sid) => sid !== step.id)
+                                        updateTool(toolId, { stepIds: next })
+                                      }}
+                                    />
+                                    <label
+                                      htmlFor={`${toolId}-step-${step.id}`}
+                                      className="cursor-pointer text-xs"
+                                    >
+                                      {step.order + 1}. {step.name}
+                                    </label>
+                                  </div>
+                                )
+                              })}
+                          </div>
+                        </div>
+                      )}
+
+                      {tool.scope === 'steps' && steps.length === 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          Nenhuma etapa configurada neste agente.
+                        </p>
+                      )}
 
                       {tool.type === 'hand_off_to_human' && (
                         <HandOffConfig

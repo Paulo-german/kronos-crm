@@ -217,9 +217,10 @@ function buildCriticalRulesSection(base: PromptBaseContext, filteredTools: strin
 }
 
 function buildGlobalToolsSection(globalTools: GlobalTool[]): string | null {
-  if (globalTools.length === 0) return null
+  const scopedGlobal = globalTools.filter((tool) => (tool.scope ?? 'global') === 'global')
+  if (scopedGlobal.length === 0) return null
 
-  const compiled = compileGlobalTools(globalTools)
+  const compiled = compileGlobalTools(scopedGlobal)
   if (!compiled.trim()) return null
 
   return `## Ferramentas Globais\nDisponíveis em qualquer etapa:\n${compiled}`
@@ -257,6 +258,17 @@ function buildGroupTransferSection(base: PromptBaseContext): string | null {
 function buildFunnelSection(base: PromptBaseContext): string {
   if (base.steps.length === 0) return ''
 
+  // Global tools com scope='steps' — indexadas por stepId para lookup O(1)
+  const stepScopedTools = new Map<string, GlobalTool[]>()
+  for (const tool of base.globalTools) {
+    if ((tool.scope ?? 'global') !== 'steps') continue
+    for (const stepId of tool.stepIds ?? []) {
+      const existing = stepScopedTools.get(stepId) ?? []
+      existing.push(tool)
+      stepScopedTools.set(stepId, existing)
+    }
+  }
+
   const lines: string[] = []
 
   lines.push('## Processo de Atendimento')
@@ -284,6 +296,11 @@ function buildFunnelSection(base: PromptBaseContext): string {
 
     if (step.actions.length > 0) {
       lines.push(...compileStepActionsToArray(step.actions))
+    }
+
+    const scopedTools = stepScopedTools.get(step.id) ?? []
+    if (scopedTools.length > 0) {
+      lines.push(...compileGlobalTools(scopedTools).split('\n'))
     }
 
     if (step.messageTemplate) {

@@ -195,13 +195,17 @@ const GLOBAL_TOOLS_FIXTURE: PromptBaseContext = {
     {
       type: 'hand_off_to_human',
       trigger: 'Quando o cliente pedir para falar com humano',
-      notifyTarget: 'deal_assignee',
+      notifyTarget: 'deal_assignee' as const,
       specificPhone: undefined,
       notificationMessage: 'Cliente solicitou atendimento humano.',
+      scope: 'global' as const,
+      stepIds: [],
     },
     {
       type: 'update_contact',
       trigger: 'Quando o cliente informar dados de contato',
+      scope: 'global' as const,
+      stepIds: [],
     },
   ] as GlobalTool[],
   toolsEnabled: ['move_deal', 'hand_off_to_human', 'update_contact'],

@@ -5,6 +5,10 @@ const baseFields = {
   // Permite múltiplas instâncias do mesmo type no array global de um agente.
   id: z.string().uuid().optional(),
   trigger: z.string().min(1),
+  // 'global' = disponível em todas as etapas (seção Ferramentas Globais do prompt)
+  // 'steps'  = disponível apenas nas etapas listadas em stepIds
+  scope: z.enum(['global', 'steps']).default('global'),
+  stepIds: z.array(z.string().uuid()).default([]),
 }
 
 /**
