@@ -2,8 +2,19 @@
 
 import Link from 'next/link'
 import { useParams, usePathname, useSearchParams } from 'next/navigation'
+import { Compass, GitBranch, Users, Package, XCircle, Inbox, Sparkles, type LucideIcon } from 'lucide-react'
 import { cn } from '@/_lib/utils'
 import { REPORT_SECTIONS, type ReportSection } from '../_config/report-sections'
+
+const ICON_MAP: Record<string, LucideIcon> = {
+  Compass,
+  GitBranch,
+  Users,
+  Package,
+  XCircle,
+  Inbox,
+  Sparkles,
+}
 
 interface ReportsNavTabsProps {
   isElevated: boolean
@@ -17,7 +28,6 @@ export function ReportsNavTabs({ isElevated, basePath = 'reports', sections = RE
   const searchParams = useSearchParams()
   const orgSlug = params?.orgSlug as string
 
-  // Preserva os filtros globais (start/end/assignee) ao trocar de aba.
   const queryString = searchParams.toString()
 
   const visibleSections = sections.filter(
@@ -31,7 +41,7 @@ export function ReportsNavTabs({ isElevated, basePath = 'reports', sections = RE
           const href = `/org/${orgSlug}/${basePath}/${section.slug}`
           const isActive = pathname === href || pathname.startsWith(`${href}/`)
           const linkHref = queryString ? `${href}?${queryString}` : href
-          const Icon = section.icon
+          const Icon = ICON_MAP[section.iconName] ?? Compass
 
           return (
             <Link

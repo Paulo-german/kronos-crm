@@ -2,10 +2,21 @@
 
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
+import { Compass, GitBranch, Users, Package, XCircle, Inbox, Sparkles, type LucideIcon } from 'lucide-react'
 import { cn } from '@/_lib/utils'
 import { isElevated } from '@/_lib/rbac/permissions'
 import { REPORT_SECTIONS } from '../_config/report-sections'
 import type { MemberRole } from '@prisma/client'
+
+const ICON_MAP: Record<string, LucideIcon> = {
+  Compass,
+  GitBranch,
+  Users,
+  Package,
+  XCircle,
+  Inbox,
+  Sparkles,
+}
 
 interface ReportsSidebarProps {
   userRole: MemberRole
@@ -27,6 +38,7 @@ export function ReportsSidebar({ userRole, orgSlug }: ReportsSidebarProps) {
         const href = `/org/${orgSlug}/reports/${section.slug}`
         const isActive = pathname === href || pathname.startsWith(`${href}/`)
         const linkHref = queryString ? `${href}?${queryString}` : href
+        const Icon = ICON_MAP[section.iconName] ?? Compass
         return (
           <Link
             key={section.slug}
@@ -36,7 +48,7 @@ export function ReportsSidebar({ userRole, orgSlug }: ReportsSidebarProps) {
               isActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground',
             )}
           >
-            <section.icon className="h-4 w-4 shrink-0" />
+            <Icon className="h-4 w-4 shrink-0" />
             <span>{section.label}</span>
           </Link>
         )
