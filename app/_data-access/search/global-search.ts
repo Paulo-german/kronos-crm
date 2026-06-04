@@ -54,15 +54,19 @@ function buildContactTokenConditions(
   return tokens.map((token) => {
     const pattern = `%${token}%`
 
-    // MEMBER com toggle ativo: busca restrita ao nome para não vazar PII
+    // MEMBER com toggle ativo: busca restrita ao nome/cargo para não vazar PII
     if (masked) {
-      return Prisma.sql`(unaccent(c.name) ILIKE unaccent(${pattern}))`
+      return Prisma.sql`(
+        unaccent(c.name) ILIKE unaccent(${pattern})
+        OR unaccent(COALESCE(c.role, '')) ILIKE unaccent(${pattern})
+      )`
     }
 
     return Prisma.sql`(
       unaccent(c.name) ILIKE unaccent(${pattern})
       OR unaccent(COALESCE(c.email, '')) ILIKE unaccent(${pattern})
       OR unaccent(COALESCE(c.phone, '')) ILIKE unaccent(${pattern})
+      OR unaccent(COALESCE(c.role, '')) ILIKE unaccent(${pattern})
     )`
   })
 }
@@ -76,6 +80,9 @@ function buildCompanyTokenConditions(tokens: string[]): Prisma.Sql[] {
     return Prisma.sql`(
       unaccent(co.name) ILIKE unaccent(${pattern})
       OR unaccent(COALESCE(co.domain, '')) ILIKE unaccent(${pattern})
+      OR unaccent(COALESCE(co.segment, '')) ILIKE unaccent(${pattern})
+      OR unaccent(COALESCE(co.industry, '')) ILIKE unaccent(${pattern})
+      OR COALESCE(co.cnpj, '') ILIKE ${pattern}
     )`
   })
 }
@@ -89,11 +96,17 @@ function buildDealTokenConditions(tokens: string[]): Prisma.Sql[] {
     const pattern = `%${token}%`
     return Prisma.sql`(
       unaccent(d.title) ILIKE unaccent(${pattern})
+      OR unaccent(COALESCE(d.notes, '')) ILIKE unaccent(${pattern})
       OR EXISTS (
         SELECT 1 FROM deal_contacts dc
         JOIN contacts c ON c.id = dc.contact_id
         WHERE dc.deal_id = d.id
           AND unaccent(c.name) ILIKE unaccent(${pattern})
+      )
+      OR EXISTS (
+        SELECT 1 FROM companies co
+        WHERE co.id = d.company_id
+          AND unaccent(co.name) ILIKE unaccent(${pattern})
       )
     )`
   })
