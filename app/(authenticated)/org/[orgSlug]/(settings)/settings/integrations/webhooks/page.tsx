@@ -10,8 +10,8 @@ import Header, {
 } from '@/_components/header'
 import { BackButton } from '@/_components/layout/back-button'
 import type { WebhookSourceDto } from '@/_actions/webhook-source/schema'
-import { WebhookSourcesDataTable } from '@/(authenticated)/org/[orgSlug]/(main)/settings/integrations/webhooks/_components/webhook-sources-data-table'
-import { CreateWebhookButton } from '@/(authenticated)/org/[orgSlug]/(main)/settings/integrations/webhooks/_components/create-webhook-button'
+import { WebhookSourcesDataTable } from '@/(authenticated)/org/[orgSlug]/(settings)/settings/integrations/webhooks/_components/webhook-sources-data-table'
+import { CreateWebhookButton } from '@/(authenticated)/org/[orgSlug]/(settings)/settings/integrations/webhooks/_components/create-webhook-button'
 
 interface PageProps {
   params: Promise<{ orgSlug: string }>

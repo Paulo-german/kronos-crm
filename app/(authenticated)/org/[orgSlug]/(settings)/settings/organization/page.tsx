@@ -3,7 +3,7 @@ import { getOrgContext } from '@/_data-access/organization/get-organization-cont
 import { getOrganizationBySlug } from '@/_data-access/organization/get-organization-by-slug'
 import { getPlanLimits } from '@/_lib/rbac/plan-limits'
 import { BackButton } from '@/_components/layout/back-button'
-import { OrganizationSettingsForm } from '@/(authenticated)/org/[orgSlug]/(main)/settings/organization/_components/organization-settings-form'
+import { OrganizationSettingsForm } from '@/(authenticated)/org/[orgSlug]/(settings)/settings/organization/_components/organization-settings-form'
 
 interface OrganizationSettingsPageProps {
   params: Promise<{ orgSlug: string }>

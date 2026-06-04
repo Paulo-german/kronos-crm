@@ -21,9 +21,9 @@ import { getPlanLimits } from '@/_lib/rbac/plan-limits'
 import { getAllQuotas } from '@/_data-access/billing/get-all-quotas'
 import { getTrialStatus } from '@/_data-access/billing/get-trial-status'
 import { getInvoices } from '@/_data-access/billing/get-invoices'
-import { QuotaUsageCard } from '@/(authenticated)/org/[orgSlug]/(main)/settings/billing/_components/quota-usage-card'
-import { InvoiceHistory } from '@/(authenticated)/org/[orgSlug]/(main)/settings/billing/_components/invoice-history'
-import { ManageSubscriptionButton } from '@/(authenticated)/org/[orgSlug]/(main)/settings/billing/_components/manage-subscription-button'
+import { QuotaUsageCard } from '@/(authenticated)/org/[orgSlug]/(settings)/settings/billing/_components/quota-usage-card'
+import { InvoiceHistory } from '@/(authenticated)/org/[orgSlug]/(settings)/settings/billing/_components/invoice-history'
+import { ManageSubscriptionButton } from '@/(authenticated)/org/[orgSlug]/(settings)/settings/billing/_components/manage-subscription-button'
 
 interface BillingSettingsPageProps {
   params: Promise<{ orgSlug: string }>

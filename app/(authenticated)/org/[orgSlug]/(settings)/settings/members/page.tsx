@@ -4,12 +4,12 @@ import { getOrganizationMembers } from '@/_data-access/organization/get-organiza
 import { getSquads } from '@/_data-access/squad/get-squads'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 import { QuotaHint } from '@/_components/trial/quota-hint'
-import { MemberList } from '@/(authenticated)/org/[orgSlug]/(main)/settings/members/_components/member-list'
-import InviteMemberDialog from '@/(authenticated)/org/[orgSlug]/(main)/settings/members/_components/invite-member-dialog'
-import { PiiToggleCard } from '@/(authenticated)/org/[orgSlug]/(main)/settings/members/_components/pii-toggle-card'
-import { SupportSection } from '@/(authenticated)/org/[orgSlug]/(main)/settings/members/_components/support-section'
-import { SquadsTab } from '@/(authenticated)/org/[orgSlug]/(main)/settings/members/_components/squads-tab'
-import { MembersPageClient } from '@/(authenticated)/org/[orgSlug]/(main)/settings/members/_components/members-page-client'
+import { MemberList } from '@/(authenticated)/org/[orgSlug]/(settings)/settings/members/_components/member-list'
+import InviteMemberDialog from '@/(authenticated)/org/[orgSlug]/(settings)/settings/members/_components/invite-member-dialog'
+import { PiiToggleCard } from '@/(authenticated)/org/[orgSlug]/(settings)/settings/members/_components/pii-toggle-card'
+import { SupportSection } from '@/(authenticated)/org/[orgSlug]/(settings)/settings/members/_components/support-section'
+import { SquadsTab } from '@/(authenticated)/org/[orgSlug]/(settings)/settings/members/_components/squads-tab'
+import { MembersPageClient } from '@/(authenticated)/org/[orgSlug]/(settings)/settings/members/_components/members-page-client'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 
 interface MembersPageProps {

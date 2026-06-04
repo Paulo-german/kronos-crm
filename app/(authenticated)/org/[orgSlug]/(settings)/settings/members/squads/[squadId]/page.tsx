@@ -5,9 +5,9 @@ import { BackButton } from '@/_components/layout/back-button'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getSquadById } from '@/_data-access/squad/get-squad-by-id'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
-import { SquadDistributionForm } from '@/(authenticated)/org/[orgSlug]/(main)/settings/members/squads/[squadId]/_components/squad-distribution-form'
-import { SquadLoyaltyCard } from '@/(authenticated)/org/[orgSlug]/(main)/settings/members/squads/[squadId]/_components/squad-loyalty-card'
-import { SquadMembersSection } from '@/(authenticated)/org/[orgSlug]/(main)/settings/members/squads/[squadId]/_components/squad-members-section'
+import { SquadDistributionForm } from '@/(authenticated)/org/[orgSlug]/(settings)/settings/members/squads/[squadId]/_components/squad-distribution-form'
+import { SquadLoyaltyCard } from '@/(authenticated)/org/[orgSlug]/(settings)/settings/members/squads/[squadId]/_components/squad-loyalty-card'
+import { SquadMembersSection } from '@/(authenticated)/org/[orgSlug]/(settings)/settings/members/squads/[squadId]/_components/squad-members-section'
 import type { SquadType } from '@prisma/client'
 
 interface SquadDetailPageProps {

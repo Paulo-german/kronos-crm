@@ -5,8 +5,8 @@ import { getEmailBlocklist } from '@/_data-access/privacy/get-email-blocklist'
 import { isElevated } from '@/_lib/rbac'
 import Header, { HeaderLeft, HeaderTitle, HeaderSubTitle } from '@/_components/header'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/_components/ui/tabs'
-import { DsrRequestsTab } from '@/(authenticated)/org/[orgSlug]/(main)/settings/privacy/_components/dsr-requests-tab'
-import { BlocklistTab } from '@/(authenticated)/org/[orgSlug]/(main)/settings/privacy/_components/blocklist-tab'
+import { DsrRequestsTab } from '@/(authenticated)/org/[orgSlug]/(settings)/settings/privacy/_components/dsr-requests-tab'
+import { BlocklistTab } from '@/(authenticated)/org/[orgSlug]/(settings)/settings/privacy/_components/blocklist-tab'
 
 interface PrivacySettingsPageProps {
   params: Promise<{ orgSlug: string }>

@@ -18,8 +18,8 @@ import Header, {
   HeaderTitle,
 } from '@/_components/header'
 import { BackButton } from '@/_components/layout/back-button'
-import IntegrationCard from '@/(authenticated)/org/[orgSlug]/(main)/settings/integrations/_components/integration-card'
-import ConnectedToast from '@/(authenticated)/org/[orgSlug]/(main)/settings/integrations/_components/connected-toast'
+import IntegrationCard from '@/(authenticated)/org/[orgSlug]/(settings)/settings/integrations/_components/integration-card'
+import ConnectedToast from '@/(authenticated)/org/[orgSlug]/(settings)/settings/integrations/_components/connected-toast'
 import { Suspense } from 'react'
 
 interface IntegrationsPageProps {
