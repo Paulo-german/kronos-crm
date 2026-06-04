@@ -2,10 +2,10 @@ import { getOrgContext } from '@/_data-access/organization/get-organization-cont
 import { getPlanLimits } from '@/_lib/rbac/plan-limits'
 import { isElevated } from '@/_lib/rbac'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
-import { ReportsGlobalFilters } from '@/(authenticated)/org/[orgSlug]/(main)/reports/_components/reports-global-filters'
-import { ReportsPlanGate } from '@/(authenticated)/org/[orgSlug]/(main)/reports/_components/reports-plan-gate'
-import { ReportsNavTabs } from '@/(authenticated)/org/[orgSlug]/(main)/reports/_components/reports-nav-tabs'
-import { REPORT_SECTIONS } from '@/(authenticated)/org/[orgSlug]/(main)/reports/_config/report-sections'
+import { ReportsGlobalFilters } from '@/_components/reports/_components/reports-global-filters'
+import { ReportsPlanGate } from '@/_components/reports/_components/reports-plan-gate'
+import { ReportsNavTabs } from '@/_components/reports/_components/reports-nav-tabs'
+import { REPORT_SECTIONS } from '@/_components/reports/_config/report-sections'
 
 const CRM_REPORT_SLUGS = ['overview', 'pipeline', 'team', 'products', 'lost-deals']
 const CRM_REPORT_SECTIONS = REPORT_SECTIONS.filter((section) =>

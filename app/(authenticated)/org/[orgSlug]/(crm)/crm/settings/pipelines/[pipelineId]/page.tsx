@@ -4,7 +4,7 @@ import { getOrgContext } from '@/_data-access/organization/get-organization-cont
 import { getOrgPipeline } from '@/_data-access/pipeline/get-user-pipeline'
 import { Badge } from '@/_components/ui/badge'
 import { BackButton } from '@/_components/layout/back-button'
-import { PipelineDetailClient } from '@/(authenticated)/org/[orgSlug]/(main)/settings/pipelines/[pipelineId]/_components/pipeline-detail-client'
+import { PipelineDetailClient } from '@/(authenticated)/org/[orgSlug]/(crm)/crm/settings/pipelines/[pipelineId]/_components/pipeline-detail-client'
 
 interface PipelineDetailPageProps {
   params: Promise<{ orgSlug: string; pipelineId: string }>

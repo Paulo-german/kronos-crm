@@ -5,8 +5,8 @@ import { getOrgPipelines } from '@/_data-access/pipeline/get-org-pipelines'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 import { createDefaultPipeline } from '@/_data-access/pipeline/create-default-pipeline'
-import { parseDealListParams } from '@/(authenticated)/org/[orgSlug]/(main)/crm/deals/list/_lib/deal-list-params'
-import { DealsListClient } from '@/(authenticated)/org/[orgSlug]/(main)/crm/deals/list/_components/deals-list-client'
+import { parseDealListParams } from '@/(authenticated)/org/[orgSlug]/(crm)/crm/deals/list/_lib/deal-list-params'
+import { DealsListClient } from '@/(authenticated)/org/[orgSlug]/(crm)/crm/deals/list/_components/deals-list-client'
 
 interface DealsListPageProps {
   params: Promise<{ orgSlug: string }>

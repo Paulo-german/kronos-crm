@@ -9,12 +9,12 @@ import { getTeamMemberById } from '@/_data-access/reports/team/get-team-member-b
 import { Card } from '@/_components/ui/card'
 import { Skeleton } from '@/_components/ui/skeleton'
 import type { ReportsFilters } from '@/_data-access/reports/shared/reports-types'
-import { findReportSection } from '@/(authenticated)/org/[orgSlug]/(main)/reports/_config/report-sections'
-import { ReportsSectionHeader } from '@/(authenticated)/org/[orgSlug]/(main)/reports/_components/reports-section-header'
-import { TeamRankingTable } from '@/(authenticated)/org/[orgSlug]/(main)/reports/team/_components/team-ranking-table'
-import { TeamGoalsStrip } from '@/(authenticated)/org/[orgSlug]/(main)/reports/team/_components/team-goals-strip'
-import { MemberSpotlight } from '@/(authenticated)/org/[orgSlug]/(main)/reports/team/_components/member-spotlight'
-import { TeamMemberDrawerWrapper } from '@/(authenticated)/org/[orgSlug]/(main)/reports/team/_components/team-member-drawer-wrapper'
+import { findReportSection } from '@/_components/reports/_config/report-sections'
+import { ReportsSectionHeader } from '@/_components/reports/_components/reports-section-header'
+import { TeamRankingTable } from '@/_components/reports/team/_components/team-ranking-table'
+import { TeamGoalsStrip } from '@/_components/reports/team/_components/team-goals-strip'
+import { MemberSpotlight } from '@/_components/reports/team/_components/member-spotlight'
+import { TeamMemberDrawerWrapper } from '@/_components/reports/team/_components/team-member-drawer-wrapper'
 
 interface TeamReportPageProps {
   params: Promise<{ orgSlug: string }>

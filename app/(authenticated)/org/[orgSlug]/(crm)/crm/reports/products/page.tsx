@@ -4,11 +4,11 @@ import { getTopProducts } from '@/_data-access/reports/products/get-top-products
 import { getRevenueByProduct } from '@/_data-access/reports/products/get-revenue-by-product'
 import { parseReportsSearchParams } from '@/_data-access/reports/shared/reports-filters'
 import { Card } from '@/_components/ui/card'
-import { findReportSection } from '@/(authenticated)/org/[orgSlug]/(main)/reports/_config/report-sections'
-import { ReportsSectionHeader } from '@/(authenticated)/org/[orgSlug]/(main)/reports/_components/reports-section-header'
-import { ProductMixCard } from '@/(authenticated)/org/[orgSlug]/(main)/reports/products/_components/product-mix-card'
-import { RevenueByProductCard } from '@/(authenticated)/org/[orgSlug]/(main)/reports/products/_components/revenue-by-product-card'
-import { TopProductsTable } from '@/(authenticated)/org/[orgSlug]/(main)/reports/products/_components/top-products-table'
+import { findReportSection } from '@/_components/reports/_config/report-sections'
+import { ReportsSectionHeader } from '@/_components/reports/_components/reports-section-header'
+import { ProductMixCard } from '@/_components/reports/products/_components/product-mix-card'
+import { RevenueByProductCard } from '@/_components/reports/products/_components/revenue-by-product-card'
+import { TopProductsTable } from '@/_components/reports/products/_components/top-products-table'
 
 const TOP_PRODUCTS_LIMIT = 10
 

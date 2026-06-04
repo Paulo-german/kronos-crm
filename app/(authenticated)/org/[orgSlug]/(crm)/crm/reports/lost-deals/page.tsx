@@ -1,10 +1,10 @@
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getLostDealsAnalysis } from '@/_data-access/reports/lost-deals/get-lost-deals-analysis'
 import { parseReportsSearchParams } from '@/_data-access/reports/shared/reports-filters'
-import { findReportSection } from '@/(authenticated)/org/[orgSlug]/(main)/reports/_config/report-sections'
-import { ReportsSectionHeader } from '@/(authenticated)/org/[orgSlug]/(main)/reports/_components/reports-section-header'
-import { LostByStageCard } from '@/(authenticated)/org/[orgSlug]/(main)/reports/lost-deals/_components/lost-by-stage-card'
-import { LostByReasonCard } from '@/(authenticated)/org/[orgSlug]/(main)/reports/lost-deals/_components/lost-by-reason-card'
+import { findReportSection } from '@/_components/reports/_config/report-sections'
+import { ReportsSectionHeader } from '@/_components/reports/_components/reports-section-header'
+import { LostByStageCard } from '@/_components/reports/lost-deals/_components/lost-by-stage-card'
+import { LostByReasonCard } from '@/_components/reports/lost-deals/_components/lost-by-reason-card'
 
 interface LostDealsReportPageProps {
   params: Promise<{ orgSlug: string }>

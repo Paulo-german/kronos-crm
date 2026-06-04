@@ -1,8 +1,8 @@
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getAllDealLostReasons } from '@/_data-access/settings/get-lost-reasons'
 import { BackButton } from '@/_components/layout/back-button'
-import CreateLostReasonButton from '@/(authenticated)/org/[orgSlug]/(main)/settings/loss-reasons/_components/create-lost-reason-button'
-import { LostReasonsDataTable } from '@/(authenticated)/org/[orgSlug]/(main)/settings/loss-reasons/_components/lost-reasons-data-table'
+import CreateLostReasonButton from '@/(authenticated)/org/[orgSlug]/(crm)/crm/settings/loss-reasons/_components/create-lost-reason-button'
+import { LostReasonsDataTable } from '@/(authenticated)/org/[orgSlug]/(crm)/crm/settings/loss-reasons/_components/lost-reasons-data-table'
 
 interface ReasonsPageProps {
   params: Promise<{ orgSlug: string }>

@@ -3,7 +3,7 @@ import { getAppointments } from '@/_data-access/appointment/get-appointments'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
 import { getContactsOptions } from '@/_data-access/contact/get-contacts-options'
 import { getServices } from '@/_data-access/service/get-services'
-import { AppointmentsCalendarClient } from '@/(authenticated)/org/[orgSlug]/(main)/crm/appointments/_components/appointments-calendar-client'
+import { AppointmentsCalendarClient } from '@/(authenticated)/org/[orgSlug]/(crm)/crm/appointments/_components/appointments-calendar-client'
 
 interface AppointmentsCalendarPageProps {
   params: Promise<{ orgSlug: string }>

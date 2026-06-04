@@ -1,0 +1,554 @@
+'use client'
+
+import { useState, useCallback } from 'react'
+import { useAction } from 'next-safe-action/hooks'
+import { toast } from 'sonner'
+import { format } from 'date-fns'
+import {
+  Plus,
+  CircleIcon,
+  ChevronDown,
+  CalendarIcon,
+  ClockIcon,
+  CircleDotIcon,
+  TypeIcon,
+  UserIcon,
+  TimerIcon,
+  TrashIcon,
+  Link2Icon,
+  UnlinkIcon,
+  Loader2,
+} from 'lucide-react'
+import { formatInTimeZone } from 'date-fns-tz'
+import { ptBR } from 'date-fns/locale'
+
+import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
+import { Button } from '@/_components/ui/button'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/_components/ui/sheet'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/_components/ui/table'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/_components/ui/popover'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/_components/ui/select'
+import ConfirmationDialog from '@/_components/confirmation-dialog'
+
+import { updateAppointment } from '@/_actions/appointment/update-appointment'
+import { deleteAppointment } from '@/_actions/appointment/delete-appointment'
+import { linkAppointmentToDeal } from '@/_actions/appointment/link-appointment-to-deal'
+import { unlinkAppointmentFromDeal } from '@/_actions/appointment/unlink-appointment-from-deal'
+import { UpsertAppointmentDialogContent } from '../../../appointments/_components/upsert-dialog-content'
+import AppointmentTableDropdownMenu from '../../../appointments/_components/table-dropdown-menu'
+
+import type { DealDetailsDto } from '@/_data-access/deal/get-deal-details'
+import type { AppointmentDto } from '@/_data-access/appointment/get-appointments'
+import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
+import type { ContactOptionDto } from '@/_data-access/contact/get-contacts-options'
+import type { ServiceDto } from '@/_data-access/service/get-services'
+import type { AppointmentStatus } from '@prisma/client'
+import { STATUS_CONFIG, formatDuration } from '@/_lib/appointment-utils'
+
+const SAO_PAULO_TZ = 'America/Sao_Paulo'
+
+interface TabAppointmentsProps {
+  deal: DealDetailsDto
+  appointments: AppointmentDto[]
+  members: AcceptedMemberDto[]
+  contactOptions: ContactOptionDto[]
+  services: ServiceDto[]
+  linkableAppointments: AppointmentDto[]
+}
+
+const TabAppointments = ({
+  deal,
+  appointments,
+  members,
+  contactOptions,
+  services,
+  linkableAppointments,
+}: TabAppointmentsProps) => {
+  const [editingAppointment, setEditingAppointment] =
+    useState<AppointmentDto | null>(null)
+  const [isSheetOpen, setIsSheetOpen] = useState(false)
+
+  const [deletingAppointment, setDeletingAppointment] =
+    useState<AppointmentDto | null>(null)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+
+  const [openStatusId, setOpenStatusId] = useState<string | null>(null)
+  const [statusOverrides, setStatusOverrides] = useState<
+    Record<string, AppointmentStatus>
+  >({})
+
+  const [isLinkSheetOpen, setIsLinkSheetOpen] = useState(false)
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState<
+    string | undefined
+  >(undefined)
+
+  const [unlinkingAppointment, setUnlinkingAppointment] =
+    useState<AppointmentDto | null>(null)
+
+  const { execute: executeUpdate, isPending: isUpdating } = useAction(
+    updateAppointment,
+    {
+      onSuccess: () => {
+        toast.success('Agendamento atualizado com sucesso.')
+        setIsSheetOpen(false)
+        setEditingAppointment(null)
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError || 'Erro ao atualizar agendamento.')
+      },
+    },
+  )
+
+  const { execute: executeUpdateStatus } = useAction(updateAppointment, {
+    onSuccess: () => {
+      toast.success('Status atualizado com sucesso.')
+    },
+    onError: ({ error, input }) => {
+      setStatusOverrides((prev) => {
+        const next = { ...prev }
+        delete next[input.id]
+        return next
+      })
+      toast.error(error.serverError || 'Erro ao atualizar status.')
+    },
+  })
+
+  const handleStatusSelect = useCallback(
+    (appointmentId: string, newStatus: AppointmentStatus) => {
+      setStatusOverrides((prev) => ({ ...prev, [appointmentId]: newStatus }))
+      setOpenStatusId(null)
+      executeUpdateStatus({ id: appointmentId, status: newStatus })
+    },
+    [executeUpdateStatus],
+  )
+
+  const { execute: executeDelete, isPending: isDeleting } = useAction(
+    deleteAppointment,
+    {
+      onSuccess: () => {
+        toast.success('Agendamento excluído com sucesso.')
+        setIsDeleteDialogOpen(false)
+        setDeletingAppointment(null)
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError || 'Erro ao excluir agendamento.')
+      },
+    },
+  )
+
+  const { execute: executeLink, isPending: isLinking } = useAction(
+    linkAppointmentToDeal,
+    {
+      onSuccess: () => {
+        toast.success('Agendamento vinculado com sucesso.')
+        setIsLinkSheetOpen(false)
+        setSelectedAppointmentId(undefined)
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError || 'Erro ao vincular agendamento.')
+      },
+    },
+  )
+
+  const { execute: executeUnlink, isPending: isUnlinking } = useAction(
+    unlinkAppointmentFromDeal,
+    {
+      onSuccess: () => {
+        toast.success('Agendamento desvinculado com sucesso.')
+        setUnlinkingAppointment(null)
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError || 'Erro ao desvincular agendamento.')
+      },
+    },
+  )
+
+  const handleEdit = (appointment: AppointmentDto) => {
+    setEditingAppointment(appointment)
+    setIsSheetOpen(true)
+  }
+
+  const handleLinkConfirm = () => {
+    if (!selectedAppointmentId) return
+    executeLink({ appointmentId: selectedAppointmentId, dealId: deal.id })
+  }
+
+  return (
+    <Card className="border-border/50 bg-card">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="text-lg">Agendamentos</CardTitle>
+
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setIsLinkSheetOpen(true)}
+          >
+            <Link2Icon className="mr-2 h-4 w-4" />
+            Vincular existente
+          </Button>
+
+          <Sheet
+            open={isSheetOpen}
+            onOpenChange={(open) => {
+              setIsSheetOpen(open)
+              if (!open) setEditingAppointment(null)
+            }}
+          >
+            <Button size="sm" onClick={() => setIsSheetOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Novo Agendamento
+            </Button>
+
+            {editingAppointment ? (
+              <UpsertAppointmentDialogContent
+                key={editingAppointment.id}
+                defaultValues={editingAppointment}
+                members={members}
+                contactOptions={contactOptions}
+                services={services}
+                setIsOpen={setIsSheetOpen}
+                onUpdate={(data) => executeUpdate(data)}
+                isUpdating={isUpdating}
+                fixedDealId={deal.id}
+              />
+            ) : (
+              <UpsertAppointmentDialogContent
+                key="new"
+                members={members}
+                contactOptions={contactOptions}
+                services={services}
+                setIsOpen={setIsSheetOpen}
+                fixedDealId={deal.id}
+              />
+            )}
+          </Sheet>
+        </div>
+      </CardHeader>
+
+      <CardContent>
+        {appointments.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-4 py-8 text-center text-muted-foreground">
+            <p>Nenhum agendamento vinculado a este negócio.</p>
+            <Button size="sm" onClick={() => setIsSheetOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Novo Agendamento
+            </Button>
+          </div>
+        ) : (
+          <div className="overflow-hidden rounded-md border border-border/50">
+            <Table className="bg-secondary/20">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>
+                    <div className="flex items-center gap-2">
+                      <TypeIcon className="h-4 w-4 text-muted-foreground" />
+                      <span>Título</span>
+                    </div>
+                  </TableHead>
+                  <TableHead>
+                    <div className="flex items-center gap-2">
+                      <CircleDotIcon className="h-4 w-4 text-muted-foreground" />
+                      <span>Status</span>
+                    </div>
+                  </TableHead>
+                  <TableHead>
+                    <div className="flex items-center gap-2">
+                      <UserIcon className="h-4 w-4 text-muted-foreground" />
+                      <span>Responsável</span>
+                    </div>
+                  </TableHead>
+                  <TableHead>
+                    <div className="flex items-center gap-2">
+                      <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                      <span>Período</span>
+                    </div>
+                  </TableHead>
+                  <TableHead>
+                    <div className="flex items-center gap-2">
+                      <TimerIcon className="h-4 w-4 text-muted-foreground" />
+                      <span>Duração</span>
+                    </div>
+                  </TableHead>
+                  <TableHead>
+                    <div className="flex items-center gap-2">
+                      <ClockIcon className="h-4 w-4 text-muted-foreground" />
+                      <span>Criado em</span>
+                    </div>
+                  </TableHead>
+                  <TableHead className="w-[80px]" />
+                </TableRow>
+              </TableHeader>
+              <TableBody className="bg-card">
+                {appointments.map((appointment) => {
+                  const status =
+                    (statusOverrides[appointment.id] ??
+                      appointment.status) as AppointmentStatus
+                  const config = STATUS_CONFIG[status]
+                  const isStatusOpen = openStatusId === appointment.id
+
+                  return (
+                    <TableRow key={appointment.id}>
+                      <TableCell className="font-medium">
+                        {appointment.title}
+                      </TableCell>
+
+                      <TableCell>
+                        <Popover
+                          open={isStatusOpen}
+                          onOpenChange={(open) =>
+                            setOpenStatusId(open ? appointment.id : null)
+                          }
+                        >
+                          <PopoverTrigger asChild>
+                            <button
+                              type="button"
+                              className={`flex items-center gap-1.5 rounded-md border bg-transparent px-2 py-0.5 text-[10px] font-semibold transition-colors hover:bg-accent ${config.color}`}
+                            >
+                              <CircleIcon className="h-1.5 w-1.5 fill-current" />
+                              {config.label}
+                              <ChevronDown className="h-3 w-3 opacity-50" />
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent
+                            align="start"
+                            side="bottom"
+                            className="w-auto min-w-[140px] p-1"
+                          >
+                            <p className="px-2 py-1.5 text-xs font-bold uppercase text-muted-foreground">
+                              Status
+                            </p>
+                            {Object.entries(STATUS_CONFIG).map(
+                              ([key, cfg]) => (
+                                <button
+                                  key={key}
+                                  type="button"
+                                  className={`flex w-full items-center rounded-sm px-2 py-1.5 text-left text-[10px] font-semibold transition-colors hover:bg-accent ${cfg.color} ${
+                                    status === key ? 'bg-accent' : ''
+                                  }`}
+                                  onClick={() =>
+                                    handleStatusSelect(
+                                      appointment.id,
+                                      key as AppointmentStatus,
+                                    )
+                                  }
+                                >
+                                  {cfg.label}
+                                </button>
+                              ),
+                            )}
+                          </PopoverContent>
+                        </Popover>
+                      </TableCell>
+
+                      <TableCell>
+                        {appointment.assigneeName ? (
+                          <span className="text-sm">
+                            {appointment.assigneeName}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            -
+                          </span>
+                        )}
+                      </TableCell>
+
+                      <TableCell>
+                        <div className="flex items-center gap-1.5 text-sm">
+                          <span>
+                            {formatInTimeZone(
+                              new Date(appointment.startDate),
+                              SAO_PAULO_TZ,
+                              "dd/MM/yyyy 'às' HH:mm",
+                              { locale: ptBR },
+                            )}
+                          </span>
+                          <span className="text-muted-foreground">•</span>
+                          <span>
+                            {formatInTimeZone(
+                              new Date(appointment.endDate),
+                              SAO_PAULO_TZ,
+                              "dd/MM/yyyy 'às' HH:mm",
+                              { locale: ptBR },
+                            )}
+                          </span>
+                        </div>
+                      </TableCell>
+
+                      <TableCell>
+                        <span className="text-sm">
+                          {formatDuration(
+                            appointment.startDate,
+                            appointment.endDate,
+                          )}
+                        </span>
+                      </TableCell>
+
+                      <TableCell>
+                        <span className="text-sm text-muted-foreground">
+                          {formatInTimeZone(
+                            new Date(appointment.createdAt),
+                            SAO_PAULO_TZ,
+                            'dd/MM/yyyy',
+                            { locale: ptBR },
+                          )}
+                        </span>
+                      </TableCell>
+
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Desvincular"
+                            onClick={() =>
+                              setUnlinkingAppointment(appointment)
+                            }
+                          >
+                            <UnlinkIcon className="h-4 w-4" />
+                          </Button>
+                          <AppointmentTableDropdownMenu
+                            status={appointment.status}
+                            onEdit={() => handleEdit(appointment)}
+                            onDelete={() => {
+                              setDeletingAppointment(appointment)
+                              setIsDeleteDialogOpen(true)
+                            }}
+                          />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </CardContent>
+
+      {/* Sheet: vincular agendamento existente */}
+      <Sheet
+        open={isLinkSheetOpen}
+        onOpenChange={(open) => {
+          setIsLinkSheetOpen(open)
+          if (!open) setSelectedAppointmentId(undefined)
+        }}
+      >
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Vincular agendamento existente</SheetTitle>
+          </SheetHeader>
+
+          <div className="mt-6 flex flex-col gap-6 px-1">
+            {linkableAppointments.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Não há agendamentos sem negócio disponíveis.
+              </p>
+            ) : (
+              <Select
+                value={selectedAppointmentId}
+                onValueChange={setSelectedAppointmentId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecionar agendamento..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {linkableAppointments.map((appt) => (
+                    <SelectItem key={appt.id} value={appt.id}>
+                      {appt.title} —{' '}
+                      {format(new Date(appt.startDate), 'dd/MM/yyyy')}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            <Button
+              disabled={!selectedAppointmentId || isLinking}
+              onClick={handleLinkConfirm}
+            >
+              {isLinking ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Link2Icon className="mr-2 h-4 w-4" />
+              )}
+              Vincular
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Dialog: confirmar desvínculo */}
+      <ConfirmationDialog
+        open={unlinkingAppointment !== null}
+        onOpenChange={(open) => {
+          if (!open) setUnlinkingAppointment(null)
+        }}
+        title="Desvincular agendamento?"
+        description={
+          <p>
+            O agendamento{' '}
+            <span className="font-bold text-foreground">
+              {unlinkingAppointment?.title}
+            </span>{' '}
+            será desvinculado deste negócio, mas não será excluído.
+          </p>
+        }
+        icon={<UnlinkIcon />}
+        variant="default"
+        onConfirm={() => {
+          if (unlinkingAppointment)
+            executeUnlink({ appointmentId: unlinkingAppointment.id })
+        }}
+        isLoading={isUnlinking}
+        confirmLabel="Desvincular"
+      />
+
+      {/* Dialog: confirmar exclusão */}
+      <ConfirmationDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={(open) => {
+          setIsDeleteDialogOpen(open)
+          if (!open) setDeletingAppointment(null)
+        }}
+        title="Você tem certeza absoluta?"
+        description={
+          <p>
+            Esta ação não pode ser desfeita. Você está prestes a remover
+            permanentemente o agendamento{' '}
+            <span className="font-bold text-foreground">
+              {deletingAppointment?.title}
+            </span>
+          </p>
+        }
+        icon={<TrashIcon />}
+        variant="destructive"
+        onConfirm={() => {
+          if (deletingAppointment)
+            executeDelete({ id: deletingAppointment.id })
+        }}
+        isLoading={isDeleting}
+        confirmLabel="Confirmar Exclusão"
+      />
+    </Card>
+  )
+}
+
+export default TabAppointments

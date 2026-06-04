@@ -9,8 +9,8 @@ import Header, {
   HeaderSubTitle,
 } from '@/_components/header'
 import { BackButton } from '@/_components/layout/back-button'
-import { PipelinesSettingsClient } from '@/(authenticated)/org/[orgSlug]/(main)/settings/pipelines/_components/pipelines-settings-client'
-import { CreatePipelineButton } from '@/(authenticated)/org/[orgSlug]/(main)/settings/pipelines/_components/create-pipeline-button'
+import { PipelinesSettingsClient } from '@/(authenticated)/org/[orgSlug]/(crm)/crm/settings/pipelines/_components/pipelines-settings-client'
+import { CreatePipelineButton } from '@/(authenticated)/org/[orgSlug]/(crm)/crm/settings/pipelines/_components/create-pipeline-button'
 
 interface PipelinesPageProps {
   params: Promise<{ orgSlug: string }>

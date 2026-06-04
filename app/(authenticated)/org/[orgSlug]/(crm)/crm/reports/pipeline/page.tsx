@@ -8,13 +8,13 @@ import { getDealsAtRisk } from '@/_data-access/reports/pipeline/get-deals-at-ris
 import { parseReportsSearchParams } from '@/_data-access/reports/shared/reports-filters'
 import { Skeleton } from '@/_components/ui/skeleton'
 import { Card, CardContent, CardHeader } from '@/_components/ui/card'
-import { findReportSection } from '@/(authenticated)/org/[orgSlug]/(main)/reports/_config/report-sections'
-import { ReportsSectionHeader } from '@/(authenticated)/org/[orgSlug]/(main)/reports/_components/reports-section-header'
-import { PipelineFilters } from '@/(authenticated)/org/[orgSlug]/(main)/reports/pipeline/_components/pipeline-filters'
-import { PipelineFunnelCard } from '@/(authenticated)/org/[orgSlug]/(main)/reports/pipeline/_components/pipeline-funnel-card'
-import { PipelineVelocityCard } from '@/(authenticated)/org/[orgSlug]/(main)/reports/pipeline/_components/pipeline-velocity-card'
-import { PipelineDealsAtRiskCard } from '@/(authenticated)/org/[orgSlug]/(main)/reports/pipeline/_components/pipeline-deals-at-risk-card'
-import { PipelineGoalsStrip } from '@/(authenticated)/org/[orgSlug]/(main)/reports/pipeline/_components/pipeline-goals-strip'
+import { findReportSection } from '@/_components/reports/_config/report-sections'
+import { ReportsSectionHeader } from '@/_components/reports/_components/reports-section-header'
+import { PipelineFilters } from '@/_components/reports/pipeline/_components/pipeline-filters'
+import { PipelineFunnelCard } from '@/_components/reports/pipeline/_components/pipeline-funnel-card'
+import { PipelineVelocityCard } from '@/_components/reports/pipeline/_components/pipeline-velocity-card'
+import { PipelineDealsAtRiskCard } from '@/_components/reports/pipeline/_components/pipeline-deals-at-risk-card'
+import { PipelineGoalsStrip } from '@/_components/reports/pipeline/_components/pipeline-goals-strip'
 
 interface PipelineReportPageProps {
   params: Promise<{ orgSlug: string }>

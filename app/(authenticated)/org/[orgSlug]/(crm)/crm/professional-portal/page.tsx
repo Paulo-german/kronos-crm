@@ -4,7 +4,7 @@ import { requireProfessionalContext } from '@/_lib/rbac/professional-guards'
 import { getProfessionalById } from '@/_data-access/professional/get-professional-by-id'
 import { getProfessionalAppointments } from '@/_data-access/professional/get-professional-appointments'
 import { getOrganizationBySlug } from '@/_data-access/organization/get-organization-by-slug'
-import { ProfessionalPortalView } from '@/(authenticated)/org/[orgSlug]/(main)/professional-portal/_components/professional-portal-view'
+import { ProfessionalPortalView } from '@/(authenticated)/org/[orgSlug]/(crm)/crm/professional-portal/_components/professional-portal-view'
 
 interface ProfessionalPortalPageProps {
   params: Promise<{ orgSlug: string }>

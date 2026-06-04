@@ -5,12 +5,12 @@ import { getRevenueOverTimeForReports } from '@/_data-access/reports/overview/ge
 import { getChannelAttribution } from '@/_data-access/reports/overview/get-channel-attribution'
 import { parseReportsSearchParams } from '@/_data-access/reports/shared/reports-filters'
 import { Skeleton } from '@/_components/ui/skeleton'
-import { findReportSection } from '@/(authenticated)/org/[orgSlug]/(main)/reports/_config/report-sections'
-import { ReportsSectionHeader } from '@/(authenticated)/org/[orgSlug]/(main)/reports/_components/reports-section-header'
-import { ReportsDrillDownSheet } from '@/(authenticated)/org/[orgSlug]/(main)/reports/_components/reports-drill-down-sheet'
-import { OverviewPageClient } from '@/(authenticated)/org/[orgSlug]/(main)/reports/overview/_components/overview-page-client'
-import { OverviewGoalsStrip } from '@/(authenticated)/org/[orgSlug]/(main)/reports/overview/_components/overview-goals-strip'
-import { OverviewRevenueChart } from '@/(authenticated)/org/[orgSlug]/(main)/reports/overview/_components/overview-revenue-chart'
+import { findReportSection } from '@/_components/reports/_config/report-sections'
+import { ReportsSectionHeader } from '@/_components/reports/_components/reports-section-header'
+import { ReportsDrillDownSheet } from '@/_components/reports/_components/reports-drill-down-sheet'
+import { OverviewPageClient } from '@/_components/reports/overview/_components/overview-page-client'
+import { OverviewGoalsStrip } from '@/_components/reports/overview/_components/overview-goals-strip'
+import { OverviewRevenueChart } from '@/_components/reports/overview/_components/overview-revenue-chart'
 
 interface OverviewPageProps {
   params: Promise<{ orgSlug: string }>

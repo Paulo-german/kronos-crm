@@ -4,7 +4,7 @@ import { getOrgContext } from '@/_data-access/organization/get-organization-cont
 import { getFieldDefinitions } from '@/_data-access/field-definition/get-field-definitions'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 import { BackButton } from '@/_components/layout/back-button'
-import { FieldDefinitionsTable } from '@/(authenticated)/org/[orgSlug]/(main)/settings/custom-fields/_components/field-definitions-table'
+import { FieldDefinitionsTable } from '@/(authenticated)/org/[orgSlug]/(crm)/crm/settings/custom-fields/_components/field-definitions-table'
 
 interface ContactFieldsPageProps {
   params: Promise<{ orgSlug: string }>

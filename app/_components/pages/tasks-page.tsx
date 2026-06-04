@@ -3,7 +3,7 @@ import { getTasks } from '@/_data-access/task/get-tasks'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
 import { getTutorialCompletions } from '@/_data-access/tutorial/get-tutorial-completions'
 import { TaskOutcomeIntroTrigger } from '@/_components/tutorials/task-outcome-intro-trigger'
-import { TasksListClient } from '@/(authenticated)/org/[orgSlug]/(main)/crm/tasks/_components/tasks-list-client'
+import { TasksListClient } from '@/(authenticated)/org/[orgSlug]/(crm)/crm/tasks/_components/tasks-list-client'
 
 interface TasksPageProps {
   params: Promise<{ orgSlug: string }>

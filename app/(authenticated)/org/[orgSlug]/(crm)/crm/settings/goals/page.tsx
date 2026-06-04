@@ -11,9 +11,9 @@ import Header, {
   HeaderSubTitle,
 } from '@/_components/header'
 import { BackButton } from '@/_components/layout/back-button'
-import { CreateGoalButton } from '@/(authenticated)/org/[orgSlug]/(main)/settings/goals/_components/create-goal-button'
-import { GoalsDataTable } from '@/(authenticated)/org/[orgSlug]/(main)/settings/goals/_components/goals-data-table'
-import { GoalEmptyState } from '@/(authenticated)/org/[orgSlug]/(main)/settings/goals/_components/goal-empty-state'
+import { CreateGoalButton } from '@/(authenticated)/org/[orgSlug]/(crm)/crm/settings/goals/_components/create-goal-button'
+import { GoalsDataTable } from '@/(authenticated)/org/[orgSlug]/(crm)/crm/settings/goals/_components/goals-data-table'
+import { GoalEmptyState } from '@/(authenticated)/org/[orgSlug]/(crm)/crm/settings/goals/_components/goal-empty-state'
 
 interface GoalsSettingsPageProps {
   params: Promise<{ orgSlug: string }>

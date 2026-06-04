@@ -5,7 +5,7 @@ import { getDealsByPipeline } from '@/_data-access/deal/get-deals-by-pipeline'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
 import { getTutorialCompletions } from '@/_data-access/tutorial/get-tutorial-completions'
 import { PipelineIntroTrigger } from '@/_components/tutorials/pipeline-intro-trigger'
-import { PipelineClient } from '@/(authenticated)/org/[orgSlug]/(main)/crm/deals/pipeline/_components/pipeline-client'
+import { PipelineClient } from '@/(authenticated)/org/[orgSlug]/(crm)/crm/deals/pipeline/_components/pipeline-client'
 import { createDefaultPipeline } from '@/_data-access/pipeline/create-default-pipeline'
 
 interface DealsPipelinePageProps {

@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getProfessionalById } from '@/_data-access/professional/get-professional-by-id'
 import { getServices } from '@/_data-access/service/get-services'
-import ProfessionalDetailClient from '@/(authenticated)/org/[orgSlug]/(main)/settings/professionals/[id]/_components/professional-detail-client'
+import ProfessionalDetailClient from '@/(authenticated)/org/[orgSlug]/(crm)/crm/settings/professionals/[id]/_components/professional-detail-client'
 
 interface ProfessionalDetailPageProps {
   params: Promise<{ orgSlug: string; id: string }>

@@ -10,9 +10,9 @@ import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 import { QuotaHint } from '@/_components/trial/quota-hint'
 
 import { BackButton } from '@/_components/layout/back-button'
-import { parseProductListParams } from '@/(authenticated)/org/[orgSlug]/(main)/settings/catalog/_lib/product-list-params'
-import { parsePromotionListParams } from '@/(authenticated)/org/[orgSlug]/(main)/settings/catalog/_lib/promotion-list-params'
-import { CatalogTabs } from '@/(authenticated)/org/[orgSlug]/(main)/settings/catalog/_components/catalog-tabs'
+import { parseProductListParams } from '@/(authenticated)/org/[orgSlug]/(crm)/crm/settings/catalog/_lib/product-list-params'
+import { parsePromotionListParams } from '@/(authenticated)/org/[orgSlug]/(crm)/crm/settings/catalog/_lib/promotion-list-params'
+import { CatalogTabs } from '@/(authenticated)/org/[orgSlug]/(crm)/crm/settings/catalog/_components/catalog-tabs'
 
 interface CatalogPageProps {
   params: Promise<{ orgSlug: string }>

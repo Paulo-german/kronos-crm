@@ -8,7 +8,7 @@ import { getOrganizationMembers } from '@/_data-access/organization/get-organiza
 import { getDealLostReasons } from '@/_data-access/settings/get-lost-reasons'
 import { getWhatsappInboxesForAutomation } from '@/_data-access/inbox/get-whatsapp-inboxes-for-automation'
 
-import { AutomationDetailClient } from '@/(authenticated)/org/[orgSlug]/(main)/settings/automations/[id]/_components/automation-detail-client'
+import { AutomationDetailClient } from '@/(authenticated)/org/[orgSlug]/(crm)/crm/settings/automations/[id]/_components/automation-detail-client'
 
 interface AutomationDetailPageProps {
   params: Promise<{ orgSlug: string; id: string }>

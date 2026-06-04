@@ -17,8 +17,8 @@ import Header, {
 } from '@/_components/header'
 
 import { BackButton } from '@/_components/layout/back-button'
-import { AutomationsDataTable } from '@/(authenticated)/org/[orgSlug]/(main)/settings/automations/_components/automations-data-table'
-import CreateAutomationButton from '@/(authenticated)/org/[orgSlug]/(main)/settings/automations/_components/create-automation-button'
+import { AutomationsDataTable } from '@/(authenticated)/org/[orgSlug]/(crm)/crm/settings/automations/_components/automations-data-table'
+import CreateAutomationButton from '@/(authenticated)/org/[orgSlug]/(crm)/crm/settings/automations/_components/create-automation-button'
 
 interface AutomationsPageProps {
   params: Promise<{ orgSlug: string }>

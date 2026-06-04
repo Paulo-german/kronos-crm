@@ -6,8 +6,8 @@ import { getServices } from '@/_data-access/service/get-services'
 import { getAcceptedMembersWithoutProfessional } from '@/_data-access/professional/get-accepted-members-without-professional'
 
 import { BackButton } from '@/_components/layout/back-button'
-import { ProfessionalsDataTable } from '@/(authenticated)/org/[orgSlug]/(main)/settings/professionals/_components/professionals-data-table'
-import CreateProfessionalButton from '@/(authenticated)/org/[orgSlug]/(main)/settings/professionals/_components/create-professional-button'
+import { ProfessionalsDataTable } from '@/(authenticated)/org/[orgSlug]/(crm)/crm/settings/professionals/_components/professionals-data-table'
+import CreateProfessionalButton from '@/(authenticated)/org/[orgSlug]/(crm)/crm/settings/professionals/_components/create-professional-button'
 
 interface ProfessionalsPageProps {
   params: Promise<{ orgSlug: string }>
