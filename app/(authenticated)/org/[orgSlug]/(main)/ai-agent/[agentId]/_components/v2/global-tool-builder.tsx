@@ -289,32 +289,36 @@ const GlobalToolBuilder = ({ value, onChange, steps = [] }: GlobalToolBuilderPro
                       <div className="space-y-1.5">
                         <Label className="text-xs">Disponibilidade</Label>
                         <div className="flex gap-2">
-                          <button
+                          <Button
                             type="button"
+                            variant="outline"
+                            size="sm"
                             onClick={() => updateTool(toolId, { scope: 'global', stepIds: [] })}
                             className={cn(
-                              'flex flex-1 items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-xs transition-colors',
+                              'flex flex-1 gap-1.5 text-xs',
                               (tool.scope ?? 'global') === 'global'
-                                ? 'border-primary bg-primary/10 text-primary'
-                                : 'border-border text-muted-foreground hover:border-primary/50',
+                                ? 'border-primary bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary'
+                                : 'text-muted-foreground',
                             )}
                           >
                             <Globe className="h-3.5 w-3.5" />
                             Todas as etapas
-                          </button>
-                          <button
+                          </Button>
+                          <Button
                             type="button"
+                            variant="outline"
+                            size="sm"
                             onClick={() => updateTool(toolId, { scope: 'steps' })}
                             className={cn(
-                              'flex flex-1 items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-xs transition-colors',
+                              'flex flex-1 gap-1.5 text-xs',
                               tool.scope === 'steps'
-                                ? 'border-primary bg-primary/10 text-primary'
-                                : 'border-border text-muted-foreground hover:border-primary/50',
+                                ? 'border-primary bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary'
+                                : 'text-muted-foreground',
                             )}
                           >
                             <ListChecks className="h-3.5 w-3.5" />
                             Etapas específicas
-                          </button>
+                          </Button>
                         </div>
                       </div>
 
@@ -340,12 +344,12 @@ const GlobalToolBuilder = ({ value, onChange, steps = [] }: GlobalToolBuilderPro
                                         updateTool(toolId, { stepIds: next })
                                       }}
                                     />
-                                    <label
+                                    <Label
                                       htmlFor={`${toolId}-step-${step.id}`}
-                                      className="cursor-pointer text-xs"
+                                      className="cursor-pointer text-xs font-normal"
                                     >
                                       {step.order + 1}. {step.name}
-                                    </label>
+                                    </Label>
                                   </div>
                                 )
                               })}
