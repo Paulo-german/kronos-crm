@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { hasModuleAccess } from '@/_data-access/module/check-module-access'
 import { getPlanLimits } from '@/_lib/rbac/plan-limits'
-import { AgentTabsNav } from '@/(authenticated)/org/[orgSlug]/(main)/ai-agent/_components/agent-tabs-nav'
+import { AgentTabsNav } from '@/(authenticated)/org/[orgSlug]/(agents)/agents/ai-agent/_components/agent-tabs-nav'
 
 interface AiAgentLayoutProps {
   children: React.ReactNode

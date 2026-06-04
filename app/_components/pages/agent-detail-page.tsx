@@ -13,8 +13,8 @@ import { getServices } from '@/_data-access/service/get-services'
 import { resolveCanonicalAgentVersion } from '@/_lib/agent/agent-version'
 import { getTutorialCompletions } from '@/_data-access/tutorial/get-tutorial-completions'
 import { AgentDetailIntroTrigger } from '@/_components/tutorials/agent-detail-intro-trigger'
-import AgentDetailClient from '@/(authenticated)/org/[orgSlug]/(main)/ai-agent/[agentId]/_components/agent-detail-client'
-import AgentDetailV2Client from '@/(authenticated)/org/[orgSlug]/(main)/ai-agent/[agentId]/_components/v2/agent-detail-v2-client'
+import AgentDetailClient from '@/(authenticated)/org/[orgSlug]/(agents)/agents/ai-agent/[agentId]/_components/agent-detail-client'
+import AgentDetailV2Client from '@/(authenticated)/org/[orgSlug]/(agents)/agents/ai-agent/[agentId]/_components/v2/agent-detail-v2-client'
 
 interface AgentDetailPageProps {
   params: Promise<{ orgSlug: string; agentId: string }>

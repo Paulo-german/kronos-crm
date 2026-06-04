@@ -8,7 +8,7 @@ import { getOrgContext } from '@/_data-access/organization/get-organization-cont
 import { getAgentGroups } from '@/_data-access/agent-group/get-agent-groups'
 import { getAgents } from '@/_data-access/agent/get-agents'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
-import { GroupsCardList } from '@/(authenticated)/org/[orgSlug]/(main)/ai-agent/groups/_components/groups-card-list'
+import { GroupsCardList } from '@/(authenticated)/org/[orgSlug]/(agents)/agents/ai-agent/groups/_components/groups-card-list'
 
 interface AgentGroupsPageProps {
   params: Promise<{ orgSlug: string }>

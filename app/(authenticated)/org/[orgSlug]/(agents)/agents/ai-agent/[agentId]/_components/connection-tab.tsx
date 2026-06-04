@@ -1,0 +1,520 @@
+'use client'
+
+import { useState } from 'react'
+import Link from 'next/link'
+import { useParams } from 'next/navigation'
+import { useAction } from 'next-safe-action/hooks'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { toast } from 'sonner'
+import {
+  Inbox,
+  ExternalLink,
+  Plus,
+  Link2,
+  Loader2,
+  Unlink,
+  Users,
+  ArrowRight,
+  GitBranch,
+} from 'lucide-react'
+import { Button } from '@/_components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/_components/ui/card'
+import { Badge } from '@/_components/ui/badge'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/_components/ui/select'
+import { Input } from '@/_components/ui/input'
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/_components/ui/form'
+import { linkInboxToAgent } from '@/_actions/inbox/link-inbox-to-agent'
+import { createInbox } from '@/_actions/inbox/create-inbox'
+import InboxConnectionCard from '@/(authenticated)/org/[orgSlug]/(inbox)/inbox/settings/inboxes/[inboxId]/_components/inbox-connection-card'
+import MetaConnectionCard from '@/(authenticated)/org/[orgSlug]/(inbox)/inbox/settings/inboxes/[inboxId]/_components/meta-connection-card'
+import ConnectionProviderSelector from '@/(authenticated)/org/[orgSlug]/(inbox)/inbox/settings/inboxes/[inboxId]/_components/connection-provider-selector'
+import type { AgentDetailDto, AgentInboxDto, AgentGroupMembershipDto } from '@/_data-access/agent/get-agent-by-id'
+import type { InboxConnectionDataMap } from './agent-detail-client'
+
+interface InboxOptionDto {
+  id: string
+  name: string
+  channel: string
+  agentId: string | null
+}
+
+interface ConnectionTabProps {
+  agent: AgentDetailDto
+  canManage: boolean
+  availableInboxes: InboxOptionDto[]
+  inboxConnectionData: InboxConnectionDataMap
+}
+
+const createInlineInboxSchema = z.object({
+  name: z.string().min(1, 'Nome é obrigatório').max(100),
+})
+
+type CreateInlineInboxInput = z.infer<typeof createInlineInboxSchema>
+
+const ConnectionTab = ({ agent, canManage, availableInboxes, inboxConnectionData }: ConnectionTabProps) => {
+  const params = useParams()
+  const orgSlug = params?.orgSlug as string
+  const [showLinkForm, setShowLinkForm] = useState(false)
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [selectedInboxId, setSelectedInboxId] = useState<string>('')
+
+  const { execute: executeLink, isPending: isLinking } = useAction(
+    linkInboxToAgent,
+    {
+      onSuccess: () => {
+        toast.success('Caixa de entrada vinculada!')
+        setShowLinkForm(false)
+        setSelectedInboxId('')
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError || 'Erro ao vincular.')
+      },
+    },
+  )
+
+  const { execute: executeUnlink, isPending: isUnlinking } = useAction(
+    linkInboxToAgent,
+    {
+      onSuccess: () => {
+        toast.success('Caixa de entrada desvinculada!')
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError || 'Erro ao desvincular.')
+      },
+    },
+  )
+
+  const { execute: executeCreate, isPending: isCreating } = useAction(
+    createInbox,
+    {
+      onSuccess: () => {
+        toast.success('Caixa de entrada criada e vinculada!')
+        setShowCreateForm(false)
+        form.reset()
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError || 'Erro ao criar caixa de entrada.')
+      },
+    },
+  )
+
+  const form = useForm<CreateInlineInboxInput>({
+    resolver: zodResolver(createInlineInboxSchema),
+    defaultValues: { name: '' },
+  })
+
+  const handleLinkExisting = () => {
+    if (!selectedInboxId) return
+    executeLink({ inboxId: selectedInboxId, agentId: agent.id })
+  }
+
+  const handleUnlink = (inboxId: string) => {
+    executeUnlink({ inboxId, agentId: null })
+  }
+
+  const handleCreateInline = (data: CreateInlineInboxInput) => {
+    executeCreate({
+      name: data.name,
+      channel: 'WHATSAPP',
+      agentId: agent.id,
+    })
+  }
+
+  // Inboxes sem agent (disponíveis para vincular)
+  const unlinkedInboxes = availableInboxes.filter(
+    (inbox) => !inbox.agentId,
+  )
+
+  const hasInboxes = agent.inboxes.length > 0
+  const hasGroupMemberships = agent.groupMemberships.length > 0
+
+  return (
+    <div className="space-y-4">
+      {/* Lista de inboxes vinculadas */}
+      {hasInboxes ? (
+        <Card className="border-border/50 bg-card">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base font-semibold">
+              <Inbox className="h-5 w-5" />
+              Caixas de Entrada Vinculadas
+            </CardTitle>
+            <CardDescription>
+              Gerencie as caixas de entrada conectadas a este agente. Conecte o
+              WhatsApp diretamente abaixo ou acesse a página da inbox para
+              configurações avançadas.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {agent.inboxes.map((inbox) => (
+              <InboxRow
+                key={inbox.id}
+                inbox={inbox}
+                orgSlug={orgSlug}
+                canManage={canManage}
+                onUnlink={() => handleUnlink(inbox.id)}
+                isUnlinking={isUnlinking}
+                connectionData={inboxConnectionData[inbox.id]}
+              />
+            ))}
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="border-border/50 bg-card">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base font-semibold">
+              <Inbox className="h-5 w-5" />
+              Nenhuma Caixa de Entrada
+            </CardTitle>
+            <CardDescription>
+              Este agente não possui caixas de entrada vinculadas. Vincule uma
+              existente ou crie uma nova para que o agente possa receber
+              mensagens.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      )}
+
+      {/* Seção de Equipes */}
+      <Card className="border-border/50 bg-card">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold">
+            <Users className="h-5 w-5" />
+            Equipes
+          </CardTitle>
+          <CardDescription>
+            {hasGroupMemberships
+              ? 'Este agente é worker nas equipes abaixo.'
+              : 'Este agente não pertence a nenhuma equipe. Para incluí-lo, acesse a página da equipe.'}
+          </CardDescription>
+        </CardHeader>
+        {hasGroupMemberships && (
+          <CardContent className="space-y-2">
+            {agent.groupMemberships.map((membership) => (
+              <GroupMembershipRow
+                key={membership.memberId}
+                membership={membership}
+                orgSlug={orgSlug}
+              />
+            ))}
+          </CardContent>
+        )}
+      </Card>
+
+      {/* Ações de vincular/criar */}
+      {canManage && (
+        <div className="space-y-4">
+          {/* Vincular existente */}
+          {!showLinkForm && !showCreateForm && (
+            <div className="flex gap-3">
+              {unlinkedInboxes.length > 0 ? (
+                <Button
+                  variant="outline"
+                  onClick={() => setShowLinkForm(true)}
+                >
+                  <Link2 className="mr-2 h-4 w-4" />
+                  Vincular Inbox Existente
+                </Button>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Todas as caixas de entrada já estão vinculadas a agentes.
+                </p>
+              )}
+              <Button
+                variant="outline"
+                onClick={() => setShowCreateForm(true)}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Criar Nova Inbox
+              </Button>
+            </div>
+          )}
+
+          {/* Form vincular existente */}
+          {showLinkForm && (
+            <Card className="border-border/50 bg-card">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-semibold">
+                  Vincular Caixa de Entrada Existente
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-end gap-3">
+                  <div className="flex-1">
+                    <Select
+                      value={selectedInboxId}
+                      onValueChange={setSelectedInboxId}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione uma caixa de entrada" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {unlinkedInboxes.map((inbox) => (
+                          <SelectItem key={inbox.id} value={inbox.id}>
+                            {inbox.name} ({inbox.channel === 'WHATSAPP' ? 'WhatsApp' : 'Web Chat'})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button
+                    onClick={handleLinkExisting}
+                    disabled={!selectedInboxId || isLinking}
+                  >
+                    {isLinking ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Link2 className="mr-2 h-4 w-4" />
+                    )}
+                    Vincular
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setShowLinkForm(false)
+                      setSelectedInboxId('')
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Form criar nova */}
+          {showCreateForm && (
+            <Card className="border-border/50 bg-card">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-semibold">
+                  Criar Nova Caixa de Entrada
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Form {...form}>
+                  <form
+                    onSubmit={form.handleSubmit(handleCreateInline)}
+                    className="flex items-end gap-3"
+                  >
+                    <FormField
+                      control={form.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem className="flex-1">
+                          <FormLabel>Nome</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Ex: WhatsApp Vendas"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Button type="submit" disabled={isCreating}>
+                      {isCreating ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Plus className="mr-2 h-4 w-4" />
+                      )}
+                      Criar
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => {
+                        setShowCreateForm(false)
+                        form.reset()
+                      }}
+                    >
+                      Cancelar
+                    </Button>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Componente para cada linha de inbox vinculada
+interface InboxRowProps {
+  inbox: AgentInboxDto
+  orgSlug: string
+  canManage: boolean
+  onUnlink: () => void
+  isUnlinking: boolean
+  connectionData?: { stats: InboxConnectionDataMap[string]['stats']; info: InboxConnectionDataMap[string]['info'] }
+}
+
+const InboxRow = ({
+  inbox,
+  orgSlug,
+  canManage,
+  onUnlink,
+  isUnlinking,
+  connectionData,
+}: InboxRowProps) => {
+  return (
+    <div className="rounded-lg border border-border/50 bg-background/70 overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between p-3 border-b border-border/30">
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium">{inbox.name}</span>
+            <Badge variant="secondary" className="text-xs">
+              {inbox.channel === 'WHATSAPP' ? 'WhatsApp' : 'Web Chat'}
+            </Badge>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <GitBranch className="h-3 w-3" />
+            {inbox.pipeline ? (
+              <span>
+                Novos negócios em{' '}
+                <span className="font-medium text-foreground">
+                  {inbox.pipeline.name}
+                </span>
+              </span>
+            ) : (
+              <span>Sem pipeline configurado (usa padrão da organização)</span>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" asChild>
+            <Link href={`/org/${orgSlug}/inbox/settings/inboxes/${inbox.id}`}>
+              <ExternalLink className="mr-2 h-4 w-4" />
+              Gerenciar
+            </Link>
+          </Button>
+          {canManage && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onUnlink}
+              disabled={isUnlinking}
+              className="text-muted-foreground hover:text-destructive"
+            >
+              {isUnlinking ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Unlink className="h-4 w-4" />
+              )}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Inline connection card — roteado por provider */}
+      <div className="p-3">
+        {renderInboxConnectionCard()}
+      </div>
+    </div>
+  )
+
+  /**
+   * Decide qual card de conexao renderizar baseado no connectionType e estado.
+   */
+  function renderInboxConnectionCard() {
+    const isMetaConnected =
+      inbox.connectionType === 'META_CLOUD' && !!inbox.metaPhoneNumberId
+    const isEvolutionConnected = !!inbox.evolutionInstanceName && inbox.evolutionConnected
+
+    if (isMetaConnected) {
+      return (
+        <MetaConnectionCard
+          inboxId={inbox.id}
+          canManage={canManage}
+          isConnected
+          metaPhoneDisplay={inbox.metaPhoneDisplay}
+          metaWabaId={null}
+          connectionStats={connectionData?.stats ?? null}
+        />
+      )
+    }
+
+    if (isEvolutionConnected) {
+      return (
+        <InboxConnectionCard
+          inboxId={inbox.id}
+          canManage={canManage}
+          connectionStats={connectionData?.stats ?? null}
+          instanceInfo={connectionData?.info ?? null}
+          hasInstance
+          instanceName={inbox.evolutionInstanceName}
+          initialConnected={inbox.evolutionConnected}
+        />
+      )
+    }
+
+    return (
+      <ConnectionProviderSelector
+        inboxId={inbox.id}
+        canManage={canManage}
+        connectionStats={connectionData?.stats ?? null}
+        instanceInfo={connectionData?.info ?? null}
+      />
+    )
+  }
+}
+
+// Componente para cada linha de equipe onde o agente é membro
+interface GroupMembershipRowProps {
+  membership: AgentGroupMembershipDto
+  orgSlug: string
+}
+
+const GroupMembershipRow = ({ membership, orgSlug }: GroupMembershipRowProps) => {
+  return (
+    <div className="flex items-center justify-between rounded-md border border-border/50 bg-background/70 p-3">
+      <div className="flex items-center gap-3">
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10">
+          <Users className="h-3.5 w-3.5 text-primary" />
+        </div>
+        <div className="min-w-0">
+          <span className="text-sm font-medium">{membership.groupName}</span>
+          <p className="text-xs text-muted-foreground">{membership.scopeLabel}</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <Badge
+          variant="outline"
+          className="border-primary/20 bg-primary/5 px-2 text-xs font-medium text-primary"
+        >
+          Worker
+        </Badge>
+        <Button variant="ghost" size="sm" asChild aria-label={`Ver equipe ${membership.groupName}`}>
+          <Link href={`/org/${orgSlug}/ai-agent/groups/${membership.groupId}`}>
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+export default ConnectionTab

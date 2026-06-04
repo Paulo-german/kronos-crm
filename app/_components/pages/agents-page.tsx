@@ -9,7 +9,7 @@ import { getAgents } from '@/_data-access/agent/get-agents'
 import { getUserById } from '@/_data-access/user/get-user-by-id'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 import { getTutorialCompletions } from '@/_data-access/tutorial/get-tutorial-completions'
-import { AgentsCardGrid } from '@/(authenticated)/org/[orgSlug]/(main)/ai-agent/_components/agents-card-grid'
+import { AgentsCardGrid } from '@/(authenticated)/org/[orgSlug]/(agents)/agents/ai-agent/_components/agents-card-grid'
 import { AgentsListIntroTrigger } from '@/_components/tutorials/agents-list-intro-trigger'
 
 interface AgentsPageProps {

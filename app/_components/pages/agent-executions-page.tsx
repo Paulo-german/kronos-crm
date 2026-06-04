@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getAgentById } from '@/_data-access/agent/get-agent-by-id'
 import { getAgentExecutions } from '@/_data-access/agent-execution/get-agent-executions'
-import ExecutionsList from '@/(authenticated)/org/[orgSlug]/(main)/ai-agent/[agentId]/executions/_components/executions-list'
+import ExecutionsList from '@/(authenticated)/org/[orgSlug]/(agents)/agents/ai-agent/[agentId]/executions/_components/executions-list'
 import type { AgentExecutionStatus } from '@prisma/client'
 
 const VALID_STATUSES: AgentExecutionStatus[] = ['COMPLETED', 'FAILED', 'SKIPPED']
