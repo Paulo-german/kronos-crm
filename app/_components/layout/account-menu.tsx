@@ -105,7 +105,7 @@ export const AccountMenu = ({ user, orgSlug }: AccountMenuProps) => {
         className="w-72 rounded-2xl border-0 bg-primary-dark p-2 text-white [--accent-foreground:0_0%_100%] [--accent:0_0%_100%_/_0.10]"
       >
         {/* Seção Org */}
-        <DropdownMenuLabel className="px-2 py-3 font-normal">
+        <DropdownMenuLabel className="py-4 font-normal">
           <div className="flex items-center gap-3">
             <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-primary/20 text-sm font-bold text-primary ring-1 ring-primary/20">
               {orgInitials}
@@ -144,7 +144,7 @@ export const AccountMenu = ({ user, orgSlug }: AccountMenuProps) => {
         <DropdownMenuItem asChild>
           <Link
             href={`/org/${orgSlug}/settings/organization`}
-            className="cursor-pointer py-2.5"
+            className="cursor-pointer py-3"
             onClick={storeSettingsOrigin}
           >
             <Building2 className="mr-2 h-4 w-4" />
@@ -154,7 +154,7 @@ export const AccountMenu = ({ user, orgSlug }: AccountMenuProps) => {
         <DropdownMenuItem asChild>
           <Link
             href={`/org/${orgSlug}/settings/members`}
-            className="cursor-pointer py-2.5"
+            className="cursor-pointer py-3"
             onClick={storeSettingsOrigin}
           >
             <Users className="mr-2 h-4 w-4" />
@@ -164,7 +164,7 @@ export const AccountMenu = ({ user, orgSlug }: AccountMenuProps) => {
         <DropdownMenuItem asChild>
           <Link
             href={`/org/${orgSlug}/settings/billing`}
-            className="cursor-pointer py-2.5"
+            className="cursor-pointer py-3"
             onClick={storeSettingsOrigin}
           >
             <CreditCard className="mr-2 h-4 w-4" />
@@ -172,10 +172,7 @@ export const AccountMenu = ({ user, orgSlug }: AccountMenuProps) => {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link
-            href={`/org/${orgSlug}/plans`}
-            className="cursor-pointer py-2.5"
-          >
+          <Link href={`/org/${orgSlug}/plans`} className="cursor-pointer py-3">
             <LayoutGrid className="mr-2 h-4 w-4" />
             Planos
           </Link>
@@ -183,7 +180,7 @@ export const AccountMenu = ({ user, orgSlug }: AccountMenuProps) => {
         <DropdownMenuItem asChild>
           <Link
             href={`/org/${orgSlug}/settings/integrations`}
-            className="cursor-pointer py-2.5"
+            className="cursor-pointer py-3"
             onClick={storeSettingsOrigin}
           >
             <Plug className="mr-2 h-4 w-4" />
@@ -194,7 +191,7 @@ export const AccountMenu = ({ user, orgSlug }: AccountMenuProps) => {
         <DropdownMenuSeparator className="bg-white/10" />
 
         <DropdownMenuItem asChild>
-          <Link href="/org" className="cursor-pointer py-2.5">
+          <Link href="/org" className="cursor-pointer py-3">
             <ArrowLeftRight className="mr-2 h-4 w-4" />
             Trocar de conta
           </Link>
@@ -228,7 +225,7 @@ export const AccountMenu = ({ user, orgSlug }: AccountMenuProps) => {
         <DropdownMenuItem asChild>
           <Link
             href={`/org/${orgSlug}/settings/profile`}
-            className="cursor-pointer py-2.5"
+            className="cursor-pointer py-3"
           >
             <User className="mr-2 h-4 w-4" />
             Perfil
@@ -238,7 +235,7 @@ export const AccountMenu = ({ user, orgSlug }: AccountMenuProps) => {
         <DropdownMenuSeparator className="bg-white/10" />
 
         <DropdownMenuItem
-          className="cursor-pointer py-2.5 text-destructive focus:text-destructive"
+          className="cursor-pointer py-3 text-destructive focus:text-destructive"
           onClick={() => executeSignOut()}
         >
           <LogOut className="mr-2 h-4 w-4" />
