@@ -1,19 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import {
-  ChevronDown,
-  Building2,
-  CreditCard,
-  LayoutGrid,
-  Plug,
-  User,
-  LogOut,
-  ArrowLeftRight,
-  Copy,
-  Check,
-  Users,
-} from 'lucide-react'
+import { ChevronDown, Copy, Check, Building2, Users, CreditCard, LayoutGrid, Plug, ArrowLeftRight, User, LogOut } from 'lucide-react'
 import { useState, useCallback } from 'react'
 import { useAction } from 'next-safe-action/hooks'
 import {
@@ -158,7 +146,7 @@ export const AccountMenu = ({ user, orgSlug }: AccountMenuProps) => {
             onClick={storeSettingsOrigin}
           >
             <Users className="mr-2 h-4 w-4" />
-            Membros e Equipes
+            Membros e equipes
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
@@ -193,7 +181,7 @@ export const AccountMenu = ({ user, orgSlug }: AccountMenuProps) => {
         <DropdownMenuItem asChild>
           <Link href="/org" className="cursor-pointer py-3">
             <ArrowLeftRight className="mr-2 h-4 w-4" />
-            Trocar de conta
+            Trocar de organização
           </Link>
         </DropdownMenuItem>
 
@@ -235,7 +223,7 @@ export const AccountMenu = ({ user, orgSlug }: AccountMenuProps) => {
         <DropdownMenuSeparator className="bg-white/10" />
 
         <DropdownMenuItem
-          className="cursor-pointer py-3 text-destructive focus:text-destructive"
+          className="cursor-pointer py-3 text-destructive hover:bg-destructive/10 focus:bg-destructive/10 focus:text-destructive"
           onClick={() => executeSignOut()}
         >
           <LogOut className="mr-2 h-4 w-4" />

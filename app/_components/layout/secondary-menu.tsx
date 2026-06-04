@@ -57,7 +57,7 @@ export const SecondaryMenu = ({
       {product === 'inbox' && (
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" asChild>
+            <Button variant="ghost" size="icon" className="text-white/70 hover:bg-white/10 hover:text-white" asChild>
               <Link href={`/org/${orgSlug}/inbox/settings/inboxes`}>
                 <Radio className="size-4" />
                 <span className="sr-only">Canais</span>
@@ -72,7 +72,7 @@ export const SecondaryMenu = ({
       {product === 'agents' && credits && credits.monthlyLimit > 0 && (
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" asChild>
+            <Button variant="ghost" size="icon" className="text-white/70 hover:bg-white/10 hover:text-white" asChild>
               <Link href={`/org/${orgSlug}/agents/settings/credits`}>
                 <Zap className="size-4" />
                 <span className="sr-only">Créditos IA</span>
@@ -102,7 +102,7 @@ export const SecondaryMenu = ({
 {/* Configurações do produto */}
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button variant="ghost" size="icon" asChild>
+          <Button variant="ghost" size="icon" className="text-white/70 hover:bg-white/10 hover:text-white" asChild>
             <Link href={settingsHref}>
               <Settings2 className="size-4" />
               <span className="sr-only">Configurações</span>
@@ -116,7 +116,7 @@ export const SecondaryMenu = ({
       {isSuperAdmin && (
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" asChild>
+            <Button variant="ghost" size="icon" className="text-white/70 hover:bg-white/10 hover:text-white" asChild>
               <Link href="/admin/dashboard">
                 <Shield className="size-4" />
                 <span className="sr-only">Admin</span>
