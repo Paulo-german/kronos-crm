@@ -104,25 +104,42 @@ function OrgListItemInternal({ org }: { org: Organization }) {
   const activeModules = org.activeModules ?? []
   const availableProducts = PRODUCT_OPTIONS.filter((product) => activeModules.includes(product.module))
 
+  const cardClassName = 'group flex w-full items-center gap-4 rounded-xl border border-border/50 bg-card p-4 text-left transition-all duration-150 hover:border-primary/40 hover:bg-primary/5'
+
+  const cardContent = (
+    <>
+      <Avatar className="size-11 shrink-0">
+        <AvatarFallback className={cn('text-sm font-semibold text-white', getOrgColor(org.name))}>
+          {getOrgInitials(org.name)}
+        </AvatarFallback>
+      </Avatar>
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        <p className="truncate text-sm font-medium leading-none">{org.name}</p>
+        <Badge variant={ROLE_VARIANTS[org.role]} className="shrink-0 text-xs">
+          {ROLE_LABELS[org.role]}
+        </Badge>
+      </div>
+      <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+    </>
+  )
+
+  if (availableProducts.length === 0) {
+    return (
+      <button
+        type="button"
+        className={cardClassName}
+        onClick={() => router.push(`/org/${org.slug}/plans`)}
+      >
+        {cardContent}
+      </button>
+    )
+  }
+
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button
-          type="button"
-          className="group flex w-full items-center gap-4 rounded-xl border border-border/50 bg-card p-4 text-left transition-all duration-150 hover:border-primary/40 hover:bg-primary/5"
-        >
-          <Avatar className="size-11 shrink-0">
-            <AvatarFallback className={cn('text-sm font-semibold text-white', getOrgColor(org.name))}>
-              {getOrgInitials(org.name)}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            <p className="truncate text-sm font-medium leading-none">{org.name}</p>
-            <Badge variant={ROLE_VARIANTS[org.role]} className="shrink-0 text-xs">
-              {ROLE_LABELS[org.role]}
-            </Badge>
-          </div>
-          <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+        <button type="button" className={cardClassName}>
+          {cardContent}
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-56 rounded-2xl border-0 bg-primary-dark p-2 text-white [--accent-foreground:0_0%_100%] [--accent:0_0%_100%_/_0.10]">
