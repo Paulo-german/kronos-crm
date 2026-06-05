@@ -70,7 +70,7 @@ const GlobalToolsSection = ({ agent, canManage, onSaveSuccess }: GlobalToolsSect
             <p className="text-xs text-muted-foreground">
               Disponíveis em qualquer etapa da conversa.
             </p>
-            <GlobalToolBuilder value={globalTools} onChange={setGlobalTools} />
+            <GlobalToolBuilder value={globalTools} onChange={setGlobalTools} steps={agent.steps} />
             {canManage && (
               <div className="flex justify-end pt-1">
                 <Button
