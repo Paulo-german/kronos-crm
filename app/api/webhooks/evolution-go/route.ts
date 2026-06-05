@@ -206,7 +206,7 @@ export async function POST(req: Request) {
 
   // 4. Filtro de evento — só processar MESSAGE a partir daqui
   if (event !== 'MESSAGE') {
-    console.log(`${LOG} evento ignorado`, { event, instanceName })
+    console.log(`${LOG} evento ignorado`, { event, instanceName, data: payload.data })
     return NextResponse.json({ ignored: true, reason: 'event_not_handled' })
   }
 
