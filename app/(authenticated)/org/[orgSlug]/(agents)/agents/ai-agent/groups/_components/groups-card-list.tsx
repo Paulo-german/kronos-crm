@@ -190,7 +190,7 @@ export function GroupsCardList({
             key={group.id}
             className="cursor-pointer"
             onClick={() =>
-              router.push(`/org/${orgSlug}/ai-agent/groups/${group.id}`)
+              router.push(`/org/${orgSlug}/agents/ai-agent/groups/${group.id}`)
             }
           >
             <Card className="border-border/50 bg-card transition-colors hover:border-primary/50">

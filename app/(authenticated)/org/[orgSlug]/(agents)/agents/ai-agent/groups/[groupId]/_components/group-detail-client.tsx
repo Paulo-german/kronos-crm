@@ -53,7 +53,7 @@ export function GroupDetailClient({
         {/* Header — mesmo padrão do agent-detail-client */}
         <div className="flex flex-col gap-4">
           <Button variant="ghost" size="sm" className="w-fit" asChild>
-            <Link href={`/org/${orgSlug}/ai-agent/groups`}>
+            <Link href={`/org/${orgSlug}/agents/ai-agent/groups`}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               Voltar
             </Link>

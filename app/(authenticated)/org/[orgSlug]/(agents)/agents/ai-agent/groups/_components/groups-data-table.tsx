@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
-import { EditIcon, TrashIcon, MoreHorizontalIcon, UsersIcon, InboxIcon } from 'lucide-react'
+import { EditIcon, TrashIcon, MoreHorizontalIcon, UsersIcon, InboxIcon, Loader2 } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import { Badge } from '@/_components/ui/badge'
 import {
@@ -34,7 +34,6 @@ import {
 import { Input } from '@/_components/ui/input'
 import { Textarea } from '@/_components/ui/textarea'
 import { Switch } from '@/_components/ui/switch'
-import { Loader2 } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { deleteAgentGroup } from '@/_actions/agent-group/delete-agent-group'
@@ -135,7 +134,7 @@ export function GroupsDataTable({ groups, orgSlug }: GroupsDataTableProps) {
                 {/* Coluna Nome */}
                 <td className="px-4 py-3">
                   <Link
-                    href={`/org/${orgSlug}/ai-agent/groups/${group.id}`}
+                    href={`/org/${orgSlug}/agents/ai-agent/groups/${group.id}`}
                     className="font-medium hover:underline"
                   >
                     {group.name}
