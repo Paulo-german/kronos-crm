@@ -26,12 +26,22 @@ export const searchContacts = orgActionClient
       ? Prisma.empty
       : Prisma.sql`AND assigned_to = ${ctx.userId}`
 
+    // Se o query contiver dígitos suficientes, também casa contra o telefone normalizado
+    const digits = query.replace(/\D/g, '')
+    const phoneClause =
+      digits.length >= 3
+        ? Prisma.sql`OR regexp_replace(COALESCE(phone, ''), '[^0-9]', '', 'g') LIKE '%' || ${digits} || '%'`
+        : Prisma.empty
+
     const contacts = await db.$queryRaw<ContactRow[]>`
       SELECT id, name, phone, assigned_to AS "assignedTo"
       FROM contacts
       WHERE organization_id = ${ctx.orgId}
         ${rbacClause}
-        AND unaccent(lower(name)) LIKE '%' || unaccent(lower(${query})) || '%'
+        AND (
+          unaccent(lower(name)) LIKE '%' || unaccent(lower(${query})) || '%'
+          ${phoneClause}
+        )
       ORDER BY name ASC
       LIMIT ${MAX_RESULTS}
     `
