@@ -21,9 +21,9 @@ export interface ZApiWebhookPayload {
   isEdit?: boolean
   waitingMessage?: boolean
   text?: { message: string }
-  image?: { url: string; mimeType: string; caption?: string }
-  audio?: { url: string; mimeType: string; duration?: number }
-  document?: { url: string; mimeType: string; fileName?: string; title?: string }
+  image?: { imageUrl: string; mimeType: string; caption?: string }
+  audio?: { audioUrl: string; mimeType: string; duration?: number }
+  document?: { documentUrl: string; mimeType: string; fileName?: string; title?: string }
 }
 
 /** Resposta padrao de envio de mensagem da Z-API. */

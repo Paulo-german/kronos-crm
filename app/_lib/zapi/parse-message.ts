@@ -44,7 +44,7 @@ function extractContent(payload: ZApiWebhookPayload): ExtractedContent {
       type: 'audio',
       text: null,
       media: {
-        url: payload.audio.url,
+        url: payload.audio.audioUrl,
         mimetype: payload.audio.mimeType,
         seconds: payload.audio.duration,
       },
@@ -56,7 +56,7 @@ function extractContent(payload: ZApiWebhookPayload): ExtractedContent {
       type: 'image',
       text: payload.image.caption ?? null,
       media: {
-        url: payload.image.url,
+        url: payload.image.imageUrl,
         mimetype: payload.image.mimeType,
       },
     }
@@ -67,7 +67,7 @@ function extractContent(payload: ZApiWebhookPayload): ExtractedContent {
       type: 'document',
       text: null,
       media: {
-        url: payload.document.url,
+        url: payload.document.documentUrl,
         mimetype: payload.document.mimeType,
         fileName: payload.document.fileName ?? payload.document.title,
       },
