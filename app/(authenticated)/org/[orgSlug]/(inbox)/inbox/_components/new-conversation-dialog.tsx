@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useMemo } from 'react'
+import { useState, useRef, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import {
   AlertTriangle,
@@ -87,6 +87,13 @@ export function NewConversationDialog({
   const [inlinePhone, setInlinePhone] = useState('')
   const [selectedInboxId, setSelectedInboxId] = useState('')
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const nameInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (view === 'create') {
+      nameInputRef.current?.focus()
+    }
+  }, [view])
 
   const connectedInboxes = useMemo(
     () => inboxOptions.filter((inbox) => inbox.channel === 'WHATSAPP' && inbox.isConnected),
@@ -241,9 +248,7 @@ export function NewConversationDialog({
             Nova Conversa
           </DialogTitle>
           <DialogDescription>
-            {view === 'search'
-              ? 'Busque um contato por nome ou telefone.'
-              : 'Preencha os dados para criar um novo contato.'}
+            Busque ou crie um contato para iniciar uma conversa no WhatsApp.
           </DialogDescription>
         </DialogHeader>
 
@@ -254,7 +259,7 @@ export function NewConversationDialog({
               {selectedContact ? (
                 /* Chip do contato selecionado */
                 <div className="space-y-2">
-                  <Label>Contato selecionado</Label>
+                  <Label>Contato</Label>
                   <div className="flex items-center gap-2 rounded-md border border-input bg-muted/30 px-3 py-2">
                     <User className="h-4 w-4 shrink-0 text-muted-foreground" />
                     <div className="min-w-0 flex-1">
@@ -340,7 +345,7 @@ export function NewConversationDialog({
               <Button
                 variant="ghost"
                 size="sm"
-                className="-mb-1 h-7 gap-1.5 px-2 text-xs"
+                className="h-7 gap-1.5 px-2 text-xs"
                 onClick={handleBackToSearch}
                 disabled={isPending}
               >
@@ -351,11 +356,11 @@ export function NewConversationDialog({
                 <Label htmlFor="nc-inline-name">Nome *</Label>
                 <Input
                   id="nc-inline-name"
+                  ref={nameInputRef}
                   placeholder="Nome completo"
                   value={inlineName}
                   onChange={(event) => setInlineName(event.target.value)}
                   disabled={isPending}
-                  autoFocus
                 />
               </div>
               <div className="space-y-2">
@@ -407,9 +412,12 @@ export function NewConversationDialog({
               </Select>
             </div>
           ) : (
-            <p className="text-center text-xs text-muted-foreground">
-              Caixa: <span className="font-medium">{connectedInboxes[0]!.name}</span>
-            </p>
+            <div className="space-y-2">
+              <Label>Caixa de entrada</Label>
+              <div className="flex items-center gap-2 rounded-md border border-input bg-muted/30 px-3 py-2">
+                <span className="text-sm text-muted-foreground">{connectedInboxes[0]!.name}</span>
+              </div>
+            </div>
           )}
         </div>
 
