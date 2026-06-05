@@ -125,6 +125,7 @@ export async function executeUpdateContactLifecycleContact(
     revalidateTag(`deals:${ctx.orgId}`)
     revalidateTag(`deals-options:${ctx.orgId}`)
     revalidateTag(`dashboard:${ctx.orgId}`)
+    revalidateTag(`contacts:${ctx.orgId}`)
   } catch {
     // Fora de contexto de request (Trigger.dev) — invalidação não disponível.
   }

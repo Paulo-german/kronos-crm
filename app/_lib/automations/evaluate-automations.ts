@@ -24,6 +24,15 @@ import { z } from 'zod'
 // Janela de deduplicação padrão: 60 minutos
 const DEFAULT_DEDUP_WINDOW_MS = 60 * 60 * 1000
 
+function tryRevalidateAutomationCache(automationId: string, orgId: string): void {
+  try {
+    revalidateTag(`automation:${automationId}`)
+    revalidateTag(`automations:${orgId}`)
+  } catch {
+    // revalidateTag indisponível fora do contexto de request Next.js (ex: Trigger.dev)
+  }
+}
+
 // ─────────────────────────────────────────────────────────────
 // Resolução lazy do deal
 // ─────────────────────────────────────────────────────────────
@@ -270,6 +279,7 @@ export async function evaluateAutomations(event: AutomationEvent): Promise<void>
             durationMs: Date.now() - startedAt,
           },
         })
+        tryRevalidateAutomationCache(automation.id, event.orgId)
         continue
       }
 
@@ -287,6 +297,7 @@ export async function evaluateAutomations(event: AutomationEvent): Promise<void>
             durationMs: Date.now() - startedAt,
           },
         })
+        tryRevalidateAutomationCache(automation.id, event.orgId)
         continue
       }
 
@@ -338,12 +349,7 @@ export async function evaluateAutomations(event: AutomationEvent): Promise<void>
         },
       })
 
-      try {
-        revalidateTag(`automation:${automation.id}`)
-        revalidateTag(`automations:${event.orgId}`)
-      } catch {
-        // revalidateTag indisponível fora do contexto de request Next.js (ex: Trigger.dev)
-      }
+      tryRevalidateAutomationCache(automation.id, event.orgId)
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
       console.error(
@@ -362,6 +368,8 @@ export async function evaluateAutomations(event: AutomationEvent): Promise<void>
           durationMs: Date.now() - startedAt,
         },
       }).catch(() => {})
+
+      tryRevalidateAutomationCache(automation.id, event.orgId)
     }
   }
 }
