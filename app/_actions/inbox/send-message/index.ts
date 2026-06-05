@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidateTag } from 'next/cache'
+import { Prisma } from '@prisma/client'
 import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
@@ -97,9 +98,9 @@ export const sendMessage = orgActionClient
       }
     }
 
+    // 4a. Enviar via provider — isolado para que erros de banco não virem "falha de envio"
+    let sentMessageIds: string[]
     try {
-      let sentMessageIds: string[]
-
       // Instagram Direct requer parâmetros extras (humanAgentTag) que a interface WhatsAppProvider não expõe.
       // Chamamos sendInstagramText diretamente para evitar estender a abstração genérica apenas por um caso específico.
       if (conversation.inbox.channel === 'INSTAGRAM_DM') {
@@ -122,43 +123,6 @@ export const sendMessage = orgActionClient
           provider.sendText(remoteJid, textToSend),
         )
       }
-
-      await Promise.all(
-        sentMessageIds.map((sentId) =>
-          redis.set(`dedup:${sentId}`, '1', 'EX', 300).catch(() => {}),
-        ),
-      )
-
-      const lastSentId = sentMessageIds[sentMessageIds.length - 1]
-
-      await Promise.all([
-        db.message.create({
-          data: {
-            conversationId: data.conversationId,
-            role: 'assistant',
-            content: textToSend,
-            providerMessageId: lastSentId,
-            deliveryStatus: 'sent',
-            metadata: {
-              sentBy: ctx.userId,
-              sentByName: senderName,
-              sentFrom: 'inbox',
-            },
-          },
-        }),
-        db.conversation.update({
-          where: { id: data.conversationId },
-          data: {
-            aiPaused: true,
-            pausedAt: new Date(),
-            unreadCount: 0,
-            lastMessageRole: 'assistant',
-            nextFollowUpAt: null,
-            followUpCount: 0,
-            ...AUTO_REOPEN_FIELDS,
-          },
-        }),
-      ])
     } catch (providerError) {
       sendFailed = true
 
@@ -179,12 +143,68 @@ export const sendMessage = orgActionClient
         },
       })
 
-      // 5. Invalidar cache
       revalidateTag(`conversations:${ctx.orgId}`)
       revalidateTag(`conversation-messages:${data.conversationId}`)
 
       return { success: true, sendFailed, errorMessage: parsedError.userMessage }
     }
+
+    // 4b. Registrar dedup antes de salvar no banco
+    await Promise.all(
+      sentMessageIds.map((sentId) =>
+        redis.set(`dedup:${sentId}`, '1', 'EX', 300).catch(() => {}),
+      ),
+    )
+
+    const lastSentId = sentMessageIds[sentMessageIds.length - 1]
+
+    const sentMetadata = {
+      sentBy: ctx.userId,
+      sentByName: senderName,
+      sentFrom: 'inbox',
+    }
+
+    // 4c. Salvar mensagem — o webhook fromMe pode ter chegado antes do dedup (race condition).
+    // Nesse caso, providerMessageId já existe (constraint única) e devemos apenas atualizar
+    // o registro existente com os metadados corretos em vez de criar um duplicado.
+    try {
+      await db.message.create({
+        data: {
+          conversationId: data.conversationId,
+          role: 'assistant',
+          content: textToSend,
+          providerMessageId: lastSentId,
+          deliveryStatus: 'sent',
+          metadata: sentMetadata,
+        },
+      })
+    } catch (dbError) {
+      if (
+        dbError instanceof Prisma.PrismaClientKnownRequestError &&
+        dbError.code === 'P2002'
+      ) {
+        // Webhook foi mais rápido — atualiza o registro já existente com metadados da plataforma
+        await db.message.update({
+          where: { providerMessageId: lastSentId },
+          data: { deliveryStatus: 'sent', metadata: sentMetadata },
+        })
+      } else {
+        throw dbError
+      }
+    }
+
+    await db.conversation.update({
+      where: { id: data.conversationId },
+      data: {
+        aiPaused: true,
+        pausedAt: new Date(),
+        unreadCount: 0,
+        lastMessageRole: 'assistant',
+        nextFollowUpAt: null,
+        followUpCount: 0,
+        ...AUTO_REOPEN_FIELDS,
+      },
+    })
 
     // 5. Invalidar cache
     revalidateTag(`conversations:${ctx.orgId}`)

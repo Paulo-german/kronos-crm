@@ -14,6 +14,7 @@ import {
   isVideoMimetype,
   getMaxSizeForMimetype,
 } from '@/_lib/whatsapp/media-constants'
+import { Prisma } from '@prisma/client'
 import { withRetry } from '@/_lib/whatsapp/retry'
 import { parseProviderError } from '@/_lib/whatsapp/parse-provider-error'
 import { AUTO_REOPEN_FIELDS } from '@/_lib/conversation/auto-reopen'
@@ -132,8 +133,10 @@ export const sendMedia = orgActionClient
       ? prefixAttendantName(data.caption, senderName, conversation.inbox.showAttendantName)
       : undefined
 
+    // Enviar via provider — isolado para que erros de banco não virem "falha de envio"
+    let providerMessageId: string
     try {
-      const providerMessageId = await withRetry(() =>
+      providerMessageId = await withRetry(() =>
         provider.sendMedia(
           remoteJid,
           data.mediaBase64,
@@ -144,45 +147,6 @@ export const sendMedia = orgActionClient
           uploadResult.publicUrl,
         ),
       )
-
-      await redis.set(`dedup:${providerMessageId}`, '1', 'EX', 300).catch(() => {})
-
-      await Promise.all([
-        db.message.create({
-          data: {
-            id: messageId,
-            conversationId: data.conversationId,
-            role: 'assistant',
-            content,
-            providerMessageId,
-            deliveryStatus: 'sent',
-            metadata: {
-              sentBy: ctx.userId,
-              sentByName: senderName,
-              sentFrom: 'inbox',
-              media: {
-                mimetype: data.mimetype,
-                fileName: data.fileName,
-                url: uploadResult.publicUrl,
-                storedExternally: true,
-              },
-              ...(mediaTranscription && { mediaTranscription }),
-            },
-          },
-        }),
-        db.conversation.update({
-          where: { id: data.conversationId },
-          data: {
-            aiPaused: true,
-            pausedAt: new Date(),
-            unreadCount: 0,
-            lastMessageRole: 'assistant',
-            nextFollowUpAt: null,
-            followUpCount: 0,
-            ...AUTO_REOPEN_FIELDS,
-          },
-        }),
-      ])
     } catch (providerError) {
       sendFailed = true
 
@@ -211,12 +175,66 @@ export const sendMedia = orgActionClient
         },
       })
 
-      // 8. Invalidar cache
       revalidateTag(`conversations:${ctx.orgId}`)
       revalidateTag(`conversation-messages:${data.conversationId}`)
 
       return { success: true, sendFailed, errorMessage: parsedError.userMessage }
     }
+
+    await redis.set(`dedup:${providerMessageId}`, '1', 'EX', 300).catch(() => {})
+
+    const sentMediaMetadata = {
+      sentBy: ctx.userId,
+      sentByName: senderName,
+      sentFrom: 'inbox',
+      media: {
+        mimetype: data.mimetype,
+        fileName: data.fileName,
+        url: uploadResult.publicUrl,
+        storedExternally: true,
+      },
+      ...(mediaTranscription && { mediaTranscription }),
+    }
+
+    // Race condition: webhook fromMe pode ter chegado antes do dedup — tratar P2002 como update
+    try {
+      await db.message.create({
+        data: {
+          id: messageId,
+          conversationId: data.conversationId,
+          role: 'assistant',
+          content,
+          providerMessageId,
+          deliveryStatus: 'sent',
+          metadata: sentMediaMetadata,
+        },
+      })
+    } catch (dbError) {
+      if (
+        dbError instanceof Prisma.PrismaClientKnownRequestError &&
+        dbError.code === 'P2002'
+      ) {
+        await db.message.update({
+          where: { providerMessageId },
+          data: { deliveryStatus: 'sent', metadata: sentMediaMetadata },
+        })
+      } else {
+        throw dbError
+      }
+    }
+
+    await db.conversation.update({
+      where: { id: data.conversationId },
+      data: {
+        aiPaused: true,
+        pausedAt: new Date(),
+        unreadCount: 0,
+        lastMessageRole: 'assistant',
+        nextFollowUpAt: null,
+        followUpCount: 0,
+        ...AUTO_REOPEN_FIELDS,
+      },
+    })
 
     // 8. Invalidar cache
     revalidateTag(`conversations:${ctx.orgId}`)

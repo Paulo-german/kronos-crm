@@ -6,6 +6,7 @@ import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
 import { canPerformAction, canAccessRecord, requirePermission } from '@/_lib/rbac'
 import { resolveWhatsAppProvider } from '@/_lib/whatsapp/provider'
+import { Prisma } from '@prisma/client'
 import { withRetry } from '@/_lib/whatsapp/retry'
 import { parseProviderError } from '@/_lib/whatsapp/parse-provider-error'
 import { AUTO_REOPEN_FIELDS } from '@/_lib/conversation/auto-reopen'
@@ -93,60 +94,12 @@ export const sendAudio = orgActionClient
     const durationRounded = Math.round(data.duration)
     let sendFailed = false
 
+    // Enviar via provider — isolado para que erros de banco não virem "falha de envio"
+    let providerMessageId: string
     try {
-      const providerMessageId = await withRetry(() =>
+      providerMessageId = await withRetry(() =>
         provider.sendAudio(remoteJid, data.audioBase64),
       )
-
-      await redis.set(`dedup:${providerMessageId}`, '1', 'EX', 300).catch(() => {})
-
-      const createdMessage = await db.message.create({
-        data: {
-          id: messageId,
-          conversationId: data.conversationId,
-          role: 'assistant',
-          content: `[Áudio ${durationRounded}s]`,
-          providerMessageId,
-          deliveryStatus: 'sent',
-          metadata: {
-            sentBy: ctx.userId,
-            sentByName: senderName,
-            sentFrom: 'inbox',
-            media: {
-              mimetype: 'audio/ogg',
-              seconds: data.duration,
-              // URL persistida apenas quando upload B2 teve sucesso
-              ...(mediaUrl ? { url: mediaUrl, storedExternally: true } : {}),
-            },
-          },
-        },
-        select: { id: true },
-      })
-
-      await db.conversation.update({
-        where: { id: data.conversationId },
-        data: {
-          aiPaused: true,
-          pausedAt: new Date(),
-          unreadCount: 0,
-          lastMessageRole: 'assistant',
-          nextFollowUpAt: null,
-          followUpCount: 0,
-          ...AUTO_REOPEN_FIELDS,
-        },
-      })
-
-      // 8. Disparar task de transcrição apenas se o B2 upload teve sucesso
-      // (task precisa de mediaUrl para baixar o áudio no worker)
-      if (mediaUrl) {
-        void tasks.trigger<typeof transcribeOutboundMedia>('transcribe-outbound-media', {
-          messageId: createdMessage.id,
-          conversationId: data.conversationId,
-          organizationId: ctx.orgId,
-          mediaUrl,
-          mimetype: 'audio/ogg',
-        })
-      }
     } catch (providerError) {
       sendFailed = true
 
@@ -172,11 +125,81 @@ export const sendAudio = orgActionClient
         },
       })
 
-      // Invalidar cache antes de retornar erro
       revalidateTag(`conversations:${ctx.orgId}`)
       revalidateTag(`conversation-messages:${data.conversationId}`)
 
       return { success: true, sendFailed, errorMessage: parsedError.userMessage }
+    }
+
+    await redis.set(`dedup:${providerMessageId}`, '1', 'EX', 300).catch(() => {})
+
+    const sentAudioMetadata = {
+      sentBy: ctx.userId,
+      sentByName: senderName,
+      sentFrom: 'inbox',
+      media: {
+        mimetype: 'audio/ogg',
+        seconds: data.duration,
+        // URL persistida apenas quando upload B2 teve sucesso
+        ...(mediaUrl ? { url: mediaUrl, storedExternally: true } : {}),
+      },
+    }
+
+    // Race condition: webhook fromMe pode ter chegado antes do dedup — tratar P2002 como update
+    let createdMessageId: string = messageId
+    try {
+      const createdMessage = await db.message.create({
+        data: {
+          id: messageId,
+          conversationId: data.conversationId,
+          role: 'assistant',
+          content: `[Áudio ${durationRounded}s]`,
+          providerMessageId,
+          deliveryStatus: 'sent',
+          metadata: sentAudioMetadata,
+        },
+        select: { id: true },
+      })
+      createdMessageId = createdMessage.id
+    } catch (dbError) {
+      if (
+        dbError instanceof Prisma.PrismaClientKnownRequestError &&
+        dbError.code === 'P2002'
+      ) {
+        const updated = await db.message.update({
+          where: { providerMessageId },
+          data: { deliveryStatus: 'sent', metadata: sentAudioMetadata },
+          select: { id: true },
+        })
+        createdMessageId = updated.id
+      } else {
+        throw dbError
+      }
+    }
+
+    await db.conversation.update({
+      where: { id: data.conversationId },
+      data: {
+        aiPaused: true,
+        pausedAt: new Date(),
+        unreadCount: 0,
+        lastMessageRole: 'assistant',
+        nextFollowUpAt: null,
+        followUpCount: 0,
+        ...AUTO_REOPEN_FIELDS,
+      },
+    })
+
+    // Disparar task de transcrição apenas se o B2 upload teve sucesso
+    // (task precisa de mediaUrl para baixar o áudio no worker)
+    if (mediaUrl) {
+      void tasks.trigger<typeof transcribeOutboundMedia>('transcribe-outbound-media', {
+        messageId: createdMessageId,
+        conversationId: data.conversationId,
+        organizationId: ctx.orgId,
+        mediaUrl,
+        mimetype: 'audio/ogg',
+      })
     }
 
     // 9. Invalidar cache
