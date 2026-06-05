@@ -294,7 +294,6 @@ export function GroupsCardList({
                       }
                     >
                       {group.members
-                        .slice(0, MAX_VISIBLE_WORKERS)
                         .map((member) => {
                           const isEffectivelyActive = member.isActive
                           return (

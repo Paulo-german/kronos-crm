@@ -34,6 +34,8 @@ export interface RouterConfig {
   }>
 }
 
+const MEMBER_PREVIEW_LIMIT = 4
+
 const fetchAgentGroupsFromDb = async (
   orgId: string,
 ): Promise<AgentGroupDto[]> => {
@@ -47,9 +49,11 @@ const fetchAgentGroupsFromDb = async (
           },
         },
         orderBy: { createdAt: 'asc' },
+        // Carrega apenas o preview exibido na listagem; total vem de _count
+        take: MEMBER_PREVIEW_LIMIT,
       },
       _count: {
-        select: { inboxes: true },
+        select: { inboxes: true, members: true },
       },
     },
     orderBy: { createdAt: 'desc' },
@@ -62,7 +66,7 @@ const fetchAgentGroupsFromDb = async (
     isActive: group.isActive,
     routerModelId: group.routerModelId,
     routerConfig: group.routerConfig as RouterConfig | null,
-    memberCount: group.members.length,
+    memberCount: group._count.members,
     members: group.members.map((member) => ({
       id: member.id,
       agentId: member.agentId,
