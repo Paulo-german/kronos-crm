@@ -4,7 +4,7 @@ import type { Prisma } from '@prisma/client'
 import { SalesDistributionModel } from '@prisma/client'
 import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
-import { isGroupMessage } from '@/_lib/evolution-js/parse-message'
+import { isGroupMessage, resolveEffectiveJid } from '@/_lib/evolution-js/parse-message'
 import { parseEvolutionGoMessage } from '@/_lib/evolution-go/parse-message'
 import { resolveConversation } from '@/_lib/whatsapp/resolve-conversation'
 import { sendEvolutionGoMessage, sendEvolutionGoPresence } from '@/_lib/evolution-go/send-message'
@@ -224,15 +224,21 @@ export async function POST(req: Request) {
     // ReceiptTypeDelivery="" | ReceiptTypeRead="read" | ReceiptTypePlayed="played"
     const isRead = Type === 'read' || Type === 'read-self' || Type === 'played'
 
+    let updatedCount = 0
     for (const messageId of messageIds) {
       const result = isRead
         ? await updateDeliveryStatus(messageId, 'read')
         : await updateDeliveryStatus(messageId, 'delivered')
-      if (result) revalidateTag(`conversation-messages:${result.conversationId}`)
+      if (result) {
+        revalidateTag(`conversation-messages:${result.conversationId}`)
+        updatedCount++
+      } else {
+        console.warn(`${LOG} RECEIPT: mensagem não encontrada no banco`, { messageId, isRead })
+      }
     }
 
-    console.log(`${LOG} RECEIPT processado`, { messageIds, type: Type ?? 'delivery', isRead })
-    return NextResponse.json({ success: true, processed: messageIds.length })
+    console.log(`${LOG} RECEIPT processado`, { messageIds, type: Type ?? 'delivery', isRead, updatedCount })
+    return NextResponse.json({ success: true, processed: messageIds.length, updated: updatedCount })
   }
 
   // 5. Filtro de evento — processar MESSAGE e SENDMESSAGE (envio manual pelo app)
@@ -262,7 +268,9 @@ export async function POST(req: Request) {
   const { Info } = data
   const fromMe = Info.IsFromMe
   const messageId = Info.ID
-  const remoteJid = Info.Chat
+  // @lid → @s.whatsapp.net: mesmo padrão do evolution-js
+  const altJid = fromMe ? Info.RecipientAlt : Info.SenderAlt
+  const remoteJid = resolveEffectiveJid(Info.Chat, altJid || undefined)
 
   console.log(`${LOG} MESSAGE`, {
     instanceName,
@@ -270,6 +278,9 @@ export async function POST(req: Request) {
     fromMe,
     remoteJid,
     messageType: Info.Type,
+    isLid: remoteJid.endsWith('@lid'),
+    senderAlt: Info.SenderAlt ?? null,
+    recipientAlt: Info.RecipientAlt ?? null,
   })
 
   if (isGroupMessage(remoteJid)) {
@@ -445,7 +456,7 @@ export async function POST(req: Request) {
     revalidateTag(`conversations:${orgId}`)
     revalidateTag(`conversation-messages:${resolveResult.conversationId}`)
 
-    console.log(`${LOG} from_me salvo`, { conversationId: resolveResult.conversationId, messageId })
+    console.log(`${LOG} from_me salvo`, { conversationId: resolveResult.conversationId, messageId, isNew: resolveResult.isNew, remoteJid })
     return NextResponse.json({ success: true, reason: 'from_me_saved' })
   }
 
@@ -786,6 +797,7 @@ export async function POST(req: Request) {
     conversationId,
     isNew: resolveResult.isNew,
     nameUpdated: resolveResult.nameUpdated,
+    remoteJid,
   })
 
   if (resolveResult.isNew) {
