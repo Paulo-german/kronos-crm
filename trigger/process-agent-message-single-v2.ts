@@ -5,7 +5,7 @@ import {
   AbortTaskRunError,
 } from '@trigger.dev/sdk/v3'
 import { observe, updateActiveTrace } from '@langfuse/tracing'
-import { flushLangfuse, langfuseTracer } from './lib/langfuse'
+import { flushLangfuse, langfuseTracer, DEPLOY_VERSION } from './lib/langfuse'
 import { buildDispatcherCtx } from './lib/build-dispatcher-ctx'
 import type { ProcessAgentMessagePayload } from './lib/build-dispatcher-ctx'
 import { handleAgentTaskFailure } from './lib/handle-task-failure'
@@ -516,12 +516,36 @@ export async function runSingleV2(
     agentName: promptContext.agentName,
   })
 
+  // Adiciona tags ricas ao array acumulado — ctx.traceTags é passado para
+  // finalizeTrace e para todos os updateActiveTrace subsequentes, garantindo
+  // que Langfuse sempre receba o conjunto completo mesmo se fizer replace.
+  ctx.traceTags.push(
+    `model:${promptContext.modelId}`,
+    `step:${promptContext.currentStepOrder + 1}-of-${promptContext.totalSteps || 1}`,
+    promptContext.hasSteps ? 'has-steps' : 'no-steps',
+    promptContext.hasKnowledgeBase ? 'has-kb' : 'no-kb',
+    promptContext.hasActiveProducts ? 'has-products' : 'no-products',
+  )
+
   updateActiveTrace({
+    tags: ctx.traceTags,
     metadata: {
       agentId: ctx.effectiveAgentId,
+      agentName: promptContext.agentName,
+      agentVersion: 'single-v2',
+      deployVersion: DEPLOY_VERSION,
       contactName: promptContext.contactName,
+      conversationId: ctx.conversationId,
+      organizationId: ctx.organizationId,
       model: promptContext.modelId,
       messageType: ctx.message.type,
+      currentStepOrder: promptContext.currentStepOrder,
+      totalSteps: promptContext.totalSteps,
+      toolsEnabled: promptContext.toolsEnabled,
+      globalToolsCount: promptContext.globalTools?.length ?? 0,
+      hasSteps: promptContext.hasSteps,
+      hasKnowledgeBase: promptContext.hasKnowledgeBase,
+      hasActiveProducts: promptContext.hasActiveProducts,
     },
   })
 
@@ -742,9 +766,12 @@ export async function runSingleV2(
       functionId: 'chat-completion',
       metadata: {
         agentId: ctx.effectiveAgentId,
+        agentVersion: 'single-v2',
         conversationId: ctx.conversationId,
+        organizationId: ctx.organizationId,
         model: promptContext.modelId,
         contactName: promptContext.contactName,
+        deployVersion: DEPLOY_VERSION,
       },
     },
   }).catch(async (llmError: unknown) => {

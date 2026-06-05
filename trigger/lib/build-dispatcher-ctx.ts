@@ -1,6 +1,7 @@
 import { logger, metadata as triggerMetadata } from '@trigger.dev/sdk/v3'
 import { resolveCanonicalAgentVersion } from '../../app/_lib/agent/agent-version'
 import { updateActiveTrace } from '@langfuse/tracing'
+import { DEPLOY_VERSION } from './langfuse'
 import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
 import { hasActivePlan } from '@/_lib/billing/has-active-plan'
@@ -119,20 +120,33 @@ export async function buildDispatcherCtx(
   triggerMetadata.set('agentId', agentId)
   triggerMetadata.set('organizationId', organizationId)
   triggerMetadata.set('messageType', message.type)
+  triggerMetadata.set('messageId', message.messageId)
   triggerMetadata.set('attemptNumber', attemptNumber)
+  triggerMetadata.set('deployVersion', DEPLOY_VERSION)
 
   let effectiveAgentId = agentId
 
   const traceTags: string[] = [
     message.provider === 'simulator' ? 'simulator' : 'whatsapp',
     'agent',
+    `deploy:${DEPLOY_VERSION}`,
+    `provider:${message.provider ?? 'unknown'}`,
   ]
 
   updateActiveTrace({
     sessionId: conversationId,
     userId: organizationId,
     tags: traceTags,
-    metadata: { agentId, organizationId, messageType: message.type },
+    metadata: {
+      agentId,
+      organizationId,
+      conversationId,
+      messageId: message.messageId,
+      messageType: message.type,
+      provider: message.provider ?? 'unknown',
+      attemptNumber,
+      deployVersion: DEPLOY_VERSION,
+    },
   })
 
   const finalizeTrace = (

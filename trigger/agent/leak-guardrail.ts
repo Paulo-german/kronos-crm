@@ -86,6 +86,9 @@ export const leakGuardrail = schemaTask({
           metadata: {
             phaseTraceId: payload.phaseTraceId,
             stage: 'leak_guardrail',
+            conversationId: payload.conversationId,
+            organizationId: payload.organizationId,
+            modelId: GUARDRAIL_MODEL_ID,
           },
         },
       })

@@ -217,7 +217,13 @@ export const toolAgent = schemaTask({
           isEnabled: true,
           tracer: langfuseTracer,
           functionId: 'agent-tool-executor',
-          metadata: { phaseTraceId, stage: 'tool_agent' },
+          metadata: {
+            phaseTraceId,
+            stage: 'tool_agent',
+            conversationId,
+            organizationId,
+            modelId,
+          },
         },
       })
 
@@ -275,7 +281,13 @@ export const toolAgent = schemaTask({
               isEnabled: true,
               tracer: langfuseTracer,
               functionId: 'agent-tool-classifier',
-              metadata: { phaseTraceId, stage: 'tool_agent_classifier' },
+              metadata: {
+                phaseTraceId,
+                stage: 'tool_agent_classifier',
+                conversationId,
+                organizationId,
+                modelId,
+              },
             },
           })
           classifiedStepId = classifierResult.object.currentStep ?? null

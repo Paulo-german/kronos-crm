@@ -105,6 +105,9 @@ export const responseAgent = schemaTask({
         metadata: {
           phaseTraceId: payload.phaseTraceId,
           stage: 'response_agent',
+          conversationId: payload.conversationId,
+          organizationId: payload.organizationId,
+          modelId: payload.modelId,
         },
       },
     })
