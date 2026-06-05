@@ -778,7 +778,7 @@ export async function POST(req: Request) {
         requiresRouting: resolvedAgent.requiresRouting,
         groupId: resolvedAgent.groupId,
       },
-      { delay: `${resolvedAgent.debounceSeconds}s` },
+      { delay: `${resolvedAgent.debounceSeconds}s`, concurrencyKey: conversationId },
     ),
     // "Digitando..." imediato — usuário vê feedback antes do debounce expirar
     sendPresence(instanceName, remoteJid, 'composing', inboxCredentials),

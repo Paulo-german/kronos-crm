@@ -167,6 +167,7 @@ export const sendSimulatorMessage = orgActionClient
           requiresRouting: resolvedAgent.requiresRouting,
           groupId: resolvedAgent.groupId,
         },
+        { concurrencyKey: conversationId },
       )
     }
 

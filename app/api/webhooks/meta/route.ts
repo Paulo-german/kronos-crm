@@ -724,7 +724,7 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
           requiresRouting: resolvedAgent.requiresRouting,
           groupId: resolvedAgent.groupId,
         },
-        { delay: `${resolvedAgent.debounceSeconds}s` },
+        { delay: `${resolvedAgent.debounceSeconds}s`, concurrencyKey: conversationId },
       ),
       // Meta Cloud API nao suporta typing presence para business — pulado intencionalmente
     ])
@@ -1483,7 +1483,7 @@ async function processInstagramMessagingEvent(
         requiresRouting: resolvedAgent.requiresRouting,
         groupId: resolvedAgent.groupId,
       },
-      { delay: `${resolvedAgent.debounceSeconds}s` },
+      { delay: `${resolvedAgent.debounceSeconds}s`, concurrencyKey: conversationId },
     ),
   ])
 

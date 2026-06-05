@@ -880,7 +880,7 @@ export async function POST(req: Request) {
         requiresRouting: resolvedAgent.requiresRouting,
         groupId: resolvedAgent.groupId,
       },
-      { delay: `${resolvedAgent.debounceSeconds}s` },
+      { delay: `${resolvedAgent.debounceSeconds}s`, concurrencyKey: conversationId },
     ),
     sendEvolutionGoPresence(instanceName, remoteJid, 'composing', inboxCredentials),
   ])
