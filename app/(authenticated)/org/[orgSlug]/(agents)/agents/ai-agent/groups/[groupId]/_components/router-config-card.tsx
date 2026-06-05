@@ -25,6 +25,7 @@ import {
 import { Textarea } from '@/_components/ui/textarea'
 import { Input } from '@/_components/ui/input'
 import { Button } from '@/_components/ui/button'
+import { TagInput } from '@/_components/ui/tag-input'
 import { updateAgentGroup } from '@/_actions/agent-group/update-agent-group'
 import {
   updateAgentGroupSchema,
@@ -69,6 +70,7 @@ export function RouterConfigCard({ group }: RouterConfigCardProps) {
   const { execute: executeUpdate, isPending: isUpdating } = useAction(updateAgentGroup, {
     onSuccess: () => {
       toast.success('Configuração do router atualizada.')
+      form.reset(form.getValues())
     },
     onError: ({ error }) => {
       toast.error(error.serverError || 'Erro ao atualizar configuração do router.')
@@ -256,6 +258,29 @@ export function RouterConfigCard({ group }: RouterConfigCardProps) {
                             ))}
                           </SelectContent>
                         </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name={`routerConfig.rules.${index}.keywords`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">Palavras-chave (opcional)</FormLabel>
+                        <FormControl>
+                          <TagInput
+                            value={field.value ?? []}
+                            onChange={field.onChange}
+                            placeholder="Ex: contrato, jurídico — Enter para adicionar"
+                            disabled={isUpdating}
+                          />
+                        </FormControl>
+                        <FormDescription className="text-xs">
+                          Reforçam a regra: quando detectadas pelo router, aumentam a chance de
+                          direcionar para este worker.
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
