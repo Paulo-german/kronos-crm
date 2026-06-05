@@ -80,3 +80,16 @@ export const evolutionGoStatusUpdateSchema = z.object({
 export const evolutionGoStatusEventSchema = z.array(evolutionGoStatusUpdateSchema)
 
 export type EvolutionGoStatusEvent = z.infer<typeof evolutionGoStatusEventSchema>
+
+// whatsmeow Receipt event — ReceiptTypeDelivery="" | ReceiptTypeRead="read" | ReceiptTypePlayed="played"
+export const evolutionGoReceiptEventSchema = z.object({
+  Chat: z.string(),
+  Sender: z.string().optional(),
+  IsFromMe: z.boolean(),
+  IsGroup: z.boolean().optional(),
+  MessageIDs: z.array(z.string()).nullable().optional(),
+  Type: z.string().optional(),
+  Timestamp: z.string().optional(),
+})
+
+export type EvolutionGoReceiptEvent = z.infer<typeof evolutionGoReceiptEventSchema>

@@ -22,6 +22,7 @@ import {
 import {
   evolutionGoConnectionEventSchema,
   evolutionGoMessageEventSchema,
+  evolutionGoReceiptEventSchema,
   evolutionGoStatusEventSchema,
 } from '@/_lib/evolution-go/types'
 import { updateDeliveryStatus, updateDeliveryStatusFailed } from '@/_lib/message-delivery-status'
@@ -204,9 +205,39 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, processed: outboundUpdates.length })
   }
 
-  // 4. Filtro de evento — só processar MESSAGE a partir daqui
-  if (event !== 'MESSAGE') {
-    console.log(`${LOG} evento ignorado`, { event, instanceName, data: payload.data })
+  // 4. RECEIPT — whatsmeow delivery/read receipt do contato para mensagens enviadas por nós
+  if (event === 'RECEIPT') {
+    const parsed = evolutionGoReceiptEventSchema.safeParse(payload.data)
+    if (!parsed.success) {
+      console.warn(`${LOG} RECEIPT: payload inválido`, { errors: parsed.error.issues })
+      return NextResponse.json({ ignored: true, reason: 'invalid_payload' })
+    }
+
+    const { IsFromMe, MessageIDs, Type } = parsed.data
+    const messageIds = MessageIDs ?? []
+
+    // Receipts do próprio dispositivo (IsFromMe=true) não representam entrega ao contato
+    if (IsFromMe || !messageIds.length) {
+      return NextResponse.json({ ignored: true, reason: 'receipt_skipped' })
+    }
+
+    // ReceiptTypeDelivery="" | ReceiptTypeRead="read" | ReceiptTypePlayed="played"
+    const isRead = Type === 'read' || Type === 'read-self' || Type === 'played'
+
+    for (const messageId of messageIds) {
+      const result = isRead
+        ? await updateDeliveryStatus(messageId, 'read')
+        : await updateDeliveryStatus(messageId, 'delivered')
+      if (result) revalidateTag(`conversation-messages:${result.conversationId}`)
+    }
+
+    console.log(`${LOG} RECEIPT processado`, { messageIds, type: Type ?? 'delivery', isRead })
+    return NextResponse.json({ success: true, processed: messageIds.length })
+  }
+
+  // 5. Filtro de evento — processar MESSAGE e SENDMESSAGE (envio manual pelo app)
+  if (event !== 'MESSAGE' && event !== 'SENDMESSAGE') {
+    console.log(`${LOG} evento ignorado`, { event, instanceName })
     return NextResponse.json({ ignored: true, reason: 'event_not_handled' })
   }
 
