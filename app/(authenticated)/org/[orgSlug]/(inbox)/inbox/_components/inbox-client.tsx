@@ -210,6 +210,7 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
           isSuperAdmin={isSuperAdmin}
           agents={agents}
           onSimulatorConversationCreated={handleConversationCreated}
+          onNewConversationCreated={handleConversationCreated}
           isConversationActive={isConversationActive}
         />
       </div>

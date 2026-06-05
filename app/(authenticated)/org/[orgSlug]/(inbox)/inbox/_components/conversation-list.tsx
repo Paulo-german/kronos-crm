@@ -48,6 +48,7 @@ import type {
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import type { AgentDto } from '@/_data-access/agent/get-agents'
 import { SimulatorDialog } from './simulator-dialog'
+import { NewConversationDialog } from './new-conversation-dialog'
 import { getLabelColor } from '@/_lib/constants/label-colors'
 import {
   ConversationContextMenu,
@@ -64,6 +65,7 @@ interface InboxOption {
   id: string
   name: string
   channel: string
+  isConnected: boolean
 }
 
 export type FilterTab = 'all' | 'unread' | 'unanswered'
@@ -106,6 +108,8 @@ interface ConversationListProps {
   isSuperAdmin?: boolean
   agents?: AgentDto[]
   onSimulatorConversationCreated?: (conversation: ConversationListDto) => void
+  /** Callback quando uma nova conversa é criada pelo diálogo de Nova Conversa */
+  onNewConversationCreated?: (conversation: ConversationListDto) => void
   /** Retorna true se o agente IA está processando ativamente esta conversa */
   isConversationActive?: (conversationId: string) => boolean
 }
@@ -207,6 +211,7 @@ export function ConversationList({
   isSuperAdmin,
   agents,
   onSimulatorConversationCreated,
+  onNewConversationCreated,
   isConversationActive,
 }: ConversationListProps) {
   return (
@@ -262,6 +267,14 @@ export function ConversationList({
               currentUserId={currentUserId}
               showAssigneeFilter={isElevated}
             />
+            {/* Botão de nova conversa — disponível para todos os membros */}
+            {inboxOptions && onNewConversationCreated && (
+              <NewConversationDialog
+                inboxOptions={inboxOptions}
+                orgSlug={orgSlug}
+                onConversationCreated={onNewConversationCreated}
+              />
+            )}
             {/* Botão do simulador — visível apenas para super admins */}
             {isSuperAdmin && agents && onSimulatorConversationCreated && (
               <SimulatorDialog
