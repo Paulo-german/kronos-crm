@@ -329,9 +329,10 @@ const StepActionBuilder = ({
   const globalToolTypes = new Set(GLOBAL_TOOL_OPTIONS.map((option) => option.value))
 
   // Permite adicionar qualquer tool sem restrição de duplicata (multi-instância).
-  // Apenas tools globais são bloqueadas quando excludeGlobalTools está ativo.
+  // Tools depreciadas em v2 ficam visíveis se já existirem, mas não podem ser adicionadas novamente.
   const availableToAdd = TOOL_OPTIONS.filter((tool) => {
     if (excludeGlobalTools && globalToolTypes.has(tool.value)) return false
+    if (agentVersion === 'single-v2' && DEPRECATED_IN_V2.has(tool.value)) return false
     if (tool.value === 'create_appointment' && agentMode === 'PRODUCT') return false
     if (tool.value === 'create_event' && agentMode === 'SERVICE') return false
     return true
