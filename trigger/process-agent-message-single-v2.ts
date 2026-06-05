@@ -720,7 +720,7 @@ export async function runSingleV2(
   // A diretiva é anexada só ao system prompt da Call 1; llmMessages original fica intacto para o Responder (Call 2).
   const call1Messages = llmMessages.map((message, index) =>
     index === 0 && message.role === 'system'
-      ? { ...message, content: message.content + CALL1_EXECUTION_DIRECTIVE }
+      ? { ...message, content: promptContext.systemPromptForCall1 + CALL1_EXECUTION_DIRECTIVE }
       : message,
   )
 

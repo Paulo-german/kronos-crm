@@ -134,9 +134,6 @@ export const promptBaseContextSchema = z.object({
   // Snapshot determinístico de eventos de tool — retry re-usa exatamente os mesmos dados
   recentToolEvents: z.array(toolEventSchema),
 
-  // Motivos de perda disponíveis (relevante apenas quando update_deal está habilitado)
-  lossReasonNames: z.array(z.string()),
-
   // Tools disponíveis — builders filtram conforme a "lente" do agente
   toolsEnabled: z.array(z.string()),
 
@@ -188,7 +185,6 @@ export async function buildPromptBaseContext(
     agent,
     conversation,
     completedFileCount,
-    lossReasons,
     recentToolEvents,
     activeProductMediaCount,
     activeProductCount,
@@ -281,11 +277,6 @@ export async function buildPromptBaseContext(
     }),
     db.agentKnowledgeFile.count({
       where: { agentId, status: 'COMPLETED' },
-    }),
-    db.dealLostReason.findMany({
-      where: { organizationId, isActive: true },
-      select: { name: true },
-      orderBy: { name: 'asc' },
     }),
     db.conversationEvent.findMany({
       where: {
@@ -476,7 +467,6 @@ export async function buildPromptBaseContext(
     hasActiveServicesWithProfessionals: activeServicesWithProfessionalsCount > 0,
     agentMode: agent.agentMode,
     recentToolEvents: serializedToolEvents,
-    lossReasonNames: lossReasons.map((reason) => reason.name),
     toolsEnabled: allToolsEnabled,
     globalTools,
     groupContext,

@@ -140,7 +140,6 @@ const BASE_FIXTURE: PromptBaseContext = {
   hasActiveServicesWithProfessionals: false,
   agentMode: 'PRODUCT',
   recentToolEvents: [],
-  lossReasonNames: [],
   toolsEnabled: ['move_deal', 'update_contact', 'hand_off_to_human'],
   globalTools: [],
   groupContext: null,
@@ -323,6 +322,20 @@ function runScenario(name: string, fixture: PromptBaseContext): ScenarioResult {
     if (!prompt.includes(step.id)) {
       errors.push(`systemPrompt não contém step.id "${step.id}"`)
     }
+  }
+
+  // systemPromptForCall1 — variante sem persona usada na Call 1 (tools)
+  const promptForCall1 = result.systemPromptForCall1
+  if (!promptForCall1 || promptForCall1.trim().length === 0) {
+    errors.push('systemPromptForCall1 está vazio')
+  }
+  // Não deve conter a frase que identifica a persona do agente
+  if (promptForCall1.includes(`Você é ${fixture.agentName}`)) {
+    errors.push('systemPromptForCall1 contém a persona — deveria ter sido removida')
+  }
+  // Deve conter a seção de regras críticas (marcador compartilhado)
+  if (!promptForCall1.includes('Regras Críticas')) {
+    errors.push('systemPromptForCall1 não contém a seção "Regras Críticas"')
   }
 
   // send_media e send_product_media não devem aparecer como tools do novo compiler

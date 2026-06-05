@@ -19,6 +19,8 @@ import {
 export interface SingleSystemPrompt {
   /** String final enviada ao LLM — combina persona + steps + constraints */
   systemPrompt: string
+  /** Variante para a Call 1 (tools) — idêntica ao systemPrompt mas SEM a seção de persona */
+  systemPromptForCall1: string
   modelId: string
   agentName: string
   /** Usado para montar o enum de structured output */
@@ -430,16 +432,6 @@ function buildDealSection(base: PromptBaseContext): string {
   return `\n[Dados do negócio]\n${fields.join('\n')}`
 }
 
-function buildLossReasonsSection(base: PromptBaseContext, filteredTools: string[]): string {
-  if (base.lossReasonNames.length === 0 || !filteredTools.includes('update_deal')) return ''
-
-  return (
-    `\n[Motivos de perda disponíveis]\n` +
-    `Ao marcar um negócio como LOST, use o campo "reason" com um dos motivos abaixo (exatamente como escrito):\n` +
-    base.lossReasonNames.map((name) => `  • ${name}`).join('\n')
-  )
-}
-
 function buildToolEventsSection(base: PromptBaseContext): string {
   if (base.recentToolEvents.length === 0) return ''
 
@@ -519,63 +511,44 @@ export function compileSingleSystemPrompt(
   // Extrair flat array de todas as actions configuradas nos steps
   const allStepActions: StepAction[] = base.steps.flatMap((step) => step.actions)
 
-  const parts: string[] = []
-
-  // 0. Âncora temporal
-  parts.push(buildTemporalSection(base))
-
-  // 1. Persona (structured ou legacy)
-  parts.push(buildPersonaSection(base))
-
-  // 1b. Regras críticas de comportamento
-  parts.push(buildCriticalRulesSection(base, filteredTools))
-
-  // 2. Transferência entre agentes (só quando worker de grupo com outros workers)
+  // Cada seção é calculada uma única vez e reutilizada nos dois arrays.
+  const temporalSection = buildTemporalSection(base)
+  const personaSection = buildPersonaSection(base)
+  const criticalRulesSection = buildCriticalRulesSection(base, filteredTools)
   const groupTransferSection = buildGroupTransferSection(base)
-  if (groupTransferSection) {
-    parts.push(`\n${groupTransferSection}`)
-  }
-
-  // 3. Ferramentas globais compactas — imediatamente antes do funil
   const globalToolsSection = buildGlobalToolsSection(base.globalTools)
-  if (globalToolsSection) {
-    parts.push(`\n${globalToolsSection}`)
-  }
-
-  // 4. Processo de atendimento (funil de steps)
   const funnelSection = buildFunnelSection(base)
-  if (funnelSection) {
-    parts.push(funnelSection)
-  }
-
-  // 4. Dados do contato
-  parts.push(buildContactSection(base))
-
-  // 5. Dados do negócio
+  const contactSection = buildContactSection(base)
   const dealSection = buildDealSection(base)
-  if (dealSection) {
-    parts.push(dealSection)
-  }
-
-  // 6. Motivos de perda
-  const lossSection = buildLossReasonsSection(base, filteredTools)
-  if (lossSection) {
-    parts.push(lossSection)
-  }
-
-  // 7. Ações já realizadas nesta conversa
   const eventsSection = buildToolEventsSection(base)
-  if (eventsSection) {
-    parts.push(eventsSection)
-  }
+
+  // Seções compartilhadas (tudo exceto a persona) — montadas na mesma ordem
+  // para systemPrompt e systemPromptForCall1.
+  const sharedTail: string[] = []
+  sharedTail.push(criticalRulesSection)
+  if (groupTransferSection) sharedTail.push(`\n${groupTransferSection}`)
+  if (globalToolsSection) sharedTail.push(`\n${globalToolsSection}`)
+  if (funnelSection) sharedTail.push(funnelSection)
+  sharedTail.push(contactSection)
+  if (dealSection) sharedTail.push(dealSection)
+  if (eventsSection) sharedTail.push(eventsSection)
+
+  // systemPrompt completo: temporal + persona + cauda compartilhada
+  const parts: string[] = [temporalSection, personaSection, ...sharedTail]
+
+  // systemPromptForCall1: idêntico MAS sem a seção de persona — a Call 1 só
+  // executa tools, então a persona apenas adiciona ruído/tokens.
+  const partsForCall1: string[] = [temporalSection, ...sharedTail]
 
   const systemPrompt = parts.join('\n')
+  const systemPromptForCall1 = partsForCall1.join('\n')
 
   // ~4 caracteres por token — mesma heurística do legado
   const estimatedTokens = Math.ceil(systemPrompt.length / 4)
 
   return {
     systemPrompt,
+    systemPromptForCall1,
     modelId: base.modelId,
     agentName: base.agentName,
     steps: base.steps.map((step) => ({

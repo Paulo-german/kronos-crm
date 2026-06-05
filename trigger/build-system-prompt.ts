@@ -132,7 +132,7 @@ export function compileStepActions(actions: StepAction[]): string[] {
           const fieldList = action.allowedFields.map((field) => FIELD_LABELS[field]).join(', ')
           instruction += ` atualizando apenas: ${fieldList}`
         } else {
-          instruction += ` — NÃO altere nenhum campo diretamente (apenas status, se permitido abaixo)`
+          instruction += ` — NÃO altere nenhum campo diretamente`
         }
         lines.push(instruction + '.')
 
@@ -144,15 +144,6 @@ export function compileStepActions(actions: StepAction[]): string[] {
 
         if (action.notesTemplate && action.allowedFields.includes('notes')) {
           lines.push(`  → Para as notas, registre: ${action.notesTemplate}`)
-        }
-
-        if (action.allowedStatuses.length > 0) {
-          const statusLabels = action.allowedStatuses
-            .map((s) => (s === 'WON' ? 'GANHO (WON)' : 'PERDIDO (LOST)'))
-            .join(' ou ')
-          lines.push(`  → Pode alterar o status para: ${statusLabels}.`)
-        } else {
-          lines.push(`  → NÃO altere o status do negócio nesta etapa.`)
         }
 
         return lines.join('\n')
@@ -367,7 +358,7 @@ export async function buildSystemPrompt(
 ): Promise<SingleSystemPrompt> {
   const now = new Date()
 
-  const [agent, conversation, completedFileCount, lossReasons, recentToolEvents, activeProductMediaCount, activeProductCount, activeServicesWithProfessionalsCount] = await Promise.all([
+  const [agent, conversation, completedFileCount, recentToolEvents, activeProductMediaCount, activeProductCount, activeServicesWithProfessionalsCount] = await Promise.all([
     db.agent.findUniqueOrThrow({
       where: { id: agentId },
       select: {
@@ -451,11 +442,6 @@ export async function buildSystemPrompt(
     }),
     db.agentKnowledgeFile.count({
       where: { agentId, status: 'COMPLETED' },
-    }),
-    db.dealLostReason.findMany({
-      where: { organizationId, isActive: true },
-      select: { name: true },
-      orderBy: { name: 'asc' },
     }),
     db.conversationEvent.findMany({
       where: {
@@ -775,15 +761,7 @@ export async function buildSystemPrompt(
     parts.push(`\n[Dados do negócio]\n${dealFields.join('\n')}`)
   }
 
-  // 7. Motivos de perda disponíveis (só se a tool update_deal está habilitada)
-  if (lossReasons.length > 0 && effectiveTools.includes('update_deal')) {
-    const reasonNames = lossReasons.map((r) => r.name)
-    parts.push(
-      `\n[Motivos de perda disponíveis]\nAo marcar um negócio como LOST, use o campo "reason" com um dos motivos abaixo (exatamente como escrito):\n${reasonNames.map((name) => `  • ${name}`).join('\n')}`,
-    )
-  }
-
-  // 8. Ações já realizadas nesta conversa (tool calls anteriores)
+  // 7. Ações já realizadas nesta conversa (tool calls anteriores)
   if (recentToolEvents.length > 0) {
     const SUBTYPE_LABELS: Record<string, string> = {
       DEAL_MOVED: 'Negocio movido de etapa',
@@ -839,6 +817,8 @@ export async function buildSystemPrompt(
 
   return {
     systemPrompt,
+    // Legado não separa Call 1 — reaproveita o prompt completo (com persona).
+    systemPromptForCall1: systemPrompt,
     modelId: agent.modelId,
     agentName: agent.name,
     summary: conversation.summary,
