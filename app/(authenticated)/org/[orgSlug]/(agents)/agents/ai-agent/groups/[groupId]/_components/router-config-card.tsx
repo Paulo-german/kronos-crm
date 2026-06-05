@@ -37,6 +37,7 @@ import {
   isValidRouterModel,
 } from '@/_lib/ai/models'
 import { formatAvgCostPerMessage } from '@/_lib/ai/pricing'
+import { TestRouterSheet } from './test-router-sheet'
 import type { AgentGroupDetailDto } from '@/_data-access/agent-group/get-agent-group-by-id'
 
 interface RouterConfigCardProps {
@@ -91,11 +92,16 @@ export function RouterConfigCard({ group }: RouterConfigCardProps) {
   return (
     <Card className="border-border/50 bg-card">
       <CardHeader>
-        <CardTitle className="text-base">Router</CardTitle>
-        <CardDescription>
-          Configure como o router classifica conversas e direciona para o agente correto.
-          O router roda 24h, sem verificação de horário comercial.
-        </CardDescription>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <CardTitle className="text-base">Router</CardTitle>
+            <CardDescription>
+              Configure como o router classifica conversas e direciona para o agente correto.
+              O router roda 24h, sem verificação de horário comercial.
+            </CardDescription>
+          </div>
+          <TestRouterSheet groupId={group.id} />
+        </div>
       </CardHeader>
       <CardContent>
         <Form {...form}>
