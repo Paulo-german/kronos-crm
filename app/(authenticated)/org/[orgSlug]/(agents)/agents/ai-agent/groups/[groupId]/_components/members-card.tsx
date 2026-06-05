@@ -77,6 +77,7 @@ export function MembersCard({ group, allOrgAgents }: MembersCardProps) {
   )
 
   const removingMember = group.members.find((member) => member.id === removingMemberId)
+  const activeMemberCount = group.members.filter((member) => member.isActive && member.agentIsActive).length
 
   return (
     <>
@@ -109,11 +110,7 @@ export function MembersCard({ group, allOrgAgents }: MembersCardProps) {
             </div>
           ) : (
             <div className="space-y-2">
-              {group.members.map((member) => {
-                const activeMemberCount = group.members.filter(
-                  (m) => m.isActive && m.agentIsActive,
-                ).length
-                return (
+              {group.members.map((member) => (
                   <MemberRow
                     key={member.id}
                     member={member}
@@ -124,8 +121,7 @@ export function MembersCard({ group, allOrgAgents }: MembersCardProps) {
                     isLastMember={group.members.length <= 1}
                     isLastActiveMember={member.isActive && activeMemberCount <= 1}
                   />
-                )
-              })}
+                ))}
             </div>
           )}
         </CardContent>
