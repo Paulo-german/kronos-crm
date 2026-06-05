@@ -1,34 +1,22 @@
 import { generateObject } from 'ai'
-import { z } from 'zod'
 import { logger } from '@trigger.dev/sdk/v3'
 import { db } from '@/_lib/prisma'
 import { getModel } from '@/_lib/ai/provider'
 import { debitCredits, refundCredits } from '@/_lib/billing/credit-utils'
 import { estimateMaxCost, calculateCreditCost } from '@/_lib/ai/pricing'
 import { langfuseTracer } from './langfuse'
-
-// ---------------------------------------------------------------------------
-// Schema de resposta do router LLM
-// ---------------------------------------------------------------------------
-
-const routerResponseSchema = z.object({
-  targetAgentId: z.string().uuid(),
-  confidence: z.number().min(0).max(1),
-  reasoning: z.string().max(500),
-})
+import {
+  buildRouterSystemPrompt,
+  buildRouterUserContent,
+  routerResponseSchema,
+  ROUTER_MAX_OUTPUT_TOKENS,
+  type RouterConfig,
+  type RouterActiveWorker,
+} from './build-router-prompt'
 
 // ---------------------------------------------------------------------------
 // Tipos
 // ---------------------------------------------------------------------------
-
-interface RouterConfig {
-  fallbackAgentId: string | null
-  rules?: Array<{
-    agentId: string
-    keywords?: string[]
-    description?: string
-  }>
-}
 
 interface RouterDecision {
   targetAgentId: string
@@ -42,12 +30,6 @@ interface RouteConversationInput {
   organizationId: string
   messageHistory: Array<{ role: string; content: string }>
 }
-
-// Máximo de tokens de saída para a classificação do router.
-// Gemini 2.5 Flash é um modelo de "thinking": consome tokens internos de
-// raciocínio antes de gerar a resposta. Esses tokens saem do mesmo budget de
-// maxOutputTokens — 256 era insuficiente, causando JSON truncado e falhas.
-const ROUTER_MAX_OUTPUT_TOKENS = 1024
 
 // ---------------------------------------------------------------------------
 // Função principal
@@ -85,7 +67,7 @@ export async function routeConversation(
 
   if (!group) return null
 
-  const activeWorkers = group.members.filter((member) => member.isActive)
+  const activeWorkers: RouterActiveWorker[] = group.members.filter((member) => member.isActive)
 
   if (activeWorkers.length === 0) return null
 
@@ -100,59 +82,17 @@ export async function routeConversation(
     }
   }
 
-  // 2. Montar system prompt do router
+  // 2. Montar system prompt do router via helper compartilhado
   const routerConfig = group.routerConfig as RouterConfig | null
 
-  const workerDescriptions = activeWorkers
-    .map(
-      (worker) =>
-        `- Agent ID: "${worker.agentId}" | Nome: "${worker.agent.name}" | Escopo: "${worker.scopeLabel}"`,
-    )
-    .join('\n')
-
-  const customRules = routerConfig?.rules
-    ?.map((rule) => {
-      const worker = activeWorkers.find((w) => w.agentId === rule.agentId)
-      if (!worker) return null
-      const parts = [`- Para "${worker.agent.name}"`]
-      if (rule.keywords?.length) parts.push(`quando mencionado: ${rule.keywords.join(', ')}`)
-      if (rule.description) parts.push(`regra: ${rule.description}`)
-      return parts.join(' ')
-    })
-    .filter(Boolean)
-    .join('\n')
-
-  const fallbackInstruction = routerConfig?.fallbackAgentId
-    ? `- Se nenhum worker for claramente adequado, direcione para o agente com ID "${routerConfig.fallbackAgentId}".`
-    : '- Se nenhum worker for claramente adequado, escolha o mais generico.'
-
-  const basePromptParts = [
-    'Voce e um classificador de conversas. Sua funcao e analisar a mensagem do cliente e decidir qual agente especializado deve atende-lo.',
-    '',
-    '## Agentes Disponiveis',
-    workerDescriptions,
-    '',
-    '## Regras',
-    '- Analise a mensagem e o contexto para determinar a intencao do cliente.',
-    '- Retorne o agentId do worker mais adequado.',
-    fallbackInstruction,
-    '- Responda APENAS no formato JSON solicitado.',
-  ]
-
-  if (customRules) {
-    basePromptParts.push('', '## Regras Customizadas', customRules)
-  }
-
-  if (group.routerPrompt) {
-    basePromptParts.push('', '## Instrucoes Adicionais', group.routerPrompt)
-  }
-
-  const systemPrompt = basePromptParts.join('\n')
+  const systemPrompt = buildRouterSystemPrompt({
+    activeWorkers,
+    routerConfig,
+    routerPrompt: group.routerPrompt,
+  })
 
   // 3. Preparar histórico de mensagens como texto para o router
-  const userContent = input.messageHistory
-    .map((msg) => `${msg.role}: ${msg.content}`)
-    .join('\n')
+  const userContent = buildRouterUserContent(input.messageHistory)
 
   // 4. Estimar tokens e debitar créditos otimisticamente
   const estimatedInputTokens = Math.ceil(
@@ -218,7 +158,6 @@ export async function routeConversation(
       errorMessage,
     })
 
-    // Devolver créditos em caso de falha do LLM
     await refundCredits(
       input.organizationId,
       routerCostEstimate,
@@ -232,14 +171,10 @@ export async function routeConversation(
       })
     })
 
-    // Re-throw preservando a mensagem original do LLM — o upstream classifica
-    // via errorMessage === 'NO_CREDITS' (thrown antes deste catch, sem passar aqui).
-    // Prefixos custom poluiriam o AgentExecution.errorMessage exibido na UI.
     throw llmError instanceof Error ? llmError : new Error(errorMessage)
   }
 
   // 6. Reconciliar créditos (refund do excesso)
-  // SDK v6: usage tem inputTokens + outputTokens (promptTokens/completionTokens foram removidos)
   const routerInputTokens = result.usage.inputTokens ?? 0
   const routerOutputTokens = result.usage.outputTokens ?? 0
   const routerTotalTokens = routerInputTokens + routerOutputTokens
@@ -254,7 +189,42 @@ export async function routeConversation(
     ).catch(() => {})
   }
 
-  // 7. Registrar como AgentExecution do grupo (agentId = null porque é o router, não um worker)
+  // 7. Validar que o agente retornado é um worker válido do grupo
+  const validWorker = activeWorkers.find(
+    (worker) => worker.agentId === result.object.targetAgentId,
+  )
+
+  let finalDecision: RouterDecision & { workerName: string }
+  let wasFallback: boolean
+
+  if (!validWorker) {
+    const fallbackId = routerConfig?.fallbackAgentId
+    const fallbackWorker = fallbackId
+      ? activeWorkers.find((worker) => worker.agentId === fallbackId)
+      : activeWorkers[0]
+
+    const chosen = fallbackWorker ?? activeWorkers[0]
+
+    logger.warn('Router returned invalid agentId, using fallback', {
+      returnedId: result.object.targetAgentId,
+      fallbackId: chosen.agentId,
+      conversationId: input.conversationId,
+    })
+
+    finalDecision = {
+      targetAgentId: chosen.agentId,
+      confidence: 0.5,
+      reasoning: 'Router retornou agente invalido, usando fallback',
+      workerName: chosen.agent.name,
+    }
+    wasFallback = true
+  } else {
+    finalDecision = { ...result.object, workerName: validWorker.agent.name }
+    wasFallback = false
+  }
+
+  // 8. Registrar como AgentExecution do grupo (agentId = null porque é o router, não um worker)
+  // metadata persiste a decisão para analytics de roteamento
   await db.agentExecution
     .create({
       data: {
@@ -269,6 +239,11 @@ export async function routeConversation(
         inputTokens: routerInputTokens,
         outputTokens: routerOutputTokens,
         creditsCost: actualCost,
+        metadata: {
+          targetAgentId: finalDecision.targetAgentId,
+          confidence: finalDecision.confidence,
+          wasFallback,
+        },
       },
     })
     .catch((dbError) => {
@@ -279,36 +254,5 @@ export async function routeConversation(
       })
     })
 
-  // 8. Validar que o agente retornado é um worker válido do grupo
-  const validWorker = activeWorkers.find(
-    (worker) => worker.agentId === result.object.targetAgentId,
-  )
-
-  if (!validWorker) {
-    // Fallback: usar fallbackAgentId do config, ou primeiro worker ativo
-    const fallbackId = routerConfig?.fallbackAgentId
-    const fallbackWorker = fallbackId
-      ? activeWorkers.find((w) => w.agentId === fallbackId)
-      : activeWorkers[0]
-
-    const chosen = fallbackWorker ?? activeWorkers[0]
-
-    logger.warn('Router returned invalid agentId, using fallback', {
-      returnedId: result.object.targetAgentId,
-      fallbackId: chosen.agentId,
-      conversationId: input.conversationId,
-    })
-
-    return {
-      targetAgentId: chosen.agentId,
-      confidence: 0.5,
-      reasoning: 'Router retornou agente invalido, usando fallback',
-      workerName: chosen.agent.name,
-    }
-  }
-
-  return {
-    ...result.object,
-    workerName: validWorker.agent.name,
-  }
+  return finalDecision
 }
