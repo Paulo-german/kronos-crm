@@ -74,6 +74,29 @@ function extractContent(payload: ZApiWebhookPayload): ExtractedContent {
     }
   }
 
+  if (payload.video) {
+    return {
+      type: 'video',
+      text: payload.video.caption ?? null,
+      media: {
+        url: payload.video.videoUrl,
+        mimetype: payload.video.mimeType ?? 'video/mp4',
+        seconds: payload.video.seconds,
+      },
+    }
+  }
+
+  if (payload.sticker) {
+    return {
+      type: 'sticker',
+      text: null,
+      media: {
+        url: payload.sticker.stickerUrl,
+        mimetype: payload.sticker.mimeType ?? 'image/webp',
+      },
+    }
+  }
+
   // Texto
   const textContent = payload.text?.message ?? null
 

@@ -24,6 +24,8 @@ export interface ZApiWebhookPayload {
   image?: { imageUrl: string; mimeType: string; caption?: string }
   audio?: { audioUrl: string; mimeType: string; duration?: number }
   document?: { documentUrl: string; mimeType: string; fileName?: string; title?: string }
+  video?: { videoUrl: string; mimeType: string; caption?: string; seconds?: number }
+  sticker?: { stickerUrl: string; mimeType: string }
 }
 
 /** Resposta padrao de envio de mensagem da Z-API. */

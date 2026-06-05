@@ -31,6 +31,15 @@ export interface EvolutionMessageContent {
     fileName: string
     caption?: string
   }
+  videoMessage?: {
+    url: string
+    mimetype: string
+    caption?: string
+  }
+  stickerMessage?: {
+    url: string
+    mimetype: string
+  }
 }
 
 export interface EvolutionMessageData {
@@ -60,7 +69,7 @@ export interface EvolutionConnectionUpdateData {
 // Normalized Message (provider-agnostic, sent to Trigger.dev)
 // -----------------------------------------------------------------------------
 
-export type NormalizedMessageType = 'text' | 'audio' | 'image' | 'document'
+export type NormalizedMessageType = 'text' | 'audio' | 'image' | 'document' | 'video' | 'sticker'
 
 export interface NormalizedMediaInfo {
   url: string

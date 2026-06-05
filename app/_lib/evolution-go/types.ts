@@ -53,6 +53,8 @@ export const evolutionGoMessageContentSchema = z.object({
   audioMessage: evolutionGoMediaSchema.optional(),
   imageMessage: evolutionGoMediaSchema.optional(),
   documentMessage: evolutionGoMediaSchema.optional(),
+  videoMessage: evolutionGoMediaSchema.optional(),
+  stickerMessage: evolutionGoMediaSchema.optional(),
 })
 
 export const evolutionGoMessageEventSchema = z.object({

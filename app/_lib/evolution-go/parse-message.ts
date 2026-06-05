@@ -81,6 +81,28 @@ function extractContent(
     }
   }
 
+  if (message.videoMessage) {
+    return {
+      type: 'video',
+      text: message.videoMessage.caption ?? null,
+      media: {
+        url: message.videoMessage.url ?? '',
+        mimetype: message.videoMessage.mimetype ?? 'video/mp4',
+      },
+    }
+  }
+
+  if (message.stickerMessage) {
+    return {
+      type: 'sticker',
+      text: null,
+      media: {
+        url: message.stickerMessage.url ?? '',
+        mimetype: message.stickerMessage.mimetype ?? 'image/webp',
+      },
+    }
+  }
+
   const text =
     message.conversation ??
     message.extendedTextMessage?.text ??

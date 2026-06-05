@@ -1529,6 +1529,12 @@ function resolveMessageContent(message: NormalizedWhatsAppMessage): string {
       const fileName = message.media?.fileName ?? 'arquivo'
       return `[Documento: ${fileName}]`
     }
+    case 'video': {
+      const caption = message.text ? `: ${message.text}` : ''
+      return `[Vídeo${caption}]`
+    }
+    case 'sticker':
+      return '[Sticker]'
     default:
       return message.text ?? ''
   }
