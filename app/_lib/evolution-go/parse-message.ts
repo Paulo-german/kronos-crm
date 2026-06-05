@@ -13,7 +13,13 @@ export function parseEvolutionGoMessage(
   const { Info, Message } = data
 
   const { type, text, media } = extractContent(Message)
-  const effectiveJid = resolveEffectiveJid(Info.Chat, Info.Sender)
+
+  // @lid → @s.whatsapp.net: mesmo padrão do evolution-js.
+  // fromMe=true (SENDMESSAGE): destinatário é RecipientAlt.
+  // fromMe=false (MESSAGE inbound): remetente é SenderAlt.
+  // Quando vazio, Info.Chat permanece como está (pode ser @lid ou @s.whatsapp.net).
+  const altJid = Info.IsFromMe ? Info.RecipientAlt : Info.SenderAlt
+  const effectiveJid = resolveEffectiveJid(Info.Chat, altJid || undefined)
 
   const timestamp =
     typeof Info.Timestamp === 'number'

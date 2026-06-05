@@ -32,9 +32,12 @@ export const evolutionGoInfoSchema = z.object({
   IsFromMe: z.boolean(),
   IsGroup: z.boolean().optional(),
   PushName: z.string().optional(),
-  // Go time.Time serializado como RFC3339 string ou unix epoch
+  // Go time.Time serializado como RFC3366 string ou unix epoch
   Timestamp: z.union([z.string(), z.number()]).optional(),
   Type: z.string().optional(),
+  // JIDs alternativos para resolver @lid → @s.whatsapp.net (multi-device protocol)
+  SenderAlt: z.string().optional(),
+  RecipientAlt: z.string().optional(),
 })
 
 export const evolutionGoMediaSchema = z.object({
