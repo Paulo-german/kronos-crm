@@ -1,7 +1,6 @@
 import { notFound } from 'next/navigation'
 import { Users } from 'lucide-react'
 import { Badge } from '@/_components/ui/badge'
-import { BackButton } from '@/_components/layout/back-button'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getSquadById } from '@/_data-access/squad/get-squad-by-id'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
@@ -40,7 +39,6 @@ export default async function SquadDetailPage({ params }: SquadDetailPageProps) 
 
   return (
     <div className="flex flex-col gap-6 p-6 md:p-8">
-      <BackButton href={`/org/${orgSlug}/settings/members`} />
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">

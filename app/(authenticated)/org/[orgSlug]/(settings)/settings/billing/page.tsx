@@ -15,7 +15,6 @@ import Header, {
   HeaderTitle,
   HeaderSubTitle,
 } from '@/_components/header'
-import { BackButton } from '@/_components/layout/back-button'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getPlanLimits } from '@/_lib/rbac/plan-limits'
 import { getAllQuotas } from '@/_data-access/billing/get-all-quotas'
@@ -70,7 +69,6 @@ export default async function BillingSettingsPage({
 
   return (
     <div className="space-y-8 p-6 md:p-8">
-      <BackButton href={`/org/${orgSlug}/settings`} />
       <Header>
         <HeaderLeft>
           <HeaderTitle>Assinatura e Faturamento</HeaderTitle>
