@@ -29,7 +29,7 @@ export const IDEMPOTENT_TOOL_NAMES = [
   'transfer_to_agent',
 ] as const
 
-export const MAX_OUTPUT_TOKENS = 3072
+export const MAX_OUTPUT_TOKENS = 5072
 export const LLM_TEMPERATURE = 0.5
 
 // Quantas mensagens recentes vão ao classificador. 6 cobre 3 turnos de
@@ -38,7 +38,7 @@ export const LLM_TEMPERATURE = 0.5
 export const CLASSIFIER_HISTORY_TURNS = 6
 
 // Classificador só precisa devolver um UUID — 64 tokens é mais do que suficiente.
-export const CLASSIFIER_MAX_OUTPUT_TOKENS = 64
+export const CLASSIFIER_MAX_OUTPUT_TOKENS = 128
 
 // Diretiva injetada apenas no system prompt da Call 1 para evitar que o modelo
 // gaste tokens gerando texto que será descartado (o texto final é responsabilidade do Responder).
