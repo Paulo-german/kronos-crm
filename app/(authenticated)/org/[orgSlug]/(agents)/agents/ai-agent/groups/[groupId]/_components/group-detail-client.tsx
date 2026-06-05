@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 import Link from 'next/link'
-import { ArrowLeft, Loader2 } from 'lucide-react'
+import { ArrowLeft, BarChart3Icon, Loader2 } from 'lucide-react'
 import {
   Card,
   CardContent,
@@ -50,21 +50,28 @@ export function GroupDetailClient({
   allOrgInboxes,
   orgSlug,
 }: GroupDetailClientProps) {
-  // Inboxes disponíveis para vinculação: sem agente standalone e sem grupo (ou vinculados a este grupo)
   const availableInboxes = allOrgInboxes.filter(
     (inbox) => !inbox.agentId && (!inbox.agentGroupId || inbox.agentGroupId === group.id),
   )
+
   return (
     <div className="flex flex-1 min-h-0 bg-background">
       <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-6">
-        {/* Header — mesmo padrão do agent-detail-client */}
         <div className="flex flex-col gap-4">
-          <Button variant="ghost" size="sm" className="w-fit" asChild>
-            <Link href={`/org/${orgSlug}/agents/ai-agent/groups`}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Voltar
-            </Link>
-          </Button>
+          <div className="flex items-center justify-between">
+            <Button variant="ghost" size="sm" className="w-fit" asChild>
+              <Link href={`/org/${orgSlug}/agents/ai-agent/groups`}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Voltar
+              </Link>
+            </Button>
+            <Button variant="outline" size="sm" className="gap-1.5" asChild>
+              <Link href={`/org/${orgSlug}/agents/ai-agent/groups/${group.id}/executions`}>
+                <BarChart3Icon className="h-3.5 w-3.5" />
+                Execuções
+              </Link>
+            </Button>
+          </div>
 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -89,7 +96,6 @@ export function GroupDetailClient({
           )}
         </div>
 
-        {/* Cards grid */}
         <div className="grid gap-6 lg:grid-cols-2">
           <ConfigCard group={group} />
           <RouterConfigCard group={group} />
