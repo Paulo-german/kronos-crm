@@ -50,7 +50,6 @@ export type BlueprintStepAction =
       allowedFields?: ('title' | 'value' | 'priority' | 'expectedCloseDate' | 'notes')[]
       fixedPriority?: 'low' | 'medium' | 'high' | 'urgent'
       notesTemplate?: string
-      allowedStatuses?: ('WON' | 'LOST')[]
     }
   | {
       type: 'update_contact'

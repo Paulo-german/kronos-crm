@@ -114,7 +114,7 @@ function compileActionLine(action: StepAction, runtimeName: string): string {
         const fieldList = action.allowedFields.map((field) => FIELD_LABELS[field]).join(', ')
         instruction += ` atualizando apenas: ${fieldList}`
       } else {
-        instruction += ` — NÃO altere nenhum campo diretamente (apenas status, se permitido abaixo)`
+        instruction += ` — NÃO altere nenhum campo diretamente`
       }
       resultLines.push(instruction + '.')
 
@@ -126,15 +126,6 @@ function compileActionLine(action: StepAction, runtimeName: string): string {
 
       if (action.notesTemplate && action.allowedFields.includes('notes')) {
         resultLines.push(`  → Para as notas, registre: ${action.notesTemplate}`)
-      }
-
-      if (action.allowedStatuses.length > 0) {
-        const statusLabels = action.allowedStatuses
-          .map((status) => (status === 'WON' ? 'GANHO (WON)' : 'PERDIDO (LOST)'))
-          .join(' ou ')
-        resultLines.push(`  → Pode alterar o status para: ${statusLabels}.`)
-      } else {
-        resultLines.push(`  → NÃO altere o status do negócio nesta etapa.`)
       }
 
       return resultLines.join('\n')
@@ -261,12 +252,6 @@ function compileGlobalToolLine(tool: GlobalTool, runtimeName: string): string {
       }
       if (tool.fixedPriority) {
         parts.push(`prioridade fixa: ${PRIORITY_LABELS[tool.fixedPriority]}`)
-      }
-      if (tool.allowedStatuses && tool.allowedStatuses.length > 0) {
-        const statusLabels = tool.allowedStatuses
-          .map((status) => (status === 'WON' ? 'GANHO' : 'PERDIDO'))
-          .join('/')
-        parts.push(`pode marcar: ${statusLabels}`)
       }
       const detail = parts.length > 0 ? ` (${parts.join(', ')})` : ''
       return `* ${trigger} → \`${runtimeName}\`${detail}`

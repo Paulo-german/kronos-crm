@@ -170,7 +170,7 @@ export function buildMockToolSet(
       const configs = stepActionsByType.get('update_deal') ?? []
       const groupSize = configs.length > 0 ? configs.length : 1
       const baseDescription =
-        'Atualiza dados de um negócio (título, valor, prioridade, previsão de fechamento, notas, status). Use quando o cliente informar valor, prazo, ou quando o negócio for ganho ou perdido.'
+        'Atualiza dados de um negócio (título, valor, prioridade, previsão de fechamento, notas). Use quando o cliente informar valor, prazo ou novas informações sobre o negócio.'
       const inputSchema = z.object({
         title: z.string().optional().describe('Novo título do negócio'),
         value: z
@@ -190,16 +190,6 @@ export function buildMockToolSet(
           .string()
           .optional()
           .describe('Notas a adicionar ao negócio (concatenadas com notas existentes)'),
-        status: z
-          .enum(['WON', 'LOST'])
-          .optional()
-          .describe('Marcar negócio como ganho (WON) ou perdido (LOST)'),
-        reason: z
-          .string()
-          .optional()
-          .describe(
-            'Motivo da perda (quando status = LOST). Use exatamente um dos motivos listados em [Motivos de perda disponíveis] no system prompt.',
-          ),
       })
       if (configs.length > 0) {
         configs.forEach((config, indexInGroup) => {

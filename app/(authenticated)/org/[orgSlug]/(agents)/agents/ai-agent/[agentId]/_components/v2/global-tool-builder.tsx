@@ -72,7 +72,7 @@ const buildDefaultGlobalTool = (type: string): GlobalTool => {
     case 'update_contact':
       return { type: 'update_contact', trigger: '', scope: 'global', stepIds: [] }
     case 'update_deal':
-      return { type: 'update_deal', trigger: '', allowedFields: [], allowedStatuses: [], scope: 'global', stepIds: [] }
+      return { type: 'update_deal', trigger: '', allowedFields: [], scope: 'global', stepIds: [] }
     case 'create_task':
       return { type: 'create_task', trigger: '', title: '', scope: 'global', stepIds: [] }
     default:
@@ -396,7 +396,6 @@ const GlobalToolBuilder = ({ value, onChange, steps = [] }: GlobalToolBuilderPro
                           allowedFields={tool.allowedFields ?? []}
                           fixedPriority={tool.fixedPriority}
                           notesTemplate={tool.notesTemplate}
-                          allowedStatuses={tool.allowedStatuses ?? []}
                           onAllowedFieldsChange={(fields, extra) =>
                             updateTool(toolId, { allowedFields: fields, ...extra })
                           }
@@ -405,9 +404,6 @@ const GlobalToolBuilder = ({ value, onChange, steps = [] }: GlobalToolBuilderPro
                           }
                           onNotesTemplateChange={(val) =>
                             updateTool(toolId, { notesTemplate: val })
-                          }
-                          onAllowedStatusesChange={(statuses) =>
-                            updateTool(toolId, { allowedStatuses: statuses })
                           }
                         />
                       )}

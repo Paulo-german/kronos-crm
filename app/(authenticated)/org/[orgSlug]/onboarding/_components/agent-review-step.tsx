@@ -91,9 +91,6 @@ function ActionDetail({ action }: { action: BlueprintAction }) {
       if (action.fixedPriority) {
         details.push(`Prioridade fixa: ${action.fixedPriority}`)
       }
-      if (action.allowedStatuses && action.allowedStatuses.length > 0) {
-        details.push(`Status permitidos: ${action.allowedStatuses.join(', ')}`)
-      }
       break
     case 'create_task':
       details.push(`Tarefa: "${action.title}"`)

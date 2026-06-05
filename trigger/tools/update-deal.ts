@@ -14,7 +14,7 @@ interface UpdateDealResult {
 
 export function createUpdateDealTool(ctx: ToolContext, opts?: { triggerHint?: string }) {
   const baseDescription =
-    'Atualiza dados de um negócio (título, valor, prioridade, previsão de fechamento, notas, status). Use quando o cliente informar valor, prazo, ou quando o negócio for ganho ou perdido.'
+    'Atualiza dados de um negócio (título, valor, prioridade, previsão de fechamento, notas). Use quando o cliente informar valor, prazo ou outros dados do negócio.'
   const description = opts?.triggerHint
     ? `${baseDescription}\n\nQuando usar esta instância: ${opts.triggerHint}`
     : baseDescription
@@ -42,16 +42,6 @@ export function createUpdateDealTool(ctx: ToolContext, opts?: { triggerHint?: st
         .string()
         .optional()
         .describe('Notas a adicionar ao negócio (concatenadas com notas existentes)'),
-      status: z
-        .enum(['WON', 'LOST'])
-        .optional()
-        .describe('Marcar negócio como ganho (WON) ou perdido (LOST)'),
-      reason: z
-        .string()
-        .optional()
-        .describe(
-          'Motivo da perda (quando status = LOST). Use exatamente um dos motivos listados em [Motivos de perda disponíveis] no system prompt.',
-        ),
     }),
     execute: async (input): Promise<UpdateDealResult> => {
       try {
@@ -82,22 +72,13 @@ export function createUpdateDealTool(ctx: ToolContext, opts?: { triggerHint?: st
         }
       }
 
-      // Guard contra deals já finalizados
-      if ((deal.status === 'WON' || deal.status === 'LOST') && input.status) {
-        return {
-          success: false,
-          message: `Negócio já está finalizado (${deal.status === 'WON' ? 'GANHO' : 'PERDIDO'}).`,
-        }
-      }
-
-      // Deny-by-default: agregar apenas os campos/statuses explicitamente permitidos
+      // Deny-by-default: agregar apenas os campos explicitamente permitidos
       const agentSteps = await db.agentStep.findMany({
         where: { agentId: ctx.agentId },
         select: { actions: true },
       })
 
       const allowedFields = new Set<string>()
-      const allowedStatuses = new Set<'WON' | 'LOST'>()
       let fixedPriority: 'low' | 'medium' | 'high' | 'urgent' | undefined
 
       for (const step of agentSteps) {
@@ -106,7 +87,6 @@ export function createUpdateDealTool(ctx: ToolContext, opts?: { triggerHint?: st
         for (const act of parsed.data) {
           if (act.type !== 'update_deal') continue
           for (const field of act.allowedFields) allowedFields.add(field)
-          for (const status of act.allowedStatuses) allowedStatuses.add(status)
           if (act.fixedPriority) fixedPriority = act.fixedPriority
         }
       }
@@ -115,14 +95,6 @@ export function createUpdateDealTool(ctx: ToolContext, opts?: { triggerHint?: st
       const effectiveInput = { ...input }
       if (fixedPriority) {
         effectiveInput.priority = fixedPriority
-      }
-
-      // Bloquear status não permitido
-      if (effectiveInput.status && !allowedStatuses.has(effectiveInput.status)) {
-        return {
-          success: false,
-          message: `Não é permitido marcar o negócio como ${effectiveInput.status} nesta etapa.`,
-        }
       }
 
       // Construir dados para atualização
@@ -163,32 +135,6 @@ export function createUpdateDealTool(ctx: ToolContext, opts?: { triggerHint?: st
         )
       }
 
-      if (effectiveInput.status === 'WON') {
-        data.status = 'WON'
-        updatedFields.push('status: GANHO')
-      } else if (effectiveInput.status === 'LOST') {
-        data.status = 'LOST'
-        updatedFields.push('status: PERDIDO')
-
-        // Vincular lossReasonId — exact match primeiro, fuzzy como fallback
-        if (effectiveInput.reason) {
-          const reasons = await db.dealLostReason.findMany({
-            where: { organizationId: ctx.organizationId, isActive: true },
-          })
-          const reasonLower = effectiveInput.reason.toLowerCase().trim()
-          const matched =
-            reasons.find((r) => r.name.toLowerCase() === reasonLower) ??
-            reasons.find(
-              (r) =>
-                reasonLower.includes(r.name.toLowerCase()) ||
-                r.name.toLowerCase().includes(reasonLower),
-            )
-          if (matched) {
-            data.lossReasonId = matched.id
-          }
-        }
-      }
-
       if (updatedFields.length === 0) {
         return {
           success: false,
@@ -202,52 +148,19 @@ export function createUpdateDealTool(ctx: ToolContext, opts?: { triggerHint?: st
         )
 
         // Criar Activity
-        if (effectiveInput.status === 'WON') {
-          await safeBestEffort(
-            () =>
-              db.activity.create({
-                data: {
-                  type: 'deal_won',
-                  content: `Negócio marcado como ganho pelo agente`,
-                  dealId: ctx.dealId!,
-                  performedBy: null,
-                  metadata: { agentId: ctx.agentId, agentName: ctx.agentName },
-                },
-              }),
-            'activity.create',
-          )
-        } else if (effectiveInput.status === 'LOST') {
-          const lostContent = effectiveInput.reason
-            ? `Negócio marcado como perdido pelo agente. Motivo: ${effectiveInput.reason}`
-            : 'Negócio marcado como perdido pelo agente'
-          await safeBestEffort(
-            () =>
-              db.activity.create({
-                data: {
-                  type: 'deal_lost',
-                  content: lostContent,
-                  dealId: ctx.dealId!,
-                  performedBy: null,
-                  metadata: { agentId: ctx.agentId, agentName: ctx.agentName },
-                },
-              }),
-            'activity.create',
-          )
-        } else {
-          await safeBestEffort(
-            () =>
-              db.activity.create({
-                data: {
-                  type: 'note',
-                  content: `Negócio atualizado pelo agente: ${updatedFields.join(', ')}`,
-                  dealId: ctx.dealId!,
-                  performedBy: null,
-                  metadata: { agentId: ctx.agentId, agentName: ctx.agentName },
-                },
-              }),
-            'activity.create',
-          )
-        }
+        await safeBestEffort(
+          () =>
+            db.activity.create({
+              data: {
+                type: 'note',
+                content: `Negócio atualizado pelo agente: ${updatedFields.join(', ')}`,
+                dealId: ctx.dealId!,
+                performedBy: null,
+                metadata: { agentId: ctx.agentId, agentName: ctx.agentName },
+              },
+            }),
+          'activity.create',
+        )
 
         // Invalidar cache
         await safeBestEffort(

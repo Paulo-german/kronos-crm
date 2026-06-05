@@ -49,7 +49,6 @@ export const globalToolSchema = z.discriminatedUnion('type', [
       .default([]),
     fixedPriority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
     notesTemplate: z.string().optional(),
-    allowedStatuses: z.array(z.enum(['WON', 'LOST'])).default([]),
   }),
 
   // Criação de tarefa — espelha step-action-schema.create_task

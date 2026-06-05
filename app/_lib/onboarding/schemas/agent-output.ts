@@ -22,7 +22,6 @@ export const blueprintStepActionSchema = z.object({
     .optional(),
   fixedPriority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
   notesTemplate: z.string().optional(),
-  allowedStatuses: z.array(z.enum(['WON', 'LOST'])).optional(),
   // create_task
   title: z.string().optional(),
   dueDaysOffset: z.number().int().positive().optional(),

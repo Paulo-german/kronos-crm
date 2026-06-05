@@ -27,8 +27,8 @@ function isGlobalToolType(type: string): type is GlobalToolType {
 
 /**
  * Deduplica tools do mesmo type extraídas de múltiplas etapas.
- * update_deal: faz união de allowedFields e allowedStatuses para preservar
- * configurações de etapas distintas. Os demais types usam a primeira ocorrência.
+ * update_deal: faz união de allowedFields para preservar configurações de
+ * etapas distintas. Os demais types usam a primeira ocorrência.
  */
 function deduplicateExtractedTools(
   candidates: GlobalTool[],
@@ -54,14 +54,9 @@ function deduplicateExtractedTools(
         new Set(updateDealTools.flatMap((tool) => tool.allowedFields)),
       ) as UpdateDealTool['allowedFields']
 
-      const mergedStatuses = Array.from(
-        new Set(updateDealTools.flatMap((tool) => tool.allowedStatuses)),
-      ) as UpdateDealTool['allowedStatuses']
-
       deduped.push({
         ...firstUpdateDeal,
         allowedFields: mergedFields,
-        allowedStatuses: mergedStatuses,
       })
       continue
     }

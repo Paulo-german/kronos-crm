@@ -423,18 +423,6 @@ function buildDealContext(
   return `\n[Dados do negócio]\n${fields.join('\n')}`
 }
 
-/** Seção H — motivos de perda (apenas Tool Agent, que executa update_deal) */
-function buildLossReasons(reasons: string[], toolsEnabled: string[]): string {
-  if (reasons.length === 0 || !toolsEnabled.includes('update_deal')) return ''
-
-  return (
-    `\n[Motivos de perda disponíveis]\n` +
-    `Ao marcar um negócio como LOST, use o campo "reason" com um dos motivos abaixo (exatamente como escrito):\n` +
-    reasons.map((name) => `  • ${name}`).join('\n')
-  )
-}
-
-
 /** Formata o funil resumido para o sufixo de modo — lista de steps com nome e ordem */
 function formatFunnelSummary(steps: AgentStep[]): string {
   return steps.map((step) => `  ${step.order}. ${step.name}`).join('\n')
@@ -526,12 +514,6 @@ export function buildToolAgentPrompt(base: PromptBaseContext): string {
   const dealSection = buildDealContext(base.deal, base.timezone)
   if (dealSection) {
     parts.push(dealSection)
-  }
-
-  // H — motivos de perda (operacional: usado por update_deal)
-  const lossSection = buildLossReasons(base.lossReasonNames, filteredTools)
-  if (lossSection) {
-    parts.push(lossSection)
   }
 
   // Seção I ("Ações realizadas em interações anteriores") foi removida:

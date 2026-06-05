@@ -83,7 +83,7 @@ const buildDefaultAction = (type: string): StepAction => {
     case 'update_contact':
       return { type: 'update_contact', trigger: '' }
     case 'update_deal':
-      return { type: 'update_deal', trigger: '', allowedFields: [], allowedStatuses: [] }
+      return { type: 'update_deal', trigger: '', allowedFields: [] }
     case 'list_availability':
       return {
         type: 'list_availability',
@@ -545,14 +545,13 @@ const StepActionBuilder = ({
                         />
                       )}
 
-                      {/* update_deal: campos permitidos + status */}
+                      {/* update_deal: campos permitidos */}
                       {action.type === 'update_deal' && (
                         <UpdateDealConfig
                           actionType={action.type}
                           allowedFields={action.allowedFields ?? []}
                           fixedPriority={action.fixedPriority}
                           notesTemplate={action.notesTemplate}
-                          allowedStatuses={action.allowedStatuses ?? []}
                           onAllowedFieldsChange={(fields, extra) =>
                             updateAction(actionId, { allowedFields: fields, ...extra })
                           }
@@ -561,9 +560,6 @@ const StepActionBuilder = ({
                           }
                           onNotesTemplateChange={(val) =>
                             updateAction(actionId, { notesTemplate: val })
-                          }
-                          onAllowedStatusesChange={(statuses) =>
-                            updateAction(actionId, { allowedStatuses: statuses })
                           }
                         />
                       )}

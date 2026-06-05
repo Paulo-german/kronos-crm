@@ -39,13 +39,11 @@ Atualiza campos do deal.
   "type": "update_deal",
   "trigger": "quando ocorre",
   "allowedFields": ["title", "value", "priority", "notes"],
-  "allowedStatuses": [],
   "fixedPriority": "high",
   "notesTemplate": "template opcional"
 }
 \`\`\`
 Campos válidos em allowedFields: "title", "value", "priority", "expectedCloseDate", "notes"
-allowedStatuses pode incluir: "WON", "LOST"
 
 ### create_task
 Cria uma tarefa de follow-up.
@@ -152,8 +150,7 @@ O campo \`salesProcess\` do perfil do negócio descreve EXATAMENTE como o client
         {
           "type": "update_deal",
           "trigger": "Ao identificar o modelo e ano do veículo",
-          "allowedFields": ["title", "notes"],
-          "allowedStatuses": []
+          "allowedFields": ["title", "notes"]
         },
         {
           "type": "update_contact",
@@ -171,8 +168,7 @@ O campo \`salesProcess\` do perfil do negócio descreve EXATAMENTE como o client
         {
           "type": "update_deal",
           "trigger": "Ao registrar o valor da cotação",
-          "allowedFields": ["value", "notes"],
-          "allowedStatuses": []
+          "allowedFields": ["value", "notes"]
         },
         {
           "type": "move_deal",
@@ -191,8 +187,7 @@ O campo \`salesProcess\` do perfil do negócio descreve EXATAMENTE como o client
         {
           "type": "update_deal",
           "trigger": "Ao registrar que o cliente aceitou e está enviando documentos",
-          "allowedFields": ["notes"],
-          "allowedStatuses": []
+          "allowedFields": ["notes"]
         },
         {
           "type": "move_deal",
@@ -283,8 +278,7 @@ O campo \`salesProcess\` do perfil do negócio descreve EXATAMENTE como o client
         {
           "type": "update_deal",
           "trigger": "Ao identificar o procedimento de interesse e o nome da paciente",
-          "allowedFields": ["title", "notes"],
-          "allowedStatuses": []
+          "allowedFields": ["title", "notes"]
         },
         {
           "type": "move_deal",

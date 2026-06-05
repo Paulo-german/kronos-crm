@@ -105,7 +105,7 @@ LINGUAGEM E OUTRAS INSTRUÇÕES:
       objective: 'Apresente-se e descubra com quem está falando e qual a principal demanda inicial do lead.',
       keyQuestion: 'Olá! Como posso te ajudar hoje? Por favor, me informe seu nome e o que você está buscando.',
       messageTemplate: null,
-      actions: [{ type: 'update_deal', trigger: 'Ao identificar o nome do lead e o motivo geral do contato', allowedFields: ['title', 'notes'], allowedStatuses: [] }],
+      actions: [{ type: 'update_deal', trigger: 'Ao identificar o nome do lead e o motivo geral do contato', allowedFields: ['title', 'notes'] }],
       order: 0,
     },
     {
@@ -114,7 +114,7 @@ LINGUAGEM E OUTRAS INSTRUÇÕES:
       keyQuestion: 'Perfeito, {nome}! Para que eu possa te atender da melhor forma, pode me contar mais detalhes sobre o que você precisa resolver?',
       messageTemplate: null,
       actions: [
-        { type: 'update_deal', trigger: 'Ao coletar necessidade pontual, requisitos específicos, prazo ou urgência', allowedFields: ['title', 'value', 'priority', 'notes'], allowedStatuses: [] },
+        { type: 'update_deal', trigger: 'Ao coletar necessidade pontual, requisitos específicos, prazo ou urgência', allowedFields: ['title', 'value', 'priority', 'notes'] },
         { type: 'move_deal', trigger: 'Ao entender o que o cliente quer, finalizando a etapa de coleta', targetStagePosition: 1 },
       ],
       order: 1,
@@ -125,7 +125,7 @@ LINGUAGEM E OUTRAS INSTRUÇÕES:
       keyQuestion: null,
       messageTemplate: 'Com base no que você relatou, a melhor opção no nosso caso é {solução}. Ela visa resolver isso com {diferencial}. O que você acha de darmos o próximo passo com o especialista?',
       actions: [
-        { type: 'update_deal', trigger: 'Ao apresentar uma proposta técnica ou orçamentária', allowedFields: ['value', 'notes', 'expectedCloseDate'], allowedStatuses: [] },
+        { type: 'update_deal', trigger: 'Ao apresentar uma proposta técnica ou orçamentária', allowedFields: ['value', 'notes', 'expectedCloseDate'] },
         { type: 'move_deal', trigger: 'Após enviar o orçamento/proposta de solução para o lead', targetStagePosition: 2 },
       ],
       order: 2,
@@ -224,7 +224,6 @@ LINGUAGEM E OUTRAS INSTRUÇÕES:
             type: 'update_deal',
             trigger: 'Ao identificar a empresa do lead e o motivo inicial do contato',
             allowedFields: ['title', 'notes'],
-            allowedStatuses: [],
           },
         ],
         order: 0,
@@ -239,7 +238,6 @@ LINGUAGEM E OUTRAS INSTRUÇÕES:
             type: 'update_deal',
             trigger: 'Ao qualificar necessidades, dores reais ou prazos do lead',
             allowedFields: ['priority', 'notes'],
-            allowedStatuses: [],
           },
           {
             type: 'move_deal',
@@ -383,7 +381,6 @@ LINGUAGEM E OUTRAS INSTRUÇÕES:
             type: 'update_deal',
             trigger: 'Ao identificar o lead e o contato',
             allowedFields: ['title', 'notes'],
-            allowedStatuses: [],
           },
         ],
         order: 0,
@@ -398,7 +395,6 @@ LINGUAGEM E OUTRAS INSTRUÇÕES:
             type: 'update_deal',
             trigger: 'Ao registrar dores emocionais e situação financeira do lead',
             allowedFields: ['priority', 'notes'],
-            allowedStatuses: [],
           },
           {
             type: 'move_deal',
@@ -418,7 +414,6 @@ LINGUAGEM E OUTRAS INSTRUÇÕES:
             type: 'update_deal',
             trigger: 'Ao apresentar o valor, atualizar o card',
             allowedFields: ['value'],
-            allowedStatuses: [],
           },
           {
             type: 'move_deal',
@@ -524,7 +519,6 @@ LINGUAGEM E REGRAS:
             type: 'update_deal',
             trigger: 'Ao identificar a dor de negócio',
             allowedFields: ['title', 'notes'],
-            allowedStatuses: [],
           },
         ],
         order: 0,
@@ -541,7 +535,6 @@ LINGUAGEM E REGRAS:
             type: 'update_deal',
             trigger: 'Ao mapear tamanho do time, ferramentas stack e dor profunda',
             allowedFields: ['title', 'value', 'priority', 'notes'],
-            allowedStatuses: [],
           },
           {
             type: 'move_deal',
@@ -689,7 +682,6 @@ LINGUAGEM E OUTRAS INSTRUÇÕES:
             type: 'update_deal',
             trigger: 'Ao identificar se o cliente busca compra, aluguel e o nome dele',
             allowedFields: ['title', 'notes'],
-            allowedStatuses: [],
           },
         ],
         order: 0,
@@ -704,7 +696,6 @@ LINGUAGEM E OUTRAS INSTRUÇÕES:
             type: 'update_deal',
             trigger: 'Ao levantar as informações de quantidade de quartos, orçamento, ou bairros/códigos de imóveis desejados',
             allowedFields: ['priority', 'value', 'notes'],
-            allowedStatuses: [],
           },
           {
             type: 'move_deal',
@@ -851,7 +842,6 @@ LINGUAGEM E OUTRAS INSTRUÇÕES:
             type: 'update_deal',
             trigger: 'Ao identificar se é paciente novo ou retorno',
             allowedFields: ['title', 'notes'],
-            allowedStatuses: [],
           },
         ],
         order: 0,
@@ -866,7 +856,6 @@ LINGUAGEM E OUTRAS INSTRUÇÕES:
             type: 'update_deal',
             trigger: 'Ao coletar a principal queixa, procedimento desejado e se ele tem plano de saúde/orçamento mapeado',
             allowedFields: ['priority', 'value', 'notes'],
-            allowedStatuses: [],
           },
           {
             type: 'move_deal',
@@ -1011,7 +1000,6 @@ LINGUAGEM DE MARCA:
             type: 'update_deal',
             trigger: 'Ao identificar a intenção ou pegar o nome',
             allowedFields: ['title', 'notes'],
-            allowedStatuses: [],
           },
         ],
         order: 0,
@@ -1027,7 +1015,6 @@ LINGUAGEM DE MARCA:
             type: 'update_deal',
             trigger: 'Ao alinhar uma solução sobre reembolso ou identificar carrinho, frete, valor',
             allowedFields: ['title', 'priority', 'value', 'notes'],
-            allowedStatuses: [],
           },
           {
             type: 'move_deal',
@@ -1049,7 +1036,6 @@ LINGUAGEM DE MARCA:
             type: 'update_deal',
             trigger: 'Ao o cliente aceitar ir pagar ou fazer pix real',
             allowedFields: ['value', 'notes'],
-            allowedStatuses: [],
           },
           {
             type: 'move_deal',
@@ -1165,7 +1151,6 @@ LINGUAGEM:
             trigger:
               'Ao identificar o nome do contato e o motivo (matrícula vs outras demandas)',
             allowedFields: ['title', 'notes'],
-            allowedStatuses: [],
           },
         ],
         order: 0,
@@ -1183,7 +1168,6 @@ LINGUAGEM:
             trigger:
               'Ao qualificar o lead (identificar a série e o que priorizam na escola)',
             allowedFields: ['priority', 'notes'],
-            allowedStatuses: [],
           },
           {
             type: 'move_deal',
@@ -1331,7 +1315,6 @@ LINGUAGEM E OUTRAS INSTRUÇÕES:
             type: 'update_deal',
             trigger: 'Ao identificar o nome do lead e o motivo geral do contato',
             allowedFields: ['title', 'notes'],
-            allowedStatuses: [],
           },
         ],
         order: 0,
@@ -1347,7 +1330,6 @@ LINGUAGEM E OUTRAS INSTRUÇÕES:
             type: 'update_deal',
             trigger: 'Ao coletar necessidade pontual, requisitos específicos, prazo ou urgência',
             allowedFields: ['title', 'value', 'priority', 'notes'],
-            allowedStatuses: [],
           },
           {
             type: 'move_deal',
@@ -1369,7 +1351,6 @@ LINGUAGEM E OUTRAS INSTRUÇÕES:
             type: 'update_deal',
             trigger: 'Ao apresentar uma proposta técnica ou orçamentária',
             allowedFields: ['value', 'notes', 'expectedCloseDate'],
-            allowedStatuses: [],
           },
           {
             type: 'move_deal',
