@@ -209,8 +209,6 @@ async function executeSendWhatsappFollowupDeal(ctx: ExecutorContext): Promise<Ex
     data: {
       lastMessageRole: 'assistant',
       unreadCount: 0,
-      aiPaused: true,
-      pausedAt: new Date(),
     },
   })
 
