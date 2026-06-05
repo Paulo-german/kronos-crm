@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getAgentGroupById } from '@/_data-access/agent-group/get-agent-group-by-id'
 import { getAgents } from '@/_data-access/agent/get-agents'
+import { getInboxes } from '@/_data-access/inbox/get-inboxes'
 import { GroupDetailClient } from '@/(authenticated)/org/[orgSlug]/(agents)/agents/ai-agent/groups/[groupId]/_components/group-detail-client'
 
 interface AgentGroupDetailPageProps {
@@ -12,14 +13,22 @@ const AgentGroupDetailPage = async ({ params }: AgentGroupDetailPageProps) => {
   const { orgSlug, groupId } = await params
   const ctx = await getOrgContext(orgSlug)
 
-  const [group, allOrgAgents] = await Promise.all([
+  const [group, allOrgAgents, allOrgInboxes] = await Promise.all([
     getAgentGroupById(groupId, ctx.orgId),
     getAgents(ctx.orgId),
+    getInboxes(ctx.orgId),
   ])
 
   if (!group) notFound()
 
-  return <GroupDetailClient group={group} allOrgAgents={allOrgAgents} orgSlug={orgSlug} />
+  return (
+    <GroupDetailClient
+      group={group}
+      allOrgAgents={allOrgAgents}
+      allOrgInboxes={allOrgInboxes}
+      orgSlug={orgSlug}
+    />
+  )
 }
 
 export default AgentGroupDetailPage

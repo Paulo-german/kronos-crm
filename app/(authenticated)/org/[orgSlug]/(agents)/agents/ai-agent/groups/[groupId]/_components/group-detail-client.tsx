@@ -35,18 +35,25 @@ import { MembersCard } from './members-card'
 import { LinkedInboxesCard } from './linked-inboxes-card'
 import type { AgentGroupDetailDto } from '@/_data-access/agent-group/get-agent-group-by-id'
 import type { AgentDto } from '@/_data-access/agent/get-agents'
+import type { InboxListDto } from '@/_data-access/inbox/get-inboxes'
 
 interface GroupDetailClientProps {
   group: AgentGroupDetailDto
   allOrgAgents: AgentDto[]
+  allOrgInboxes: InboxListDto[]
   orgSlug: string
 }
 
 export function GroupDetailClient({
   group,
   allOrgAgents,
+  allOrgInboxes,
   orgSlug,
 }: GroupDetailClientProps) {
+  // Inboxes disponíveis para vinculação: sem agente standalone e sem grupo (ou vinculados a este grupo)
+  const availableInboxes = allOrgInboxes.filter(
+    (inbox) => !inbox.agentId && (!inbox.agentGroupId || inbox.agentGroupId === group.id),
+  )
   return (
     <div className="flex flex-1 min-h-0 bg-background">
       <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-6">
@@ -87,7 +94,12 @@ export function GroupDetailClient({
           <ConfigCard group={group} />
           <RouterConfigCard group={group} />
           <MembersCard group={group} allOrgAgents={allOrgAgents} />
-          <LinkedInboxesCard inboxes={group.inboxes} orgSlug={orgSlug} />
+          <LinkedInboxesCard
+            groupId={group.id}
+            inboxes={group.inboxes}
+            availableInboxes={availableInboxes}
+            orgSlug={orgSlug}
+          />
         </div>
       </div>
     </div>
@@ -117,6 +129,7 @@ function ConfigCard({ group }: ConfigCardProps) {
     {
       onSuccess: () => {
         toast.success('Configuração salva.')
+        form.reset(form.getValues())
       },
       onError: ({ error }) => {
         toast.error(error.serverError || 'Erro ao salvar configuração.')

@@ -20,6 +20,7 @@ export interface InboxListDto {
   // NAO incluir tokens/secrets na listagem (seguranca — nunca expor ao cliente)
   agentId: string | null
   agentName: string | null
+  agentGroupId: string | null
   conversationsCount: number
   createdAt: Date
 }
@@ -49,6 +50,7 @@ const fetchInboxesFromDb = async (orgId: string): Promise<InboxListDto[]> => {
     zapiInstanceId: inbox.zapiInstanceId,
     agentId: inbox.agentId,
     agentName: inbox.agent?.name ?? null,
+    agentGroupId: inbox.agentGroupId,
     conversationsCount: inbox._count.conversations,
     createdAt: inbox.createdAt,
   }))
