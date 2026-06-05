@@ -1,5 +1,6 @@
 import Header, {
   HeaderLeft,
+  HeaderRight,
   HeaderTitle,
   HeaderSubTitle,
 } from '@/_components/header'
@@ -9,6 +10,7 @@ import { getAgentGroups } from '@/_data-access/agent-group/get-agent-groups'
 import { getAgents } from '@/_data-access/agent/get-agents'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 import { GroupsCardList } from '@/(authenticated)/org/[orgSlug]/(agents)/agents/ai-agent/groups/_components/groups-card-list'
+import { CreateGroupButton } from '@/(authenticated)/org/[orgSlug]/(agents)/agents/ai-agent/groups/_components/create-group-button'
 
 interface AgentGroupsPageProps {
   params: Promise<{ orgSlug: string }>
@@ -34,6 +36,9 @@ const AgentGroupsPage = async ({ params }: AgentGroupsPageProps) => {
           </HeaderSubTitle>
           <QuotaHint orgId={ctx.orgId} entity="agent_group" />
         </HeaderLeft>
+        <HeaderRight>
+          <CreateGroupButton withinQuota={quota.withinQuota} agents={agents} />
+        </HeaderRight>
       </Header>
 
       <GroupsCardList
