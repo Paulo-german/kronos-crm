@@ -1323,11 +1323,14 @@ export async function runSingleV2(
         fetcher,
       })
 
+      lastSentId = inlineResult.lastSentId
+
       logger.info('single-v2 inline media send completed', {
         conversationId: ctx.conversationId,
         blocksSent: inlineResult.blocksSent,
         blocksSkipped: inlineResult.blocksSkipped,
         ssrfBlockedCount: inlineResult.ssrfBlockedUrls.length,
+        lastSentId,
       })
 
       triggerMetadata.set(

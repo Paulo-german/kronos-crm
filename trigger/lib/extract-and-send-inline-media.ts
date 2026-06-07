@@ -33,6 +33,7 @@ export interface SendInlineMediaResult {
   blocksSent: number
   blocksSkipped: number
   ssrfBlockedUrls: string[]
+  lastSentId: string | null
 }
 
 // ---------------------------------------------------------------------------
@@ -166,6 +167,7 @@ export async function extractAndSendInlineMedia(
 
   let blocksSent = 0
   let blocksSkipped = 0
+  let lastSentId: string | null = null
 
   for (const block of blocks) {
     if (block.kind === 'text' || block.kind === 'blocked_url') {
@@ -176,7 +178,7 @@ export async function extractAndSendInlineMedia(
       }
 
       try {
-        await sendOutboundMessage({
+        const { sentIds } = await sendOutboundMessage({
           conversationId: ctx.conversationId,
           organizationId: ctx.organizationId,
           credentials: ctx.credentials,
@@ -185,6 +187,7 @@ export async function extractAndSendInlineMedia(
           dedupTtlSeconds: ctx.dedupTtlSeconds,
           fetcher: ctx.fetcher,
         })
+        if (sentIds.length > 0) lastSentId = sentIds.at(-1) ?? lastSentId
         blocksSent++
       } catch (error) {
         logger.warn('inline media: text block send failed', {
@@ -232,5 +235,5 @@ export async function extractAndSendInlineMedia(
     }
   }
 
-  return { blocksSent, blocksSkipped, ssrfBlockedUrls }
+  return { blocksSent, blocksSkipped, ssrfBlockedUrls, lastSentId }
 }
