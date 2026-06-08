@@ -242,6 +242,9 @@ async function fetchConversationsPaginatedFromDb(
   const normalizedPhone = searchTerm
     ? searchTerm.replace(/[\s()\-+]/g, '')
     : ''
+  // Detecta UUID completo para busca direta pelo id da conversa
+  const isFullUuid =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(searchTerm)
 
   // Filtro de status aplicado consistentemente a todas as queries
   const statusFilter: Prisma.ConversationWhereInput = filters?.status
@@ -266,24 +269,30 @@ async function fetchConversationsPaginatedFromDb(
       : {}),
     // assigneeIds: OR — qualquer um dos selecionados (sentinela 'unassigned' inclui null)
     ...buildAssigneeFilter(filters?.assigneeIds),
+    // Busca: id exato da conversa (UUID) OU campos do contato (nome/email/telefone/empresa)
     // Quando masked: email e phone removidos da busca para não vazar PII
     ...(searchTerm
       ? {
-          contact: {
-            OR: [
-              { name: { contains: searchTerm, mode: 'insensitive' as const } },
-              ...(!masked
-                ? [
-                    { email: { contains: searchTerm, mode: 'insensitive' as const } },
-                    // Busca telefone com termo normalizado (sem formatação)
-                    ...(normalizedPhone.length >= 3
-                      ? [{ phone: { contains: normalizedPhone, mode: 'insensitive' as const } }]
-                      : []),
-                  ]
-                : []),
-              { company: { name: { contains: searchTerm, mode: 'insensitive' as const } } },
-            ],
-          },
+          OR: [
+            ...(isFullUuid ? [{ id: searchTerm }] : []),
+            {
+              contact: {
+                OR: [
+                  { name: { contains: searchTerm, mode: 'insensitive' as const } },
+                  ...(!masked
+                    ? [
+                        { email: { contains: searchTerm, mode: 'insensitive' as const } },
+                        // Busca telefone com termo normalizado (sem formatação)
+                        ...(normalizedPhone.length >= 3
+                          ? [{ phone: { contains: normalizedPhone, mode: 'insensitive' as const } }]
+                          : []),
+                      ]
+                    : []),
+                  { company: { name: { contains: searchTerm, mode: 'insensitive' as const } } },
+                ],
+              },
+            },
+          ],
         }
       : {}),
   }
