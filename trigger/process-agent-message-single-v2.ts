@@ -528,6 +528,8 @@ export async function runSingleV2(
   )
 
   updateActiveTrace({
+    sessionId: ctx.conversationId,
+    userId: ctx.organizationId,
     tags: ctx.traceTags,
     metadata: {
       agentId: ctx.effectiveAgentId,
