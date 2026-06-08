@@ -47,7 +47,7 @@ export const getOrgPipelines = async (orgId: string): Promise<OrgPipelineDto[]> 
   const getCached = unstable_cache(
     async () => fetchOrgPipelinesFromDb(orgId),
     [`org-pipelines-${orgId}`],
-    { tags: [`pipeline:${orgId}`] },
+    { tags: [`pipeline:${orgId}`], revalidate: 3600 },
   )
 
   return getCached()

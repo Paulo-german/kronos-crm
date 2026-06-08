@@ -110,7 +110,7 @@ export const getOrgPipeline = cache(
     const getCachedPipeline = unstable_cache(
       async () => fetchOrgPipelineFromDb(orgId, pipelineId),
       [`org-pipeline-${orgId}-${pipelineId ?? 'default'}`],
-      { tags: [`pipeline:${orgId}`] },
+      { tags: [`pipeline:${orgId}`], revalidate: 3600 },
     )
 
     return getCachedPipeline()

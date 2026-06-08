@@ -3,6 +3,7 @@
 import { superAdminActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { adminDeleteOrganizationSchema } from './schema'
+import { revalidateTag } from 'next/cache'
 
 export const adminDeleteOrganization = superAdminActionClient
   .schema(adminDeleteOrganizationSchema)
@@ -14,7 +15,11 @@ export const adminDeleteOrganization = superAdminActionClient
 
     const organization = await db.organization.findUniqueOrThrow({
       where: { id: organizationId },
-      select: { name: true },
+      select: {
+        name: true,
+        slug: true,
+        members: { select: { userId: true } },
+      },
     })
 
     if (confirmName !== organization.name) {
@@ -22,6 +27,12 @@ export const adminDeleteOrganization = superAdminActionClient
     }
 
     await db.organization.delete({ where: { id: organizationId } })
+
+    // Invalidar cache da org e de cada membro que tinha acesso a ela
+    revalidateTag(`organization:${organization.slug}`)
+    for (const member of organization.members) {
+      revalidateTag(`user-orgs:${member.userId}`)
+    }
 
     return { success: true }
   })

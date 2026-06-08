@@ -3,6 +3,7 @@
 import { ownerActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { toggleSuperAdminSchema } from './schema'
+import { revalidateTag } from 'next/cache'
 
 const CONFIRMATION_WORD = 'CONFIRMAR'
 
@@ -35,6 +36,9 @@ export const toggleSuperAdmin = ownerActionClient
       where: { id: userId },
       data: { isSuperAdmin: !user.isSuperAdmin },
     })
+
+    // Invalidar cache do usuário-alvo (isSuperAdmin é cacheado em get-user-by-id)
+    revalidateTag(`user:${userId}`)
 
     return {
       success: true,

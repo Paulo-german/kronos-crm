@@ -3,6 +3,7 @@
 import { superAdminActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { upsertModuleSchema } from './schema'
+import { revalidateTag } from 'next/cache'
 
 export const upsertModule = superAdminActionClient
   .schema(upsertModuleSchema)
@@ -17,6 +18,9 @@ export const upsertModule = superAdminActionClient
         data: { slug, name, isActive },
       })
     }
+
+    // Módulos alimentam limites de plano — invalidar para refletir imediatamente
+    revalidateTag('plan-limits')
 
     return { success: true }
   })

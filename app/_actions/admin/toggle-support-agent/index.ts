@@ -3,6 +3,7 @@
 import { ownerActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { toggleSupportAgentSchema } from './schema'
+import { revalidateTag } from 'next/cache'
 
 const CONFIRMATION_WORD = 'CONFIRMAR'
 
@@ -31,6 +32,9 @@ export const toggleSupportAgent = ownerActionClient
       where: { id: userId },
       data: { isSupportAgent: !user.isSupportAgent },
     })
+
+    // Invalidar cache do usuário-alvo (isSupportAgent é cacheado em get-user-by-id)
+    revalidateTag(`user:${userId}`)
 
     return {
       success: true,

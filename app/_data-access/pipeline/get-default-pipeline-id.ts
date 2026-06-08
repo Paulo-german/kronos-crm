@@ -30,7 +30,7 @@ export const getDefaultPipelineId = cache(async (orgId: string): Promise<string 
   const getCached = unstable_cache(
     async () => fetchDefaultPipelineIdFromDb(orgId),
     [`default-pipeline-id-${orgId}`],
-    { tags: [`pipeline:${orgId}`] },
+    { tags: [`pipeline:${orgId}`], revalidate: 3600 },
   )
 
   return getCached()

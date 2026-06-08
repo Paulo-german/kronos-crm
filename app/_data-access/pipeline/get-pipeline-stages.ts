@@ -48,7 +48,7 @@ export const getPipelineStages = async (
   const getCached = unstable_cache(
     async () => fetchPipelineStagesFromDb(pipelineIds),
     [`pipeline-stages-${sortedIds}`],
-    { tags: [`pipeline:${orgId}`] },
+    { tags: [`pipeline:${orgId}`], revalidate: 3600 },
   )
 
   return getCached()

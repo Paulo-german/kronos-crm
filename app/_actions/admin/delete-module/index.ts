@@ -3,6 +3,7 @@
 import { superAdminActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { deleteModuleSchema } from './schema'
+import { revalidateTag } from 'next/cache'
 
 export const deleteModule = superAdminActionClient
   .schema(deleteModuleSchema)
@@ -33,6 +34,9 @@ export const deleteModule = superAdminActionClient
     }
 
     await db.module.delete({ where: { id: moduleId } })
+
+    // Módulos alimentam limites de plano — invalidar para refletir imediatamente
+    revalidateTag('plan-limits')
 
     return { success: true }
   })

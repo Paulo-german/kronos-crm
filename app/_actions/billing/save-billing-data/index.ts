@@ -5,6 +5,7 @@ import { saveBillingDataSchema } from './schema'
 import { stripe } from '@/_lib/stripe'
 import { db } from '@/_lib/prisma'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
+import { revalidateTag } from 'next/cache'
 
 export const saveBillingData = freeOrgActionClient
   .schema(saveBillingDataSchema)
@@ -30,7 +31,7 @@ export const saveBillingData = freeOrgActionClient
         billingCity: data.billingCity,
         billingState: data.billingState,
       },
-      select: { stripeCustomerId: true, name: true },
+      select: { stripeCustomerId: true, name: true, slug: true },
     })
 
     // Sincronizar com Stripe Customer
@@ -91,6 +92,9 @@ export const saveBillingData = freeOrgActionClient
         data: { stripeCustomerId: customer.id },
       })
     }
+
+    // Invalidar cache da org (dados fiscais são cacheados em get-organization-by-slug)
+    revalidateTag(`organization:${org.slug}`)
 
     return { success: true }
   })
