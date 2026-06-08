@@ -14,16 +14,7 @@ export function extractMessageId(data: Record<string, unknown> | null): string |
   if (!data) return undefined
   const inner = data?.data as Record<string, unknown> | undefined
   const info = inner?.Info as Record<string, unknown> | undefined
-  const id = (info?.ID ?? info?.id) as string | undefined
-  if (!id) {
-    console.warn('[evolution-go] extractMessageId: ID não encontrado na resposta', {
-      dataKeys: Object.keys(data),
-      innerKeys: inner ? Object.keys(inner) : null,
-      infoKeys: info ? Object.keys(info) : null,
-      rawData: JSON.stringify(data).slice(0, 500),
-    })
-  }
-  return id
+  return (info?.ID ?? info?.id) as string | undefined
 }
 
 export async function sendEvolutionGoMessage(
