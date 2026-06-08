@@ -93,6 +93,7 @@ export const registerAndAcceptInvite = actionClient
     // 7. Invalidar caches
     revalidateTag(`user-orgs:${authData.user.id}`)
     revalidateTag(`org-members:${member.organizationId}`)
+    revalidateTag(`membership:${authData.user.id}:${member.organization.slug}`) // Status PENDING→ACCEPTED altera RBAC
 
     // 8. Redirect server-side (evita race condition com revalidateTag)
     redirect(`/org/${member.organization.slug}/crm/home`)

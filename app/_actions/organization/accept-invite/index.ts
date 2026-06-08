@@ -67,11 +67,12 @@ export const acceptInvite = authActionClient
     })
 
     // Invalidar caches relevantes
+    const orgSlug = member.organization.slug
     revalidateTag(`user-orgs:${ctx.userId}`) // Para aparecer no seletor de orgs
     revalidateTag(`org-members:${member.organizationId}`) // Para atualizar lista de membros
+    revalidateTag(`membership:${ctx.userId}:${orgSlug}`) // Status PENDING→ACCEPTED altera RBAC
 
     // Notificar OWNERs e ADMINs da org sobre o novo membro
-    const orgSlug = member.organization.slug
     const admins = await db.member.findMany({
       where: {
         organizationId: member.organizationId,
