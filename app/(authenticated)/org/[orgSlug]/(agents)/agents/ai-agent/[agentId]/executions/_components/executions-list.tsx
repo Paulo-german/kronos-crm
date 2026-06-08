@@ -210,6 +210,7 @@ export default function ExecutionsList({
     applyFilters,
     removeStatus,
     removeDates,
+    removeConversationId,
     clearAll,
     activeFilterCount,
     hasActiveFilters,
@@ -262,6 +263,7 @@ export default function ExecutionsList({
           filters={filters}
           onRemoveStatus={removeStatus}
           onRemoveDates={removeDates}
+          onRemoveConversationId={removeConversationId}
           onClearAll={clearAll}
           hasActiveFilters={hasActiveFilters}
         />

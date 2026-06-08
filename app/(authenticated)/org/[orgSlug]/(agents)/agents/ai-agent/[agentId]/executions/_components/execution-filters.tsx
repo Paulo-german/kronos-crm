@@ -60,6 +60,7 @@ interface LocalFilters {
   dateTo: Date | null
   timeFrom: string // HH:mm
   timeTo: string   // HH:mm
+  conversationId: string
 }
 
 const DEFAULT_LOCAL: LocalFilters = {
@@ -68,6 +69,7 @@ const DEFAULT_LOCAL: LocalFilters = {
   dateTo: null,
   timeFrom: '00:00',
   timeTo: '23:59',
+  conversationId: '',
 }
 
 /**
@@ -150,6 +152,19 @@ export function ExecutionFiltersSheet({
         </SheetHeader>
 
         <div className="flex-1 space-y-6 overflow-y-auto py-4">
+          {/* Conversa */}
+          <div className="space-y-3">
+            <Label className="text-sm font-semibold">Conversa</Label>
+            <Input
+              placeholder="Cole o ID da conversa (UUID)"
+              value={local.conversationId}
+              onChange={(event) =>
+                setLocal({ ...local, conversationId: event.target.value.trim() })
+              }
+              className="font-mono text-xs"
+            />
+          </div>
+
           {/* Status */}
           <div className="space-y-3">
             <Label className="text-sm font-semibold">Status</Label>
@@ -307,6 +322,7 @@ interface ExecutionFilterBadgesProps {
   filters: LocalFilters
   onRemoveStatus: (status: AgentExecutionStatus) => void
   onRemoveDates: () => void
+  onRemoveConversationId: () => void
   onClearAll: () => void
   hasActiveFilters: boolean
 }
@@ -315,6 +331,7 @@ export function ExecutionFilterBadges({
   filters,
   onRemoveStatus,
   onRemoveDates,
+  onRemoveConversationId,
   onClearAll,
   hasActiveFilters,
 }: ExecutionFilterBadgesProps) {
@@ -325,6 +342,21 @@ export function ExecutionFilterBadges({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
+      {filters.conversationId && (
+        <Badge
+          variant="secondary"
+          className="gap-1 pr-1 font-mono text-xs font-normal"
+        >
+          Conversa: {filters.conversationId.slice(0, 8)}…
+          <button
+            onClick={onRemoveConversationId}
+            className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </Badge>
+      )}
+
       {filters.status.map((status) => (
         <Badge
           key={status}
@@ -389,6 +421,7 @@ export function useExecutionFilters() {
   const dateToParam = searchParams.get('endDate')
   const timeFromParam = searchParams.get('timeFrom')
   const timeToParam = searchParams.get('timeTo')
+  const conversationIdParam = searchParams.get('conversationId')
 
   const filters: LocalFilters = {
     status: statusParam
@@ -398,6 +431,7 @@ export function useExecutionFilters() {
     dateTo: dateToParam ? parseLocalDate(dateToParam) : null,
     timeFrom: timeFromParam ?? '00:00',
     timeTo: timeToParam ?? '23:59',
+    conversationId: conversationIdParam ?? '',
   }
 
   const applyFilters = (newFilters: LocalFilters) => {
@@ -426,6 +460,12 @@ export function useExecutionFilters() {
       params.delete('timeTo')
     }
 
+    if (newFilters.conversationId) {
+      params.set('conversationId', newFilters.conversationId)
+    } else {
+      params.delete('conversationId')
+    }
+
     router.replace(`${pathname}?${params.toString()}`, { scroll: false })
   }
 
@@ -446,9 +486,13 @@ export function useExecutionFilters() {
     })
   }
 
+  const removeConversationId = () => {
+    applyFilters({ ...filters, conversationId: '' })
+  }
+
   const clearAll = () => {
     const params = new URLSearchParams(searchParams.toString())
-    ;['status', 'startDate', 'endDate', 'timeFrom', 'timeTo', 'page'].forEach(
+    ;['status', 'startDate', 'endDate', 'timeFrom', 'timeTo', 'conversationId', 'page'].forEach(
       (key) => params.delete(key),
     )
     router.replace(`${pathname}?${params.toString()}`, { scroll: false })
@@ -457,12 +501,14 @@ export function useExecutionFilters() {
   let activeFilterCount = 0
   if (filters.status.length > 0) activeFilterCount++
   if (filters.dateFrom || filters.dateTo) activeFilterCount++
+  if (filters.conversationId) activeFilterCount++
 
   return {
     filters,
     applyFilters,
     removeStatus,
     removeDates,
+    removeConversationId,
     clearAll,
     activeFilterCount,
     hasActiveFilters: activeFilterCount > 0,

@@ -37,6 +37,7 @@ export interface AgentExecutionFilter {
   status?: AgentExecutionStatus
   startDate?: Date
   endDate?: Date
+  conversationId?: string
   page?: number
   perPage?: number
 }
@@ -56,6 +57,7 @@ const fetchExecutionsFromDb = async (
     agentId,
     organizationId: orgId,
     ...(filters?.status ? { status: filters.status } : {}),
+    ...(filters?.conversationId ? { conversationId: filters.conversationId } : {}),
     ...(startDate || endDate
       ? {
           startedAt: {

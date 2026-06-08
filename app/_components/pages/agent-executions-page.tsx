@@ -28,6 +28,7 @@ interface AgentExecutionsPageProps {
     endDate?: string
     timeFrom?: string
     timeTo?: string
+    conversationId?: string
     page?: string
   }>
 }
@@ -49,6 +50,7 @@ const AgentExecutionsPage = async ({ params, searchParams }: AgentExecutionsPage
     endDate: resolvedSearchParams.endDate
       ? buildLocalDate(resolvedSearchParams.endDate, resolvedSearchParams.timeTo)
       : undefined,
+    conversationId: resolvedSearchParams.conversationId?.trim() || undefined,
     page: resolvedSearchParams.page ? Number(resolvedSearchParams.page) : 1,
     perPage: 20,
   }
