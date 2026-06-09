@@ -107,6 +107,7 @@ export function DateRangePicker({ defaultLabel = 'Este mês' }: DateRangePickerP
           selected={selected}
           onSelect={handleSelect}
           numberOfMonths={2}
+          classNames={{ root: 'w-full' }}
         />
       </PopoverContent>
     </Popover>
