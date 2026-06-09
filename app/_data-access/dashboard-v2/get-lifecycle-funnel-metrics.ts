@@ -43,7 +43,7 @@ const MONTH_LABELS_PT_BR = [
 
 export interface LifecycleStageMetrics {
   stage: LifecycleStage
-  // Fluxo: contatos distintos que entraram no estágio durante o DateRange (número principal)
+  // Fluxo: todas as entradas no estágio durante o DateRange (inclui múltiplas entradas do mesmo contato)
   periodCount: number
   prevPeriodCount: number
   // Estoque: snapshot atual de contatos no estágio (footnote)
@@ -54,6 +54,8 @@ export interface LifecycleStageMetrics {
   aiQualifiedTotal?: number
   openPipelineValue?: number
   atRiskCount?: number
+  // CUSTOMER: contatos distintos que entraram no estágio no período (sem dupla-contagem por revertências)
+  uniqueCustomerCount?: number
 }
 
 export interface LifecycleEvolutionPoint {
@@ -168,6 +170,7 @@ async function fetchLifecycleFunnelMetrics(
     openPipelineAgg,
     atRiskCustomerCount,
     evolutionRows,
+    uniqueCustomerRows,
   ] = await Promise.all([
     // 1) Fluxo do período atual: entradas por estágio
     db.contactLifecycleHistory.groupBy({
@@ -251,6 +254,16 @@ async function fetchLifecycleFunnelMetrics(
       },
       select: { toStage: true, createdAt: true },
     }),
+    // 10) CUSTOMER: contatos distintos que entraram no estágio no período
+    db.contactLifecycleHistory.findMany({
+      where: {
+        ...historyWhereBase,
+        toStage: LifecycleStage.CUSTOMER,
+        createdAt: { gte: dateRange.start, lte: dateRange.end },
+      },
+      distinct: ['contactId'],
+      select: { contactId: true },
+    }),
   ])
 
   const currentTally = tallyByStage(currentFlowGroups)
@@ -282,7 +295,7 @@ async function fetchLifecycleFunnelMetrics(
     if (stage === LifecycleStage.OPPORTUNITY) {
       return { ...base, openPipelineValue: Number(openPipelineAgg._sum.value ?? 0) }
     }
-    return { ...base, atRiskCount: atRiskCustomerCount }
+    return { ...base, atRiskCount: atRiskCustomerCount, uniqueCustomerCount: uniqueCustomerRows.length }
   })
 
   const evolutionByMonth = buildEvolutionPoints(evolutionRows, LIFECYCLE_EVOLUTION_MONTHS)

@@ -1,4 +1,5 @@
 import { LifecycleStage } from '@prisma/client'
+import { InfoIcon } from 'lucide-react'
 import {
   Card,
   CardContent,
@@ -6,6 +7,7 @@ import {
   CardTitle,
 } from '@/_components/ui/card'
 import { Badge } from '@/_components/ui/badge'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/_components/ui/tooltip'
 import { LIFECYCLE_STAGE_CONFIG } from '@/_lib/lifecycle/lifecycle-stage-config'
 import { formatVariation } from '@/_utils/date-range'
 import type { LifecycleStageMetrics } from '@/_data-access/dashboard-v2/get-lifecycle-funnel-metrics'
@@ -56,16 +58,10 @@ function StageSubInfo({ metrics }: { metrics: LifecycleStageMetrics }) {
   }
 
   // CUSTOMER
-  const atRisk = metrics.atRiskCount ?? 0
+  const unique = metrics.uniqueCustomerCount ?? 0
   return (
-    <p
-      className={
-        atRisk > 0
-          ? 'text-sm font-medium text-destructive'
-          : 'text-sm text-muted-foreground'
-      }
-    >
-      {atRisk} {atRisk === 1 ? 'cliente em risco' : 'clientes em risco'}
+    <p className="text-xs text-muted-foreground">
+      {unique} {unique === 1 ? 'cliente único' : 'clientes únicos'} no período
     </p>
   )
 }
@@ -93,16 +89,29 @@ export function LifecycleStageCard({ metrics }: LifecycleStageCardProps) {
           <span className="flex items-center gap-1.5">
             <Icon className={`size-4 ${config.colorClassName}`} />
             {config.label}
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger asChild>
+                <InfoIcon className="size-3 cursor-help text-muted-foreground" />
+              </TooltipTrigger>
+              <TooltipContent className="max-w-56 bg-[hsl(var(--primary-dark))] text-center text-xs text-white shadow-none">
+                {config.dashboardHint}
+              </TooltipContent>
+            </Tooltip>
           </span>
           <Badge variant={badgeVariant}>{badgeLabel}</Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col justify-between gap-3 pt-0">
-        <p className="text-3xl font-bold tabular-nums">{metrics.periodCount}</p>
+        <div>
+          <p className="text-3xl font-bold tabular-nums">{metrics.periodCount}</p>
+          {metrics.stage === LifecycleStage.CUSTOMER && (
+            <p className="text-xs text-muted-foreground">entradas no período</p>
+          )}
+        </div>
         <div className="space-y-1">
           <StageSubInfo metrics={metrics} />
           <p className="text-xs text-muted-foreground">
-            Estoque atual: {metrics.stockCount}
+            {metrics.stockCount} contatos atualmente nesta etapa
           </p>
         </div>
       </CardContent>

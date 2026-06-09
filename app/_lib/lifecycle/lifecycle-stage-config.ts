@@ -20,6 +20,7 @@ export interface LifecycleStageVisualConfig {
   colorClassName: string
   badgeClassName: string
   chartColor: string
+  dashboardHint: string
 }
 
 export const LIFECYCLE_STAGE_CONFIG: Record<LifecycleStage, LifecycleStageVisualConfig> = {
@@ -29,6 +30,8 @@ export const LIFECYCLE_STAGE_CONFIG: Record<LifecycleStage, LifecycleStageVisual
     colorClassName: 'text-zinc-400',
     badgeClassName: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20',
     chartColor: 'hsl(var(--muted-foreground))',
+    dashboardHint:
+      'Quantos contatos entraram na etapa Lead no período selecionado. O total ao final mostra quantos estão aqui agora.',
   },
   [LifecycleStage.QUALIFIED]: {
     label: 'Qualificado',
@@ -36,6 +39,8 @@ export const LIFECYCLE_STAGE_CONFIG: Record<LifecycleStage, LifecycleStageVisual
     colorClassName: 'text-orange-500',
     badgeClassName: 'bg-orange-500/10 text-orange-500 border-orange-500/20',
     chartColor: '#f97316',
+    dashboardHint:
+      'Quantos contatos foram qualificados no período selecionado. O total ao final mostra quantos estão aqui agora.',
   },
   [LifecycleStage.OPPORTUNITY]: {
     label: 'Oportunidade',
@@ -43,6 +48,8 @@ export const LIFECYCLE_STAGE_CONFIG: Record<LifecycleStage, LifecycleStageVisual
     colorClassName: 'text-blue-500',
     badgeClassName: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
     chartColor: '#3b82f6',
+    dashboardHint:
+      'Quantos contatos viraram oportunidade no período selecionado. O total ao final mostra quantos estão aqui agora.',
   },
   [LifecycleStage.CUSTOMER]: {
     label: 'Cliente',
@@ -50,6 +57,8 @@ export const LIFECYCLE_STAGE_CONFIG: Record<LifecycleStage, LifecycleStageVisual
     colorClassName: 'text-kronos-purple',
     badgeClassName: 'bg-kronos-purple/10 text-kronos-purple border-kronos-purple/20',
     chartColor: 'hsl(var(--kronos-purple-hsl))',
+    dashboardHint:
+      'Entradas na etapa Cliente no período — inclui revertências. Abaixo aparece o número de clientes únicos para comparação. O total ao final mostra quantos estão aqui agora.',
   },
 }
 

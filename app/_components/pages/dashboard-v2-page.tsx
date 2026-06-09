@@ -1,5 +1,6 @@
 import { Suspense } from 'react'
-import { subDays, startOfDay, endOfDay } from 'date-fns'
+import { subDays, startOfDay, endOfDay, format } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { parseDateRange } from '@/_utils/date-range'
 import { DASHBOARD_V2_DEFAULT_DAYS } from '@/_lib/lifecycle/dashboard-v2-constants'
@@ -25,16 +26,20 @@ const DashboardV2Page = async ({ params, searchParams }: DashboardV2PageProps) =
   const { start, end } = await searchParams
   const ctx = await getOrgContext(orgSlug)
 
+  const now = new Date()
   const dateRange = (start ?? end)
     ? parseDateRange(start, end)
     : {
-        start: startOfDay(subDays(new Date(), DASHBOARD_V2_DEFAULT_DAYS - 1)),
-        end: endOfDay(new Date()),
+        start: startOfDay(subDays(now, DASHBOARD_V2_DEFAULT_DAYS - 1)),
+        end: endOfDay(now),
       }
+
+  const updatedAtLabel = format(now, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
 
   return (
     <div className="flex h-full flex-col gap-6 p-6">
-      <div className="flex items-center justify-end">
+      <div className="flex items-center justify-between">
+        <span className="text-muted-foreground text-xs">Atualizado em {updatedAtLabel}</span>
         <DateRangePicker defaultLabel="Últimos 30 dias" />
       </div>
       <Suspense
