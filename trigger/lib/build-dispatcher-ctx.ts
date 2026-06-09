@@ -918,7 +918,7 @@ export async function buildDispatcherCtx(
 
       if (groupData) {
         const activeGroupWorkers = groupData.members
-          .filter((member) => member.isActive)
+          .filter((member) => member.isActive && member.agent.isActive)
           .map((member) => ({
             agentId: member.agentId,
             name: member.agent.name,

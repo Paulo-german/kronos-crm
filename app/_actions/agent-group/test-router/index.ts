@@ -39,7 +39,9 @@ export const testRouter = orgActionClient
 
     if (!group) throw new Error('Grupo não encontrado.')
 
-    const activeWorkers: RouterActiveWorker[] = group.members.filter((member) => member.isActive)
+    const activeWorkers: RouterActiveWorker[] = group.members.filter(
+      (member) => member.isActive && member.agent.isActive,
+    )
 
     if (activeWorkers.length === 0) throw new Error('Grupo sem workers ativos.')
 

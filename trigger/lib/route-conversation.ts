@@ -29,6 +29,7 @@ interface RouteConversationInput {
   conversationId: string
   organizationId: string
   messageHistory: Array<{ role: string; content: string }>
+  excludeAgentId?: string
 }
 
 // ---------------------------------------------------------------------------
@@ -67,13 +68,25 @@ export async function routeConversation(
 
   if (!group) return null
 
-  const activeWorkers: RouterActiveWorker[] = group.members.filter((member) => member.isActive)
+  const allActiveWorkers: RouterActiveWorker[] = group.members.filter(
+    (member) => member.isActive && member.agent.isActive,
+  )
 
-  if (activeWorkers.length === 0) return null
+  // Exclui o agente atual da pool quando chamado durante uma transferência,
+  // evitando self-transfers onde o router elege o mesmo agente que transferiu.
+  const activeWorkers =
+    input.excludeAgentId
+      ? allActiveWorkers.filter((worker) => worker.agentId !== input.excludeAgentId)
+      : allActiveWorkers
 
-  // Atalho: único worker ativo → retornar direto sem custo de LLM
-  if (activeWorkers.length === 1) {
-    const worker = activeWorkers[0]
+  // Se excluir o agente atual deixar a pool vazia, usa todos os ativos como fallback
+  const candidateWorkers = activeWorkers.length > 0 ? activeWorkers : allActiveWorkers
+
+  if (candidateWorkers.length === 0) return null
+
+  // Atalho: único worker candidato → retornar direto sem custo de LLM
+  if (candidateWorkers.length === 1) {
+    const worker = candidateWorkers[0]
     return {
       targetAgentId: worker.agentId,
       confidence: 1,
@@ -86,7 +99,7 @@ export async function routeConversation(
   const routerConfig = group.routerConfig as RouterConfig | null
 
   const systemPrompt = buildRouterSystemPrompt({
-    activeWorkers,
+    activeWorkers: candidateWorkers,
     routerConfig,
     routerPrompt: group.routerPrompt,
   })
@@ -144,7 +157,7 @@ export async function routeConversation(
           conversationId: input.conversationId,
           organizationId: input.organizationId,
           model: group.routerModelId,
-          workerCount: activeWorkers.length,
+          workerCount: candidateWorkers.length,
         },
       },
     })
@@ -189,8 +202,8 @@ export async function routeConversation(
     ).catch(() => {})
   }
 
-  // 7. Validar que o agente retornado é um worker válido do grupo
-  const validWorker = activeWorkers.find(
+  // 7. Validar que o agente retornado é um worker válido da pool candidata
+  const validWorker = candidateWorkers.find(
     (worker) => worker.agentId === result.object.targetAgentId,
   )
 
@@ -200,10 +213,10 @@ export async function routeConversation(
   if (!validWorker) {
     const fallbackId = routerConfig?.fallbackAgentId
     const fallbackWorker = fallbackId
-      ? activeWorkers.find((worker) => worker.agentId === fallbackId)
-      : activeWorkers[0]
+      ? candidateWorkers.find((worker) => worker.agentId === fallbackId)
+      : candidateWorkers[0]
 
-    const chosen = fallbackWorker ?? activeWorkers[0]
+    const chosen = fallbackWorker ?? candidateWorkers[0]
 
     logger.warn('Router returned invalid agentId, using fallback', {
       returnedId: result.object.targetAgentId,

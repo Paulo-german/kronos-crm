@@ -128,6 +128,7 @@ export function createTransferToAgentTool(
           conversationId: ctx.conversationId,
           organizationId: ctx.organizationId,
           messageHistory,
+          excludeAgentId: ctx.agentId,
         })
 
         if (!routerDecision) {
