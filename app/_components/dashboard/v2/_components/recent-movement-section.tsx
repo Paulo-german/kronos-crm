@@ -1,6 +1,5 @@
-import Link from 'next/link'
 import { Activity } from 'lucide-react'
-import { Card, CardContent, CardFooter } from '@/_components/ui/card'
+import { Card, CardContent } from '@/_components/ui/card'
 import { getRecentLifecycleMovement } from '@/_data-access/dashboard-v2/get-recent-lifecycle-movement'
 import type { RBACContext } from '@/_lib/rbac'
 import type { DateRange } from '@/_data-access/dashboard/types'
@@ -11,6 +10,7 @@ interface RecentMovementSectionProps {
   orgSlug: string
   dateRange: DateRange
 }
+
 
 export async function RecentMovementSection({ ctx, orgSlug, dateRange }: RecentMovementSectionProps) {
   const items = await getRecentLifecycleMovement(ctx, dateRange)
@@ -31,21 +31,13 @@ export async function RecentMovementSection({ ctx, orgSlug, dateRange }: RecentM
     <section>
       <h2 className="mb-4 text-base font-semibold">Movimento Recente</h2>
       <Card>
-        <CardContent className="pb-0 pt-4">
+        <CardContent className="pt-4">
           <div className="divide-y divide-border/50">
             {items.map((item) => (
               <RecentMovementTimelineItem key={item.id} item={item} orgSlug={orgSlug} />
             ))}
           </div>
         </CardContent>
-        <CardFooter className="pt-3">
-          <Link
-            href={`/org/${orgSlug}/contacts`}
-            className="text-xs text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Ver histórico completo →
-          </Link>
-        </CardFooter>
       </Card>
     </section>
   )

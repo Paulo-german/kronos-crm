@@ -1,15 +1,17 @@
+import { Suspense } from 'react'
+import { subDays, startOfDay, endOfDay } from 'date-fns'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getUserById } from '@/_data-access/user/get-user-by-id'
-import { getOrgModules } from '@/_data-access/module/get-org-modules'
+import { DASHBOARD_V2_DEFAULT_DAYS } from '@/_lib/lifecycle/dashboard-v2-constants'
 import { deriveFirstName } from '@/_components/home/_lib/derive-first-name'
-import type { ModuleSlug } from '@/_data-access/module/types'
 import HomeGreeting from '@/_components/home/_components/home-greeting'
-import QuickAccessGrid from '@/_components/home/_components/quick-access-grid'
 import PlatformMap from '@/_components/home/_components/platform-map'
-import OnboardingChecklist from '@/_components/home/_components/onboarding-checklist'
 import EcosystemGrid from '@/_components/home/_components/ecosystem-grid'
 import AnimatedSection from '@/_components/home/_components/animated-section'
 import HomeTipsStrip from '@/_components/home/_components/home-tips-strip'
+import { LifecycleFunnelSection } from '@/_components/dashboard/v2/_components/lifecycle-funnel-section'
+import { RecentMovementSection } from '@/_components/dashboard/v2/_components/recent-movement-section'
+import { LifecycleFunnelSkeleton, RecentMovementSkeleton } from '@/_components/dashboard/v2/_components/skeletons'
 
 interface HomePageProps {
   params: Promise<{ orgSlug: string }>
@@ -19,13 +21,14 @@ const HomePage = async ({ params }: HomePageProps) => {
   const { orgSlug } = await params
   const ctx = await getOrgContext(orgSlug)
 
-  const [user, modules] = await Promise.all([
-    getUserById(ctx.userId),
-    getOrgModules(ctx.orgId),
-  ])
-
+  const user = await getUserById(ctx.userId)
   const firstName = deriveFirstName(user?.fullName ?? null, user?.email ?? '')
-  const activeModuleSlugs = modules.map((mod) => mod.slug as ModuleSlug)
+
+  const now = new Date()
+  const dateRange = {
+    start: startOfDay(subDays(now, DASHBOARD_V2_DEFAULT_DAYS - 1)),
+    end: endOfDay(now),
+  }
 
   return (
     <div className="flex flex-col gap-8 p-6">
@@ -36,15 +39,26 @@ const HomePage = async ({ params }: HomePageProps) => {
         <HomeTipsStrip />
       </AnimatedSection>
       <AnimatedSection delay={0.16}>
-        <QuickAccessGrid orgSlug={orgSlug} activeModules={activeModuleSlugs} />
-      </AnimatedSection>
-      <AnimatedSection delay={0.24}>
-        <div className="grid gap-6 lg:grid-cols-2">
-          <PlatformMap />
-          <OnboardingChecklist orgSlug={orgSlug} activeModules={activeModuleSlugs} />
+        <div data-tour="home-funnel">
+          <Suspense fallback={<LifecycleFunnelSkeleton />}>
+            <LifecycleFunnelSection ctx={ctx} dateRange={dateRange} />
+          </Suspense>
         </div>
       </AnimatedSection>
+      <AnimatedSection delay={0.24}>
+        <Suspense
+          key={`recent-${dateRange.start.toISOString()}-${dateRange.end.toISOString()}`}
+          fallback={<RecentMovementSkeleton />}
+        >
+          <RecentMovementSection ctx={ctx} orgSlug={orgSlug} dateRange={dateRange} />
+        </Suspense>
+      </AnimatedSection>
       <AnimatedSection delay={0.32}>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <PlatformMap />
+        </div>
+      </AnimatedSection>
+      <AnimatedSection delay={0.4}>
         <EcosystemGrid />
       </AnimatedSection>
     </div>
