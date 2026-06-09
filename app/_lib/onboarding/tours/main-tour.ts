@@ -46,10 +46,10 @@ export function buildMainTourSteps(context: MainTourContext): DriveStep[] {
 
   const steps: DriveStep[] = [
     {
-      element: '[data-tour="dashboard"]',
+      element: '[data-tour="home-funnel"]',
       popover: {
-        title: 'Dashboard',
-        description: `Aqui você acompanha as métricas da ${companyName} em tempo real — pipeline, receita, novos leads e mais.`,
+        title: 'Início',
+        description: `Aqui você acompanha o funil de lifecycle da ${companyName} — leads, qualificados, oportunidades e clientes dos últimos 30 dias.`,
       },
     },
     {
