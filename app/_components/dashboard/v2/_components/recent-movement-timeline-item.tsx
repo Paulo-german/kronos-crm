@@ -4,6 +4,8 @@ import { ptBR } from 'date-fns/locale'
 import { Avatar, AvatarFallback, AvatarImage } from '@/_components/ui/avatar'
 import { LIFECYCLE_STAGE_CONFIG } from '@/_lib/lifecycle/lifecycle-stage-config'
 import type { LifecycleMovementItemDto } from '@/_data-access/dashboard-v2/get-recent-lifecycle-movement'
+import { ArrowRightIcon } from 'lucide-react'
+import { Badge } from '@/_components/ui/badge'
 
 interface RecentMovementTimelineItemProps {
   item: LifecycleMovementItemDto
@@ -20,9 +22,14 @@ function getInitials(name: string): string {
     .toUpperCase()
 }
 
-export function RecentMovementTimelineItem({ item, orgSlug }: RecentMovementTimelineItemProps) {
+export function RecentMovementTimelineItem({
+  item,
+  orgSlug,
+}: RecentMovementTimelineItemProps) {
   const toConfig = LIFECYCLE_STAGE_CONFIG[item.toStage]
-  const fromConfig = item.fromStage ? LIFECYCLE_STAGE_CONFIG[item.fromStage] : null
+  const fromConfig = item.fromStage
+    ? LIFECYCLE_STAGE_CONFIG[item.fromStage]
+    : null
 
   const relativeTime = formatDistanceToNow(item.createdAt, {
     addSuffix: true,
@@ -38,32 +45,40 @@ export function RecentMovementTimelineItem({ item, orgSlug }: RecentMovementTime
         {item.contactAvatarUrl && (
           <AvatarImage src={item.contactAvatarUrl} alt={item.contactName} />
         )}
-        <AvatarFallback className="text-xs">{getInitials(item.contactName)}</AvatarFallback>
+        <AvatarFallback className="text-xs">
+          {getInitials(item.contactName)}
+        </AvatarFallback>
       </Avatar>
 
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         {/* Linha 1: nome + transição de estágio */}
-        <p className="truncate text-sm">
+        <div className="flex gap-1 truncate text-sm">
           <span className="font-medium">{item.contactName}</span>
+
           {fromConfig ? (
-            <>
-              {' '}
-              <span className={fromConfig.colorClassName}>{fromConfig.label}</span>
-              {' → '}
-              <span className={`${toConfig.colorClassName} font-medium`}>{toConfig.label}</span>
-            </>
+            <div className="flex items-center gap-1">
+              <Badge variant="secondary" className={fromConfig.badgeClassName}>
+                {fromConfig.label}
+              </Badge>
+              <ArrowRightIcon className="h-3 w-3 text-primary" />
+              <Badge className={toConfig.badgeClassName}>
+                {toConfig.label}
+              </Badge>
+            </div>
           ) : (
-            <>
-              {' → '}
-              <span className={`${toConfig.colorClassName} font-medium`}>{toConfig.label}</span>
-            </>
+            <div className="flex items-center gap-1">
+              <ArrowRightIcon className="h-3 w-3 text-primary" />
+              <Badge className={toConfig.badgeClassName}>
+                {toConfig.label}
+              </Badge>
+            </div>
           )}
-        </p>
+        </div>
 
         {/* Linha 2: causa + tempo relativo */}
-        <p className="truncate text-xs text-muted-foreground">
+        <span className="truncate text-xs text-muted-foreground">
           {item.causeLabel} · {relativeTime}
-        </p>
+        </span>
       </div>
     </Link>
   )
