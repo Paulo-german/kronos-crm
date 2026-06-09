@@ -27,57 +27,120 @@ import { cn } from '@/_lib/utils'
 const SvgLeftBracket = ({ highlighted }: { highlighted: boolean }) => (
   <div
     className={cn(
-      'relative self-stretch w-10 flex-shrink-0 transition-colors duration-200',
+      'relative w-10 flex-shrink-0 self-stretch transition-colors duration-200',
       highlighted ? 'text-primary' : 'text-foreground/25',
     )}
   >
     <svg
-      className="absolute inset-0 w-full h-full"
+      className="absolute inset-0 h-full w-full"
       viewBox="0 0 40 100"
       preserveAspectRatio="none"
     >
-      <line x1="4" y1="25" x2="24" y2="25" stroke="currentColor" strokeWidth="1.5" />
-      <line x1="4" y1="75" x2="24" y2="75" stroke="currentColor" strokeWidth="1.5" />
-      <line x1="24" y1="25" x2="24" y2="75" stroke="currentColor" strokeWidth="1.5" />
-      <line x1="24" y1="50" x2="38" y2="50" stroke="currentColor" strokeWidth="1.5" />
+      <line
+        x1="4"
+        y1="25"
+        x2="24"
+        y2="25"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+      <line
+        x1="4"
+        y1="75"
+        x2="24"
+        y2="75"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+      <line
+        x1="24"
+        y1="25"
+        x2="24"
+        y2="75"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+      <line
+        x1="24"
+        y1="50"
+        x2="38"
+        y2="50"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
     </svg>
-    <div className="absolute right-0 top-1/2 -translate-y-1/2 border-y-[4px] border-y-transparent border-l-[6px] border-l-current" />
+    <div className="absolute right-0 top-1/2 -translate-y-1/2 border-y-[4px] border-l-[6px] border-y-transparent border-l-current" />
   </div>
 )
 
 const SvgRightBracketTwo = ({ highlighted }: { highlighted: boolean }) => (
   <div
     className={cn(
-      'relative self-stretch w-10 flex-shrink-0 transition-colors duration-200',
+      'relative w-10 flex-shrink-0 self-stretch transition-colors duration-200',
       highlighted ? 'text-primary' : 'text-foreground/25',
     )}
   >
     <svg
-      className="absolute inset-0 w-full h-full"
+      className="absolute inset-0 h-full w-full"
       viewBox="0 0 40 100"
       preserveAspectRatio="none"
     >
-      <line x1="2" y1="50" x2="16" y2="50" stroke="currentColor" strokeWidth="1.5" />
-      <line x1="16" y1="25" x2="16" y2="75" stroke="currentColor" strokeWidth="1.5" />
-      <line x1="16" y1="25" x2="34" y2="25" stroke="currentColor" strokeWidth="1.5" />
-      <line x1="16" y1="75" x2="34" y2="75" stroke="currentColor" strokeWidth="1.5" />
+      <line
+        x1="2"
+        y1="50"
+        x2="16"
+        y2="50"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+      <line
+        x1="16"
+        y1="25"
+        x2="16"
+        y2="75"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+      <line
+        x1="16"
+        y1="25"
+        x2="34"
+        y2="25"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+      <line
+        x1="16"
+        y1="75"
+        x2="34"
+        y2="75"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
     </svg>
-    <div className="absolute right-0 top-1/4 -translate-y-1/2 border-y-[4px] border-y-transparent border-l-[6px] border-l-current" />
-    <div className="absolute right-0 top-3/4 -translate-y-1/2 border-y-[4px] border-y-transparent border-l-[6px] border-l-current" />
+    <div className="absolute right-0 top-1/4 -translate-y-1/2 border-y-[4px] border-l-[6px] border-y-transparent border-l-current" />
+    <div className="absolute right-0 top-3/4 -translate-y-1/2 border-y-[4px] border-l-[6px] border-y-transparent border-l-current" />
   </div>
 )
 
 const SvgSimpleArrow = ({ highlighted }: { highlighted: boolean }) => (
   <div
     className={cn(
-      'relative self-stretch w-10 flex-shrink-0 flex items-center transition-colors duration-200',
+      'relative flex w-10 flex-shrink-0 items-center self-stretch transition-colors duration-200',
       highlighted ? 'text-primary' : 'text-foreground/25',
     )}
   >
-    <svg className="w-full h-6" viewBox="0 0 40 10" preserveAspectRatio="none">
-      <line x1="2" y1="5" x2="32" y2="5" stroke="currentColor" strokeWidth="1.5" />
+    <svg className="h-6 w-full" viewBox="0 0 40 10" preserveAspectRatio="none">
+      <line
+        x1="2"
+        y1="5"
+        x2="32"
+        y2="5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
     </svg>
-    <div className="absolute right-0 top-1/2 -translate-y-1/2 border-y-[4px] border-y-transparent border-l-[6px] border-l-current" />
+    <div className="absolute right-0 top-1/2 -translate-y-1/2 border-y-[4px] border-l-[6px] border-y-transparent border-l-current" />
   </div>
 )
 
@@ -128,28 +191,44 @@ const DiagramCard = ({
   return (
     <div
       className={cn(
-        'group rounded-md border flex flex-col justify-center cursor-default transition-all duration-200',
+        'group flex cursor-default flex-col justify-center rounded-md border transition-all duration-200',
         colorClass,
-        compact ? 'p-2 gap-0.5' : 'p-3 gap-1',
-        isHovered && cn('ring-1 scale-[1.02]', hoverRingClass),
+        compact ? 'gap-0.5 p-2' : 'gap-1 p-3',
+        isHovered && cn('scale-[1.02] ring-1', hoverRingClass),
         className,
       )}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
       <div className="flex items-center gap-1.5">
-        <Icon className={cn('flex-shrink-0', compact ? 'h-3 w-3' : 'h-4 w-4', iconColorClass)} />
-        <span className={cn('font-semibold leading-tight', compact ? 'text-xs' : 'text-sm')}>
+        <Icon
+          className={cn(
+            'flex-shrink-0',
+            compact ? 'h-3 w-3' : 'h-4 w-4',
+            iconColorClass,
+          )}
+        />
+        <span
+          className={cn(
+            'font-semibold leading-tight',
+            compact ? 'text-xs' : 'text-sm',
+          )}
+        >
           {title}
         </span>
       </div>
 
-      <span className={cn('opacity-70 leading-snug', compact ? 'text-[10px]' : 'text-xs')}>
+      <span
+        className={cn(
+          'leading-snug opacity-70',
+          compact ? 'text-[10px]' : 'text-xs',
+        )}
+      >
         {description}
       </span>
 
       {!compact && showDetail && (
-        <span className="text-xs opacity-60 leading-snug mt-1 animate-in fade-in-0 slide-in-from-top-1 duration-200 border-t border-current/10 pt-1">
+        <span className="border-current/10 mt-1 border-t pt-1 text-xs leading-snug opacity-60 duration-200 animate-in fade-in-0 slide-in-from-top-1">
           {detail}
         </span>
       )}
@@ -160,7 +239,7 @@ const DiagramCard = ({
 // --- Label de seção ---
 
 const SectionLabel = ({ label }: { label: string }) => (
-  <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-2">
+  <span className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
     {label}
   </span>
 )
@@ -168,7 +247,9 @@ const SectionLabel = ({ label }: { label: string }) => (
 // --- Step label ---
 
 const StepLabel = ({ label }: { label: string }) => (
-  <span className="text-[10px] font-semibold text-muted-foreground/60 mb-1">{label}</span>
+  <span className="mb-1 text-[10px] font-semibold text-muted-foreground/60">
+    {label}
+  </span>
 )
 
 // --- Legenda ---
@@ -180,7 +261,7 @@ interface LegendItemProps {
 
 const LegendItem = ({ color, label }: LegendItemProps) => (
   <div className="flex items-center gap-1.5">
-    <div className={cn('w-3 h-3 rounded-sm', color)} />
+    <div className={cn('h-3 w-3 rounded-sm', color)} />
     <span className="text-xs text-muted-foreground">{label}</span>
   </div>
 )
@@ -217,17 +298,20 @@ const PlatformDiagram = ({ compact = false }: PlatformDiagramProps) => {
 
   return (
     <div className="flex flex-col gap-6">
-
       {/* Fluxo CRM */}
       <div className="flex flex-col gap-2">
         <SectionLabel label="CRM" />
-        <div className="bg-muted/50 rounded-xl p-4">
-          <div className={cn('flex items-stretch gap-0', compact ? 'min-h-[100px]' : 'min-h-[160px]')}>
-
+        <div className="rounded-xl bg-muted/50 p-4">
+          <div
+            className={cn(
+              'flex items-stretch gap-0',
+              compact ? 'min-h-[100px]' : 'min-h-[160px]',
+            )}
+          >
             {/* Coluna: Contatos + Empresas */}
-            <div className="flex flex-col flex-1 min-w-0">
+            <div className="flex min-w-0 flex-1 flex-col">
               {!compact && <StepLabel label="Passo 1" />}
-              <div className="flex flex-col gap-2 h-full border border-dashed border-foreground/20 rounded-lg p-2">
+              <div className="flex h-full flex-col gap-2 rounded-lg border border-dashed border-foreground/20 p-2">
                 <DiagramCard
                   id="crm-contacts"
                   title="Contatos"
@@ -262,9 +346,9 @@ const PlatformDiagram = ({ compact = false }: PlatformDiagramProps) => {
             <SvgLeftBracket highlighted={crmLeftHighlighted} />
 
             {/* Coluna: Negociações */}
-            <div className="flex flex-col flex-1 min-w-0">
+            <div className="flex min-w-0 flex-1 flex-col">
               {!compact && <StepLabel label="Passo 2" />}
-              <div className="flex items-center h-full">
+              <div className="flex h-full items-center">
                 <DiagramCard
                   id="deals"
                   title="Negociações"
@@ -284,9 +368,9 @@ const PlatformDiagram = ({ compact = false }: PlatformDiagramProps) => {
             <SvgRightBracketTwo highlighted={crmRightHighlighted} />
 
             {/* Coluna: Tarefas + Agendamentos */}
-            <div className="flex flex-col flex-1 min-w-0">
+            <div className="flex min-w-0 flex-1 flex-col">
               {!compact && <StepLabel label="Passo 3" />}
-              <div className="flex flex-col justify-between gap-2 h-full">
+              <div className="flex h-full flex-col justify-between gap-2">
                 <DiagramCard
                   id="tasks"
                   title="Tarefas"
@@ -317,7 +401,6 @@ const PlatformDiagram = ({ compact = false }: PlatformDiagramProps) => {
                 />
               </div>
             </div>
-
           </div>
         </div>
       </div>
@@ -325,13 +408,17 @@ const PlatformDiagram = ({ compact = false }: PlatformDiagramProps) => {
       {/* Fluxo Comunicação */}
       <div className="flex flex-col gap-2">
         <SectionLabel label="Comunicação" />
-        <div className="bg-muted/50 rounded-xl p-4">
-          <div className={cn('flex items-stretch gap-0', compact ? 'min-h-[52px]' : 'min-h-[80px]')}>
-
+        <div className="rounded-xl bg-muted/50 p-4">
+          <div
+            className={cn(
+              'flex items-stretch gap-0',
+              compact ? 'min-h-[52px]' : 'min-h-[80px]',
+            )}
+          >
             {/* Coluna: Contatos */}
-            <div className="flex flex-col flex-1 min-w-0">
+            <div className="flex min-w-0 flex-1 flex-col">
               {!compact && <StepLabel label="Origem" />}
-              <div className="flex items-center h-full">
+              <div className="flex h-full items-center">
                 <DiagramCard
                   id="comm-contacts"
                   title="Contatos"
@@ -351,9 +438,9 @@ const PlatformDiagram = ({ compact = false }: PlatformDiagramProps) => {
             <SvgSimpleArrow highlighted={commArrow1Highlighted} />
 
             {/* Coluna: Conversas */}
-            <div className="flex flex-col flex-1 min-w-0">
+            <div className="flex min-w-0 flex-1 flex-col">
               {!compact && <StepLabel label="Canal" />}
-              <div className="flex items-center h-full">
+              <div className="flex h-full items-center">
                 <DiagramCard
                   id="conversations"
                   title="Conversas"
@@ -373,9 +460,9 @@ const PlatformDiagram = ({ compact = false }: PlatformDiagramProps) => {
             <SvgSimpleArrow highlighted={commArrow2Highlighted} />
 
             {/* Coluna: Agentes de IA */}
-            <div className="flex flex-col flex-1 min-w-0">
+            <div className="flex min-w-0 flex-1 flex-col">
               {!compact && <StepLabel label="Automação" />}
-              <div className="flex items-center h-full">
+              <div className="flex h-full items-center">
                 <DiagramCard
                   id="agents"
                   title="Agentes de IA"
@@ -391,20 +478,23 @@ const PlatformDiagram = ({ compact = false }: PlatformDiagramProps) => {
                 />
               </div>
             </div>
-
           </div>
         </div>
       </div>
 
       {/* Legenda — sempre visível */}
-      <div className={cn('flex flex-wrap gap-3 pt-3 border-t border-border/50', compact && 'gap-2')}>
+      <div
+        className={cn(
+          'flex flex-wrap gap-3 border-t border-border/50 pt-3',
+          compact && 'gap-2',
+        )}
+      >
         <LegendItem color="bg-cyan-500/20" label="Base de dados" />
         <LegendItem color="bg-amber-500/20" label="Pipeline CRM" />
         <LegendItem color="bg-emerald-500/20" label="Atividades" />
         <LegendItem color="bg-violet-500/20" label="Comunicação" />
         <LegendItem color="bg-primary/20" label="Automação IA" />
       </div>
-
     </div>
   )
 }
@@ -417,13 +507,15 @@ const PlatformMap = () => {
   return (
     <>
       <Card
-        className="cursor-pointer hover:border-primary/50 transition-colors group"
+        className="group w-full cursor-pointer transition-colors hover:border-primary/50"
         onClick={() => setOpen(true)}
       >
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Como funciona o Kronos HUB</CardTitle>
-            <ZoomIn className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+            <CardTitle className="text-base">
+              Como funciona a KRONOS HUB
+            </CardTitle>
+            <ZoomIn className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary" />
           </div>
           <p className="text-xs text-muted-foreground">
             Entenda como os dados se relacionam na plataforma.
@@ -439,12 +531,12 @@ const PlatformMap = () => {
           <DialogHeader>
             <DialogTitle>Como funciona o Kronos HUB</DialogTitle>
             <DialogDescription>
-              Entenda como os dados se relacionam e tenha mais clareza do funcionamento da
-              plataforma.
+              Entenda como os dados se relacionam e tenha mais clareza do
+              funcionamento da plataforma.
             </DialogDescription>
           </DialogHeader>
           <div className="p-2">
-            <div className="animate-in fade-in-0 zoom-in-95 duration-300">
+            <div className="duration-300 animate-in fade-in-0 zoom-in-95">
               <PlatformDiagram />
             </div>
           </div>

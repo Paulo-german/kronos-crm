@@ -1,5 +1,6 @@
 import { Suspense } from 'react'
-import { subDays, startOfDay, endOfDay } from 'date-fns'
+import { subDays, startOfDay, endOfDay, format } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getUserById } from '@/_data-access/user/get-user-by-id'
 import { DASHBOARD_V2_DEFAULT_DAYS } from '@/_lib/lifecycle/dashboard-v2-constants'
@@ -13,7 +14,10 @@ import HomeTipsStrip from '@/_components/home/_components/home-tips-strip'
 import { DateRangePicker } from '@/_components/dashboard/_shared/date-range-picker'
 import { LifecycleFunnelSection } from '@/_components/dashboard/v2/_components/lifecycle-funnel-section'
 import { RecentMovementSection } from '@/_components/dashboard/v2/_components/recent-movement-section'
-import { LifecycleFunnelSkeleton, RecentMovementSkeleton } from '@/_components/dashboard/v2/_components/skeletons'
+import {
+  LifecycleFunnelSkeleton,
+  RecentMovementSkeleton,
+} from '@/_components/dashboard/v2/_components/skeletons'
 
 interface HomePageProps {
   params: Promise<{ orgSlug: string }>
@@ -29,12 +33,13 @@ const HomePage = async ({ params, searchParams }: HomePageProps) => {
   const firstName = deriveFirstName(user?.fullName ?? null, user?.email ?? '')
 
   const now = new Date()
-  const dateRange = (start ?? end)
-    ? parseDateRange(start, end)
-    : {
-        start: startOfDay(subDays(now, DASHBOARD_V2_DEFAULT_DAYS - 1)),
-        end: endOfDay(now),
-      }
+  const dateRange =
+    (start ?? end)
+      ? parseDateRange(start, end)
+      : {
+          start: startOfDay(subDays(now, DASHBOARD_V2_DEFAULT_DAYS - 1)),
+          end: endOfDay(now),
+        }
 
   return (
     <div className="flex flex-col gap-8 p-6">
@@ -46,7 +51,10 @@ const HomePage = async ({ params, searchParams }: HomePageProps) => {
       </AnimatedSection>
       <AnimatedSection delay={0.16}>
         <div data-tour="home-funnel" className="flex flex-col gap-4">
-          <div className="flex items-center justify-end">
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground text-xs">
+              Atualizado em {format(now, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+            </span>
             <DateRangePicker defaultLabel="Últimos 30 dias" />
           </div>
           <Suspense
@@ -62,11 +70,15 @@ const HomePage = async ({ params, searchParams }: HomePageProps) => {
           key={`recent-${dateRange.start.toISOString()}-${dateRange.end.toISOString()}`}
           fallback={<RecentMovementSkeleton />}
         >
-          <RecentMovementSection ctx={ctx} orgSlug={orgSlug} dateRange={dateRange} />
+          <RecentMovementSection
+            ctx={ctx}
+            orgSlug={orgSlug}
+            dateRange={dateRange}
+          />
         </Suspense>
       </AnimatedSection>
       <AnimatedSection delay={0.32}>
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="flex w-full justify-center">
           <PlatformMap />
         </div>
       </AnimatedSection>
