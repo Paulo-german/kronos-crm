@@ -190,7 +190,6 @@ export function ContactsToolbar({
 
         {/* Botão Filtros Avançados */}
         <ContactsFiltersSheet
-          companyOptions={companyOptions}
           filters={filters}
           onApplyFilters={onApplyFilters}
           activeFilterCount={activeFilterCount}

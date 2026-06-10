@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Filter, X } from 'lucide-react'
+import { Filter, InfoIcon } from 'lucide-react'
 import { CustomerStatus, LifecycleStage } from '@prisma/client'
 import {
   Sheet,
@@ -18,12 +18,11 @@ import { Input } from '@/_components/ui/input'
 import { Label } from '@/_components/ui/label'
 import { Badge } from '@/_components/ui/badge'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/_components/ui/select'
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/_components/ui/tooltip'
 import { cn } from '@/_lib/utils'
 import {
   LIFECYCLE_STAGE_CONFIG,
@@ -32,10 +31,7 @@ import {
 import { CUSTOMER_STATUS_CONFIG } from '@/_lib/lifecycle/customer-status-config'
 import type { ContactFilters } from '../_lib/contact-filters'
 import { DEFAULT_CONTACT_FILTERS } from '../_lib/contact-filters'
-import type { CompanyDto } from '@/_data-access/company/get-companies'
-
 interface ContactsFiltersSheetProps {
-  companyOptions: CompanyDto[]
   filters: ContactFilters
   onApplyFilters: (filters: Partial<ContactFilters>) => void
   activeFilterCount: number
@@ -43,7 +39,6 @@ interface ContactsFiltersSheetProps {
 }
 
 export function ContactsFiltersSheet({
-  companyOptions,
   filters,
   onApplyFilters,
   activeFilterCount,
@@ -121,236 +116,222 @@ export function ContactsFiltersSheet({
           <SheetTitle>Filtros Avançados</SheetTitle>
         </SheetHeader>
 
-        <div className="flex-1 space-y-6 overflow-y-auto py-4">
-          {/* Filtro de Lifecycle Stage */}
-          <div className="space-y-3">
-            <Label className="text-sm font-semibold">Estágio do Funil</Label>
-            <div className="flex flex-wrap gap-2">
-              {LIFECYCLE_STAGE_ORDER.map((stage) => {
-                const cfg = LIFECYCLE_STAGE_CONFIG[stage]
-                const isActive = localFilters.lifecycleStages.includes(stage)
-                return (
-                  <label
-                    key={stage}
-                    className={cn(
-                      'flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 transition-colors',
-                      isActive
-                        ? 'border-primary/40 bg-primary/10 text-primary'
-                        : 'border-input hover:bg-accent',
-                    )}
-                  >
-                    <Checkbox
-                      checked={isActive}
-                      onCheckedChange={() => toggleLifecycleStage(stage)}
-                      className="sr-only"
-                    />
-                    <cfg.icon
-                      className={cn(
-                        'size-3.5',
-                        isActive ? 'text-primary' : cfg.colorClassName,
-                      )}
-                    />
-                    <span className="text-sm">{cfg.label}</span>
-                  </label>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Filtro de Customer Status */}
-          <div className="space-y-3">
-            <Label className="text-sm font-semibold">Status do Cliente</Label>
-            <div className="flex flex-wrap gap-2">
-              {(Object.values(CustomerStatus) as CustomerStatus[]).map(
-                (status) => {
-                  const cfg = CUSTOMER_STATUS_CONFIG[status]
-                  const isActive =
-                    localFilters.customerStatuses.includes(status)
+        <TooltipProvider>
+          <div className="flex-1 space-y-6 overflow-y-auto py-4">
+            {/* Filtro de Lifecycle Stage */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-1.5">
+                <Label className="text-sm font-semibold">
+                  Estágio do Ciclo de Vida
+                </Label>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <InfoIcon className="size-3.5 cursor-help text-muted-foreground" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-56">
+                    Filtra contatos pela fase atual no seu processo comercial.
+                    Selecione múltiplos estágios para ver contatos em diferentes
+                    momentos da jornada.
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {LIFECYCLE_STAGE_ORDER.map((stage) => {
+                  const cfg = LIFECYCLE_STAGE_CONFIG[stage]
+                  const isActive = localFilters.lifecycleStages.includes(stage)
                   return (
                     <label
-                      key={status}
+                      key={stage}
                       className={cn(
                         'flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 transition-colors',
                         isActive
                           ? 'border-primary/40 bg-primary/10 text-primary'
-                          : 'border-input hover:bg-accent',
+                          : 'border-border-strong hover:bg-accent',
                       )}
                     >
                       <Checkbox
                         checked={isActive}
-                        onCheckedChange={() => toggleCustomerStatus(status)}
+                        onCheckedChange={() => toggleLifecycleStage(stage)}
                         className="sr-only"
+                      />
+                      <cfg.icon
+                        className={cn(
+                          'size-3.5',
+                          isActive ? 'text-primary' : cfg.colorClassName,
+                        )}
                       />
                       <span className="text-sm">{cfg.label}</span>
                     </label>
                   )
-                },
-              )}
-            </div>
-          </div>
-
-          {/* Filtro de Health Score (plan-gated) */}
-          {isScoreEnabled && (
-            <div className="space-y-3">
-              <Label className="text-sm font-semibold">Health Score</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <Label
-                    htmlFor="score-min"
-                    className="text-xs text-muted-foreground"
-                  >
-                    Mínimo
-                  </Label>
-                  <Input
-                    id="score-min"
-                    type="number"
-                    min={0}
-                    max={100}
-                    step={1}
-                    placeholder="0"
-                    value={localFilters.healthScoreMin ?? ''}
-                    onChange={(event) =>
-                      setLocalFilters({
-                        ...localFilters,
-                        healthScoreMin:
-                          event.target.value === ''
-                            ? null
-                            : Number(event.target.value),
-                      })
-                    }
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label
-                    htmlFor="score-max"
-                    className="text-xs text-muted-foreground"
-                  >
-                    Máximo
-                  </Label>
-                  <Input
-                    id="score-max"
-                    type="number"
-                    min={0}
-                    max={100}
-                    step={1}
-                    placeholder="100"
-                    value={localFilters.healthScoreMax ?? ''}
-                    onChange={(event) =>
-                      setLocalFilters({
-                        ...localFilters,
-                        healthScoreMax:
-                          event.target.value === ''
-                            ? null
-                            : Number(event.target.value),
-                      })
-                    }
-                  />
-                </div>
+                })}
               </div>
             </div>
-          )}
 
-          {/* Filtro de Empresa */}
-          <div className="space-y-3">
-            <Label className="text-sm font-semibold">Empresa</Label>
-            <Select
-              value={localFilters.companyId ?? 'all'}
-              onValueChange={(value) =>
-                setLocalFilters({
-                  ...localFilters,
-                  companyId: value === 'all' ? null : value,
-                })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Todas as empresas" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas as empresas</SelectItem>
-                {companyOptions.map((company) => (
-                  <SelectItem key={company.id} value={company.id}>
-                    {company.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {localFilters.companyId && (
-              <button
-                onClick={() =>
-                  setLocalFilters({ ...localFilters, companyId: null })
-                }
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-3 w-3" />
-                Limpar empresa
-              </button>
+            {/* Filtro de Customer Status */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-1.5">
+                <Label className="text-sm font-semibold">
+                  Status do Relacionamento
+                </Label>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <InfoIcon className="size-3.5 cursor-help text-muted-foreground" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-56">
+                    Indica o estado atual do relacionamento comercial com o
+                    contato — ex: ativo, em risco, churned. Selecione múltiplos
+                    para combinar.
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {(Object.values(CustomerStatus) as CustomerStatus[]).map(
+                  (status) => {
+                    const cfg = CUSTOMER_STATUS_CONFIG[status]
+                    const isActive =
+                      localFilters.customerStatuses.includes(status)
+                    return (
+                      <label
+                        key={status}
+                        className={cn(
+                          'flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 transition-colors',
+                          isActive
+                            ? 'border-primary/40 bg-primary/10 text-primary'
+                            : 'border-border-strong hover:bg-accent',
+                        )}
+                      >
+                        <Checkbox
+                          checked={isActive}
+                          onCheckedChange={() => toggleCustomerStatus(status)}
+                          className="sr-only"
+                        />
+                        <span className="text-sm">{cfg.label}</span>
+                      </label>
+                    )
+                  },
+                )}
+              </div>
+            </div>
+
+            {/* Filtro de Health Score (plan-gated) */}
+            {isScoreEnabled && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-sm font-semibold">Health Score</Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <InfoIcon className="size-3.5 cursor-help text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-56">
+                      Pontuação de 0 a 100 calculada automaticamente com base no
+                      engajamento e histórico do contato. 0–40 crítico, 41–70
+                      atenção, 71–100 saudável.
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label
+                      htmlFor="score-min"
+                      className="text-xs text-muted-foreground"
+                    >
+                      Mínimo
+                    </Label>
+                    <Input
+                      id="score-min"
+                      type="number"
+                      min={0}
+                      max={100}
+                      step={1}
+                      placeholder="0"
+                      value={localFilters.healthScoreMin ?? ''}
+                      onChange={(event) =>
+                        setLocalFilters({
+                          ...localFilters,
+                          healthScoreMin:
+                            event.target.value === ''
+                              ? null
+                              : Number(event.target.value),
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label
+                      htmlFor="score-max"
+                      className="text-xs text-muted-foreground"
+                    >
+                      Máximo
+                    </Label>
+                    <Input
+                      id="score-max"
+                      type="number"
+                      min={0}
+                      max={100}
+                      step={1}
+                      placeholder="100"
+                      value={localFilters.healthScoreMax ?? ''}
+                      onChange={(event) =>
+                        setLocalFilters({
+                          ...localFilters,
+                          healthScoreMax:
+                            event.target.value === ''
+                              ? null
+                              : Number(event.target.value),
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
             )}
-          </div>
 
-          {/* Filtro de Decisor */}
-          <div className="space-y-3">
-            <Label className="text-sm font-semibold">Tomador de Decisão</Label>
-            <div className="flex flex-wrap gap-2">
-              {(
-                [
-                  { value: true, label: 'Sim' },
-                  { value: false, label: 'Não' },
-                ] as const
-              ).map((option) => (
-                <label
-                  key={String(option.value)}
-                  className={cn(
-                    'flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 transition-colors',
-                    localFilters.isDecisionMaker === option.value
-                      ? 'border-primary/40 bg-primary/10 text-primary'
-                      : 'border-input hover:bg-accent',
-                  )}
-                >
-                  <Checkbox
-                    checked={localFilters.isDecisionMaker === option.value}
-                    onCheckedChange={() =>
-                      toggleBooleanFilter('isDecisionMaker', option.value)
-                    }
-                    className="sr-only"
-                  />
-                  <span className="text-sm">{option.label}</span>
-                </label>
-              ))}
+            {/* Filtro de Tem Negócios */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-1.5">
+                <Label className="text-sm font-semibold">
+                  Possui Negócios Vinculados
+                </Label>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <InfoIcon className="size-3.5 cursor-help text-muted-foreground" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-56">
+                    Filtra contatos que já têm ao menos um negócio criado no
+                    pipeline, independente do status do negócio.
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {(
+                  [
+                    { value: true, label: 'Sim' },
+                    { value: false, label: 'Não' },
+                  ] as const
+                ).map((option) => (
+                  <label
+                    key={String(option.value)}
+                    className={cn(
+                      'flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 transition-colors',
+                      localFilters.hasDeals === option.value
+                        ? 'border-primary/40 bg-primary/10 text-primary'
+                        : 'border-border-strong hover:bg-accent',
+                    )}
+                  >
+                    <Checkbox
+                      checked={localFilters.hasDeals === option.value}
+                      onCheckedChange={() =>
+                        toggleBooleanFilter('hasDeals', option.value)
+                      }
+                      className="sr-only"
+                    />
+                    <span className="text-sm">{option.label}</span>
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
-
-          {/* Filtro de Tem Negócios */}
-          <div className="space-y-3">
-            <Label className="text-sm font-semibold">Tem Negócios</Label>
-            <div className="flex flex-wrap gap-2">
-              {(
-                [
-                  { value: true, label: 'Sim' },
-                  { value: false, label: 'Não' },
-                ] as const
-              ).map((option) => (
-                <label
-                  key={String(option.value)}
-                  className={cn(
-                    'flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 transition-colors',
-                    localFilters.hasDeals === option.value
-                      ? 'border-primary/40 bg-primary/10 text-primary'
-                      : 'border-input hover:bg-accent',
-                  )}
-                >
-                  <Checkbox
-                    checked={localFilters.hasDeals === option.value}
-                    onCheckedChange={() =>
-                      toggleBooleanFilter('hasDeals', option.value)
-                    }
-                    className="sr-only"
-                  />
-                  <span className="text-sm">{option.label}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-        </div>
+        </TooltipProvider>
 
         <SheetFooter className="flex-row gap-2 border-t pt-4">
           <Button
