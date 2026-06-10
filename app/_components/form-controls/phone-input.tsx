@@ -1,11 +1,13 @@
 'use client'
 
-import { forwardRef } from 'react'
+import { forwardRef, useMemo, useState } from 'react'
 import ReactPhoneInput, {
   type Value,
   type Country,
   getCountryCallingCode,
 } from 'react-phone-number-input'
+import { getExampleNumber } from 'libphonenumber-js/min'
+import examples from 'libphonenumber-js/examples.mobile.json'
 import {
   Select,
   SelectContent,
@@ -19,7 +21,6 @@ import { cn } from '@/_lib/utils'
 export interface PhoneInputProps {
   value: string
   onChange: (value: string) => void
-  placeholder?: string
   disabled?: boolean
   className?: string
   maxLength?: number
@@ -38,7 +39,12 @@ interface CountrySelectorProps {
   disabled?: boolean
 }
 
-const CountrySelector = ({ value, onChange, options, disabled }: CountrySelectorProps) => {
+const CountrySelector = ({
+  value,
+  onChange,
+  options,
+  disabled,
+}: CountrySelectorProps) => {
   const callingCode = value ? getCountryCallingCode(value) : null
 
   return (
@@ -55,7 +61,7 @@ const CountrySelector = ({ value, onChange, options, disabled }: CountrySelector
               <span className="text-muted-foreground">+{callingCode}</span>
             </span>
           ) : (
-            <span className="text-muted-foreground text-base">🌐</span>
+            <span className="text-base text-muted-foreground">🌐</span>
           )}
         </SelectValue>
       </SelectTrigger>
@@ -78,21 +84,38 @@ const CountrySelector = ({ value, onChange, options, disabled }: CountrySelector
   )
 }
 
-const InputField = forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
-  ({ className, ...props }, ref) => (
-    <Input
-      {...props}
-      ref={ref}
-      className={cn(
-        'rounded-l-none border-l-0 focus-visible:ring-0 focus-visible:ring-offset-0',
-        className,
-      )}
-    />
-  ),
-)
+const InputField = forwardRef<
+  HTMLInputElement,
+  React.InputHTMLAttributes<HTMLInputElement>
+>(({ className, ...props }, ref) => (
+  <Input
+    {...props}
+    ref={ref}
+    className={cn(
+      'rounded-l-none border-l-0 focus-visible:ring-0 focus-visible:ring-offset-0',
+      className,
+    )}
+  />
+))
 InputField.displayName = 'PhoneInputField'
 
-export function PhoneInput({ value, onChange, placeholder, disabled, className, maxLength }: PhoneInputProps) {
+export function PhoneInput({
+  value,
+  onChange,
+  disabled,
+  className,
+  maxLength,
+}: PhoneInputProps) {
+  const [country, setCountry] = useState<Country>('BR')
+
+  const placeholder = useMemo(() => {
+    try {
+      return getExampleNumber(country, examples)?.formatNational() ?? ''
+    } catch {
+      return ''
+    }
+  }, [country])
+
   return (
     <div
       className={cn(
@@ -105,6 +128,7 @@ export function PhoneInput({ value, onChange, placeholder, disabled, className, 
         defaultCountry="BR"
         value={(value || '') as Value}
         onChange={(val) => onChange(val ?? '')}
+        onCountryChange={(country) => setCountry(country ?? 'BR')}
         inputComponent={InputField}
         countrySelectComponent={CountrySelector}
         disabled={disabled}

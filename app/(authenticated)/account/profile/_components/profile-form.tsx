@@ -163,7 +163,6 @@ export function ProfileForm({ user }: ProfileFormProps) {
                   <FormLabel>Telefone</FormLabel>
                   <FormControl>
                     <PhoneInput
-                      placeholder="(11) 99999-9999"
                       value={field.value || ''}
                       onChange={(value) => field.onChange(value)}
                     />

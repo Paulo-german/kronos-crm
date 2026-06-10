@@ -34,7 +34,9 @@ import { ArrowLeft, Loader2 } from 'lucide-react'
 import { useGoogleReCaptcha } from 'react-google-recaptcha-v3'
 import { BLUEPRINTS } from '@/_lib/onboarding/blueprints'
 
-const NICHE_OPTIONS = BLUEPRINTS.filter((blueprint) => blueprint.key !== 'ai_generated')
+const NICHE_OPTIONS = BLUEPRINTS.filter(
+  (blueprint) => blueprint.key !== 'ai_generated',
+)
 const STEP_1_FIELDS = ['fullName', 'email', 'phone', 'password'] as const
 const STEP_LABELS = ['Sua conta', 'Sua empresa']
 
@@ -101,7 +103,9 @@ const SignUpForm = () => {
               </div>
               <span
                 className={`text-sm transition-colors ${
-                  isActive ? 'font-medium text-foreground' : 'text-muted-foreground'
+                  isActive
+                    ? 'font-medium text-foreground'
+                    : 'text-muted-foreground'
                 }`}
               >
                 {label}
@@ -155,7 +159,6 @@ const SignUpForm = () => {
                     <FormLabel>Telefone</FormLabel>
                     <FormControl>
                       <PhoneInput
-                        placeholder="(11) 99999-9999"
                         value={field.value || ''}
                         onChange={(value) => field.onChange(value)}
                       />
@@ -197,7 +200,10 @@ const SignUpForm = () => {
                   <FormItem>
                     <FormLabel>Nome da empresa</FormLabel>
                     <FormControl>
-                      <Input placeholder="Ex: Studio Silva & Associados" {...field} />
+                      <Input
+                        placeholder="Ex: Studio Silva & Associados"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

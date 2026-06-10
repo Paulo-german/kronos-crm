@@ -51,12 +51,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/_components/ui/popover'
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-} from '@/_components/ui/tabs'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/_components/ui/tabs'
 import { PhoneInput } from '@/_components/form-controls/phone-input'
 import { updateDeal } from '@/_actions/deal/update-deal'
 import { createDealWithContact } from '@/_actions/deal/create-deal-with-contact'
@@ -102,7 +97,8 @@ export function DealDialogContent({
   const [open, setOpen] = useState(false)
   const [contactSearch, setContactSearch] = useState('')
   const [contactResults, setContactResults] = useState<ContactOptionDto[]>([])
-  const [selectedContactCache, setSelectedContactCache] = useState<ContactOptionDto | null>(null)
+  const [selectedContactCache, setSelectedContactCache] =
+    useState<ContactOptionDto | null>(null)
   const contactDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const { execute: executeContactSearch, isPending: isSearchingContacts } =
@@ -166,9 +162,8 @@ export function DealDialogContent({
     },
   })
 
-  const { execute: executeCreateWithContact, isPending: isCreating } = useAction(
-    createDealWithContact,
-    {
+  const { execute: executeCreateWithContact, isPending: isCreating } =
+    useAction(createDealWithContact, {
       onSuccess: () => {
         const contactMode = createForm.getValues('contactMode')
         const message =
@@ -182,8 +177,7 @@ export function DealDialogContent({
       onError: ({ error }) => {
         toast.error(error.serverError || 'Erro ao criar deal.')
       },
-    },
-  )
+    })
 
   const { execute: executeInternalUpdate, isPending: isInternalUpdating } =
     useAction(updateDeal, {
@@ -225,10 +219,15 @@ export function DealDialogContent({
       priority: data.priority || undefined,
       notes: data.notes || undefined,
       contactMode: data.contactMode,
-      contactId: data.contactMode === 'existing' ? (data.contactId || undefined) : undefined,
+      contactId:
+        data.contactMode === 'existing'
+          ? data.contactId || undefined
+          : undefined,
       contactName: data.contactMode === 'new' ? data.contactName : undefined,
-      contactEmail: data.contactMode === 'new' ? (data.contactEmail || undefined) : undefined,
-      contactPhone: data.contactMode === 'new' ? (data.contactPhone || undefined) : undefined,
+      contactEmail:
+        data.contactMode === 'new' ? data.contactEmail || undefined : undefined,
+      contactPhone:
+        data.contactMode === 'new' ? data.contactPhone || undefined : undefined,
     } as DealWithContactFormInput)
   }
 
@@ -471,8 +470,12 @@ export function DealDialogContent({
                     render={({ field }) => {
                       // Cache tem prioridade — persiste após contactResults ser zerado no fechamento do popover.
                       const selectedContact =
-                        (selectedContactCache?.id === field.value ? selectedContactCache : null) ??
-                        contactResults.find((contact) => contact.id === field.value)
+                        (selectedContactCache?.id === field.value
+                          ? selectedContactCache
+                          : null) ??
+                        contactResults.find(
+                          (contact) => contact.id === field.value,
+                        )
 
                       return (
                         <FormItem className="flex flex-col">
@@ -532,7 +535,10 @@ export function DealDialogContent({
                                           key={contact.id}
                                           value={contact.id}
                                           onSelect={() => {
-                                            createForm.setValue('contactId', contact.id)
+                                            createForm.setValue(
+                                              'contactId',
+                                              contact.id,
+                                            )
                                             setSelectedContactCache(contact)
                                             setOpen(false)
                                           }}
@@ -614,7 +620,6 @@ export function DealDialogContent({
                           <FormItem>
                             <FormControl>
                               <PhoneInput
-                                placeholder="(11) 99999-9999"
                                 disabled={isPending}
                                 value={field.value || ''}
                                 onChange={(value) => field.onChange(value)}

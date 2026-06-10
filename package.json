@@ -66,6 +66,7 @@
     "driver.js": "^1.4.0",
     "framer-motion": "^12.35.2",
     "ioredis": "^5.9.3",
+    "libphonenumber-js": "^1.13.6",
     "lucide-react": "^0.562.0",
     "mammoth": "^1.11.0",
     "next": "15.1.11",
