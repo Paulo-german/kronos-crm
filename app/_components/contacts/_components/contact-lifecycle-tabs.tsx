@@ -35,7 +35,7 @@ export function ContactLifecycleTabs({ counts }: ContactLifecycleTabsProps) {
       <TabsList className="grid w-full grid-cols-5">
         <TabsTrigger value="all">
           Todos
-          <Badge className="flex h-4 min-w-5 items-center justify-center rounded-full bg-muted px-1 text-[10px] font-medium text-muted-foreground">
+          <Badge className="flex h-4 min-w-5 items-center justify-center rounded-full bg-muted px-1 text-[10px] font-medium text-muted-foreground hover:bg-muted">
             {counts.total}
           </Badge>
         </TabsTrigger>
@@ -43,9 +43,9 @@ export function ContactLifecycleTabs({ counts }: ContactLifecycleTabsProps) {
           const cfg = LIFECYCLE_STAGE_CONFIG[stage]
           return (
             <TabsTrigger key={stage} value={stage}>
-              <cfg.icon className={`size-3 ${cfg.colorClassName}`} />
+              <cfg.icon className={`size-4 ${cfg.colorClassName}`} />
               <span className="hidden sm:inline">{cfg.label}</span>
-              <Badge className="flex h-4 min-w-5 items-center justify-center rounded-full bg-muted px-1 text-[10px] font-medium text-muted-foreground">
+              <Badge className="flex h-4 min-w-5 items-center justify-center rounded-full bg-muted px-1 text-[10px] font-medium text-muted-foreground hover:bg-muted">
                 {counts[stage]}
               </Badge>
             </TabsTrigger>
