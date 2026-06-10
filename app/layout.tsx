@@ -55,7 +55,7 @@ export default function RootLayout({
           <NuqsAdapter>
             <TooltipProvider delayDuration={500}>{children}</TooltipProvider>
           </NuqsAdapter>
-          <Toaster position="bottom-right" />
+          <Toaster position="top-right" />
         </ThemeProvider>
       </body>
     </html>
