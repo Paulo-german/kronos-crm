@@ -1,12 +1,15 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { format } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 import {
   MailIcon,
   PhoneIcon,
-  StarIcon,
   BriefcaseIcon,
   MessageCircle,
+  CalendarIcon,
 } from 'lucide-react'
 import { Checkbox } from '@/_components/ui/checkbox'
 import { Badge } from '@/_components/ui/badge'
@@ -14,7 +17,10 @@ import { cn } from '@/_lib/utils'
 import { formatPhone } from '@/_utils/format-phone'
 import { formatPhoneForWhatsApp } from '@/_utils/format-phone-whatsapp'
 import { LIFECYCLE_STAGE_CONFIG } from '@/_lib/lifecycle/lifecycle-stage-config'
-import { SCORE_RED_MAX, SCORE_YELLOW_MAX } from '@/../trigger/lib/health-score-constants'
+import {
+  SCORE_RED_MAX,
+  SCORE_YELLOW_MAX,
+} from '@/../trigger/lib/health-score-constants'
 import { LEGAL_BASIS_CONFIG } from '@/_lib/privacy/consent-labels'
 import { ShieldCheck } from 'lucide-react'
 import ContactTableDropdownMenu from './table-dropdown-menu'
@@ -70,15 +76,18 @@ export function ContactCardRow({
   isPiiRestricted,
   isScoreEnabled,
 }: ContactCardRowProps) {
+  const router = useRouter()
   const avatarColor = getAvatarColor(contact.name)
   const initials = getInitials(contact.name)
   const formattedPhone = contact.phone ? formatPhone(contact.phone) : null
   const stageCfg = LIFECYCLE_STAGE_CONFIG[contact.lifecycleStage]
+  const detailHref = `/org/${orgSlug}/contacts/${contact.id}`
 
   return (
     <div
+      onClick={() => router.push(detailHref)}
       className={cn(
-        'flex items-center gap-4 rounded-lg border px-4 py-3 transition-all',
+        'flex cursor-pointer items-center gap-4 rounded-lg border px-4 py-3 transition-all',
         'hover:border-primary/30 hover:bg-primary/10 hover:text-primary hover:shadow-sm',
         isSelected
           ? 'border-primary/30 bg-primary/10 text-primary'
@@ -86,11 +95,13 @@ export function ContactCardRow({
       )}
     >
       {/* Checkbox de seleção */}
-      <Checkbox
-        checked={isSelected}
-        onCheckedChange={(checked) => onSelectionChange(Boolean(checked))}
-        aria-label={`Selecionar ${contact.name}`}
-      />
+      <div onClick={(event) => event.stopPropagation()}>
+        <Checkbox
+          checked={isSelected}
+          onCheckedChange={(checked) => onSelectionChange(Boolean(checked))}
+          aria-label={`Selecionar ${contact.name}`}
+        />
+      </div>
 
       {/* Avatar com iniciais */}
       <div
@@ -120,85 +131,68 @@ export function ContactCardRow({
 
       {/* Informações principais — ocupa o espaço restante */}
       <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-          <Link
-            href={`/org/${orgSlug}/contacts/${contact.id}`}
-            className="truncate font-medium hover:underline"
-          >
-            {contact.name}
-          </Link>
+        {/* Linha 1: nome + cargo + divisória + badges */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="truncate text-sm font-semibold">{contact.name}</span>
           {contact.role && (
-            <span className="truncate text-sm text-muted-foreground">
+            <span className="shrink-0 text-xs text-muted-foreground">
               {contact.role}
             </span>
           )}
-          {contact.isDecisionMaker && (
-            <StarIcon
-              className="size-3.5 shrink-0 fill-amber-400 text-amber-400"
-              aria-label="Tomador de decisão"
-            />
-          )}
+          <div className="h-3.5 w-px shrink-0 bg-border-strong" />
           <Badge
             variant="outline"
-            className={cn('h-5 gap-1 px-1.5 text-[10px] font-medium', stageCfg.badgeClassName)}
+            className={cn(
+              'h-5 gap-1 px-1.5 text-[10px] font-medium',
+              stageCfg.badgeClassName,
+            )}
           >
             <stageCfg.icon className="size-2.5" />
             {stageCfg.label}
           </Badge>
-        </div>
-
-        <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5">
-          {contact.email &&
-            (isPiiRestricted ? (
-              <span className="flex items-center gap-1 truncate text-xs text-muted-foreground">
-                <MailIcon className="size-3 shrink-0" />
-                {contact.email}
-              </span>
-            ) : (
-              <a
-                href={`mailto:${contact.email}`}
-                className="flex items-center gap-1 truncate text-xs text-muted-foreground transition-colors hover:text-foreground"
-                onClick={(event) => event.stopPropagation()}
-              >
-                <MailIcon className="size-3 shrink-0" />
-                {contact.email}
-              </a>
-            ))}
-          {formattedPhone &&
-            (isPiiRestricted ? (
-              <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                <PhoneIcon className="size-3 shrink-0" />
-                {formattedPhone}
-              </span>
-            ) : (
-              <a
-                href={`tel:${contact.phone}`}
-                className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
-                onClick={(event) => event.stopPropagation()}
-              >
-                <PhoneIcon className="size-3 shrink-0" />
-                {formattedPhone}
-              </a>
-            ))}
-          {contact.deals.length > 0 && (
-            <Badge
-              variant="secondary"
-              className="h-4 gap-1 px-1.5 py-0 text-[10px]"
-            >
-              <BriefcaseIcon className="size-2.5" />
-              {contact.deals.length}{' '}
-              {contact.deals.length === 1 ? 'negócio' : 'negócios'}
-            </Badge>
-          )}
           {contact.legalBasis && (
             <Badge
               variant="outline"
-              className={cn('h-4 gap-1 px-1.5 py-0 text-[10px]', LEGAL_BASIS_CONFIG[contact.legalBasis].badgeClassName)}
+              className={cn(
+                'h-5 gap-1 px-1.5 text-[10px] font-medium',
+                LEGAL_BASIS_CONFIG[contact.legalBasis].badgeClassName,
+              )}
             >
               <ShieldCheck className="size-2.5" />
               {LEGAL_BASIS_CONFIG[contact.legalBasis].label}
             </Badge>
           )}
+          {contact.deals.length > 0 && (
+            <Badge variant="secondary" className="h-5 gap-1 px-1.5 text-[10px]">
+              <BriefcaseIcon className="size-2.5" />
+              {contact.deals.length}{' '}
+              {contact.deals.length === 1 ? 'negócio' : 'negócios'}
+            </Badge>
+          )}
+        </div>
+
+        {/* Linha 3: contato + data */}
+        <div className="mt-1 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {contact.email && (
+              <span className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+                <MailIcon className="size-3 shrink-0" />
+                {contact.email}
+              </span>
+            )}
+            {formattedPhone && (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <PhoneIcon className="size-3 shrink-0" />
+                {formattedPhone}
+              </span>
+            )}
+          </div>
+          <span className="ml-4 flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+            <CalendarIcon className="size-3 shrink-0" />
+            {format(new Date(contact.createdAt), "d 'de' MMM, yyyy", {
+              locale: ptBR,
+            })}
+          </span>
         </div>
       </div>
 
@@ -212,7 +206,10 @@ export function ContactCardRow({
       )}
 
       {/* Ações rápidas */}
-      <div className="flex shrink-0 items-center gap-1">
+      <div
+        className="flex shrink-0 items-center gap-1"
+        onClick={(event) => event.stopPropagation()}
+      >
         {contact.email && !isPiiRestricted && (
           <a
             href={`mailto:${contact.email}`}
