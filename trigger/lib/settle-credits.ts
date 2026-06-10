@@ -13,9 +13,13 @@ type SettleReason =
   | 'ai_paused_during_generation'
   | 'guard_escalated'
   | 'fallback_completed'
+  | 'agent_transfer'
 
 // Shape exigido por debitCredits/refundCredits — metadata JSONB serializável.
-type CreditMetadata = Record<string, string | number | boolean | null | undefined>
+type CreditMetadata = Record<
+  string,
+  string | number | boolean | null | undefined
+>
 
 interface SettleCreditsInput {
   organizationId: string
@@ -58,21 +62,23 @@ interface SettleCreditsResult {
 export async function settleCredits(
   input: SettleCreditsInput,
 ): Promise<SettleCreditsResult> {
-  const { organizationId, estimatedCost, modelId, actualUsage, reason, metadata } = input
+  const {
+    organizationId,
+    estimatedCost,
+    modelId,
+    actualUsage,
+    reason,
+    metadata,
+  } = input
   const { conversationId } = metadata
 
   // Refund completo quando não há usage (erro antes de qualquer geração de tokens)
   if (actualUsage === null) {
-    await refundCredits(
-      organizationId,
+    await refundCredits(organizationId, estimatedCost, `Refund — ${reason}`, {
+      ...metadata,
       estimatedCost,
-      `Refund — ${reason}`,
-      {
-        ...metadata,
-        estimatedCost,
-        reason,
-      },
-    )
+      reason,
+    })
 
     logger.info('credits settled', {
       conversationId,

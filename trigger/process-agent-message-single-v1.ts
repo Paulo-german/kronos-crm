@@ -1,11 +1,23 @@
-import { task, tasks, logger, metadata as triggerMetadata, AbortTaskRunError } from '@trigger.dev/sdk/v3'
+import {
+  task,
+  tasks,
+  logger,
+  metadata as triggerMetadata,
+  AbortTaskRunError,
+} from '@trigger.dev/sdk/v3'
 import { observe, updateActiveTrace } from '@langfuse/tracing'
 import { flushLangfuse, langfuseTracer } from './lib/langfuse'
 import { buildDispatcherCtx } from './lib/build-dispatcher-ctx'
 import type { ProcessAgentMessagePayload } from './lib/build-dispatcher-ctx'
 import { handleAgentTaskFailure } from './lib/handle-task-failure'
 import { extractErrorMessage } from './lib/retry-helpers'
-import { generateText, stepCountIs, Output, NoOutputGeneratedError, NoObjectGeneratedError } from 'ai'
+import {
+  generateText,
+  stepCountIs,
+  Output,
+  NoOutputGeneratedError,
+  NoObjectGeneratedError,
+} from 'ai'
 import { z } from 'zod'
 import { getModel } from '@/_lib/ai/provider'
 import { SUMMARIZATION_MODEL_ID } from '@/_lib/ai/models'
@@ -36,7 +48,10 @@ import { getFollowUpsForStep } from '@/_data-access/follow-up/get-follow-ups-for
 import { revalidateConversationCache } from './lib/revalidate-cache'
 import { emitAgentStatus } from './lib/emit-agent-status'
 import { notifyNoCredits } from './lib/notify-no-credits'
-import { saveAgentResponseSent, saveAgentResponseFailed } from './lib/save-agent-response'
+import {
+  saveAgentResponseSent,
+  saveAgentResponseFailed,
+} from './lib/save-agent-response'
 import { applyLifecycleTrigger } from './lib/apply-lifecycle-trigger'
 import type { ToolContext } from './tools/types'
 import type { DispatcherCtx } from './dispatcher-types'
@@ -78,7 +93,7 @@ const IDEMPOTENT_TOOL_NAMES = [
 ] as const
 
 // Tools de conteúdo: impactam a resposta ao cliente diretamente; excluem mutações de CRM (epicentro do loop).
-const FALLBACK_TOOL_NAMES = [
+const _FALLBACK_TOOL_NAMES = [
   'search_knowledge',
   'search_products',
   'list_availability',
@@ -126,12 +141,16 @@ function buildAgentOutputSchema(stepIds: readonly string[]) {
   // Cast obrigatório: z.enum exige tuple não-vazia; o caller garante que stepIds.length > 0.
   const enumValues = stepIds as unknown as [string, ...string[]]
   return z.object({
-    message: z.string().describe(
-      'Sua resposta ao cliente. Texto natural que será enviado diretamente ao lead.',
-    ),
-    currentStep: z.enum(enumValues).describe(
-      'UUID exato da etapa atual, escolhido entre os IDs listados no Processo de Atendimento. Só avança, nunca retrocede.',
-    ),
+    message: z
+      .string()
+      .describe(
+        'Sua resposta ao cliente. Texto natural que será enviado diretamente ao lead.',
+      ),
+    currentStep: z
+      .enum(enumValues)
+      .describe(
+        'UUID exato da etapa atual, escolhido entre os IDs listados no Processo de Atendimento. Só avança, nunca retrocede.',
+      ),
   })
 }
 
@@ -235,47 +254,51 @@ export async function runSingleV1(
   // PIPELINE V1 — Fluxo legado (inalterado)
   // A partir daqui, nenhuma linha do v1 foi modificada.
   // ===================================================================
-  const [promptContext, messageHistory, conversation] =
-    await Promise.all([
-      buildSystemPrompt(ctx.effectiveAgentId, ctx.conversationId, ctx.organizationId, ctx.groupPromptContext),
-      db.message.findMany({
-        where: {
-          conversationId: ctx.conversationId,
-          isArchived: false,
-        },
-        orderBy: { createdAt: 'asc' },
-        take: MESSAGE_HISTORY_LIMIT,
-        select: {
-          role: true,
-          content: true,
-          metadata: true,
-        },
-      }),
-      db.conversation.findUniqueOrThrow({
-        where: { id: ctx.conversationId },
-        select: {
-          contactId: true,
-          dealId: true,
-          // Dados do inbox para resolver provider em send_product_media
-          inbox: {
-            select: {
-              connectionType: true,
-              channel: true,
-              evolutionInstanceName: true,
-              evolutionApiUrl: true,
-              evolutionApiKey: true,
-              metaPhoneNumberId: true,
-              metaAccessToken: true,
-              metaIgUserId: true,
-              zapiInstanceId: true,
-              zapiToken: true,
-              zapiClientToken: true,
-              showAttendantName: true,
-            },
+  const [promptContext, messageHistory, conversation] = await Promise.all([
+    buildSystemPrompt(
+      ctx.effectiveAgentId,
+      ctx.conversationId,
+      ctx.organizationId,
+      ctx.groupPromptContext,
+    ),
+    db.message.findMany({
+      where: {
+        conversationId: ctx.conversationId,
+        isArchived: false,
+      },
+      orderBy: { createdAt: 'asc' },
+      take: MESSAGE_HISTORY_LIMIT,
+      select: {
+        role: true,
+        content: true,
+        metadata: true,
+      },
+    }),
+    db.conversation.findUniqueOrThrow({
+      where: { id: ctx.conversationId },
+      select: {
+        contactId: true,
+        dealId: true,
+        // Dados do inbox para resolver provider em send_product_media
+        inbox: {
+          select: {
+            connectionType: true,
+            channel: true,
+            evolutionInstanceName: true,
+            evolutionApiUrl: true,
+            evolutionApiKey: true,
+            metaPhoneNumberId: true,
+            metaAccessToken: true,
+            metaIgUserId: true,
+            zapiInstanceId: true,
+            zapiToken: true,
+            zapiClientToken: true,
+            showAttendantName: true,
           },
         },
-      }),
-    ])
+      },
+    }),
+  ])
 
   ctx.log('step:4 context_loaded', 'PASS', {
     model: promptContext.modelId,
@@ -355,13 +378,17 @@ export async function runSingleV1(
       // Enriquecer mensagens outbound com transcrição de mídia
       if (msg.role === 'assistant' && msg.metadata) {
         const meta = msg.metadata as Record<string, unknown>
-        if (typeof meta.mediaTranscription === 'string' && meta.mediaTranscription.length > 0) {
+        if (
+          typeof meta.mediaTranscription === 'string' &&
+          meta.mediaTranscription.length > 0
+        ) {
           const mediaInfo = meta.media as Record<string, unknown> | undefined
           const mimetype = mediaInfo?.mimetype as string | undefined
           const fileName = mediaInfo?.fileName as string | undefined
-          const hasCaption = msg.content !== '[Imagem]'
-            && msg.content !== '[Vídeo]'
-            && !msg.content.startsWith('[Documento:')
+          const hasCaption =
+            msg.content !== '[Imagem]' &&
+            msg.content !== '[Vídeo]' &&
+            !msg.content.startsWith('[Documento:')
 
           const captionPart = hasCaption
             ? ` com mensagem: "${msg.content}"`
@@ -422,8 +449,7 @@ export async function runSingleV1(
     await createConversationEvent({
       conversationId: ctx.conversationId,
       type: 'PROCESSING_ERROR',
-      content:
-        'Créditos de IA insuficientes para processar esta mensagem.',
+      content: 'Créditos de IA insuficientes para processar esta mensagem.',
       metadata: {
         subtype: 'NO_CREDITS' satisfies ProcessingErrorSubtype,
         estimatedCost,
@@ -477,7 +503,9 @@ export async function runSingleV1(
     pipelineIds: promptContext.pipelineIds,
     remoteJid: ctx.message.remoteJid,
     inboxProvider: conversation.inbox ?? null,
-    onHandOffTransfer: () => { handOffCalledByAgentThisRun = true },
+    onHandOffTransfer: () => {
+      handOffCalledByAgentThisRun = true
+    },
   }
 
   const effectiveToolsEnabled = promptContext.toolsEnabled
@@ -499,7 +527,8 @@ export async function runSingleV1(
     {
       hasActiveProducts: promptContext.hasActiveProducts,
       hasActiveProductsWithMedia: promptContext.hasActiveProductsWithMedia,
-      hasActiveServicesWithProfessionals: promptContext.hasActiveServicesWithProfessionals,
+      hasActiveServicesWithProfessionals:
+        promptContext.hasActiveServicesWithProfessionals,
       hasKnowledgeBase: promptContext.hasKnowledgeBase,
       agentMode: promptContext.agentMode,
     },
@@ -564,7 +593,9 @@ export async function runSingleV1(
         stopWhen: stepCountIs(4 + (hasSteps ? STEP_OUTPUT_OVERHEAD : 0)),
         maxOutputTokens: MAX_OUTPUT_TOKENS,
         // Quando há steps, forçamos output tipado para separar message de currentStep
-        output: agentOutputSchema ? Output.object({ schema: agentOutputSchema }) : undefined,
+        output: agentOutputSchema
+          ? Output.object({ schema: agentOutputSchema })
+          : undefined,
 
         // Barreira estrutural contra tool-call loops — idêntico a tool-agent.ts:166-191.
         prepareStep: async ({ steps }) => {
@@ -620,14 +651,16 @@ export async function runSingleV1(
         // Ocorre quando tools + Output.object são combinados, ou quando o JSON retornado é inválido.
         ctx.log('step:5 llm_call', 'EXIT', {
           reason: 'no_output_generated',
-          error: llmError instanceof Error ? llmError.message : String(llmError),
+          error:
+            llmError instanceof Error ? llmError.message : String(llmError),
         })
         ctx.tracker.addStep({
           type: 'LLM_CALL',
           status: 'FAILED',
           output: {
             reason: 'no_output_generated',
-            error: llmError instanceof Error ? llmError.message : String(llmError),
+            error:
+              llmError instanceof Error ? llmError.message : String(llmError),
           },
         })
         ctx.traceTags.push('no_output_generated')
@@ -666,7 +699,9 @@ export async function runSingleV1(
         // Extrai texto do resultado ou de qualquer step intermediário com conteúdo
         const fallbackText =
           fallbackResult?.text?.trim() ||
-          fallbackResult?.steps?.findLast((step) => step.text?.trim())?.text?.trim()
+          fallbackResult?.steps
+            ?.findLast((step) => step.text?.trim())
+            ?.text?.trim()
 
         if (fallbackText) {
           ctx.traceTags.push('no_output_fallback_recovered')
@@ -696,10 +731,13 @@ export async function runSingleV1(
             reason: 'no_output_generated_fallback_failed',
           },
         ).catch((refundError) => {
-          logger.error('Failed to refund credits after NoOutputGeneratedError', {
-            ...ctx.baseLogContext,
-            refundError,
-          })
+          logger.error(
+            'Failed to refund credits after NoOutputGeneratedError',
+            {
+              ...ctx.baseLogContext,
+              refundError,
+            },
+          )
         })
 
         throw new AbortTaskRunError(
@@ -713,8 +751,7 @@ export async function runSingleV1(
       // (só executa quando TODOS os retries falharam).
       ctx.log('step:5 llm_call', 'EXIT', {
         reason: 'llm_error',
-        error:
-          llmError instanceof Error ? llmError.message : String(llmError),
+        error: llmError instanceof Error ? llmError.message : String(llmError),
       })
       ctx.tracker.addStep({
         type: 'LLM_CALL',
@@ -722,9 +759,7 @@ export async function runSingleV1(
         output: {
           reason: 'llm_error',
           error:
-            llmError instanceof Error
-              ? llmError.message
-              : String(llmError),
+            llmError instanceof Error ? llmError.message : String(llmError),
         },
       })
       await refundCredits(
@@ -752,9 +787,7 @@ export async function runSingleV1(
 
   // Quando Output.object está ativo, result.text do último step é o JSON stringified —
   // não serve como mensagem ao cliente. A mensagem real vem de result.output.message.
-  let responseText = hasSteps
-    ? (result.output?.message ?? '')
-    : result.text
+  let responseText = hasSteps ? (result.output?.message ?? '') : result.text
   let lastResortUsage = { inputTokens: 0, outputTokens: 0 }
 
   // Guard de monotonicidade: step só avança, nunca regride.
@@ -899,7 +932,10 @@ export async function runSingleV1(
         ctx.tracker.addStep({
           type: 'FALLBACK_LLM_CALL',
           status: 'PASSED',
-          output: { responseLength: responseText.length, reason: 'last_resort_fallback' },
+          output: {
+            responseLength: responseText.length,
+            reason: 'last_resort_fallback',
+          },
         })
       } else {
         const failReason = lastResortResult ? 'empty_text' : 'llm_error'
@@ -936,12 +972,12 @@ export async function runSingleV1(
 
   if (!responseText) {
     // Genuinamente sem resposta (sem tool calls ou fallback falhou)
-    const hadToolCalls = result.steps?.some(
-      (step) => step.toolCalls && step.toolCalls.length > 0,
-    ) ?? false
+    const hadToolCalls =
+      result.steps?.some(
+        (step) => step.toolCalls && step.toolCalls.length > 0,
+      ) ?? false
     const emptyTotalTokens =
-      (result.usage?.inputTokens ?? 0) +
-      (result.usage?.outputTokens ?? 0)
+      (result.usage?.inputTokens ?? 0) + (result.usage?.outputTokens ?? 0)
     const emptyActualCost = calculateCreditCost(
       promptContext.modelId,
       emptyTotalTokens,
@@ -976,7 +1012,9 @@ export async function runSingleV1(
         creditsCost: emptyActualCost,
         // result.text é o JSON raw quando Output.object ativo — útil para debug
         resultTextLength: result.text?.length ?? 0,
-        outputMessageLength: hasSteps ? (result.output?.message?.length ?? 0) : undefined,
+        outputMessageLength: hasSteps
+          ? (result.output?.message?.length ?? 0)
+          : undefined,
       },
     })
     ctx.log('step:5 llm_call', 'EXIT', {
@@ -988,7 +1026,9 @@ export async function runSingleV1(
       stepsCount: result.steps?.length ?? 0,
       // result.text pode ser JSON quando Output.object ativo — manter para debug
       resultTextLength: result.text?.length ?? 0,
-      outputMessageLength: hasSteps ? (result.output?.message?.length ?? 0) : undefined,
+      outputMessageLength: hasSteps
+        ? (result.output?.message?.length ?? 0)
+        : undefined,
     })
     ctx.tracker.addStep({
       type: 'LLM_CALL',
@@ -998,14 +1038,17 @@ export async function runSingleV1(
         reason: 'empty_response',
         resultText: result.text ?? null,
         resultTextLength: result.text?.length ?? 0,
-        outputMessageLength: hasSteps ? (result.output?.message?.length ?? 0) : undefined,
+        outputMessageLength: hasSteps
+          ? (result.output?.message?.length ?? 0)
+          : undefined,
         finishReason: result.finishReason,
         outputTokens: result.usage?.outputTokens ?? 0,
         inputTokens: result.usage?.inputTokens ?? 0,
         stepsCount: result.steps?.length ?? 0,
-        toolCalls: result.steps?.flatMap(
-          (step) => step.toolCalls?.map((tc) => tc.toolName) ?? [],
-        ) ?? [],
+        toolCalls:
+          result.steps?.flatMap(
+            (step) => step.toolCalls?.map((tc) => tc.toolName) ?? [],
+          ) ?? [],
         fallbackAttempted: hadToolCalls,
       },
     })
@@ -1039,8 +1082,7 @@ export async function runSingleV1(
     steps: result.steps?.length ?? 1,
     toolCalls:
       result.steps?.flatMap(
-        (step) =>
-          step.toolCalls?.map((toolCall) => toolCall.toolName) ?? [],
+        (step) => step.toolCalls?.map((toolCall) => toolCall.toolName) ?? [],
       ) ?? [],
     classifiedStep,
     newStepOrder,
@@ -1062,18 +1104,14 @@ export async function runSingleV1(
       const toolResult = aiStep.toolResults?.find(
         (result) => result.toolName === toolCall.toolName,
       )
-      const toolOutput = toolResult?.output as
-        | { success?: boolean }
-        | undefined
+      const toolOutput = toolResult?.output as { success?: boolean } | undefined
       const isToolSuccess = toolOutput?.success !== false
       ctx.tracker.addStep({
         type: 'TOOL_CALL',
         status: isToolSuccess ? 'PASSED' : 'FAILED',
         toolName: toolCall.toolName,
         input: toolCall.input as Record<string, unknown>,
-        output: toolResult?.output as
-          | Record<string, unknown>
-          | undefined,
+        output: toolResult?.output as Record<string, unknown> | undefined,
       })
     }
   }
@@ -1096,6 +1134,113 @@ export async function runSingleV1(
         toolName: lastToolName,
       })
     }
+  }
+
+  // -----------------------------------------------------------------------
+  // Early-exit de transferência: suprimir resposta do Agent X e disparar
+  // Agent Y diretamente. createToolEvents já rodou acima → evento
+  // AGENT_TRANSFER na timeline já foi criado.
+  // -----------------------------------------------------------------------
+  const transferToolOutput = result.steps
+    ?.flatMap((aiStep) => aiStep.toolResults ?? [])
+    .find((toolResult) => toolResult.toolName === 'transfer_to_agent')
+    ?.output as { success?: boolean; targetAgentId?: string } | undefined
+
+  const didTransfer =
+    transferToolOutput?.success === true && !!transferToolOutput.targetAgentId
+
+  if (didTransfer && transferToolOutput?.targetAgentId) {
+    const targetAgentId = transferToolOutput.targetAgentId
+
+    // Liquidar créditos pelo custo real do LLM do Agent X
+    const transferTotalTokens =
+      (result.usage?.inputTokens ?? 0) +
+      (result.usage?.outputTokens ?? 0) +
+      lastResortUsage.inputTokens +
+      lastResortUsage.outputTokens
+    const transferActualCost = calculateCreditCost(
+      promptContext.modelId,
+      transferTotalTokens,
+    )
+    const transferCreditDiff = estimatedCost - transferActualCost
+    if (transferCreditDiff > 0) {
+      await refundCredits(
+        ctx.organizationId,
+        transferCreditDiff,
+        'Ajuste pós-LLM — agent transfer (Agent X descartado)',
+        {
+          agentId: ctx.effectiveAgentId,
+          conversationId: ctx.conversationId,
+          model: promptContext.modelId,
+          estimatedCost,
+          actualCost: transferActualCost,
+          totalTokens: transferTotalTokens,
+        },
+      )
+    } else if (transferCreditDiff < 0) {
+      await debitCredits(
+        ctx.organizationId,
+        -transferCreditDiff,
+        'Ajuste pós-LLM — custo real maior (agent transfer)',
+        {
+          agentId: ctx.effectiveAgentId,
+          conversationId: ctx.conversationId,
+          model: promptContext.modelId,
+          estimatedCost,
+          actualCost: transferActualCost,
+          totalTokens: transferTotalTokens,
+          type: 'adjustment',
+        },
+        false,
+      )
+    }
+
+    // Disparar Agent Y com a mensagem original — sem enviar nada ao cliente
+    await tasks.trigger(
+      'process-agent-message',
+      {
+        message: ctx.message,
+        agentId: targetAgentId,
+        conversationId: ctx.conversationId,
+        organizationId: ctx.organizationId,
+        debounceTimestamp: ctx.debounceTimestamp,
+        requiresRouting: false,
+        skipRouting: true,
+        groupId: ctx.groupPromptContext?.groupId ?? null,
+      },
+      { concurrencyKey: ctx.conversationId },
+    )
+
+    // Invalida cache para que o evento AGENT_TRANSFER apareça imediatamente no inbox
+    await revalidateConversationCache(ctx.conversationId, ctx.organizationId)
+
+    ctx.log('step:transfer_handoff', 'PASS', {
+      targetAgentId,
+      actualCost: transferActualCost,
+      totalTokens: transferTotalTokens,
+    })
+    ctx.finalizeTrace('completed', {
+      metadata: {
+        outcome: 'agent_transfer',
+        targetAgentId,
+        creditsCost: transferActualCost,
+      },
+    })
+    await ctx.tracker.complete({
+      modelId: promptContext.modelId,
+      inputTokens: result.usage?.inputTokens ?? 0,
+      outputTokens: result.usage?.outputTokens ?? 0,
+      creditsCost: transferActualCost,
+      finishReason: 'transfer',
+    })
+    await emitAgentStatus({
+      conversationId: ctx.conversationId,
+      organizationId: ctx.organizationId,
+      state: 'idle',
+      agentName: promptContext.agentName,
+      terminalReason: 'completed',
+    })
+    return { success: true }
   }
 
   // Emite composing antes de persistir/enviar a resposta
@@ -1150,8 +1295,7 @@ export async function runSingleV1(
 
     // Ajustar créditos: cobrar custo real, refundar a diferença
     const pausedTotalTokens =
-      (result.usage?.inputTokens ?? 0) +
-      (result.usage?.outputTokens ?? 0)
+      (result.usage?.inputTokens ?? 0) + (result.usage?.outputTokens ?? 0)
     const pausedActualCost = calculateCreditCost(
       promptContext.modelId,
       pausedTotalTokens,
@@ -1191,7 +1335,9 @@ export async function runSingleV1(
       status: 'SKIPPED',
       output: { reason: 'ai_paused_during_generation' },
     })
-    ctx.finalizeTrace('ai_paused_during_generation', { metadata: { creditsCost: pausedActualCost } })
+    ctx.finalizeTrace('ai_paused_during_generation', {
+      metadata: { creditsCost: pausedActualCost },
+    })
     await ctx.tracker.skip({
       reason: 'ai_paused_during_generation',
       modelId: promptContext.modelId,
@@ -1231,10 +1377,7 @@ export async function runSingleV1(
     (result.usage?.outputTokens ?? 0) +
     lastResortUsage.inputTokens +
     lastResortUsage.outputTokens
-  const actualCost = calculateCreditCost(
-    promptContext.modelId,
-    totalTokens,
-  )
+  const actualCost = calculateCreditCost(promptContext.modelId, totalTokens)
   const creditDiff = estimatedCost - actualCost
 
   if (creditDiff > 0) {
@@ -1310,7 +1453,9 @@ export async function runSingleV1(
       // Simulator: não há provider externo — gerar ID fictício para manter
       // consistência com o fluxo de dedup e logging
       sentMessageIds = [`sim_resp_${crypto.randomUUID()}`]
-      ctx.log('step:9 simulator_send', 'PASS', { textLength: textToSend.length })
+      ctx.log('step:9 simulator_send', 'PASS', {
+        textLength: textToSend.length,
+      })
     } else if (ctx.message.provider === 'meta_cloud') {
       // Para Meta Cloud: buscar metaAccessToken do inbox (nunca vem no payload por seguranca)
       const metaInbox = await db.inbox.findFirst({
@@ -1365,9 +1510,10 @@ export async function runSingleV1(
       )
     } else {
       // Provider Evolution (default)
-      const evolutionCredentials = await resolveEvolutionCredentialsByInstanceName(
-        ctx.message.instanceName,
-      )
+      const evolutionCredentials =
+        await resolveEvolutionCredentialsByInstanceName(
+          ctx.message.instanceName,
+        )
       sentMessageIds = await sendWhatsAppMessage(
         ctx.message.instanceName,
         ctx.message.remoteJid,
@@ -1450,7 +1596,8 @@ export async function runSingleV1(
       status: 'FAILED',
       output: {
         provider: ctx.message.provider,
-        error: sendError instanceof Error ? sendError.message : String(sendError),
+        error:
+          sendError instanceof Error ? sendError.message : String(sendError),
       },
     })
 
@@ -1520,7 +1667,10 @@ export async function runSingleV1(
         } catch (lifecycleErr) {
           logger.error('lifecycle:trigger_failed', {
             conversationId: ctx.conversationId,
-            error: lifecycleErr instanceof Error ? lifecycleErr.message : String(lifecycleErr),
+            error:
+              lifecycleErr instanceof Error
+                ? lifecycleErr.message
+                : String(lifecycleErr),
           })
         }
       }
@@ -1578,8 +1728,7 @@ export async function runSingleV1(
   } catch (fupError) {
     logger.error('Follow-up scheduling failed', {
       conversationId: ctx.conversationId,
-      error:
-        fupError instanceof Error ? fupError.message : String(fupError),
+      error: fupError instanceof Error ? fupError.message : String(fupError),
     })
     // Limpar estado para evitar estado órfão que ficaria disparando o cron indefinidamente
     await db.conversation
@@ -1597,7 +1746,9 @@ export async function runSingleV1(
   ctx.tracker.addStep({
     type: 'MEMORY_COMPRESSION',
     status: memoryCompressed ? 'PASSED' : 'SKIPPED',
-    output: memoryCompressed ? { compressed: true } : { reason: 'below_threshold' },
+    output: memoryCompressed
+      ? { compressed: true }
+      : { reason: 'below_threshold' },
   })
 
   // -----------------------------------------------------------------------
@@ -1654,26 +1805,32 @@ export const processAgentMessageSingleV1 = task({
   id: 'process-agent-message-single-v1',
   retry: { maxAttempts: 3 },
   run: async (payload: ProcessAgentMessagePayload, { ctx: triggerCtx }) => {
-    return observe(async () => {
-      const dispatchResult = await buildDispatcherCtx(payload, triggerCtx)
-      try {
-        if ('skipped' in dispatchResult) return dispatchResult
-        return await runSingleV1(dispatchResult.ctx)
-      } finally {
-        // Emite idle com failed antes do flushLangfuse — idempotente se completed já foi emitido
-        if (!('skipped' in dispatchResult)) {
-          await emitAgentStatus({
-            conversationId: dispatchResult.ctx.conversationId,
-            organizationId: dispatchResult.ctx.organizationId,
-            state: 'idle',
-            agentName: 'Agente',
-            terminalReason: 'failed',
-          })
+    return observe(
+      async () => {
+        const dispatchResult = await buildDispatcherCtx(payload, triggerCtx)
+        try {
+          if ('skipped' in dispatchResult) return dispatchResult
+          return await runSingleV1(dispatchResult.ctx)
+        } finally {
+          // Emite idle com failed antes do flushLangfuse — idempotente se completed já foi emitido
+          if (!('skipped' in dispatchResult)) {
+            await emitAgentStatus({
+              conversationId: dispatchResult.ctx.conversationId,
+              organizationId: dispatchResult.ctx.organizationId,
+              state: 'idle',
+              agentName: 'Agente',
+              terminalReason: 'failed',
+            })
+          }
+          await flushLangfuse()
         }
-        await flushLangfuse()
-      }
-    }, { name: 'process-agent-message-single-v1' })()
+      },
+      { name: 'process-agent-message-single-v1' },
+    )()
   },
   onFailure: async ({ payload, error }) =>
-    handleAgentTaskFailure('process-agent-message-single-v1', { payload, error }),
+    handleAgentTaskFailure('process-agent-message-single-v1', {
+      payload,
+      error,
+    }),
 })

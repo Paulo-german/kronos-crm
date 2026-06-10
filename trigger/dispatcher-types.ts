@@ -11,6 +11,7 @@ export interface DispatcherCtx {
   organizationId: string
   effectiveAgentId: string
   agentVersion: 'single-v1' | 'single-v2' | 'crew-v1'
+  debounceTimestamp: number
 
   // Execução / rastreamento
   tracker: ExecutionTracker

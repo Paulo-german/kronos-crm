@@ -1,5 +1,6 @@
 import {
   task,
+  tasks,
   logger,
   metadata as triggerMetadata,
   AbortTaskRunError,
@@ -58,12 +59,13 @@ import {
   MAX_OUTPUT_TOKENS,
   MESSAGE_HISTORY_LIMIT,
 } from './lib/pipeline-single-v2/constants'
-import { buildLlmMessages, stripLeakedToolCalls } from './lib/pipeline-single-v2/message-utils'
+import {
+  buildLlmMessages,
+  stripLeakedToolCalls,
+} from './lib/pipeline-single-v2/message-utils'
 import { runStepClassifier } from './lib/pipeline-single-v2/step-classifier'
 import { runResponder } from './lib/pipeline-single-v2/responder'
 import { applyStepAdvance } from './lib/pipeline-single-v2/step-advance'
-
-
 
 // ---------------------------------------------------------------------------
 // Tipos auxiliares do guard pipeline
@@ -121,7 +123,7 @@ async function applyGuardPipeline(params: {
   // 1. IDs dos produtos retornados por search_products nesta execução
   // 2. Substring match no catálogo completo contra o texto de resposta
   // 3. Se vazio: pular apenas price_mismatch (guard roda as demais categorias)
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let productsInContext: any[] = []
 
   try {
@@ -134,7 +136,7 @@ async function applyGuardPipeline(params: {
             const toolResult = step.toolResults?.find(
               (tr) => tr.toolName === tc.toolName,
             )
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
             return toolResult?.output
           }) ?? [],
     )
@@ -168,9 +170,9 @@ async function applyGuardPipeline(params: {
 
     if (productIdsFromTools.size > 0) {
       // Buscar itens do catálogo apenas pelos IDs encontrados nos steps
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
       const fullCatalog = await getProductCatalogForGuard(organizationId)
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+
       productsInContext = fullCatalog.filter((item: { id: string }) =>
         productIdsFromTools.has(item.id),
       )
@@ -178,10 +180,9 @@ async function applyGuardPipeline(params: {
 
     // Passo 2: substring match no catálogo se ainda não encontramos produtos
     if (productsInContext.length === 0 && responseText) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const fullCatalog = await getProductCatalogForGuard(organizationId)
       const normalizedResponse = responseText.toLowerCase()
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+
       productsInContext = fullCatalog.filter((item: { name: string }) =>
         normalizedResponse.includes(item.name.toLowerCase()),
       )
@@ -211,7 +212,7 @@ async function applyGuardPipeline(params: {
 
   // Guard attempt 1
   const guardStartMs = Date.now()
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
   const guardResult1 = await runSingleGuard({
     customerMessage: responseText,
     context: { toolsUsed, productsInContext },
@@ -220,22 +221,19 @@ async function applyGuardPipeline(params: {
   })
   const guardDurationMs = Date.now() - guardStartMs
 
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
   const guard1Approved: boolean = guardResult1.approved === true
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+
   const guard1Violations: Array<{
     type: string
     details: string
     confidence: number
-  }> =
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    Array.isArray(guardResult1.violations) ? guardResult1.violations : []
+  }> = Array.isArray(guardResult1.violations) ? guardResult1.violations : []
 
   logger.info('single-guard completed', {
     conversationId,
     organizationId,
     approved: guard1Approved,
-    violationTypes: guard1Violations.map((v) => v.type),
+    violationTypes: guard1Violations.map((violation) => violation.type),
     durationMs: guardDurationMs,
     attempt: 1,
   })
@@ -252,10 +250,10 @@ async function applyGuardPipeline(params: {
       modelId,
       rejectedMessage: responseText,
       guardViolations: guard1Violations,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+
       correctedContext: guardResult1.correctedContext,
       // Passar apenas as mensagens sem o system prompt original para evitar conflito
-      llmMessages: llmMessages.filter((m) => m.role !== 'system'),
+      llmMessages: llmMessages.filter((msg) => msg.role !== 'system'),
       toolResults: steps,
       agentPersona: {
         name: agentName,
@@ -283,7 +281,7 @@ async function applyGuardPipeline(params: {
 
     if (fallbackRawText) {
       // Guard attempt 2 com o texto do fallback
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
       const guardResult2 = await runSingleGuard({
         customerMessage: fallbackRawText,
         context: { toolsUsed, productsInContext },
@@ -291,18 +289,18 @@ async function applyGuardPipeline(params: {
         organizationId,
       })
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const guard2Approved: boolean = guardResult2.approved === true
 
       logger.info('single-guard completed', {
         conversationId,
         organizationId,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+
         approved: guardResult2.approved,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+
         violationTypes: Array.isArray(guardResult2.violations)
-          ? // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-            guardResult2.violations.map((v: { type: string }) => v.type)
+          ? guardResult2.violations.map(
+              (violation: { type: string }) => violation.type,
+            )
           : [],
         attempt: 2,
       })
@@ -313,17 +311,13 @@ async function applyGuardPipeline(params: {
         traceTags.push('guard_fallback_approved')
       } else {
         // Degraded path: 2 rejeições consecutivas — escalar para humano
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+
         const lastViolations: Array<{ type: string; details: string }> =
-          Array.isArray(
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-            guardResult2.violations,
-          )
-            ? // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return
-              guardResult2.violations.map(
-                (v: { type: string; details: string }) => ({
-                  type: v.type,
-                  details: v.details,
+          Array.isArray(guardResult2.violations)
+            ? guardResult2.violations.map(
+                (violation: { type: string; details: string }) => ({
+                  type: violation.type,
+                  details: violation.details,
                 }),
               )
             : []
@@ -360,9 +354,9 @@ async function applyGuardPipeline(params: {
       }
     } else {
       // Fallback não gerou texto — degraded path imediato
-      const lastViolations = guard1Violations.map((v) => ({
-        type: v.type,
-        details: v.details,
+      const lastViolations = guard1Violations.map((violation) => ({
+        type: violation.type,
+        details: violation.details,
       }))
 
       responseText = GENERIC_SAFE_FALLBACK
@@ -647,7 +641,9 @@ export async function runSingleV2(
     pipelineIds: promptContext.pipelineIds,
     remoteJid: ctx.message.remoteJid,
     inboxProvider: conversation.inbox ?? null,
-    onHandOffTransfer: () => { handOffCalledByAgentThisRun = true },
+    onHandOffTransfer: () => {
+      handOffCalledByAgentThisRun = true
+    },
   }
 
   const effectiveToolsEnabled = promptContext.toolsEnabled
@@ -722,7 +718,11 @@ export async function runSingleV2(
   // A diretiva é anexada só ao system prompt da Call 1; llmMessages original fica intacto para o Responder (Call 2).
   const call1Messages = llmMessages.map((message, index) =>
     index === 0 && message.role === 'system'
-      ? { ...message, content: promptContext.systemPromptForCall1 + CALL1_EXECUTION_DIRECTIVE }
+      ? {
+          ...message,
+          content:
+            promptContext.systemPromptForCall1 + CALL1_EXECUTION_DIRECTIVE,
+        }
       : message,
   )
 
@@ -849,6 +849,7 @@ export async function runSingleV2(
   // classifiedId do fallback — sobrescrito pelo Call 3 se bem-sucedido
   let classifiedId: string | undefined = responderOutput.fallbackClassifiedId
   // classifierErrorMsg — preenchida após await classifierPromise; undefined no empty_response path
+  // eslint-disable-next-line prefer-const
   let classifierErrorMsg: string | undefined
 
   if (responderOutput.usedLastResortFallback) {
@@ -861,7 +862,10 @@ export async function runSingleV2(
       ctx.tracker.addStep({
         type: 'FALLBACK_LLM_CALL',
         status: 'PASSED',
-        output: { responseLength: responseText.length, reason: 'last_resort_fallback' },
+        output: {
+          responseLength: responseText.length,
+          reason: 'last_resort_fallback',
+        },
       })
     } else {
       ctx.log('step:5b last_resort_fallback', 'FAIL', {
@@ -873,7 +877,9 @@ export async function runSingleV2(
         status: 'FAILED',
         output: {
           reason: 'last_resort_fallback',
-          ...(responderOutput.lastResortError && { lastResortError: responderOutput.lastResortError }),
+          ...(responderOutput.lastResortError && {
+            lastResortError: responderOutput.lastResortError,
+          }),
         },
       })
     }
@@ -899,8 +905,10 @@ export async function runSingleV2(
   // Call 3 (classificador) roda em paralelo ao guard+send — custo negligível
   // (~64 tokens out) é somado ao totalUsage após o send, antes do step advance.
   let totalUsage = {
-    inputTokens: (result.usage?.inputTokens ?? 0) + responderOutput.usage.inputTokens,
-    outputTokens: (result.usage?.outputTokens ?? 0) + responderOutput.usage.outputTokens,
+    inputTokens:
+      (result.usage?.inputTokens ?? 0) + responderOutput.usage.inputTokens,
+    outputTokens:
+      (result.usage?.outputTokens ?? 0) + responderOutput.usage.outputTokens,
   }
 
   // Strip tool calls vazados como texto puro pelo LLM (ex: Gemini)
@@ -1132,6 +1140,89 @@ export async function runSingleV2(
         toolName: lastToolName,
       })
     }
+  }
+
+  // -----------------------------------------------------------------------
+  // Early-exit de transferência: suprimir resposta do Agent X e disparar
+  // Agent Y diretamente. Em v2, createToolEvents só roda pós-envio, então o
+  // evento AGENT_TRANSFER da timeline é registrado explicitamente aqui.
+  // -----------------------------------------------------------------------
+  const transferToolOutput = result.steps
+    ?.flatMap((aiStep) => aiStep.toolResults ?? [])
+    .find((toolResult) => toolResult.toolName === 'transfer_to_agent')
+    ?.output as { success?: boolean; targetAgentId?: string } | undefined
+
+  const didTransfer =
+    transferToolOutput?.success === true && !!transferToolOutput.targetAgentId
+
+  if (didTransfer && transferToolOutput?.targetAgentId) {
+    const targetAgentId = transferToolOutput.targetAgentId
+
+    if (result.steps?.length) {
+      await createToolEvents(ctx.conversationId, result.steps)
+    }
+
+    // Liquidar créditos pelo custo real do LLM do Agent X
+    const { actualCost: transferActualCost } = await settleCredits({
+      organizationId: ctx.organizationId,
+      estimatedCost,
+      modelId: promptContext.modelId,
+      actualUsage: {
+        inputTokens: totalUsage.inputTokens,
+        outputTokens: totalUsage.outputTokens,
+      },
+      reason: 'agent_transfer',
+      metadata: {
+        agentId: ctx.effectiveAgentId,
+        conversationId: ctx.conversationId,
+      },
+    })
+
+    // Disparar Agent Y com a mensagem original — sem enviar nada ao cliente
+    await tasks.trigger(
+      'process-agent-message',
+      {
+        message: ctx.message,
+        agentId: targetAgentId,
+        conversationId: ctx.conversationId,
+        organizationId: ctx.organizationId,
+        debounceTimestamp: ctx.debounceTimestamp,
+        requiresRouting: false,
+        skipRouting: true,
+        groupId: ctx.groupPromptContext?.groupId ?? null,
+      },
+      { concurrencyKey: ctx.conversationId },
+    )
+
+    // Invalida cache para que o evento AGENT_TRANSFER apareça imediatamente no inbox
+    await revalidateConversationCache(ctx.conversationId, ctx.organizationId)
+
+    ctx.log('step:transfer_handoff', 'PASS', {
+      targetAgentId,
+      actualCost: transferActualCost,
+    })
+    ctx.finalizeTrace('completed', {
+      metadata: {
+        outcome: 'agent_transfer',
+        targetAgentId,
+        creditsCost: transferActualCost,
+      },
+    })
+    await ctx.tracker.complete({
+      modelId: promptContext.modelId,
+      inputTokens: totalUsage.inputTokens,
+      outputTokens: totalUsage.outputTokens,
+      creditsCost: transferActualCost,
+      finishReason: 'transfer',
+    })
+    await emitAgentStatus({
+      conversationId: ctx.conversationId,
+      organizationId: ctx.organizationId,
+      state: 'idle',
+      agentName: promptContext.agentName,
+      terminalReason: 'completed',
+    })
+    return { success: true }
   }
 
   // Emite composing antes de persistir/enviar a resposta
@@ -1469,7 +1560,10 @@ export async function runSingleV2(
   if (classifierErrorMsg) ctx.traceTags.push('step_classifier_failed')
 
   // Agrega tokens do classificador ao totalUsage para logging final.
-  const classifierUsage = classifier?.usage ?? { inputTokens: 0, outputTokens: 0 }
+  const classifierUsage = classifier?.usage ?? {
+    inputTokens: 0,
+    outputTokens: 0,
+  }
   totalUsage = {
     inputTokens: totalUsage.inputTokens + classifierUsage.inputTokens,
     outputTokens: totalUsage.outputTokens + classifierUsage.outputTokens,
@@ -1509,8 +1603,13 @@ export async function runSingleV2(
     isV2: useOverhaul,
   })
 
-  const { newStepOrder, stepAdvanced, followUpScheduled, followUpFirstDelayMinutes, totalFollowUps } =
-    stepAdvanceResult
+  const {
+    newStepOrder,
+    stepAdvanced,
+    followUpScheduled,
+    followUpFirstDelayMinutes,
+    totalFollowUps,
+  } = stepAdvanceResult
 
   if (stepAdvanced) {
     ctx.log('step:10a step_advanced', 'PASS', {

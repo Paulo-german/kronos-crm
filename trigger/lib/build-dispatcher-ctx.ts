@@ -10,9 +10,7 @@ import { routeConversation } from './route-conversation'
 import { checkBusinessHours } from '@/_lib/agent/check-business-hours'
 import type { BusinessHoursConfig } from '@/_actions/agent/update-agent/schema'
 import type { GroupPromptContext } from '../build-system-prompt'
-import {
-  createConversationEvent,
-} from './create-conversation-event'
+import { createConversationEvent } from './create-conversation-event'
 import type {
   InfoSubtype,
   ProcessingErrorSubtype,
@@ -23,7 +21,10 @@ import { downloadAndStoreMedia } from '../utils/download-and-store-media'
 import { createExecutionTracker } from './execution-tracker'
 import { revalidateConversationCache } from './revalidate-cache'
 import { runWithCreditDebit } from './debit-transcription'
-import { calculateCreditCost, calculateAudioCreditCost } from '@/_lib/ai/pricing'
+import {
+  calculateCreditCost,
+  calculateAudioCreditCost,
+} from '@/_lib/ai/pricing'
 import { IMAGE_MODEL } from '../utils/describe-image'
 import type { NormalizedWhatsAppMessage } from '@/_lib/evolution-js/types'
 import type { DispatcherCtx } from '../dispatcher-types'
@@ -103,7 +104,12 @@ export async function buildDispatcherCtx(
 
   const attemptNumber = triggerCtx.attempt.number
 
-  const logCtx = { msgId: message.messageId, conversationId, agentId, attempt: attemptNumber }
+  const logCtx = {
+    msgId: message.messageId,
+    conversationId,
+    agentId,
+    attempt: attemptNumber,
+  }
   const log = (
     step: string,
     outcome: string,
@@ -193,10 +199,15 @@ export async function buildDispatcherCtx(
       log('step:1 debounce_check', 'PASS')
       debounceCheckPassed = true
     } catch (error) {
-      log('step:1 debounce_check', 'PASS', { warning: 'redis_failed_continuing' })
+      log('step:1 debounce_check', 'PASS', {
+        warning: 'redis_failed_continuing',
+      })
       debounceCheckPassed = true
       debounceCheckWarning = 'redis_failed_continuing'
-      logger.warn('Redis debounce check failed, continuing', { ...logCtx, error })
+      logger.warn('Redis debounce check failed, continuing', {
+        ...logCtx,
+        error,
+      })
     }
 
     // -----------------------------------------------------------------------
@@ -224,7 +235,9 @@ export async function buildDispatcherCtx(
         })
       } catch (routerError) {
         const errorMessage =
-          routerError instanceof Error ? routerError.message : String(routerError)
+          routerError instanceof Error
+            ? routerError.message
+            : String(routerError)
         const isNoCredits = errorMessage === 'NO_CREDITS'
 
         log('step:1b router_classification', 'EXIT', {
@@ -255,12 +268,16 @@ export async function buildDispatcherCtx(
           await revalidateConversationCache(conversationId, organizationId)
         }
 
-        finalizeTrace('skipped:router_failed', { metadata: { error: errorMessage } })
+        finalizeTrace('skipped:router_failed', {
+          metadata: { error: errorMessage },
+        })
         return { skipped: true, reason: 'router_failed' }
       }
 
       if (!routerResult) {
-        log('step:1b router_classification', 'EXIT', { reason: 'no_suitable_worker' })
+        log('step:1b router_classification', 'EXIT', {
+          reason: 'no_suitable_worker',
+        })
         await createMinimalExecution({
           agentId: null,
           agentGroupId: groupId,
@@ -314,7 +331,11 @@ export async function buildDispatcherCtx(
         sessionId: conversationId,
         userId: organizationId,
         tags: traceTags,
-        metadata: { agentId: effectiveAgentId, organizationId, messageType: message.type },
+        metadata: {
+          agentId: effectiveAgentId,
+          organizationId,
+          messageType: message.type,
+        },
       })
 
       // Business hours check do worker resolvido
@@ -328,7 +349,10 @@ export async function buildDispatcherCtx(
         },
       })
 
-      if (resolvedWorker?.businessHoursEnabled && resolvedWorker.businessHoursConfig) {
+      if (
+        resolvedWorker?.businessHoursEnabled &&
+        resolvedWorker.businessHoursConfig
+      ) {
         const isWithinHours = checkBusinessHours(
           resolvedWorker.businessHoursTimezone,
           resolvedWorker.businessHoursConfig as BusinessHoursConfig,
@@ -347,7 +371,9 @@ export async function buildDispatcherCtx(
             triggerMessageId: message.messageId,
             reason: 'outside_business_hours',
           })
-          finalizeTrace('skipped:outside_business_hours', { metadata: { workerId: effectiveAgentId } })
+          finalizeTrace('skipped:outside_business_hours', {
+            metadata: { workerId: effectiveAgentId },
+          })
           return { skipped: true, reason: 'outside_business_hours' }
         }
       }
@@ -364,7 +390,9 @@ export async function buildDispatcherCtx(
       tracker.addStep({
         type: 'DEBOUNCE_CHECK',
         status: 'PASSED',
-        output: debounceCheckWarning ? { warning: debounceCheckWarning } : undefined,
+        output: debounceCheckWarning
+          ? { warning: debounceCheckWarning }
+          : undefined,
       })
     }
 
@@ -400,10 +428,13 @@ export async function buildDispatcherCtx(
           resolvedMetaBuffer = Buffer.from(await audioResponse.arrayBuffer())
         } else {
           metaTokenMissing = true
-          log('step:3a audio_transcription', 'SKIP', { reason: 'instagram_audio_fetch_failed' })
+          log('step:3a audio_transcription', 'SKIP', {
+            reason: 'instagram_audio_fetch_failed',
+          })
         }
       } else if (message.provider === 'meta_cloud') {
-        const { downloadMetaMedia } = await import('@/_lib/meta/download-meta-media')
+        const { downloadMetaMedia } =
+          await import('@/_lib/meta/download-meta-media')
         const metaInbox = await db.inbox.findFirst({
           where: { metaPhoneNumberId: message.instanceName },
           select: { metaAccessToken: true },
@@ -411,14 +442,24 @@ export async function buildDispatcherCtx(
 
         if (!metaInbox?.metaAccessToken) {
           metaTokenMissing = true
-          log('step:3a audio_transcription', 'SKIP', { reason: 'no_meta_access_token' })
+          log('step:3a audio_transcription', 'SKIP', {
+            reason: 'no_meta_access_token',
+          })
         } else {
-          resolvedMetaBuffer = await downloadMetaMedia(message.media.url, metaInbox.metaAccessToken)
+          resolvedMetaBuffer = await downloadMetaMedia(
+            message.media.url,
+            metaInbox.metaAccessToken,
+          )
         }
       }
 
       const creditResult = metaTokenMissing
-        ? { text: '[Áudio não transcrito — token de acesso não disponível]', skipped: false, cost: 0, debited: false }
+        ? {
+            text: '[Áudio não transcrito — token de acesso não disponível]',
+            skipped: false,
+            cost: 0,
+            debited: false,
+          }
         : await runWithCreditDebit({
             organizationId,
             description: 'Transcrição de áudio recebido (whisper)',
@@ -429,7 +470,8 @@ export async function buildDispatcherCtx(
               direction: 'inbound',
             },
             execute: async () => {
-              const { transcribeAudioFromBuffer: transcribeBuffer } = await import('../utils/transcribe-audio')
+              const { transcribeAudioFromBuffer: transcribeBuffer } =
+                await import('../utils/transcribe-audio')
 
               let audioBuffer: Buffer
 
@@ -440,7 +482,10 @@ export async function buildDispatcherCtx(
                 audioBuffer = Buffer.from(await audioResponse.arrayBuffer())
               } else {
                 // Evolution: busca base64 via API própria
-                const evolutionCredentials = await resolveEvolutionCredentialsByInstanceName(message.instanceName)
+                const evolutionCredentials =
+                  await resolveEvolutionCredentialsByInstanceName(
+                    message.instanceName,
+                  )
                 const { text, duration } = await transcribeAudio(
                   message.instanceName,
                   message.messageId,
@@ -450,7 +495,10 @@ export async function buildDispatcherCtx(
                 return { text, cost }
               }
 
-              const { text, duration } = await transcribeBuffer(audioBuffer, audioMimetype)
+              const { text, duration } = await transcribeBuffer(
+                audioBuffer,
+                audioMimetype,
+              )
               const cost = calculateAudioCreditCost(duration)
               return { text, cost }
             },
@@ -488,7 +536,9 @@ export async function buildDispatcherCtx(
     // -----------------------------------------------------------------------
     if (
       message.media &&
-      (message.type === 'image' || message.type === 'document' || message.type === 'audio')
+      (message.type === 'image' ||
+        message.type === 'document' ||
+        message.type === 'audio')
     ) {
       log('step:3b media_download', 'PASS', {
         type: message.type,
@@ -499,7 +549,8 @@ export async function buildDispatcherCtx(
       if (message.provider === 'instagram_dm') {
         // Instagram entrega URL pública direta — reutilizar downloadAndStoreFromUrl
         // sem chamada intermediária à Graph API (diferente do Meta WhatsApp).
-        const { downloadAndStoreFromUrl } = await import('../utils/download-and-store-media')
+        const { downloadAndStoreFromUrl } =
+          await import('../utils/download-and-store-media')
         await downloadAndStoreFromUrl({
           mediaUrl: message.media.url,
           providerMessageId: message.messageId,
@@ -520,7 +571,8 @@ export async function buildDispatcherCtx(
         })
 
         if (metaInbox?.metaAccessToken) {
-          const { downloadAndStoreMetaMedia } = await import('../utils/download-and-store-media')
+          const { downloadAndStoreMetaMedia } =
+            await import('../utils/download-and-store-media')
           await downloadAndStoreMetaMedia({
             mediaId: message.media.url,
             accessToken: metaInbox.metaAccessToken,
@@ -537,7 +589,8 @@ export async function buildDispatcherCtx(
           })
         }
       } else if (message.provider === 'z_api') {
-        const { downloadAndStoreFromUrl } = await import('../utils/download-and-store-media')
+        const { downloadAndStoreFromUrl } =
+          await import('../utils/download-and-store-media')
         await downloadAndStoreFromUrl({
           mediaUrl: message.media.url,
           providerMessageId: message.messageId,
@@ -552,7 +605,10 @@ export async function buildDispatcherCtx(
           })
         })
       } else {
-        const evolutionCredentialsForMedia = await resolveEvolutionCredentialsByInstanceName(message.instanceName).catch(() => null)
+        const evolutionCredentialsForMedia =
+          await resolveEvolutionCredentialsByInstanceName(
+            message.instanceName,
+          ).catch(() => null)
         await downloadAndStoreMedia({
           instanceName: message.instanceName,
           messageId: message.messageId,
@@ -605,36 +661,69 @@ export async function buildDispatcherCtx(
             const imageResponse = await fetch(message.media!.url)
             const imageBuffer = Buffer.from(await imageResponse.arrayBuffer())
             const imageBase64 = imageBuffer.toString('base64')
-            visionResult = await transcribeImage(message.instanceName, message.messageId, imageCaption, { base64: imageBase64, mimetype: imageMimetype })
+            visionResult = await transcribeImage(
+              message.instanceName,
+              message.messageId,
+              imageCaption,
+              { base64: imageBase64, mimetype: imageMimetype },
+            )
           } else if (message.provider === 'meta_cloud') {
-            const { downloadMetaMedia } = await import('@/_lib/meta/download-meta-media')
+            const { downloadMetaMedia } =
+              await import('@/_lib/meta/download-meta-media')
             const metaInboxForImage = await db.inbox.findFirst({
               where: { metaPhoneNumberId: message.instanceName },
               select: { metaAccessToken: true },
             })
 
             if (!metaInboxForImage?.metaAccessToken) {
-              throw new Error('Meta access token not found for image transcription')
+              throw new Error(
+                'Meta access token not found for image transcription',
+              )
             }
 
-            const imageBuffer = await downloadMetaMedia(message.media!.url, metaInboxForImage.metaAccessToken)
+            const imageBuffer = await downloadMetaMedia(
+              message.media!.url,
+              metaInboxForImage.metaAccessToken,
+            )
             const imageBase64 = imageBuffer.toString('base64')
-            visionResult = await transcribeImage(message.instanceName, message.messageId, imageCaption, { base64: imageBase64, mimetype: imageMimetype })
+            visionResult = await transcribeImage(
+              message.instanceName,
+              message.messageId,
+              imageCaption,
+              { base64: imageBase64, mimetype: imageMimetype },
+            )
           } else if (message.provider === 'z_api') {
             const imageResponse = await fetch(message.media!.url)
             const imageBuffer = Buffer.from(await imageResponse.arrayBuffer())
             const imageBase64 = imageBuffer.toString('base64')
-            visionResult = await transcribeImage(message.instanceName, message.messageId, imageCaption, { base64: imageBase64, mimetype: imageMimetype })
+            visionResult = await transcribeImage(
+              message.instanceName,
+              message.messageId,
+              imageCaption,
+              { base64: imageBase64, mimetype: imageMimetype },
+            )
           } else {
-            const evolutionCredentialsForImage = await resolveEvolutionCredentialsByInstanceName(message.instanceName).catch(() => null)
-            visionResult = await transcribeImage(message.instanceName, message.messageId, imageCaption, undefined, evolutionCredentialsForImage ?? undefined)
+            const evolutionCredentialsForImage =
+              await resolveEvolutionCredentialsByInstanceName(
+                message.instanceName,
+              ).catch(() => null)
+            visionResult = await transcribeImage(
+              message.instanceName,
+              message.messageId,
+              imageCaption,
+              undefined,
+              evolutionCredentialsForImage ?? undefined,
+            )
           }
 
-          const cost = calculateCreditCost(IMAGE_MODEL, visionResult.totalTokens) * VISION_COST_MULTIPLIER
+          const cost =
+            calculateCreditCost(IMAGE_MODEL, visionResult.totalTokens) *
+            VISION_COST_MULTIPLIER
           return { text: visionResult.text, cost }
         },
       }).catch((error) => {
-        const errorMessage = error instanceof Error ? error.message : String(error)
+        const errorMessage =
+          error instanceof Error ? error.message : String(error)
 
         logger.error('Image transcription failed, using placeholder', {
           ...logCtx,
@@ -652,10 +741,14 @@ export async function buildDispatcherCtx(
         return null
       })
 
-      const caption = message.text ? `\nLegenda do cliente: "${message.text}"` : ''
+      const caption = message.text
+        ? `\nLegenda do cliente: "${message.text}"`
+        : ''
 
       if (!imageCreditResult || imageCreditResult.skipped) {
-        const fallbackCaption = message.text ? ` com legenda: "${message.text}"` : ''
+        const fallbackCaption = message.text
+          ? ` com legenda: "${message.text}"`
+          : ''
         messageText = imageCreditResult?.skipped
           ? `[Imagem recebida — sem créditos para descrever${fallbackCaption}]`
           : `[O cliente enviou uma imagem${fallbackCaption}]`
@@ -689,7 +782,9 @@ export async function buildDispatcherCtx(
     } else if (message.type === 'document' && message.media) {
       const fileName = message.media.fileName ?? 'arquivo'
       const mimetype = message.media.mimetype ?? ''
-      const caption = message.text ? `\nLegenda do cliente: "${message.text}"` : ''
+      const caption = message.text
+        ? `\nLegenda do cliente: "${message.text}"`
+        : ''
 
       log('step:3d document_processing', 'PASS', {
         mimetype,
@@ -706,23 +801,31 @@ export async function buildDispatcherCtx(
           // Instagram entrega URL pública direta — fetch sem Graph API.
           const response = await fetch(message.media.url)
           if (!response.ok) {
-            throw new Error(`Instagram document fetch failed (${response.status})`)
+            throw new Error(
+              `Instagram document fetch failed (${response.status})`,
+            )
           }
           const buffer = Buffer.from(await response.arrayBuffer())
           base64 = buffer.toString('base64')
           resolvedMimetype = mimetype
         } else if (message.provider === 'meta_cloud') {
-          const { downloadMetaMedia } = await import('@/_lib/meta/download-meta-media')
+          const { downloadMetaMedia } =
+            await import('@/_lib/meta/download-meta-media')
           const metaInboxForDocument = await db.inbox.findFirst({
             where: { metaPhoneNumberId: message.instanceName },
             select: { metaAccessToken: true },
           })
 
           if (!metaInboxForDocument?.metaAccessToken) {
-            throw new Error('Meta access token not found for document processing')
+            throw new Error(
+              'Meta access token not found for document processing',
+            )
           }
 
-          const buffer = await downloadMetaMedia(message.media.url, metaInboxForDocument.metaAccessToken)
+          const buffer = await downloadMetaMedia(
+            message.media.url,
+            metaInboxForDocument.metaAccessToken,
+          )
           base64 = buffer.toString('base64')
           resolvedMimetype = mimetype
         } else if (message.provider === 'z_api') {
@@ -734,12 +837,21 @@ export async function buildDispatcherCtx(
           base64 = buffer.toString('base64')
           resolvedMimetype = mimetype
         } else {
-          const evolutionCredentialsForDocument = await resolveEvolutionCredentialsByInstanceName(message.instanceName).catch(() => null)
-          const apiUrl = evolutionCredentialsForDocument?.apiUrl ?? process.env.EVOLUTION_API_URL
-          const apiKey = evolutionCredentialsForDocument?.apiKey ?? process.env.EVOLUTION_API_KEY
+          const evolutionCredentialsForDocument =
+            await resolveEvolutionCredentialsByInstanceName(
+              message.instanceName,
+            ).catch(() => null)
+          const apiUrl =
+            evolutionCredentialsForDocument?.apiUrl ??
+            process.env.EVOLUTION_API_URL
+          const apiKey =
+            evolutionCredentialsForDocument?.apiKey ??
+            process.env.EVOLUTION_API_KEY
 
           if (!apiUrl || !apiKey) {
-            throw new Error('EVOLUTION_API_URL and EVOLUTION_API_KEY must be configured')
+            throw new Error(
+              'EVOLUTION_API_URL and EVOLUTION_API_KEY must be configured',
+            )
           }
 
           const response = await fetch(
@@ -747,7 +859,9 @@ export async function buildDispatcherCtx(
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', apikey: apiKey },
-              body: JSON.stringify({ message: { key: { id: message.messageId } } }),
+              body: JSON.stringify({
+                message: { key: { id: message.messageId } },
+              }),
             },
           )
 
@@ -758,7 +872,10 @@ export async function buildDispatcherCtx(
             )
           }
 
-          const data = (await response.json()) as { base64?: string; mimetype?: string }
+          const data = (await response.json()) as {
+            base64?: string
+            mimetype?: string
+          }
 
           if (!data.base64) {
             throw new Error('Evolution returned empty base64 for document')
@@ -773,7 +890,8 @@ export async function buildDispatcherCtx(
           // Documento de imagem: cobrar via vision (mesma lógica do branch image)
           const docImageResult = await runWithCreditDebit({
             organizationId,
-            description: 'Transcrição de documento de imagem recebido (vision AI)',
+            description:
+              'Transcrição de documento de imagem recebido (vision AI)',
             metadata: {
               providerMessageId: message.messageId,
               mimetype: resolvedMimetype,
@@ -781,16 +899,25 @@ export async function buildDispatcherCtx(
               direction: 'inbound',
             },
             execute: async () => {
-              const { describeImageWithVision: describeDoc } = await import('../utils/describe-image')
-              const result = await describeDoc(base64, resolvedMimetype, message.text ?? undefined)
-              const cost = calculateCreditCost(IMAGE_MODEL, result.totalTokens) * VISION_COST_MULTIPLIER
+              const { describeImageWithVision: describeDoc } =
+                await import('../utils/describe-image')
+              const result = await describeDoc(
+                base64,
+                resolvedMimetype,
+                message.text ?? undefined,
+              )
+              const cost =
+                calculateCreditCost(IMAGE_MODEL, result.totalTokens) *
+                VISION_COST_MULTIPLIER
               return { text: result.text, cost }
             },
           })
 
           if (docImageResult.skipped) {
             messageText = `[O cliente enviou um documento de imagem (${fileName}) — sem créditos para descrever${caption}]`
-            log('step:3d document_image_skipped_no_credits', 'SKIP', { fileName })
+            log('step:3d document_image_skipped_no_credits', 'SKIP', {
+              fileName,
+            })
           } else {
             const description = docImageResult.text ?? ''
             messageText = `[Documento de imagem enviado pelo cliente (${fileName}) — descrição: ${description}${caption}]`
@@ -801,7 +928,8 @@ export async function buildDispatcherCtx(
             })
           }
         } else if (resolvedMimetype === 'application/pdf') {
-          const { extractPdfText, PDF_NO_TEXT_EXTRACTED } = await import('@/_lib/media/extract-pdf-text')
+          const { extractPdfText, PDF_NO_TEXT_EXTRACTED } =
+            await import('@/_lib/media/extract-pdf-text')
           const extracted = await extractPdfText(base64)
 
           if (extracted === PDF_NO_TEXT_EXTRACTED) {
@@ -811,11 +939,15 @@ export async function buildDispatcherCtx(
             if (pdfBuffer.byteLength > PDF_VISION_MAX_BYTES) {
               // PDF muito grande — vision seria impraticável (custo + latência)
               messageText = `[O cliente enviou um PDF escaneado (${fileName}). O arquivo é muito grande para processamento visual (${Math.round(pdfBuffer.byteLength / 1024 / 1024)}MB > 5MB). Peça para reenviar em partes ou descrever o conteúdo.${caption}]`
-              log('step:3d pdf_vision_skipped_too_large', 'SKIP', { fileName, sizeBytes: pdfBuffer.byteLength })
+              log('step:3d pdf_vision_skipped_too_large', 'SKIP', {
+                fileName,
+                sizeBytes: pdfBuffer.byteLength,
+              })
             } else {
               const pdfVisionResult = await runWithCreditDebit({
                 organizationId,
-                description: 'Transcrição de PDF escaneado recebido (vision AI)',
+                description:
+                  'Transcrição de PDF escaneado recebido (vision AI)',
                 metadata: {
                   providerMessageId: message.messageId,
                   mimetype: resolvedMimetype,
@@ -823,16 +955,21 @@ export async function buildDispatcherCtx(
                   direction: 'inbound',
                 },
                 execute: async () => {
-                  const { describePdfWithVision } = await import('../utils/describe-pdf')
+                  const { describePdfWithVision } =
+                    await import('../utils/describe-pdf')
                   const result = await describePdfWithVision(base64)
-                  const cost = calculateCreditCost(IMAGE_MODEL, result.totalTokens) * VISION_COST_MULTIPLIER
+                  const cost =
+                    calculateCreditCost(IMAGE_MODEL, result.totalTokens) *
+                    VISION_COST_MULTIPLIER
                   return { text: result.text, cost }
                 },
               })
 
               if (pdfVisionResult.skipped) {
                 messageText = `[O cliente enviou um PDF escaneado (${fileName}). Sem créditos disponíveis para processar o conteúdo.${caption}]`
-                log('step:3d pdf_vision_skipped_no_credits', 'SKIP', { fileName })
+                log('step:3d pdf_vision_skipped_no_credits', 'SKIP', {
+                  fileName,
+                })
               } else {
                 const pdfText = pdfVisionResult.text ?? ''
                 messageText = `[Conteúdo do PDF escaneado enviado pelo cliente (${fileName}):\n${pdfText}${caption}]`
@@ -846,11 +983,15 @@ export async function buildDispatcherCtx(
           } else {
             // PDF com texto extraível via pdf-parse: não cobrar AI (CPU-bound, sem LLM)
             messageText = `[Conteúdo do PDF enviado pelo cliente (${fileName}):\n${extracted}${caption}]`
-            log('step:3d pdf_text_extracted', 'PASS', { length: extracted.length })
+            log('step:3d pdf_text_extracted', 'PASS', {
+              length: extracted.length,
+            })
           }
         } else {
           messageText = `[O cliente enviou um documento: "${fileName}"${caption}]`
-          log('step:3d document_unsupported_mimetype', 'PASS', { mimetype: resolvedMimetype })
+          log('step:3d document_unsupported_mimetype', 'PASS', {
+            mimetype: resolvedMimetype,
+          })
         }
 
         await db.message.updateMany({
@@ -861,10 +1002,15 @@ export async function buildDispatcherCtx(
         tracker.addStep({
           type: 'IMAGE_TRANSCRIPTION',
           status: 'PASSED',
-          output: { mimetype: resolvedMimetype, length: messageText.length, fileName },
+          output: {
+            mimetype: resolvedMimetype,
+            length: messageText.length,
+            fileName,
+          },
         })
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error)
+        const errorMessage =
+          error instanceof Error ? error.message : String(error)
 
         logger.error('Document processing failed, using placeholder', {
           ...logCtx,
@@ -877,7 +1023,11 @@ export async function buildDispatcherCtx(
 
         updateActiveTrace({
           tags: ['media-transcription-failed'],
-          metadata: { transcriptionError: errorMessage, mediaType: 'document', mimetype },
+          metadata: {
+            transcriptionError: errorMessage,
+            mediaType: 'document',
+            mimetype,
+          },
         })
 
         messageText = `[O cliente enviou um documento: "${fileName}"${caption}]`
@@ -947,6 +1097,7 @@ export async function buildDispatcherCtx(
       organizationId,
       effectiveAgentId,
       agentVersion: resolveCanonicalAgentVersion(agentVersion),
+      debounceTimestamp,
       tracker,
       log,
       baseLogContext: logCtx,
@@ -959,9 +1110,6 @@ export async function buildDispatcherCtx(
 
     return { ctx: dispatcherCtx }
   } catch (unexpectedError) {
-    const errorMessage = unexpectedError instanceof Error
-      ? unexpectedError.message
-      : String(unexpectedError)
     // Propagar o erro para a task-pai executar seus próprios retries e onFailure
     throw unexpectedError
   }
