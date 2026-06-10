@@ -1,6 +1,5 @@
 import { Suspense } from 'react'
-import { subDays, startOfDay, endOfDay, format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
+import { subDays, startOfDay, endOfDay } from 'date-fns'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getUserById } from '@/_data-access/user/get-user-by-id'
 import { DASHBOARD_V2_DEFAULT_DAYS } from '@/_lib/lifecycle/dashboard-v2-constants'
@@ -12,6 +11,7 @@ import EcosystemGrid from '@/_components/home/_components/ecosystem-grid'
 import AnimatedSection from '@/_components/home/_components/animated-section'
 import HomeTipsStrip from '@/_components/home/_components/home-tips-strip'
 import { DateRangePicker } from '@/_components/dashboard/_shared/date-range-picker'
+import { LastUpdatedLabel } from '@/_components/home/_components/last-updated-label'
 import { LifecycleFunnelSection } from '@/_components/dashboard/v2/_components/lifecycle-funnel-section'
 import { RecentMovementSection } from '@/_components/dashboard/v2/_components/recent-movement-section'
 import {
@@ -52,9 +52,7 @@ const HomePage = async ({ params, searchParams }: HomePageProps) => {
       <AnimatedSection delay={0.16}>
         <div data-tour="home-funnel" className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
-            <span className="text-muted-foreground text-xs">
-              Atualizado em {format(now, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-            </span>
+            <LastUpdatedLabel isoTimestamp={now.toISOString()} />
             <DateRangePicker defaultLabel="Últimos 30 dias" />
           </div>
           <Suspense
