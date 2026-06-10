@@ -11,7 +11,10 @@ interface LifecycleFunnelSectionProps {
   dateRange: DateRange
 }
 
-export async function LifecycleFunnelSection({ ctx, dateRange }: LifecycleFunnelSectionProps) {
+export async function LifecycleFunnelSection({
+  ctx,
+  dateRange,
+}: LifecycleFunnelSectionProps) {
   const metrics = await getLifecycleFunnelMetrics(ctx, dateRange)
 
   return (
@@ -38,7 +41,7 @@ export async function LifecycleFunnelSection({ ctx, dateRange }: LifecycleFunnel
           <LifecycleStageCard key={stageMetrics.stage} metrics={stageMetrics} />
         ))}
       </div>
-      <LifecycleEvolutionChart data={metrics.evolutionByMonth} />
+      <LifecycleEvolutionChart data={metrics.evolutionSeries} />
     </div>
   )
 }

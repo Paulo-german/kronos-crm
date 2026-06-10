@@ -3,6 +3,15 @@ import 'server-only'
 import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import {
+  differenceInDays,
+  eachDayOfInterval,
+  eachMonthOfInterval,
+  eachWeekOfInterval,
+  format,
+  getMonth,
+  startOfWeek,
+} from 'date-fns'
+import {
   DealStatus,
   LifecycleCauseType,
   LifecycleStage,
@@ -14,8 +23,9 @@ import type { DateRange } from '@/_data-access/dashboard/types'
 import { getPreviousPeriod } from '@/_utils/date-range'
 import {
   DASHBOARD_V2_CACHE_REVALIDATE_S,
+  EVOLUTION_DAILY_MAX_DAYS,
+  EVOLUTION_WEEKLY_MAX_DAYS,
   HEALTH_SCORE_RISK_THRESHOLD,
-  LIFECYCLE_EVOLUTION_MONTHS,
 } from '@/_lib/lifecycle/dashboard-v2-constants'
 import { LIFECYCLE_STAGE_ORDER } from '@/_lib/lifecycle/lifecycle-stage-config'
 import { buildContactWhereForDashboardV2 } from './shared/build-contact-where'
@@ -23,9 +33,12 @@ import { makeDashboardV2CacheKey } from './shared/dashboard-v2-cache'
 
 // Status de Deal considerados "em jogo" (entram em openPipelineValue).
 // PAUSED é excluído intencionalmente — deal pausado não está ativo no funil.
-const ACTIVE_DEAL_STATUSES: DealStatus[] = [DealStatus.OPEN, DealStatus.IN_PROGRESS]
+const ACTIVE_DEAL_STATUSES: DealStatus[] = [
+  DealStatus.OPEN,
+  DealStatus.IN_PROGRESS,
+]
 
-// Labels PT-BR do eixo X do AreaChart (curto, 3 letras) — janela móvel dos últimos 12 meses
+// Labels PT-BR para o eixo X mensal do gráfico de evolução (curto, 3 letras)
 const MONTH_LABELS_PT_BR = [
   'Jan',
   'Fev',
@@ -59,17 +72,22 @@ export interface LifecycleStageMetrics {
 }
 
 export interface LifecycleEvolutionPoint {
-  month: string // "Jan", "Fev", …
-  monthIso: string // "2025-01"
+  // Label exibido no eixo X — formato depende da granularidade ("09/06", "Jun", etc.)
+  label: string
+  // Chave única do bucket — usada para agrupamento e React key
+  bucketKey: string
   LEAD: number
   QUALIFIED: number
   OPPORTUNITY: number
   CUSTOMER: number
 }
 
+// Granularidade adaptativa do gráfico — determinada pelo tamanho do dateRange
+type EvolutionGranularity = 'day' | 'week' | 'month'
+
 export interface LifecycleFunnelMetricsDto {
   stages: LifecycleStageMetrics[]
-  evolutionByMonth: LifecycleEvolutionPoint[]
+  evolutionSeries: LifecycleEvolutionPoint[]
 }
 
 // Shape do resultado do groupBy({ by: ['toStage'], _count: { _all: true } })
@@ -79,7 +97,9 @@ interface StageFlowGroup {
 }
 
 // Constrói um mapa stage → count a partir do resultado de groupBy
-function tallyByStage(groups: StageFlowGroup[]): Record<LifecycleStage, number> {
+function tallyByStage(
+  groups: StageFlowGroup[],
+): Record<LifecycleStage, number> {
   const tally: Record<LifecycleStage, number> = {
     [LifecycleStage.LEAD]: 0,
     [LifecycleStage.QUALIFIED]: 0,
@@ -92,49 +112,74 @@ function tallyByStage(groups: StageFlowGroup[]): Record<LifecycleStage, number> 
   return tally
 }
 
-// Cria o array de 12 pontos mensais preenchendo zeros para meses sem transição,
-// garantindo eixo X contínuo no AreaChart mesmo em orgs com pouco histórico.
+// Determina a granularidade ideal para o gráfico com base no tamanho do range.
+function resolveGranularity(dateRange: DateRange): EvolutionGranularity {
+  const days = differenceInDays(dateRange.end, dateRange.start)
+  if (days <= EVOLUTION_DAILY_MAX_DAYS) return 'day'
+  if (days <= EVOLUTION_WEEKLY_MAX_DAYS) return 'week'
+  return 'month'
+}
+
+// Constrói o array de pontos do gráfico com granularidade adaptativa,
+// preenchendo zeros para buckets sem transição (eixo X sempre contínuo).
 function buildEvolutionPoints(
   historyRows: Array<{ toStage: LifecycleStage; createdAt: Date }>,
-  monthsWindow: number,
+  dateRange: DateRange,
 ): LifecycleEvolutionPoint[] {
-  // Agrupa transições por (yyyy-MM, stage)
-  const tallyByMonth = new Map<string, Record<LifecycleStage, number>>()
+  const granularity = resolveGranularity(dateRange)
+
+  // Normaliza uma data para a chave canônica do seu bucket
+  function keyOf(date: Date): string {
+    if (granularity === 'day') return format(date, 'yyyy-MM-dd')
+    if (granularity === 'week') return format(startOfWeek(date), 'yyyy-MM-dd')
+    return format(date, 'yyyy-MM')
+  }
+
+  // Agrupa as transições por (bucketKey, stage) em O(n)
+  const tallyByBucket = new Map<string, Record<LifecycleStage, number>>()
   for (const row of historyRows) {
-    const monthIso = row.createdAt.toISOString().substring(0, 7)
-    const existing = tallyByMonth.get(monthIso) ?? {
+    const key = keyOf(row.createdAt)
+    const existing = tallyByBucket.get(key) ?? {
       [LifecycleStage.LEAD]: 0,
       [LifecycleStage.QUALIFIED]: 0,
       [LifecycleStage.OPPORTUNITY]: 0,
       [LifecycleStage.CUSTOMER]: 0,
     }
     existing[row.toStage] += 1
-    tallyByMonth.set(monthIso, existing)
+    tallyByBucket.set(key, existing)
   }
 
-  // Gera N pontos retroativos a partir do mês atual (ordem cronológica)
-  const now = new Date()
-  const points: LifecycleEvolutionPoint[] = []
-  for (let offset = monthsWindow - 1; offset >= 0; offset -= 1) {
-    const cursor = new Date(now.getFullYear(), now.getMonth() - offset, 1)
-    const monthIso = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`
-    const monthLabel = MONTH_LABELS_PT_BR[cursor.getMonth()]
-    const stageTally = tallyByMonth.get(monthIso) ?? {
+  // Gera os buckets canônicos do intervalo (garante eixo X contínuo)
+  const interval = { start: dateRange.start, end: dateRange.end }
+  const bucketStarts =
+    granularity === 'day'
+      ? eachDayOfInterval(interval)
+      : granularity === 'week'
+        ? eachWeekOfInterval(interval)
+        : eachMonthOfInterval(interval)
+
+  // Mapeia cada bucket para seu ponto do gráfico
+  return bucketStarts.map((bucketStart) => {
+    const bucketKey = keyOf(bucketStart)
+    const label =
+      granularity === 'month'
+        ? MONTH_LABELS_PT_BR[getMonth(bucketStart)]
+        : format(bucketStart, 'dd/MM')
+    const stageTally = tallyByBucket.get(bucketKey) ?? {
       [LifecycleStage.LEAD]: 0,
       [LifecycleStage.QUALIFIED]: 0,
       [LifecycleStage.OPPORTUNITY]: 0,
       [LifecycleStage.CUSTOMER]: 0,
     }
-    points.push({
-      month: monthLabel,
-      monthIso,
+    return {
+      label,
+      bucketKey,
       LEAD: stageTally[LifecycleStage.LEAD],
       QUALIFIED: stageTally[LifecycleStage.QUALIFIED],
       OPPORTUNITY: stageTally[LifecycleStage.OPPORTUNITY],
       CUSTOMER: stageTally[LifecycleStage.CUSTOMER],
-    })
-  }
-  return points
+    }
+  })
 }
 
 async function fetchLifecycleFunnelMetrics(
@@ -152,13 +197,11 @@ async function fetchLifecycleFunnelMetrics(
     ...(elevated ? {} : { contact: { assignedTo: userId } }),
   }
 
-  const contactWhereBase = buildContactWhereForDashboardV2(orgId, userId, elevated)
-
-  // Janela do gráfico de evolução: início do mês ocorrido há `LIFECYCLE_EVOLUTION_MONTHS - 1` meses
-  const evolutionStart = new Date()
-  evolutionStart.setMonth(evolutionStart.getMonth() - (LIFECYCLE_EVOLUTION_MONTHS - 1))
-  evolutionStart.setDate(1)
-  evolutionStart.setHours(0, 0, 0, 0)
+  const contactWhereBase = buildContactWhereForDashboardV2(
+    orgId,
+    userId,
+    elevated,
+  )
 
   const [
     currentFlowGroups,
@@ -246,11 +289,11 @@ async function fetchLifecycleFunnelMetrics(
         healthScore: { lt: HEALTH_SCORE_RISK_THRESHOLD },
       },
     }),
-    // 9) Evolução mensal — janela fixa de 12 meses (independente do DateRange)
+    // 9) Evolução por estágio — segue o dateRange selecionado (granularidade adaptativa)
     db.contactLifecycleHistory.findMany({
       where: {
         ...historyWhereBase,
-        createdAt: { gte: evolutionStart },
+        createdAt: { gte: dateRange.start, lte: dateRange.end },
       },
       select: { toStage: true, createdAt: true },
     }),
@@ -293,18 +336,28 @@ async function fetchLifecycleFunnelMetrics(
       }
     }
     if (stage === LifecycleStage.OPPORTUNITY) {
-      return { ...base, openPipelineValue: Number(openPipelineAgg._sum.value ?? 0) }
+      return {
+        ...base,
+        openPipelineValue: Number(openPipelineAgg._sum.value ?? 0),
+      }
     }
-    return { ...base, atRiskCount: atRiskCustomerCount, uniqueCustomerCount: uniqueCustomerRows.length }
+    return {
+      ...base,
+      atRiskCount: atRiskCustomerCount,
+      uniqueCustomerCount: uniqueCustomerRows.length,
+    }
   })
 
-  const evolutionByMonth = buildEvolutionPoints(evolutionRows, LIFECYCLE_EVOLUTION_MONTHS)
+  const evolutionSeries = buildEvolutionPoints(evolutionRows, dateRange)
 
-  return { stages, evolutionByMonth }
+  return { stages, evolutionSeries }
 }
 
 export const getLifecycleFunnelMetrics = cache(
-  async (ctx: RBACContext, dateRange: DateRange): Promise<LifecycleFunnelMetricsDto> => {
+  async (
+    ctx: RBACContext,
+    dateRange: DateRange,
+  ): Promise<LifecycleFunnelMetricsDto> => {
     const elevated = isElevated(ctx.userRole)
     const getCached = unstable_cache(
       async () =>

@@ -32,5 +32,6 @@ export const RECENT_MOVEMENT_LIMIT = 15
 // Janela default do DateRange quando não há query params (últimos 30 dias)
 export const DASHBOARD_V2_DEFAULT_DAYS = 30
 
-// Janela fixa (em meses) do gráfico de evolução do funil — independente do DateRange
-export const LIFECYCLE_EVOLUTION_MONTHS = 12
+// Limites (em dias) que definem a granularidade do gráfico de evolução do funil
+export const EVOLUTION_DAILY_MAX_DAYS = 31 // ≤ 31 dias → agrupamento por dia
+export const EVOLUTION_WEEKLY_MAX_DAYS = 90 // ≤ 90 dias → por semana; acima → por mês
