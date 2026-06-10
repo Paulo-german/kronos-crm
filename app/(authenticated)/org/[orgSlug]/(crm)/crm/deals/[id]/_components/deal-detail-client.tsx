@@ -6,6 +6,7 @@ import { useSmartNavigation } from '@/_hooks/use-smart-navigation'
 import { toast } from 'sonner'
 import {
   ArrowLeft,
+  ArrowRightLeft,
   CircleIcon,
   CircleCheck,
   CircleX,
@@ -37,7 +38,9 @@ import { markDealWon } from '@/_actions/deal/mark-deal-won'
 import { markDealLost } from '@/_actions/deal/mark-deal-lost'
 import { reopenDeal } from '@/_actions/deal/reopen-deal'
 import { transferDeal } from '@/_actions/deal/transfer-deal'
+import { transferDealToPipeline } from '@/_actions/deal/transfer-deal-to-pipeline'
 import type { DealDetailsDto } from '@/_data-access/deal/get-deal-details'
+import type { PipelineStageOption } from '@/_data-access/pipeline/get-pipeline-stages'
 import type { MemberRole } from '@prisma/client'
 import { Checkbox } from '@/_components/ui/checkbox'
 
@@ -60,6 +63,7 @@ interface DealDetailClientProps {
   currentUserId: string
   userRole: MemberRole
   lostReasons: { id: string; name: string }[]
+  pipelineStageOptions: PipelineStageOption[]
   contactsSlot: ReactNode
   productsTabSlot: ReactNode
   tasksTabSlot: ReactNode
@@ -127,6 +131,7 @@ const DealDetailClient = ({
   currentUserId,
   userRole,
   lostReasons,
+  pipelineStageOptions,
   contactsSlot,
   productsTabSlot,
   tasksTabSlot,
@@ -188,6 +193,71 @@ const DealDetailClient = ({
     setIsTransferOpen(open)
   }
 
+  // Pipeline Transfer Logic
+  const [isPipelineTransferOpen, setIsPipelineTransferOpen] = useState(false)
+  const [selectedTargetPipelineId, setSelectedTargetPipelineId] = useState<
+    string | undefined
+  >(undefined)
+  const [selectedTargetStageId, setSelectedTargetStageId] = useState<
+    string | undefined
+  >(undefined)
+
+  const {
+    execute: executePipelineTransfer,
+    isPending: isTransferringPipeline,
+  } = useAction(transferDealToPipeline, {
+    onSuccess: () => {
+      toast.success('Negociação transferida para outro pipeline!', {
+        position: 'bottom-right',
+      })
+      setIsPipelineTransferOpen(false)
+      setSelectedTargetPipelineId(undefined)
+      setSelectedTargetStageId(undefined)
+    },
+    onError: ({ error }) => {
+      toast.error(
+        error.serverError || 'Erro ao transferir para outro pipeline.',
+        { position: 'bottom-right' },
+      )
+    },
+  })
+
+  const handlePipelineTransfer = () => {
+    if (selectedTargetPipelineId && selectedTargetStageId) {
+      executePipelineTransfer({
+        dealId: deal.id,
+        targetPipelineId: selectedTargetPipelineId,
+        targetStageId: selectedTargetStageId,
+      })
+    }
+  }
+
+  const handleClosePipelineTransferDialog = (open: boolean) => {
+    if (!open) {
+      setSelectedTargetPipelineId(undefined)
+      setSelectedTargetStageId(undefined)
+    }
+    setIsPipelineTransferOpen(open)
+  }
+
+  // Pipelines disponíveis como destino — exclui o pipeline atual e deduplica
+  const availablePipelines = pipelineStageOptions.reduce<
+    { pipelineId: string; pipelineName: string }[]
+  >((acc, opt) => {
+    if (
+      opt.pipelineId !== deal.pipelineId &&
+      !acc.find((pipeline) => pipeline.pipelineId === opt.pipelineId)
+    ) {
+      acc.push({ pipelineId: opt.pipelineId, pipelineName: opt.pipelineName })
+    }
+    return acc
+  }, [])
+
+  // Etapas do pipeline de destino selecionado
+  const availableTargetStages = pipelineStageOptions.filter(
+    (opt) => opt.pipelineId === selectedTargetPipelineId,
+  )
+
   const { execute: executeMarkWon, isPending: isMarkingWon } = useAction(
     markDealWon,
     {
@@ -238,7 +308,8 @@ const DealDetailClient = ({
     },
   )
 
-  const isPending = isMarkingWon || isMarkingLost || isReopening || isTransferring
+  const isPending =
+    isMarkingWon || isMarkingLost || isReopening || isTransferring || isTransferringPipeline
 
   const handleMarkWon = () => {
     executeMarkWon({ dealId: deal.id })
@@ -309,6 +380,17 @@ const DealDetailClient = ({
               >
                 <UserCog className="mr-2 h-4 w-4" />
                 Transferir Negociação
+              </Button>
+            )}
+
+            {canTransfer && availablePipelines.length > 0 && (
+              <Button
+                variant="outline"
+                onClick={() => setIsPipelineTransferOpen(true)}
+                disabled={isPending}
+              >
+                <ArrowRightLeft className="mr-2 h-4 w-4" />
+                Transferir Pipeline
               </Button>
             )}
 
@@ -485,6 +567,96 @@ const DealDetailClient = ({
               disabled={!selectedMemberId || isTransferring}
             >
               {isTransferring ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Transferindo...
+                </>
+              ) : (
+                'Transferir'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Transferência de Pipeline */}
+      <Dialog
+        open={isPipelineTransferOpen}
+        onOpenChange={handleClosePipelineTransferDialog}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Transferir para outro Pipeline</DialogTitle>
+            <DialogDescription>
+              Selecione o pipeline de destino e a etapa inicial para esta
+              negociação.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="target-pipeline">Pipeline de Destino</Label>
+              <Select
+                value={selectedTargetPipelineId}
+                onValueChange={(value) => {
+                  setSelectedTargetPipelineId(value)
+                  setSelectedTargetStageId(undefined)
+                }}
+              >
+                <SelectTrigger id="target-pipeline" className="w-full">
+                  <SelectValue placeholder="Selecione um pipeline..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {availablePipelines.map((pipeline) => (
+                    <SelectItem
+                      key={pipeline.pipelineId}
+                      value={pipeline.pipelineId}
+                    >
+                      {pipeline.pipelineName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="target-stage">Etapa de Entrada</Label>
+              <Select
+                value={selectedTargetStageId}
+                onValueChange={setSelectedTargetStageId}
+                disabled={!selectedTargetPipelineId}
+              >
+                <SelectTrigger id="target-stage" className="w-full">
+                  <SelectValue
+                    placeholder={
+                      selectedTargetPipelineId
+                        ? 'Selecione uma etapa...'
+                        : 'Selecione um pipeline primeiro...'
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableTargetStages.map((opt) => (
+                    <SelectItem key={opt.stageId} value={opt.stageId}>
+                      {opt.stageName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => handleClosePipelineTransferDialog(false)}
+              disabled={isTransferringPipeline}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handlePipelineTransfer}
+              disabled={!selectedTargetStageId || isTransferringPipeline}
+            >
+              {isTransferringPipeline ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Transferindo...

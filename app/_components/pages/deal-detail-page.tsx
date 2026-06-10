@@ -5,6 +5,8 @@ import { getDealDetails } from '@/_data-access/deal/get-deal-details'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
 import { getDealLostReasons } from '@/_data-access/settings/get-lost-reasons'
 import { getTutorialCompletions } from '@/_data-access/tutorial/get-tutorial-completions'
+import { getOrgPipelines } from '@/_data-access/pipeline/get-org-pipelines'
+import { getPipelineStages } from '@/_data-access/pipeline/get-pipeline-stages'
 import DealDetailClient from '@/(authenticated)/org/[orgSlug]/(crm)/crm/deals/[id]/_components/deal-detail-client'
 import ContactWidgetServer from '@/(authenticated)/org/[orgSlug]/(crm)/crm/deals/[id]/_components/contact-widget-server'
 import TabProductsServer from '@/(authenticated)/org/[orgSlug]/(crm)/crm/deals/[id]/_components/tab-products-server'
@@ -31,11 +33,18 @@ const DealDetailPage = async ({ params }: DealDetailPageProps) => {
     redirect(`/org/${orgSlug}/crm/deals/pipeline`)
   }
 
-  const [members, lostReasons, completedTutorialIds] = await Promise.all([
-    getOrganizationMembers(ctx.orgId),
-    getDealLostReasons(ctx.orgId),
-    getTutorialCompletions(ctx.userId, ctx.orgId),
-  ])
+  const [members, lostReasons, completedTutorialIds, orgPipelines] =
+    await Promise.all([
+      getOrganizationMembers(ctx.orgId),
+      getDealLostReasons(ctx.orgId),
+      getTutorialCompletions(ctx.userId, ctx.orgId),
+      getOrgPipelines(ctx.orgId),
+    ])
+
+  const pipelineStageOptions = await getPipelineStages(
+    orgPipelines.map((pipeline) => pipeline.id),
+    ctx.orgId,
+  )
 
   return (
     <div className="h-full w-full">
@@ -49,6 +58,7 @@ const DealDetailPage = async ({ params }: DealDetailPageProps) => {
         userRole={ctx.userRole}
         lostReasons={lostReasons}
         orgSlug={orgSlug}
+        pipelineStageOptions={pipelineStageOptions}
         contactsSlot={
           <Suspense fallback={<ContactWidgetSkeleton />}>
             <ContactWidgetServer deal={deal} ctx={ctx} />
