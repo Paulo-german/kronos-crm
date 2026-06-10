@@ -76,9 +76,8 @@ export async function updateSession(request: NextRequest) {
       }
       // Sem org salva, vai para seleção de org
       return NextResponse.redirect(new URL('/org', request.url))
-    } else {
-      return NextResponse.redirect(new URL('/login', request.url))
     }
+    return NextResponse.redirect(new URL('/login', request.url))
   }
 
   // Redirecionar rotas legadas para nova estrutura /org/[slug]/...
@@ -94,7 +93,9 @@ export async function updateSession(request: NextRequest) {
     if (lastOrgSlug) {
       // /dashboard é rota extinta — vai direto para /crm/home sem hop extra
       if (pathname === '/dashboard') {
-        return NextResponse.redirect(new URL(`/org/${lastOrgSlug}/crm/home`, request.url))
+        return NextResponse.redirect(
+          new URL(`/org/${lastOrgSlug}/crm/home`, request.url),
+        )
       }
       const newPath = pathname.replace(/^\//, `/org/${lastOrgSlug}/`)
       return NextResponse.redirect(new URL(newPath, request.url))

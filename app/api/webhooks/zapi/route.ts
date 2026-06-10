@@ -42,8 +42,18 @@ export async function POST(req: Request) {
   const { messageId, instanceId, fromMe } = payload
 
   // Helper de log
-  const log = (step: string, outcome: 'PASS' | 'EXIT' | 'SKIP', extra?: Record<string, unknown>) =>
-    console.log(`[webhook:zapi] ${step} → ${outcome}`, { msgId: messageId, phone: payload.phone, instanceId, ...extra })
+  const log = (
+    step: string,
+    outcome: 'PASS' | 'EXIT' | 'SKIP',
+    extra?: Record<string, unknown>,
+  ) =>
+    // eslint-disable-next-line no-console
+    console.log(`[webhook:zapi] ${step} → ${outcome}`, {
+      msgId: messageId,
+      phone: payload.phone,
+      instanceId,
+      ...extra,
+    })
 
   log('step:1 event_filter', 'PASS', { type: payload.type, fromMe })
 
@@ -126,7 +136,11 @@ export async function POST(req: Request) {
   // Montar config Z-API para envio de auto-reply (OOH)
   const zapiConfig: ZApiConfig | null =
     inbox.zapiInstanceId && inbox.zapiToken && inbox.zapiClientToken
-      ? { instanceId: inbox.zapiInstanceId, token: inbox.zapiToken, clientToken: inbox.zapiClientToken }
+      ? {
+          instanceId: inbox.zapiInstanceId,
+          token: inbox.zapiToken,
+          clientToken: inbox.zapiClientToken,
+        }
       : null
 
   const org = await db.organization.findUnique({
@@ -152,7 +166,13 @@ export async function POST(req: Request) {
         squadId: inbox.squadId,
       }
     : undefined
-  log('step:3 inbox_lookup', 'PASS', { inboxId: inbox.id, orgId, inboxActive: inbox.isActive, hasAgentId: !!inbox.agentId, hasGroupId: !!inbox.agentGroupId })
+  log('step:3 inbox_lookup', 'PASS', {
+    inboxId: inbox.id,
+    orgId,
+    inboxActive: inbox.isActive,
+    hasAgentId: !!inbox.agentId,
+    hasGroupId: !!inbox.agentGroupId,
+  })
 
   // remoteJid normalizado para consistencia com Evolution/Meta
   const remoteJid = `${payload.phone}@s.whatsapp.net`
@@ -164,7 +184,10 @@ export async function POST(req: Request) {
       .catch(() => 'redis_error' as const)
 
     if (dedupResult === null) {
-      log('step:4 from_me_bot', 'SKIP', { reason: 'bot_message_deduped', ms: Date.now() - t0 })
+      log('step:4 from_me_bot', 'SKIP', {
+        reason: 'bot_message_deduped',
+        ms: Date.now() - t0,
+      })
       return NextResponse.json({ ignored: true, reason: 'from_me_bot' })
     }
 
@@ -209,22 +232,29 @@ export async function POST(req: Request) {
         providerMessageId: messageId,
         metadata: {
           sentFrom: 'whatsapp_direct',
-          ...(normalizedMsg.media
-            ? { media: normalizedMsg.media }
-            : {}),
+          ...(normalizedMsg.media ? { media: normalizedMsg.media } : {}),
         } as unknown as Prisma.InputJsonValue,
       },
     })
 
     await db.conversation.updateMany({
       where: { inboxId: inbox.id, remoteJid },
-      data: { aiPaused: true, pausedAt: new Date(), lastMessageRole: 'assistant', ...AUTO_REOPEN_FIELDS },
+      data: {
+        aiPaused: true,
+        pausedAt: new Date(),
+        lastMessageRole: 'assistant',
+        ...AUTO_REOPEN_FIELDS,
+      },
     })
 
     revalidateTag(`conversations:${orgId}`)
     revalidateTag(`conversation-messages:${resolveResult.conversationId}`)
 
-    log('step:4b from_me_done', 'EXIT', { conversationId: resolveResult.conversationId, aiPaused: true, ms: Date.now() - t0 })
+    log('step:4b from_me_done', 'EXIT', {
+      conversationId: resolveResult.conversationId,
+      aiPaused: true,
+      ms: Date.now() - t0,
+    })
     return NextResponse.json({ success: true, reason: 'from_me_saved' })
   }
   log('step:4 from_me_check', 'PASS')
@@ -235,7 +265,12 @@ export async function POST(req: Request) {
   const hasAiConfigured = !!(inbox.agentId || inbox.agentGroupId)
 
   if (!inbox.isActive || !hasAiConfigured) {
-    log('step:5 agent_active_check', 'EXIT', { reason: !inbox.isActive ? 'inbox_inactive' : 'no_ai_configured', inboxActive: inbox.isActive, hasAgentId: !!inbox.agentId, hasGroupId: !!inbox.agentGroupId })
+    log('step:5 agent_active_check', 'EXIT', {
+      reason: !inbox.isActive ? 'inbox_inactive' : 'no_ai_configured',
+      inboxActive: inbox.isActive,
+      hasAgentId: !!inbox.agentId,
+      hasGroupId: !!inbox.agentGroupId,
+    })
 
     if (!inbox.isActive) {
       const recentDisconnectedNotification = await db.notification.findFirst({
@@ -301,10 +336,13 @@ export async function POST(req: Request) {
         data: {
           conversationId: resolveResult.conversationId,
           role: 'user',
-          content: resolveMessageContent(normalizedMsg) || '[mensagem nao suportada]',
+          content:
+            resolveMessageContent(normalizedMsg) || '[mensagem nao suportada]',
           providerMessageId: messageId,
           metadata: normalizedMsg.media
-            ? ({ media: normalizedMsg.media } as unknown as Prisma.InputJsonValue)
+            ? ({
+                media: normalizedMsg.media,
+              } as unknown as Prisma.InputJsonValue)
             : undefined,
         },
       })
@@ -325,8 +363,15 @@ export async function POST(req: Request) {
       revalidateTag(`conversation-messages:${resolveResult.conversationId}`)
     }
 
-    log('step:5b inactive_done', 'EXIT', { conversationId: resolveResult.conversationId, saved: dedupResult !== null, ms: Date.now() - t0 })
-    return NextResponse.json({ success: true, reason: 'agent_inactive_message_saved' })
+    log('step:5b inactive_done', 'EXIT', {
+      conversationId: resolveResult.conversationId,
+      saved: dedupResult !== null,
+      ms: Date.now() - t0,
+    })
+    return NextResponse.json({
+      success: true,
+      reason: 'agent_inactive_message_saved',
+    })
   }
 
   // Resolver agente standalone OU grupo — suporta ambos os modos de operacao
@@ -341,58 +386,99 @@ export async function POST(req: Request) {
   const resolvedAgent = await resolveAgentForConversation(inbox, preResolveConv)
 
   if (!resolvedAgent || !resolvedAgent.isActive) {
-    log('step:5 agent_active_check', 'EXIT', { reason: 'agent_inactive_or_unresolved' })
+    log('step:5 agent_active_check', 'EXIT', {
+      reason: 'agent_inactive_or_unresolved',
+    })
     // Salvar mensagem sem processar com IA (agente inativo ou sem workers no grupo)
     const normalizedMsgInactive = parseZApiMessage(payload)
     if (normalizedMsgInactive.type === 'text' && !normalizedMsgInactive.text) {
       return NextResponse.json({ ignored: true, reason: 'inactive_empty' })
     }
     const resolveInactiveResult = await resolveConversation(
-      inbox.id, orgId, remoteJid,
-      normalizedMsgInactive.phoneNumber, normalizedMsgInactive.pushName,
-      dealContext, contactAssignContext, false,
+      inbox.id,
+      orgId,
+      remoteJid,
+      normalizedMsgInactive.phoneNumber,
+      normalizedMsgInactive.pushName,
+      dealContext,
+      contactAssignContext,
+      false,
     )
     if (resolveInactiveResult.isNew) {
-      revalidateTag(`pipeline:${orgId}`); revalidateTag(`deals:${orgId}`)
-      revalidateTag(`contacts:${orgId}`); revalidateTag(`dashboard:${orgId}`)
+      revalidateTag(`pipeline:${orgId}`)
+      revalidateTag(`deals:${orgId}`)
+      revalidateTag(`contacts:${orgId}`)
+      revalidateTag(`dashboard:${orgId}`)
     }
     if (resolveInactiveResult.nameUpdated) {
-      revalidateTag(`contacts:${orgId}`); revalidateTag(`deals:${orgId}`)
-      revalidateTag(`pipeline:${orgId}`); revalidateTag(`conversations:${orgId}`)
+      revalidateTag(`contacts:${orgId}`)
+      revalidateTag(`deals:${orgId}`)
+      revalidateTag(`pipeline:${orgId}`)
+      revalidateTag(`conversations:${orgId}`)
     }
-    const dedupInactive = await redis.set(`dedup:${messageId}`, '1', 'EX', 300, 'NX').catch(() => 'redis_error' as const)
+    const dedupInactive = await redis
+      .set(`dedup:${messageId}`, '1', 'EX', 300, 'NX')
+      .catch(() => 'redis_error' as const)
     if (dedupInactive !== null) {
       await db.message.create({
         data: {
           conversationId: resolveInactiveResult.conversationId,
           role: 'user',
-          content: resolveMessageContent(normalizedMsgInactive) || '[mensagem nao suportada]',
+          content:
+            resolveMessageContent(normalizedMsgInactive) ||
+            '[mensagem nao suportada]',
           providerMessageId: messageId,
-          metadata: normalizedMsgInactive.media ? ({ media: normalizedMsgInactive.media } as unknown as Prisma.InputJsonValue) : undefined,
+          metadata: normalizedMsgInactive.media
+            ? ({
+                media: normalizedMsgInactive.media,
+              } as unknown as Prisma.InputJsonValue)
+            : undefined,
         },
       })
       await db.conversation.update({
         where: { id: resolveInactiveResult.conversationId },
-        data: { unreadCount: { increment: 1 }, lastMessageRole: 'user', nextFollowUpAt: null, followUpCount: 0, lastCustomerMessageAt: new Date(), ...AUTO_REOPEN_FIELDS },
+        data: {
+          unreadCount: { increment: 1 },
+          lastMessageRole: 'user',
+          nextFollowUpAt: null,
+          followUpCount: 0,
+          lastCustomerMessageAt: new Date(),
+          ...AUTO_REOPEN_FIELDS,
+        },
       })
       revalidateTag(`conversations:${orgId}`)
-      revalidateTag(`conversation-messages:${resolveInactiveResult.conversationId}`)
+      revalidateTag(
+        `conversation-messages:${resolveInactiveResult.conversationId}`,
+      )
     }
-    return NextResponse.json({ success: true, reason: 'agent_inactive_message_saved' })
+    return NextResponse.json({
+      success: true,
+      reason: 'agent_inactive_message_saved',
+    })
   }
 
-  log('step:5 agent_active_check', 'PASS', { agentId: resolvedAgent.agentId, requiresRouting: resolvedAgent.requiresRouting })
+  log('step:5 agent_active_check', 'PASS', {
+    agentId: resolvedAgent.agentId,
+    requiresRouting: resolvedAgent.requiresRouting,
+  })
 
   // 7. Business hours check — apenas para modo standalone ou worker ja ativo
   // Quando requiresRouting = true, o business hours check e feito pelo processAgentMessage apos o routing
-  if (!resolvedAgent.requiresRouting && resolvedAgent.businessHoursEnabled && resolvedAgent.businessHoursConfig) {
+  if (
+    !resolvedAgent.requiresRouting &&
+    resolvedAgent.businessHoursEnabled &&
+    resolvedAgent.businessHoursConfig
+  ) {
     const isOpen = checkBusinessHours(
       resolvedAgent.businessHoursTimezone,
       resolvedAgent.businessHoursConfig as BusinessHoursConfig,
     )
 
     if (!isOpen) {
-      log('step:6 business_hours', 'EXIT', { reason: 'outside_business_hours', timezone: resolvedAgent.businessHoursTimezone })
+      log('step:6 business_hours', 'EXIT', {
+        reason: 'outside_business_hours',
+        timezone: resolvedAgent.businessHoursTimezone,
+      })
 
       const oohKey = `ooh-reply:${resolvedAgent.agentId}:${remoteJid}`
       const alreadyReplied = await redis
@@ -434,10 +520,14 @@ export async function POST(req: Request) {
           data: {
             conversationId: resolveResult.conversationId,
             role: 'user',
-            content: resolveMessageContent(normalizedMsg) || '[mensagem nao suportada]',
+            content:
+              resolveMessageContent(normalizedMsg) ||
+              '[mensagem nao suportada]',
             providerMessageId: messageId,
             metadata: normalizedMsg.media
-              ? ({ media: normalizedMsg.media } as unknown as Prisma.InputJsonValue)
+              ? ({
+                  media: normalizedMsg.media,
+                } as unknown as Prisma.InputJsonValue)
               : undefined,
           },
         })
@@ -455,28 +545,56 @@ export async function POST(req: Request) {
       }
 
       // Enviar auto-reply via Z-API (apenas se tem mensagem, nao enviou recentemente e tem config)
-      const shouldSendZApiAutoReply = !!(resolvedAgent.outOfHoursMessage && alreadyReplied !== null && zapiConfig)
+      const shouldSendZApiAutoReply = !!(
+        resolvedAgent.outOfHoursMessage &&
+        alreadyReplied !== null &&
+        zapiConfig
+      )
       const sentAutoReply = shouldSendZApiAutoReply
-      if (shouldSendZApiAutoReply && zapiConfig && resolvedAgent.outOfHoursMessage) {
+      if (
+        shouldSendZApiAutoReply &&
+        zapiConfig &&
+        resolvedAgent.outOfHoursMessage
+      ) {
         try {
-          const oohIds = await sendZApiTextMessage(zapiConfig, payload.phone, resolvedAgent.outOfHoursMessage)
+          const oohIds = await sendZApiTextMessage(
+            zapiConfig,
+            payload.phone,
+            resolvedAgent.outOfHoursMessage,
+          )
           await Promise.all(
             oohIds.map((sentId) =>
               redis.set(`dedup:${sentId}`, '1', 'EX', 300).catch(() => {}),
             ),
           )
         } catch (error) {
-          console.error('[webhook:zapi] OOH auto-reply failed:', { msgId: messageId, error })
+          console.error('[webhook:zapi] OOH auto-reply failed:', {
+            msgId: messageId,
+            error,
+          })
         }
       }
 
-      log('step:6b ooh_done', 'EXIT', { conversationId: resolveResult.conversationId, sentAutoReply, ms: Date.now() - t0 })
-      return NextResponse.json({ ignored: true, reason: 'outside_business_hours' })
+      log('step:6b ooh_done', 'EXIT', {
+        conversationId: resolveResult.conversationId,
+        sentAutoReply,
+        ms: Date.now() - t0,
+      })
+      return NextResponse.json({
+        ignored: true,
+        reason: 'outside_business_hours',
+      })
     }
 
-    log('step:6 business_hours', 'PASS', { timezone: resolvedAgent.businessHoursTimezone })
+    log('step:6 business_hours', 'PASS', {
+      timezone: resolvedAgent.businessHoursTimezone,
+    })
   } else {
-    log('step:6 business_hours', 'PASS', { reason: resolvedAgent.requiresRouting ? 'deferred_to_router' : 'not_configured' })
+    log('step:6 business_hours', 'PASS', {
+      reason: resolvedAgent.requiresRouting
+        ? 'deferred_to_router'
+        : 'not_configured',
+    })
   }
 
   // 8. Normalizar mensagem
@@ -490,12 +608,13 @@ export async function POST(req: Request) {
 
   // 9. Dedup + Resolve Conversation em paralelo
   const [dedupResult, resolveResult] = await Promise.all([
-    redis
-      .set(`dedup:${messageId}`, '1', 'EX', 300, 'NX')
-      .catch((error) => {
-        console.warn('[webhook:zapi] Redis dedup failed, continuing:', { msgId: messageId, error })
-        return 'redis_error' as const
-      }),
+    redis.set(`dedup:${messageId}`, '1', 'EX', 300, 'NX').catch((error) => {
+      console.warn('[webhook:zapi] Redis dedup failed, continuing:', {
+        msgId: messageId,
+        error,
+      })
+      return 'redis_error' as const
+    }),
     resolveConversation(
       inbox.id,
       orgId,
@@ -529,7 +648,10 @@ export async function POST(req: Request) {
     revalidateTag(`conversations:${orgId}`)
   }
 
-  log('step:8 dedup+resolve', 'PASS', { conversationId, isNewConversation: resolveResult.isNew })
+  log('step:8 dedup+resolve', 'PASS', {
+    conversationId,
+    isNewConversation: resolveResult.isNew,
+  })
 
   // 10. Verificar se IA esta pausada na conversa (pausa permanente — so despausa manualmente)
   const conversation = await db.conversation.findUnique({
@@ -547,7 +669,9 @@ export async function POST(req: Request) {
           content: resolveMessageContent(normalizedMessage),
           providerMessageId: messageId,
           metadata: normalizedMessage.media
-            ? ({ media: normalizedMessage.media } as unknown as Prisma.InputJsonValue)
+            ? ({
+                media: normalizedMessage.media,
+              } as unknown as Prisma.InputJsonValue)
             : undefined,
         },
       })
@@ -572,17 +696,25 @@ export async function POST(req: Request) {
         'code' in error &&
         (error as { code: string }).code === 'P2002'
       ) {
-        log('step:9 ai_paused_save', 'SKIP', { reason: 'duplicate_provider_message_id' })
+        log('step:9 ai_paused_save', 'SKIP', {
+          reason: 'duplicate_provider_message_id',
+        })
         return NextResponse.json({ success: true, reason: 'duplicate' })
       }
       throw error
     }
 
-    log('step:9 ai_pause_check', 'EXIT', { reason: 'ai_paused', conversationId, ms: Date.now() - t0 })
-    return NextResponse.json({ success: true, reason: 'ai_paused_message_saved' })
-  } else {
-    log('step:9 ai_pause_check', 'PASS', { aiPaused: false })
+    log('step:9 ai_pause_check', 'EXIT', {
+      reason: 'ai_paused',
+      conversationId,
+      ms: Date.now() - t0,
+    })
+    return NextResponse.json({
+      success: true,
+      reason: 'ai_paused_message_saved',
+    })
   }
+  log('step:9 ai_pause_check', 'PASS', { aiPaused: false })
 
   // 11. Salvar mensagem (com safety net para P2002)
   try {
@@ -593,7 +725,9 @@ export async function POST(req: Request) {
         content: resolveMessageContent(normalizedMessage),
         providerMessageId: messageId,
         metadata: normalizedMessage.media
-          ? ({ media: normalizedMessage.media } as unknown as Prisma.InputJsonValue)
+          ? ({
+              media: normalizedMessage.media,
+            } as unknown as Prisma.InputJsonValue)
           : undefined,
       },
     })
@@ -603,7 +737,9 @@ export async function POST(req: Request) {
       'code' in error &&
       (error as { code: string }).code === 'P2002'
     ) {
-      log('step:10 save_message', 'SKIP', { reason: 'duplicate_provider_message_id' })
+      log('step:10 save_message', 'SKIP', {
+        reason: 'duplicate_provider_message_id',
+      })
       return NextResponse.json({ success: true, reason: 'duplicate' })
     }
     throw error
@@ -615,7 +751,14 @@ export async function POST(req: Request) {
   await Promise.all([
     db.conversation.update({
       where: { id: conversationId },
-      data: { unreadCount: { increment: 1 }, lastMessageRole: 'user', nextFollowUpAt: null, followUpCount: 0, lastCustomerMessageAt: new Date(), ...AUTO_REOPEN_FIELDS },
+      data: {
+        unreadCount: { increment: 1 },
+        lastMessageRole: 'user',
+        nextFollowUpAt: null,
+        followUpCount: 0,
+        lastCustomerMessageAt: new Date(),
+        ...AUTO_REOPEN_FIELDS,
+      },
     }),
     redis
       .set(
@@ -625,7 +768,10 @@ export async function POST(req: Request) {
         resolvedAgent.debounceSeconds + 120,
       )
       .catch((error) => {
-        console.warn('[webhook:zapi] Redis debounce set failed:', { msgId: messageId, error })
+        console.warn('[webhook:zapi] Redis debounce set failed:', {
+          msgId: messageId,
+          error,
+        })
       }),
     tasks.trigger<typeof processAgentMessage>(
       'process-agent-message',
@@ -638,7 +784,10 @@ export async function POST(req: Request) {
         requiresRouting: resolvedAgent.requiresRouting,
         groupId: resolvedAgent.groupId,
       },
-      { delay: `${resolvedAgent.debounceSeconds}s`, concurrencyKey: conversationId },
+      {
+        delay: `${resolvedAgent.debounceSeconds}s`,
+        concurrencyKey: conversationId,
+      },
     ),
     // Z-API nao tem API documentada de typing presence — skip
   ])

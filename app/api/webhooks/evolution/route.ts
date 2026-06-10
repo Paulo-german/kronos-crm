@@ -4,18 +4,35 @@ import type { Prisma } from '@prisma/client'
 import { SalesDistributionModel } from '@prisma/client'
 import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
-import { parseEvolutionMessage, isGroupMessage, resolveEffectiveJid } from '@/_lib/evolution-js/parse-message'
+import {
+  parseEvolutionMessage,
+  isGroupMessage,
+  resolveEffectiveJid,
+} from '@/_lib/evolution-js/parse-message'
 import { resolveConversation } from '@/_lib/whatsapp/resolve-conversation'
-import { sendWhatsAppMessage, sendPresence } from '@/_lib/evolution-js/send-message'
+import {
+  sendWhatsAppMessage,
+  sendPresence,
+} from '@/_lib/evolution-js/send-message'
 import { checkBusinessHours } from '@/_lib/agent/check-business-hours'
 import { scheduleNotifyOrgAdmins } from '@/_lib/notifications/notify-org-admins'
 import { resolveAgentForConversation } from '@/../trigger/lib/resolve-agent'
 import { tasks } from '@trigger.dev/sdk/v3'
 import type { processAgentMessage } from '@/../../trigger/process-agent-message'
-import type { EvolutionWebhookPayload, EvolutionConnectionUpdateData, NormalizedWhatsAppMessage } from '@/_lib/evolution-js/types'
+import type {
+  EvolutionWebhookPayload,
+  EvolutionConnectionUpdateData,
+  NormalizedWhatsAppMessage,
+} from '@/_lib/evolution-js/types'
 import type { BusinessHoursConfig } from '@/_actions/agent/update-agent/schema'
-import { resolveEvolutionCredentialsByInstanceName, resolveWebhookSecretByInstanceName } from '@/_lib/evolution-js/resolve-credentials'
-import { updateDeliveryStatus, updateDeliveryStatusFailed } from '@/_lib/message-delivery-status'
+import {
+  resolveEvolutionCredentialsByInstanceName,
+  resolveWebhookSecretByInstanceName,
+} from '@/_lib/evolution-js/resolve-credentials'
+import {
+  updateDeliveryStatus,
+  updateDeliveryStatusFailed,
+} from '@/_lib/message-delivery-status'
 import { AUTO_REOPEN_FIELDS } from '@/_lib/conversation/auto-reopen'
 import { hasActivePlan } from '@/_lib/billing/has-active-plan'
 import { broadcastAgentStatus } from '@/_lib/inbox/broadcast-agent-status'
@@ -59,14 +76,22 @@ export async function POST(req: Request) {
 
     // Ignorar estados intermediarios (ex: 'connecting')
     if (state !== 'open' && state !== 'close') {
-      return NextResponse.json({ ignored: true, reason: 'connection_state_ignored' })
+      return NextResponse.json({
+        ignored: true,
+        reason: 'connection_state_ignored',
+      })
     }
 
     const isConnected = state === 'open'
 
     const inbox = await db.inbox.findFirst({
       where: { evolutionInstanceName: instanceName },
-      select: { id: true, organizationId: true, agentId: true, evolutionConnected: true },
+      select: {
+        id: true,
+        organizationId: true,
+        agentId: true,
+        evolutionConnected: true,
+      },
     })
 
     if (!inbox) {
@@ -124,11 +149,14 @@ export async function POST(req: Request) {
     }>
 
     if (!Array.isArray(updates)) {
-      return NextResponse.json({ ignored: true, reason: 'messages_update_no_data' })
+      return NextResponse.json({
+        ignored: true,
+        reason: 'messages_update_no_data',
+      })
     }
 
     // Só processar updates de mensagens enviadas por nós (fromMe)
-    const outboundUpdates = updates.filter((u) => u.key?.fromMe)
+    const outboundUpdates = updates.filter((update) => update.key?.fromMe)
 
     for (const update of outboundUpdates) {
       const messageId = update.key.id
@@ -160,7 +188,10 @@ export async function POST(req: Request) {
       }
     }
 
-    return NextResponse.json({ success: true, processed: outboundUpdates.length })
+    return NextResponse.json({
+      success: true,
+      processed: outboundUpdates.length,
+    })
   }
 
   // 4. Filtro de evento — so processar messages.upsert a partir daqui
@@ -177,8 +208,18 @@ export async function POST(req: Request) {
   const remoteJid = resolveEffectiveJid(key.remoteJid, key.remoteJidAlt)
 
   // Helper de log — sempre inclui messageId para rastreio completo
-  const log = (step: string, outcome: 'PASS' | 'EXIT' | 'SKIP', extra?: Record<string, unknown>) =>
-    console.log(`[webhook] ${step} → ${outcome}`, { msgId: messageId, remoteJid, instance: instanceName, ...extra })
+  const log = (
+    step: string,
+    outcome: 'PASS' | 'EXIT' | 'SKIP',
+    extra?: Record<string, unknown>,
+  ) =>
+    // eslint-disable-next-line no-console
+    console.log(`[webhook] ${step} → ${outcome}`, {
+      msgId: messageId,
+      remoteJid,
+      instance: instanceName,
+      ...extra,
+    })
 
   log('step:1 event_filter', 'PASS', { event: payload.event, fromMe })
 
@@ -256,7 +297,8 @@ export async function POST(req: Request) {
   }
 
   // Resolver credenciais Evolution para este inbox (self-hosted ou globais)
-  const inboxCredentials = await resolveEvolutionCredentialsByInstanceName(instanceName)
+  const inboxCredentials =
+    await resolveEvolutionCredentialsByInstanceName(instanceName)
 
   // Resolver modelo de distribuição da org (default ROUND_ROBIN)
   const org = await db.organization.findUnique({
@@ -282,7 +324,13 @@ export async function POST(req: Request) {
         squadId: inbox.squadId,
       }
     : undefined
-  log('step:3 inbox_lookup', 'PASS', { inboxId: inbox.id, orgId, inboxActive: inbox.isActive, hasAgentId: !!inbox.agentId, hasGroupId: !!inbox.agentGroupId })
+  log('step:3 inbox_lookup', 'PASS', {
+    inboxId: inbox.id,
+    orgId,
+    inboxActive: inbox.isActive,
+    hasAgentId: !!inbox.agentId,
+    hasGroupId: !!inbox.agentGroupId,
+  })
 
   // 5. Tratamento fromMe — checar dedup ANTES de qualquer DB call
   if (fromMe) {
@@ -293,7 +341,10 @@ export async function POST(req: Request) {
       .catch(() => 'redis_error' as const)
 
     if (dedupResult === null) {
-      log('step:4 from_me_bot', 'SKIP', { reason: 'bot_message_deduped', ms: Date.now() - t0 })
+      log('step:4 from_me_bot', 'SKIP', {
+        reason: 'bot_message_deduped',
+        ms: Date.now() - t0,
+      })
       return NextResponse.json({ ignored: true, reason: 'from_me_bot' })
     }
 
@@ -339,22 +390,29 @@ export async function POST(req: Request) {
         providerMessageId: messageId,
         metadata: {
           sentFrom: 'whatsapp_direct',
-          ...(normalizedMsg.media
-            ? { media: normalizedMsg.media }
-            : {}),
+          ...(normalizedMsg.media ? { media: normalizedMsg.media } : {}),
         } as unknown as Prisma.InputJsonValue,
       },
     })
 
     await db.conversation.updateMany({
       where: { inboxId: inbox.id, remoteJid },
-      data: { aiPaused: true, pausedAt: new Date(), lastMessageRole: 'assistant', ...AUTO_REOPEN_FIELDS },
+      data: {
+        aiPaused: true,
+        pausedAt: new Date(),
+        lastMessageRole: 'assistant',
+        ...AUTO_REOPEN_FIELDS,
+      },
     })
 
     revalidateTag(`conversations:${orgId}`)
     revalidateTag(`conversation-messages:${resolveResult.conversationId}`)
 
-    log('step:4b from_me_done', 'EXIT', { conversationId: resolveResult.conversationId, aiPaused: true, ms: Date.now() - t0 })
+    log('step:4b from_me_done', 'EXIT', {
+      conversationId: resolveResult.conversationId,
+      aiPaused: true,
+      ms: Date.now() - t0,
+    })
     return NextResponse.json({ success: true, reason: 'from_me_saved' })
   }
   log('step:4 from_me_check', 'PASS')
@@ -365,7 +423,12 @@ export async function POST(req: Request) {
   const hasAiConfigured = !!(inbox.agentId || inbox.agentGroupId)
 
   if (!inbox.isActive || !hasAiConfigured) {
-    log('step:5 agent_active_check', 'EXIT', { reason: !inbox.isActive ? 'inbox_inactive' : 'no_ai_configured', inboxActive: inbox.isActive, hasAgentId: !!inbox.agentId, hasGroupId: !!inbox.agentGroupId })
+    log('step:5 agent_active_check', 'EXIT', {
+      reason: !inbox.isActive ? 'inbox_inactive' : 'no_ai_configured',
+      inboxActive: inbox.isActive,
+      hasAgentId: !!inbox.agentId,
+      hasGroupId: !!inbox.agentGroupId,
+    })
 
     // Notificar OWNER/ADMIN quando inbox esta desativada (WhatsApp desconectado)
     // Anti-spam: verifica se ja existe notificacao nao lida com mesmo titulo nas ultimas 24h
@@ -433,10 +496,13 @@ export async function POST(req: Request) {
         data: {
           conversationId: resolveResult.conversationId,
           role: 'user',
-          content: resolveMessageContent(normalizedMsg) || '[mensagem não suportada]',
+          content:
+            resolveMessageContent(normalizedMsg) || '[mensagem não suportada]',
           providerMessageId: messageId,
           metadata: normalizedMsg.media
-            ? ({ media: normalizedMsg.media } as unknown as Prisma.InputJsonValue)
+            ? ({
+                media: normalizedMsg.media,
+              } as unknown as Prisma.InputJsonValue)
             : undefined,
         },
       })
@@ -458,8 +524,15 @@ export async function POST(req: Request) {
       revalidateTag(`conversation-messages:${resolveResult.conversationId}`)
     }
 
-    log('step:5b inactive_done', 'EXIT', { conversationId: resolveResult.conversationId, saved: dedupResult !== null, ms: Date.now() - t0 })
-    return NextResponse.json({ success: true, reason: 'agent_inactive_message_saved' })
+    log('step:5b inactive_done', 'EXIT', {
+      conversationId: resolveResult.conversationId,
+      saved: dedupResult !== null,
+      ms: Date.now() - t0,
+    })
+    return NextResponse.json({
+      success: true,
+      reason: 'agent_inactive_message_saved',
+    })
   }
 
   // Resolver agente standalone OU grupo — suporta ambos os modos de operação
@@ -474,58 +547,99 @@ export async function POST(req: Request) {
   const resolvedAgent = await resolveAgentForConversation(inbox, preResolveConv)
 
   if (!resolvedAgent || !resolvedAgent.isActive) {
-    log('step:5 agent_active_check', 'EXIT', { reason: 'agent_inactive_or_unresolved' })
+    log('step:5 agent_active_check', 'EXIT', {
+      reason: 'agent_inactive_or_unresolved',
+    })
     // Salvar mensagem sem processar com IA (agente inativo ou sem workers no grupo)
     const normalizedMsgInactive = parseEvolutionMessage(data, instanceName)
     if (normalizedMsgInactive.type === 'text' && !normalizedMsgInactive.text) {
       return NextResponse.json({ ignored: true, reason: 'inactive_empty' })
     }
     const resolveInactiveResult = await resolveConversation(
-      inbox.id, orgId, remoteJid,
-      normalizedMsgInactive.phoneNumber, normalizedMsgInactive.pushName,
-      dealContext, contactAssignContext, false,
+      inbox.id,
+      orgId,
+      remoteJid,
+      normalizedMsgInactive.phoneNumber,
+      normalizedMsgInactive.pushName,
+      dealContext,
+      contactAssignContext,
+      false,
     )
     if (resolveInactiveResult.isNew) {
-      revalidateTag(`pipeline:${orgId}`); revalidateTag(`deals:${orgId}`)
-      revalidateTag(`contacts:${orgId}`); revalidateTag(`dashboard:${orgId}`)
+      revalidateTag(`pipeline:${orgId}`)
+      revalidateTag(`deals:${orgId}`)
+      revalidateTag(`contacts:${orgId}`)
+      revalidateTag(`dashboard:${orgId}`)
     }
     if (resolveInactiveResult.nameUpdated) {
-      revalidateTag(`contacts:${orgId}`); revalidateTag(`deals:${orgId}`)
-      revalidateTag(`pipeline:${orgId}`); revalidateTag(`conversations:${orgId}`)
+      revalidateTag(`contacts:${orgId}`)
+      revalidateTag(`deals:${orgId}`)
+      revalidateTag(`pipeline:${orgId}`)
+      revalidateTag(`conversations:${orgId}`)
     }
-    const dedupInactive = await redis.set(`dedup:${messageId}`, '1', 'EX', 300, 'NX').catch(() => 'redis_error' as const)
+    const dedupInactive = await redis
+      .set(`dedup:${messageId}`, '1', 'EX', 300, 'NX')
+      .catch(() => 'redis_error' as const)
     if (dedupInactive !== null) {
       await db.message.create({
         data: {
           conversationId: resolveInactiveResult.conversationId,
           role: 'user',
-          content: resolveMessageContent(normalizedMsgInactive) || '[mensagem não suportada]',
+          content:
+            resolveMessageContent(normalizedMsgInactive) ||
+            '[mensagem não suportada]',
           providerMessageId: messageId,
-          metadata: normalizedMsgInactive.media ? ({ media: normalizedMsgInactive.media } as unknown as Prisma.InputJsonValue) : undefined,
+          metadata: normalizedMsgInactive.media
+            ? ({
+                media: normalizedMsgInactive.media,
+              } as unknown as Prisma.InputJsonValue)
+            : undefined,
         },
       })
       await db.conversation.update({
         where: { id: resolveInactiveResult.conversationId },
-        data: { unreadCount: { increment: 1 }, lastMessageRole: 'user', nextFollowUpAt: null, followUpCount: 0, lastCustomerMessageAt: new Date(), ...AUTO_REOPEN_FIELDS },
+        data: {
+          unreadCount: { increment: 1 },
+          lastMessageRole: 'user',
+          nextFollowUpAt: null,
+          followUpCount: 0,
+          lastCustomerMessageAt: new Date(),
+          ...AUTO_REOPEN_FIELDS,
+        },
       })
       revalidateTag(`conversations:${orgId}`)
-      revalidateTag(`conversation-messages:${resolveInactiveResult.conversationId}`)
+      revalidateTag(
+        `conversation-messages:${resolveInactiveResult.conversationId}`,
+      )
     }
-    return NextResponse.json({ success: true, reason: 'agent_inactive_message_saved' })
+    return NextResponse.json({
+      success: true,
+      reason: 'agent_inactive_message_saved',
+    })
   }
 
-  log('step:5 agent_active_check', 'PASS', { agentId: resolvedAgent.agentId, requiresRouting: resolvedAgent.requiresRouting })
+  log('step:5 agent_active_check', 'PASS', {
+    agentId: resolvedAgent.agentId,
+    requiresRouting: resolvedAgent.requiresRouting,
+  })
 
   // 7. Business hours check — apenas para modo standalone ou worker já ativo
   // Quando requiresRouting = true, o business hours check é feito pelo processAgentMessage após o routing
-  if (!resolvedAgent.requiresRouting && resolvedAgent.businessHoursEnabled && resolvedAgent.businessHoursConfig) {
+  if (
+    !resolvedAgent.requiresRouting &&
+    resolvedAgent.businessHoursEnabled &&
+    resolvedAgent.businessHoursConfig
+  ) {
     const isOpen = checkBusinessHours(
       resolvedAgent.businessHoursTimezone,
       resolvedAgent.businessHoursConfig as BusinessHoursConfig,
     )
 
     if (!isOpen) {
-      log('step:6 business_hours', 'EXIT', { reason: 'outside_business_hours', timezone: resolvedAgent.businessHoursTimezone })
+      log('step:6 business_hours', 'EXIT', {
+        reason: 'outside_business_hours',
+        timezone: resolvedAgent.businessHoursTimezone,
+      })
 
       // Dedup para auto-reply: máximo 1 resposta por hora por contato
       const oohKey = `ooh-reply:${resolvedAgent.agentId}:${remoteJid}`
@@ -570,10 +684,14 @@ export async function POST(req: Request) {
           data: {
             conversationId: resolveResult.conversationId,
             role: 'user',
-            content: resolveMessageContent(normalizedMsg) || '[mensagem não suportada]',
+            content:
+              resolveMessageContent(normalizedMsg) ||
+              '[mensagem não suportada]',
             providerMessageId: messageId,
             metadata: normalizedMsg.media
-              ? ({ media: normalizedMsg.media } as unknown as Prisma.InputJsonValue)
+              ? ({
+                  media: normalizedMsg.media,
+                } as unknown as Prisma.InputJsonValue)
               : undefined,
           },
         })
@@ -592,27 +710,50 @@ export async function POST(req: Request) {
       }
 
       // Enviar auto-reply apenas se tem mensagem configurada e não enviou recentemente
-      const sentAutoReply = !!(resolvedAgent.outOfHoursMessage && alreadyReplied !== null)
+      const sentAutoReply = !!(
+        resolvedAgent.outOfHoursMessage && alreadyReplied !== null
+      )
       if (sentAutoReply) {
         try {
-          const oohIds = await sendWhatsAppMessage(instanceName, remoteJid, resolvedAgent.outOfHoursMessage!, inboxCredentials)
+          const oohIds = await sendWhatsAppMessage(
+            instanceName,
+            remoteJid,
+            resolvedAgent.outOfHoursMessage!,
+            inboxCredentials,
+          )
           await Promise.all(
             oohIds.map((sentId) =>
               redis.set(`dedup:${sentId}`, '1', 'EX', 300).catch(() => {}),
             ),
           )
         } catch (error) {
-          console.error('[webhook] OOH auto-reply failed:', { msgId: messageId, error })
+          console.error('[webhook] OOH auto-reply failed:', {
+            msgId: messageId,
+            error,
+          })
         }
       }
 
-      log('step:6b ooh_done', 'EXIT', { conversationId: resolveResult.conversationId, sentAutoReply, ms: Date.now() - t0 })
-      return NextResponse.json({ ignored: true, reason: 'outside_business_hours' })
+      log('step:6b ooh_done', 'EXIT', {
+        conversationId: resolveResult.conversationId,
+        sentAutoReply,
+        ms: Date.now() - t0,
+      })
+      return NextResponse.json({
+        ignored: true,
+        reason: 'outside_business_hours',
+      })
     }
 
-    log('step:6 business_hours', 'PASS', { timezone: resolvedAgent.businessHoursTimezone })
+    log('step:6 business_hours', 'PASS', {
+      timezone: resolvedAgent.businessHoursTimezone,
+    })
   } else {
-    log('step:6 business_hours', 'PASS', { reason: resolvedAgent.requiresRouting ? 'deferred_to_router' : 'not_configured' })
+    log('step:6 business_hours', 'PASS', {
+      reason: resolvedAgent.requiresRouting
+        ? 'deferred_to_router'
+        : 'not_configured',
+    })
   }
 
   // 8. Normalizar mensagem (sync — antes do paralelo pois precisamos do resultado)
@@ -627,12 +768,13 @@ export async function POST(req: Request) {
 
   // 9. Dedup + Resolve Conversation em paralelo
   const [dedupResult, resolveResult] = await Promise.all([
-    redis
-      .set(`dedup:${messageId}`, '1', 'EX', 300, 'NX')
-      .catch((error) => {
-        console.warn('[webhook] Redis dedup failed, continuing:', { msgId: messageId, error })
-        return 'redis_error' as const
-      }),
+    redis.set(`dedup:${messageId}`, '1', 'EX', 300, 'NX').catch((error) => {
+      console.warn('[webhook] Redis dedup failed, continuing:', {
+        msgId: messageId,
+        error,
+      })
+      return 'redis_error' as const
+    }),
     resolveConversation(
       inbox.id,
       orgId,
@@ -667,7 +809,10 @@ export async function POST(req: Request) {
     revalidateTag(`conversations:${orgId}`)
   }
 
-  log('step:8 dedup+resolve', 'PASS', { conversationId, isNewConversation: resolveResult.isNew })
+  log('step:8 dedup+resolve', 'PASS', {
+    conversationId,
+    isNewConversation: resolveResult.isNew,
+  })
 
   // 10. Verificar se IA está pausada na conversa (pausa permanente — só despausa manualmente)
   const conversation = await db.conversation.findUnique({
@@ -685,7 +830,9 @@ export async function POST(req: Request) {
           content: resolveMessageContent(normalizedMessage),
           providerMessageId: messageId,
           metadata: normalizedMessage.media
-            ? ({ media: normalizedMessage.media } as unknown as Prisma.InputJsonValue)
+            ? ({
+                media: normalizedMessage.media,
+              } as unknown as Prisma.InputJsonValue)
             : undefined,
         },
       })
@@ -711,17 +858,25 @@ export async function POST(req: Request) {
         'code' in error &&
         (error as { code: string }).code === 'P2002'
       ) {
-        log('step:9 ai_paused_save', 'SKIP', { reason: 'duplicate_provider_message_id' })
+        log('step:9 ai_paused_save', 'SKIP', {
+          reason: 'duplicate_provider_message_id',
+        })
         return NextResponse.json({ success: true, reason: 'duplicate' })
       }
       throw error
     }
 
-    log('step:9 ai_pause_check', 'EXIT', { reason: 'ai_paused', conversationId, ms: Date.now() - t0 })
-    return NextResponse.json({ success: true, reason: 'ai_paused_message_saved' })
-  } else {
-    log('step:9 ai_pause_check', 'PASS', { aiPaused: false })
+    log('step:9 ai_pause_check', 'EXIT', {
+      reason: 'ai_paused',
+      conversationId,
+      ms: Date.now() - t0,
+    })
+    return NextResponse.json({
+      success: true,
+      reason: 'ai_paused_message_saved',
+    })
   }
+  log('step:9 ai_pause_check', 'PASS', { aiPaused: false })
 
   // 11. Salvar mensagem (com safety net para P2002 — webhook retry com dedup expirado)
   try {
@@ -732,7 +887,9 @@ export async function POST(req: Request) {
         content: resolveMessageContent(normalizedMessage),
         providerMessageId: messageId,
         metadata: normalizedMessage.media
-          ? ({ media: normalizedMessage.media } as unknown as Prisma.InputJsonValue)
+          ? ({
+              media: normalizedMessage.media,
+            } as unknown as Prisma.InputJsonValue)
           : undefined,
       },
     })
@@ -742,7 +899,9 @@ export async function POST(req: Request) {
       'code' in error &&
       (error as { code: string }).code === 'P2002'
     ) {
-      log('step:10 save_message', 'SKIP', { reason: 'duplicate_provider_message_id' })
+      log('step:10 save_message', 'SKIP', {
+        reason: 'duplicate_provider_message_id',
+      })
       return NextResponse.json({ success: true, reason: 'duplicate' })
     }
     throw error
@@ -755,7 +914,14 @@ export async function POST(req: Request) {
     // Reset follow-up completo + incrementar unreadCount — qualquer msg do cliente cancela ciclo FUP ativo
     db.conversation.update({
       where: { id: conversationId },
-      data: { unreadCount: { increment: 1 }, lastMessageRole: 'user', nextFollowUpAt: null, followUpCount: 0, lastCustomerMessageAt: new Date(), ...AUTO_REOPEN_FIELDS },
+      data: {
+        unreadCount: { increment: 1 },
+        lastMessageRole: 'user',
+        nextFollowUpAt: null,
+        followUpCount: 0,
+        lastCustomerMessageAt: new Date(),
+        ...AUTO_REOPEN_FIELDS,
+      },
     }),
     redis
       .set(
@@ -765,7 +931,10 @@ export async function POST(req: Request) {
         resolvedAgent.debounceSeconds + 120,
       )
       .catch((error) => {
-        console.warn('[webhook] Redis debounce set failed:', { msgId: messageId, error })
+        console.warn('[webhook] Redis debounce set failed:', {
+          msgId: messageId,
+          error,
+        })
       }),
     tasks.trigger<typeof processAgentMessage>(
       'process-agent-message',
@@ -778,7 +947,10 @@ export async function POST(req: Request) {
         requiresRouting: resolvedAgent.requiresRouting,
         groupId: resolvedAgent.groupId,
       },
-      { delay: `${resolvedAgent.debounceSeconds}s`, concurrencyKey: conversationId },
+      {
+        delay: `${resolvedAgent.debounceSeconds}s`,
+        concurrencyKey: conversationId,
+      },
     ),
     // "Digitando..." imediato — usuário vê feedback antes do debounce expirar
     sendPresence(instanceName, remoteJid, 'composing', inboxCredentials),
