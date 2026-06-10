@@ -11,7 +11,8 @@
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate",
-    "seed:deals": "npx tsx prisma/scripts/seed-deals.ts"
+    "seed:deals": "npx tsx prisma/scripts/seed-deals.ts",
+    "prepare": "husky"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.33",
@@ -105,6 +106,7 @@
     "@types/react-phone-number-input": "^3.1.37",
     "eslint": "^9",
     "eslint-config-next": "15.1.11",
+    "husky": "^9.1.7",
     "postcss": "^8",
     "prettier": "^3.7.4",
     "prettier-plugin-tailwindcss": "^0.7.2",
@@ -115,11 +117,11 @@
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
-      "npx prettier --write",
-      "npx eslint --fix"
+      "pnpm exec prettier --write",
+      "pnpm exec eslint --fix --max-warnings=0"
     ],
-    "*.{json,md}": [
-      "npx prettier --write"
+    "*.{json,md,css}": [
+      "pnpm exec prettier --write"
     ]
   },
   "prisma": {
