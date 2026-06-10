@@ -421,6 +421,8 @@ model ContactLifecycleHistory {
 
   fromStage       LifecycleStage?    @map("from_stage")
   toStage         LifecycleStage     @map("to_stage")
+  fromStatus      CustomerStatus?    @map("from_status")
+  toStatus        CustomerStatus?    @map("to_status")
   causeType       LifecycleCauseType @map("cause_type")
   causeRefId      String?            @map("cause_ref_id")
   changedByUserId String?            @map("changed_by_user_id")
