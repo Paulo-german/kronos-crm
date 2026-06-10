@@ -96,7 +96,7 @@ function buildTriggerDescription(
       : null
 
   if (stageId) {
-    const stage = stageOptions.find((s) => s.stageId === stageId)
+    const stage = stageOptions.find((stage) => stage.stageId === stageId)
     if (stage) return `Estágio: ${stage.stageName}`
   }
   if (threshold !== null) return `Após ${formatThreshold(threshold)}`
@@ -109,11 +109,12 @@ function buildTriggerDescription(
     typeof triggerConfig.toStageId === 'string' ? triggerConfig.toStageId : null
   if (fromStageId || toStageId) {
     const from =
-      stageOptions.find((s) => s.stageId === fromStageId)?.stageName ??
+      stageOptions.find((stage) => stage.stageId === fromStageId)?.stageName ??
       'qualquer'
-    const to =
-      stageOptions.find((s) => s.stageId === toStageId)?.stageName ?? 'qualquer'
-    return `De ${from} → ${to}`
+    const toStageName =
+      stageOptions.find((stage) => stage.stageId === toStageId)?.stageName ??
+      'qualquer'
+    return `De ${from} → ${toStageName}`
   }
 
   return 'Qualquer negociação'
@@ -144,7 +145,7 @@ function buildActionDescription(
     return strategyLabels[strategy] ?? strategy
   }
   if (targetStageId) {
-    const stage = stageOptions.find((s) => s.stageId === targetStageId)
+    const stage = stageOptions.find((stage) => stage.stageId === targetStageId)
     if (stage) return `Para ${stage.stageName}`
   }
   if (targetPriority) {
@@ -162,7 +163,9 @@ function buildActionDescription(
     : []
   if (targetUserIds.length > 0) {
     const names = targetUserIds.slice(0, 2).map((id) => {
-      const member = members.find((m) => (m.userId ?? m.id) === id)
+      const member = members.find(
+        (member) => (member.userId ?? member.id) === id,
+      )
       return member?.user?.fullName ?? member?.email ?? id
     })
     return (
@@ -171,7 +174,8 @@ function buildActionDescription(
     )
   }
 
-  const inboxId = typeof actionConfig.inboxId === 'string' ? actionConfig.inboxId : null
+  const inboxId =
+    typeof actionConfig.inboxId === 'string' ? actionConfig.inboxId : null
   if (inboxId === SENTINEL_DEAL_INBOX) {
     return 'Caixa de entrada existente do contato'
   }
@@ -327,11 +331,13 @@ function validateTriggerConfig(
   triggerConfig: Record<string, unknown>,
 ): string | null {
   if (triggerType === 'DEAL_STALE') {
-    if (!triggerConfig.thresholdMinutes) return 'Selecione o período para o gatilho'
+    if (!triggerConfig.thresholdMinutes)
+      return 'Selecione o período para o gatilho'
   }
   if (triggerType === 'DEAL_IDLE_IN_STAGE') {
     if (!triggerConfig.stageId) return 'Selecione o estágio para o gatilho'
-    if (!triggerConfig.thresholdMinutes) return 'Selecione o período para o gatilho'
+    if (!triggerConfig.thresholdMinutes)
+      return 'Selecione o período para o gatilho'
   }
   return null
 }
@@ -359,18 +365,24 @@ function validateActionConfig(
       const targetUserIds = Array.isArray(actionConfig.targetUserIds)
         ? actionConfig.targetUserIds
         : []
-      if (targetUserIds.length === 0) return 'Selecione ao menos um membro para notificar'
+      if (targetUserIds.length === 0)
+        return 'Selecione ao menos um membro para notificar'
     }
-    const channels = Array.isArray(actionConfig.channels) ? actionConfig.channels : []
-    if (channels.length === 0) return 'Selecione ao menos um canal de notificação'
+    const channels = Array.isArray(actionConfig.channels)
+      ? actionConfig.channels
+      : []
+    if (channels.length === 0)
+      return 'Selecione ao menos um canal de notificação'
   }
   if (actionType === 'UPDATE_DEAL_PRIORITY') {
     if (!actionConfig.targetPriority) return 'Selecione a prioridade'
   }
   if (actionType === 'SEND_WHATSAPP_FOLLOWUP') {
-    if (!actionConfig.inboxId) return 'Selecione o inbox para enviar o follow-up'
+    if (!actionConfig.inboxId)
+      return 'Selecione o inbox para enviar o follow-up'
     if (!actionConfig.messageTemplate) return 'Digite a mensagem do follow-up'
-    if (!actionConfig.noConversationBehavior) return 'Defina o comportamento sem conversa'
+    if (!actionConfig.noConversationBehavior)
+      return 'Defina o comportamento sem conversa'
   }
   return null
 }
@@ -408,7 +420,9 @@ export function AutomationWizardSheet({
       onError: ({ error }) => {
         // Tenta extrair erros de validação específicos do servidor
         if (error.validationErrors) {
-          const topLevelErrors = (error.validationErrors as Record<string, unknown>)._errors
+          const topLevelErrors = (
+            error.validationErrors as Record<string, unknown>
+          )._errors
           if (Array.isArray(topLevelErrors) && topLevelErrors.length > 0) {
             toast.error(String(topLevelErrors[0]))
             return
@@ -480,7 +494,10 @@ export function AutomationWizardSheet({
     // Validação manual dos campos de config do step 0 (triggerConfig)
     if (currentStep === 0) {
       const triggerType = form.getValues('triggerType')
-      const triggerConfig = form.getValues('triggerConfig') as Record<string, unknown>
+      const triggerConfig = form.getValues('triggerConfig') as Record<
+        string,
+        unknown
+      >
       const configError = validateTriggerConfig(triggerType, triggerConfig)
 
       if (configError) {
@@ -588,7 +605,10 @@ export function AutomationWizardSheet({
             const isLast = index === WIZARD_STEPS.length - 1
             const hasErrors = stepHasErrors(index)
             return (
-              <div key={step.label} className={cn('flex items-center', !isLast && 'flex-1')}>
+              <div
+                key={step.label}
+                className={cn('flex items-center', !isLast && 'flex-1')}
+              >
                 <div
                   className={cn(
                     'flex flex-col items-center gap-1',
@@ -601,7 +621,8 @@ export function AutomationWizardSheet({
                   tabIndex={isCompleted ? 0 : undefined}
                   onKeyDown={
                     isCompleted
-                      ? (event) => event.key === 'Enter' && setCurrentStep(index)
+                      ? (event) =>
+                          event.key === 'Enter' && setCurrentStep(index)
                       : undefined
                   }
                   aria-label={

@@ -61,31 +61,31 @@ export const getOrganizationMembers = cache(async (orgId: string) => {
       })
 
       return {
-        accepted: acceptedMembers.map((m) => ({
-          id: m.id,
-          userId: m.userId,
-          email: m.email,
-          role: m.role,
-          status: m.status,
-          user: m.user,
-          joinedAt: m.updatedAt,
+        accepted: acceptedMembers.map((member) => ({
+          id: member.id,
+          userId: member.userId,
+          email: member.email,
+          role: member.role,
+          status: member.status,
+          user: member.user,
+          joinedAt: member.updatedAt,
         })),
-        pending: pendingMembers.map((m) => ({
-          id: m.id,
-          email: m.email,
-          role: m.role,
-          status: m.status,
-          invitedAt: m.createdAt,
+        pending: pendingMembers.map((member) => ({
+          id: member.id,
+          email: member.email,
+          role: member.role,
+          status: member.status,
+          invitedAt: member.createdAt,
         })),
-        support: supportMembers.map((m) => ({
-          id: m.id,
-          userId: m.userId,
-          email: m.email,
-          role: m.role,
-          status: m.status,
-          user: m.user ?? null,
-          joinedAt: m.updatedAt,
-          invitedAt: m.createdAt,
+        support: supportMembers.map((member) => ({
+          id: member.id,
+          userId: member.userId,
+          email: member.email,
+          role: member.role,
+          status: member.status,
+          user: member.user ?? null,
+          joinedAt: member.updatedAt,
+          invitedAt: member.createdAt,
         })),
       }
     },

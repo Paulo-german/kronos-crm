@@ -17,7 +17,11 @@ interface TemplatePreviewProps {
 }
 
 /** Substitui variáveis {{N}} pelo valor real ou placeholder */
-function renderVariables(text: string, values: string[], placeholderPrefix: string): string {
+function renderVariables(
+  text: string,
+  values: string[],
+  placeholderPrefix: string,
+): string {
   return text.replace(/\{\{(\d+)\}\}/g, (_match, indexStr: string) => {
     const index = parseInt(indexStr, 10) - 1
     const value = values[index]
@@ -26,13 +30,19 @@ function renderVariables(text: string, values: string[], placeholderPrefix: stri
   })
 }
 
-const HEADER_FORMAT_ICONS: Record<Exclude<MetaTemplateHeaderFormat, 'TEXT'>, React.FC<{ className?: string }>> = {
+const HEADER_FORMAT_ICONS: Record<
+  Exclude<MetaTemplateHeaderFormat, 'TEXT'>,
+  React.FC<{ className?: string }>
+> = {
   IMAGE: FileImage,
   VIDEO: FileVideo,
   DOCUMENT: FileText,
 }
 
-const HEADER_FORMAT_LABELS: Record<Exclude<MetaTemplateHeaderFormat, 'TEXT'>, string> = {
+const HEADER_FORMAT_LABELS: Record<
+  Exclude<MetaTemplateHeaderFormat, 'TEXT'>,
+  string
+> = {
   IMAGE: 'Imagem',
   VIDEO: 'Vídeo',
   DOCUMENT: 'Documento',
@@ -49,22 +59,27 @@ export function TemplatePreview({
 }: TemplatePreviewProps) {
   // Derivar conteúdo do template ou dos campos individuais
   const resolvedHeaderFormat: MetaTemplateHeaderFormat | undefined = template
-    ? (template.components.find((c) => c.type === 'HEADER')?.format as MetaTemplateHeaderFormat | undefined)
+    ? (template.components.find((component) => component.type === 'HEADER')
+        ?.format as MetaTemplateHeaderFormat | undefined)
     : headerFormat
 
   const resolvedHeaderText: string | undefined = template
-    ? template.components.find((c) => c.type === 'HEADER')?.text
+    ? template.components.find((component) => component.type === 'HEADER')?.text
     : headerText
 
   const resolvedBodyText: string | undefined = template
-    ? template.components.find((c) => c.type === 'BODY')?.text
+    ? template.components.find((component) => component.type === 'BODY')?.text
     : bodyText
 
   const resolvedFooterText: string | undefined = template
-    ? template.components.find((c) => c.type === 'FOOTER')?.text
+    ? template.components.find((component) => component.type === 'FOOTER')?.text
     : footerText
 
-  const hasContent = resolvedBodyText || resolvedHeaderText || resolvedHeaderFormat || resolvedFooterText
+  const hasContent =
+    resolvedBodyText ||
+    resolvedHeaderText ||
+    resolvedHeaderFormat ||
+    resolvedFooterText
 
   if (!hasContent) {
     return (
@@ -93,7 +108,7 @@ export function TemplatePreview({
         >
           {/* Header */}
           {resolvedHeaderFormat && resolvedHeaderFormat !== 'TEXT' && (
-            <div className="mb-2 flex h-24 items-center justify-center rounded-lg bg-black/8">
+            <div className="bg-black/8 mb-2 flex h-24 items-center justify-center rounded-lg">
               {(() => {
                 const Icon = HEADER_FORMAT_ICONS[resolvedHeaderFormat]
                 return (
@@ -110,7 +125,11 @@ export function TemplatePreview({
 
           {resolvedHeaderFormat === 'TEXT' && resolvedHeaderText && (
             <p className="mb-1.5 text-sm font-bold text-gray-800">
-              {renderVariables(resolvedHeaderText, headerVariableValues, 'header')}
+              {renderVariables(
+                resolvedHeaderText,
+                headerVariableValues,
+                'header',
+              )}
             </p>
           )}
 

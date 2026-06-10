@@ -14,10 +14,12 @@ const STATUS_PRIORITY: Record<MessageDeliveryStatus, number> = {
  * Ex: 'delivered' so pode ser aplicado se o status atual for null ou sent.
  * Isso impede downgrades por webhooks fora de ordem.
  */
-function getAllowedPreviousStatuses(newStatus: MessageDeliveryStatus): MessageDeliveryStatus[] {
+function getAllowedPreviousStatuses(
+  newStatus: MessageDeliveryStatus,
+): MessageDeliveryStatus[] {
   const priority = STATUS_PRIORITY[newStatus]
   return (Object.entries(STATUS_PRIORITY) as [MessageDeliveryStatus, number][])
-    .filter(([, p]) => p < priority)
+    .filter(([, statusPriority]) => statusPriority < priority)
     .map(([status]) => status)
 }
 
@@ -40,10 +42,7 @@ export async function updateDeliveryStatus(
   const result = await db.message.updateMany({
     where: {
       providerMessageId,
-      OR: [
-        { deliveryStatus: null },
-        { deliveryStatus: { in: allowed } },
-      ],
+      OR: [{ deliveryStatus: null }, { deliveryStatus: { in: allowed } }],
     },
     data: { deliveryStatus: newStatus },
   })

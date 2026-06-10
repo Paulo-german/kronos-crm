@@ -29,9 +29,19 @@ import {
   CommandItem,
   CommandList,
 } from '@/_components/ui/command'
-import { Popover, PopoverContent, PopoverTrigger } from '@/_components/ui/popover'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/_components/ui/popover'
 import { Button } from '@/_components/ui/button'
-import { Check, ChevronsUpDown, Info, CheckCircle2, AlertTriangle } from 'lucide-react'
+import {
+  Check,
+  ChevronsUpDown,
+  Info,
+  CheckCircle2,
+  AlertTriangle,
+} from 'lucide-react'
 import { cn } from '@/_lib/utils'
 import { WHATSAPP_LANGUAGES } from '@/_lib/meta/constants'
 import type { CreateWhatsAppTemplateInput } from '@/_actions/inbox/create-whatsapp-template/schema'
@@ -48,7 +58,7 @@ function extractVariables(text: string): number[] {
   for (const match of matches) {
     indices.add(parseInt(match[1], 10))
   }
-  return Array.from(indices).sort((a, b) => a - b)
+  return Array.from(indices).sort((indexA, indexB) => indexA - indexB)
 }
 
 /** Formata número com separador de milhar: 1024 → "1.024" */
@@ -56,7 +66,10 @@ function formatCount(value: number): string {
   return value.toLocaleString('pt-BR')
 }
 
-export function TemplateFormFields({ form, isEditing = false }: TemplateFormFieldsProps) {
+export function TemplateFormFields({
+  form,
+  isEditing = false,
+}: TemplateFormFieldsProps) {
   const bodyText = form.watch('components.body.text') ?? ''
   const headerFormat = form.watch('components.header.format')
   const hasHeader = form.watch('components.header') !== undefined
@@ -67,7 +80,10 @@ export function TemplateFormFields({ form, isEditing = false }: TemplateFormFiel
   // Derivação inline das variáveis — ZERO useEffect
   const bodyVariables = useMemo(() => extractVariables(bodyText), [bodyText])
   const headerText = form.watch('components.header.text') ?? ''
-  const headerVariables = useMemo(() => extractVariables(headerText), [headerText])
+  const headerVariables = useMemo(
+    () => extractVariables(headerText),
+    [headerText],
+  )
 
   const charCount = bodyText.length
   const MAX_BODY = 1024
@@ -95,7 +111,9 @@ export function TemplateFormFields({ form, isEditing = false }: TemplateFormFiel
     if (bodyVariables.length > 0) {
       const textWithoutVars = bodyText.replace(/\{\{\d+\}\}/g, '').trim()
       if (textWithoutVars.length < bodyVariables.length * 10) {
-        warnings.push('Texto muito curto para a quantidade de variáveis. O Meta pode rejeitar.')
+        warnings.push(
+          'Texto muito curto para a quantidade de variáveis. O Meta pode rejeitar.',
+        )
       }
     }
 
@@ -152,8 +170,10 @@ export function TemplateFormFields({ form, isEditing = false }: TemplateFormFiel
                   placeholder="meu_template_promocional"
                   disabled={isEditing}
                   className={cn(
-                    isNameValid && 'border-emerald-500/50 focus-visible:ring-emerald-500/30',
-                    isNameInvalid && 'border-destructive/50 focus-visible:ring-destructive/30',
+                    isNameValid &&
+                      'border-emerald-500/50 focus-visible:ring-emerald-500/30',
+                    isNameInvalid &&
+                      'border-destructive/50 focus-visible:ring-destructive/30',
                   )}
                 />
               </div>
@@ -218,7 +238,9 @@ export function TemplateFormFields({ form, isEditing = false }: TemplateFormFiel
                       disabled={isEditing}
                     >
                       {field.value
-                        ? (WHATSAPP_LANGUAGES.find((lang) => lang.value === field.value)?.label ?? field.value)
+                        ? (WHATSAPP_LANGUAGES.find(
+                            (lang) => lang.value === field.value,
+                          )?.label ?? field.value)
                         : 'Selecionar...'}
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
@@ -241,7 +263,9 @@ export function TemplateFormFields({ form, isEditing = false }: TemplateFormFiel
                             <Check
                               className={cn(
                                 'mr-2 h-4 w-4',
-                                field.value === lang.value ? 'opacity-100' : 'opacity-0',
+                                field.value === lang.value
+                                  ? 'opacity-100'
+                                  : 'opacity-0',
                               )}
                             />
                             <span className="flex-1">{lang.label}</span>
@@ -403,7 +427,9 @@ export function TemplateFormFields({ form, isEditing = false }: TemplateFormFiel
             )}
             <span>
               {bodyVariables.length}{' '}
-              {bodyVariables.length === 1 ? 'variável detectada' : 'variáveis detectadas'}
+              {bodyVariables.length === 1
+                ? 'variável detectada'
+                : 'variáveis detectadas'}
               {allExamplesFilled
                 ? ' — Exemplos completos'
                 : ' — Preencha os exemplos para aprovação'}
@@ -436,7 +462,9 @@ export function TemplateFormFields({ form, isEditing = false }: TemplateFormFiel
               <FormField
                 key={`body-var-${varIndex}`}
                 control={form.control}
-                name={`components.body.examples.${varIndex - 1}` as `components.body.examples.${number}`}
+                name={
+                  `components.body.examples.${varIndex - 1}` as `components.body.examples.${number}`
+                }
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-xs text-muted-foreground">{`{{${varIndex}}}`}</FormLabel>

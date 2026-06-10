@@ -43,13 +43,19 @@ export function ContactFilterBadges({
       {filters.lifecycleStages.map((stage) => {
         const cfg = LIFECYCLE_STAGE_CONFIG[stage]
         return (
-          <Badge key={stage} variant="secondary" className="gap-1 pr-1 text-xs font-normal">
+          <Badge
+            key={stage}
+            variant="secondary"
+            className="gap-1 pr-1 text-xs font-normal"
+          >
             <cfg.icon className="size-3" />
             {cfg.label}
             <button
               onClick={() =>
                 onFiltersChange({
-                  lifecycleStages: filters.lifecycleStages.filter((s) => s !== stage),
+                  lifecycleStages: filters.lifecycleStages.filter(
+                    (item) => item !== stage,
+                  ),
                 })
               }
               className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20"
@@ -65,12 +71,18 @@ export function ContactFilterBadges({
       {filters.customerStatuses.map((status) => {
         const cfg = CUSTOMER_STATUS_CONFIG[status]
         return (
-          <Badge key={status} variant="secondary" className="gap-1 pr-1 text-xs font-normal">
+          <Badge
+            key={status}
+            variant="secondary"
+            className="gap-1 pr-1 text-xs font-normal"
+          >
             {cfg.label}
             <button
               onClick={() =>
                 onFiltersChange({
-                  customerStatuses: filters.customerStatuses.filter((s) => s !== status),
+                  customerStatuses: filters.customerStatuses.filter(
+                    (item) => item !== status,
+                  ),
                 })
               }
               className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20"
@@ -87,7 +99,9 @@ export function ContactFilterBadges({
         <Badge variant="secondary" className="gap-1 pr-1 text-xs font-normal">
           {scoreLabel}
           <button
-            onClick={() => onFiltersChange({ healthScoreMin: null, healthScoreMax: null })}
+            onClick={() =>
+              onFiltersChange({ healthScoreMin: null, healthScoreMax: null })
+            }
             className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20"
             aria-label="Remover filtro de health score"
           >

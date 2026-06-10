@@ -2,7 +2,13 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { BookOpen, CheckCircle2, Clock, GraduationCap, Play } from 'lucide-react'
+import {
+  BookOpen,
+  CheckCircle2,
+  Clock,
+  GraduationCap,
+  Play,
+} from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import {
   Popover,
@@ -30,10 +36,12 @@ export const TutorialsPopoverButton = ({
 
   const totalCount = TUTORIAL_REGISTRY.length
   const completedCount = completedTutorialIds.length
-  const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
+  const progressPercent =
+    totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
 
   const activeTutorial = openTutorialId
-    ? TUTORIAL_REGISTRY.find((t) => t.id === openTutorialId) ?? null
+    ? (TUTORIAL_REGISTRY.find((tutorial) => tutorial.id === openTutorialId) ??
+      null)
     : null
 
   const handleOpenTutorial = (tutorialId: string) => {
@@ -45,7 +53,12 @@ export const TutorialsPopoverButton = ({
     <>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button variant="ghost" size="icon" className="text-white/70 hover:bg-white/10 hover:text-white" aria-label="Tutoriais">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-white/70 hover:bg-white/10 hover:text-white"
+            aria-label="Tutoriais"
+          >
             <BookOpen className="size-4" />
           </Button>
         </PopoverTrigger>
@@ -67,7 +80,8 @@ export const TutorialsPopoverButton = ({
             <div className="divide-y">
               {TUTORIAL_REGISTRY.map((tutorial) => {
                 const isCompleted = completedTutorialIds.includes(tutorial.id)
-                const IconComponent = TUTORIAL_ICON_MAP[tutorial.icon] ?? GraduationCap
+                const IconComponent =
+                  TUTORIAL_ICON_MAP[tutorial.icon] ?? GraduationCap
 
                 return (
                   <button
@@ -118,7 +132,9 @@ export const TutorialsPopoverButton = ({
               asChild
               onClick={() => setOpen(false)}
             >
-              <Link href={`/org/${orgSlug}/tutorials`}>Ver todos os tutoriais</Link>
+              <Link href={`/org/${orgSlug}/tutorials`}>
+                Ver todos os tutoriais
+              </Link>
             </Button>
           </div>
         </PopoverContent>

@@ -111,7 +111,10 @@ const resolveConnectionLabel = (
   connectionType: string,
   isSelfHosted: boolean,
 ): string => {
-  if ((connectionType === 'EVOLUTION' || connectionType === 'EVOLUTION_JS') && isSelfHosted) {
+  if (
+    (connectionType === 'EVOLUTION' || connectionType === 'EVOLUTION_JS') &&
+    isSelfHosted
+  ) {
     return 'Evolution API'
   }
   if (connectionType === 'EVOLUTION_GO') return 'Evolution Go'
@@ -130,7 +133,8 @@ const InboxDetailClient = ({
   pipelines,
   squads,
 }: InboxDetailClientProps) => {
-  const canManage = userRole === 'OWNER' || userRole === 'ADMIN' || userRole === 'SUPPORT'
+  const canManage =
+    userRole === 'OWNER' || userRole === 'ADMIN' || userRole === 'SUPPORT'
   const [activeTab, setActiveTab] = useQueryState(
     'tab',
     parseAsString.withDefault('general'),
@@ -143,9 +147,7 @@ const InboxDetailClient = ({
   const [localDistributionUserIds, setLocalDistributionUserIds] = useState(
     inbox.distributionUserIds,
   )
-  const [localSquadId, setLocalSquadId] = useState<string | null>(
-    inbox.squadId,
-  )
+  const [localSquadId, setLocalSquadId] = useState<string | null>(inbox.squadId)
 
   const ct = inbox.connectionType
 
@@ -415,7 +417,7 @@ const InboxDetailClient = ({
             ) : inbox.channel === 'INSTAGRAM_DM' ? (
               <Badge
                 variant="outline"
-                className="h-6 gap-1.5 px-2 text-xs font-semibold text-destructive border-destructive/30 bg-destructive/10"
+                className="h-6 gap-1.5 border-destructive/30 bg-destructive/10 px-2 text-xs font-semibold text-destructive"
               >
                 <Instagram className="h-3 w-3" />
                 Desconectado
@@ -446,12 +448,8 @@ const InboxDetailClient = ({
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="general">
-            Geral
-          </TabsTrigger>
-          <TabsTrigger value="connection">
-            Conexão
-          </TabsTrigger>
+          <TabsTrigger value="general">Geral</TabsTrigger>
+          <TabsTrigger value="connection">Conexão</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="mt-6 space-y-6">
@@ -583,7 +581,7 @@ const InboxDetailClient = ({
                         }
                         // Valida grupo com workers antes de vincular
                         const group = agentGroupOptions.find(
-                          (g) => g.id === value,
+                          (group) => group.id === value,
                         )
                         if (group && group.memberCount === 0) {
                           toast.error(
@@ -733,7 +731,9 @@ const InboxDetailClient = ({
                     <Select
                       value={localSquadId ?? 'none'}
                       onValueChange={handleSquadChange}
-                      disabled={!canManage || localDistributionUserIds.length > 0}
+                      disabled={
+                        !canManage || localDistributionUserIds.length > 0
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Sem equipe" />
@@ -818,13 +818,16 @@ const InboxDetailClient = ({
                 )}
                 {localSquadId && (
                   <p className="text-xs text-muted-foreground">
-                    Selecione &quot;Sem equipe&quot; para usar membros individuais.
+                    Selecione &quot;Sem equipe&quot; para usar membros
+                    individuais.
                   </p>
                 )}
                 {localDistributionUserIds.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {localDistributionUserIds.map((userId) => {
-                      const member = members.find((m) => m.userId === userId)
+                      const member = members.find(
+                        (member) => member.userId === userId,
+                      )
                       return member ? (
                         <Badge key={userId} variant="secondary">
                           {member.user?.fullName ?? member.email}
@@ -843,7 +846,8 @@ const InboxDetailClient = ({
                       Criar negócio ao iniciar conversa
                     </Label>
                     <p className="text-xs text-muted-foreground/70">
-                      Atalho para criar o negócio imediatamente, sem passar pelo ciclo de qualificação de leads.
+                      Atalho para criar o negócio imediatamente, sem passar pelo
+                      ciclo de qualificação de leads.
                     </p>
                   </div>
                   <Switch

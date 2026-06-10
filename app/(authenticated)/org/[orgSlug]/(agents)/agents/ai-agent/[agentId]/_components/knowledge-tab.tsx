@@ -26,7 +26,10 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 
 const STATUS_BADGE_MAP: Record<
   string,
-  { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }
+  {
+    label: string
+    variant: 'default' | 'secondary' | 'destructive' | 'outline'
+  }
 > = {
   PENDING: { label: 'Pendente', variant: 'outline' },
   PROCESSING: { label: 'Processando', variant: 'default' },
@@ -48,13 +51,16 @@ function formatFileSize(bytes: number): string {
 
 const POLLING_INTERVAL_MS = 5000
 
-const KnowledgeTab = ({ agent, canManage, onSaveSuccess }: KnowledgeTabProps) => {
+const KnowledgeTab = ({
+  agent,
+  canManage,
+  onSaveSuccess,
+}: KnowledgeTabProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const [isUploading, setIsUploading] = useState(false)
-  const [deletingFile, setDeletingFile] = useState<AgentKnowledgeFileDto | null>(
-    null,
-  )
+  const [deletingFile, setDeletingFile] =
+    useState<AgentKnowledgeFileDto | null>(null)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
 
   // Polling: atualiza dados enquanto houver arquivos processando
@@ -125,14 +131,15 @@ const KnowledgeTab = ({ agent, canManage, onSaveSuccess }: KnowledgeTabProps) =>
             }
           }
         } catch {
-          toast.error('Erro de conexão. Verifique sua internet e tente novamente.')
+          toast.error(
+            'Erro de conexão. Verifique sua internet e tente novamente.',
+          )
         } finally {
           setIsUploading(false)
         }
       }
-
     },
-    [agent.id, isUploading, router],
+    [agent.id, isUploading, router, onSaveSuccess],
   )
 
   const handleDrop = useCallback(
@@ -153,7 +160,9 @@ const KnowledgeTab = ({ agent, canManage, onSaveSuccess }: KnowledgeTabProps) =>
       {canManage && (
         <Card className="border-border/50 bg-card">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold">Upload de Arquivos</CardTitle>
+            <CardTitle className="text-base font-semibold">
+              Upload de Arquivos
+            </CardTitle>
             <CardDescription>
               Adicione documentos para a base de conhecimento do agente.
               Formatos aceitos: PDF, TXT, MD, DOCX (máx. 10MB).
@@ -238,8 +247,7 @@ const KnowledgeTab = ({ agent, canManage, onSaveSuccess }: KnowledgeTabProps) =>
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {formatFileSize(file.fileSize)}
-                        {file.chunkCount > 0 &&
-                          ` · ${file.chunkCount} chunks`}
+                        {file.chunkCount > 0 && ` · ${file.chunkCount} chunks`}
                       </p>
                     </div>
                     <Badge variant={statusInfo.variant}>

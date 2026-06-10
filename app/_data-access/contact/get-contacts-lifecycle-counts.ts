@@ -7,7 +7,10 @@ import type { RBACContext } from '@/_lib/rbac'
 import { isElevated } from '@/_lib/rbac'
 import type { ContactListParams } from './get-contacts'
 
-export interface ContactsLifecycleCounts extends Record<LifecycleStage, number> {
+export interface ContactsLifecycleCounts extends Record<
+  LifecycleStage,
+  number
+> {
   total: number
 }
 
@@ -27,18 +30,27 @@ const fetchCountsFromDb = async (
     ...(elevated ? {} : { assignedTo: userId }),
     ...(elevated && params.assignedTo ? { assignedTo: params.assignedTo } : {}),
     ...(params.companyId ? { companyId: params.companyId } : {}),
-    ...(params.isDecisionMaker !== undefined ? { isDecisionMaker: params.isDecisionMaker } : {}),
+    ...(params.isDecisionMaker !== undefined
+      ? { isDecisionMaker: params.isDecisionMaker }
+      : {}),
     ...(params.hasDeals !== undefined
       ? params.hasDeals
         ? { deals: { some: {} } }
         : { deals: { none: {} } }
       : {}),
-    ...(params.customerStatuses?.length ? { customerStatus: { in: params.customerStatuses } } : {}),
-    ...(params.healthScoreMin !== undefined || params.healthScoreMax !== undefined
+    ...(params.customerStatuses?.length
+      ? { customerStatus: { in: params.customerStatuses } }
+      : {}),
+    ...(params.healthScoreMin !== undefined ||
+    params.healthScoreMax !== undefined
       ? {
           healthScore: {
-            ...(params.healthScoreMin !== undefined ? { gte: params.healthScoreMin } : {}),
-            ...(params.healthScoreMax !== undefined ? { lte: params.healthScoreMax } : {}),
+            ...(params.healthScoreMin !== undefined
+              ? { gte: params.healthScoreMin }
+              : {}),
+            ...(params.healthScoreMax !== undefined
+              ? { lte: params.healthScoreMax }
+              : {}),
             not: null,
           },
         }
@@ -46,11 +58,26 @@ const fetchCountsFromDb = async (
     ...(params.search.trim()
       ? {
           OR: [
-            { name: { contains: params.search.trim(), mode: 'insensitive' as const } },
+            {
+              name: {
+                contains: params.search.trim(),
+                mode: 'insensitive' as const,
+              },
+            },
             ...(!masked
               ? [
-                  { email: { contains: params.search.trim(), mode: 'insensitive' as const } },
-                  { phone: { contains: params.search.trim(), mode: 'insensitive' as const } },
+                  {
+                    email: {
+                      contains: params.search.trim(),
+                      mode: 'insensitive' as const,
+                    },
+                  },
+                  {
+                    phone: {
+                      contains: params.search.trim(),
+                      mode: 'insensitive' as const,
+                    },
+                  },
                 ]
               : []),
           ],
@@ -71,18 +98,24 @@ const fetchCountsFromDb = async (
     CUSTOMER: 0,
   }
 
-  const counts = rows.reduce((acc, row) => {
-    acc[row.lifecycleStage] = row._count._all
-    return acc
-  }, defaults as Record<LifecycleStage, number>)
+  const counts = rows.reduce(
+    (acc, row) => {
+      acc[row.lifecycleStage] = row._count._all
+      return acc
+    },
+    defaults as Record<LifecycleStage, number>,
+  )
 
-  const total = Object.values(counts).reduce((sum, n) => sum + n, 0)
+  const total = Object.values(counts).reduce((sum, count) => sum + count, 0)
 
   return { ...counts, total } as ContactsLifecycleCounts
 }
 
 export const getContactsLifecycleCounts = cache(
-  async (ctx: RBACContext, params: ContactListParams): Promise<ContactsLifecycleCounts> => {
+  async (
+    ctx: RBACContext,
+    params: ContactListParams,
+  ): Promise<ContactsLifecycleCounts> => {
     const elevated = isElevated(ctx.userRole)
     const hidePiiFromMembers = ctx.hidePiiFromMembers ?? false
 
@@ -99,7 +132,14 @@ export const getContactsLifecycleCounts = cache(
     })
 
     const getCached = unstable_cache(
-      async () => fetchCountsFromDb(ctx.orgId, ctx.userId, elevated, hidePiiFromMembers, params),
+      async () =>
+        fetchCountsFromDb(
+          ctx.orgId,
+          ctx.userId,
+          elevated,
+          hidePiiFromMembers,
+          params,
+        ),
       [`contacts-counts-${ctx.orgId}-${ctx.userId}-${elevated}-${paramsKey}`],
       {
         tags: [`contacts:${ctx.orgId}`],
@@ -110,4 +150,3 @@ export const getContactsLifecycleCounts = cache(
     return getCached()
   },
 )
-

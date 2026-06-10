@@ -85,7 +85,9 @@ export function ContactsFiltersSheet({
     const arr = localFilters.lifecycleStages
     setLocalFilters({
       ...localFilters,
-      lifecycleStages: arr.includes(stage) ? arr.filter((s) => s !== stage) : [...arr, stage],
+      lifecycleStages: arr.includes(stage)
+        ? arr.filter((item) => item !== stage)
+        : [...arr, stage],
     })
   }
 
@@ -95,7 +97,7 @@ export function ContactsFiltersSheet({
     setLocalFilters({
       ...localFilters,
       customerStatuses: arr.includes(status)
-        ? arr.filter((s) => s !== status)
+        ? arr.filter((item) => item !== status)
         : [...arr, status],
     })
   }
@@ -142,7 +144,12 @@ export function ContactsFiltersSheet({
                       onCheckedChange={() => toggleLifecycleStage(stage)}
                       className="sr-only"
                     />
-                    <cfg.icon className={cn('size-3.5', isActive ? 'text-primary' : cfg.colorClassName)} />
+                    <cfg.icon
+                      className={cn(
+                        'size-3.5',
+                        isActive ? 'text-primary' : cfg.colorClassName,
+                      )}
+                    />
                     <span className="text-sm">{cfg.label}</span>
                   </label>
                 )
@@ -154,28 +161,31 @@ export function ContactsFiltersSheet({
           <div className="space-y-3">
             <Label className="text-sm font-semibold">Status do Cliente</Label>
             <div className="flex flex-wrap gap-2">
-              {(Object.values(CustomerStatus) as CustomerStatus[]).map((status) => {
-                const cfg = CUSTOMER_STATUS_CONFIG[status]
-                const isActive = localFilters.customerStatuses.includes(status)
-                return (
-                  <label
-                    key={status}
-                    className={cn(
-                      'flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 transition-colors',
-                      isActive
-                        ? 'border-primary/40 bg-primary/10 text-primary'
-                        : 'border-input hover:bg-accent',
-                    )}
-                  >
-                    <Checkbox
-                      checked={isActive}
-                      onCheckedChange={() => toggleCustomerStatus(status)}
-                      className="sr-only"
-                    />
-                    <span className="text-sm">{cfg.label}</span>
-                  </label>
-                )
-              })}
+              {(Object.values(CustomerStatus) as CustomerStatus[]).map(
+                (status) => {
+                  const cfg = CUSTOMER_STATUS_CONFIG[status]
+                  const isActive =
+                    localFilters.customerStatuses.includes(status)
+                  return (
+                    <label
+                      key={status}
+                      className={cn(
+                        'flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 transition-colors',
+                        isActive
+                          ? 'border-primary/40 bg-primary/10 text-primary'
+                          : 'border-input hover:bg-accent',
+                      )}
+                    >
+                      <Checkbox
+                        checked={isActive}
+                        onCheckedChange={() => toggleCustomerStatus(status)}
+                        className="sr-only"
+                      />
+                      <span className="text-sm">{cfg.label}</span>
+                    </label>
+                  )
+                },
+              )}
             </div>
           </div>
 
@@ -185,7 +195,10 @@ export function ContactsFiltersSheet({
               <Label className="text-sm font-semibold">Health Score</Label>
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
-                  <Label htmlFor="score-min" className="text-xs text-muted-foreground">
+                  <Label
+                    htmlFor="score-min"
+                    className="text-xs text-muted-foreground"
+                  >
                     Mínimo
                   </Label>
                   <Input
@@ -199,13 +212,19 @@ export function ContactsFiltersSheet({
                     onChange={(event) =>
                       setLocalFilters({
                         ...localFilters,
-                        healthScoreMin: event.target.value === '' ? null : Number(event.target.value),
+                        healthScoreMin:
+                          event.target.value === ''
+                            ? null
+                            : Number(event.target.value),
                       })
                     }
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="score-max" className="text-xs text-muted-foreground">
+                  <Label
+                    htmlFor="score-max"
+                    className="text-xs text-muted-foreground"
+                  >
                     Máximo
                   </Label>
                   <Input
@@ -219,7 +238,10 @@ export function ContactsFiltersSheet({
                     onChange={(event) =>
                       setLocalFilters({
                         ...localFilters,
-                        healthScoreMax: event.target.value === '' ? null : Number(event.target.value),
+                        healthScoreMax:
+                          event.target.value === ''
+                            ? null
+                            : Number(event.target.value),
                       })
                     }
                   />

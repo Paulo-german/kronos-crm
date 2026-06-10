@@ -22,13 +22,13 @@ async function fetchPendingTasks(
     take: 6,
   })
 
-  return tasks.map((t) => ({
-    id: t.id,
-    title: t.title,
-    type: t.type,
-    dueDate: t.dueDate,
-    dealId: t.dealId,
-    dealTitle: t.deal.title,
+  return tasks.map((task) => ({
+    id: task.id,
+    title: task.title,
+    type: task.type,
+    dueDate: task.dueDate,
+    dealId: task.dealId,
+    dealTitle: task.deal.title,
   }))
 }
 

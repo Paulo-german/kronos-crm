@@ -28,10 +28,10 @@ export function PipelineFilterBadges({
   if (!hasActiveFilters) return null
 
   const getStatusLabel = (value: string) =>
-    STATUS_OPTIONS.find((o) => o.value === value)?.label || value
+    STATUS_OPTIONS.find((option) => option.value === value)?.label || value
 
   const getPriorityLabel = (value: string) =>
-    PRIORITY_OPTIONS.find((o) => o.value === value)?.label || value
+    PRIORITY_OPTIONS.find((option) => option.value === value)?.label || value
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -46,7 +46,7 @@ export function PipelineFilterBadges({
           <button
             onClick={() =>
               onFiltersChange({
-                status: filters.status.filter((s) => s !== status),
+                status: filters.status.filter((item) => item !== status),
               })
             }
             className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20"
@@ -67,7 +67,7 @@ export function PipelineFilterBadges({
           <button
             onClick={() =>
               onFiltersChange({
-                priority: filters.priority.filter((p) => p !== priority),
+                priority: filters.priority.filter((item) => item !== priority),
               })
             }
             className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20"
@@ -79,10 +79,7 @@ export function PipelineFilterBadges({
 
       {/* Date range badge */}
       {(filters.createdAtFrom || filters.createdAtTo) && (
-        <Badge
-          variant="secondary"
-          className="gap-1 pr-1 text-xs font-normal"
-        >
+        <Badge variant="secondary" className="gap-1 pr-1 text-xs font-normal">
           Criação:{' '}
           {filters.createdAtFrom
             ? format(filters.createdAtFrom, 'dd/MM/yy', { locale: ptBR })
@@ -107,10 +104,7 @@ export function PipelineFilterBadges({
 
       {/* Value range badge */}
       {(filters.valueMin !== null || filters.valueMax !== null) && (
-        <Badge
-          variant="secondary"
-          className="gap-1 pr-1 text-xs font-normal"
-        >
+        <Badge variant="secondary" className="gap-1 pr-1 text-xs font-normal">
           Valor:{' '}
           {filters.valueMin !== null ? formatCurrency(filters.valueMin) : '...'}
           {' - '}

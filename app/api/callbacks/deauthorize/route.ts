@@ -45,7 +45,10 @@ export async function POST(req: Request) {
 
   // Desautorização não exige ação imediata — o token do usuário simplesmente deixa de funcionar.
   // Logar para auditoria e retornar 200 conforme esperado pela Meta.
-  console.log('[deauthorize] User deauthorized app:', { metaUserId: payload.user_id })
+  // eslint-disable-next-line no-console
+  console.log('[deauthorize] User deauthorized app:', {
+    metaUserId: payload.user_id,
+  })
 
   return new Response(JSON.stringify({ success: true }), {
     status: 200,

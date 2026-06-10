@@ -7,7 +7,10 @@ import type { RBACContext } from '@/_lib/rbac'
 import { isElevated } from '@/_lib/rbac'
 import { buildInboxDashboardWhere } from './build-inbox-dashboard-where'
 import type { DateRange } from './types'
-import type { AttendantPerformance, InboxDashboardFilters } from './inbox-dashboard-types'
+import type {
+  AttendantPerformance,
+  InboxDashboardFilters,
+} from './inbox-dashboard-types'
 
 const CACHE_REVALIDATE_SECONDS = 3600
 
@@ -92,7 +95,8 @@ async function fetchAttendantPerformance(
     const avgFirstResponseTimeMs =
       data.responseTimes.length > 0
         ? Math.round(
-            data.responseTimes.reduce((sum, ms) => sum + ms, 0) / data.responseTimes.length,
+            data.responseTimes.reduce((sum, ms) => sum + ms, 0) /
+              data.responseTimes.length,
           )
         : null
 
@@ -102,12 +106,16 @@ async function fetchAttendantPerformance(
       userAvatar: data.userAvatar,
       conversationsHandled: data.total,
       avgFirstResponseTimeMs,
-      resolutionRate: data.total > 0 ? Math.round((data.resolved / data.total) * 100) : 0,
+      resolutionRate:
+        data.total > 0 ? Math.round((data.resolved / data.total) * 100) : 0,
     })
   }
 
   // Ordenar por volume de conversas atendidas (maior primeiro)
-  return results.sort((a, b) => b.conversationsHandled - a.conversationsHandled)
+  return results.sort(
+    (attendantA, attendantB) =>
+      attendantB.conversationsHandled - attendantA.conversationsHandled,
+  )
 }
 
 export const getAttendantPerformance = cache(

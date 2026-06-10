@@ -21,7 +21,9 @@ export function LifecycleAnnouncementBanner({
 
   if (!visible) return null
 
-  const tutorial = TUTORIAL_REGISTRY.find((t) => t.id === 'lifecycle-intro')!
+  const tutorial = TUTORIAL_REGISTRY.find(
+    (tutorial) => tutorial.id === 'lifecycle-intro',
+  )!
 
   const handleDismiss = () => {
     execute({ tutorialId: 'lifecycle-intro' })

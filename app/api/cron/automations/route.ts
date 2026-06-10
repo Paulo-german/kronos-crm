@@ -6,8 +6,17 @@ import { getActiveAutomationsByTrigger } from '@/_data-access/automation/get-act
 import { evaluateConditions } from '@/_lib/automations/evaluate-conditions'
 import { getExecutor } from '@/_lib/automations/executors'
 import { automationConditionSchema } from '@/_actions/automation/create-automation/schema'
-import type { DealForEvaluation, DealStaleConfig, DealIdleInStageConfig } from '@/_lib/automations/types'
-import type { AutomationTrigger, Prisma, DealPriority, DealStatus } from '@prisma/client'
+import type {
+  DealForEvaluation,
+  DealStaleConfig,
+  DealIdleInStageConfig,
+} from '@/_lib/automations/types'
+import type {
+  AutomationTrigger,
+  Prisma,
+  DealPriority,
+  DealStatus,
+} from '@prisma/client'
 import { z } from 'zod'
 
 export const maxDuration = 300
@@ -31,7 +40,10 @@ interface OrgWithTemporalAutomations {
  * Verifica se já existe execução SUCCESS para o par automationId + dealId
  * na janela de deduplicação. Previne re-execução entre ticks do cron.
  */
-async function isDuplicateExecution(automationId: string, dealId: string): Promise<boolean> {
+async function isDuplicateExecution(
+  automationId: string,
+  dealId: string,
+): Promise<boolean> {
   const since = new Date(Date.now() - DEDUP_WINDOW_MS)
   const existing = await db.automationExecution.findFirst({
     where: {
@@ -121,17 +133,19 @@ async function runAutomationForDeal(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
 
-    await db.automationExecution.create({
-      data: {
-        automationId: automation.id,
-        organizationId: automation.orgId,
-        dealId: deal.id,
-        status: 'FAILED',
-        triggerPayload: triggerPayload as Prisma.InputJsonValue,
-        errorMessage,
-        durationMs: Date.now() - startedAt,
-      },
-    }).catch(() => {})
+    await db.automationExecution
+      .create({
+        data: {
+          automationId: automation.id,
+          organizationId: automation.orgId,
+          dealId: deal.id,
+          status: 'FAILED',
+          triggerPayload: triggerPayload as Prisma.InputJsonValue,
+          errorMessage,
+          durationMs: Date.now() - startedAt,
+        },
+      })
+      .catch(() => {})
 
     return 'failed'
   }
@@ -202,17 +216,25 @@ async function processOrgAutomations(orgId: string): Promise<{
 
   const [staleAutomations, idleInStageAutomations] = await Promise.all([
     getActiveAutomationsByTrigger(orgId, 'DEAL_STALE' as AutomationTrigger),
-    getActiveAutomationsByTrigger(orgId, 'DEAL_IDLE_IN_STAGE' as AutomationTrigger),
+    getActiveAutomationsByTrigger(
+      orgId,
+      'DEAL_IDLE_IN_STAGE' as AutomationTrigger,
+    ),
   ])
 
   // ── Processa DEAL_STALE ───────────────────────────────────
   for (const automation of staleAutomations) {
     try {
-      const conditionsParse = z.array(automationConditionSchema).safeParse(automation.conditions)
+      const conditionsParse = z
+        .array(automationConditionSchema)
+        .safeParse(automation.conditions)
       if (!conditionsParse.success) {
-        console.error(`[automation-cron] Conditions inválidas para automação ${automation.id}`, {
-          error: conditionsParse.error.flatten(),
-        })
+        console.error(
+          `[automation-cron] Conditions inválidas para automação ${automation.id}`,
+          {
+            error: conditionsParse.error.flatten(),
+          },
+        )
         stats.errors++
         continue
       }
@@ -252,32 +274,50 @@ async function processOrgAutomations(orgId: string): Promise<{
           else stats.skipped++
         } catch (dealError) {
           stats.errors++
-          console.error(`[automation-cron] Erro ao processar deal ${staleData.id}`, {
-            error: dealError instanceof Error ? dealError.message : String(dealError),
-          })
+          console.error(
+            `[automation-cron] Erro ao processar deal ${staleData.id}`,
+            {
+              error:
+                dealError instanceof Error
+                  ? dealError.message
+                  : String(dealError),
+            },
+          )
         }
       }
     } catch (automationError) {
       stats.errors++
-      console.error(`[automation-cron] Erro ao processar automação DEAL_STALE ${automation.id}`, {
-        error: automationError instanceof Error ? automationError.message : String(automationError),
-      })
+      console.error(
+        `[automation-cron] Erro ao processar automação DEAL_STALE ${automation.id}`,
+        {
+          error:
+            automationError instanceof Error
+              ? automationError.message
+              : String(automationError),
+        },
+      )
     }
   }
 
   // ── Processa DEAL_IDLE_IN_STAGE ───────────────────────────
   for (const automation of idleInStageAutomations) {
     try {
-      const conditionsParse = z.array(automationConditionSchema).safeParse(automation.conditions)
+      const conditionsParse = z
+        .array(automationConditionSchema)
+        .safeParse(automation.conditions)
       if (!conditionsParse.success) {
-        console.error(`[automation-cron] Conditions inválidas para automação ${automation.id}`, {
-          error: conditionsParse.error.flatten(),
-        })
+        console.error(
+          `[automation-cron] Conditions inválidas para automação ${automation.id}`,
+          {
+            error: conditionsParse.error.flatten(),
+          },
+        )
         stats.errors++
         continue
       }
 
-      const config = automation.triggerConfig as unknown as DealIdleInStageConfig
+      const config =
+        automation.triggerConfig as unknown as DealIdleInStageConfig
 
       // Para DEAL_IDLE_IN_STAGE, restringimos por stageId específico
       const idleDeals = await getStaleDeals({
@@ -314,9 +354,15 @@ async function processOrgAutomations(orgId: string): Promise<{
           else stats.skipped++
         } catch (dealError) {
           stats.errors++
-          console.error(`[automation-cron] Erro ao processar deal ${staleData.id}`, {
-            error: dealError instanceof Error ? dealError.message : String(dealError),
-          })
+          console.error(
+            `[automation-cron] Erro ao processar deal ${staleData.id}`,
+            {
+              error:
+                dealError instanceof Error
+                  ? dealError.message
+                  : String(dealError),
+            },
+          )
         }
       }
     } catch (automationError) {
@@ -325,7 +371,9 @@ async function processOrgAutomations(orgId: string): Promise<{
         `[automation-cron] Erro ao processar automação DEAL_IDLE_IN_STAGE ${automation.id}`,
         {
           error:
-            automationError instanceof Error ? automationError.message : String(automationError),
+            automationError instanceof Error
+              ? automationError.message
+              : String(automationError),
         },
       )
     }
@@ -359,9 +407,16 @@ export async function GET(request: Request): Promise<NextResponse> {
   const orgsWithTemporalAutomations: OrgWithTemporalAutomations[] = orgsRaw
 
   if (orgsWithTemporalAutomations.length === 0) {
-    return NextResponse.json({ orgs: 0, executed: 0, skipped: 0, errors: 0, durationMs: Date.now() - startedAt })
+    return NextResponse.json({
+      orgs: 0,
+      executed: 0,
+      skipped: 0,
+      errors: 0,
+      durationMs: Date.now() - startedAt,
+    })
   }
 
+  // eslint-disable-next-line no-console
   console.info(
     `[automation-cron] Processando ${orgsWithTemporalAutomations.length} organizações com automações temporais`,
   )
@@ -378,9 +433,13 @@ export async function GET(request: Request): Promise<NextResponse> {
       totalErrors += stats.errors
     } catch (orgError) {
       totalErrors++
-      console.error(`[automation-cron] Falha ao processar org ${org.organizationId}`, {
-        error: orgError instanceof Error ? orgError.message : String(orgError),
-      })
+      console.error(
+        `[automation-cron] Falha ao processar org ${org.organizationId}`,
+        {
+          error:
+            orgError instanceof Error ? orgError.message : String(orgError),
+        },
+      )
     }
   }
 
@@ -392,6 +451,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     durationMs: Date.now() - startedAt,
   }
 
+  // eslint-disable-next-line no-console
   console.info('[automation-cron] Ciclo concluído', result)
 
   return NextResponse.json(result)

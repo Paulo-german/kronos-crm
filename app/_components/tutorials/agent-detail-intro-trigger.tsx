@@ -10,13 +10,17 @@ interface AgentDetailIntroTriggerProps {
   hasSeenAgentDetailIntro: boolean
 }
 
-export function AgentDetailIntroTrigger({ hasSeenAgentDetailIntro }: AgentDetailIntroTriggerProps) {
+export function AgentDetailIntroTrigger({
+  hasSeenAgentDetailIntro,
+}: AgentDetailIntroTriggerProps) {
   const [open, setOpen] = useState(!hasSeenAgentDetailIntro)
   const { execute } = useAction(completeTutorial)
 
   if (hasSeenAgentDetailIntro) return null
 
-  const tutorial = TUTORIAL_REGISTRY.find((t) => t.id === 'agent-detail')!
+  const tutorial = TUTORIAL_REGISTRY.find(
+    (tutorial) => tutorial.id === 'agent-detail',
+  )!
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {

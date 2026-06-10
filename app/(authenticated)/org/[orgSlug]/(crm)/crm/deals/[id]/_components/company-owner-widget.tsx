@@ -57,7 +57,7 @@ const CompanyOwnerWidget = ({ deal }: CompanyOwnerWidgetProps) => {
               {deal.assigneeName
                 ? deal.assigneeName
                     .split(' ')
-                    .map((n) => n[0])
+                    .map((word) => word[0])
                     .join('')
                     .substring(0, 2)
                     .toUpperCase()

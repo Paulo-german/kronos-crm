@@ -10,19 +10,21 @@ interface ExecutionTimelineProps {
 export function ExecutionTimeline({ steps }: ExecutionTimelineProps) {
   if (steps.length === 0) {
     return (
-      <p className="py-4 text-sm text-muted-foreground text-center">
+      <p className="py-4 text-center text-sm text-muted-foreground">
         Nenhum step registrado para esta execução.
       </p>
     )
   }
 
   // Steps já chegam ordenados por `order` do data-access
-  const sortedSteps = [...steps].sort((a, b) => a.order - b.order)
+  const sortedSteps = [...steps].sort(
+    (stepA, stepB) => stepA.order - stepB.order,
+  )
 
   return (
     <div className="relative">
       {/* Linha vertical conectora da timeline */}
-      <div className="absolute left-[11px] top-3 bottom-3 w-px bg-border" />
+      <div className="absolute bottom-3 left-[11px] top-3 w-px bg-border" />
 
       <div className="space-y-3">
         {sortedSteps.map((step) => (

@@ -83,11 +83,17 @@ function getDayGroupLabel(dayKey: string): string {
   return format(dateObj, "EEEE, dd 'de' MMMM", { locale: ptBR })
 }
 
-const FINISHED_STATUSES: AppointmentStatus[] = ['COMPLETED', 'CANCELED', 'NO_SHOW']
+const FINISHED_STATUSES: AppointmentStatus[] = [
+  'COMPLETED',
+  'CANCELED',
+  'NO_SHOW',
+]
 
 function sortByStartDate(list: AppointmentDto[]): AppointmentDto[] {
   return [...list].sort(
-    (a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime(),
+    (appointmentA, appointmentB) =>
+      new Date(appointmentA.startDate).getTime() -
+      new Date(appointmentB.startDate).getTime(),
   )
 }
 
@@ -100,7 +106,9 @@ function sortByStartDate(list: AppointmentDto[]): AppointmentDto[] {
  * 4. Próximos — SCHEDULED com data futura (agrupado por dia)
  * 5. Anteriores — COMPLETED / CANCELED / NO_SHOW (qualquer data, colapsado)
  */
-function groupAppointmentsBySection(appointments: AppointmentDto[]): DayGroup[] {
+function groupAppointmentsBySection(
+  appointments: AppointmentDto[],
+): DayGroup[] {
   const todayKey = getDayKeyInSP(new Date())
 
   const pending: AppointmentDto[] = []
@@ -196,7 +204,9 @@ const AppointmentsDataTable = ({
   const [editingAppointment, setEditingAppointment] =
     useState<AppointmentDto | null>(null)
   const [isEditSheetOpen, setIsEditSheetOpen] = useState(false)
-  const [editingFocusField, setEditingFocusField] = useState<'dealId' | undefined>(undefined)
+  const [editingFocusField, setEditingFocusField] = useState<
+    'dealId' | undefined
+  >(undefined)
 
   // Estado do dialog de deleção individual
   const [deletingAppointment, setDeletingAppointment] =
@@ -237,23 +247,28 @@ const AppointmentsDataTable = ({
   )
 
   // Hook para atualizar apenas o status (via popover inline)
-  const { execute: executeUpdateStatus, isPending: isUpdatingStatus } = useAction(updateAppointment, {
-    onSuccess: () => {
-      toast.success('Status atualizado com sucesso.')
-    },
-    onError: ({ error, input }) => {
-      // Rollback optimistic update
-      setStatusOverrides((prev) => {
-        const next = { ...prev }
-        delete next[input.id]
-        return next
-      })
-      toast.error(error.serverError || 'Erro ao atualizar status.')
-    },
-  })
+  const { execute: executeUpdateStatus, isPending: isUpdatingStatus } =
+    useAction(updateAppointment, {
+      onSuccess: () => {
+        toast.success('Status atualizado com sucesso.')
+      },
+      onError: ({ error, input }) => {
+        // Rollback optimistic update
+        setStatusOverrides((prev) => {
+          const next = { ...prev }
+          delete next[input.id]
+          return next
+        })
+        toast.error(error.serverError || 'Erro ao atualizar status.')
+      },
+    })
 
   const handleStatusSelect = useCallback(
-    (appointmentId: string, newStatus: AppointmentStatus, appointment?: AppointmentDto) => {
+    (
+      appointmentId: string,
+      newStatus: AppointmentStatus,
+      appointment?: AppointmentDto,
+    ) => {
       // Intercept CANCELED/NO_SHOW para BOOKING com deal em aberto
       if (
         appointment &&
@@ -329,7 +344,11 @@ const AppointmentsDataTable = ({
       if (!cancelDialog) return
       const { appointmentId, targetStatus } = cancelDialog
       setStatusOverrides((prev) => ({ ...prev, [appointmentId]: targetStatus }))
-      executeUpdateStatus({ id: appointmentId, status: targetStatus, dealResolution })
+      executeUpdateStatus({
+        id: appointmentId,
+        status: targetStatus,
+        dealResolution,
+      })
       setCancelDialog(null)
     },
     [cancelDialog, executeUpdateStatus],
@@ -397,8 +416,7 @@ const AppointmentsDataTable = ({
         icon={<TrashIcon />}
         variant="destructive"
         onConfirm={() => {
-          if (deletingAppointment)
-            executeDelete({ id: deletingAppointment.id })
+          if (deletingAppointment) executeDelete({ id: deletingAppointment.id })
         }}
         isLoading={isDeleting}
         confirmLabel="Confirmar Exclusão"
@@ -419,7 +437,10 @@ const AppointmentsDataTable = ({
           const isPending = group.type === 'pending'
           const isDimmedGroup = group.type === 'past'
           // Seções com dias misturados precisam mostrar a data na coluna esquerda
-          const showDate = group.type === 'pending' || group.type === 'in-progress' || group.type === 'past'
+          const showDate =
+            group.type === 'pending' ||
+            group.type === 'in-progress' ||
+            group.type === 'past'
 
           return (
             <div key={group.key} className="flex flex-col gap-3">
@@ -428,14 +449,10 @@ const AppointmentsDataTable = ({
                 <span
                   className={cn(
                     'flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider',
-                    isPending
-                      ? 'text-kronos-yellow'
-                      : 'text-muted-foreground',
+                    isPending ? 'text-kronos-yellow' : 'text-muted-foreground',
                   )}
                 >
-                  {isPending && (
-                    <AlertTriangleIcon className="h-3.5 w-3.5" />
-                  )}
+                  {isPending && <AlertTriangleIcon className="h-3.5 w-3.5" />}
                   {group.label}
                   <span className="font-normal normal-case">
                     ({group.appointments.length})
@@ -508,21 +525,24 @@ const RESOLUTION_ACTIONS: Array<{
     status: 'COMPLETED',
     icon: CheckCircle2Icon,
     label: 'Concluído',
-    color: 'text-muted-foreground/50 hover:text-kronos-green hover:bg-kronos-green/10',
+    color:
+      'text-muted-foreground/50 hover:text-kronos-green hover:bg-kronos-green/10',
     activeColor: 'text-kronos-green bg-kronos-green/15',
   },
   {
     status: 'CANCELED',
     icon: BanIcon,
     label: 'Cancelado',
-    color: 'text-muted-foreground/50 hover:text-kronos-red hover:bg-kronos-red/10',
+    color:
+      'text-muted-foreground/50 hover:text-kronos-red hover:bg-kronos-red/10',
     activeColor: 'text-kronos-red bg-kronos-red/15',
   },
   {
     status: 'NO_SHOW',
     icon: UserXIcon,
     label: 'Não Compareceu',
-    color: 'text-muted-foreground/50 hover:text-kronos-yellow hover:bg-kronos-yellow/10',
+    color:
+      'text-muted-foreground/50 hover:text-kronos-yellow hover:bg-kronos-yellow/10',
     activeColor: 'text-kronos-yellow bg-kronos-yellow/15',
   },
 ]
@@ -530,7 +550,11 @@ const RESOLUTION_ACTIONS: Array<{
 interface TimelineItemProps {
   appointment: AppointmentDto
   statusOverrides: Record<string, AppointmentStatus>
-  onStatusSelect: (appointmentId: string, newStatus: AppointmentStatus, appointment?: AppointmentDto) => void
+  onStatusSelect: (
+    appointmentId: string,
+    newStatus: AppointmentStatus,
+    appointment?: AppointmentDto,
+  ) => void
   onEdit: (appointment: AppointmentDto) => void
   onEditWithDealFocus: (appointment: AppointmentDto) => void
   onDeleteRequest: (appointment: AppointmentDto) => void
@@ -593,7 +617,7 @@ function TimelineItem({
           if (event.key === 'Enter' || event.key === ' ') handleCardClick()
         }}
         className={cn(
-          'group mb-3 flex-1 rounded-lg border bg-card p-3 transition-all hover:border-primary/20 hover:shadow-md cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring',
+          'group mb-3 flex-1 cursor-pointer rounded-lg border bg-card p-3 outline-none transition-all hover:border-primary/20 hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring',
           isDimmed && 'opacity-60',
         )}
       >
@@ -645,8 +669,9 @@ function TimelineItem({
                   </button>
                 </TooltipTrigger>
                 <TooltipContent className="max-w-[280px]">
-                  Este agendamento não está vinculado a uma negociação. Relatórios de
-                  receita podem não refletir este serviço. Clique para vincular.
+                  Este agendamento não está vinculado a uma negociação.
+                  Relatórios de receita podem não refletir este serviço. Clique
+                  para vincular.
                 </TooltipContent>
               </Tooltip>
             ) : null}

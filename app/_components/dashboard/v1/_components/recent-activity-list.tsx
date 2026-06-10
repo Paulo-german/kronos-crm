@@ -25,7 +25,7 @@ export function RecentActivityList({ activities }: RecentActivityListProps) {
         const Icon = getActivityIcon(activity.type)
         const initials = activity.performerName
           ?.split(' ')
-          .map((n) => n[0])
+          .map((word) => word[0])
           .join('')
           .slice(0, 2)
           .toUpperCase()

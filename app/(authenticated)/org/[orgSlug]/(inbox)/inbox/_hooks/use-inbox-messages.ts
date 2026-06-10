@@ -32,7 +32,9 @@ interface UseInboxMessagesReturn {
   scrollAreaRef: React.RefObject<HTMLDivElement | null>
 }
 
-export function useInboxMessages({ conversationId }: UseInboxMessagesOptions): UseInboxMessagesReturn {
+export function useInboxMessages({
+  conversationId,
+}: UseInboxMessagesOptions): UseInboxMessagesReturn {
   // Mensagens antigas carregadas via cursor (load older)
   const [olderMessages, setOlderMessages] = useState<MessageDto[]>([])
   const [isLoadingMore, setIsLoadingMore] = useState(false)
@@ -43,7 +45,9 @@ export function useInboxMessages({ conversationId }: UseInboxMessagesOptions): U
   const query = useQuery({
     queryKey: inboxKeys.messages.byConversation(conversationId),
     queryFn: async ({ signal }) => {
-      const response = await fetch(`/api/inbox/${conversationId}/messages`, { signal })
+      const response = await fetch(`/api/inbox/${conversationId}/messages`, {
+        signal,
+      })
       if (!response.ok) throw new Error('Failed to fetch messages')
       return response.json() as Promise<MessagesApiResponse>
     },
@@ -62,9 +66,12 @@ export function useInboxMessages({ conversationId }: UseInboxMessagesOptions): U
   const messages = useMemo(() => {
     const map = new Map<string, MessageDto>()
     for (const message of olderMessages) map.set(message.id, message)
-    for (const message of query.data?.messages ?? []) map.set(message.id, message)
+    for (const message of query.data?.messages ?? [])
+      map.set(message.id, message)
     return Array.from(map.values()).sort(
-      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+      (messageA, messageB) =>
+        new Date(messageA.createdAt).getTime() -
+        new Date(messageB.createdAt).getTime(),
     )
   }, [olderMessages, query.data?.messages])
 
@@ -73,7 +80,9 @@ export function useInboxMessages({ conversationId }: UseInboxMessagesOptions): U
     const map = new Map<string, ConversationEventDto>()
     for (const event of query.data?.events ?? []) map.set(event.id, event)
     return Array.from(map.values()).sort(
-      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+      (eventA, eventB) =>
+        new Date(eventA.createdAt).getTime() -
+        new Date(eventB.createdAt).getTime(),
     )
   }, [query.data?.events])
 

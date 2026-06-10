@@ -53,7 +53,9 @@ export function TasksToolbar({
   const [assigneeOpen, setAssigneeOpen] = useState(false)
 
   const effectiveAssignee = isMember ? currentUserId : assigneeFilter
-  const assigneeName = members.find((m) => m.userId === effectiveAssignee)?.name
+  const assigneeName = members.find(
+    (member) => member.userId === effectiveAssignee,
+  )?.name
 
   const assigneeTriggerLabel =
     effectiveAssignee === 'all' || !assigneeName

@@ -15,7 +15,6 @@ interface ProfessionalCandidate {
   name: string
 }
 
-
 /**
  * Retorna todos os slots livres de um dia específico para um serviço.
  * Sem limite de quantidade — retorna todos os slots disponíveis do dia.
@@ -85,7 +84,11 @@ export async function getSlotsByDate(
       let workStart: string
       let workEnd: string
 
-      if (exception?.type === 'CUSTOM_HOURS' && exception.startTime && exception.endTime) {
+      if (
+        exception?.type === 'CUSTOM_HOURS' &&
+        exception.startTime &&
+        exception.endTime
+      ) {
         workStart = exception.startTime
         workEnd = exception.endTime
       } else {
@@ -127,11 +130,9 @@ export async function getSlotsByDate(
   )
 
   // Achata e ordena por profissional + startTime
-  return allSlots
-    .flat()
-    .sort((a, b) => {
-      const nameCmp = a.professionalName.localeCompare(b.professionalName)
-      if (nameCmp !== 0) return nameCmp
-      return a.startTime.localeCompare(b.startTime)
-    })
+  return allSlots.flat().sort((slotA, slotB) => {
+    const nameCmp = slotA.professionalName.localeCompare(slotB.professionalName)
+    if (nameCmp !== 0) return nameCmp
+    return slotA.startTime.localeCompare(slotB.startTime)
+  })
 }

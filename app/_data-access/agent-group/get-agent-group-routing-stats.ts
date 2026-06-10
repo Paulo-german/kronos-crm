@@ -38,11 +38,18 @@ interface RouterExecutionMetadata {
 
 function parseRouterMetadata(raw: unknown): RouterExecutionMetadata {
   if (!raw || typeof raw !== 'object') return {}
-  const m = raw as Record<string, unknown>
+  const metadata = raw as Record<string, unknown>
   return {
-    targetAgentId: typeof m.targetAgentId === 'string' ? m.targetAgentId : undefined,
-    confidence: typeof m.confidence === 'number' ? m.confidence : undefined,
-    wasFallback: typeof m.wasFallback === 'boolean' ? m.wasFallback : undefined,
+    targetAgentId:
+      typeof metadata.targetAgentId === 'string'
+        ? metadata.targetAgentId
+        : undefined,
+    confidence:
+      typeof metadata.confidence === 'number' ? metadata.confidence : undefined,
+    wasFallback:
+      typeof metadata.wasFallback === 'boolean'
+        ? metadata.wasFallback
+        : undefined,
   }
 }
 
@@ -76,7 +83,9 @@ async function fetchAgentGroupRoutingStats(
   ])
 
   const memberAgentIds = new Set(groupMembers.map((member) => member.agentId))
-  const agentNameById = new Map(groupMembers.map((member) => [member.agentId, member.agent.name]))
+  const agentNameById = new Map(
+    groupMembers.map((member) => [member.agentId, member.agent.name]),
+  )
 
   // Agregar metadata em memória (JSON não suporta groupBy no Prisma)
   const workerCountMap = new Map<string, number>()
@@ -90,7 +99,10 @@ async function fetchAgentGroupRoutingStats(
     if (!meta.targetAgentId) continue
 
     routingsWithMetadata++
-    workerCountMap.set(meta.targetAgentId, (workerCountMap.get(meta.targetAgentId) ?? 0) + 1)
+    workerCountMap.set(
+      meta.targetAgentId,
+      (workerCountMap.get(meta.targetAgentId) ?? 0) + 1,
+    )
 
     if (meta.wasFallback) fallbackCount++
 
@@ -114,7 +126,8 @@ async function fetchAgentGroupRoutingStats(
       agentName: agentNameById.get(agentId) ?? 'Agente removido',
       isCurrentMember: memberAgentIds.has(agentId),
       count,
-      share: routingsWithMetadata > 0 ? (count / routingsWithMetadata) * 100 : 0,
+      share:
+        routingsWithMetadata > 0 ? (count / routingsWithMetadata) * 100 : 0,
     }))
 
   return {
@@ -132,7 +145,10 @@ async function fetchAgentGroupRoutingStats(
 // ---------------------------------------------------------------------------
 
 export const getAgentGroupRoutingStats = cache(
-  async (groupId: string, orgId: string): Promise<AgentGroupRoutingStatsDto> => {
+  async (
+    groupId: string,
+    orgId: string,
+  ): Promise<AgentGroupRoutingStatsDto> => {
     const getCached = unstable_cache(
       async () => fetchAgentGroupRoutingStats(groupId),
       [`agent-group-routing-${groupId}`],

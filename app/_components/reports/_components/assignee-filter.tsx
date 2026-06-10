@@ -28,16 +28,24 @@ function getMemberInitials(member: MemberOption): string {
   if (!name) return '?'
   const parts = name.split(' ')
   if (parts.length === 1) return parts[0]!.charAt(0).toUpperCase()
-  return (parts[0]!.charAt(0) + parts[parts.length - 1]!.charAt(0)).toUpperCase()
+  return (
+    parts[0]!.charAt(0) + parts[parts.length - 1]!.charAt(0)
+  ).toUpperCase()
 }
 
-export function AssigneeFilter({ members, value, onChange }: AssigneeFilterProps) {
+export function AssigneeFilter({
+  members,
+  value,
+  onChange,
+}: AssigneeFilterProps) {
   const selectedMember = members.find((member) => member.userId === value)
 
   return (
     <Select
       value={value ?? 'all'}
-      onValueChange={(v) => onChange(v === 'all' ? null : v)}
+      onValueChange={(selected) =>
+        onChange(selected === 'all' ? null : selected)
+      }
     >
       <SelectTrigger className="h-8 w-auto min-w-[130px] gap-1.5 border px-2.5 text-xs font-medium">
         <Users className="size-3.5 text-muted-foreground" />
@@ -52,7 +60,9 @@ export function AssigneeFilter({ members, value, onChange }: AssigneeFilterProps
                 {getMemberInitials(selectedMember)}
               </AvatarFallback>
             </Avatar>
-            <span className="max-w-[100px] truncate">{selectedMember.fullName}</span>
+            <span className="max-w-[100px] truncate">
+              {selectedMember.fullName}
+            </span>
           </div>
         ) : (
           <SelectValue placeholder="Membro" />

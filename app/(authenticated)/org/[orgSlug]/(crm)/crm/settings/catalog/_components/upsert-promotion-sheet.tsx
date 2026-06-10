@@ -25,7 +25,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/_components/ui/select'
-import { SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/_components/ui/sheet'
+import {
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/_components/ui/sheet'
 import { Switch } from '@/_components/ui/switch'
 import { Textarea } from '@/_components/ui/textarea'
 
@@ -61,8 +66,12 @@ export function UpsertPromotionSheet({
 }: UpsertPromotionSheetProps) {
   const isEditing = !!defaultValues?.id
 
-  const [catalogType, setCatalogType] = useState<'PRODUCT' | 'SERVICE'>('PRODUCT')
-  const [discountType, setDiscountType] = useState<'PERCENTAGE' | 'FIXED'>('PERCENTAGE')
+  const [catalogType, setCatalogType] = useState<'PRODUCT' | 'SERVICE'>(
+    'PRODUCT',
+  )
+  const [discountType, setDiscountType] = useState<'PERCENTAGE' | 'FIXED'>(
+    'PERCENTAGE',
+  )
   const [discountValue, setDiscountValue] = useState<number>(0)
 
   const form = useForm<CreatePromotionInput>({
@@ -76,7 +85,10 @@ export function UpsertPromotionSheet({
     },
   })
 
-  const { fields, append, remove } = useFieldArray({ control: form.control, name: 'items' })
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: 'items',
+  })
   const watchedItems = useWatch({ control: form.control, name: 'items' })
 
   useEffect(() => {
@@ -84,7 +96,9 @@ export function UpsertPromotionSheet({
 
     const hasServices = defaultValues?.items?.some((item) => item.serviceId)
     setCatalogType(hasServices ? 'SERVICE' : 'PRODUCT')
-    setDiscountType((defaultValues?.discountType as 'PERCENTAGE' | 'FIXED') ?? 'PERCENTAGE')
+    setDiscountType(
+      (defaultValues?.discountType as 'PERCENTAGE' | 'FIXED') ?? 'PERCENTAGE',
+    )
     setDiscountValue(defaultValues?.discountValue ?? 0)
 
     form.reset({
@@ -105,10 +119,12 @@ export function UpsertPromotionSheet({
     return watchedItems.reduce((acc, item) => {
       const qty = item?.quantity || 1
       if (catalogType === 'PRODUCT') {
-        const product = products.find((p) => p.id === item?.productId)
+        const product = products.find(
+          (product) => product.id === item?.productId,
+        )
         return acc + (product ? product.price * qty : 0)
       }
-      const service = services.find((s) => s.id === item?.serviceId)
+      const service = services.find((service) => service.id === item?.serviceId)
       return acc + (service ? parseFloat(service.price) * qty : 0)
     }, 0)
   }, [watchedItems, catalogType, products, services])
@@ -118,7 +134,10 @@ export function UpsertPromotionSheet({
     return discountValue
   }, [discountType, discountValue, subtotal])
 
-  const finalPrice = useMemo(() => Math.max(0, subtotal - discountAmount), [subtotal, discountAmount])
+  const finalPrice = useMemo(
+    () => Math.max(0, subtotal - discountAmount),
+    [subtotal, discountAmount],
+  )
 
   useEffect(() => {
     form.setValue('price', finalPrice)
@@ -131,15 +150,18 @@ export function UpsertPromotionSheet({
 
   const catalog = catalogType === 'PRODUCT' ? products : services
 
-  const { execute: executeCreate, isPending: isCreating } = useAction(createPromotion, {
-    onSuccess: () => {
-      toast.success('Promoção criada com sucesso!')
-      onOpenChange(false)
+  const { execute: executeCreate, isPending: isCreating } = useAction(
+    createPromotion,
+    {
+      onSuccess: () => {
+        toast.success('Promoção criada com sucesso!')
+        onOpenChange(false)
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError ?? 'Erro ao criar promoção.')
+      },
     },
-    onError: ({ error }) => {
-      toast.error(error.serverError ?? 'Erro ao criar promoção.')
-    },
-  })
+  )
 
   const onSubmit = (data: CreatePromotionInput) => {
     const payload = { ...data, discountType, discountValue }
@@ -155,7 +177,9 @@ export function UpsertPromotionSheet({
   return (
     <SheetContent className="overflow-y-auto sm:max-w-md">
       <SheetHeader>
-        <SheetTitle>{isEditing ? 'Editar Promoção' : 'Nova Promoção'}</SheetTitle>
+        <SheetTitle>
+          {isEditing ? 'Editar Promoção' : 'Nova Promoção'}
+        </SheetTitle>
         <SheetDescription>
           {isEditing
             ? 'Atualize as informações da promoção.'
@@ -224,16 +248,24 @@ export function UpsertPromotionSheet({
           </div>
 
           {/* Itens da promoção */}
-          <div className="border-t pt-4 space-y-3">
+          <div className="space-y-3 border-t pt-4">
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium leading-none">
-                {catalogType === 'PRODUCT' ? 'Produtos incluídos' : 'Serviços incluídos'}
+                {catalogType === 'PRODUCT'
+                  ? 'Produtos incluídos'
+                  : 'Serviços incluídos'}
               </p>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => append({ productId: undefined, serviceId: undefined, quantity: 1 })}
+                onClick={() =>
+                  append({
+                    productId: undefined,
+                    serviceId: undefined,
+                    quantity: 1,
+                  })
+                }
                 disabled={catalog.length === 0}
               >
                 <PlusCircle className="mr-1 h-3.5 w-3.5" />
@@ -243,12 +275,15 @@ export function UpsertPromotionSheet({
 
             {catalog.length === 0 && (
               <p className="text-sm text-muted-foreground">
-                Nenhum {catalogType === 'PRODUCT' ? 'produto' : 'serviço'} cadastrado no catálogo.
+                Nenhum {catalogType === 'PRODUCT' ? 'produto' : 'serviço'}{' '}
+                cadastrado no catálogo.
               </p>
             )}
 
             {fields.length === 0 && catalog.length > 0 && (
-              <p className="text-sm text-muted-foreground">Nenhum item adicionado.</p>
+              <p className="text-sm text-muted-foreground">
+                Nenhum item adicionado.
+              </p>
             )}
 
             {fields.map((field, index) => {
@@ -259,7 +294,7 @@ export function UpsertPromotionSheet({
                   : (currentItem?.serviceId ?? '')
 
               return (
-                <div key={field.id} className="flex gap-2 items-center">
+                <div key={field.id} className="flex items-center gap-2">
                   <Select
                     value={selectedId}
                     onValueChange={(id) => {
@@ -275,7 +310,9 @@ export function UpsertPromotionSheet({
                     <SelectTrigger className="flex-1">
                       <SelectValue
                         placeholder={
-                          catalogType === 'PRODUCT' ? 'Selecione um produto' : 'Selecione um serviço'
+                          catalogType === 'PRODUCT'
+                            ? 'Selecione um produto'
+                            : 'Selecione um serviço'
                         }
                       />
                     </SelectTrigger>
@@ -292,7 +329,9 @@ export function UpsertPromotionSheet({
                     type="number"
                     min={1}
                     className="w-20 shrink-0"
-                    {...form.register(`items.${index}.quantity`, { valueAsNumber: true })}
+                    {...form.register(`items.${index}.quantity`, {
+                      valueAsNumber: true,
+                    })}
                   />
 
                   <Button
@@ -311,8 +350,10 @@ export function UpsertPromotionSheet({
           </div>
 
           {/* Calculadora de preço */}
-          <div className="rounded-lg border border-border/50 bg-muted/30 p-4 space-y-3">
-            <p className="text-sm font-medium leading-none">Calculadora de preço</p>
+          <div className="space-y-3 rounded-lg border border-border/50 bg-muted/30 p-4">
+            <p className="text-sm font-medium leading-none">
+              Calculadora de preço
+            </p>
 
             {watchedItems && watchedItems.length > 0 && (
               <div className="space-y-1">
@@ -322,11 +363,15 @@ export function UpsertPromotionSheet({
                   let unitPrice = 0
 
                   if (catalogType === 'PRODUCT') {
-                    const product = products.find((p) => p.id === item?.productId)
+                    const product = products.find(
+                      (product) => product.id === item?.productId,
+                    )
                     name = product?.name ?? ''
                     unitPrice = product?.price ?? 0
                   } else {
-                    const service = services.find((s) => s.id === item?.serviceId)
+                    const service = services.find(
+                      (service) => service.id === item?.serviceId,
+                    )
                     name = service?.name ?? ''
                     unitPrice = service ? parseFloat(service.price) : 0
                   }
@@ -338,13 +383,14 @@ export function UpsertPromotionSheet({
                       key={index}
                       className="flex items-center justify-between text-xs text-muted-foreground"
                     >
-                      <span className="truncate max-w-[160px]">{name}</span>
-                      <span className="shrink-0 ml-2 tabular-nums">
+                      <span className="max-w-[160px] truncate">{name}</span>
+                      <span className="ml-2 shrink-0 tabular-nums">
                         {qty > 1 ? `${qty}x ` : ''}
                         {formatCurrency(unitPrice)}
                         {qty > 1 && (
-                          <span className="text-foreground font-medium">
-                            {' '}= {formatCurrency(unitPrice * qty)}
+                          <span className="font-medium text-foreground">
+                            {' '}
+                            = {formatCurrency(unitPrice * qty)}
                           </span>
                         )}
                       </span>
@@ -360,14 +406,21 @@ export function UpsertPromotionSheet({
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground shrink-0">Desconto</span>
-              <div className="flex items-center gap-1 ml-auto">
+              <span className="shrink-0 text-sm text-muted-foreground">
+                Desconto
+              </span>
+              <div className="ml-auto flex items-center gap-1">
                 <Button
                   type="button"
-                  variant={discountType === 'PERCENTAGE' ? 'default' : 'outline'}
+                  variant={
+                    discountType === 'PERCENTAGE' ? 'default' : 'outline'
+                  }
                   size="sm"
                   className="h-7 px-2 text-xs"
-                  onClick={() => { setDiscountType('PERCENTAGE'); setDiscountValue(0) }}
+                  onClick={() => {
+                    setDiscountType('PERCENTAGE')
+                    setDiscountValue(0)
+                  }}
                 >
                   %
                 </Button>
@@ -376,7 +429,10 @@ export function UpsertPromotionSheet({
                   variant={discountType === 'FIXED' ? 'default' : 'outline'}
                   size="sm"
                   className="h-7 px-2 text-xs"
-                  onClick={() => { setDiscountType('FIXED'); setDiscountValue(0) }}
+                  onClick={() => {
+                    setDiscountType('FIXED')
+                    setDiscountValue(0)
+                  }}
                 >
                   R$
                 </Button>
@@ -386,8 +442,10 @@ export function UpsertPromotionSheet({
                   max={discountType === 'PERCENTAGE' ? 100 : undefined}
                   step={discountType === 'PERCENTAGE' ? 1 : 0.01}
                   value={discountValue}
-                  onChange={(e) => setDiscountValue(parseFloat(e.target.value) || 0)}
-                  className="w-24 h-7 text-sm"
+                  onChange={(e) =>
+                    setDiscountValue(parseFloat(e.target.value) || 0)
+                  }
+                  className="h-7 w-24 text-sm"
                   placeholder={discountType === 'PERCENTAGE' ? '0' : '0,00'}
                 />
               </div>
@@ -397,7 +455,9 @@ export function UpsertPromotionSheet({
 
             <div className="flex items-center justify-between">
               <span className="text-sm font-semibold">Preço final</span>
-              <span className="text-lg font-bold text-primary">{formatCurrency(finalPrice)}</span>
+              <span className="text-lg font-bold text-primary">
+                {formatCurrency(finalPrice)}
+              </span>
             </div>
           </div>
 
@@ -414,7 +474,10 @@ export function UpsertPromotionSheet({
                     </FormDescription>
                   </div>
                   <FormControl>
-                    <Switch checked={field.value ?? true} onCheckedChange={field.onChange} />
+                    <Switch
+                      checked={field.value ?? true}
+                      onCheckedChange={field.onChange}
+                    />
                   </FormControl>
                 </FormItem>
               )}

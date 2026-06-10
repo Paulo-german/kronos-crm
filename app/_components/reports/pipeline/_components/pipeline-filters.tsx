@@ -25,7 +25,16 @@ import {
 } from '@/_components/ui/command'
 import { Button } from '@/_components/ui/button'
 import { Badge } from '@/_components/ui/badge'
-import { GitBranch, Clock, AlertCircle, Flag, Package, ChevronDown, Check, X } from 'lucide-react'
+import {
+  GitBranch,
+  Clock,
+  AlertCircle,
+  Flag,
+  Package,
+  ChevronDown,
+  Check,
+  X,
+} from 'lucide-react'
 import { cn } from '@/_lib/utils'
 import type { ProductDto } from '@/_data-access/product/get-products'
 
@@ -42,8 +51,12 @@ interface PipelineFiltersProps {
 const pipelineFiltersParsers = {
   pipelineId: parseAsString.withOptions({ shallow: false }),
   inactiveDays: parseAsString.withOptions({ shallow: false }),
-  status: parseAsArrayOf(parseAsString).withDefault([]).withOptions({ shallow: false }),
-  priority: parseAsArrayOf(parseAsString).withDefault([]).withOptions({ shallow: false }),
+  status: parseAsArrayOf(parseAsString)
+    .withDefault([])
+    .withOptions({ shallow: false }),
+  priority: parseAsArrayOf(parseAsString)
+    .withDefault([])
+    .withOptions({ shallow: false }),
   productId: parseAsString.withOptions({ shallow: false }),
 }
 
@@ -56,7 +69,11 @@ const INACTIVE_DAYS_OPTIONS = [
 
 const STATUS_OPTIONS = [
   { value: 'OPEN', label: 'Aberto', color: 'hsl(var(--primary))' },
-  { value: 'IN_PROGRESS', label: 'Em andamento', color: 'hsl(var(--kronos-blue))' },
+  {
+    value: 'IN_PROGRESS',
+    label: 'Em andamento',
+    color: 'hsl(var(--kronos-blue))',
+  },
   { value: 'WON', label: 'Ganho', color: 'var(--kronos-green)' },
   { value: 'LOST', label: 'Perdido', color: 'hsl(var(--kronos-red))' },
   { value: 'PAUSED', label: 'Pausado', color: 'hsl(var(--muted-foreground))' },
@@ -102,7 +119,8 @@ export function PipelineFilters({ pipelines, products }: PipelineFiltersProps) {
           <SelectTrigger
             className={cn(
               'h-8 w-auto min-w-[140px] gap-1.5 border px-2.5 text-xs font-medium',
-              filters.pipelineId && 'border-primary/40 bg-primary/5 text-primary',
+              filters.pipelineId &&
+                'border-primary/40 bg-primary/5 text-primary',
             )}
           >
             <GitBranch className="size-3.5 text-muted-foreground" />
@@ -151,7 +169,8 @@ export function PipelineFilters({ pipelines, products }: PipelineFiltersProps) {
         <SelectTrigger
           className={cn(
             'h-8 w-auto min-w-[150px] gap-1.5 border px-2.5 text-xs font-medium',
-            filters.inactiveDays && 'border-primary/40 bg-primary/5 text-primary',
+            filters.inactiveDays &&
+              'border-primary/40 bg-primary/5 text-primary',
           )}
         >
           <Clock className="size-3.5 text-muted-foreground" />
@@ -246,7 +265,10 @@ function StatusFilter({ value, onChange }: StatusFilterProps) {
                       <span>{option.label}</span>
                     </div>
                     <Check
-                      className={cn('ml-auto size-4', isSelected ? 'opacity-100' : 'opacity-0')}
+                      className={cn(
+                        'ml-auto size-4',
+                        isSelected ? 'opacity-100' : 'opacity-0',
+                      )}
                     />
                   </CommandItem>
                 )
@@ -315,7 +337,10 @@ function PriorityFilter({ value, onChange }: PriorityFilterProps) {
                   >
                     <span className="flex-1">{option.label}</span>
                     <Check
-                      className={cn('ml-auto size-4', isSelected ? 'opacity-100' : 'opacity-0')}
+                      className={cn(
+                        'ml-auto size-4',
+                        isSelected ? 'opacity-100' : 'opacity-0',
+                      )}
                     />
                   </CommandItem>
                 )
@@ -340,7 +365,9 @@ function ProductFilter({ products, value, onChange }: ProductFilterProps) {
   return (
     <Select
       value={value ?? 'all'}
-      onValueChange={(v) => onChange(v === 'all' ? null : v)}
+      onValueChange={(selected) =>
+        onChange(selected === 'all' ? null : selected)
+      }
     >
       <SelectTrigger
         className={cn(
@@ -363,7 +390,9 @@ function ProductFilter({ products, value, onChange }: ProductFilterProps) {
             <div className="flex items-center gap-2">
               <span className="flex-1 truncate">{product.name}</span>
               {!product.isActive && (
-                <span className="shrink-0 text-[10px] text-muted-foreground">inativo</span>
+                <span className="shrink-0 text-[10px] text-muted-foreground">
+                  inativo
+                </span>
               )}
             </div>
           </SelectItem>

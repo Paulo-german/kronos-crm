@@ -21,7 +21,8 @@ export function TaskStatusSelect({ value, onChange }: TaskStatusSelectProps) {
   const [open, setOpen] = useState(false)
 
   const currentLabel =
-    TASK_STATUS_OPTIONS.find((o) => o.value === value)?.label ?? 'Todas'
+    TASK_STATUS_OPTIONS.find((option) => option.value === value)?.label ??
+    'Todas'
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

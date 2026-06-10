@@ -3,10 +3,7 @@
 import { useSearchParams } from 'next/navigation'
 import { Receipt } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
-import {
-  PLANS,
-  getAnnualDetails,
-} from '@/_lib/billing/plans-data'
+import { PLANS, getAnnualDetails } from '@/_lib/billing/plans-data'
 import type { PlanInterval } from './checkout-types'
 
 export function OrderSummary() {
@@ -14,7 +11,7 @@ export function OrderSummary() {
   const planId = searchParams.get('plan')
   const interval = (searchParams.get('interval') || 'monthly') as PlanInterval
 
-  const plan = PLANS.find((p) => p.id === planId)
+  const plan = PLANS.find((plan) => plan.id === planId)
 
   if (!plan) return null
 
@@ -52,7 +49,8 @@ export function OrderSummary() {
             <span>Total</span>
             <div className="text-right">
               <div className="text-lg">
-                R$ {isAnnual && plan.annualTotalPrice
+                R${' '}
+                {isAnnual && plan.annualTotalPrice
                   ? plan.annualTotalPrice.toFixed(2).replace('.', ',')
                   : plan.price.toFixed(2).replace('.', ',')}
                 <span className="text-sm font-normal text-muted-foreground">
@@ -61,7 +59,8 @@ export function OrderSummary() {
               </div>
               {isAnnual && annual && (
                 <p className="text-xs font-normal text-muted-foreground">
-                  equivalente a R$ {annual.monthlyEquivalent.toFixed(2).replace('.', ',')}/mês
+                  equivalente a R${' '}
+                  {annual.monthlyEquivalent.toFixed(2).replace('.', ',')}/mês
                 </p>
               )}
             </div>

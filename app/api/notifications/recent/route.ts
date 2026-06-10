@@ -26,7 +26,10 @@ export async function GET() {
   const orgSlug = cookieStore.get(ORG_SLUG_COOKIE)?.value
 
   if (!orgSlug) {
-    return NextResponse.json({ error: 'Organization not found' }, { status: 400 })
+    return NextResponse.json(
+      { error: 'Organization not found' },
+      { status: 400 },
+    )
   }
 
   const member = await db.member.findFirst({
@@ -49,7 +52,11 @@ export async function GET() {
 
   // Mergear e ordenar por data decrescente, limitando a 10
   const merged = [...notifications, ...pendingInviteNotifications]
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .sort(
+      (notificationA, notificationB) =>
+        new Date(notificationB.createdAt).getTime() -
+        new Date(notificationA.createdAt).getTime(),
+    )
     .slice(0, 10)
 
   return NextResponse.json(merged)

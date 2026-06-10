@@ -5,7 +5,7 @@ export function extractVariableIndices(text: string): number[] {
   for (const match of matches) {
     indices.add(parseInt(match[1], 10))
   }
-  return Array.from(indices).sort((a, b) => a - b)
+  return Array.from(indices).sort((indexA, indexB) => indexA - indexB)
 }
 
 /** Substitui variáveis {{N}} pelos valores ou mantém o placeholder */

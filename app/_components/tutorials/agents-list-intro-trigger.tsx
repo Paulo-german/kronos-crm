@@ -10,13 +10,17 @@ interface AgentsListIntroTriggerProps {
   hasSeenAgentsListIntro: boolean
 }
 
-export function AgentsListIntroTrigger({ hasSeenAgentsListIntro }: AgentsListIntroTriggerProps) {
+export function AgentsListIntroTrigger({
+  hasSeenAgentsListIntro,
+}: AgentsListIntroTriggerProps) {
   const [open, setOpen] = useState(!hasSeenAgentsListIntro)
   const { execute } = useAction(completeTutorial)
 
   if (hasSeenAgentsListIntro) return null
 
-  const tutorial = TUTORIAL_REGISTRY.find((t) => t.id === 'agents-list')!
+  const tutorial = TUTORIAL_REGISTRY.find(
+    (tutorial) => tutorial.id === 'agents-list',
+  )!
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {

@@ -1,4 +1,8 @@
-import Header, { HeaderLeft, HeaderTitle, HeaderSubTitle } from '@/_components/header'
+import Header, {
+  HeaderLeft,
+  HeaderTitle,
+  HeaderSubTitle,
+} from '@/_components/header'
 import { getAdminPlans } from '@/_data-access/admin/get-admin-plans'
 import { PLANS } from '@/_lib/billing/plans-data'
 import { PLAN_CREDITS } from '@/_lib/billing/plan-credits'
@@ -8,12 +12,12 @@ export default async function ViabilityPage() {
   const adminPlans = await getAdminPlans()
 
   const baseline = PLANS.map((plan) => {
-    const adminPlan = adminPlans.find((p) => p.slug === plan.id)
+    const adminPlan = adminPlans.find((adminPlan) => adminPlan.slug === plan.id)
     return {
-      id:          plan.id,
-      name:        plan.name,
-      price:       plan.price,
-      credits:     PLAN_CREDITS[plan.id] ?? 0,
+      id: plan.id,
+      name: plan.name,
+      price: plan.price,
+      credits: PLAN_CREDITS[plan.id] ?? 0,
       activeCount: adminPlan?.activeSubscriptions ?? 0,
     }
   })
@@ -24,7 +28,8 @@ export default async function ViabilityPage() {
         <HeaderLeft>
           <HeaderTitle>Viabilidade do Negócio</HeaderTitle>
           <HeaderSubTitle>
-            Base real de assinaturas + custos fixos → margem agregada, break-even e precificação sugerida.
+            Base real de assinaturas + custos fixos → margem agregada,
+            break-even e precificação sugerida.
           </HeaderSubTitle>
         </HeaderLeft>
       </Header>

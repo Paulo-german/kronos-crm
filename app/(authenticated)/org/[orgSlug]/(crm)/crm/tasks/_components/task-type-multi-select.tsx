@@ -46,7 +46,7 @@ export function TaskTypeMultiSelect({
 
   const toggle = (type: TaskType) => {
     const next = value.includes(type)
-      ? value.filter((t) => t !== type)
+      ? value.filter((item) => item !== type)
       : [...value, type]
     onChange(next)
   }
@@ -55,8 +55,8 @@ export function TaskTypeMultiSelect({
     value.length === 0
       ? 'Todos os tipos'
       : value.length === 1
-        ? (TASK_TYPE_OPTIONS.find((o) => o.value === value[0])?.label ??
-          '1 tipo')
+        ? (TASK_TYPE_OPTIONS.find((option) => option.value === value[0])
+            ?.label ?? '1 tipo')
         : null
 
   return (

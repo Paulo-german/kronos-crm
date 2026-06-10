@@ -69,7 +69,8 @@ export const seedOrganization = orgActionClient
 
       blueprint = getBlueprint(org.niche)
       companyName = data.companyName || org.name
-      companyDescription = data.companyDescription || `Empresa do segmento ${blueprint.label}`
+      companyDescription =
+        data.companyDescription || `Empresa do segmento ${blueprint.label}`
       agentName = data.agentName || 'Assistente Kronos'
     }
 
@@ -177,7 +178,9 @@ export const seedOrganization = orgActionClient
       }
 
       // 4. Seedar motivos de perda do blueprint (sempre recriar)
-      await tx.dealLostReason.deleteMany({ where: { organizationId: ctx.orgId } })
+      await tx.dealLostReason.deleteMany({
+        where: { organizationId: ctx.orgId },
+      })
 
       if (blueprint.lostReasons.length > 0) {
         await tx.dealLostReason.createMany({
@@ -208,7 +211,8 @@ export const seedOrganization = orgActionClient
                 ? step.actions.map((action) => {
                     if (action.type === 'move_deal') {
                       const stage = stages.find(
-                        (s) => s.position === action.targetStagePosition,
+                        (stage) =>
+                          stage.position === action.targetStagePosition,
                       )
                       return {
                         type: action.type,
@@ -225,7 +229,6 @@ export const seedOrganization = orgActionClient
           })),
         })
       }
-
     })
 
     // Invalida caches relevantes

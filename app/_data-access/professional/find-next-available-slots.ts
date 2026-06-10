@@ -122,7 +122,11 @@ export async function findNextAvailableSlots(
         let workStart: string
         let workEnd: string
 
-        if (exception?.type === 'CUSTOM_HOURS' && exception.startTime && exception.endTime) {
+        if (
+          exception?.type === 'CUSTOM_HOURS' &&
+          exception.startTime &&
+          exception.endTime
+        ) {
           workStart = exception.startTime
           workEnd = exception.endTime
         } else {
@@ -174,7 +178,7 @@ export async function findNextAvailableSlots(
     // Achata slots do dia de todos os profissionais e ordena por startTime
     const flatDaySlots = daySlots
       .flat()
-      .sort((a, b) => a.startTime.localeCompare(b.startTime))
+      .sort((slotA, slotB) => slotA.startTime.localeCompare(slotB.startTime))
 
     results.push(...flatDaySlots)
 
@@ -183,10 +187,10 @@ export async function findNextAvailableSlots(
   }
 
   return results
-    .sort((a, b) => {
-      const dateCmp = a.date.localeCompare(b.date)
+    .sort((slotA, slotB) => {
+      const dateCmp = slotA.date.localeCompare(slotB.date)
       if (dateCmp !== 0) return dateCmp
-      return a.startTime.localeCompare(b.startTime)
+      return slotA.startTime.localeCompare(slotB.startTime)
     })
     .slice(0, limit)
 }

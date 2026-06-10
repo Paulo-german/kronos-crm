@@ -83,7 +83,7 @@ const UpsertProductDialog = ({
   // Atualizar preço quando seleciona produto (apenas na criação)
   const handleProductSelect = (productId: string) => {
     if (!isEditing) {
-      const product = products.find((p) => p.id === productId)
+      const product = products.find((product) => product.id === productId)
       if (product) {
         form.setValue('unitPrice', product.price)
       }
@@ -216,8 +216,8 @@ const UpsertProductDialog = ({
                   <FormControl>
                     <Tabs
                       value={field.value}
-                      onValueChange={(v) =>
-                        field.onChange(v as 'percentage' | 'fixed')
+                      onValueChange={(value) =>
+                        field.onChange(value as 'percentage' | 'fixed')
                       }
                     >
                       <TabsList className="grid w-full grid-cols-2">

@@ -87,7 +87,10 @@ const ACTION_TYPE_LABELS: Record<string, string> = {
 const PRODUCT_ONLY_TOOL_TYPES = new Set(['create_event'])
 const SERVICE_ONLY_TOOL_TYPES = new Set(['create_appointment'])
 
-const isToolIncompatible = (type: string, agentMode?: 'PRODUCT' | 'SERVICE' | 'HYBRID'): boolean => {
+const isToolIncompatible = (
+  type: string,
+  agentMode?: 'PRODUCT' | 'SERVICE' | 'HYBRID',
+): boolean => {
   if (!agentMode || agentMode === 'HYBRID') return false
   if (agentMode === 'PRODUCT') return SERVICE_ONLY_TOOL_TYPES.has(type)
   return PRODUCT_ONLY_TOOL_TYPES.has(type)
@@ -382,7 +385,7 @@ const ProcessTab = ({
     // Triggers de lifecycle dos steps anteriores (por ordem de exibição)
     const previousStepsLifecycleTriggers = steps
       .slice(0, index)
-      .map((s) => s.lifecycleTrigger)
+      .map((step) => step.lifecycleTrigger)
       .filter((trigger) => trigger !== null) as string[]
 
     return (
@@ -488,9 +491,11 @@ const ProcessTab = ({
               onSaveSuccess={onSaveSuccess}
               excludeGlobalTools={excludeGlobalTools}
               agentMode={agent.agentMode}
-              previousStepsLifecycleTriggers={steps
-                .map((s) => s.lifecycleTrigger)
-                .filter((trigger) => trigger !== null) as string[]}
+              previousStepsLifecycleTriggers={
+                steps
+                  .map((step) => step.lifecycleTrigger)
+                  .filter((trigger) => trigger !== null) as string[]
+              }
               agentVersion={agent.agentVersion as 'single-v1' | 'single-v2'}
             />
           </div>

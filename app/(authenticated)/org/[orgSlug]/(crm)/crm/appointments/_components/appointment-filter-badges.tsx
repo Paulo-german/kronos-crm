@@ -40,7 +40,7 @@ export function AppointmentFilterBadges({
           <button
             onClick={() =>
               onFiltersChange({
-                status: filters.status.filter((s) => s !== status),
+                status: filters.status.filter((item) => item !== status),
               })
             }
             className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20"
@@ -52,10 +52,7 @@ export function AppointmentFilterBadges({
 
       {/* Badge de período */}
       {(filters.dateFrom || filters.dateTo) && (
-        <Badge
-          variant="secondary"
-          className="gap-1 pr-1 text-xs font-normal"
-        >
+        <Badge variant="secondary" className="gap-1 pr-1 text-xs font-normal">
           Período:{' '}
           {filters.dateFrom
             ? format(filters.dateFrom, 'dd/MM/yy', { locale: ptBR })
@@ -65,9 +62,7 @@ export function AppointmentFilterBadges({
             ? format(filters.dateTo, 'dd/MM/yy', { locale: ptBR })
             : '...'}
           <button
-            onClick={() =>
-              onFiltersChange({ dateFrom: null, dateTo: null })
-            }
+            onClick={() => onFiltersChange({ dateFrom: null, dateTo: null })}
             className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20"
           >
             <X className="h-3 w-3" />

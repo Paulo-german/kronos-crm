@@ -50,14 +50,14 @@ export function DealFiltersSheet({
 
   const handleStatusToggle = (status: DealStatus) => {
     const newStatus = localFilters.status.includes(status)
-      ? localFilters.status.filter((s) => s !== status)
+      ? localFilters.status.filter((item) => item !== status)
       : [...localFilters.status, status]
     setLocalFilters({ ...localFilters, status: newStatus })
   }
 
   const handlePriorityToggle = (priority: DealPriority) => {
     const newPriority = localFilters.priority.includes(priority)
-      ? localFilters.priority.filter((p) => p !== priority)
+      ? localFilters.priority.filter((item) => item !== priority)
       : [...localFilters.priority, priority]
     setLocalFilters({ ...localFilters, priority: newPriority })
   }
@@ -81,10 +81,7 @@ export function DealFiltersSheet({
   return (
     <Sheet open={isOpen} onOpenChange={handleOpenChange}>
       <SheetTrigger asChild>
-        <Button
-          variant="soft"
-          className="gap-2"
-        >
+        <Button variant="soft" className="gap-2">
           <Filter className="h-4 w-4" />
           Filtros
           {activeFilterCount > 0 && (

@@ -34,7 +34,10 @@ export async function GET(request: NextRequest) {
   const orgSlug = cookieStore.get(ORG_SLUG_COOKIE)?.value
 
   if (!orgSlug) {
-    return NextResponse.json({ error: 'Organization not found' }, { status: 400 })
+    return NextResponse.json(
+      { error: 'Organization not found' },
+      { status: 400 },
+    )
   }
 
   // Validar que o usuário é membro ativo da organização
@@ -78,7 +81,10 @@ export async function GET(request: NextRequest) {
   const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/instagram/callback`
 
   const authUrl = new URL('https://www.instagram.com/oauth/authorize')
-  authUrl.searchParams.set('client_id', process.env.NEXT_PUBLIC_META_INSTAGRAM_APP_ID ?? '')
+  authUrl.searchParams.set(
+    'client_id',
+    process.env.NEXT_PUBLIC_META_INSTAGRAM_APP_ID ?? '',
+  )
   authUrl.searchParams.set('redirect_uri', redirectUri)
   authUrl.searchParams.set('response_type', 'code')
   authUrl.searchParams.set(
@@ -89,9 +95,13 @@ export async function GET(request: NextRequest) {
   authUrl.searchParams.set('state', state)
 
   const finalUrl = authUrl.toString()
+  // eslint-disable-next-line no-console
   console.log('[auth-url] generated:', finalUrl)
 
-  return NextResponse.json({ url: finalUrl }, {
-    headers: { 'Cache-Control': 'no-store' },
-  })
+  return NextResponse.json(
+    { url: finalUrl },
+    {
+      headers: { 'Cache-Control': 'no-store' },
+    },
+  )
 }

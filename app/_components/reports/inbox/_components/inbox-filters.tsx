@@ -1,13 +1,7 @@
 'use client'
 
 import { parseAsString, useQueryStates } from 'nuqs'
-import {
-  MessageSquare,
-  Tag,
-  CheckCircle2,
-  Bot,
-  X,
-} from 'lucide-react'
+import { MessageSquare, Tag, CheckCircle2, Bot, X } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import {
   Select,
@@ -96,29 +90,46 @@ export function InboxFilters({ labels }: InboxFiltersProps) {
   const [filters, setFilters] = useQueryStates(inboxReportFiltersParsers)
 
   const hasActiveFilters =
-    !!filters.channel || !!filters.labelId || !!filters.inboxStatus || !!filters.aiVsHuman
+    !!filters.channel ||
+    !!filters.labelId ||
+    !!filters.inboxStatus ||
+    !!filters.aiVsHuman
 
   function clearAllFilters() {
-    void setFilters({ channel: null, labelId: null, inboxStatus: null, aiVsHuman: null })
+    void setFilters({
+      channel: null,
+      labelId: null,
+      inboxStatus: null,
+      aiVsHuman: null,
+    })
   }
 
   const activeFilterBadges: Array<{ key: string; label: string }> = []
 
   if (filters.channel) {
-    const option = CHANNEL_OPTIONS.find((o) => o.value === filters.channel)
+    const option = CHANNEL_OPTIONS.find(
+      (option) => option.value === filters.channel,
+    )
     if (option) activeFilterBadges.push({ key: 'channel', label: option.label })
   }
   if (filters.labelId) {
-    const selectedLabel = labels.find((l) => l.id === filters.labelId)
-    if (selectedLabel) activeFilterBadges.push({ key: 'labelId', label: selectedLabel.name })
+    const selectedLabel = labels.find((label) => label.id === filters.labelId)
+    if (selectedLabel)
+      activeFilterBadges.push({ key: 'labelId', label: selectedLabel.name })
   }
   if (filters.inboxStatus) {
-    const option = STATUS_OPTIONS.find((o) => o.value === filters.inboxStatus)
-    if (option) activeFilterBadges.push({ key: 'inboxStatus', label: option.label })
+    const option = STATUS_OPTIONS.find(
+      (option) => option.value === filters.inboxStatus,
+    )
+    if (option)
+      activeFilterBadges.push({ key: 'inboxStatus', label: option.label })
   }
   if (filters.aiVsHuman) {
-    const option = AI_HUMAN_OPTIONS.find((o) => o.value === filters.aiVsHuman)
-    if (option) activeFilterBadges.push({ key: 'aiVsHuman', label: option.label })
+    const option = AI_HUMAN_OPTIONS.find(
+      (option) => option.value === filters.aiVsHuman,
+    )
+    if (option)
+      activeFilterBadges.push({ key: 'aiVsHuman', label: option.label })
   }
 
   return (
@@ -162,12 +173,16 @@ export function InboxFilters({ labels }: InboxFiltersProps) {
             <SelectTrigger
               className={cn(
                 'h-8 w-auto min-w-[130px] gap-1.5 border px-2.5 text-xs font-medium',
-                filters.labelId && 'border-primary/40 bg-primary/5 text-primary',
+                filters.labelId &&
+                  'border-primary/40 bg-primary/5 text-primary',
               )}
             >
               <Tag className="size-3.5 text-muted-foreground" />
               {filters.labelId ? (
-                <LabelTriggerContent labels={labels} selectedId={filters.labelId} />
+                <LabelTriggerContent
+                  labels={labels}
+                  selectedId={filters.labelId}
+                />
               ) : (
                 <SelectValue placeholder="Etiqueta" />
               )}
@@ -200,7 +215,8 @@ export function InboxFilters({ labels }: InboxFiltersProps) {
           <SelectTrigger
             className={cn(
               'h-8 w-auto min-w-[120px] gap-1.5 border px-2.5 text-xs font-medium',
-              filters.inboxStatus && 'border-primary/40 bg-primary/5 text-primary',
+              filters.inboxStatus &&
+                'border-primary/40 bg-primary/5 text-primary',
             )}
           >
             <CheckCircle2 className="size-3.5 text-muted-foreground" />
@@ -227,7 +243,8 @@ export function InboxFilters({ labels }: InboxFiltersProps) {
           <SelectTrigger
             className={cn(
               'h-8 w-auto min-w-[120px] gap-1.5 border px-2.5 text-xs font-medium',
-              filters.aiVsHuman && 'border-primary/40 bg-primary/5 text-primary',
+              filters.aiVsHuman &&
+                'border-primary/40 bg-primary/5 text-primary',
             )}
           >
             <Bot className="size-3.5 text-muted-foreground" />

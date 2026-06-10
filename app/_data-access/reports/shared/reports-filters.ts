@@ -4,29 +4,43 @@ import { parseDateRange } from '@/_utils/date-range'
 import type { DealStatus, DealPriority } from '@prisma/client'
 import type { ReportsFilters, DateRange } from './reports-types'
 
-const VALID_STATUSES: DealStatus[] = ['OPEN', 'IN_PROGRESS', 'WON', 'LOST', 'PAUSED']
+const VALID_STATUSES: DealStatus[] = [
+  'OPEN',
+  'IN_PROGRESS',
+  'WON',
+  'LOST',
+  'PAUSED',
+]
 const VALID_PRIORITIES: DealPriority[] = ['low', 'medium', 'high', 'urgent']
 
 export function parseReportsSearchParams(
   searchParams: Record<string, string | string[] | undefined>,
 ): { dateRange: DateRange; filters: ReportsFilters } {
-  const start = typeof searchParams.start === 'string' ? searchParams.start : undefined
-  const end = typeof searchParams.end === 'string' ? searchParams.end : undefined
+  const start =
+    typeof searchParams.start === 'string' ? searchParams.start : undefined
+  const end =
+    typeof searchParams.end === 'string' ? searchParams.end : undefined
   const dateRange = parseDateRange(start, end)
 
   const assignee =
-    typeof searchParams.assignee === 'string' ? searchParams.assignee : undefined
+    typeof searchParams.assignee === 'string'
+      ? searchParams.assignee
+      : undefined
 
   const pipelineId =
-    typeof searchParams.pipelineId === 'string' ? searchParams.pipelineId : undefined
+    typeof searchParams.pipelineId === 'string'
+      ? searchParams.pipelineId
+      : undefined
 
   const productId =
-    typeof searchParams.productId === 'string' ? searchParams.productId : undefined
+    typeof searchParams.productId === 'string'
+      ? searchParams.productId
+      : undefined
 
   // nuqs parseAsArrayOf serializa como vírgula separada: ?status=OPEN,WON
   // Next.js searchParams pode retornar string (vírgula) ou string[] (chaves repetidas)
   const rawStatus = Array.isArray(searchParams.status)
-    ? searchParams.status.flatMap((s) => s.split(','))
+    ? searchParams.status.flatMap((value) => value.split(','))
     : searchParams.status
       ? searchParams.status.split(',')
       : []
@@ -35,7 +49,7 @@ export function parseReportsSearchParams(
   )
 
   const rawPriority = Array.isArray(searchParams.priority)
-    ? searchParams.priority.flatMap((p) => p.split(','))
+    ? searchParams.priority.flatMap((value) => value.split(','))
     : searchParams.priority
       ? searchParams.priority.split(',')
       : []

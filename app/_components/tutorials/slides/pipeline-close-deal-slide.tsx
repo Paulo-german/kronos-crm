@@ -42,7 +42,8 @@ const ACTIONS = [
     labelColor: 'text-foreground',
     descColor: 'text-muted-foreground',
     statusLabel: 'EM ANDAMENTO',
-    statusStyle: 'text-kronos-purple bg-kronos-purple/10 border-kronos-purple/20',
+    statusStyle:
+      'text-kronos-purple bg-kronos-purple/10 border-kronos-purple/20',
   },
 ]
 
@@ -80,9 +81,9 @@ export const PipelineCloseDealSlide = () => {
 
   useEffect(() => {
     if (activeIndex === null) return
-    if (activeIndex === 0) setConfettiKey((k) => k + 1)
+    if (activeIndex === 0) setConfettiKey((prev) => prev + 1)
     const timeout = setTimeout(
-      () => setActiveIndex((prev) => (((prev ?? 0) + 1) % ACTIONS.length)),
+      () => setActiveIndex((prev) => ((prev ?? 0) + 1) % ACTIONS.length),
       1600,
     )
     return () => clearTimeout(timeout)
@@ -115,12 +116,19 @@ export const PipelineCloseDealSlide = () => {
             </motion.div>
           </AnimatePresence>
         </div>
-        <p className="text-[10px] font-bold text-foreground">Proposta Acme Corp</p>
+        <p className="text-[10px] font-bold text-foreground">
+          Proposta Acme Corp
+        </p>
         <p className="text-[9px] text-muted-foreground">R$ 45.000</p>
       </div>
 
       {/* Botões de ação */}
-      <motion.div className="flex flex-col gap-2" variants={containerVariants} initial="hidden" animate="show">
+      <motion.div
+        className="flex flex-col gap-2"
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+      >
         {ACTIONS.map((action, i) => {
           const isActive = activeIndex === i
           return (
@@ -130,7 +138,9 @@ export const PipelineCloseDealSlide = () => {
               animate={{ scale: isActive ? 1.02 : 1 }}
               transition={{ duration: 0.2 }}
               className={`relative flex items-center gap-2.5 rounded-lg px-4 py-3 transition-all duration-300 ${
-                isActive ? `${action.activeBorder} ${action.activeBg}` : 'border border-border bg-card'
+                isActive
+                  ? `${action.activeBorder} ${action.activeBg}`
+                  : 'border border-border bg-card'
               }`}
             >
               <action.icon
@@ -168,7 +178,11 @@ export const PipelineCloseDealSlide = () => {
                       style={{ left: '50%', top: '50%' }}
                       initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
                       animate={{ x: dot.x, y: dot.y, opacity: 0, scale: 0 }}
-                      transition={{ duration: 0.7, delay: di * 0.04, ease: 'easeOut' }}
+                      transition={{
+                        duration: 0.7,
+                        delay: di * 0.04,
+                        ease: 'easeOut',
+                      }}
                     />
                   ))}
                 </div>

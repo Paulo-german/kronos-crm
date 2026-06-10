@@ -96,7 +96,9 @@ const LostReasonsList = ({ initialReasons }: LostReasonsListProps) => {
   const handleToggleActive = (id: string, currentStatus: boolean) => {
     // Optimistic Update
     setReasons((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, isActive: !currentStatus } : r)),
+      prev.map((reason) =>
+        reason.id === id ? { ...reason, isActive: !currentStatus } : reason,
+      ),
     )
     executeUpdateToggle({ id, isActive: !currentStatus })
   }
@@ -163,8 +165,7 @@ const LostReasonsList = ({ initialReasons }: LostReasonsListProps) => {
                               size="icon"
                               disabled={isLoading}
                             >
-                              {isLoading &&
-                              editingReason?.id === reason.id ? (
+                              {isLoading && editingReason?.id === reason.id ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
                                 <MoreHorizontal className="h-4 w-4" />

@@ -44,7 +44,14 @@ import {
   PopoverTrigger,
 } from '@/_components/ui/popover'
 import { Badge } from '@/_components/ui/badge'
-import { ArrowUpDown, User, Check, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react'
+import {
+  ArrowUpDown,
+  User,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+} from 'lucide-react'
 import { cn } from '@/_lib/utils'
 import { Button } from '@/_components/ui/button'
 import type { MemberRole } from '@prisma/client'
@@ -143,14 +150,14 @@ export function KanbanBoard({
       if (action.type === 'move') {
         const newState = { ...state }
         const deal = newState[action.fromStageId]?.find(
-          (d) => d.id === action.dealId,
+          (item) => item.id === action.dealId,
         )
 
         if (!deal) return state
 
         // Remove da coluna antiga
         newState[action.fromStageId] = newState[action.fromStageId].filter(
-          (d) => d.id !== action.dealId,
+          (item) => item.id !== action.dealId,
         )
 
         // Adiciona na nova coluna
@@ -253,27 +260,29 @@ export function KanbanBoard({
       }
 
       // Ordenação
-      filtered[stageId] = [...stageDeals].sort((a, b) => {
+      filtered[stageId] = [...stageDeals].sort((dealA, dealB) => {
         switch (sortBy) {
           case 'created-desc':
             return (
-              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+              new Date(dealB.createdAt).getTime() -
+              new Date(dealA.createdAt).getTime()
             )
           case 'created-asc':
             return (
-              new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+              new Date(dealA.createdAt).getTime() -
+              new Date(dealB.createdAt).getTime()
             )
           case 'value-desc':
-            return b.totalValue - a.totalValue
+            return dealB.totalValue - dealA.totalValue
           case 'value-asc':
-            return a.totalValue - b.totalValue
+            return dealA.totalValue - dealB.totalValue
           case 'priority-desc':
             return (
-              (priorityWeight[b.priority] || 0) -
-              (priorityWeight[a.priority] || 0)
+              (priorityWeight[dealB.priority] || 0) -
+              (priorityWeight[dealA.priority] || 0)
             )
           case 'title-asc':
-            return a.title.localeCompare(b.title)
+            return dealA.title.localeCompare(dealB.title)
           default:
             return 0
         }
@@ -309,7 +318,7 @@ export function KanbanBoard({
   const activeDeal = useMemo(() => {
     if (!activeId) return null
     for (const deals of Object.values(optimisticDeals)) {
-      const found = deals.find((d) => d.id === activeId)
+      const found = deals.find((deal) => deal.id === activeId)
       if (found) return found
     }
     return null
@@ -413,7 +422,7 @@ export function KanbanBoard({
           {pipelineSelector}
           <Select
             value={sortBy}
-            onValueChange={(v) => onSortChange(v as SortOption)}
+            onValueChange={(value) => onSortChange(value as SortOption)}
           >
             <SelectTrigger className="w-[300px] border-border-strong bg-background">
               <ArrowUpDown className="mr-2 h-4 w-4 text-muted-foreground" />
@@ -438,7 +447,9 @@ export function KanbanBoard({
                 {effectiveAssignees.length === 0 ? (
                   'Todos os responsáveis'
                 ) : effectiveAssignees.length === 1 ? (
-                  members.find((member) => member.userId === effectiveAssignees[0])?.name ?? 'Responsável'
+                  (members.find(
+                    (member) => member.userId === effectiveAssignees[0],
+                  )?.name ?? 'Responsável')
                 ) : (
                   <span className="flex items-center gap-1.5">
                     Responsáveis
@@ -460,7 +471,9 @@ export function KanbanBoard({
                     className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent"
                     onClick={() => {
                       const next = isSelected
-                        ? effectiveAssignees.filter((id) => id !== member.userId)
+                        ? effectiveAssignees.filter(
+                            (id) => id !== member.userId,
+                          )
                         : [...effectiveAssignees, member.userId]
                       onAssigneesChange(next)
                     }}
@@ -500,7 +513,7 @@ export function KanbanBoard({
             variant="outline"
             size="icon"
             onClick={handleScrollLeft}
-            className="absolute left-2 top-1/2 z-10 h-8 w-8 -translate-y-1/2 rounded-full shadow-md bg-primary hover:bg-primary"
+            className="absolute left-2 top-1/2 z-10 h-8 w-8 -translate-y-1/2 rounded-full bg-primary shadow-md hover:bg-primary"
           >
             <ChevronLeft className="h-4 w-4 text-white" />
           </Button>
@@ -510,7 +523,7 @@ export function KanbanBoard({
             variant="outline"
             size="icon"
             onClick={handleScrollRight}
-            className="absolute right-2 top-1/2 z-10 h-8 w-8 -translate-y-1/2 rounded-full shadow-md bg-primary hover:bg-primary"
+            className="absolute right-2 top-1/2 z-10 h-8 w-8 -translate-y-1/2 rounded-full bg-primary shadow-md hover:bg-primary"
           >
             <ChevronRight className="h-4 w-4 text-white" />
           </Button>
@@ -526,34 +539,34 @@ export function KanbanBoard({
             ref={scrollRef}
             data-tour="deals-card"
             onScroll={updateScrollState}
-            className="flex min-h-0 flex-1 gap-4 overflow-x-auto overflow-y-hidden pb-4 [scrollbar-width:thin] [scrollbar-color:hsl(var(--primary))_transparent] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-primary [&::-webkit-scrollbar-thumb:hover]:bg-primary"
+            className="flex min-h-0 flex-1 gap-4 overflow-x-auto overflow-y-hidden pb-4 [scrollbar-color:hsl(var(--primary))_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar-thumb:hover]:bg-primary [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-primary [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:h-1.5"
           >
-          {pipeline.stages.map((stage) => (
-            <KanbanColumn
-              key={stage.id}
-              stage={stage}
-              deals={filteredDealsByStage[stage.id] || []}
-              totalPipelineValue={totalPipelineValue}
-              onAddDeal={onAddDeal}
-              onDealClick={onDealClick}
-              onPriorityClick={handlePriorityClick}
-              priorityOverrides={priorityOverrides}
-              showIdleDays={pipeline.showIdleDays}
-            />
-          ))}
-        </div>
-
-        <DragOverlay>
-          {activeDeal && (
-            <div className="rotate-2 scale-105 rounded-lg shadow-2xl ring-2 ring-primary/30">
-              <KanbanCard
-                deal={activeDeal}
-                priorityOverride={priorityOverrides[activeDeal.id]}
+            {pipeline.stages.map((stage) => (
+              <KanbanColumn
+                key={stage.id}
+                stage={stage}
+                deals={filteredDealsByStage[stage.id] || []}
+                totalPipelineValue={totalPipelineValue}
+                onAddDeal={onAddDeal}
+                onDealClick={onDealClick}
+                onPriorityClick={handlePriorityClick}
+                priorityOverrides={priorityOverrides}
                 showIdleDays={pipeline.showIdleDays}
               />
-            </div>
-          )}
-        </DragOverlay>
+            ))}
+          </div>
+
+          <DragOverlay>
+            {activeDeal && (
+              <div className="rotate-2 scale-105 rounded-lg shadow-2xl ring-2 ring-primary/30">
+                <KanbanCard
+                  deal={activeDeal}
+                  priorityOverride={priorityOverrides[activeDeal.id]}
+                  showIdleDays={pipeline.showIdleDays}
+                />
+              </div>
+            )}
+          </DragOverlay>
         </DndContext>
       </div>
 

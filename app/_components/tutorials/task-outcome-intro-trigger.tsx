@@ -18,7 +18,9 @@ export function TaskOutcomeIntroTrigger({
 
   if (hasSeenTaskOutcomeIntro) return null
 
-  const tutorial = TUTORIAL_REGISTRY.find((t) => t.id === 'task-outcome-intro')!
+  const tutorial = TUTORIAL_REGISTRY.find(
+    (tutorial) => tutorial.id === 'task-outcome-intro',
+  )!
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {

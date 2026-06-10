@@ -51,8 +51,12 @@ import type { ProductDto } from '@/_data-access/product/get-products'
 const dashboardFiltersParsers = {
   pipelineId: parseAsString.withOptions({ shallow: false }),
   assignee: parseAsString.withOptions({ shallow: false }),
-  status: parseAsArrayOf(parseAsString).withDefault([]).withOptions({ shallow: false }),
-  priority: parseAsArrayOf(parseAsString).withDefault([]).withOptions({ shallow: false }),
+  status: parseAsArrayOf(parseAsString)
+    .withDefault([])
+    .withOptions({ shallow: false }),
+  priority: parseAsArrayOf(parseAsString)
+    .withDefault([])
+    .withOptions({ shallow: false }),
   inactiveDays: parseAsInteger.withOptions({ shallow: false }),
   productId: parseAsString.withOptions({ shallow: false }),
 }
@@ -60,7 +64,11 @@ const dashboardFiltersParsers = {
 // --- Config de Status ---
 const STATUS_OPTIONS = [
   { value: 'OPEN', label: 'Aberto', color: 'hsl(var(--primary))' },
-  { value: 'IN_PROGRESS', label: 'Em andamento', color: 'hsl(var(--kronos-blue))' },
+  {
+    value: 'IN_PROGRESS',
+    label: 'Em andamento',
+    color: 'hsl(var(--kronos-blue))',
+  },
   { value: 'WON', label: 'Ganho', color: 'var(--kronos-green)' },
   { value: 'LOST', label: 'Perdido', color: 'hsl(var(--kronos-red))' },
   { value: 'PAUSED', label: 'Pausado', color: 'hsl(var(--muted-foreground))' },
@@ -68,10 +76,25 @@ const STATUS_OPTIONS = [
 
 // --- Config de Prioridade ---
 const PRIORITY_OPTIONS = [
-  { value: 'low', label: 'Baixa', icon: Flag, className: 'text-muted-foreground' },
-  { value: 'medium', label: 'Média', icon: Flag, className: 'text-kronos-blue' },
+  {
+    value: 'low',
+    label: 'Baixa',
+    icon: Flag,
+    className: 'text-muted-foreground',
+  },
+  {
+    value: 'medium',
+    label: 'Média',
+    icon: Flag,
+    className: 'text-kronos-blue',
+  },
   { value: 'high', label: 'Alta', icon: Flag, className: 'text-kronos-yellow' },
-  { value: 'urgent', label: 'Urgente', icon: Flag, className: 'text-kronos-red' },
+  {
+    value: 'urgent',
+    label: 'Urgente',
+    icon: Flag,
+    className: 'text-kronos-red',
+  },
 ] as const
 
 // --- Opções de Inatividade ---
@@ -133,14 +156,16 @@ export function DashboardFiltersBar({
   const activeFilterBadges: Array<{ key: string; label: string }> = []
 
   if (filters.pipelineId) {
-    const pipeline = pipelines.find((p) => p.id === filters.pipelineId)
+    const pipeline = pipelines.find(
+      (pipeline) => pipeline.id === filters.pipelineId,
+    )
     if (pipeline) {
       activeFilterBadges.push({ key: 'pipelineId', label: pipeline.name })
     }
   }
 
   if (filters.assignee && isElevated) {
-    const member = members?.find((m) => m.userId === filters.assignee)
+    const member = members?.find((member) => member.userId === filters.assignee)
     if (member) {
       activeFilterBadges.push({
         key: 'assignee',
@@ -150,22 +175,30 @@ export function DashboardFiltersBar({
   }
 
   for (const statusValue of filters.status) {
-    const opt = STATUS_OPTIONS.find((s) => s.value === statusValue)
+    const opt = STATUS_OPTIONS.find((option) => option.value === statusValue)
     if (opt) {
-      activeFilterBadges.push({ key: `status-${statusValue}`, label: opt.label })
+      activeFilterBadges.push({
+        key: `status-${statusValue}`,
+        label: opt.label,
+      })
     }
   }
 
   for (const priorityValue of filters.priority) {
-    const opt = PRIORITY_OPTIONS.find((p) => p.value === priorityValue)
+    const opt = PRIORITY_OPTIONS.find(
+      (option) => option.value === priorityValue,
+    )
     if (opt) {
-      activeFilterBadges.push({ key: `priority-${priorityValue}`, label: opt.label })
+      activeFilterBadges.push({
+        key: `priority-${priorityValue}`,
+        label: opt.label,
+      })
     }
   }
 
   if (filters.inactiveDays) {
     const opt = INACTIVITY_OPTIONS.find(
-      (o) => o.value === String(filters.inactiveDays),
+      (option) => option.value === String(filters.inactiveDays),
     )
     activeFilterBadges.push({
       key: 'inactiveDays',
@@ -174,7 +207,7 @@ export function DashboardFiltersBar({
   }
 
   if (filters.productId) {
-    const product = products.find((p) => p.id === filters.productId)
+    const product = products.find((product) => product.id === filters.productId)
     if (product) {
       activeFilterBadges.push({ key: 'productId', label: product.name })
     }
@@ -270,14 +303,16 @@ function removeBadgeFilter(
     inactiveDays: number | null
     productId: string | null
   },
-  setFilters: (values: Partial<{
-    pipelineId: string | null
-    assignee: string | null
-    status: string[]
-    priority: string[]
-    inactiveDays: number | null
-    productId: string | null
-  }>) => void,
+  setFilters: (
+    values: Partial<{
+      pipelineId: string | null
+      assignee: string | null
+      status: string[]
+      priority: string[]
+      inactiveDays: number | null
+      productId: string | null
+    }>,
+  ) => void,
 ) {
   if (key === 'pipelineId') {
     void setFilters({ pipelineId: null })
@@ -289,12 +324,16 @@ function removeBadgeFilter(
   }
   if (key.startsWith('status-')) {
     const statusValue = key.replace('status-', '')
-    void setFilters({ status: filters.status.filter((s) => s !== statusValue) })
+    void setFilters({
+      status: filters.status.filter((item) => item !== statusValue),
+    })
     return
   }
   if (key.startsWith('priority-')) {
     const priorityValue = key.replace('priority-', '')
-    void setFilters({ priority: filters.priority.filter((p) => p !== priorityValue) })
+    void setFilters({
+      priority: filters.priority.filter((item) => item !== priorityValue),
+    })
     return
   }
   if (key === 'inactiveDays') {
@@ -318,7 +357,9 @@ function PipelineFilter({ pipelines, value, onChange }: PipelineFilterProps) {
   return (
     <Select
       value={value ?? 'all'}
-      onValueChange={(v) => onChange(v === 'all' ? null : v)}
+      onValueChange={(selected) =>
+        onChange(selected === 'all' ? null : selected)
+      }
     >
       <SelectTrigger className="h-8 w-auto min-w-[130px] gap-1.5 border px-2.5 text-xs font-medium">
         <GitBranch className="size-3.5 text-muted-foreground" />
@@ -344,12 +385,14 @@ interface AssigneeFilterProps {
 }
 
 function AssigneeFilter({ members, value, onChange }: AssigneeFilterProps) {
-  const selectedMember = members.find((m) => m.userId === value)
+  const selectedMember = members.find((member) => member.userId === value)
 
   return (
     <Select
       value={value ?? 'all'}
-      onValueChange={(v) => onChange(v === 'all' ? null : v)}
+      onValueChange={(selected) =>
+        onChange(selected === 'all' ? null : selected)
+      }
     >
       <SelectTrigger className="h-8 w-auto min-w-[130px] gap-1.5 border px-2.5 text-xs font-medium">
         <Users className="size-3.5 text-muted-foreground" />
@@ -376,10 +419,7 @@ function AssigneeFilter({ members, value, onChange }: AssigneeFilterProps) {
         <SelectItem value="all">Todos os membros</SelectItem>
         <SelectSeparator />
         {members.map((member) => (
-          <SelectItem
-            key={member.id}
-            value={member.userId ?? member.id}
-          >
+          <SelectItem key={member.id} value={member.userId ?? member.id}>
             <div className="flex items-center gap-2">
               <Avatar className="size-5">
                 <AvatarImage
@@ -409,7 +449,7 @@ function StatusFilter({ value, onChange }: StatusFilterProps) {
 
   function toggleStatus(statusValue: string) {
     if (value.includes(statusValue)) {
-      onChange(value.filter((s) => s !== statusValue))
+      onChange(value.filter((item) => item !== statusValue))
     } else {
       onChange([...value, statusValue])
     }
@@ -487,7 +527,7 @@ function PriorityFilter({ value, onChange }: PriorityFilterProps) {
 
   function togglePriority(priorityValue: string) {
     if (value.includes(priorityValue)) {
-      onChange(value.filter((p) => p !== priorityValue))
+      onChange(value.filter((item) => item !== priorityValue))
     } else {
       onChange([...value, priorityValue])
     }
@@ -562,16 +602,22 @@ function InactivityFilter({ value, onChange }: InactivityFilterProps) {
   return (
     <Select
       value={value ? String(value) : 'all'}
-      onValueChange={(v) => onChange(v === 'all' ? null : Number(v))}
+      onValueChange={(selected) =>
+        onChange(selected === 'all' ? null : Number(selected))
+      }
     >
-      <SelectTrigger className={cn(
-        'h-8 w-auto min-w-[130px] gap-1.5 border px-2.5 text-xs font-medium',
-        value && 'border-primary/40 bg-primary/5 text-primary',
-      )}>
+      <SelectTrigger
+        className={cn(
+          'h-8 w-auto min-w-[130px] gap-1.5 border px-2.5 text-xs font-medium',
+          value && 'border-primary/40 bg-primary/5 text-primary',
+        )}
+      >
         <Clock className="size-3.5 text-muted-foreground" />
         {value ? (
           <span>
-            {INACTIVITY_OPTIONS.find((o) => o.value === String(value))?.label ?? `${value} dias`} sem atividade
+            {INACTIVITY_OPTIONS.find((option) => option.value === String(value))
+              ?.label ?? `${value} dias`}{' '}
+            sem atividade
           </span>
         ) : (
           <SelectValue placeholder="Inatividade" />
@@ -597,17 +643,21 @@ interface ProductFilterProps {
 }
 
 function ProductFilter({ products, value, onChange }: ProductFilterProps) {
-  const selectedProduct = products.find((p) => p.id === value)
+  const selectedProduct = products.find((product) => product.id === value)
 
   return (
     <Select
       value={value ?? 'all'}
-      onValueChange={(v) => onChange(v === 'all' ? null : v)}
+      onValueChange={(selected) =>
+        onChange(selected === 'all' ? null : selected)
+      }
     >
-      <SelectTrigger className={cn(
-        'h-8 w-auto min-w-[130px] gap-1.5 border px-2.5 text-xs font-medium',
-        value && 'border-primary/40 bg-primary/5 text-primary',
-      )}>
+      <SelectTrigger
+        className={cn(
+          'h-8 w-auto min-w-[130px] gap-1.5 border px-2.5 text-xs font-medium',
+          value && 'border-primary/40 bg-primary/5 text-primary',
+        )}
+      >
         <Package className="size-3.5 text-muted-foreground" />
         {selectedProduct ? (
           <span className="max-w-[120px] truncate">{selectedProduct.name}</span>

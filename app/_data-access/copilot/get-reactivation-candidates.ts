@@ -65,7 +65,10 @@ const fetchReactivationCandidatesFromDb = async (
   const enriched: EnrichedCandidate[] = contacts
     .map((contact): EnrichedCandidate => {
       const wonDeals: WonDealRow[] = contact.deals.map((join) => join.deal)
-      const ltvBrl = wonDeals.reduce((acc, deal) => acc + (deal.value !== null ? Number(deal.value) : 0), 0)
+      const ltvBrl = wonDeals.reduce(
+        (acc, deal) => acc + (deal.value !== null ? Number(deal.value) : 0),
+        0,
+      )
 
       let lastWon: WonDealRow | null = null
       for (const deal of wonDeals) {
@@ -96,16 +99,23 @@ const fetchReactivationCandidatesFromDb = async (
     .filter((row) => row.dto.ltvBrl >= params.minLtv)
 
   if (params.sort === 'ltvDesc') {
-    enriched.sort((a, b) => b.dto.ltvBrl - a.dto.ltvBrl)
+    enriched.sort(
+      (candidateA, candidateB) => candidateB.dto.ltvBrl - candidateA.dto.ltvBrl,
+    )
   }
   if (params.sort === 'recentlyDormantDesc') {
     // Sem campo "dormant_at" — proxy: deals WON mais recentes primeiro
-    enriched.sort((a, b) => (b.lastWonAtMs ?? 0) - (a.lastWonAtMs ?? 0))
+    enriched.sort(
+      (candidateA, candidateB) =>
+        (candidateB.lastWonAtMs ?? 0) - (candidateA.lastWonAtMs ?? 0),
+    )
   }
 
   const total = enriched.length
   const start = (params.page - 1) * params.pageSize
-  const paged = enriched.slice(start, start + params.pageSize).map((row) => row.dto)
+  const paged = enriched
+    .slice(start, start + params.pageSize)
+    .map((row) => row.dto)
 
   return { data: paged, total }
 }

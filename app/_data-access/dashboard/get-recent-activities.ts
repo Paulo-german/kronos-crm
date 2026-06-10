@@ -27,15 +27,15 @@ async function fetchRecentActivities(
     take: 8,
   })
 
-  return activities.map((a) => ({
-    id: a.id,
-    type: a.type,
-    content: a.content,
-    createdAt: a.createdAt,
-    dealId: a.deal.id,
-    dealTitle: a.deal.title,
-    performerName: a.performer?.fullName ?? null,
-    performerAvatar: a.performer?.avatarUrl ?? null,
+  return activities.map((activity) => ({
+    id: activity.id,
+    type: activity.type,
+    content: activity.content,
+    createdAt: activity.createdAt,
+    dealId: activity.deal.id,
+    dealTitle: activity.deal.title,
+    performerName: activity.performer?.fullName ?? null,
+    performerAvatar: activity.performer?.avatarUrl ?? null,
   }))
 }
 

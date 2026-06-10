@@ -49,8 +49,9 @@ const rowVariants = {
 
 export const DealDetailProductsSlide = () => {
   const count = useMotionValue(0)
-  const displayValue = useTransform(count, (v) =>
-    `R$ ${Math.round(v).toLocaleString('pt-BR')}`
+  const displayValue = useTransform(
+    count,
+    (current) => `R$ ${Math.round(current).toLocaleString('pt-BR')}`,
   )
 
   useEffect(() => {
@@ -74,7 +75,9 @@ export const DealDetailProductsSlide = () => {
         variants={rowVariants}
         className="flex items-center justify-between border-b border-border px-3.5 py-2.5"
       >
-        <p className="text-sm font-semibold text-foreground">Produtos & Serviços</p>
+        <p className="text-sm font-semibold text-foreground">
+          Produtos & Serviços
+        </p>
         <button className="rounded-md bg-primary px-2.5 py-1 text-[9px] font-semibold text-primary-foreground">
           + Adicionar
         </button>
@@ -82,10 +85,18 @@ export const DealDetailProductsSlide = () => {
 
       {/* Table head */}
       <div className="grid grid-cols-[auto_1fr_auto_auto] gap-x-3 border-b border-border px-3.5 py-1.5">
-        <span className="text-[8px] font-medium uppercase text-muted-foreground">Tipo</span>
-        <span className="text-[8px] font-medium uppercase text-muted-foreground">Item</span>
-        <span className="text-[8px] font-medium uppercase text-muted-foreground">Qtd</span>
-        <span className="text-[8px] font-medium uppercase text-muted-foreground">Valor</span>
+        <span className="text-[8px] font-medium uppercase text-muted-foreground">
+          Tipo
+        </span>
+        <span className="text-[8px] font-medium uppercase text-muted-foreground">
+          Item
+        </span>
+        <span className="text-[8px] font-medium uppercase text-muted-foreground">
+          Qtd
+        </span>
+        <span className="text-[8px] font-medium uppercase text-muted-foreground">
+          Valor
+        </span>
       </div>
 
       {/* Rows */}
@@ -96,13 +107,19 @@ export const DealDetailProductsSlide = () => {
             variants={rowVariants}
             className="grid grid-cols-[auto_1fr_auto_auto] items-center gap-x-3 px-3.5 py-2.5"
           >
-            <span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[7px] font-semibold ${item.style}`}>
+            <span
+              className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[7px] font-semibold ${item.style}`}
+            >
               <item.icon className="h-2 w-2" />
               {item.label}
             </span>
-            <span className="text-[9px] font-medium text-foreground">{item.name}</span>
+            <span className="text-[9px] font-medium text-foreground">
+              {item.name}
+            </span>
             <span className="text-[9px] text-muted-foreground">{item.qty}</span>
-            <span className={`text-[9px] font-semibold ${item.priceStyle ?? 'text-foreground'}`}>
+            <span
+              className={`text-[9px] font-semibold ${item.priceStyle ?? 'text-foreground'}`}
+            >
               {item.price}
             </span>
           </motion.div>
@@ -115,7 +132,9 @@ export const DealDetailProductsSlide = () => {
         className="flex items-center justify-between border-t border-border bg-muted/30 px-3.5 py-2.5"
       >
         <span className="text-[10px] font-semibold text-foreground">Total</span>
-        <motion.span className="text-sm font-bold text-primary">{displayValue}</motion.span>
+        <motion.span className="text-sm font-bold text-primary">
+          {displayValue}
+        </motion.span>
       </motion.div>
     </motion.div>
   )

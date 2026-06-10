@@ -47,7 +47,7 @@ export function AppointmentFiltersSheet({
 
   const handleStatusToggle = (status: AppointmentStatus) => {
     const newStatus = localFilters.status.includes(status)
-      ? localFilters.status.filter((s) => s !== status)
+      ? localFilters.status.filter((item) => item !== status)
       : [...localFilters.status, status]
     setLocalFilters({ ...localFilters, status: newStatus })
   }
@@ -64,10 +64,7 @@ export function AppointmentFiltersSheet({
   return (
     <Sheet open={isOpen} onOpenChange={handleOpenChange}>
       <SheetTrigger asChild>
-        <Button
-          variant="soft"
-          className="gap-2"
-        >
+        <Button variant="soft" className="gap-2">
           <Filter className="h-4 w-4" />
           Filtros
           {activeFilterCount > 0 && (

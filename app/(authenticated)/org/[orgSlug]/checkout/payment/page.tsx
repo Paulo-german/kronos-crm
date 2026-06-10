@@ -22,7 +22,7 @@ export default async function PaymentPage({
     redirect(`/org/${orgSlug}/settings/billing`)
   }
 
-  const selectedPlan = PLANS.find((p) => p.id === plan)
+  const selectedPlan = PLANS.find((planOption) => planOption.id === plan)
   if (!selectedPlan) {
     redirect(`/org/${orgSlug}/settings/billing`)
   }

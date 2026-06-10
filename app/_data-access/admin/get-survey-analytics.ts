@@ -35,7 +35,7 @@ const buildDistribution = (
       count,
       percentage: Math.round((count / total) * 100),
     }))
-    .sort((a, b) => b.count - a.count)
+    .sort((itemA, itemB) => itemB.count - itemA.count)
 }
 
 export async function getSurveyAnalytics(): Promise<SurveyAnalyticsDto> {

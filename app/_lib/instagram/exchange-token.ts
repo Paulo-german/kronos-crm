@@ -27,10 +27,7 @@ export class InstagramApiError extends Error {
     let apiMessage = rawBody
     try {
       const parsed = JSON.parse(rawBody) as InstagramApiErrorBody
-      apiMessage =
-        parsed.error_message ??
-        parsed.error?.message ??
-        rawBody
+      apiMessage = parsed.error_message ?? parsed.error?.message ?? rawBody
     } catch {
       // rawBody não é JSON — usa como está
     }
@@ -55,6 +52,7 @@ export async function exchangeInstagramCodeForToken(
     code,
   })
 
+  // eslint-disable-next-line no-console
   console.log('[exchange-token] short-lived token request:', {
     url: 'https://api.instagram.com/oauth/access_token',
     client_id: process.env.NEXT_PUBLIC_META_INSTAGRAM_APP_ID,
@@ -70,6 +68,7 @@ export async function exchangeInstagramCodeForToken(
   })
 
   const errorBody = await response.text().catch(() => 'unknown')
+  // eslint-disable-next-line no-console
   console.log('[exchange-token] short-lived token response:', {
     status: response.status,
     body: errorBody,
@@ -80,7 +79,11 @@ export async function exchangeInstagramCodeForToken(
   }
 
   let data: ShortLivedTokenResponse | null = null
-  try { data = JSON.parse(errorBody) as ShortLivedTokenResponse } catch { data = null }
+  try {
+    data = JSON.parse(errorBody) as ShortLivedTokenResponse
+  } catch {
+    data = null
+  }
 
   if (!data?.access_token || !data?.user_id) {
     throw new Error(
@@ -98,10 +101,15 @@ export async function exchangeInstagramCodeForToken(
  * Troca o short-lived token (1h) por um long-lived token (60 dias).
  * Usa graph.instagram.com sem versão — endpoint de troca não é versionado.
  */
-export async function getLongLivedInstagramToken(shortLivedToken: string): Promise<string> {
+export async function getLongLivedInstagramToken(
+  shortLivedToken: string,
+): Promise<string> {
   const url = new URL('https://graph.instagram.com/access_token')
   url.searchParams.set('grant_type', 'ig_exchange_token')
-  url.searchParams.set('client_secret', process.env.META_INSTAGRAM_APP_SECRET ?? '')
+  url.searchParams.set(
+    'client_secret',
+    process.env.META_INSTAGRAM_APP_SECRET ?? '',
+  )
   url.searchParams.set('access_token', shortLivedToken)
 
   const response = await fetch(url.toString())
@@ -111,7 +119,9 @@ export async function getLongLivedInstagramToken(shortLivedToken: string): Promi
     throw new InstagramApiError(response.status, errorBody)
   }
 
-  const data = (await response.json().catch(() => null)) as LongLivedTokenResponse | null
+  const data = (await response
+    .json()
+    .catch(() => null)) as LongLivedTokenResponse | null
 
   if (!data?.access_token) {
     throw new Error(

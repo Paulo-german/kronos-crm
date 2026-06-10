@@ -1,8 +1,6 @@
 import { z } from 'zod'
 
-export const webhookEventTypeSchema = z.enum([
-  'UPSERT_CONTACT',
-])
+export const webhookEventTypeSchema = z.enum(['UPSERT_CONTACT'])
 
 export const webhookPlatformSchema = z.enum([
   'GENERIC',
@@ -35,9 +33,15 @@ const VALID_MAPPING_KEYS = new Set(fieldMappingKeySchema.options)
 // z.record(z.string()) em vez de z.record(z.enum()) porque no Zod v4 o enum-key record
 // exige TODAS as chaves do enum presentes, o que quebraria formulários com mapeamento vazio
 export const fieldMappingSchema = z
-  .record(z.string(), z.string().trim().min(1, 'O path do payload é obrigatório'))
+  .record(
+    z.string(),
+    z.string().trim().min(1, 'O path do payload é obrigatório'),
+  )
   .refine(
-    (obj) => Object.keys(obj).every((k) => VALID_MAPPING_KEYS.has(k as FieldMappingKey)),
+    (obj) =>
+      Object.keys(obj).every((key) =>
+        VALID_MAPPING_KEYS.has(key as FieldMappingKey),
+      ),
     { message: 'Chave de mapeamento inválida' },
   )
 
@@ -101,7 +105,9 @@ export const replayWebhookLogSchema = z.object({
 
 // WebhookEventType do Prisma inclui valores legados (NEW_CONTACT, UPDATE_CONTACT, NEW_DEAL etc.)
 // que não são mais expostos na UI mas podem existir em registros antigos
-export type WebhookEventTypeValue = z.infer<typeof webhookEventTypeSchema> | string
+export type WebhookEventTypeValue =
+  | z.infer<typeof webhookEventTypeSchema>
+  | string
 
 export interface WebhookSourceDto {
   id: string

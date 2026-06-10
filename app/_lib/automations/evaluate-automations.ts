@@ -24,7 +24,10 @@ import { z } from 'zod'
 // Janela de deduplicação padrão: 60 minutos
 const DEFAULT_DEDUP_WINDOW_MS = 60 * 60 * 1000
 
-function tryRevalidateAutomationCache(automationId: string, orgId: string): void {
+function tryRevalidateAutomationCache(
+  automationId: string,
+  orgId: string,
+): void {
   try {
     revalidateTag(`automation:${automationId}`)
     revalidateTag(`automations:${orgId}`)
@@ -42,7 +45,9 @@ function tryRevalidateAutomationCache(automationId: string, orgId: string): void
  * Feito de forma lazy pelo orquestrador para não adicionar queries extras
  * nas actions que disparam o evento.
  */
-async function fetchDealForEvaluation(dealId: string): Promise<DealForEvaluation | null> {
+async function fetchDealForEvaluation(
+  dealId: string,
+): Promise<DealForEvaluation | null> {
   const deal = await db.deal.findUnique({
     where: { id: dealId },
     select: {
@@ -88,7 +93,9 @@ async function fetchDealForEvaluation(dealId: string): Promise<DealForEvaluation
  * Busca o contato do banco para avaliação de condições.
  * Lazy pelo orquestrador para não adicionar queries extras nas actions/webhooks.
  */
-async function fetchContactForEvaluation(contactId: string): Promise<ContactForEvaluation | null> {
+async function fetchContactForEvaluation(
+  contactId: string,
+): Promise<ContactForEvaluation | null> {
   return db.contact.findUnique({
     where: { id: contactId },
     select: {
@@ -123,22 +130,26 @@ function triggerConfigMatches(
 
   if (triggerType === 'DEAL_MOVED') {
     const config = triggerConfig as Partial<DealMovedConfig>
-    if (config.pipelineId && payload.pipelineId !== config.pipelineId) return false
+    if (config.pipelineId && payload.pipelineId !== config.pipelineId)
+      return false
     if (config.toStageId && payload.toStageId !== config.toStageId) return false
-    if (config.fromStageId && payload.fromStageId !== config.fromStageId) return false
+    if (config.fromStageId && payload.fromStageId !== config.fromStageId)
+      return false
     return true
   }
 
   if (triggerType === 'DEAL_CREATED') {
     const config = triggerConfig as Partial<DealCreatedConfig>
-    if (config.pipelineId && payload.pipelineId !== config.pipelineId) return false
+    if (config.pipelineId && payload.pipelineId !== config.pipelineId)
+      return false
     if (config.stageId && payload.stageId !== config.stageId) return false
     return true
   }
 
   if (triggerType === 'DEAL_STATUS_CHANGED') {
     const config = triggerConfig as Partial<DealStatusChangedConfig>
-    if (config.pipelineId && payload.pipelineId !== config.pipelineId) return false
+    if (config.pipelineId && payload.pipelineId !== config.pipelineId)
+      return false
     if (config.statuses && config.statuses.length > 0) {
       const status = payload.status as DealStatus | undefined
       if (!status || !config.statuses.includes(status)) return false
@@ -148,7 +159,8 @@ function triggerConfigMatches(
 
   if (triggerType === 'DEAL_STALE') {
     const config = triggerConfig as Partial<DealStaleConfig>
-    if (config.pipelineId && payload.pipelineId !== config.pipelineId) return false
+    if (config.pipelineId && payload.pipelineId !== config.pipelineId)
+      return false
     return true
   }
 
@@ -160,20 +172,27 @@ function triggerConfigMatches(
 
   if (triggerType === 'ACTIVITY_CREATED') {
     const config = triggerConfig as Partial<ActivityCreatedConfig>
-    if (config.pipelineId && payload.pipelineId !== config.pipelineId) return false
+    if (config.pipelineId && payload.pipelineId !== config.pipelineId)
+      return false
     if (config.activityTypes && config.activityTypes.length > 0) {
       const activityType = payload.activityType as string | undefined
-      if (!activityType || !config.activityTypes.includes(activityType)) return false
+      if (!activityType || !config.activityTypes.includes(activityType))
+        return false
     }
     return true
   }
 
   if (triggerType === 'CONTACT_CREATED') {
     const config = triggerConfig as Partial<ContactCreatedConfig>
-    if (config.lifecycleStage && payload.lifecycleStage !== config.lifecycleStage) return false
+    if (
+      config.lifecycleStage &&
+      payload.lifecycleStage !== config.lifecycleStage
+    )
+      return false
     if (config.sources && config.sources.length > 0) {
       const source = payload.source as string | undefined
-      if (!source || !(config.sources as string[]).includes(source)) return false
+      if (!source || !(config.sources as string[]).includes(source))
+        return false
     }
     return true
   }
@@ -227,8 +246,13 @@ async function isDuplicate(
  *
  * Fire-and-forget: erros são logados mas nunca propagados ao caller.
  */
-export async function evaluateAutomations(event: AutomationEvent): Promise<void> {
-  const automations = await getActiveAutomationsByTrigger(event.orgId, event.triggerType)
+export async function evaluateAutomations(
+  event: AutomationEvent,
+): Promise<void> {
+  const automations = await getActiveAutomationsByTrigger(
+    event.orgId,
+    event.triggerType,
+  )
 
   if (automations.length === 0) return
 
@@ -238,23 +262,32 @@ export async function evaluateAutomations(event: AutomationEvent): Promise<void>
       : await fetchContactForEvaluation(event.contactId)
 
   if (!subject) {
-    console.error(`[automation-engine] Subject não encontrado para evento ${event.triggerType}`)
+    console.error(
+      `[automation-engine] Subject não encontrado para evento ${event.triggerType}`,
+    )
     return
   }
 
-  const subjectId = event.subjectKind === 'deal' ? event.dealId : event.contactId
+  const subjectId =
+    event.subjectKind === 'deal' ? event.dealId : event.contactId
   const subjectIdField =
-    event.subjectKind === 'deal' ? { dealId: event.dealId } : { contactId: event.contactId }
+    event.subjectKind === 'deal'
+      ? { dealId: event.dealId }
+      : { contactId: event.contactId }
 
-  const deal = event.subjectKind === 'deal' ? (subject as DealForEvaluation) : null
-  const contact = event.subjectKind === 'contact' ? (subject as ContactForEvaluation) : null
+  const deal =
+    event.subjectKind === 'deal' ? (subject as DealForEvaluation) : null
+  const contact =
+    event.subjectKind === 'contact' ? (subject as ContactForEvaluation) : null
 
   for (const automation of automations) {
     const startedAt = Date.now()
 
     try {
       // Parse das conditions do JSON do banco com o schema Zod (garante type-safety)
-      const conditionsParse = z.array(automationConditionSchema).safeParse(automation.conditions)
+      const conditionsParse = z
+        .array(automationConditionSchema)
+        .safeParse(automation.conditions)
       if (!conditionsParse.success) {
         console.error(
           `[automation-engine] Conditions inválidas para automação ${automation.id}:`,
@@ -266,7 +299,10 @@ export async function evaluateAutomations(event: AutomationEvent): Promise<void>
 
       // 0. Validação do triggerConfig contra o payload do evento
       // event.triggerType é o filtro usado na busca, então é o mesmo da automação.
-      const triggerConfig = (automation.triggerConfig ?? {}) as Record<string, unknown>
+      const triggerConfig = (automation.triggerConfig ?? {}) as Record<
+        string,
+        unknown
+      >
       if (!triggerConfigMatches(event.triggerType, triggerConfig, event)) {
         await db.automationExecution.create({
           data: {
@@ -275,7 +311,9 @@ export async function evaluateAutomations(event: AutomationEvent): Promise<void>
             ...subjectIdField,
             status: 'SKIPPED',
             triggerPayload: event.payload as Prisma.InputJsonValue,
-            actionResult: { reason: 'trigger_config_mismatch' } as Prisma.InputJsonValue,
+            actionResult: {
+              reason: 'trigger_config_mismatch',
+            } as Prisma.InputJsonValue,
             durationMs: Date.now() - startedAt,
           },
         })
@@ -284,7 +322,11 @@ export async function evaluateAutomations(event: AutomationEvent): Promise<void>
       }
 
       // 1. Avaliação de condições
-      const conditionsMet = evaluateConditions(subject, conditions, event.subjectKind)
+      const conditionsMet = evaluateConditions(
+        subject,
+        conditions,
+        event.subjectKind,
+      )
       if (!conditionsMet) {
         await db.automationExecution.create({
           data: {
@@ -293,7 +335,9 @@ export async function evaluateAutomations(event: AutomationEvent): Promise<void>
             ...subjectIdField,
             status: 'SKIPPED',
             triggerPayload: event.payload as Prisma.InputJsonValue,
-            actionResult: { reason: 'conditions_not_met' } as Prisma.InputJsonValue,
+            actionResult: {
+              reason: 'conditions_not_met',
+            } as Prisma.InputJsonValue,
             durationMs: Date.now() - startedAt,
           },
         })
@@ -309,6 +353,7 @@ export async function evaluateAutomations(event: AutomationEvent): Promise<void>
         DEFAULT_DEDUP_WINDOW_MS,
       )
       if (duplicate) {
+        // eslint-disable-next-line no-console
         console.info(
           `[automation-engine] Dedup: automação ${automation.id} já executou para ${event.subjectKind} ${subjectId} nos últimos 60min`,
         )
@@ -351,23 +396,26 @@ export async function evaluateAutomations(event: AutomationEvent): Promise<void>
 
       tryRevalidateAutomationCache(automation.id, event.orgId)
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error)
+      const errorMessage =
+        error instanceof Error ? error.message : String(error)
       console.error(
         `[automation-engine] Falha ao executar automação ${automation.id} para ${event.subjectKind} ${subjectId}:`,
         errorMessage,
       )
 
-      await db.automationExecution.create({
-        data: {
-          automationId: automation.id,
-          organizationId: event.orgId,
-          ...subjectIdField,
-          status: 'FAILED',
-          triggerPayload: event.payload as Prisma.InputJsonValue,
-          errorMessage,
-          durationMs: Date.now() - startedAt,
-        },
-      }).catch(() => {})
+      await db.automationExecution
+        .create({
+          data: {
+            automationId: automation.id,
+            organizationId: event.orgId,
+            ...subjectIdField,
+            status: 'FAILED',
+            triggerPayload: event.payload as Prisma.InputJsonValue,
+            errorMessage,
+            durationMs: Date.now() - startedAt,
+          },
+        })
+        .catch(() => {})
 
       tryRevalidateAutomationCache(automation.id, event.orgId)
     }

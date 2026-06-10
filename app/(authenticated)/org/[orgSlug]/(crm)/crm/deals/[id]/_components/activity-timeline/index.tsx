@@ -6,9 +6,16 @@ import { useAction } from 'next-safe-action/hooks'
 import type { DealActivityDto } from '@/_data-access/deal/get-deal-details'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import { Button } from '@/_components/ui/button'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/_components/ui/tooltip'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/_components/ui/tooltip'
 import { getActivities } from '@/_actions/deal/get-activities'
-import { MANUAL_ACTIVITY_CONFIG, type ManualActivityType } from '@/_lib/deal/activity-config'
+import {
+  MANUAL_ACTIVITY_CONFIG,
+  type ManualActivityType,
+} from '@/_lib/deal/activity-config'
 import { ActivityItem } from './activity-item'
 import { CreateActivityDialog } from '../create-activity-dialog'
 
@@ -29,22 +36,24 @@ const ActivityTimeline = ({
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [extraActivities, setExtraActivities] = useState<DealActivityDto[]>([])
   const [prevInitialIds, setPrevInitialIds] = useState(() =>
-    initialActivities.map((a) => a.id).join(','),
+    initialActivities.map((activity) => activity.id).join(','),
   )
 
-  const currentInitialIds = initialActivities.map((a) => a.id).join(',')
+  const currentInitialIds = initialActivities
+    .map((activity) => activity.id)
+    .join(',')
   if (currentInitialIds !== prevInitialIds) {
     setPrevInitialIds(currentInitialIds)
     setExtraActivities([])
   }
 
   const activities = useMemo(() => {
-    const seen = new Set(initialActivities.map((a) => a.id))
+    const seen = new Set(initialActivities.map((activity) => activity.id))
     const result = [...initialActivities]
-    for (const a of extraActivities) {
-      if (!seen.has(a.id)) {
-        seen.add(a.id)
-        result.push(a)
+    for (const activity of extraActivities) {
+      if (!seen.has(activity.id)) {
+        seen.add(activity.id)
+        result.push(activity)
       }
     }
     return result
@@ -78,7 +87,9 @@ const ActivityTimeline = ({
               Histórico de Atividades
             </CardTitle>
             {totalActivities > 0 && (
-              <span className="text-xs text-muted-foreground">{totalActivities}</span>
+              <span className="text-xs text-muted-foreground">
+                {totalActivities}
+              </span>
             )}
           </div>
           <div className="flex items-center gap-1">
@@ -117,7 +128,9 @@ const ActivityTimeline = ({
             <div className="rounded-full bg-muted p-4">
               <FileText className="h-8 w-8 text-muted-foreground" />
             </div>
-            <p className="mt-4 text-sm font-medium">Nenhuma atividade registrada</p>
+            <p className="mt-4 text-sm font-medium">
+              Nenhuma atividade registrada
+            </p>
           </div>
         ) : (
           <div className="space-y-6">

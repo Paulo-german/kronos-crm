@@ -9,7 +9,10 @@ import {
   ALL_ACCEPTED_MEDIA_TYPES,
   getMaxSizeForMimetype,
 } from '@/_lib/whatsapp/media-constants'
-import type { ConversationListDto, ConversationLabelDto } from '@/_data-access/conversation/get-conversations'
+import type {
+  ConversationListDto,
+  ConversationLabelDto,
+} from '@/_data-access/conversation/get-conversations'
 import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
 import type { ContactOptionDto } from '@/_data-access/contact/get-contacts-options'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
@@ -18,7 +21,10 @@ import { useInboxMutations } from '../_hooks/use-inbox-mutations'
 import { inboxKeys } from '../_lib/inbox-query-keys'
 import { useAudioRecorder } from '../_hooks/use-audio-recorder'
 import { useConversationWindow } from '../_hooks/use-conversation-window'
-import { IG_CONVERSATION_WINDOW_MS, IG_HUMAN_AGENT_WINDOW_MS } from '@/_lib/instagram/constants'
+import {
+  IG_CONVERSATION_WINDOW_MS,
+  IG_HUMAN_AGENT_WINDOW_MS,
+} from '@/_lib/instagram/constants'
 import { ChatHeader } from './chat-header'
 import { ChatBanners } from './chat-banners'
 import { ChatMessageList } from './chat-message-list'
@@ -47,13 +53,28 @@ interface ChatViewProps {
   getAgentStatus?: (conversationId: string) => AgentStatusPayload | null
 }
 
-export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, members, isElevated, availableLabels, onToggleAiPause, onStatusChange, onBack, onSimulatorEnded, getAgentStatus }: ChatViewProps) {
+export function ChatView({
+  conversation,
+  dealOptions,
+  contactOptions,
+  orgSlug,
+  members,
+  isElevated,
+  availableLabels,
+  onToggleAiPause,
+  onStatusChange,
+  onBack,
+  onSimulatorEnded,
+  getAgentStatus,
+}: ChatViewProps) {
   const [text, setText] = useState('')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [mediaPreviewUrl, setMediaPreviewUrl] = useState<string | null>(null)
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false)
-  const [retryingMessageId, setRetryingMessageId] = useState<string | null>(null)
+  const [retryingMessageId, setRetryingMessageId] = useState<string | null>(
+    null,
+  )
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
   // Controla se o envio para Instagram usará a tag HUMAN_AGENT (janela 24h–7d)
   const [useHumanAgentTag, setUseHumanAgentTag] = useState(true)
@@ -67,7 +88,8 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
 
   // Inboxes suportados para edição de mensagem (Meta Cloud e Instagram não suportam)
   const canEditMessages =
-    (conversation.inboxConnectionType === 'EVOLUTION' || conversation.inboxConnectionType === 'Z_API') &&
+    (conversation.inboxConnectionType === 'EVOLUTION' ||
+      conversation.inboxConnectionType === 'Z_API') &&
     conversation.channel !== 'INSTAGRAM_DM'
 
   // Lógica de janela de tempo para Instagram Direct
@@ -86,7 +108,9 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
   const mediaPreviewUrlRef = useRef<string | null>(null)
 
   const windowState = useConversationWindow(
-    conversation.lastCustomerMessageAt ? new Date(conversation.lastCustomerMessageAt) : null,
+    conversation.lastCustomerMessageAt
+      ? new Date(conversation.lastCustomerMessageAt)
+      : null,
     conversation.inboxConnectionType,
   )
   const isWindowClosed =
@@ -99,7 +123,8 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
 
   // Limpar arquivo selecionado ao trocar de conversa
   useEffect(() => {
-    if (mediaPreviewUrlRef.current) URL.revokeObjectURL(mediaPreviewUrlRef.current)
+    if (mediaPreviewUrlRef.current)
+      URL.revokeObjectURL(mediaPreviewUrlRef.current)
     setSelectedFile(null)
     setMediaPreviewUrl(null)
     mediaPreviewUrlRef.current = null
@@ -108,7 +133,8 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
   // Cleanup no unmount
   useEffect(() => {
     return () => {
-      if (mediaPreviewUrlRef.current) URL.revokeObjectURL(mediaPreviewUrlRef.current)
+      if (mediaPreviewUrlRef.current)
+        URL.revokeObjectURL(mediaPreviewUrlRef.current)
     }
   }, [])
 
@@ -138,7 +164,11 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
     mediaPreviewUrlRef.current = null
   }
 
-  const handleEditMessage = (messageId: string, conversationId: string, newText: string) => {
+  const handleEditMessage = (
+    messageId: string,
+    conversationId: string,
+    newText: string,
+  ) => {
     setEditingMessageId(messageId)
     mutations.editMessage.mutate(
       { messageId, conversationId, newText },
@@ -146,7 +176,9 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
         onSuccess: (result) => {
           setEditingMessageId(null)
           if (result?.data?.success === false) {
-            toast.error(result.data.errorMessage ?? 'Não foi possível editar a mensagem.')
+            toast.error(
+              result.data.errorMessage ?? 'Não foi possível editar a mensagem.',
+            )
             return
           }
           toast.success('Mensagem editada.')
@@ -190,7 +222,10 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
         {
           onSuccess: (result) => {
             if (result?.data?.sendFailed) {
-              toast.error(result.data.errorMessage ?? 'Falha no envio do áudio. Verifique no chat.')
+              toast.error(
+                result.data.errorMessage ??
+                  'Falha no envio do áudio. Verifique no chat.',
+              )
             }
           },
           onError: () => toast.error('Erro ao enviar áudio'),
@@ -231,8 +266,9 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
     ]
 
     timeline.sort(
-      (a, b) =>
-        new Date(a.data.createdAt).getTime() - new Date(b.data.createdAt).getTime(),
+      (itemA, itemB) =>
+        new Date(itemA.data.createdAt).getTime() -
+        new Date(itemB.data.createdAt).getTime(),
     )
 
     const withSeparators: TimelineItem[] = []
@@ -263,7 +299,8 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
             setText('')
             chatInputRef.current?.focus()
           },
-          onError: () => toast.error('Erro ao enviar mensagem para o simulador'),
+          onError: () =>
+            toast.error('Erro ao enviar mensagem para o simulador'),
         },
       )
       return
@@ -282,7 +319,9 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
           setText('')
           chatInputRef.current?.focus()
           if (result?.data?.sendFailed) {
-            toast.error(result.data.errorMessage ?? 'Falha no envio. Verifique no chat.')
+            toast.error(
+              result.data.errorMessage ?? 'Falha no envio. Verifique no chat.',
+            )
           }
         },
         onError: () => toast.error('Erro ao enviar mensagem'),
@@ -306,7 +345,9 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
       toast.error(`Arquivo muito grande. Máximo: ${maxMB}MB.`)
       return
     }
-    const preview = file.type.startsWith('image/') ? URL.createObjectURL(file) : null
+    const preview = file.type.startsWith('image/')
+      ? URL.createObjectURL(file)
+      : null
     setSelectedFile(file)
     setMediaPreviewUrl(preview)
     mediaPreviewUrlRef.current = preview
@@ -341,7 +382,10 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
               setText('')
               chatInputRef.current?.focus()
               if (result?.data?.sendFailed) {
-                toast.error(result.data.errorMessage ?? 'Falha no envio do arquivo. Verifique no chat.')
+                toast.error(
+                  result.data.errorMessage ??
+                    'Falha no envio do arquivo. Verifique no chat.',
+                )
               }
             },
             onError: () => toast.error('Erro ao enviar arquivo'),
@@ -398,7 +442,8 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
               : undefined
           }
           isSimulatorActionPending={
-            mutations.resetSimulator.isPending || mutations.endSimulator.isPending
+            mutations.resetSimulator.isPending ||
+            mutations.endSimulator.isPending
           }
         />
         <ChatBanners
@@ -448,7 +493,11 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
           text={text}
           onTextChange={setText}
           onSend={handleSend}
-          isSendPending={isSimulator ? mutations.sendSimulatorMessage.isPending : mutations.sendMessage.isPending}
+          isSendPending={
+            isSimulator
+              ? mutations.sendSimulatorMessage.isPending
+              : mutations.sendMessage.isPending
+          }
           // Simulador não suporta áudio — esconde o controle de gravação
           isAudioPending={isSimulator ? false : mutations.sendAudio.isPending}
           isRecording={isSimulator ? false : isRecording}
@@ -464,7 +513,11 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
           onSendMedia={isSimulator ? () => {} : handleSendMedia}
           isMediaPending={isSimulator ? false : mutations.sendMedia.isPending}
           // Simulador não usa templates Meta
-          onOpenTemplateDialog={isMetaCloud && !isSimulator ? () => setTemplateDialogOpen(true) : undefined}
+          onOpenTemplateDialog={
+            isMetaCloud && !isSimulator
+              ? () => setTemplateDialogOpen(true)
+              : undefined
+          }
           windowClosed={isSimulator ? false : isWindowClosed}
           placeholder={
             isSimulator
@@ -482,7 +535,9 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
             inboxId={conversation.inboxId}
             orgSlug={orgSlug}
             onSent={() => {
-              queryClient.invalidateQueries({ queryKey: inboxKeys.messages.byConversation(conversation.id) })
+              queryClient.invalidateQueries({
+                queryKey: inboxKeys.messages.byConversation(conversation.id),
+              })
               chatInputRef.current?.focus()
             }}
           />
@@ -497,7 +552,9 @@ export function ChatView({ conversation, dealOptions, contactOptions, orgSlug, m
           members={members}
           isElevated={isElevated}
           availableLabels={availableLabels}
-          onToggleLabel={(id, labelId) => mutations.toggleLabel.mutate({ conversationId: id, labelId })}
+          onToggleLabel={(id, labelId) =>
+            mutations.toggleLabel.mutate({ conversationId: id, labelId })
+          }
         />
       </div>
     </TooltipProvider>

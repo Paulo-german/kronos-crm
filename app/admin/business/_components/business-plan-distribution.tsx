@@ -19,16 +19,18 @@ import {
 import type { BusinessMetrics } from '@/admin/business/_lib/business-calculations'
 
 const fmt = {
-  brl: (n: number) =>
-    n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
-  number: (n: number) => n.toLocaleString('pt-BR'),
+  brl: (value: number) =>
+    value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+  number: (value: number) => value.toLocaleString('pt-BR'),
 }
 
 interface BusinessPlanDistributionProps {
   metrics: BusinessMetrics
 }
 
-export function BusinessPlanDistribution({ metrics }: BusinessPlanDistributionProps) {
+export function BusinessPlanDistribution({
+  metrics,
+}: BusinessPlanDistributionProps) {
   return (
     <Card>
       <CardHeader className="pb-3">

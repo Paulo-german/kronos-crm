@@ -10,13 +10,17 @@ interface PipelineIntroTriggerProps {
   hasSeenPipelineIntro: boolean
 }
 
-export function PipelineIntroTrigger({ hasSeenPipelineIntro }: PipelineIntroTriggerProps) {
+export function PipelineIntroTrigger({
+  hasSeenPipelineIntro,
+}: PipelineIntroTriggerProps) {
   const [open, setOpen] = useState(!hasSeenPipelineIntro)
   const { execute } = useAction(completeTutorial)
 
   if (hasSeenPipelineIntro) return null
 
-  const tutorial = TUTORIAL_REGISTRY.find((t) => t.id === 'pipeline')!
+  const tutorial = TUTORIAL_REGISTRY.find(
+    (tutorial) => tutorial.id === 'pipeline',
+  )!
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {

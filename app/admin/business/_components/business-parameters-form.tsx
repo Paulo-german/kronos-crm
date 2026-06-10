@@ -25,8 +25,8 @@ import {
 import type { UpdateBusinessReportInput } from '@/_actions/business-report/update-business-report/schema'
 
 const fmt = {
-  brl: (n: number) =>
-    n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+  brl: (value: number) =>
+    value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
 }
 
 interface BusinessParametersFormProps {
@@ -49,7 +49,8 @@ export function BusinessParametersForm({
 
   const watchedItems = form.watch('costItems')
   const totalFixed = useMemo(
-    () => watchedItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0),
+    () =>
+      watchedItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0),
     [watchedItems],
   )
 
@@ -78,7 +79,9 @@ export function BusinessParametersForm({
                       name={`costItems.${index}.name`}
                       render={({ field: nameField }) => (
                         <FormItem className="flex-1">
-                          <FormLabel className="sr-only">Nome do custo</FormLabel>
+                          <FormLabel className="sr-only">
+                            Nome do custo
+                          </FormLabel>
                           <FormControl>
                             <Input placeholder="Ex: Vercel" {...nameField} />
                           </FormControl>
@@ -150,7 +153,8 @@ export function BusinessParametersForm({
             <CardHeader className="pb-4">
               <CardTitle className="text-base">Parâmetros & meta</CardTitle>
               <CardDescription className="text-xs">
-                Custo total mensal de IA (somando todos os modelos) e margem alvo desejada.
+                Custo total mensal de IA (somando todos os modelos) e margem
+                alvo desejada.
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2">

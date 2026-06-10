@@ -1,5 +1,13 @@
-import type { NormalizedWhatsAppMessage, NormalizedMediaInfo, NormalizedMessageType } from '@/_lib/evolution-js/types'
-import type { InstagramWebhookEntry, InstagramMessagingEvent, InstagramAttachment } from './types'
+import type {
+  NormalizedWhatsAppMessage,
+  NormalizedMediaInfo,
+  NormalizedMessageType,
+} from '@/_lib/evolution-js/types'
+import type {
+  InstagramWebhookEntry,
+  InstagramMessagingEvent,
+  InstagramAttachment,
+} from './types'
 
 interface ExtractedContent {
   type: NormalizedMessageType
@@ -109,12 +117,18 @@ export function parseInstagramMessage(
 
   // Attachment de tipo nao suportado — descartar silenciosamente
   if (extracted === null) {
-    console.log('[parse-instagram-message] Unsupported attachment type ignored', {
-      mid: message.mid,
-      igUserId,
-      psid,
-      attachmentTypes: message.attachments?.map((attachment) => attachment.type),
-    })
+    // eslint-disable-next-line no-console
+    console.log(
+      '[parse-instagram-message] Unsupported attachment type ignored',
+      {
+        mid: message.mid,
+        igUserId,
+        psid,
+        attachmentTypes: message.attachments?.map(
+          (attachment) => attachment.type,
+        ),
+      },
+    )
     return null
   }
 

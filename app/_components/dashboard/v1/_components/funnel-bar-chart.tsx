@@ -63,10 +63,11 @@ export function FunnelBarChart({ data }: FunnelBarChartProps) {
           tickFormatter={
             hasMonetaryValues
               ? (tick: number) => {
-                  if (tick >= 1_000_000) return `R$ ${(tick / 1_000_000).toFixed(1)}M`
+                  if (tick >= 1_000_000)
+                    return `R$ ${(tick / 1_000_000).toFixed(1)}M`
                   if (tick >= 1_000) {
-                    const k = tick / 1_000
-                    return `R$ ${k % 1 === 0 ? k.toFixed(0) : k.toFixed(1)}K`
+                    const thousands = tick / 1_000
+                    return `R$ ${thousands % 1 === 0 ? thousands.toFixed(0) : thousands.toFixed(1)}K`
                   }
                   return `R$ ${tick}`
                 }

@@ -11,7 +11,12 @@ import {
   SelectValue,
 } from '@/_components/ui/select'
 
-type AllowedField = 'title' | 'value' | 'priority' | 'expectedCloseDate' | 'notes'
+type AllowedField =
+  | 'title'
+  | 'value'
+  | 'priority'
+  | 'expectedCloseDate'
+  | 'notes'
 type FixedPriority = 'low' | 'medium' | 'high' | 'urgent'
 
 const DEAL_FIELDS = [
@@ -27,7 +32,10 @@ interface UpdateDealConfigProps {
   allowedFields: AllowedField[]
   fixedPriority?: FixedPriority
   notesTemplate?: string
-  onAllowedFieldsChange: (fields: AllowedField[], extra?: Record<string, unknown>) => void
+  onAllowedFieldsChange: (
+    fields: AllowedField[],
+    extra?: Record<string, unknown>,
+  ) => void
   onFixedPriorityChange: (value: string | undefined) => void
   onNotesTemplateChange: (value: string | undefined) => void
 }
@@ -55,16 +63,18 @@ const UpdateDealConfig = ({
                 onCheckedChange={(checked) => {
                   const next = checked
                     ? [...allowedFields, field.id]
-                    : allowedFields.filter((f) => f !== field.id)
+                    : allowedFields.filter((fieldId) => fieldId !== field.id)
                   const extra: Record<string, unknown> = {}
-                  if (field.id === 'priority' && !checked) extra.fixedPriority = undefined
-                  if (field.id === 'notes' && !checked) extra.notesTemplate = undefined
+                  if (field.id === 'priority' && !checked)
+                    extra.fixedPriority = undefined
+                  if (field.id === 'notes' && !checked)
+                    extra.notesTemplate = undefined
                   onAllowedFieldsChange(next, extra)
                 }}
               />
               <Label
                 htmlFor={`${actionType}-${field.id}`}
-                className="text-xs font-normal cursor-pointer"
+                className="cursor-pointer text-xs font-normal"
               >
                 {field.label}
               </Label>

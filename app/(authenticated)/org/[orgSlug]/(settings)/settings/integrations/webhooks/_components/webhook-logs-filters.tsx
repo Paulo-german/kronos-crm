@@ -40,7 +40,7 @@ export function WebhookLogsFilters({
     if (checked) {
       onStatusChange([...statusFilter, status])
     } else {
-      onStatusChange(statusFilter.filter((s) => s !== status))
+      onStatusChange(statusFilter.filter((item) => item !== status))
     }
   }
 

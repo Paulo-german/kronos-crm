@@ -48,8 +48,8 @@ export default function BillingSettingsLoading() {
             <CardContent className="space-y-4">
               <Skeleton className="h-10 w-32" />
               <div className="space-y-2">
-                {Array.from({ length: 4 }).map((_, j) => (
-                  <Skeleton key={j} className="h-4 w-full" />
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <Skeleton key={index} className="h-4 w-full" />
                 ))}
               </div>
               <Skeleton className="h-10 w-full rounded-md" />

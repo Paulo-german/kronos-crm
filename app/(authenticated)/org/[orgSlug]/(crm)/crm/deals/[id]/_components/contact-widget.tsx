@@ -60,7 +60,11 @@ interface ContactWidgetProps {
   isPiiRestricted: boolean
 }
 
-const ContactWidget = ({ deal, contacts, isPiiRestricted }: ContactWidgetProps) => {
+const ContactWidget = ({
+  deal,
+  contacts,
+  isPiiRestricted,
+}: ContactWidgetProps) => {
   const { orgSlug } = useParams<{ orgSlug: string }>()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isComboboxOpen, setIsComboboxOpen] = useState(false)
@@ -106,7 +110,7 @@ const ContactWidget = ({ deal, contacts, isPiiRestricted }: ContactWidgetProps) 
 
   // Filtrar contatos que JÁ estão no deal para não mostrar na lista
   const availableContacts = contacts.filter(
-    (c) => !deal.contacts.some((dc) => dc.contactId === c.id),
+    (contact) => !deal.contacts.some((dc) => dc.contactId === contact.id),
   )
 
   const filteredAvailableContacts = useMemo(() => {
@@ -114,9 +118,9 @@ const ContactWidget = ({ deal, contacts, isPiiRestricted }: ContactWidgetProps) 
     const query = contactSearch.toLowerCase()
     return availableContacts
       .filter(
-        (c) =>
-          c.name.toLowerCase().includes(query) ||
-          c.companyName?.toLowerCase().includes(query),
+        (contact) =>
+          contact.name.toLowerCase().includes(query) ||
+          contact.companyName?.toLowerCase().includes(query),
       )
       .slice(0, MAX_RESULTS)
   }, [availableContacts, contactSearch])
@@ -152,10 +156,10 @@ const ContactWidget = ({ deal, contacts, isPiiRestricted }: ContactWidgetProps) 
   // Se não houver contato vinculado (removido bloco aqui pois agora renderizamos dentro do return principal para manter o header com botão de adicionar)
 
   // Ordenar: Primary primeiro, depois alfabético
-  const sortedContacts = [...deal.contacts].sort((a, b) => {
-    if (a.isPrimary && !b.isPrimary) return -1
-    if (!a.isPrimary && b.isPrimary) return 1
-    return a.name.localeCompare(b.name)
+  const sortedContacts = [...deal.contacts].sort((contactA, contactB) => {
+    if (contactA.isPrimary && !contactB.isPrimary) return -1
+    if (!contactA.isPrimary && contactB.isPrimary) return 1
+    return contactA.name.localeCompare(contactB.name)
   })
 
   return (
@@ -200,7 +204,7 @@ const ContactWidget = ({ deal, contacts, isPiiRestricted }: ContactWidgetProps) 
                       >
                         {selectedContactId
                           ? availableContacts.find(
-                              (c) => c.id === selectedContactId,
+                              (contact) => contact.id === selectedContactId,
                             )?.name
                           : 'Selecione um contato...'}
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -367,7 +371,9 @@ const ContactWidget = ({ deal, contacts, isPiiRestricted }: ContactWidgetProps) 
                           size="sm"
                           variant="ghost"
                           className="h-6 w-6 shrink-0"
-                          onClick={() => copyToClipboard(contact.email!, 'Email')}
+                          onClick={() =>
+                            copyToClipboard(contact.email!, 'Email')
+                          }
                         >
                           <Copy className="h-3 w-3" />
                         </Button>
@@ -460,8 +466,7 @@ const ContactWidget = ({ deal, contacts, isPiiRestricted }: ContactWidgetProps) 
         icon={<Trash2 />}
         variant="destructive"
         onConfirm={() => {
-          if (removingContact)
-            handleRemoveContact(removingContact.contactId)
+          if (removingContact) handleRemoveContact(removingContact.contactId)
         }}
         isLoading={isRemoving}
         confirmLabel="Confirmar Exclusão"

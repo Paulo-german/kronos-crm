@@ -33,8 +33,8 @@ function calcCountdown(endsAt: string): Countdown {
   return { days, hours, minutes }
 }
 
-function pad(n: number): string {
-  return String(n).padStart(2, '0')
+function pad(value: number): string {
+  return String(value).padStart(2, '0')
 }
 
 export const TrialBannerClient = ({

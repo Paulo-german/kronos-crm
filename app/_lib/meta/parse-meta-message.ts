@@ -1,5 +1,9 @@
 import type { MetaIncomingMessage, MetaWebhookContact } from './types'
-import type { NormalizedWhatsAppMessage, NormalizedMediaInfo, NormalizedMessageType } from '@/_lib/evolution-js/types'
+import type {
+  NormalizedWhatsAppMessage,
+  NormalizedMediaInfo,
+  NormalizedMessageType,
+} from '@/_lib/evolution-js/types'
 
 interface ExtractedContent {
   type: NormalizedMessageType
@@ -7,7 +11,9 @@ interface ExtractedContent {
   media: NormalizedMediaInfo | null
 }
 
-export function extractMetaContent(message: MetaIncomingMessage): ExtractedContent {
+export function extractMetaContent(
+  message: MetaIncomingMessage,
+): ExtractedContent {
   if (message.type === 'audio' && message.audio) {
     return {
       type: 'audio',
@@ -60,14 +66,19 @@ export function extractMetaContent(message: MetaIncomingMessage): ExtractedConte
 
   // Resposta a mensagem interativa (botão ou lista)
   if (message.type === 'interactive' && message.interactive) {
-    const reply = message.interactive.button_reply ?? message.interactive.list_reply
+    const reply =
+      message.interactive.button_reply ?? message.interactive.list_reply
     const text = reply?.title ?? null
     return { type: 'text', text, media: null }
   }
 
   // Tipos nao suportados (sticker, reaction, location, contacts) — logar e tratar como texto vazio
   if (['sticker', 'reaction', 'location', 'contacts'].includes(message.type)) {
-    console.log(`[parse-meta-message] Unsupported message type ignored: ${message.type}`, { messageId: message.id })
+    // eslint-disable-next-line no-console
+    console.log(
+      `[parse-meta-message] Unsupported message type ignored: ${message.type}`,
+      { messageId: message.id },
+    )
   }
 
   // Texto simples
@@ -100,13 +111,23 @@ export function parseMetaMessage(
     timestamp: Number(message.timestamp),
     type,
     text,
-    media: media && (message.audio?.id || message.image?.id || message.document?.id || message.video?.id)
-      ? {
-          ...media,
-          // Armazenar o mediaId Meta na URL para download posterior no Trigger.dev
-          url: message.audio?.id ?? message.image?.id ?? message.document?.id ?? message.video?.id ?? '',
-        }
-      : media,
+    media:
+      media &&
+      (message.audio?.id ||
+        message.image?.id ||
+        message.document?.id ||
+        message.video?.id)
+        ? {
+            ...media,
+            // Armazenar o mediaId Meta na URL para download posterior no Trigger.dev
+            url:
+              message.audio?.id ??
+              message.image?.id ??
+              message.document?.id ??
+              message.video?.id ??
+              '',
+          }
+        : media,
     instanceName: phoneNumberId,
     provider: 'meta_cloud',
   }

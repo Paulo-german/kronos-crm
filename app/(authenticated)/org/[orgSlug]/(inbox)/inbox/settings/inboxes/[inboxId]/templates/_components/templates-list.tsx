@@ -189,8 +189,10 @@ export function TemplatesList({
   const counts = useMemo(
     () => ({
       all: templates.length,
-      approved: templates.filter((template) => template.status === 'APPROVED').length,
-      pending: templates.filter((template) => template.status === 'PENDING').length,
+      approved: templates.filter((template) => template.status === 'APPROVED')
+        .length,
+      pending: templates.filter((template) => template.status === 'PENDING')
+        .length,
       rejected: templates.filter(
         (template) =>
           template.status === 'REJECTED' ||
@@ -427,7 +429,9 @@ interface TemplateCardProps {
 
 function TemplateCard({ template, onDelete, onPreview }: TemplateCardProps) {
   const statusConfig = STATUS_CONFIG[template.status] ?? STATUS_CONFIG.DISABLED
-  const bodyComponent = template.components.find((c) => c.type === 'BODY')
+  const bodyComponent = template.components.find(
+    (component) => component.type === 'BODY',
+  )
   const bodyPreview = bodyComponent?.text
 
   const qualityScore = template.quality_score?.score
@@ -451,7 +455,9 @@ function TemplateCard({ template, onDelete, onPreview }: TemplateCardProps) {
               variant="outline"
               className={`gap-1.5 ${statusConfig.className}`}
             >
-              <span className={`h-1.5 w-1.5 rounded-full ${statusConfig.dotColor}`} />
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${statusConfig.dotColor}`}
+              />
               {statusConfig.label}
             </Badge>
 

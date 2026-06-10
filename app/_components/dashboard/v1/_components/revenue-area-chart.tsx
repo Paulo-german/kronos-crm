@@ -23,7 +23,7 @@ interface RevenueAreaChartProps {
 }
 
 export function RevenueAreaChart({ data }: RevenueAreaChartProps) {
-  const hasData = data.some((d) => d.revenue > 0)
+  const hasData = data.some((item) => item.revenue > 0)
 
   if (!hasData) {
     return (
@@ -34,7 +34,9 @@ export function RevenueAreaChart({ data }: RevenueAreaChartProps) {
             <TrendingUp className="size-7 text-white" />
           </div>
         </div>
-        <p className="text-sm text-muted-foreground">Nenhuma receita no período</p>
+        <p className="text-sm text-muted-foreground">
+          Nenhuma receita no período
+        </p>
       </div>
     )
   }
@@ -68,13 +70,13 @@ export function RevenueAreaChart({ data }: RevenueAreaChartProps) {
         <YAxis
           axisLine={false}
           tickLine={false}
-          tickFormatter={(v: number) =>
+          tickFormatter={(tick: number) =>
             new Intl.NumberFormat('pt-BR', {
               notation: 'compact',
               compactDisplay: 'short',
               style: 'currency',
               currency: 'BRL',
-            }).format(v)
+            }).format(tick)
           }
         />
         <ChartTooltip

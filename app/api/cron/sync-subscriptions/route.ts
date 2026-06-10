@@ -37,7 +37,10 @@ export async function GET(request: Request): Promise<NextResponse> {
     },
   })
 
-  console.log(`[sync-subscriptions-cron] ${candidates.length} candidatas encontradas`)
+  // eslint-disable-next-line no-console
+  console.log(
+    `[sync-subscriptions-cron] ${candidates.length} candidatas encontradas`,
+  )
 
   let checked = 0
   let updated = 0
@@ -64,7 +67,10 @@ export async function GET(request: Request): Promise<NextResponse> {
               revalidateTag(`subscriptions:${sub.organizationId}`)
               revalidateTag(`modules:${sub.organizationId}`)
               updated++
-              console.log(`[sync-subscriptions-cron] ${sub.stripeSubscriptionId} → canceled (não encontrada no Stripe)`)
+              // eslint-disable-next-line no-console
+              console.log(
+                `[sync-subscriptions-cron] ${sub.stripeSubscriptionId} → canceled (não encontrada no Stripe)`,
+              )
             }
             return
           }
@@ -74,7 +80,8 @@ export async function GET(request: Request): Promise<NextResponse> {
           const newPeriodStart = getSubscriptionPeriodStart(stripeSub)
 
           // Só atualiza se houver divergência de status ou de período
-          const periodEndChanged = newPeriodEnd.getTime() !== sub.currentPeriodEnd.getTime()
+          const periodEndChanged =
+            newPeriodEnd.getTime() !== sub.currentPeriodEnd.getTime()
           if (newStatus === sub.status && !periodEndChanged) return
 
           const productKey = await resolveProductKey(stripeSub)
@@ -98,6 +105,7 @@ export async function GET(request: Request): Promise<NextResponse> {
           revalidateTag(`modules:${sub.organizationId}`)
           updated++
 
+          // eslint-disable-next-line no-console
           console.log(
             `[sync-subscriptions-cron] ${sub.stripeSubscriptionId} ${sub.status} → ${newStatus} (org: ${sub.organizationId})`,
           )
@@ -113,6 +121,7 @@ export async function GET(request: Request): Promise<NextResponse> {
   }
 
   const durationMs = Date.now() - startMs
+  // eslint-disable-next-line no-console
   console.log(
     `[sync-subscriptions-cron] Concluído — checked: ${checked}, updated: ${updated}, errors: ${errors}, durationMs: ${durationMs}`,
   )

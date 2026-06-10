@@ -20,7 +20,14 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
-import { Loader2, Users, CheckIcon, Plus, ShieldCheck, ExternalLink } from 'lucide-react'
+import {
+  Loader2,
+  Users,
+  CheckIcon,
+  Plus,
+  ShieldCheck,
+  ExternalLink,
+} from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -57,7 +64,10 @@ import { Separator } from '@/_components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/_components/ui/tabs'
 import { createCaptureForm } from '@/_actions/capture-form/create-capture-form'
 import { updatePrivacyPolicyUrl } from '@/_actions/organization/update-privacy-policy-url'
-import { captureFormBaseSchema, updateCaptureFormSchema } from '@/_actions/capture-form/schema'
+import {
+  captureFormBaseSchema,
+  updateCaptureFormSchema,
+} from '@/_actions/capture-form/schema'
 import {
   CAPTURE_CONSENT_PREFIX,
   CAPTURE_CONSENT_ANCHOR,
@@ -65,9 +75,16 @@ import {
   CAPTURE_LEGITIMATE_INTEREST_NOTICE,
 } from '@/_lib/capture-form/consent-config'
 import { MAX_CUSTOM_FIELDS_PER_FORM } from '@/_lib/capture-form/custom-fields-config'
-import { DEFAULT_CAPTURE_FIELDS, CAPTURE_FIELD_KEYS, type CaptureFieldKey } from '@/_lib/capture-form/field-config'
+import {
+  DEFAULT_CAPTURE_FIELDS,
+  CAPTURE_FIELD_KEYS,
+  type CaptureFieldKey,
+} from '@/_lib/capture-form/field-config'
 import { DEFAULT_CAPTURE_APPEARANCE } from '@/_lib/capture-form/appearance-config'
-import { CaptureFormView, getVisibleFieldKeys } from '@/_components/capture-form/capture-form-view'
+import {
+  CaptureFormView,
+  getVisibleFieldKeys,
+} from '@/_components/capture-form/capture-form-view'
 import type { CaptureFormDto } from '@/_data-access/capture-form/get-capture-forms'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import type { SquadDto } from '@/_data-access/squad/get-squads'
@@ -127,15 +144,18 @@ export const UpsertCaptureFormDialog = ({
   const [isAddFieldOpen, setIsAddFieldOpen] = useState(false)
   const [orgPrivacyUrl, setOrgPrivacyUrl] = useState(privacyPolicyUrl ?? '')
 
-  const { execute: executeSaveUrl, isPending: isSavingUrl } = useAction(updatePrivacyPolicyUrl, {
-    onSuccess: ({ data }) => {
-      toast.success('Política de privacidade salva na organização.')
-      setOrgPrivacyUrl(data?.privacyPolicyUrl ?? '')
+  const { execute: executeSaveUrl, isPending: isSavingUrl } = useAction(
+    updatePrivacyPolicyUrl,
+    {
+      onSuccess: ({ data }) => {
+        toast.success('Política de privacidade salva na organização.')
+        setOrgPrivacyUrl(data?.privacyPolicyUrl ?? '')
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError ?? 'Erro ao salvar URL.')
+      },
     },
-    onError: ({ error }) => {
-      toast.error(error.serverError ?? 'Erro ao salvar URL.')
-    },
-  })
+  )
 
   const handleUrlBlur = () => {
     const trimmed = orgPrivacyUrl.trim()
@@ -148,7 +168,12 @@ export const UpsertCaptureFormDialog = ({
     defaultValues: FORM_DEFAULTS,
   })
 
-  const { fields: customFieldItems, append, remove, move } = useFieldArray({
+  const {
+    fields: customFieldItems,
+    append,
+    remove,
+    move,
+  } = useFieldArray({
     control: form.control,
     name: 'customFields',
   })
@@ -200,24 +225,28 @@ export const UpsertCaptureFormDialog = ({
     form.reset({ ...FORM_DEFAULTS, customFields: requiredFields })
   }, [open, defaultValues, form, fieldDefinitions])
 
-  const { execute: executeCreate, isExecuting: isCreating } = useAction(createCaptureForm, {
-    onSuccess: () => {
-      toast.success('Formulário criado com sucesso.')
-      onOpenChange(false)
+  const { execute: executeCreate, isExecuting: isCreating } = useAction(
+    createCaptureForm,
+    {
+      onSuccess: () => {
+        toast.success('Formulário criado com sucesso.')
+        onOpenChange(false)
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError ?? 'Erro ao criar formulário.')
+      },
     },
-    onError: ({ error }) => {
-      toast.error(error.serverError ?? 'Erro ao criar formulário.')
-    },
-  })
+  )
 
   const onSubmit = (data: CreateInput) => {
     // Normalizar positions pelo índice atual antes de enviar
     const normalizedData: CreateInput = {
       ...data,
-      customFields: data.customFields?.map((customField, index) => ({
-        ...customField,
-        position: index,
-      })) ?? [],
+      customFields:
+        data.customFields?.map((customField, index) => ({
+          ...customField,
+          position: index,
+        })) ?? [],
     }
 
     if (isEditing && onUpdate) {
@@ -246,15 +275,21 @@ export const UpsertCaptureFormDialog = ({
     const { active, over } = event
     if (!over || active.id === over.id) return
 
-    const oldIndex = customFieldItems.findIndex((item) => item.fieldDefinitionId === active.id)
-    const newIndex = customFieldItems.findIndex((item) => item.fieldDefinitionId === over.id)
+    const oldIndex = customFieldItems.findIndex(
+      (item) => item.fieldDefinitionId === active.id,
+    )
+    const newIndex = customFieldItems.findIndex(
+      (item) => item.fieldDefinitionId === over.id,
+    )
     if (oldIndex === -1 || newIndex === -1) return
 
     move(oldIndex, newIndex)
   }
 
   // IDs de campos já adicionados ao form
-  const addedFieldIds = new Set(customFieldItems.map((item) => item.fieldDefinitionId))
+  const addedFieldIds = new Set(
+    customFieldItems.map((item) => item.fieldDefinitionId),
+  )
 
   // FieldDefinitions disponíveis para adicionar (não adicionadas ainda)
   const availableDefinitions = fieldDefinitions.filter(
@@ -283,15 +318,27 @@ export const UpsertCaptureFormDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl">
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'Editar formulário' : 'Novo formulário de captura'}</DialogTitle>
+          <DialogTitle>
+            {isEditing ? 'Editar formulário' : 'Novo formulário de captura'}
+          </DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
             <Tabs defaultValue="content" className="w-full">
-              <TabsList className="mb-5 mt-2 grid w-full grid-cols-2 h-12 border border-border/50 bg-tab/30 rounded-md">
-                <TabsTrigger value="content" className="data-[state=active]:bg-card/80 rounded-md py-2">Conteúdo</TabsTrigger>
-                <TabsTrigger value="appearance" className="data-[state=active]:bg-card/80 rounded-md py-2">Aparência</TabsTrigger>
+              <TabsList className="mb-5 mt-2 grid h-12 w-full grid-cols-2 rounded-md border border-border/50 bg-tab/30">
+                <TabsTrigger
+                  value="content"
+                  className="rounded-md py-2 data-[state=active]:bg-card/80"
+                >
+                  Conteúdo
+                </TabsTrigger>
+                <TabsTrigger
+                  value="appearance"
+                  className="rounded-md py-2 data-[state=active]:bg-card/80"
+                >
+                  Aparência
+                </TabsTrigger>
               </TabsList>
 
               {/* ── Aba Conteúdo ── */}
@@ -303,7 +350,10 @@ export const UpsertCaptureFormDialog = ({
                     <FormItem>
                       <FormLabel>Nome interno</FormLabel>
                       <FormControl>
-                        <Input placeholder="Ex: Landing Page Produto X" {...field} />
+                        <Input
+                          placeholder="Ex: Landing Page Produto X"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -317,38 +367,47 @@ export const UpsertCaptureFormDialog = ({
                   <p className="text-sm font-medium">Campos do formulário</p>
                   <div className="space-y-2">
                     {CAPTURE_FIELD_KEYS.map((key) => (
-                      <div key={key} className="flex items-center gap-4 rounded-md border p-3">
-                        <span className="w-20 text-sm text-muted-foreground">{FIELD_LABELS[key]}</span>
+                      <div
+                        key={key}
+                        className="flex items-center gap-4 rounded-md border p-3"
+                      >
+                        <span className="w-20 text-sm text-muted-foreground">
+                          {FIELD_LABELS[key]}
+                        </span>
                         <div className="flex flex-1 items-center gap-6">
                           <FormField
                             control={form.control}
                             name={`fields.${key}.visible`}
-                            render={({ field: f }) => (
+                            render={({ field: switchField }) => (
                               <FormItem className="flex flex-row items-center gap-2 space-y-0">
                                 <FormControl>
                                   <Switch
-                                    checked={f.value}
-                                    onCheckedChange={f.onChange}
+                                    checked={switchField.value}
+                                    onCheckedChange={switchField.onChange}
                                     disabled={key === 'name'}
                                   />
                                 </FormControl>
-                                <FormLabel className="text-xs text-muted-foreground">Visível</FormLabel>
+                                <FormLabel className="text-xs text-muted-foreground">
+                                  Visível
+                                </FormLabel>
                               </FormItem>
                             )}
                           />
                           <FormField
                             control={form.control}
                             name={`fields.${key}.required`}
-                            render={({ field: f }) => (
+                            render={({ field: switchField }) => (
                               <FormItem className="flex flex-row items-center gap-2 space-y-0">
                                 <FormControl>
                                   <Switch
-                                    checked={f.value}
-                                    onCheckedChange={f.onChange}
+                                    checked={switchField.value}
+                                    onCheckedChange={switchField.onChange}
                                     disabled={key === 'name'}
                                   />
                                 </FormControl>
-                                <FormLabel className="text-xs text-muted-foreground">Obrigatório</FormLabel>
+                                <FormLabel className="text-xs text-muted-foreground">
+                                  Obrigatório
+                                </FormLabel>
                               </FormItem>
                             )}
                           />
@@ -364,20 +423,27 @@ export const UpsertCaptureFormDialog = ({
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium">Campos personalizados</p>
+                      <p className="text-sm font-medium">
+                        Campos personalizados
+                      </p>
                       <p className="text-xs text-muted-foreground">
-                        Adicione campos customizados da organização ao formulário.
+                        Adicione campos customizados da organização ao
+                        formulário.
                       </p>
                     </div>
 
-                    <Popover open={isAddFieldOpen} onOpenChange={setIsAddFieldOpen}>
+                    <Popover
+                      open={isAddFieldOpen}
+                      onOpenChange={setIsAddFieldOpen}
+                    >
                       <PopoverTrigger asChild>
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
                           disabled={
-                            customFieldItems.length >= MAX_CUSTOM_FIELDS_PER_FORM ||
+                            customFieldItems.length >=
+                              MAX_CUSTOM_FIELDS_PER_FORM ||
                             availableDefinitions.length === 0
                           }
                         >
@@ -398,7 +464,9 @@ export const UpsertCaptureFormDialog = ({
                               onClick={() => handleAddField(definition)}
                               className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
                             >
-                              <span className="flex-1 truncate text-left">{definition.label}</span>
+                              <span className="flex-1 truncate text-left">
+                                {definition.label}
+                              </span>
                               <Badge variant="secondary" className="text-xs">
                                 {definition.type}
                               </Badge>
@@ -417,7 +485,9 @@ export const UpsertCaptureFormDialog = ({
                       onDragEnd={handleDragEnd}
                     >
                       <SortableContext
-                        items={customFieldItems.map((item) => item.fieldDefinitionId)}
+                        items={customFieldItems.map(
+                          (item) => item.fieldDefinitionId,
+                        )}
                         strategy={verticalListSortingStrategy}
                       >
                         <div className="space-y-2">
@@ -425,7 +495,11 @@ export const UpsertCaptureFormDialog = ({
                             <CaptureFormFieldRow
                               key={item.fieldDefinitionId}
                               fieldDefinitionId={item.fieldDefinitionId}
-                              fieldLabel={definitionLabelById.get(item.fieldDefinitionId) ?? item.fieldDefinitionId}
+                              fieldLabel={
+                                definitionLabelById.get(
+                                  item.fieldDefinitionId,
+                                ) ?? item.fieldDefinitionId
+                              }
                               index={index}
                               control={form.control}
                               onRemove={() => remove(index)}
@@ -436,17 +510,20 @@ export const UpsertCaptureFormDialog = ({
                     </DndContext>
                   )}
 
-                  {customFieldItems.length === 0 && fieldDefinitions.length === 0 && (
-                    <p className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
-                      Nenhum campo personalizado criado para contatos ainda.
-                    </p>
-                  )}
+                  {customFieldItems.length === 0 &&
+                    fieldDefinitions.length === 0 && (
+                      <p className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
+                        Nenhum campo personalizado criado para contatos ainda.
+                      </p>
+                    )}
 
-                  {customFieldItems.length === 0 && fieldDefinitions.length > 0 && (
-                    <p className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
-                      Clique em &quot;Adicionar campo&quot; para incluir campos personalizados.
-                    </p>
-                  )}
+                  {customFieldItems.length === 0 &&
+                    fieldDefinitions.length > 0 && (
+                      <p className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
+                        Clique em &quot;Adicionar campo&quot; para incluir
+                        campos personalizados.
+                      </p>
+                    )}
                 </div>
 
                 <Separator />
@@ -456,7 +533,8 @@ export const UpsertCaptureFormDialog = ({
                   <div>
                     <p className="text-sm font-medium">Distribuição de leads</p>
                     <p className="text-xs text-muted-foreground">
-                      Escolha membros (round-robin) ou um time. Os dois modos são exclusivos.
+                      Escolha membros (round-robin) ou um time. Os dois modos
+                      são exclusivos.
                     </p>
                   </div>
 
@@ -518,19 +596,28 @@ export const UpsertCaptureFormDialog = ({
                             </p>
                           ) : (
                             assignableMembers.map((member) => {
-                              const isSelected = distributionUserIds.includes(member.userId!)
+                              const isSelected = distributionUserIds.includes(
+                                member.userId!,
+                              )
                               return (
                                 <button
                                   key={member.userId}
                                   type="button"
-                                  onClick={() => handleToggleMember(member.userId!)}
+                                  onClick={() =>
+                                    handleToggleMember(member.userId!)
+                                  }
                                   className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
                                 >
-                                  <Checkbox checked={isSelected} className="pointer-events-none" />
+                                  <Checkbox
+                                    checked={isSelected}
+                                    className="pointer-events-none"
+                                  />
                                   <span className="flex-1 truncate text-left">
                                     {member.user?.fullName ?? member.email}
                                   </span>
-                                  {isSelected && <CheckIcon className="h-3.5 w-3.5 text-primary" />}
+                                  {isSelected && (
+                                    <CheckIcon className="h-3.5 w-3.5 text-primary" />
+                                  )}
                                 </button>
                               )
                             })
@@ -544,7 +631,9 @@ export const UpsertCaptureFormDialog = ({
                   {distributionUserIds.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
                       {distributionUserIds.map((userId) => {
-                        const member = assignableMembers.find((m) => m.userId === userId)
+                        const member = assignableMembers.find(
+                          (member) => member.userId === userId,
+                        )
                         return (
                           <Badge
                             key={userId}
@@ -585,7 +674,10 @@ export const UpsertCaptureFormDialog = ({
                       <FormItem>
                         <FormLabel>Mensagem de sucesso</FormLabel>
                         <FormControl>
-                          <Input placeholder="Obrigado! Recebemos seus dados." {...field} />
+                          <Input
+                            placeholder="Obrigado! Recebemos seus dados."
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -613,7 +705,9 @@ export const UpsertCaptureFormDialog = ({
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
                     <ShieldCheck className="h-4 w-4 text-muted-foreground" />
-                    <p className="text-sm font-medium">Consentimento & Privacidade</p>
+                    <p className="text-sm font-medium">
+                      Consentimento & Privacidade
+                    </p>
                   </div>
 
                   <FormField
@@ -630,7 +724,10 @@ export const UpsertCaptureFormDialog = ({
                         <div className="space-y-1">
                           <FormLabel>Exigir consentimento do lead</FormLabel>
                           <p className="text-xs text-muted-foreground">
-                            Quando ativo, um checkbox de aceite é exibido no formulário público. Base legal = Consentimento (LGPD Art. 7º, II / GDPR Art. 6º(1)(a)). Quando desativado, base legal = Legítimo Interesse.
+                            Quando ativo, um checkbox de aceite é exibido no
+                            formulário público. Base legal = Consentimento (LGPD
+                            Art. 7º, II / GDPR Art. 6º(1)(a)). Quando
+                            desativado, base legal = Legítimo Interesse.
                           </p>
                         </div>
                       </FormItem>
@@ -640,7 +737,10 @@ export const UpsertCaptureFormDialog = ({
                   {watchedConsentRequired ? (
                     <div className="space-y-3">
                       <div className="flex items-center gap-1.5">
-                        <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400">
+                        <Badge
+                          variant="outline"
+                          className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                        >
                           Base legal: Autorização do contato
                         </Badge>
                       </div>
@@ -661,7 +761,10 @@ export const UpsertCaptureFormDialog = ({
                         </div>
                       ) : (
                         <div className="space-y-2 rounded-md border border-destructive/50 bg-muted/30 p-3">
-                          <Label htmlFor="privacy-url" className="text-xs font-medium text-destructive">
+                          <Label
+                            htmlFor="privacy-url"
+                            className="text-xs font-medium text-destructive"
+                          >
                             URL da Política de Privacidade *
                           </Label>
                           <div className="flex gap-2">
@@ -670,24 +773,30 @@ export const UpsertCaptureFormDialog = ({
                               type="url"
                               placeholder="https://suaempresa.com/privacidade"
                               value={orgPrivacyUrl}
-                              onChange={(event) => setOrgPrivacyUrl(event.target.value)}
+                              onChange={(event) =>
+                                setOrgPrivacyUrl(event.target.value)
+                              }
                               onBlur={handleUrlBlur}
                               disabled={isSavingUrl}
-                              className="h-8 text-xs border-destructive/50 focus-visible:ring-destructive"
+                              className="h-8 border-destructive/50 text-xs focus-visible:ring-destructive"
                             />
                             {isSavingUrl && (
                               <Loader2 className="h-4 w-4 animate-spin self-center text-muted-foreground" />
                             )}
                           </div>
                           <p className="text-xs text-destructive">
-                            Obrigatório para exigir consentimento. Será salvo na organização e aplicado a todos os formulários.
+                            Obrigatório para exigir consentimento. Será salvo na
+                            organização e aplicado a todos os formulários.
                           </p>
                         </div>
                       )}
                     </div>
                   ) : (
                     <div className="flex items-center gap-1.5">
-                      <Badge variant="outline" className="border-blue-500/30 bg-blue-500/10 text-blue-400">
+                      <Badge
+                        variant="outline"
+                        className="border-blue-500/30 bg-blue-500/10 text-blue-400"
+                      >
                         Base legal: Interesse legítimo
                       </Badge>
                     </div>
@@ -714,7 +823,9 @@ export const UpsertCaptureFormDialog = ({
                               <input
                                 type="color"
                                 value={field.value}
-                                onChange={(event) => field.onChange(event.target.value)}
+                                onChange={(event) =>
+                                  field.onChange(event.target.value)
+                                }
                                 className="h-9 w-12 cursor-pointer rounded border p-1"
                               />
                               <FormControl>
@@ -724,7 +835,9 @@ export const UpsertCaptureFormDialog = ({
                                   maxLength={7}
                                   onChange={(event) => {
                                     const val = event.target.value
-                                    field.onChange(val.startsWith('#') ? val : `#${val}`)
+                                    field.onChange(
+                                      val.startsWith('#') ? val : `#${val}`,
+                                    )
                                   }}
                                 />
                               </FormControl>
@@ -744,7 +857,9 @@ export const UpsertCaptureFormDialog = ({
                               <input
                                 type="color"
                                 value={field.value}
-                                onChange={(event) => field.onChange(event.target.value)}
+                                onChange={(event) =>
+                                  field.onChange(event.target.value)
+                                }
                                 className="h-9 w-12 cursor-pointer rounded border p-1"
                               />
                               <FormControl>
@@ -754,7 +869,9 @@ export const UpsertCaptureFormDialog = ({
                                   maxLength={7}
                                   onChange={(event) => {
                                     const val = event.target.value
-                                    field.onChange(val.startsWith('#') ? val : `#${val}`)
+                                    field.onChange(
+                                      val.startsWith('#') ? val : `#${val}`,
+                                    )
                                   }}
                                 />
                               </FormControl>
@@ -778,7 +895,10 @@ export const UpsertCaptureFormDialog = ({
                           <FormItem>
                             <FormLabel>Título (opcional)</FormLabel>
                             <FormControl>
-                              <Input placeholder="Ex: Fale com nossa equipe" {...field} />
+                              <Input
+                                placeholder="Ex: Fale com nossa equipe"
+                                {...field}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -792,7 +912,10 @@ export const UpsertCaptureFormDialog = ({
                           <FormItem>
                             <FormLabel>Descrição (opcional)</FormLabel>
                             <FormControl>
-                              <Input placeholder="Ex: Preencha e entraremos em contato." {...field} />
+                              <Input
+                                placeholder="Ex: Preencha e entraremos em contato."
+                                {...field}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -823,14 +946,19 @@ export const UpsertCaptureFormDialog = ({
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Estilo de bordas</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="rounded">Arredondado</SelectItem>
+                              <SelectItem value="rounded">
+                                Arredondado
+                              </SelectItem>
                               <SelectItem value="square">Quadrado</SelectItem>
                             </SelectContent>
                           </Select>
@@ -842,7 +970,9 @@ export const UpsertCaptureFormDialog = ({
 
                   {/* Preview ao vivo (direita) */}
                   <div className="rounded-lg border bg-muted/30 p-4">
-                    <p className="mb-3 text-xs text-muted-foreground">Preview</p>
+                    <p className="mb-3 text-xs text-muted-foreground">
+                      Preview
+                    </p>
                     <CaptureFormView
                       appearance={watchedAppearance}
                       fields={watchedFields}
@@ -860,11 +990,18 @@ export const UpsertCaptureFormDialog = ({
                               <p className="text-xs leading-relaxed text-muted-foreground">
                                 {CAPTURE_CONSENT_PREFIX}
                                 {orgPrivacyUrl ? (
-                                  <span className="underline" style={{ color: watchedAppearance.primaryColor }}>
+                                  <span
+                                    className="underline"
+                                    style={{
+                                      color: watchedAppearance.primaryColor,
+                                    }}
+                                  >
                                     {CAPTURE_CONSENT_ANCHOR}
                                   </span>
                                 ) : (
-                                  <span className="font-medium">{CAPTURE_CONSENT_ANCHOR}</span>
+                                  <span className="font-medium">
+                                    {CAPTURE_CONSENT_ANCHOR}
+                                  </span>
                                 )}
                                 {CAPTURE_CONSENT_SUFFIX}
                               </p>
@@ -874,7 +1011,10 @@ export const UpsertCaptureFormDialog = ({
                             className="w-full py-2 text-center text-sm font-medium text-white"
                             style={{
                               backgroundColor: watchedAppearance.primaryColor,
-                              borderRadius: watchedAppearance.borderStyle === 'rounded' ? '6px' : '2px',
+                              borderRadius:
+                                watchedAppearance.borderStyle === 'rounded'
+                                  ? '6px'
+                                  : '2px',
                             }}
                           >
                             {watchedButtonLabel}
@@ -890,7 +1030,9 @@ export const UpsertCaptureFormDialog = ({
                             <div key={key}>
                               <label
                                 className="mb-1 block text-sm font-medium"
-                                style={{ color: watchedAppearance.primaryColor }}
+                                style={{
+                                  color: watchedAppearance.primaryColor,
+                                }}
                               >
                                 {config.label ?? key}
                                 {config.required && (
@@ -903,7 +1045,10 @@ export const UpsertCaptureFormDialog = ({
                                   backgroundColor: '#f9fafb',
                                   color: '#9ca3af',
                                   borderColor: '#e5e7eb',
-                                  borderRadius: watchedAppearance.borderStyle === 'rounded' ? '6px' : '2px',
+                                  borderRadius:
+                                    watchedAppearance.borderStyle === 'rounded'
+                                      ? '6px'
+                                      : '2px',
                                 }}
                               >
                                 {config.label ?? key}...
@@ -925,7 +1070,11 @@ export const UpsertCaptureFormDialog = ({
                   Adicione a URL da Política de Privacidade para continuar.
                 </p>
               )}
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+              >
                 Cancelar
               </Button>
               <Button type="submit" disabled={isPending || isMissingPrivacyUrl}>

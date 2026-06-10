@@ -49,7 +49,11 @@ import { updateFollowUpExhausted } from '@/_actions/follow-up/update-follow-up-e
 import { updateFollowUpExhaustedSchema } from '@/_actions/follow-up/update-follow-up-exhausted/schema'
 import type { AgentDetailDto } from '@/_data-access/agent/get-agent-by-id'
 import type { PipelineStageOption } from '@/_data-access/pipeline/get-pipeline-stages'
-import type { FollowUpDto, ExhaustedAction, ExhaustedConfig } from '@/_data-access/follow-up/types'
+import type {
+  FollowUpDto,
+  ExhaustedAction,
+  ExhaustedConfig,
+} from '@/_data-access/follow-up/types'
 import UpsertFollowUpDialog from './upsert-follow-up-dialog'
 import DeleteFollowUpDialog from './delete-follow-up-dialog'
 import FollowUpBusinessHoursSection from './follow-up-business-hours-section'
@@ -80,7 +84,9 @@ function getExhaustedLabel(
     return 'Notificar responsável'
   }
   if (action === 'MOVE_DEAL_STAGE') {
-    const stage = pipelineStages.find((s) => s.stageId === config?.targetStageId)
+    const stage = pipelineStages.find(
+      (stage) => stage.stageId === config?.targetStageId,
+    )
     if (stage) return `Mover para: ${stage.stageName}`
     return 'Mover de estágio'
   }
@@ -175,7 +181,11 @@ const FollowUpCard = ({
             {coveredStepNames.length > 0 && (
               <div className="flex flex-wrap gap-1">
                 {coveredStepNames.map((name) => (
-                  <Badge key={name} variant="secondary" className="text-xs font-normal">
+                  <Badge
+                    key={name}
+                    variant="secondary"
+                    className="text-xs font-normal"
+                  >
                     {name}
                   </Badge>
                 ))}
@@ -241,7 +251,8 @@ const EmptyFollowUps = ({
     <div className="space-y-1">
       <p className="text-sm font-medium">Nenhum follow-up configurado</p>
       <p className="max-w-xs text-xs text-muted-foreground">
-        Configure mensagens automáticas para reengajar clientes que não responderam.
+        Configure mensagens automáticas para reengajar clientes que não
+        responderam.
       </p>
     </div>
     {canManage && (
@@ -273,7 +284,8 @@ const ExhaustedActionSection = ({
   canManage,
   onSaveSuccess,
 }: ExhaustedActionSectionProps) => {
-  const exhaustedAction = (agent.followUpExhaustedAction ?? 'NONE') as ExhaustedAction
+  const exhaustedAction = (agent.followUpExhaustedAction ??
+    'NONE') as ExhaustedAction
   const exhaustedConfig = agent.followUpExhaustedConfig ?? null
 
   const form = useForm<ExhaustedFormValues>({
@@ -323,7 +335,8 @@ const ExhaustedActionSection = ({
                   Ao Esgotar Follow-ups
                 </CardTitle>
                 <CardDescription>
-                  Ação executada quando todas as mensagens forem enviadas sem resposta.
+                  Ação executada quando todas as mensagens forem enviadas sem
+                  resposta.
                 </CardDescription>
               </div>
               {/* Badge de ação atual configurada */}
@@ -367,8 +380,12 @@ const ExhaustedActionSection = ({
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="NONE">Nenhuma</SelectItem>
-                        <SelectItem value="NOTIFY_HUMAN">Notificar humano</SelectItem>
-                        <SelectItem value="MOVE_DEAL_STAGE">Mover deal de estágio</SelectItem>
+                        <SelectItem value="NOTIFY_HUMAN">
+                          Notificar humano
+                        </SelectItem>
+                        <SelectItem value="MOVE_DEAL_STAGE">
+                          Mover deal de estágio
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </FormControl>
@@ -392,7 +409,10 @@ const ExhaustedActionSection = ({
                           onValueChange={(value) => {
                             field.onChange(value)
                             if (value === 'deal_assignee') {
-                              form.setValue('followUpExhaustedConfig.specificPhone', undefined)
+                              form.setValue(
+                                'followUpExhaustedConfig.specificPhone',
+                                undefined,
+                              )
                             }
                           }}
                           disabled={!canManage || isPending}
@@ -401,8 +421,12 @@ const ExhaustedActionSection = ({
                             <SelectValue placeholder="Selecionar destinatário" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="deal_assignee">Responsável pelo deal</SelectItem>
-                            <SelectItem value="specific_number">Número específico</SelectItem>
+                            <SelectItem value="deal_assignee">
+                              Responsável pelo deal
+                            </SelectItem>
+                            <SelectItem value="specific_number">
+                              Número específico
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </FormControl>
@@ -462,7 +486,10 @@ const ExhaustedActionSection = ({
                               </SelectItem>
                             ) : (
                               pipelineStages.map((stage) => (
-                                <SelectItem key={stage.stageId} value={stage.stageId}>
+                                <SelectItem
+                                  key={stage.stageId}
+                                  value={stage.stageId}
+                                >
                                   {stage.pipelineName} → {stage.stageName}
                                 </SelectItem>
                               ))
@@ -516,19 +543,26 @@ const FollowUpsTab = ({
   followUpQuota,
 }: FollowUpsTabProps) => {
   const [isUpsertOpen, setIsUpsertOpen] = useState(false)
-  const [editingFollowUp, setEditingFollowUp] = useState<FollowUpDto | null>(null)
-  const [deletingFollowUp, setDeletingFollowUp] = useState<FollowUpDto | null>(null)
+  const [editingFollowUp, setEditingFollowUp] = useState<FollowUpDto | null>(
+    null,
+  )
+  const [deletingFollowUp, setDeletingFollowUp] = useState<FollowUpDto | null>(
+    null,
+  )
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
 
-  const { execute: executeToggle, isPending: isToggling } = useAction(toggleFollowUp, {
-    onSuccess: () => {
-      toast.success('Status do follow-up atualizado!')
-      onSaveSuccess?.()
+  const { execute: executeToggle, isPending: isToggling } = useAction(
+    toggleFollowUp,
+    {
+      onSuccess: () => {
+        toast.success('Status do follow-up atualizado!')
+        onSaveSuccess?.()
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError || 'Erro ao atualizar status.')
+      },
     },
-    onError: ({ error }) => {
-      toast.error(error.serverError || 'Erro ao atualizar status.')
-    },
-  })
+  )
 
   const handleNew = () => {
     setEditingFollowUp(null)
@@ -569,7 +603,8 @@ const FollowUpsTab = ({
     onSaveSuccess?.()
   }
 
-  const isAtQuotaLimit = followUpQuota !== undefined && !followUpQuota.withinQuota
+  const isAtQuotaLimit =
+    followUpQuota !== undefined && !followUpQuota.withinQuota
 
   return (
     <div className="space-y-6">

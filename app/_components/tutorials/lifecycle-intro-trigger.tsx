@@ -19,7 +19,9 @@ export function LifecycleIntroTrigger({
   // Usuário já viu — não renderiza nada
   if (hasSeenLifecycleIntro) return null
 
-  const tutorial = TUTORIAL_REGISTRY.find((t) => t.id === 'lifecycle-intro')!
+  const tutorial = TUTORIAL_REGISTRY.find(
+    (tutorial) => tutorial.id === 'lifecycle-intro',
+  )!
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {

@@ -6,7 +6,11 @@ import { revalidateTag } from 'next/cache'
 import { Prisma } from '@prisma/client'
 import { createNotification } from '@/_lib/notifications/create-notification'
 import { getOrgSlug } from '@/_lib/notifications/get-org-slug'
-import type { ExecutorContext, ExecutorResult, ReassignDealConfig } from '../types'
+import type {
+  ExecutorContext,
+  ExecutorResult,
+  ReassignDealConfig,
+} from '../types'
 
 /**
  * Seleciona o próximo usuário via round-robin stateless:
@@ -76,12 +80,14 @@ async function resolveLeastDealsTarget(
     _count: { _all: true },
   })
 
-  const countMap = new Map(dealCounts.map((row) => [row.assignedTo, row._count._all]))
+  const countMap = new Map(
+    dealCounts.map((row) => [row.assignedTo, row._count._all]),
+  )
 
   // Ordena pelo menor count, mantendo a ordem do pool como critério de desempate
-  const sorted = [...pool].sort((a, b) => {
-    const countA = countMap.get(a) ?? 0
-    const countB = countMap.get(b) ?? 0
+  const sorted = [...pool].sort((userA, userB) => {
+    const countA = countMap.get(userA) ?? 0
+    const countB = countMap.get(userB) ?? 0
     return countA - countB
   })
 
@@ -93,8 +99,11 @@ async function resolveLeastDealsTarget(
  * Suporta as estratégias: round_robin, least_deals e specific_user.
  * Valida o pool contra membros ACCEPTED antes de executar.
  */
-export async function executeReassignDeal(ctx: ExecutorContext): Promise<ExecutorResult> {
-  if (!ctx.deal) return { summary: { skipped: true, reason: 'subject_not_deal' } }
+export async function executeReassignDeal(
+  ctx: ExecutorContext,
+): Promise<ExecutorResult> {
+  if (!ctx.deal)
+    return { summary: { skipped: true, reason: 'subject_not_deal' } }
   const deal = ctx.deal
   const config = ctx.actionConfig as unknown as ReassignDealConfig
 
@@ -117,7 +126,9 @@ export async function executeReassignDeal(ctx: ExecutorContext): Promise<Executo
     .filter((userId): userId is string => userId !== null)
 
   if (filteredPool.length === 0) {
-    throw new Error('Pool de reatribuição vazio: nenhum membro ACCEPTED disponível')
+    throw new Error(
+      'Pool de reatribuição vazio: nenhum membro ACCEPTED disponível',
+    )
   }
 
   let targetUserId: string | null = null
@@ -143,12 +154,20 @@ export async function executeReassignDeal(ctx: ExecutorContext): Promise<Executo
   }
 
   if (!targetUserId) {
-    throw new Error('Nenhum candidato disponível para reatribuição após aplicar filtros')
+    throw new Error(
+      'Nenhum candidato disponível para reatribuição após aplicar filtros',
+    )
   }
 
   // Sem mudança real: deal já está com o usuário alvo
   if (targetUserId === deal.assignedTo) {
-    return { summary: { skipped: true, reason: 'already_assigned', assignedTo: targetUserId } }
+    return {
+      summary: {
+        skipped: true,
+        reason: 'already_assigned',
+        assignedTo: targetUserId,
+      },
+    }
   }
 
   await db.deal.update({

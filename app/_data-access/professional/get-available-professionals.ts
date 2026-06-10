@@ -27,7 +27,6 @@ interface GetAvailableProfessionalsParams {
   contactId?: string // necessário para DistributionModel LOYALTY
 }
 
-
 /**
  * Verifica se um profissional está disponível no slot especificado.
  * Retorna false se: dia de folga, fora da jornada, ou há conflito de appointment.
@@ -53,7 +52,11 @@ async function isProfessionalAvailable(
   let workStart: string
   let workEnd: string
 
-  if (exception?.type === 'CUSTOM_HOURS' && exception.startTime && exception.endTime) {
+  if (
+    exception?.type === 'CUSTOM_HOURS' &&
+    exception.startTime &&
+    exception.endTime
+  ) {
     workStart = exception.startTime
     workEnd = exception.endTime
   } else {
@@ -68,14 +71,21 @@ async function isProfessionalAvailable(
     workEnd = workingHours.endTime
   }
 
-  if (startTimeMinutes < timeToMinutes(workStart) || endTimeMinutes > timeToMinutes(workEnd)) {
+  if (
+    startTimeMinutes < timeToMinutes(workStart) ||
+    endTimeMinutes > timeToMinutes(workEnd)
+  ) {
     return false
   }
 
   // Monta Date objects para a comparação de overlap com appointments do banco
   const dateStr = formatDateUtc(date)
-  const slotStartDate = new Date(`${dateStr}T${minutesToTime(startTimeMinutes)}:00.000Z`)
-  const slotEndDate = new Date(`${dateStr}T${minutesToTime(endTimeMinutes)}:00.000Z`)
+  const slotStartDate = new Date(
+    `${dateStr}T${minutesToTime(startTimeMinutes)}:00.000Z`,
+  )
+  const slotEndDate = new Date(
+    `${dateStr}T${minutesToTime(endTimeMinutes)}:00.000Z`,
+  )
 
   // Verifica conflito com appointments ativos do profissional
   const conflict = await db.appointment.findFirst({
@@ -120,7 +130,11 @@ async function applyUtilizationModel(
 
   // Ordenação estável: menor count primeiro, empate por id para determinismo
   return counts
-    .sort((a, b) => a.count - b.count || a.professional.id.localeCompare(b.professional.id))
+    .sort(
+      (countA, countB) =>
+        countA.count - countB.count ||
+        countA.professional.id.localeCompare(countB.professional.id),
+    )
     .map((item) => item.professional)
 }
 
@@ -136,7 +150,9 @@ async function applyRoundRobinModel(
     where: {
       organizationId: orgId,
       status: { notIn: ['CANCELED', 'NO_SHOW'] },
-      professionalId: { in: professionals.map((professional) => professional.id) },
+      professionalId: {
+        in: professionals.map((professional) => professional.id),
+      },
     },
     orderBy: { createdAt: 'desc' },
     select: { professionalId: true },
@@ -145,12 +161,15 @@ async function applyRoundRobinModel(
   if (!lastAppointment?.professionalId) {
     // Sem histórico: ordenar por data de criação do profissional
     return [...professionals].sort(
-      (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
+      (professionalA, professionalB) =>
+        professionalA.createdAt.getTime() - professionalB.createdAt.getTime(),
     )
   }
 
   const lastProfessionalId = lastAppointment.professionalId
-  const lastIndex = professionals.findIndex((p) => p.id === lastProfessionalId)
+  const lastIndex = professionals.findIndex(
+    (professional) => professional.id === lastProfessionalId,
+  )
 
   if (lastIndex === -1) {
     return professionals
@@ -179,7 +198,9 @@ async function applyLoyaltyModel(
       where: {
         organizationId: orgId,
         contactId,
-        professionalId: { in: professionals.map((professional) => professional.id) },
+        professionalId: {
+          in: professionals.map((professional) => professional.id),
+        },
         status: { notIn: ['CANCELED', 'NO_SHOW'] },
       },
       orderBy: { createdAt: 'desc' },
@@ -188,11 +209,11 @@ async function applyLoyaltyModel(
 
     if (loyalAppointment?.professionalId) {
       const loyalProf = professionals.find(
-        (p) => p.id === loyalAppointment.professionalId,
+        (professional) => professional.id === loyalAppointment.professionalId,
       )
       if (loyalProf) {
         const rest = professionals.filter(
-          (p) => p.id !== loyalAppointment.professionalId,
+          (professional) => professional.id !== loyalAppointment.professionalId,
         )
         return [loyalProf, ...rest]
       }
@@ -201,7 +222,13 @@ async function applyLoyaltyModel(
 
   // Sem match de fidelidade: aplica modelo secundário
   const effectiveSecondary = secondaryModel ?? 'UTILIZATION'
-  return applyDistributionModel(professionals, orgId, effectiveSecondary, undefined, null)
+  return applyDistributionModel(
+    professionals,
+    orgId,
+    effectiveSecondary,
+    undefined,
+    null,
+  )
 }
 
 /**
@@ -215,16 +242,20 @@ async function applyManualModel(
   const orders = await db.manualProfessionalOrder.findMany({
     where: {
       organizationId: orgId,
-      professionalId: { in: professionals.map((professional) => professional.id) },
+      professionalId: {
+        in: professionals.map((professional) => professional.id),
+      },
     },
     select: { professionalId: true, order: true },
   })
 
-  const orderMap = new Map(orders.map((o) => [o.professionalId, o.order]))
+  const orderMap = new Map(
+    orders.map((order) => [order.professionalId, order.order]),
+  )
 
-  return [...professionals].sort((a, b) => {
-    const orderA = orderMap.get(a.id) ?? Number.MAX_SAFE_INTEGER
-    const orderB = orderMap.get(b.id) ?? Number.MAX_SAFE_INTEGER
+  return [...professionals].sort((professionalA, professionalB) => {
+    const orderA = orderMap.get(professionalA.id) ?? Number.MAX_SAFE_INTEGER
+    const orderB = orderMap.get(professionalB.id) ?? Number.MAX_SAFE_INTEGER
     return orderA - orderB
   })
 }

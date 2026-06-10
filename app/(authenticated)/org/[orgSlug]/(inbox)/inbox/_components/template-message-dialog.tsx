@@ -4,7 +4,14 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
-import { ArrowLeft, CheckCircle2, FileText, Loader2, Search, Send } from 'lucide-react'
+import {
+  ArrowLeft,
+  CheckCircle2,
+  FileText,
+  Loader2,
+  Search,
+  Send,
+} from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -21,7 +28,10 @@ import { Label } from '@/_components/ui/label'
 import { cn } from '@/_lib/utils'
 import { sendTemplateMessage } from '@/_actions/inbox/send-template-message'
 import type { MetaTemplate } from '@/_lib/meta/types'
-import { extractVariableIndices, renderWithVariables } from '@/_lib/meta/template-variables'
+import {
+  extractVariableIndices,
+  renderWithVariables,
+} from '@/_lib/meta/template-variables'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -61,7 +71,9 @@ export function TemplateMessageDialog({
 }: TemplateMessageDialogProps) {
   const [step, setStep] = useState<1 | 2>(1)
   const [search, setSearch] = useState('')
-  const [selectedTemplate, setSelectedTemplate] = useState<MetaTemplate | null>(null)
+  const [selectedTemplate, setSelectedTemplate] = useState<MetaTemplate | null>(
+    null,
+  )
   const [bodyValues, setBodyValues] = useState<string[]>([])
   const [headerValues, setHeaderValues] = useState<string[]>([])
   const [templates, setTemplates] = useState<MetaTemplate[]>([])
@@ -112,35 +124,46 @@ export function TemplateMessageDialog({
   const filteredTemplates = useMemo(() => {
     if (!search.trim()) return templates
     const lower = search.toLowerCase()
-    return templates.filter((template) => template.name.toLowerCase().includes(lower))
+    return templates.filter((template) =>
+      template.name.toLowerCase().includes(lower),
+    )
   }, [templates, search])
 
   const handleSelectTemplate = (template: MetaTemplate) => {
     setSelectedTemplate(template)
     // Inicializar arrays de valores com strings vazias
-    const bodyComp = template.components.find((c) => c.type === 'BODY')
-    const headerComp = template.components.find((c) => c.type === 'HEADER')
+    const bodyComp = template.components.find(
+      (component) => component.type === 'BODY',
+    )
+    const headerComp = template.components.find(
+      (component) => component.type === 'HEADER',
+    )
     const bodyVars = bodyComp?.text ? extractVariableIndices(bodyComp.text) : []
-    const headerVars = headerComp?.text ? extractVariableIndices(headerComp.text) : []
+    const headerVars = headerComp?.text
+      ? extractVariableIndices(headerComp.text)
+      : []
     setBodyValues(new Array(Math.max(...bodyVars, 0)).fill(''))
     setHeaderValues(new Array(Math.max(...headerVars, 0)).fill(''))
     setStep(2)
   }
 
-  const { execute: executeSend, isPending: isSending } = useAction(sendTemplateMessage, {
-    onSuccess: (result) => {
-      if (result.data?.sendFailed) {
-        toast.error('Falha no envio do template. Verifique no chat.')
-      } else {
-        toast.success('Template enviado com sucesso!')
-      }
-      handleOpenChange(false)
-      onSent()
+  const { execute: executeSend, isPending: isSending } = useAction(
+    sendTemplateMessage,
+    {
+      onSuccess: (result) => {
+        if (result.data?.sendFailed) {
+          toast.error('Falha no envio do template. Verifique no chat.')
+        } else {
+          toast.success('Template enviado com sucesso!')
+        }
+        handleOpenChange(false)
+        onSent()
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError ?? 'Erro ao enviar template.')
+      },
     },
-    onError: ({ error }) => {
-      toast.error(error.serverError ?? 'Erro ao enviar template.')
-    },
-  })
+  )
 
   const handleSend = () => {
     if (!selectedTemplate) return
@@ -164,32 +187,40 @@ export function TemplateMessageDialog({
 
   // Dados para preview em tempo real — derivação inline
   const previewBodyText = useMemo(() => {
-    const bodyComp = selectedTemplate?.components.find((c) => c.type === 'BODY')
+    const bodyComp = selectedTemplate?.components.find(
+      (component) => component.type === 'BODY',
+    )
     if (!bodyComp?.text) return ''
     return renderWithVariables(bodyComp.text, bodyValues)
   }, [selectedTemplate, bodyValues])
 
   const previewHeaderText = useMemo(() => {
     const headerComp = selectedTemplate?.components.find(
-      (c) => c.type === 'HEADER' && c.format === 'TEXT',
+      (component) => component.type === 'HEADER' && component.format === 'TEXT',
     )
     if (!headerComp?.text) return ''
     return renderWithVariables(headerComp.text, headerValues)
   }, [selectedTemplate, headerValues])
 
-  const footerText = selectedTemplate?.components.find((c) => c.type === 'FOOTER')?.text
+  const footerText = selectedTemplate?.components.find(
+    (component) => component.type === 'FOOTER',
+  )?.text
 
   // Variáveis detectadas no template selecionado
-  const bodyComponent = selectedTemplate?.components.find((c) => c.type === 'BODY')
+  const bodyComponent = selectedTemplate?.components.find(
+    (component) => component.type === 'BODY',
+  )
   const headerComponent = selectedTemplate?.components.find(
-    (c) => c.type === 'HEADER' && c.format === 'TEXT',
+    (component) => component.type === 'HEADER' && component.format === 'TEXT',
   )
   const bodyVariableIndices = useMemo(
-    () => (bodyComponent?.text ? extractVariableIndices(bodyComponent.text) : []),
+    () =>
+      bodyComponent?.text ? extractVariableIndices(bodyComponent.text) : [],
     [bodyComponent],
   )
   const headerVariableIndices = useMemo(
-    () => (headerComponent?.text ? extractVariableIndices(headerComponent.text) : []),
+    () =>
+      headerComponent?.text ? extractVariableIndices(headerComponent.text) : [],
     [headerComponent],
   )
 
@@ -210,7 +241,9 @@ export function TemplateMessageDialog({
             )}
             <div>
               <DialogTitle>
-                {step === 1 ? 'Selecionar template' : selectedTemplate?.name ?? 'Preencher variáveis'}
+                {step === 1
+                  ? 'Selecionar template'
+                  : (selectedTemplate?.name ?? 'Preencher variáveis')}
               </DialogTitle>
               <DialogDescription>
                 {step === 1
@@ -238,7 +271,10 @@ export function TemplateMessageDialog({
               </div>
             </div>
 
-            <div className="mt-3 overflow-y-auto px-6 pb-6" style={{ maxHeight: '50vh' }}>
+            <div
+              className="mt-3 overflow-y-auto px-6 pb-6"
+              style={{ maxHeight: '50vh' }}
+            >
               {isLoadingTemplates ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -250,11 +286,19 @@ export function TemplateMessageDialog({
                       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
                         <FileText className="h-6 w-6 text-muted-foreground" />
                       </div>
-                      <p className="mt-1 text-sm font-medium">Nenhum template disponível</p>
-                      <p className="max-w-[280px] text-xs text-muted-foreground">
-                        Crie e aprove templates no Meta para enviar mensagens fora da janela de 24h.
+                      <p className="mt-1 text-sm font-medium">
+                        Nenhum template disponível
                       </p>
-                      <Button variant="outline" size="sm" className="mt-2" asChild>
+                      <p className="max-w-[280px] text-xs text-muted-foreground">
+                        Crie e aprove templates no Meta para enviar mensagens
+                        fora da janela de 24h.
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-2"
+                        asChild
+                      >
                         <Link
                           href={`/org/${orgSlug}/settings/inboxes/${inboxId}/templates`}
                           target="_blank"
@@ -289,7 +333,10 @@ export function TemplateMessageDialog({
         {/* Step 2: Preencher variáveis + Preview */}
         {step === 2 && selectedTemplate && (
           <>
-            <div className="overflow-y-auto px-6 py-4" style={{ maxHeight: '60vh' }}>
+            <div
+              className="overflow-y-auto px-6 py-4"
+              style={{ maxHeight: '60vh' }}
+            >
               <div className="space-y-5">
                 {/* Variáveis do header */}
                 {headerVariableIndices.length > 0 && (
@@ -398,7 +445,9 @@ interface TemplateSelectItemProps {
 }
 
 function TemplateSelectItem({ template, onSelect }: TemplateSelectItemProps) {
-  const bodyText = template.components.find((c) => c.type === 'BODY')?.text
+  const bodyText = template.components.find(
+    (component) => component.type === 'BODY',
+  )?.text
   const statusClass = STATUS_CLASSES[template.status] ?? ''
 
   return (
@@ -407,8 +456,8 @@ function TemplateSelectItem({ template, onSelect }: TemplateSelectItemProps) {
       onClick={() => onSelect(template)}
       className={cn(
         'w-full rounded-lg border border-border/50 bg-secondary/10 p-3 text-left transition-colors',
-        'hover:bg-secondary/30 hover:border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        template.status !== 'APPROVED' && 'opacity-50 cursor-not-allowed',
+        'hover:border-border hover:bg-secondary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        template.status !== 'APPROVED' && 'cursor-not-allowed opacity-50',
       )}
       disabled={template.status !== 'APPROVED'}
     >
@@ -430,7 +479,9 @@ function TemplateSelectItem({ template, onSelect }: TemplateSelectItemProps) {
         </div>
       </div>
       {bodyText && (
-        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{bodyText}</p>
+        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+          {bodyText}
+        </p>
       )}
     </button>
   )
@@ -446,11 +497,17 @@ interface WhatsAppPreviewBubbleProps {
   footerText?: string
 }
 
-function WhatsAppPreviewBubble({ headerText, bodyText, footerText }: WhatsAppPreviewBubbleProps) {
+function WhatsAppPreviewBubble({
+  headerText,
+  bodyText,
+  footerText,
+}: WhatsAppPreviewBubbleProps) {
   return (
     <div
       className="rounded-xl p-3"
-      style={{ background: 'linear-gradient(135deg, #e5ddd5 0%, #dcd5cc 100%)' }}
+      style={{
+        background: 'linear-gradient(135deg, #e5ddd5 0%, #dcd5cc 100%)',
+      }}
     >
       <div className="ml-auto max-w-[90%]">
         <div
@@ -458,10 +515,14 @@ function WhatsAppPreviewBubble({ headerText, bodyText, footerText }: WhatsAppPre
           style={{ backgroundColor: '#dcf8c6' }}
         >
           {headerText && (
-            <p className="mb-1.5 text-sm font-bold text-gray-800">{headerText}</p>
+            <p className="mb-1.5 text-sm font-bold text-gray-800">
+              {headerText}
+            </p>
           )}
           {bodyText && (
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-800">{bodyText}</p>
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-800">
+              {bodyText}
+            </p>
           )}
           {footerText && (
             <p className="mt-1.5 text-xs text-gray-500">{footerText}</p>

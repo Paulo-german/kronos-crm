@@ -46,7 +46,9 @@ export const ProductLayoutBase = async ({
   const { orgId, userId, userRole } = await getOrgContext(orgSlug)
 
   // promessas criadas antes do Promise.all para que fetches condicionais também rodem em paralelo
-  const creditBalancePromise = withCredits ? getCreditBalance(orgId) : Promise.resolve(null)
+  const creditBalancePromise = withCredits
+    ? getCreditBalance(orgId)
+    : Promise.resolve(null)
   const profileCompletedPromise = withWelcomeSurvey
     ? getUserProfileStatus(userId, orgId)
     : Promise.resolve(true)
@@ -89,8 +91,15 @@ export const ProductLayoutBase = async ({
       ])
     : [[], 0]
 
-  const mergedNotifications = [...recentNotifications, ...pendingInviteNotifications]
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  const mergedNotifications = [
+    ...recentNotifications,
+    ...pendingInviteNotifications,
+  ]
+    .sort(
+      (notificationA, notificationB) =>
+        new Date(notificationB.createdAt).getTime() -
+        new Date(notificationA.createdAt).getTime(),
+    )
     .slice(0, 10)
 
   const totalUnreadCount = unreadCount + pendingInviteUnreadCount
@@ -117,7 +126,10 @@ export const ProductLayoutBase = async ({
         isSuperAdmin={user?.isSuperAdmin ?? false}
         credits={
           creditBalance
-            ? { available: creditBalance.available, monthlyLimit: creditBalance.monthlyLimit }
+            ? {
+                available: creditBalance.available,
+                monthlyLimit: creditBalance.monthlyLimit,
+              }
             : undefined
         }
       />
@@ -126,12 +138,17 @@ export const ProductLayoutBase = async ({
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <ContentWrapper>{children}</ContentWrapper>
           {trialStatus.isOnTrial && trialStatus.daysRemaining <= 5 && (
-            <TrialReminderDialog daysRemaining={trialStatus.daysRemaining} orgSlug={orgSlug} />
+            <TrialReminderDialog
+              daysRemaining={trialStatus.daysRemaining}
+              orgSlug={orgSlug}
+            />
           )}
         </div>
       </div>
       {withDashboardTour && <DashboardTourTrigger />}
-      {withWelcomeSurvey && userRole === 'OWNER' && !profileCompleted && <WelcomeSurveyModal />}
+      {withWelcomeSurvey && userRole === 'OWNER' && !profileCompleted && (
+        <WelcomeSurveyModal />
+      )}
     </div>
   )
 }

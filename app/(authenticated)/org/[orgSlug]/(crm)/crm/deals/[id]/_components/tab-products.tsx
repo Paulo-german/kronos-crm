@@ -23,7 +23,12 @@ import {
   TableRow,
 } from '@/_components/ui/table'
 import { Badge } from '@/_components/ui/badge'
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/_components/ui/sheet'
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/_components/ui/sheet'
 import {
   Select,
   SelectContent,
@@ -37,7 +42,10 @@ import ConfirmationDialog from '@/_components/confirmation-dialog'
 import { addDealLineItem } from '@/_actions/deal/add-deal-line-item'
 import { updateDealLineItem } from '@/_actions/deal/update-deal-line-item'
 import { removeDealLineItem } from '@/_actions/deal/remove-deal-line-item'
-import type { DealDetailsDto, DealLineItemDto } from '@/_data-access/deal/get-deal-details'
+import type {
+  DealDetailsDto,
+  DealLineItemDto,
+} from '@/_data-access/deal/get-deal-details'
 import type { ProductDto } from '@/_data-access/product/get-products'
 import type { ServiceDto } from '@/_data-access/service/get-services'
 import type { PromotionDto } from '@/_data-access/promotion/get-promotions'
@@ -55,36 +63,60 @@ interface TabProductsProps {
 
 const ITEM_TYPE_CONFIG: Record<
   ItemType,
-  { label: string; icon: React.ReactNode; variant: 'default' | 'secondary' | 'outline' }
+  {
+    label: string
+    icon: React.ReactNode
+    variant: 'default' | 'secondary' | 'outline'
+  }
 > = {
-  PRODUCT: { label: 'Produto', icon: <PackageIcon className="h-3 w-3" />, variant: 'default' },
-  SERVICE: { label: 'Serviço', icon: <WrenchIcon className="h-3 w-3" />, variant: 'secondary' },
-  PROMOTION: { label: 'Promoção', icon: <TagIcon className="h-3 w-3" />, variant: 'outline' },
+  PRODUCT: {
+    label: 'Produto',
+    icon: <PackageIcon className="h-3 w-3" />,
+    variant: 'default',
+  },
+  SERVICE: {
+    label: 'Serviço',
+    icon: <WrenchIcon className="h-3 w-3" />,
+    variant: 'secondary',
+  },
+  PROMOTION: {
+    label: 'Promoção',
+    icon: <TagIcon className="h-3 w-3" />,
+    variant: 'outline',
+  },
 }
 
 const getLineItemName = (item: DealLineItemDto): string =>
   item.product?.name ?? item.service?.name ?? item.promotion?.name ?? '—'
 
-const TabProducts = ({ deal, products, services, promotions }: TabProductsProps) => {
+const TabProducts = ({
+  deal,
+  products,
+  services,
+  promotions,
+}: TabProductsProps) => {
   const [isLineItemSheetOpen, setIsLineItemSheetOpen] = useState(false)
   const [addItemType, setAddItemType] = useState<ItemType>('PRODUCT')
   const [addItemId, setAddItemId] = useState<string>('')
   const [addQuantity, setAddQuantity] = useState<number>(1)
   const [addUnitPrice, setAddUnitPrice] = useState<number>(0)
-  const [addDiscountType, setAddDiscountType] = useState<DiscountType>('percentage')
+  const [addDiscountType, setAddDiscountType] =
+    useState<DiscountType>('percentage')
   const [addDiscountValue, setAddDiscountValue] = useState<number>(0)
 
-  const [editingLineItem, setEditingLineItem] = useState<DealLineItemDto | null>(null)
+  const [editingLineItem, setEditingLineItem] =
+    useState<DealLineItemDto | null>(null)
   const [editQuantity, setEditQuantity] = useState<number>(1)
   const [editUnitPrice, setEditUnitPrice] = useState<number>(0)
-  const [editDiscountType, setEditDiscountType] = useState<DiscountType>('percentage')
+  const [editDiscountType, setEditDiscountType] =
+    useState<DiscountType>('percentage')
   const [editDiscountValue, setEditDiscountValue] = useState<number>(0)
 
-  const [deletingLineItem, setDeletingLineItem] = useState<DealLineItemDto | null>(null)
+  const [deletingLineItem, setDeletingLineItem] =
+    useState<DealLineItemDto | null>(null)
 
-  const { execute: executeAddLineItem, isPending: isAddingLineItem } = useAction(
-    addDealLineItem,
-    {
+  const { execute: executeAddLineItem, isPending: isAddingLineItem } =
+    useAction(addDealLineItem, {
       onSuccess: () => {
         toast.success('Item adicionado ao negócio!')
         setIsLineItemSheetOpen(false)
@@ -93,12 +125,10 @@ const TabProducts = ({ deal, products, services, promotions }: TabProductsProps)
       onError: ({ error }) => {
         toast.error(error.serverError || 'Erro ao adicionar item.')
       },
-    },
-  )
+    })
 
-  const { execute: executeUpdateLineItem, isPending: isUpdatingLineItem } = useAction(
-    updateDealLineItem,
-    {
+  const { execute: executeUpdateLineItem, isPending: isUpdatingLineItem } =
+    useAction(updateDealLineItem, {
       onSuccess: () => {
         toast.success('Item atualizado com sucesso!')
         setEditingLineItem(null)
@@ -106,12 +136,10 @@ const TabProducts = ({ deal, products, services, promotions }: TabProductsProps)
       onError: ({ error }) => {
         toast.error(error.serverError || 'Erro ao atualizar item.')
       },
-    },
-  )
+    })
 
-  const { execute: executeRemoveLineItem, isPending: isRemovingLineItem } = useAction(
-    removeDealLineItem,
-    {
+  const { execute: executeRemoveLineItem, isPending: isRemovingLineItem } =
+    useAction(removeDealLineItem, {
       onSuccess: () => {
         toast.success('Item removido com sucesso!')
         setDeletingLineItem(null)
@@ -119,8 +147,7 @@ const TabProducts = ({ deal, products, services, promotions }: TabProductsProps)
       onError: ({ error }) => {
         toast.error(error.serverError || 'Erro ao remover item.')
       },
-    },
-  )
+    })
 
   const resetAddForm = () => {
     setAddItemType('PRODUCT')
@@ -141,16 +168,16 @@ const TabProducts = ({ deal, products, services, promotions }: TabProductsProps)
     setAddItemId(id)
 
     if (addItemType === 'PRODUCT') {
-      const product = products.find((p) => p.id === id)
+      const product = products.find((product) => product.id === id)
       if (product) setAddUnitPrice(product.price)
       return
     }
     if (addItemType === 'SERVICE') {
-      const service = services.find((s) => s.id === id)
+      const service = services.find((service) => service.id === id)
       if (service) setAddUnitPrice(Number(service.price))
       return
     }
-    const promotion = promotions.find((p) => p.id === id)
+    const promotion = promotions.find((promotion) => promotion.id === id)
     if (promotion) setAddUnitPrice(promotion.price)
   }
 
@@ -193,9 +220,9 @@ const TabProducts = ({ deal, products, services, promotions }: TabProductsProps)
     })
   }
 
-  const activeProducts = products.filter((p) => p.isActive)
-  const activeServices = services.filter((s) => s.isActive)
-  const activePromotions = promotions.filter((p) => p.isActive)
+  const activeProducts = products.filter((product) => product.isActive)
+  const activeServices = services.filter((service) => service.isActive)
+  const activePromotions = promotions.filter((promotion) => promotion.isActive)
 
   return (
     <div className="flex flex-col gap-4">
@@ -292,7 +319,9 @@ const TabProducts = ({ deal, products, services, promotions }: TabProductsProps)
               </div>
               <div className="mt-4 flex justify-end border-t border-border pt-4">
                 <div className="text-right">
-                  <span className="text-sm text-muted-foreground">Total geral: </span>
+                  <span className="text-sm text-muted-foreground">
+                    Total geral:{' '}
+                  </span>
                   <span className="text-xl font-bold text-[#00b37e]">
                     {formatCurrency(deal.totalValue)}
                   </span>
@@ -320,7 +349,9 @@ const TabProducts = ({ deal, products, services, promotions }: TabProductsProps)
               <Label>Tipo</Label>
               <Select
                 value={addItemType}
-                onValueChange={(value) => handleAddItemTypeChange(value as ItemType)}
+                onValueChange={(value) =>
+                  handleAddItemTypeChange(value as ItemType)
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o tipo" />
@@ -379,7 +410,9 @@ const TabProducts = ({ deal, products, services, promotions }: TabProductsProps)
                 min={0}
                 step="0.01"
                 value={addUnitPrice}
-                onChange={(event) => setAddUnitPrice(Number(event.target.value))}
+                onChange={(event) =>
+                  setAddUnitPrice(Number(event.target.value))
+                }
               />
             </div>
 
@@ -387,7 +420,9 @@ const TabProducts = ({ deal, products, services, promotions }: TabProductsProps)
               <Label>Tipo de Desconto</Label>
               <Select
                 value={addDiscountType}
-                onValueChange={(value) => setAddDiscountType(value as DiscountType)}
+                onValueChange={(value) =>
+                  setAddDiscountType(value as DiscountType)
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -406,7 +441,9 @@ const TabProducts = ({ deal, products, services, promotions }: TabProductsProps)
                 min={0}
                 step="0.01"
                 value={addDiscountValue}
-                onChange={(event) => setAddDiscountValue(Number(event.target.value))}
+                onChange={(event) =>
+                  setAddDiscountValue(Number(event.target.value))
+                }
               />
             </div>
 
@@ -421,7 +458,10 @@ const TabProducts = ({ deal, products, services, promotions }: TabProductsProps)
               >
                 Cancelar
               </Button>
-              <Button onClick={handleAddLineItemSubmit} disabled={isAddingLineItem}>
+              <Button
+                onClick={handleAddLineItemSubmit}
+                disabled={isAddingLineItem}
+              >
                 {isAddingLineItem ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -452,7 +492,9 @@ const TabProducts = ({ deal, products, services, promotions }: TabProductsProps)
                 type="number"
                 min={1}
                 value={editQuantity}
-                onChange={(event) => setEditQuantity(Number(event.target.value))}
+                onChange={(event) =>
+                  setEditQuantity(Number(event.target.value))
+                }
               />
             </div>
 
@@ -463,7 +505,9 @@ const TabProducts = ({ deal, products, services, promotions }: TabProductsProps)
                 min={0}
                 step="0.01"
                 value={editUnitPrice}
-                onChange={(event) => setEditUnitPrice(Number(event.target.value))}
+                onChange={(event) =>
+                  setEditUnitPrice(Number(event.target.value))
+                }
               />
             </div>
 
@@ -471,7 +515,9 @@ const TabProducts = ({ deal, products, services, promotions }: TabProductsProps)
               <Label>Tipo de Desconto</Label>
               <Select
                 value={editDiscountType}
-                onValueChange={(value) => setEditDiscountType(value as DiscountType)}
+                onValueChange={(value) =>
+                  setEditDiscountType(value as DiscountType)
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -490,7 +536,9 @@ const TabProducts = ({ deal, products, services, promotions }: TabProductsProps)
                 min={0}
                 step="0.01"
                 value={editDiscountValue}
-                onChange={(event) => setEditDiscountValue(Number(event.target.value))}
+                onChange={(event) =>
+                  setEditDiscountValue(Number(event.target.value))
+                }
               />
             </div>
 
@@ -502,7 +550,10 @@ const TabProducts = ({ deal, products, services, promotions }: TabProductsProps)
               >
                 Cancelar
               </Button>
-              <Button onClick={handleUpdateLineItemSubmit} disabled={isUpdatingLineItem}>
+              <Button
+                onClick={handleUpdateLineItemSubmit}
+                disabled={isUpdatingLineItem}
+              >
                 {isUpdatingLineItem ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -523,8 +574,8 @@ const TabProducts = ({ deal, products, services, promotions }: TabProductsProps)
         title="Remover item?"
         description={
           <p>
-            Esta ação não pode ser desfeita. Você está prestes a remover permanentemente o
-            item{' '}
+            Esta ação não pode ser desfeita. Você está prestes a remover
+            permanentemente o item{' '}
             <strong className="font-semibold text-foreground">
               {deletingLineItem ? getLineItemName(deletingLineItem) : ''}
             </strong>{' '}

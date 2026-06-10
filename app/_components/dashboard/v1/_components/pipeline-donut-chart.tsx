@@ -21,7 +21,7 @@ interface PipelineDonutChartProps {
 }
 
 export function PipelineDonutChart({ data }: PipelineDonutChartProps) {
-  const total = data.reduce((sum, d) => sum + d.count, 0)
+  const total = data.reduce((sum, item) => sum + item.count, 0)
 
   if (total === 0) {
     return (
@@ -37,9 +37,9 @@ export function PipelineDonutChart({ data }: PipelineDonutChartProps) {
     )
   }
 
-  const chartData = data.map((d) => ({
-    ...d,
-    fill: `var(--color-${d.status})`,
+  const chartData = data.map((item) => ({
+    ...item,
+    fill: `var(--color-${item.status})`,
   }))
 
   return (

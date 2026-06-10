@@ -6,7 +6,12 @@ import { db } from '@/_lib/prisma'
 import type { RBACContext } from '@/_lib/rbac'
 import { isElevated } from '@/_lib/rbac'
 import { buildDashboardWhere } from './build-dashboard-where'
-import type { DashboardFilters, DateRange, FunnelData, FunnelStage } from './types'
+import type {
+  DashboardFilters,
+  DateRange,
+  FunnelData,
+  FunnelStage,
+} from './types'
 
 async function fetchFunnelData(
   orgId: string,
@@ -46,7 +51,7 @@ async function fetchFunnelData(
   ])
 
   const stageData: FunnelStage[] = stages.map((stage) => {
-    const group = groups.find((g) => g.pipelineStageId === stage.id)
+    const group = groups.find((group) => group.pipelineStageId === stage.id)
     return {
       stageId: stage.id,
       stageName: stage.name,
@@ -83,7 +88,8 @@ export const getFunnelData = cache(
     })
 
     const getCached = unstable_cache(
-      async () => fetchFunnelData(ctx.orgId, ctx.userId, elevated, dateRange, filters),
+      async () =>
+        fetchFunnelData(ctx.orgId, ctx.userId, elevated, dateRange, filters),
       [
         `dashboard-funnel-${ctx.orgId}-${ctx.userId}-${elevated}-${startISO}-${endISO}-${filtersKey}`,
       ],

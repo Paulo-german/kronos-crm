@@ -9,18 +9,26 @@ import {
   CardTitle,
 } from '@/_components/ui/card'
 import { cn } from '@/_lib/utils'
-import type { BusinessMetrics, PlanBaseline } from '@/admin/business/_lib/business-calculations'
+import type {
+  BusinessMetrics,
+  PlanBaseline,
+} from '@/admin/business/_lib/business-calculations'
 
 const fmt = {
-  brl: (n: number) =>
-    n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
-  pct: (n: number) => `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`,
-  number: (n: number) => n.toLocaleString('pt-BR'),
+  brl: (value: number) =>
+    value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+  pct: (value: number) => `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`,
+  number: (value: number) => value.toLocaleString('pt-BR'),
 }
 
-function MarginBadge({ marginPct, targetPct }: { marginPct: number; targetPct: number }) {
-  if (marginPct < 0)
-    return <Badge variant="destructive">Negativo</Badge>
+function MarginBadge({
+  marginPct,
+  targetPct,
+}: {
+  marginPct: number
+  targetPct: number
+}) {
+  if (marginPct < 0) return <Badge variant="destructive">Negativo</Badge>
   if (marginPct < targetPct)
     return (
       <Badge variant="outline" className="border-amber-500 text-amber-500">
@@ -52,8 +60,8 @@ export function BusinessKpiCards({ metrics, baseline }: BusinessKpiCardsProps) {
               metrics.marginPct < 0
                 ? 'text-destructive'
                 : metrics.marginPct < metrics.targetMargin
-                ? 'text-amber-500'
-                : 'text-emerald-500',
+                  ? 'text-amber-500'
+                  : 'text-emerald-500',
             )}
           >
             {fmt.pct(metrics.marginPct)}
@@ -99,7 +107,9 @@ export function BusinessKpiCards({ metrics, baseline }: BusinessKpiCardsProps) {
             {metrics.extraCustomersNeeded === null ? (
               <span className="text-lg text-destructive">Impossível</span>
             ) : metrics.extraCustomersNeeded <= 0 ? (
-              <span className="text-lg text-emerald-500">Margem alvo atingida ✓</span>
+              <span className="text-lg text-emerald-500">
+                Margem alvo atingida ✓
+              </span>
             ) : (
               `+${fmt.number(metrics.extraCustomersNeeded)}`
             )}
@@ -140,7 +150,8 @@ export function BusinessKpiCards({ metrics, baseline }: BusinessKpiCardsProps) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-1 text-sm">
-          {metrics.priceAdjustmentPct !== null && metrics.priceAdjustmentPct > 0 ? (
+          {metrics.priceAdjustmentPct !== null &&
+          metrics.priceAdjustmentPct > 0 ? (
             baseline.map((plan) => (
               <div key={plan.id} className="flex justify-between">
                 <span className="text-muted-foreground">{plan.name}</span>

@@ -68,12 +68,17 @@ interface ExhaustedConfig {
   specificPhone?: string
 }
 
-function getNextFollowUpOpeningTime(timezone: string, config: BusinessHoursConfig): Date {
+function getNextFollowUpOpeningTime(
+  timezone: string,
+  config: BusinessHoursConfig,
+): Date {
   const now = new Date()
   const MAX_DAYS_AHEAD = 8
 
   for (let daysAhead = 0; daysAhead < MAX_DAYS_AHEAD; daysAhead++) {
-    const candidateUtc = new Date(now.getTime() + daysAhead * 24 * 60 * 60 * 1000)
+    const candidateUtc = new Date(
+      now.getTime() + daysAhead * 24 * 60 * 60 * 1000,
+    )
 
     const formatter = new Intl.DateTimeFormat('en-US', {
       timeZone: timezone,
@@ -84,10 +89,17 @@ function getNextFollowUpOpeningTime(timezone: string, config: BusinessHoursConfi
     })
 
     const parts = formatter.formatToParts(candidateUtc)
-    const weekdayStr = parts.find((part) => part.type === 'weekday')?.value ?? ''
+    const weekdayStr =
+      parts.find((part) => part.type === 'weekday')?.value ?? ''
 
     const WEEKDAY_MAP: Record<string, number> = {
-      Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+      Sun: 0,
+      Mon: 1,
+      Tue: 2,
+      Wed: 3,
+      Thu: 4,
+      Fri: 5,
+      Sat: 6,
     }
     const dayIndex = WEEKDAY_MAP[weekdayStr]
     if (dayIndex === undefined) continue
@@ -104,7 +116,8 @@ function getNextFollowUpOpeningTime(timezone: string, config: BusinessHoursConfi
       timeZoneName: 'shortOffset',
     })
     const offsetParts = offsetFormatter.formatToParts(candidateUtc)
-    const tzName = offsetParts.find((part) => part.type === 'timeZoneName')?.value ?? ''
+    const tzName =
+      offsetParts.find((part) => part.type === 'timeZoneName')?.value ?? ''
 
     let offsetTotalMinutes = 0
     const match = tzName.match(/GMT([+-])(\d{1,2}):?(\d{0,2})/)
@@ -139,10 +152,15 @@ function getNextFollowUpOpeningTime(timezone: string, config: BusinessHoursConfi
     if (result > now) return result
   }
 
-  console.warn('[follow-up-cron] No business hours enabled in next 7 days, deferring 24h', {
-    timezone,
-    enabledDays: Object.entries(config).filter(([, day]) => day.enabled).map(([key]) => key),
-  })
+  console.warn(
+    '[follow-up-cron] No business hours enabled in next 7 days, deferring 24h',
+    {
+      timezone,
+      enabledDays: Object.entries(config)
+        .filter(([, day]) => day.enabled)
+        .map(([key]) => key),
+    },
+  )
   return new Date(now.getTime() + 24 * 60 * 60 * 1000)
 }
 
@@ -162,20 +180,23 @@ async function executeExhaustedAction(
       data: { aiPaused: true, pausedAt: now },
     })
 
-    await db.conversationEvent.create({
-      data: {
-        conversationId: conv.id,
-        type: 'INFO',
-        toolName: 'follow_up',
-        content: 'Follow-up esgotado. Conversa transferida para atendimento humano.',
-        visibleToUser: true,
-        metadata: {
-          subtype: 'FOLLOW_UP_EXHAUSTED_NOTIFY' satisfies InfoSubtype,
-          notifyTarget: config?.notifyTarget ?? 'deal_assignee',
-          specificPhone: config?.specificPhone ?? null,
-        } as Prisma.InputJsonValue,
-      },
-    }).catch(() => {})
+    await db.conversationEvent
+      .create({
+        data: {
+          conversationId: conv.id,
+          type: 'INFO',
+          toolName: 'follow_up',
+          content:
+            'Follow-up esgotado. Conversa transferida para atendimento humano.',
+          visibleToUser: true,
+          metadata: {
+            subtype: 'FOLLOW_UP_EXHAUSTED_NOTIFY' satisfies InfoSubtype,
+            notifyTarget: config?.notifyTarget ?? 'deal_assignee',
+            specificPhone: config?.specificPhone ?? null,
+          } as Prisma.InputJsonValue,
+        },
+      })
+      .catch(() => {})
     return
   }
 
@@ -183,25 +204,29 @@ async function executeExhaustedAction(
     const targetStageId = config?.targetStageId
     if (!conv.dealId || !targetStageId) return
 
-    await db.deal.update({
-      where: { id: conv.dealId },
-      data: { pipelineStageId: targetStageId },
-    }).catch(() => {})
+    await db.deal
+      .update({
+        where: { id: conv.dealId },
+        data: { pipelineStageId: targetStageId },
+      })
+      .catch(() => {})
 
-    await db.conversationEvent.create({
-      data: {
-        conversationId: conv.id,
-        type: 'INFO',
-        toolName: 'follow_up',
-        content: 'Follow-up esgotado. Negócio movido para nova etapa.',
-        visibleToUser: true,
-        metadata: {
-          subtype: 'FOLLOW_UP_EXHAUSTED_MOVE_DEAL' satisfies InfoSubtype,
-          dealId: conv.dealId,
-          targetStageId,
-        } as Prisma.InputJsonValue,
-      },
-    }).catch(() => {})
+    await db.conversationEvent
+      .create({
+        data: {
+          conversationId: conv.id,
+          type: 'INFO',
+          toolName: 'follow_up',
+          content: 'Follow-up esgotado. Negócio movido para nova etapa.',
+          visibleToUser: true,
+          metadata: {
+            subtype: 'FOLLOW_UP_EXHAUSTED_MOVE_DEAL' satisfies InfoSubtype,
+            dealId: conv.dealId,
+            targetStageId,
+          } as Prisma.InputJsonValue,
+        },
+      })
+      .catch(() => {})
   }
 }
 
@@ -220,7 +245,12 @@ export async function GET(request: Request): Promise<NextResponse> {
       nextFollowUpAt: { lte: now },
       aiPaused: false,
       OR: [
-        { inbox: { agentId: { not: null }, agent: { isActive: true, agentVersion: 'single-v2' } } },
+        {
+          inbox: {
+            agentId: { not: null },
+            agent: { isActive: true, agentVersion: 'single-v2' },
+          },
+        },
       ],
     },
     select: {
@@ -266,10 +296,18 @@ export async function GET(request: Request): Promise<NextResponse> {
   })
 
   if (conversations.length === 0) {
-    return NextResponse.json({ processed: 0, skipped: 0, errors: 0, total: 0, durationMs: Date.now() - startedAt })
+    return NextResponse.json({
+      processed: 0,
+      skipped: 0,
+      errors: 0,
+      total: 0,
+      durationMs: Date.now() - startedAt,
+    })
   }
 
-  console.info('[follow-up-cron] Processing batch', { batchSize: conversations.length })
+  console.warn('[follow-up-cron] Processing batch', {
+    batchSize: conversations.length,
+  })
 
   let processed = 0
   let skipped = 0
@@ -280,7 +318,12 @@ export async function GET(request: Request): Promise<NextResponse> {
       step: string,
       outcome: 'SENT' | 'SKIP' | 'ERROR',
       extra?: Record<string, unknown>,
-    ) => console.info(`[fup] ${step} → ${outcome}`, { convId: conv.id, organizationId: conv.organizationId, ...extra })
+    ) =>
+      console.warn(`[fup] ${step} → ${outcome}`, {
+        convId: conv.id,
+        organizationId: conv.organizationId,
+        ...extra,
+      })
 
     try {
       if (!conv.inbox.isActive || !conv.remoteJid) {
@@ -288,14 +331,18 @@ export async function GET(request: Request): Promise<NextResponse> {
           where: { id: conv.id },
           data: { nextFollowUpAt: null, followUpCount: 0 },
         })
-        log('conversation_check', 'SKIP', { reason: !conv.inbox.isActive ? 'inbox_inactive' : 'no_remote_jid' })
+        log('conversation_check', 'SKIP', {
+          reason: !conv.inbox.isActive ? 'inbox_inactive' : 'no_remote_jid',
+        })
         skipped++
         continue
       }
 
       const agentId = conv.inbox.agentId ?? conv.activeAgentId
       if (!agentId) {
-        log('agent_resolve', 'SKIP', { reason: 'no_active_agent_not_yet_routed' })
+        log('agent_resolve', 'SKIP', {
+          reason: 'no_active_agent_not_yet_routed',
+        })
         skipped++
         continue
       }
@@ -316,7 +363,10 @@ export async function GET(request: Request): Promise<NextResponse> {
         })
 
         if (!workerFromGroup) {
-          log('agent_resolve', 'SKIP', { reason: 'worker_not_found', workerId: conv.activeAgentId })
+          log('agent_resolve', 'SKIP', {
+            reason: 'worker_not_found',
+            workerId: conv.activeAgentId,
+          })
           skipped++
           continue
         }
@@ -334,14 +384,20 @@ export async function GET(request: Request): Promise<NextResponse> {
         continue
       }
 
-      const followUps = await getFollowUpsForStep(agentId, conv.currentStepOrder)
+      const followUps = await getFollowUpsForStep(
+        agentId,
+        conv.currentStepOrder,
+      )
 
       if (followUps.length === 0) {
         await db.conversation.update({
           where: { id: conv.id },
           data: { nextFollowUpAt: null, followUpCount: 0 },
         })
-        log('followup_lookup', 'SKIP', { reason: 'no_follow_ups_for_step', stepOrder: conv.currentStepOrder })
+        log('followup_lookup', 'SKIP', {
+          reason: 'no_follow_ups_for_step',
+          stepOrder: conv.currentStepOrder,
+        })
         skipped++
         continue
       }
@@ -355,14 +411,22 @@ export async function GET(request: Request): Promise<NextResponse> {
           where: { id: conv.id },
           data: { nextFollowUpAt: null, followUpCount: 0 },
         })
-        log('followup_lookup', 'SKIP', { reason: 'all_exhausted', followUpCount: conv.followUpCount })
+        log('followup_lookup', 'SKIP', {
+          reason: 'all_exhausted',
+          followUpCount: conv.followUpCount,
+        })
         skipped++
         continue
       }
 
       const freshConv = await db.conversation.findUnique({
         where: { id: conv.id },
-        select: { nextFollowUpAt: true, aiPaused: true, followUpCount: true, currentStepOrder: true },
+        select: {
+          nextFollowUpAt: true,
+          aiPaused: true,
+          followUpCount: true,
+          currentStepOrder: true,
+        },
       })
 
       const hasFupChanged =
@@ -372,7 +436,9 @@ export async function GET(request: Request): Promise<NextResponse> {
         freshConv.followUpCount !== conv.followUpCount
 
       if (hasFupChanged) {
-        log('race_condition_check', 'SKIP', { reason: 'state_changed_since_batch' })
+        log('race_condition_check', 'SKIP', {
+          reason: 'state_changed_since_batch',
+        })
         skipped++
         continue
       }
@@ -391,13 +457,20 @@ export async function GET(request: Request): Promise<NextResponse> {
         continue
       }
 
-      if (resolvedAgent.followUpBusinessHoursEnabled && resolvedAgent.followUpBusinessHoursConfig) {
+      if (
+        resolvedAgent.followUpBusinessHoursEnabled &&
+        resolvedAgent.followUpBusinessHoursConfig
+      ) {
         const bhConfigRaw = resolvedAgent.followUpBusinessHoursConfig
         const isValidBhConfig =
-          typeof bhConfigRaw === 'object' && bhConfigRaw !== null && !Array.isArray(bhConfigRaw)
+          typeof bhConfigRaw === 'object' &&
+          bhConfigRaw !== null &&
+          !Array.isArray(bhConfigRaw)
 
         if (!isValidBhConfig) {
-          console.warn('[follow-up-cron] Invalid FUP business hours config', { convId: conv.id })
+          console.warn('[follow-up-cron] Invalid FUP business hours config', {
+            convId: conv.id,
+          })
         }
 
         if (isValidBhConfig) {
@@ -406,7 +479,10 @@ export async function GET(request: Request): Promise<NextResponse> {
           const isOpen = checkBusinessHours(timezone, bhConfig)
 
           if (!isOpen) {
-            const nextOpeningTime = getNextFollowUpOpeningTime(timezone, bhConfig)
+            const nextOpeningTime = getNextFollowUpOpeningTime(
+              timezone,
+              bhConfig,
+            )
 
             await db.conversation.update({
               where: { id: conv.id },
@@ -468,7 +544,12 @@ export async function GET(request: Request): Promise<NextResponse> {
         await db.conversation.update({
           where: { id: conv.id },
           data: nextFollowUpSim
-            ? { followUpCount: nextFupIndexSim, nextFollowUpAt: new Date(now.getTime() + nextFollowUpSim.delayMinutes * 60 * 1000) }
+            ? {
+                followUpCount: nextFupIndexSim,
+                nextFollowUpAt: new Date(
+                  now.getTime() + nextFollowUpSim.delayMinutes * 60 * 1000,
+                ),
+              }
             : { nextFollowUpAt: null, followUpCount: 0 },
         })
 
@@ -489,25 +570,34 @@ export async function GET(request: Request): Promise<NextResponse> {
       } catch (providerError) {
         log('provider_resolve', 'SKIP', {
           reason: 'provider_error',
-          error: providerError instanceof Error ? providerError.message : String(providerError),
+          error:
+            providerError instanceof Error
+              ? providerError.message
+              : String(providerError),
         })
         await db.conversation.update({
           where: { id: conv.id },
           data: { nextFollowUpAt: null, followUpCount: 0 },
         })
-        await db.conversationEvent.create({
-          data: {
-            conversationId: conv.id,
-            type: 'INFO',
-            toolName: 'follow_up',
-            content: 'Follow-ups pausados: conexão com WhatsApp indisponível.',
-            visibleToUser: true,
-            metadata: {
-              subtype: 'FOLLOW_UP_PROVIDER_ERROR' satisfies InfoSubtype,
-              error: providerError instanceof Error ? providerError.message : String(providerError),
-            } as Prisma.InputJsonValue,
-          },
-        }).catch(() => {})
+        await db.conversationEvent
+          .create({
+            data: {
+              conversationId: conv.id,
+              type: 'INFO',
+              toolName: 'follow_up',
+              content:
+                'Follow-ups pausados: conexão com WhatsApp indisponível.',
+              visibleToUser: true,
+              metadata: {
+                subtype: 'FOLLOW_UP_PROVIDER_ERROR' satisfies InfoSubtype,
+                error:
+                  providerError instanceof Error
+                    ? providerError.message
+                    : String(providerError),
+              } as Prisma.InputJsonValue,
+            },
+          })
+          .catch(() => {})
         skipped++
         continue
       }
@@ -517,15 +607,24 @@ export async function GET(request: Request): Promise<NextResponse> {
         connectionType: conv.inbox.connectionType,
         textLength: currentFollowUp.messageContent.length,
       })
-      const sentIds = await provider.sendText(conv.remoteJid, currentFollowUp.messageContent)
+      const sentIds = await provider.sendText(
+        conv.remoteJid,
+        currentFollowUp.messageContent,
+      )
 
       await Promise.all(
         sentIds.map((sentId) =>
           redis.set(`dedup:${sentId}`, '1', 'EX', 600).catch((redisError) => {
-            console.warn('[follow-up-cron] Dedup key set failed, webhook may reprocess message', {
-              sentId,
-              error: redisError instanceof Error ? redisError.message : String(redisError),
-            })
+            console.warn(
+              '[follow-up-cron] Dedup key set failed, webhook may reprocess message',
+              {
+                sentId,
+                error:
+                  redisError instanceof Error
+                    ? redisError.message
+                    : String(redisError),
+              },
+            )
           }),
         ),
       )
@@ -565,7 +664,12 @@ export async function GET(request: Request): Promise<NextResponse> {
       await db.conversation.update({
         where: { id: conv.id },
         data: nextFollowUp
-          ? { followUpCount: nextFupIndex, nextFollowUpAt: new Date(now.getTime() + nextFollowUp.delayMinutes * 60 * 1000) }
+          ? {
+              followUpCount: nextFupIndex,
+              nextFollowUpAt: new Date(
+                now.getTime() + nextFollowUp.delayMinutes * 60 * 1000,
+              ),
+            }
           : { nextFollowUpAt: null, followUpCount: 0 },
       })
 
@@ -584,16 +688,24 @@ export async function GET(request: Request): Promise<NextResponse> {
         followUpCount: conv.followUpCount,
         error: error instanceof Error ? error.message : String(error),
       })
-      await db.conversation.update({
-        where: { id: conv.id },
-        data: { nextFollowUpAt: null, followUpCount: 0 },
-      }).catch(() => {})
+      await db.conversation
+        .update({
+          where: { id: conv.id },
+          data: { nextFollowUpAt: null, followUpCount: 0 },
+        })
+        .catch(() => {})
     }
   }
 
-  const result = { processed, skipped, errors, total: conversations.length, durationMs: Date.now() - startedAt }
+  const result = {
+    processed,
+    skipped,
+    errors,
+    total: conversations.length,
+    durationMs: Date.now() - startedAt,
+  }
 
-  console.info('[follow-up-cron] Done', result)
+  console.warn('[follow-up-cron] Done', result)
 
   return NextResponse.json(result)
 }

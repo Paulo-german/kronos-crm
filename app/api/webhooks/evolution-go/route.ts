@@ -4,10 +4,16 @@ import type { Prisma } from '@prisma/client'
 import { SalesDistributionModel } from '@prisma/client'
 import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
-import { isGroupMessage, resolveEffectiveJid } from '@/_lib/evolution-js/parse-message'
+import {
+  isGroupMessage,
+  resolveEffectiveJid,
+} from '@/_lib/evolution-js/parse-message'
 import { parseEvolutionGoMessage } from '@/_lib/evolution-go/parse-message'
 import { resolveConversation } from '@/_lib/whatsapp/resolve-conversation'
-import { sendEvolutionGoMessage, sendEvolutionGoPresence } from '@/_lib/evolution-go/send-message'
+import {
+  sendEvolutionGoMessage,
+  sendEvolutionGoPresence,
+} from '@/_lib/evolution-go/send-message'
 import { checkBusinessHours } from '@/_lib/agent/check-business-hours'
 import { scheduleNotifyOrgAdmins } from '@/_lib/notifications/notify-org-admins'
 import { resolveAgentForConversation } from '@/../trigger/lib/resolve-agent'
@@ -25,7 +31,10 @@ import {
   evolutionGoReceiptEventSchema,
   evolutionGoStatusEventSchema,
 } from '@/_lib/evolution-go/types'
-import { updateDeliveryStatus, updateDeliveryStatusFailed } from '@/_lib/message-delivery-status'
+import {
+  updateDeliveryStatus,
+  updateDeliveryStatusFailed,
+} from '@/_lib/message-delivery-status'
 import { AUTO_REOPEN_FIELDS } from '@/_lib/conversation/auto-reopen'
 import { hasActivePlan } from '@/_lib/billing/has-active-plan'
 import { broadcastAgentStatus } from '@/_lib/inbox/broadcast-agent-status'
@@ -45,11 +54,17 @@ function buildUserMessageMetadata(
   if (!media) return undefined
   const hasRaw = rawGoMessage !== undefined && rawGoMessage !== null
   if (!hasRaw) {
-    console.warn(`${LOG} buildUserMessageMetadata: rawGoMessage ausente — media será salva sem goRawMessage`, {
-      mediaMimetype: media.mimetype,
-    })
+    console.warn(
+      `${LOG} buildUserMessageMetadata: rawGoMessage ausente — media será salva sem goRawMessage`,
+      {
+        mediaMimetype: media.mimetype,
+      },
+    )
   }
-  return { media, ...(hasRaw ? { goRawMessage: rawGoMessage } : {}) } as unknown as Prisma.InputJsonValue
+  return {
+    media,
+    ...(hasRaw ? { goRawMessage: rawGoMessage } : {}),
+  } as unknown as Prisma.InputJsonValue
 }
 
 export async function POST(req: Request) {
@@ -57,16 +72,22 @@ export async function POST(req: Request) {
   const { searchParams } = new URL(req.url)
   const secret = searchParams.get('secret')
 
-  const payload = (await req.json().catch(() => null)) as Record<string, unknown> | null
+  const payload = (await req.json().catch(() => null)) as Record<
+    string,
+    unknown
+  > | null
 
   if (!payload) {
     console.warn(`${LOG} payload inválido ou não-JSON`)
     return NextResponse.json({ ignored: true, reason: 'invalid_payload' })
   }
 
-  const instanceName = (payload.instanceName ?? payload.instance) as string | undefined
+  const instanceName = (payload.instanceName ?? payload.instance) as
+    | string
+    | undefined
   const event = (payload.event as string | undefined)?.toUpperCase()
 
+  // eslint-disable-next-line no-console
   console.log(`${LOG} recebido`, {
     event,
     instance: instanceName,
@@ -82,7 +103,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const inboxSecret = await resolveEvolutionGoWebhookSecretByInstanceName(instanceName)
+  const inboxSecret =
+    await resolveEvolutionGoWebhookSecretByInstanceName(instanceName)
   if (!inboxSecret || secret !== inboxSecret) {
     console.error(`${LOG} 401: autenticação falhou`, {
       instanceName,
@@ -93,28 +115,43 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  // eslint-disable-next-line no-console
   console.log(`${LOG} autenticado`, { instanceName, event })
 
   // 2. CONNECTION — atualizar status no banco
   if (event === 'CONNECTION') {
     const parsed = evolutionGoConnectionEventSchema.safeParse(payload.data)
     if (!parsed.success) {
-      console.warn(`${LOG} CONNECTION: payload inválido`, { errors: parsed.error.issues })
+      console.warn(`${LOG} CONNECTION: payload inválido`, {
+        errors: parsed.error.issues,
+      })
       return NextResponse.json({ ignored: true, reason: 'invalid_payload' })
     }
 
     const { state } = parsed.data
+    // eslint-disable-next-line no-console
     console.log(`${LOG} CONNECTION state=${state}`, { instanceName })
 
     if (state !== 'open' && state !== 'close') {
-      return NextResponse.json({ ignored: true, reason: 'connection_state_ignored' })
+      return NextResponse.json({
+        ignored: true,
+        reason: 'connection_state_ignored',
+      })
     }
 
     const isConnected = state === 'open'
 
     const inbox = await db.inbox.findFirst({
-      where: { evolutionInstanceName: instanceName, connectionType: 'EVOLUTION_GO' },
-      select: { id: true, organizationId: true, agentId: true, evolutionConnected: true },
+      where: {
+        evolutionInstanceName: instanceName,
+        connectionType: 'EVOLUTION_GO',
+      },
+      select: {
+        id: true,
+        organizationId: true,
+        agentId: true,
+        evolutionConnected: true,
+      },
     })
 
     if (!inbox) {
@@ -143,7 +180,9 @@ export async function POST(req: Request) {
           type: 'SYSTEM',
           title: 'Conexao WhatsApp perdida',
           readAt: null,
-          createdAt: { gte: new Date(Date.now() - NOTIFICATION_ANTI_SPAM_WINDOW_MS) },
+          createdAt: {
+            gte: new Date(Date.now() - NOTIFICATION_ANTI_SPAM_WINDOW_MS),
+          },
         },
       })
 
@@ -167,7 +206,9 @@ export async function POST(req: Request) {
   if (event === 'MESSAGE_STATUS') {
     const parsed = evolutionGoStatusEventSchema.safeParse(payload.data)
     if (!parsed.success) {
-      console.warn(`${LOG} MESSAGE_STATUS: payload inválido`, { errors: parsed.error.issues })
+      console.warn(`${LOG} MESSAGE_STATUS: payload inválido`, {
+        errors: parsed.error.issues,
+      })
       return NextResponse.json({ ignored: true, reason: 'invalid_payload' })
     }
 
@@ -181,13 +222,15 @@ export async function POST(req: Request) {
 
       if (status === 'READ' || status === 'PLAYED') {
         const result = await updateDeliveryStatus(messageId, 'read')
-        if (result) revalidateTag(`conversation-messages:${result.conversationId}`)
+        if (result)
+          revalidateTag(`conversation-messages:${result.conversationId}`)
         continue
       }
 
       if (status === 'DELIVERY_ACK' || status === 'SERVER_ACK') {
         const result = await updateDeliveryStatus(messageId, 'delivered')
-        if (result) revalidateTag(`conversation-messages:${result.conversationId}`)
+        if (result)
+          revalidateTag(`conversation-messages:${result.conversationId}`)
         continue
       }
 
@@ -202,14 +245,19 @@ export async function POST(req: Request) {
       }
     }
 
-    return NextResponse.json({ success: true, processed: outboundUpdates.length })
+    return NextResponse.json({
+      success: true,
+      processed: outboundUpdates.length,
+    })
   }
 
   // 4. RECEIPT — whatsmeow delivery/read receipt do contato para mensagens enviadas por nós
   if (event === 'RECEIPT') {
     const parsed = evolutionGoReceiptEventSchema.safeParse(payload.data)
     if (!parsed.success) {
-      console.warn(`${LOG} RECEIPT: payload inválido`, { errors: parsed.error.issues })
+      console.warn(`${LOG} RECEIPT: payload inválido`, {
+        errors: parsed.error.issues,
+      })
       return NextResponse.json({ ignored: true, reason: 'invalid_payload' })
     }
 
@@ -233,16 +281,30 @@ export async function POST(req: Request) {
         revalidateTag(`conversation-messages:${result.conversationId}`)
         updatedCount++
       } else {
-        console.warn(`${LOG} RECEIPT: mensagem não encontrada no banco`, { messageId, isRead })
+        console.warn(`${LOG} RECEIPT: mensagem não encontrada no banco`, {
+          messageId,
+          isRead,
+        })
       }
     }
 
-    console.log(`${LOG} RECEIPT processado`, { messageIds, type: Type ?? 'delivery', isRead, updatedCount })
-    return NextResponse.json({ success: true, processed: messageIds.length, updated: updatedCount })
+    // eslint-disable-next-line no-console
+    console.log(`${LOG} RECEIPT processado`, {
+      messageIds,
+      type: Type ?? 'delivery',
+      isRead,
+      updatedCount,
+    })
+    return NextResponse.json({
+      success: true,
+      processed: messageIds.length,
+      updated: updatedCount,
+    })
   }
 
   // 5. Filtro de evento — processar MESSAGE e SENDMESSAGE (envio manual pelo app)
   if (event !== 'MESSAGE' && event !== 'SENDMESSAGE') {
+    // eslint-disable-next-line no-console
     console.log(`${LOG} evento ignorado`, { event, instanceName })
     return NextResponse.json({ ignored: true, reason: 'event_not_handled' })
   }
@@ -256,10 +318,18 @@ export async function POST(req: Request) {
         message: issue.message,
         code: issue.code,
       })),
-      dataKeys: payload.data && typeof payload.data === 'object' ? Object.keys(payload.data) : [],
-      infoKeys: payload.data && typeof payload.data === 'object' && 'Info' in (payload.data as object)
-        ? Object.keys((payload.data as Record<string, unknown>).Info as object)
-        : [],
+      dataKeys:
+        payload.data && typeof payload.data === 'object'
+          ? Object.keys(payload.data)
+          : [],
+      infoKeys:
+        payload.data &&
+        typeof payload.data === 'object' &&
+        'Info' in (payload.data as object)
+          ? Object.keys(
+              (payload.data as Record<string, unknown>).Info as object,
+            )
+          : [],
     })
     return NextResponse.json({ ignored: true, reason: 'invalid_payload' })
   }
@@ -272,6 +342,7 @@ export async function POST(req: Request) {
   const altJid = fromMe ? Info.RecipientAlt : Info.SenderAlt
   const remoteJid = resolveEffectiveJid(Info.Chat, altJid || undefined)
 
+  // eslint-disable-next-line no-console
   console.log(`${LOG} MESSAGE`, {
     instanceName,
     messageId,
@@ -284,6 +355,7 @@ export async function POST(req: Request) {
   })
 
   if (isGroupMessage(remoteJid)) {
+    // eslint-disable-next-line no-console
     console.log(`${LOG} ignorado: grupo`, { remoteJid })
     return NextResponse.json({ ignored: true, reason: 'group_message' })
   }
@@ -377,7 +449,6 @@ export async function POST(req: Request) {
       }
     : undefined
 
-
   // 5. fromMe — checar dedup ANTES de qualquer DB call
   if (fromMe) {
     const dedupResult = await redis
@@ -456,14 +527,22 @@ export async function POST(req: Request) {
     revalidateTag(`conversations:${orgId}`)
     revalidateTag(`conversation-messages:${resolveResult.conversationId}`)
 
-    console.log(`${LOG} from_me salvo`, { conversationId: resolveResult.conversationId, messageId, isNew: resolveResult.isNew, remoteJid })
+    // eslint-disable-next-line no-console
+    console.log(`${LOG} from_me salvo`, {
+      conversationId: resolveResult.conversationId,
+      messageId,
+      isNew: resolveResult.isNew,
+      remoteJid,
+    })
     return NextResponse.json({ success: true, reason: 'from_me_saved' })
   }
 
-  const inboxCredentials = await resolveEvolutionGoCredentialsByInstanceName(instanceName)
+  const inboxCredentials =
+    await resolveEvolutionGoCredentialsByInstanceName(instanceName)
 
   const hasAiConfigured = !!(inbox.agentId || inbox.agentGroupId)
 
+  // eslint-disable-next-line no-console
   console.log(`${LOG} estado do inbox`, {
     inboxId: inbox.id,
     isActive: inbox.isActive,
@@ -473,7 +552,6 @@ export async function POST(req: Request) {
   })
 
   if (!inbox.isActive || !hasAiConfigured) {
-
     if (!inbox.isActive) {
       const recentDisconnectedNotification = await db.notification.findFirst({
         where: {
@@ -481,7 +559,9 @@ export async function POST(req: Request) {
           type: 'SYSTEM',
           title: 'WhatsApp desconectado',
           readAt: null,
-          createdAt: { gte: new Date(Date.now() - NOTIFICATION_ANTI_SPAM_WINDOW_MS) },
+          createdAt: {
+            gte: new Date(Date.now() - NOTIFICATION_ANTI_SPAM_WINDOW_MS),
+          },
         },
       })
 
@@ -538,9 +618,13 @@ export async function POST(req: Request) {
         data: {
           conversationId: resolveResult.conversationId,
           role: 'user',
-          content: resolveMessageContent(normalizedMsg) || '[mensagem não suportada]',
+          content:
+            resolveMessageContent(normalizedMsg) || '[mensagem não suportada]',
           providerMessageId: messageId,
-          metadata: buildUserMessageMetadata(normalizedMsg.media, (payload.data as Record<string, unknown>)?.Message),
+          metadata: buildUserMessageMetadata(
+            normalizedMsg.media,
+            (payload.data as Record<string, unknown>)?.Message,
+          ),
         },
       })
 
@@ -560,12 +644,16 @@ export async function POST(req: Request) {
       revalidateTag(`conversation-messages:${resolveResult.conversationId}`)
     }
 
+    // eslint-disable-next-line no-console
     console.log(`${LOG} mensagem salva (inbox/agente inativo)`, {
       conversationId: resolveResult.conversationId,
       isActive: inbox.isActive,
       hasAiConfigured,
     })
-    return NextResponse.json({ success: true, reason: 'agent_inactive_message_saved' })
+    return NextResponse.json({
+      success: true,
+      reason: 'agent_inactive_message_saved',
+    })
   }
 
   const preResolveConv = inbox.agentGroupId
@@ -577,6 +665,7 @@ export async function POST(req: Request) {
 
   const resolvedAgent = await resolveAgentForConversation(inbox, preResolveConv)
 
+  // eslint-disable-next-line no-console
   console.log(`${LOG} agente resolvido`, {
     agentId: resolvedAgent?.agentId,
     agentName: resolvedAgent?.agentName,
@@ -620,9 +709,14 @@ export async function POST(req: Request) {
           data: {
             conversationId: resolveInactiveResult.conversationId,
             role: 'user',
-            content: resolveMessageContent(normalizedMsgInactive) || '[mensagem não suportada]',
+            content:
+              resolveMessageContent(normalizedMsgInactive) ||
+              '[mensagem não suportada]',
             providerMessageId: messageId,
-            metadata: buildUserMessageMetadata(normalizedMsgInactive.media, (payload.data as Record<string, unknown>)?.Message),
+            metadata: buildUserMessageMetadata(
+              normalizedMsgInactive.media,
+              (payload.data as Record<string, unknown>)?.Message,
+            ),
           },
         })
       } catch (error) {
@@ -647,26 +741,38 @@ export async function POST(req: Request) {
         },
       })
       revalidateTag(`conversations:${orgId}`)
-      revalidateTag(`conversation-messages:${resolveInactiveResult.conversationId}`)
+      revalidateTag(
+        `conversation-messages:${resolveInactiveResult.conversationId}`,
+      )
     }
+    // eslint-disable-next-line no-console
     console.log(`${LOG} mensagem salva (agente resolvido inativo)`, {
       conversationId: resolveInactiveResult.conversationId,
     })
-    return NextResponse.json({ success: true, reason: 'agent_inactive_message_saved' })
+    return NextResponse.json({
+      success: true,
+      reason: 'agent_inactive_message_saved',
+    })
   }
 
-
   // 7. Business hours check
-  if (!resolvedAgent.requiresRouting && resolvedAgent.businessHoursEnabled && resolvedAgent.businessHoursConfig) {
+  if (
+    !resolvedAgent.requiresRouting &&
+    resolvedAgent.businessHoursEnabled &&
+    resolvedAgent.businessHoursConfig
+  ) {
     const isOpen = checkBusinessHours(
       resolvedAgent.businessHoursTimezone,
       resolvedAgent.businessHoursConfig as BusinessHoursConfig,
     )
 
-    console.log(`${LOG} business hours`, { isOpen, agentId: resolvedAgent.agentId })
+    // eslint-disable-next-line no-console
+    console.log(`${LOG} business hours`, {
+      isOpen,
+      agentId: resolvedAgent.agentId,
+    })
 
     if (!isOpen) {
-
       const oohKey = `ooh-reply:${resolvedAgent.agentId}:${remoteJid}`
       const alreadyReplied = await redis
         .set(oohKey, '1', 'EX', OOH_REPLY_TTL_SECONDS, 'NX')
@@ -708,9 +814,14 @@ export async function POST(req: Request) {
             data: {
               conversationId: resolveResult.conversationId,
               role: 'user',
-              content: resolveMessageContent(normalizedMsg) || '[mensagem não suportada]',
+              content:
+                resolveMessageContent(normalizedMsg) ||
+                '[mensagem não suportada]',
               providerMessageId: messageId,
-              metadata: buildUserMessageMetadata(normalizedMsg.media, (payload.data as Record<string, unknown>)?.Message),
+              metadata: buildUserMessageMetadata(
+                normalizedMsg.media,
+                (payload.data as Record<string, unknown>)?.Message,
+              ),
             },
           })
         } catch (error) {
@@ -749,7 +860,9 @@ export async function POST(req: Request) {
           )
           await Promise.all(
             oohIds.map((sentId) =>
-              redis.set(`dedup:${sentId}`, '1', 'EX', DEDUP_TTL_SECONDS).catch(() => {}),
+              redis
+                .set(`dedup:${sentId}`, '1', 'EX', DEDUP_TTL_SECONDS)
+                .catch(() => {}),
             ),
           )
         } catch {
@@ -757,9 +870,11 @@ export async function POST(req: Request) {
         }
       }
 
-      return NextResponse.json({ ignored: true, reason: 'outside_business_hours' })
+      return NextResponse.json({
+        ignored: true,
+        reason: 'outside_business_hours',
+      })
     }
-
   }
 
   // 8. Normalize
@@ -787,12 +902,14 @@ export async function POST(req: Request) {
   ])
 
   if (dedupResult === null) {
+    // eslint-disable-next-line no-console
     console.log(`${LOG} dedup: mensagem duplicada ignorada`, { messageId })
     return NextResponse.json({ ignored: true, reason: 'duplicate' })
   }
 
   const { conversationId } = resolveResult
 
+  // eslint-disable-next-line no-console
   console.log(`${LOG} conversa resolvida`, {
     conversationId,
     isNew: resolveResult.isNew,
@@ -821,7 +938,10 @@ export async function POST(req: Request) {
   })
 
   if (conversation?.aiPaused) {
-    console.log(`${LOG} IA pausada — mensagem salva sem disparar agente`, { conversationId })
+    // eslint-disable-next-line no-console
+    console.log(`${LOG} IA pausada — mensagem salva sem disparar agente`, {
+      conversationId,
+    })
     try {
       await db.message.create({
         data: {
@@ -829,7 +949,10 @@ export async function POST(req: Request) {
           role: 'user',
           content: resolveMessageContent(normalizedMessage),
           providerMessageId: messageId,
-          metadata: buildUserMessageMetadata(normalizedMessage.media, (payload.data as Record<string, unknown>)?.Message),
+          metadata: buildUserMessageMetadata(
+            normalizedMessage.media,
+            (payload.data as Record<string, unknown>)?.Message,
+          ),
         },
       })
 
@@ -858,7 +981,10 @@ export async function POST(req: Request) {
       throw error
     }
 
-    return NextResponse.json({ success: true, reason: 'ai_paused_message_saved' })
+    return NextResponse.json({
+      success: true,
+      reason: 'ai_paused_message_saved',
+    })
   }
 
   // 11. Salvar mensagem
@@ -869,7 +995,10 @@ export async function POST(req: Request) {
         role: 'user',
         content: resolveMessageContent(normalizedMessage),
         providerMessageId: messageId,
-        metadata: buildUserMessageMetadata(normalizedMessage.media, (payload.data as Record<string, unknown>)?.Message),
+        metadata: buildUserMessageMetadata(
+          normalizedMessage.media,
+          (payload.data as Record<string, unknown>)?.Message,
+        ),
       },
     })
   } catch (error) {
@@ -886,6 +1015,7 @@ export async function POST(req: Request) {
   // 12. Debounce + Dispatch + unreadCount
   const debounceTimestamp = Date.now()
 
+  // eslint-disable-next-line no-console
   console.log(`${LOG} disparando agente`, {
     conversationId,
     agentId: resolvedAgent.agentId,
@@ -923,9 +1053,17 @@ export async function POST(req: Request) {
         requiresRouting: resolvedAgent.requiresRouting,
         groupId: resolvedAgent.groupId,
       },
-      { delay: `${resolvedAgent.debounceSeconds}s`, concurrencyKey: conversationId },
+      {
+        delay: `${resolvedAgent.debounceSeconds}s`,
+        concurrencyKey: conversationId,
+      },
     ),
-    sendEvolutionGoPresence(instanceName, remoteJid, 'composing', inboxCredentials),
+    sendEvolutionGoPresence(
+      instanceName,
+      remoteJid,
+      'composing',
+      inboxCredentials,
+    ),
   ])
 
   if (resolvedAgent.debounceSeconds > 0) {
@@ -941,6 +1079,7 @@ export async function POST(req: Request) {
   revalidateTag(`conversations:${orgId}`)
   revalidateTag(`conversation-messages:${conversationId}`)
 
+  // eslint-disable-next-line no-console
   console.log(`${LOG} processado com sucesso`, { conversationId, messageId })
   return NextResponse.json({ success: true })
 }

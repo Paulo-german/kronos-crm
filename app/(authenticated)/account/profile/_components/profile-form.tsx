@@ -86,7 +86,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
 
   const initials = (watchedName || user.email)
     .split(' ')
-    .map((n) => n[0])
+    .map((word) => word[0])
     .join('')
     .toUpperCase()
     .slice(0, 2)

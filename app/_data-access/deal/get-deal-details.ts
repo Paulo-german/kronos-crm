@@ -273,13 +273,13 @@ const fetchDealDetailsFromDb = async (
     assigneeName: deal.assignee?.fullName ?? null,
     totalValue,
     lineItems,
-    activities: deal.activities.map((a) => ({
-      id: a.id,
-      type: a.type,
-      content: a.content,
-      createdAt: a.createdAt,
-      performer: a.performer,
-      metadata: (a.metadata as Record<string, unknown>) ?? null,
+    activities: deal.activities.map((activity) => ({
+      id: activity.id,
+      type: activity.type,
+      content: activity.content,
+      createdAt: activity.createdAt,
+      performer: activity.performer,
+      metadata: (activity.metadata as Record<string, unknown>) ?? null,
     })),
     totalActivities: deal._count.activities,
     tasks: deal.tasks.map((task) => ({
@@ -308,7 +308,14 @@ export const getDealDetails = async (
   const hidePiiFromMembers = ctx.hidePiiFromMembers ?? false
 
   const getCached = unstable_cache(
-    async () => fetchDealDetailsFromDb(dealId, ctx.orgId, ctx.userId, elevated, hidePiiFromMembers),
+    async () =>
+      fetchDealDetailsFromDb(
+        dealId,
+        ctx.orgId,
+        ctx.userId,
+        elevated,
+        hidePiiFromMembers,
+      ),
     [`deal-details-${dealId}-${ctx.userId}-${elevated}-${hidePiiFromMembers}`],
     {
       tags: [`deal:${dealId}`, `deals:${ctx.orgId}`],

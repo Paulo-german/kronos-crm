@@ -43,7 +43,7 @@ export function DealFilterBadges({
           <button
             onClick={() =>
               onFiltersChange({
-                status: filters.status.filter((s) => s !== status),
+                status: filters.status.filter((item) => item !== status),
               })
             }
             className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20"
@@ -65,7 +65,7 @@ export function DealFilterBadges({
           <button
             onClick={() =>
               onFiltersChange({
-                priority: filters.priority.filter((p) => p !== priority),
+                priority: filters.priority.filter((item) => item !== priority),
               })
             }
             className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20"
@@ -78,10 +78,7 @@ export function DealFilterBadges({
 
       {/* Date range badge */}
       {(filters.createdAtFrom ?? filters.createdAtTo) && (
-        <Badge
-          variant="secondary"
-          className="gap-1 pr-1 text-xs font-normal"
-        >
+        <Badge variant="secondary" className="gap-1 pr-1 text-xs font-normal">
           Criação:{' '}
           {filters.createdAtFrom
             ? format(filters.createdAtFrom, 'dd/MM/yy', { locale: ptBR })
@@ -104,18 +101,13 @@ export function DealFilterBadges({
 
       {/* Value range badge */}
       {(filters.valueMin !== null || filters.valueMax !== null) && (
-        <Badge
-          variant="secondary"
-          className="gap-1 pr-1 text-xs font-normal"
-        >
+        <Badge variant="secondary" className="gap-1 pr-1 text-xs font-normal">
           Valor:{' '}
           {filters.valueMin !== null ? formatCurrency(filters.valueMin) : '...'}
           {' - '}
           {filters.valueMax !== null ? formatCurrency(filters.valueMax) : '...'}
           <button
-            onClick={() =>
-              onFiltersChange({ valueMin: null, valueMax: null })
-            }
+            onClick={() => onFiltersChange({ valueMin: null, valueMax: null })}
             className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20"
             aria-label="Remover filtro de valor"
           >

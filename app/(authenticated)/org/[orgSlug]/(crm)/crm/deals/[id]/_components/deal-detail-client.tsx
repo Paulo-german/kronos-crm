@@ -138,7 +138,9 @@ const DealDetailClient = ({
   appointmentsTabSlot,
   orgSlug,
 }: DealDetailClientProps) => {
-  const { handleBack } = useSmartNavigation({ fallbackPath: `/org/${orgSlug}/crm/deals/pipeline` })
+  const { handleBack } = useSmartNavigation({
+    fallbackPath: `/org/${orgSlug}/crm/deals/pipeline`,
+  })
   const [activeTab, setActiveTab] = useState('summary')
   const { celebrate } = useDealWonCelebration()
 
@@ -167,10 +169,9 @@ const DealDetailClient = ({
         setCascadeContacts(true)
       },
       onError: ({ error }) => {
-        toast.error(
-          error.serverError || 'Erro ao transferir negociação.',
-          { position: 'bottom-right' },
-        )
+        toast.error(error.serverError || 'Erro ao transferir negociação.', {
+          position: 'bottom-right',
+        })
       },
     },
   )
@@ -309,7 +310,11 @@ const DealDetailClient = ({
   )
 
   const isPending =
-    isMarkingWon || isMarkingLost || isReopening || isTransferring || isTransferringPipeline
+    isMarkingWon ||
+    isMarkingLost ||
+    isReopening ||
+    isTransferring ||
+    isTransferringPipeline
 
   const handleMarkWon = () => {
     executeMarkWon({ dealId: deal.id })
@@ -332,18 +337,14 @@ const DealDetailClient = ({
     userRole === 'SUPPORT' ||
     deal.assigneeId === currentUserId
 
-  const assignableMembers = members.filter((m) => m.user?.fullName)
+  const assignableMembers = members.filter((member) => member.user?.fullName)
 
   return (
     <div className="flex h-fit flex-col gap-6 bg-background p-6">
       {/* Header */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleBack}
-          >
+          <Button variant="ghost" size="sm" onClick={handleBack}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Voltar
           </Button>
@@ -413,10 +414,7 @@ const DealDetailClient = ({
                   <CircleX className="h-4 w-4" />
                   Marcar perda
                 </Button>
-                <Button
-                  onClick={handleMarkWon}
-                  disabled={isPending}
-                >
+                <Button onClick={handleMarkWon} disabled={isPending}>
                   <CircleCheck className="h-4 w-4" />
                   Marcar venda
                 </Button>
@@ -429,28 +427,16 @@ const DealDetailClient = ({
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="h-fit">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger
-            value="summary"
-            className="rounded-md py-2"
-          >
+          <TabsTrigger value="summary" className="rounded-md py-2">
             Resumo
           </TabsTrigger>
-          <TabsTrigger
-            value="products"
-            className="rounded-md py-2"
-          >
+          <TabsTrigger value="products" className="rounded-md py-2">
             Produtos
           </TabsTrigger>
-          <TabsTrigger
-            value="tasks"
-            className="rounded-md py-2"
-          >
+          <TabsTrigger value="tasks" className="rounded-md py-2">
             Tarefas
           </TabsTrigger>
-          <TabsTrigger
-            value="appointments"
-            className="rounded-md py-2"
-          >
+          <TabsTrigger value="appointments" className="rounded-md py-2">
             Agendamentos
           </TabsTrigger>
         </TabsList>
@@ -466,8 +452,8 @@ const DealDetailClient = ({
               <UserCog className="h-4 w-4" />
               <span>Responsável pelo Deal:</span>
               <span className="font-medium text-foreground">
-                {members.find((m) => m.userId === deal.assigneeId)?.user
-                  ?.fullName || 'Não atribuído'}
+                {members.find((member) => member.userId === deal.assigneeId)
+                  ?.user?.fullName || 'Não atribuído'}
               </span>
             </div>
           </div>
@@ -506,9 +492,9 @@ const DealDetailClient = ({
                   <SelectValue placeholder="Selecione um membro..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {assignableMembers.map((m) => (
-                    <SelectItem key={m.id} value={m.userId as string}>
-                      {m.user?.fullName} ({m.email})
+                  {assignableMembers.map((member) => (
+                    <SelectItem key={member.id} value={member.userId as string}>
+                      {member.user?.fullName} ({member.email})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -540,7 +526,10 @@ const DealDetailClient = ({
                 {deal.contacts.length > 0 ? (
                   <ul className="mt-1 space-y-1 text-xs text-muted-foreground">
                     {deal.contacts.map((contact) => (
-                      <li key={contact.contactId} className="flex items-center gap-1.5">
+                      <li
+                        key={contact.contactId}
+                        className="flex items-center gap-1.5"
+                      >
                         <span className="h-1 w-1 shrink-0 rounded-full bg-muted-foreground/50" />
                         {contact.name}
                       </li>

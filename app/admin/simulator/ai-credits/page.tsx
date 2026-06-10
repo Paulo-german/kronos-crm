@@ -2,8 +2,18 @@
 
 import { useState, useMemo } from 'react'
 import { Plus, X } from 'lucide-react'
-import Header, { HeaderLeft, HeaderTitle, HeaderSubTitle } from '@/_components/header'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/_components/ui/card'
+import Header, {
+  HeaderLeft,
+  HeaderTitle,
+  HeaderSubTitle,
+} from '@/_components/header'
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '@/_components/ui/card'
 import { Input } from '@/_components/ui/input'
 import { Label } from '@/_components/ui/label'
 import { Button } from '@/_components/ui/button'
@@ -29,23 +39,32 @@ import { formatAvgCostPerMessage } from '@/_lib/ai/pricing'
 import { PLANS } from '@/_lib/billing/plans-data'
 import { PLAN_CREDITS } from '@/_lib/billing/plan-credits'
 
-const DEFAULT_RATE        = 5.70
-const DEFAULT_MARGIN_PCT  = '30'
-const MAX_ANALYSES        = 3
+const DEFAULT_RATE = 5.7
+const DEFAULT_MARGIN_PCT = '30'
+const MAX_ANALYSES = 3
 
 const parseInteger = (raw: string) =>
   parseInt(raw.replace(/\./g, '').replace(/,/g, ''), 10)
 
 const fmt = {
-  usd:    (n: number) => `$${n.toFixed(4)}`,
-  pct:    (n: number) => `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`,
-  number: (n: number) => n.toLocaleString('pt-BR'),
+  usd: (value: number) => `$${value.toFixed(4)}`,
+  pct: (value: number) => `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`,
+  number: (value: number) => value.toLocaleString('pt-BR'),
 }
 
 function marginBadge(pct: number) {
-  if (pct < 0)  return <Badge variant="destructive">Negativo</Badge>
-  if (pct < 20) return <Badge variant="outline" className="border-amber-500 text-amber-500">Baixo</Badge>
-  return <Badge variant="outline" className="border-emerald-500 text-emerald-500">OK</Badge>
+  if (pct < 0) return <Badge variant="destructive">Negativo</Badge>
+  if (pct < 20)
+    return (
+      <Badge variant="outline" className="border-amber-500 text-amber-500">
+        Baixo
+      </Badge>
+    )
+  return (
+    <Badge variant="outline" className="border-emerald-500 text-emerald-500">
+      OK
+    </Badge>
+  )
 }
 
 interface AnalysisState {
@@ -60,12 +79,12 @@ interface AnalysisState {
 
 function makeBlankAnalysis(): AnalysisState {
   return {
-    id:              crypto.randomUUID(),
-    modelId:         DEFAULT_AGENT_MODEL_ID,
-    tpcOverride:     '',
-    tokensRaw:       '',
-    costRaw:         '',
-    rateRaw:         String(DEFAULT_RATE),
+    id: crypto.randomUUID(),
+    modelId: DEFAULT_AGENT_MODEL_ID,
+    tpcOverride: '',
+    tokensRaw: '',
+    costRaw: '',
+    rateRaw: String(DEFAULT_RATE),
     targetMarginPct: DEFAULT_MARGIN_PCT,
   }
 }
@@ -77,31 +96,34 @@ interface AnalysisPanelProps {
 }
 
 function AnalysisPanel({ analysis, onChange, onRemove }: AnalysisPanelProps) {
-  const { modelId, tpcOverride, tokensRaw, costRaw, rateRaw, targetMarginPct } = analysis
+  const { modelId, tpcOverride, tokensRaw, costRaw, rateRaw, targetMarginPct } =
+    analysis
 
   const results = useMemo(() => {
-    const tokens  = parseInteger(tokensRaw)
+    const tokens = parseInteger(tokensRaw)
     const costUsd = Number(costRaw)
-    const rate    = Number(rateRaw) || DEFAULT_RATE
+    const rate = Number(rateRaw) || DEFAULT_RATE
     const targetPct = Number(targetMarginPct) || 0
 
     if (!tokens || !costUsd || tokens <= 0 || costUsd <= 0) return null
 
-    const model = AI_MODELS.find((m) => m.id === modelId)
-    const effectiveTpc = tpcOverride ? parseInteger(tpcOverride) : (model?.tokensPerCredit ?? 200)
+    const model = AI_MODELS.find((model) => model.id === modelId)
+    const effectiveTpc = tpcOverride
+      ? parseInteger(tpcOverride)
+      : (model?.tokensPerCredit ?? 200)
 
     if (!effectiveTpc || effectiveTpc <= 0) return null
 
     const creditsPerInteraction = Math.ceil(tokens / effectiveTpc)
-    const costPerCredit         = costUsd / creditsPerInteraction
+    const costPerCredit = costUsd / creditsPerInteraction
 
     const plans = PLANS.map((plan) => {
-      const planCredits  = PLAN_CREDITS[plan.id] ?? 0
+      const planCredits = PLAN_CREDITS[plan.id] ?? 0
       const interactions = Math.floor(planCredits / creditsPerInteraction)
-      const apiCostUsd   = costUsd * interactions
-      const revenueUsd   = plan.price / rate
-      const marginUsd    = revenueUsd - apiCostUsd
-      const marginPct    = revenueUsd > 0 ? (marginUsd / revenueUsd) * 100 : 0
+      const apiCostUsd = costUsd * interactions
+      const revenueUsd = plan.price / rate
+      const marginUsd = revenueUsd - apiCostUsd
+      const marginPct = revenueUsd > 0 ? (marginUsd / revenueUsd) * 100 : 0
 
       const maxApiCostUsd = revenueUsd * (1 - targetPct / 100)
       const targetTpc: number | null =
@@ -109,13 +131,32 @@ function AnalysisPanel({ analysis, onChange, onRemove }: AnalysisPanelProps) {
           ? Math.floor((maxApiCostUsd * tokens) / (costUsd * planCredits))
           : null
 
-      return { name: plan.name, credits: planCredits, interactions, apiCostUsd, revenueUsd, marginPct, targetTpc }
+      return {
+        name: plan.name,
+        credits: planCredits,
+        interactions,
+        apiCostUsd,
+        revenueUsd,
+        marginPct,
+        targetTpc,
+      }
     })
 
-    return { modelLabel: model?.label ?? modelId, effectiveTpc, tokens, costUsd, rate, targetPct, creditsPerInteraction, costPerCredit, plans }
+    return {
+      modelLabel: model?.label ?? modelId,
+      effectiveTpc,
+      tokens,
+      costUsd,
+      rate,
+      targetPct,
+      creditsPerInteraction,
+      costPerCredit,
+      plans,
+    }
   }, [modelId, tpcOverride, tokensRaw, costRaw, rateRaw, targetMarginPct])
 
-  const currentTpcPlaceholder = AI_MODELS.find((m) => m.id === modelId)?.tokensPerCredit ?? 200
+  const currentTpcPlaceholder =
+    AI_MODELS.find((model) => model.id === modelId)?.tokensPerCredit ?? 200
 
   return (
     <div className="flex flex-col gap-4">
@@ -124,11 +165,17 @@ function AnalysisPanel({ analysis, onChange, onRemove }: AnalysisPanelProps) {
           <div>
             <CardTitle className="text-base">Dados da interação</CardTitle>
             <CardDescription className="text-xs">
-              Preencha com os valores do log do OpenRouter. Os resultados atualizam automaticamente.
+              Preencha com os valores do log do OpenRouter. Os resultados
+              atualizam automaticamente.
             </CardDescription>
           </div>
           {onRemove && (
-            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-muted-foreground" onClick={onRemove}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 shrink-0 text-muted-foreground"
+              onClick={onRemove}
+            >
               <X className="h-4 w-4" />
             </Button>
           )}
@@ -136,7 +183,10 @@ function AnalysisPanel({ analysis, onChange, onRemove }: AnalysisPanelProps) {
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2 md:col-span-2">
             <Label>Modelo</Label>
-            <Select value={modelId} onValueChange={(value) => onChange({ modelId: value })}>
+            <Select
+              value={modelId}
+              onValueChange={(value) => onChange({ modelId: value })}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -229,14 +279,17 @@ function AnalysisPanel({ analysis, onChange, onRemove }: AnalysisPanelProps) {
             <CardContent>
               <dl className="grid gap-x-8 gap-y-2 text-sm md:grid-cols-3">
                 {[
-                  ['Modelo',              results.modelLabel],
-                  ['Tokens na amostra',   fmt.number(results.tokens)],
-                  ['Custo OpenRouter',    fmt.usd(results.costUsd)],
-                  ['tokensPerCredit',     fmt.number(results.effectiveTpc)],
-                  ['Créditos/interação',  String(results.creditsPerInteraction)],
+                  ['Modelo', results.modelLabel],
+                  ['Tokens na amostra', fmt.number(results.tokens)],
+                  ['Custo OpenRouter', fmt.usd(results.costUsd)],
+                  ['tokensPerCredit', fmt.number(results.effectiveTpc)],
+                  ['Créditos/interação', String(results.creditsPerInteraction)],
                   ['Custo/crédito (API)', fmt.usd(results.costPerCredit)],
                 ].map(([label, value]) => (
-                  <div key={label} className="flex justify-between border-b border-border/40 pb-2">
+                  <div
+                    key={label}
+                    className="flex justify-between border-b border-border/40 pb-2"
+                  >
                     <dt className="text-muted-foreground">{label}</dt>
                     <dd className="font-medium">{value}</dd>
                   </div>
@@ -249,8 +302,10 @@ function AnalysisPanel({ analysis, onChange, onRemove }: AnalysisPanelProps) {
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Margem por plano</CardTitle>
               <CardDescription className="text-xs">
-                Custo API = servir TODAS as interações possíveis com os créditos do plano.
-                {results.targetPct > 0 && ` TPC alvo = TPC máximo para atingir ${results.targetPct}% de margem.`}
+                Custo API = servir TODAS as interações possíveis com os créditos
+                do plano.
+                {results.targetPct > 0 &&
+                  ` TPC alvo = TPC máximo para atingir ${results.targetPct}% de margem.`}
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
@@ -276,9 +331,15 @@ function AnalysisPanel({ analysis, onChange, onRemove }: AnalysisPanelProps) {
                       <TableCell className="text-right text-muted-foreground">
                         {fmt.number(plan.credits)}
                       </TableCell>
-                      <TableCell className="text-right">{fmt.number(plan.interactions)}</TableCell>
-                      <TableCell className="text-right">{fmt.usd(plan.apiCostUsd)}</TableCell>
-                      <TableCell className="text-right">{fmt.usd(plan.revenueUsd)}</TableCell>
+                      <TableCell className="text-right">
+                        {fmt.number(plan.interactions)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {fmt.usd(plan.apiCostUsd)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {fmt.usd(plan.revenueUsd)}
+                      </TableCell>
                       <TableCell className="text-right font-semibold">
                         {fmt.pct(plan.marginPct)}
                       </TableCell>
@@ -289,7 +350,13 @@ function AnalysisPanel({ analysis, onChange, onRemove }: AnalysisPanelProps) {
                           ) : plan.targetTpc <= 0 ? (
                             <span className="text-destructive">impossível</span>
                           ) : (
-                            <span className={plan.targetTpc >= results.effectiveTpc ? 'text-emerald-500' : 'text-destructive'}>
+                            <span
+                              className={
+                                plan.targetTpc >= results.effectiveTpc
+                                  ? 'text-emerald-500'
+                                  : 'text-destructive'
+                              }
+                            >
                               {fmt.number(plan.targetTpc)}
                             </span>
                           )}
@@ -317,18 +384,29 @@ function AnalysisPanel({ analysis, onChange, onRemove }: AnalysisPanelProps) {
 }
 
 export default function AiCreditsSimulatorPage() {
-  const [analyses, setAnalyses] = useState<AnalysisState[]>([makeBlankAnalysis()])
+  const [analyses, setAnalyses] = useState<AnalysisState[]>([
+    makeBlankAnalysis(),
+  ])
 
-  const addAnalysis = () => setAnalyses((prev) => [...prev, makeBlankAnalysis()])
+  const addAnalysis = () =>
+    setAnalyses((prev) => [...prev, makeBlankAnalysis()])
 
   const removeAnalysis = (id: string) =>
-    setAnalyses((prev) => prev.filter((a) => a.id !== id))
+    setAnalyses((prev) => prev.filter((analysis) => analysis.id !== id))
 
   const patchAnalysis = (id: string, patch: Partial<AnalysisState>) =>
-    setAnalyses((prev) => prev.map((a) => (a.id === id ? { ...a, ...patch } : a)))
+    setAnalyses((prev) =>
+      prev.map((analysis) =>
+        analysis.id === id ? { ...analysis, ...patch } : analysis,
+      ),
+    )
 
   const gridCols =
-    analyses.length === 1 ? '' : analyses.length === 2 ? '2xl:grid-cols-2' : '2xl:grid-cols-3'
+    analyses.length === 1
+      ? ''
+      : analyses.length === 2
+        ? '2xl:grid-cols-2'
+        : '2xl:grid-cols-3'
 
   return (
     <div className="flex flex-col gap-6">
@@ -336,7 +414,8 @@ export default function AiCreditsSimulatorPage() {
         <HeaderLeft>
           <HeaderTitle>Simulador de Créditos IA</HeaderTitle>
           <HeaderSubTitle>
-            Cole os dados reais do OpenRouter e veja a margem por plano em tempo real.
+            Cole os dados reais do OpenRouter e veja a margem por plano em tempo
+            real.
           </HeaderSubTitle>
         </HeaderLeft>
       </Header>
@@ -363,7 +442,11 @@ export default function AiCreditsSimulatorPage() {
             key={analysis.id}
             analysis={analysis}
             onChange={(patch) => patchAnalysis(analysis.id, patch)}
-            onRemove={analyses.length > 1 ? () => removeAnalysis(analysis.id) : undefined}
+            onRemove={
+              analyses.length > 1
+                ? () => removeAnalysis(analysis.id)
+                : undefined
+            }
           />
         ))}
       </div>

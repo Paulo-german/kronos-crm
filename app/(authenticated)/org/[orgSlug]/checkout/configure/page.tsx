@@ -21,7 +21,7 @@ export default async function ConfigurePage({
     redirect(`/org/${orgSlug}/settings/billing`)
   }
 
-  const selectedPlan = PLANS.find((p) => p.id === planParam)
+  const selectedPlan = PLANS.find((plan) => plan.id === planParam)
 
   if (!selectedPlan) {
     redirect(`/org/${orgSlug}/settings/billing`)
@@ -30,7 +30,9 @@ export default async function ConfigurePage({
   // Sem plano anual disponível — pular direto para registro com intervalo mensal
   const hasAnnual = Boolean(selectedPlan.stripePriceIdAnnual)
   if (!hasAnnual) {
-    redirect(`/org/${orgSlug}/checkout/register?plan=${selectedPlan.id}&interval=monthly`)
+    redirect(
+      `/org/${orgSlug}/checkout/register?plan=${selectedPlan.id}&interval=monthly`,
+    )
   }
 
   return (

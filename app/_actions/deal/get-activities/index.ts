@@ -3,7 +3,11 @@
 import { z } from 'zod'
 import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
-import { findDealWithRBAC, canPerformAction, requirePermission } from '@/_lib/rbac'
+import {
+  findDealWithRBAC,
+  canPerformAction,
+  requirePermission,
+} from '@/_lib/rbac'
 import type { DealActivityDto } from '@/_data-access/deal/get-deal-details'
 
 const schema = z.object({
@@ -33,12 +37,12 @@ export const getActivities = orgActionClient
       },
     })
 
-    return activities.map((a) => ({
-      id: a.id,
-      type: a.type,
-      content: a.content,
-      createdAt: a.createdAt,
-      performer: a.performer,
-      metadata: (a.metadata as Record<string, unknown>) ?? null,
+    return activities.map((activity) => ({
+      id: activity.id,
+      type: activity.type,
+      content: activity.content,
+      createdAt: activity.createdAt,
+      performer: activity.performer,
+      metadata: (activity.metadata as Record<string, unknown>) ?? null,
     }))
   })

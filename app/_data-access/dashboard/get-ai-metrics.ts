@@ -7,7 +7,12 @@ import { ptBR } from 'date-fns/locale'
 import { db } from '@/_lib/prisma'
 import { getCreditBalance } from '@/_data-access/billing/get-credit-balance'
 import { getPreviousPeriod } from '@/_utils/date-range'
-import type { AgentBreakdownEntry, AiMetrics, AiMonthlyHistory, DateRange } from './types'
+import type {
+  AgentBreakdownEntry,
+  AiMetrics,
+  AiMonthlyHistory,
+  DateRange,
+} from './types'
 
 // Converte um Date em { periodYear, periodMonth } para filtro de AiUsage
 function toUsagePeriod(date: Date) {
@@ -38,58 +43,64 @@ async function fetchAiMetrics(
   const rangeMonthFilters = rangeMonths.map(toUsagePeriod)
   const prevMonthFilters = prevMonths.map(toUsagePeriod)
 
-  const [creditBalance, rangeUsages, prevUsages, agents, executionTotals, executionByStatus] =
-    await Promise.all([
-      getCreditBalance(orgId),
+  const [
+    creditBalance,
+    rangeUsages,
+    prevUsages,
+    agents,
+    executionTotals,
+    executionByStatus,
+  ] = await Promise.all([
+    getCreditBalance(orgId),
 
-      // Registros de uso no período selecionado
-      db.aiUsage.findMany({
-        where: { organizationId: orgId, OR: rangeMonthFilters },
-        select: {
-          periodYear: true,
-          periodMonth: true,
-          totalCreditsSpent: true,
-          totalMessagesUsed: true,
-        },
-      }),
+    // Registros de uso no período selecionado
+    db.aiUsage.findMany({
+      where: { organizationId: orgId, OR: rangeMonthFilters },
+      select: {
+        periodYear: true,
+        periodMonth: true,
+        totalCreditsSpent: true,
+        totalMessagesUsed: true,
+      },
+    }),
 
-      // Registros de uso no período anterior (para cálculo de variação)
-      db.aiUsage.findMany({
-        where: { organizationId: orgId, OR: prevMonthFilters },
-        select: {
-          totalCreditsSpent: true,
-          totalMessagesUsed: true,
-        },
-      }),
+    // Registros de uso no período anterior (para cálculo de variação)
+    db.aiUsage.findMany({
+      where: { organizationId: orgId, OR: prevMonthFilters },
+      select: {
+        totalCreditsSpent: true,
+        totalMessagesUsed: true,
+      },
+    }),
 
-      // Lista de agentes configurados na org
-      db.agent.findMany({
-        where: { organizationId: orgId },
-        select: { id: true, name: true, modelId: true, isActive: true },
-        orderBy: { createdAt: 'desc' },
-      }),
+    // Lista de agentes configurados na org
+    db.agent.findMany({
+      where: { organizationId: orgId },
+      select: { id: true, name: true, modelId: true, isActive: true },
+      orderBy: { createdAt: 'desc' },
+    }),
 
-      // Totais de execuções por agente (créditos + duração) no período
-      db.agentExecution.groupBy({
-        by: ['agentId'],
-        where: {
-          organizationId: orgId,
-          startedAt: { gte: dateRange.start, lte: dateRange.end },
-        },
-        _count: { id: true },
-        _sum: { creditsCost: true, durationMs: true },
-      }),
+    // Totais de execuções por agente (créditos + duração) no período
+    db.agentExecution.groupBy({
+      by: ['agentId'],
+      where: {
+        organizationId: orgId,
+        startedAt: { gte: dateRange.start, lte: dateRange.end },
+      },
+      _count: { id: true },
+      _sum: { creditsCost: true, durationMs: true },
+    }),
 
-      // Contagem de execuções por agente E por status no período
-      db.agentExecution.groupBy({
-        by: ['agentId', 'status'],
-        where: {
-          organizationId: orgId,
-          startedAt: { gte: dateRange.start, lte: dateRange.end },
-        },
-        _count: { id: true },
-      }),
-    ])
+    // Contagem de execuções por agente E por status no período
+    db.agentExecution.groupBy({
+      by: ['agentId', 'status'],
+      where: {
+        organizationId: orgId,
+        startedAt: { gte: dateRange.start, lte: dateRange.end },
+      },
+      _count: { id: true },
+    }),
+  ])
 
   // Monta o histórico mensal para o chart (cada mês do range, mais antigo primeiro)
   const usageMap = new Map(
@@ -186,7 +197,7 @@ async function fetchAiMetrics(
       }
     })
     // Agentes que mais consomem créditos aparecem primeiro
-    .sort((a, b) => b.totalCredits - a.totalCredits)
+    .sort((agentA, agentB) => agentB.totalCredits - agentA.totalCredits)
 
   const activeAgents = agents.filter((agent) => agent.isActive).length
 
@@ -216,11 +227,7 @@ export const getAiMetrics = cache(
       async () => fetchAiMetrics(orgId, dateRange),
       [`dashboard-ai-${orgId}-${rangeKey}`],
       {
-        tags: [
-          `dashboard-ai:${orgId}`,
-          `credits:${orgId}`,
-          `agents:${orgId}`,
-        ],
+        tags: [`dashboard-ai:${orgId}`, `credits:${orgId}`, `agents:${orgId}`],
         revalidate: 3600,
       },
     )

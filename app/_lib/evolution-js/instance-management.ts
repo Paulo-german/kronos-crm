@@ -59,13 +59,10 @@ export async function deleteEvolutionInstance(
 ): Promise<void> {
   const { apiUrl, apiKey } = credentials
 
-  const response = await fetch(
-    `${apiUrl}/instance/delete/${instanceName}`,
-    {
-      method: 'DELETE',
-      headers: buildHeaders(apiKey),
-    },
-  )
+  const response = await fetch(`${apiUrl}/instance/delete/${instanceName}`, {
+    method: 'DELETE',
+    headers: buildHeaders(apiKey),
+  })
 
   if (!response.ok && response.status !== 404) {
     const errorBody = await response.text().catch(() => 'unknown')
@@ -94,11 +91,7 @@ async function doCreateInstance(
         url: webhookUrl,
         byEvents: false,
         base64: false,
-        events: [
-          'MESSAGES_UPSERT',
-          'MESSAGES_UPDATE',
-          'CONNECTION_UPDATE',
-        ],
+        events: ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'CONNECTION_UPDATE'],
       },
     }),
   })
@@ -111,15 +104,29 @@ export async function createEvolutionInstance(
 ): Promise<CreateInstanceResult> {
   const { apiUrl, apiKey } = credentials
 
-  let createResponse = await doCreateInstance(apiUrl, apiKey, instanceName, webhookUrl)
+  let createResponse = await doCreateInstance(
+    apiUrl,
+    apiKey,
+    instanceName,
+    webhookUrl,
+  )
 
   // Se a instância já existe (403 "already in use"), deleta a órfã e recria
   if (createResponse.status === 403) {
     const errorBody = await createResponse.text().catch(() => '')
     if (errorBody.includes('already in use')) {
-      console.log('[evolution] Instance already exists, deleting orphan and retrying:', instanceName)
+      // eslint-disable-next-line no-console
+      console.log(
+        '[evolution] Instance already exists, deleting orphan and retrying:',
+        instanceName,
+      )
       await deleteEvolutionInstance(instanceName, credentials)
-      createResponse = await doCreateInstance(apiUrl, apiKey, instanceName, webhookUrl)
+      createResponse = await doCreateInstance(
+        apiUrl,
+        apiKey,
+        instanceName,
+        webhookUrl,
+      )
     }
   }
 
@@ -136,7 +143,11 @@ export async function createEvolutionInstance(
   }
 
   const createData = await createResponse.json()
-  console.log('[evolution] Create instance response:', JSON.stringify(createData, null, 2))
+  // eslint-disable-next-line no-console
+  console.log(
+    '[evolution] Create instance response:',
+    JSON.stringify(createData, null, 2),
+  )
 
   // V2 retorna `hash` como token da instância
   const instanceId =
@@ -146,10 +157,7 @@ export async function createEvolutionInstance(
     ''
 
   // V2 retorna QR code na criação quando qrcode: true
-  const qrBase64 =
-    createData?.qrcode?.base64 ||
-    createData?.base64 ||
-    null
+  const qrBase64 = createData?.qrcode?.base64 || createData?.base64 || null
 
   return { instanceName, instanceId, qrBase64 }
 }
@@ -197,19 +205,19 @@ export async function getEvolutionQRCode(
   const { apiUrl, apiKey } = credentials
 
   // Primeiro verifica o estado da conexão
-  const stateResult = await getEvolutionConnectionState(instanceName, credentials)
+  const stateResult = await getEvolutionConnectionState(
+    instanceName,
+    credentials,
+  )
   if (stateResult.state === 'open') {
     return { base64: null, code: null, pairingCode: null, state: 'open' }
   }
 
   // Busca QR code via connect endpoint
-  const response = await fetch(
-    `${apiUrl}/instance/connect/${instanceName}`,
-    {
-      method: 'GET',
-      headers: buildHeaders(apiKey),
-    },
-  )
+  const response = await fetch(`${apiUrl}/instance/connect/${instanceName}`, {
+    method: 'GET',
+    headers: buildHeaders(apiKey),
+  })
 
   if (!response.ok) {
     const errorBody = await response.text().catch(() => 'unknown')
@@ -222,13 +230,11 @@ export async function getEvolutionQRCode(
   }
 
   const data = await response.json()
+  // eslint-disable-next-line no-console
   console.log('[evolution] Connect/QR response keys:', Object.keys(data))
 
   // `base64` = imagem PNG pronta (pode vir como data URI ou raw)
-  const base64 =
-    data?.base64 ||
-    data?.qrcode?.base64 ||
-    null
+  const base64 = data?.base64 || data?.qrcode?.base64 || null
 
   // `code` = string de dados do QR (para gerar imagem no client via qrcode.react)
   const code = data?.code || null
@@ -269,7 +275,10 @@ export async function getEvolutionInstanceInfo(
   return {
     ownerJid: instance.instance?.owner ?? instance.owner ?? null,
     profileName: instance.instance?.profileName ?? instance.profileName ?? null,
-    profilePictureUrl: instance.instance?.profilePictureUrl ?? instance.profilePictureUrl ?? null,
+    profilePictureUrl:
+      instance.instance?.profilePictureUrl ??
+      instance.profilePictureUrl ??
+      null,
   }
 }
 
@@ -311,7 +320,9 @@ export async function listEvolutionInstances(
       return {
         instanceName: (inst.instanceName ?? inst.name ?? '') as string,
         instanceId: (inst.instanceId ?? '') as string,
-        state: ((inst.state ?? inst.status ?? 'close') as EvolutionInstanceSummary['state']),
+        state: (inst.state ??
+          inst.status ??
+          'close') as EvolutionInstanceSummary['state'],
         ownerJid: (inst.owner ?? null) as string | null,
       }
     })
@@ -330,18 +341,25 @@ export async function debugEvolutionInstance(
   const headers = buildHeaders(apiKey)
 
   const [instanceRes, webhookRes] = await Promise.all([
-    fetch(`${apiUrl}/instance/fetchInstances?instanceName=${encodeURIComponent(instanceName)}`, {
-      method: 'GET',
-      headers,
-    }),
+    fetch(
+      `${apiUrl}/instance/fetchInstances?instanceName=${encodeURIComponent(instanceName)}`,
+      {
+        method: 'GET',
+        headers,
+      },
+    ),
     fetch(`${apiUrl}/webhook/find/${instanceName}`, {
       method: 'GET',
       headers,
     }),
   ])
 
-  const instance = instanceRes.ok ? await instanceRes.json() : { error: instanceRes.status }
-  const webhook = webhookRes.ok ? await webhookRes.json() : { error: webhookRes.status }
+  const instance = instanceRes.ok
+    ? await instanceRes.json()
+    : { error: instanceRes.status }
+  const webhook = webhookRes.ok
+    ? await webhookRes.json()
+    : { error: webhookRes.status }
 
   return { instance, webhook }
 }
@@ -352,13 +370,10 @@ export async function getEvolutionWebhook(
 ): Promise<string | null> {
   const { apiUrl, apiKey } = credentials
 
-  const response = await fetch(
-    `${apiUrl}/webhook/find/${instanceName}`,
-    {
-      method: 'GET',
-      headers: buildHeaders(apiKey),
-    },
-  )
+  const response = await fetch(`${apiUrl}/webhook/find/${instanceName}`, {
+    method: 'GET',
+    headers: buildHeaders(apiKey),
+  })
 
   if (!response.ok) return null
 
@@ -373,19 +388,16 @@ export async function updateEvolutionWebhook(
 ): Promise<void> {
   const { apiUrl, apiKey } = credentials
 
-  const response = await fetch(
-    `${apiUrl}/webhook/set/${instanceName}`,
-    {
-      method: 'PUT',
-      headers: buildHeaders(apiKey),
-      body: JSON.stringify({
-        url: webhookUrl,
-        events: ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'CONNECTION_UPDATE'],
-        byEvents: false,
-        base64: false,
-      }),
-    },
-  )
+  const response = await fetch(`${apiUrl}/webhook/set/${instanceName}`, {
+    method: 'PUT',
+    headers: buildHeaders(apiKey),
+    body: JSON.stringify({
+      url: webhookUrl,
+      events: ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'CONNECTION_UPDATE'],
+      byEvents: false,
+      base64: false,
+    }),
+  })
 
   if (!response.ok) {
     const errorBody = await response.text().catch(() => 'unknown')
@@ -401,13 +413,10 @@ export async function disconnectEvolutionInstance(
 ): Promise<void> {
   const { apiUrl, apiKey } = credentials
 
-  const response = await fetch(
-    `${apiUrl}/instance/logout/${instanceName}`,
-    {
-      method: 'DELETE',
-      headers: buildHeaders(apiKey),
-    },
-  )
+  const response = await fetch(`${apiUrl}/instance/logout/${instanceName}`, {
+    method: 'DELETE',
+    headers: buildHeaders(apiKey),
+  })
 
   if (!response.ok) {
     const errorBody = await response.text().catch(() => 'unknown')

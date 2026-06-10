@@ -23,9 +23,9 @@ async function fetchUserOrganizations(userId: string) {
     },
   })
 
-  return memberships.map((m) => ({
-    ...m.organization,
-    role: m.role,
+  return memberships.map((membership) => ({
+    ...membership.organization,
+    role: membership.role,
   }))
 }
 

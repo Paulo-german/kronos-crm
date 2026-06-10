@@ -4,19 +4,45 @@ import { motion } from 'framer-motion'
 import { Phone, MessageSquare, Video } from 'lucide-react'
 
 const ACTIVITIES = [
-  { icon: Phone, label: 'Ligação realizada', sub: 'Atendeu — quer proposta', time: 'Hoje, 14:30', color: 'text-kronos-blue bg-kronos-blue/10' },
-  { icon: MessageSquare, label: 'WhatsApp enviado', sub: 'Proposta encaminhada', time: 'Ontem, 10:15', color: 'text-kronos-green bg-kronos-green/10' },
-  { icon: Video, label: 'Demo realizada', sub: 'Cliente aprovado produto', time: '12/05, 09:00', color: 'text-kronos-purple bg-kronos-purple/10' },
+  {
+    icon: Phone,
+    label: 'Ligação realizada',
+    sub: 'Atendeu — quer proposta',
+    time: 'Hoje, 14:30',
+    color: 'text-kronos-blue bg-kronos-blue/10',
+  },
+  {
+    icon: MessageSquare,
+    label: 'WhatsApp enviado',
+    sub: 'Proposta encaminhada',
+    time: 'Ontem, 10:15',
+    color: 'text-kronos-green bg-kronos-green/10',
+  },
+  {
+    icon: Video,
+    label: 'Demo realizada',
+    sub: 'Cliente aprovado produto',
+    time: '12/05, 09:00',
+    color: 'text-kronos-purple bg-kronos-purple/10',
+  },
 ]
 
 const colVariants = {
   hidden: { opacity: 0, y: 10 },
-  show: (i: number) => ({ opacity: 1, y: 0, transition: { duration: 0.28, delay: i * 0.14 } }),
+  show: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.28, delay: i * 0.14 },
+  }),
 }
 
 const rowVariants = {
   hidden: { opacity: 0, x: -6 },
-  show: (i: number) => ({ opacity: 1, x: 0, transition: { duration: 0.22, delay: 0.3 + i * 0.1 } }),
+  show: (i: number) => ({
+    opacity: 1,
+    x: 0,
+    transition: { duration: 0.22, delay: 0.3 + i * 0.1 },
+  }),
 }
 
 export const DealDetailSummarySlide = () => {
@@ -32,15 +58,24 @@ export const DealDetailSummarySlide = () => {
           animate="show"
           className="rounded-lg border border-border bg-card p-2.5"
         >
-          <p className="mb-1.5 text-[8px] font-semibold uppercase tracking-wide text-muted-foreground">Informações</p>
+          <p className="mb-1.5 text-[8px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Informações
+          </p>
           {[
             { label: 'Valor', value: 'R$ 45.000' },
             { label: 'Etapa', value: 'Qualificado' },
             { label: 'Fechamento', value: '30/06/2026' },
-          ].map((f) => (
-            <div key={f.label} className="flex items-center justify-between border-t border-border/50 py-1.5">
-              <span className="text-[8px] text-muted-foreground">{f.label}</span>
-              <span className="text-[8px] font-medium text-foreground">{f.value}</span>
+          ].map((field) => (
+            <div
+              key={field.label}
+              className="flex items-center justify-between border-t border-border/50 py-1.5"
+            >
+              <span className="text-[8px] text-muted-foreground">
+                {field.label}
+              </span>
+              <span className="text-[8px] font-medium text-foreground">
+                {field.value}
+              </span>
             </div>
           ))}
         </motion.div>
@@ -57,8 +92,12 @@ export const DealDetailSummarySlide = () => {
             FA
           </div>
           <div className="min-w-0">
-            <p className="truncate text-[9px] font-semibold text-foreground">Felipe Andrade</p>
-            <p className="truncate text-[8px] text-muted-foreground">Contato vinculado</p>
+            <p className="truncate text-[9px] font-semibold text-foreground">
+              Felipe Andrade
+            </p>
+            <p className="truncate text-[8px] text-muted-foreground">
+              Contato vinculado
+            </p>
           </div>
         </motion.div>
 
@@ -70,7 +109,9 @@ export const DealDetailSummarySlide = () => {
           animate="show"
           className="rounded-lg border border-border bg-card p-2.5"
         >
-          <p className="mb-1 text-[8px] font-semibold text-muted-foreground">Notas internas</p>
+          <p className="mb-1 text-[8px] font-semibold text-muted-foreground">
+            Notas internas
+          </p>
           <p className="text-[8px] leading-relaxed text-foreground/70">
             Cliente quer automatizar vendas. Demo agendada para 25/05...
           </p>
@@ -109,13 +150,21 @@ export const DealDetailSummarySlide = () => {
                 animate="show"
                 className="flex items-start gap-2 py-2 first:pt-0"
               >
-                <div className={`relative z-10 mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${activity.color}`}>
+                <div
+                  className={`relative z-10 mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${activity.color}`}
+                >
                   <activity.icon className="h-2.5 w-2.5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[9px] font-medium text-foreground">{activity.label}</p>
-                  <p className="text-[8px] text-muted-foreground">{activity.sub}</p>
-                  <p className="text-[8px] text-muted-foreground/60">{activity.time}</p>
+                  <p className="text-[9px] font-medium text-foreground">
+                    {activity.label}
+                  </p>
+                  <p className="text-[8px] text-muted-foreground">
+                    {activity.sub}
+                  </p>
+                  <p className="text-[8px] text-muted-foreground/60">
+                    {activity.time}
+                  </p>
                 </div>
               </motion.div>
             ))}

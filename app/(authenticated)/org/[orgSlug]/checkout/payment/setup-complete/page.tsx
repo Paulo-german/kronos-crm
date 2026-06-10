@@ -50,7 +50,7 @@ export default async function SetupCompletePage({
   }
 
   // Resolver priceId a partir dos query params
-  const selectedPlan = PLANS.find((p) => p.id === plan)
+  const selectedPlan = PLANS.find((planOption) => planOption.id === plan)
   if (!selectedPlan) {
     redirect(`${billingUrl}?error=invalid_plan`)
   }

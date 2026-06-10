@@ -10,13 +10,17 @@ interface DealDetailIntroTriggerProps {
   hasSeenDealDetailIntro: boolean
 }
 
-export function DealDetailIntroTrigger({ hasSeenDealDetailIntro }: DealDetailIntroTriggerProps) {
+export function DealDetailIntroTrigger({
+  hasSeenDealDetailIntro,
+}: DealDetailIntroTriggerProps) {
   const [open, setOpen] = useState(!hasSeenDealDetailIntro)
   const { execute } = useAction(completeTutorial)
 
   if (hasSeenDealDetailIntro) return null
 
-  const tutorial = TUTORIAL_REGISTRY.find((t) => t.id === 'deal-details')!
+  const tutorial = TUTORIAL_REGISTRY.find(
+    (tutorial) => tutorial.id === 'deal-details',
+  )!
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {

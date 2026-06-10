@@ -1,15 +1,17 @@
 'use client'
 
-import { useState, useOptimistic, useTransition, useCallback, useMemo } from 'react'
+import {
+  useState,
+  useOptimistic,
+  useTransition,
+  useCallback,
+  useMemo,
+} from 'react'
 import { useAction } from 'next-safe-action/hooks'
 import { formatDistanceToNow } from 'date-fns/formatDistanceToNow'
 import { ptBR } from 'date-fns/locale'
 import { toast } from 'sonner'
-import {
-  Webhook,
-  Copy,
-  Plus,
-} from 'lucide-react'
+import { Webhook, Copy, Plus } from 'lucide-react'
 import {
   ColumnDef,
   flexRender,
@@ -49,26 +51,55 @@ interface WebhookSourcesDataTableProps {
   orgSlug: string
 }
 
-function SuccessRateBadge({ rate, totalEvents }: { rate: number; totalEvents: number }) {
-  if (totalEvents === 0) return <span className="text-sm text-muted-foreground">—</span>
+function SuccessRateBadge({
+  rate,
+  totalEvents,
+}: {
+  rate: number
+  totalEvents: number
+}) {
+  if (totalEvents === 0)
+    return <span className="text-sm text-muted-foreground">—</span>
 
   const percentage = Math.round(rate * 100)
 
   if (percentage >= 95) {
-    return <span className="text-sm font-medium text-green-600 dark:text-green-400">{percentage}%</span>
+    return (
+      <span className="text-sm font-medium text-green-600 dark:text-green-400">
+        {percentage}%
+      </span>
+    )
   }
   if (percentage >= 80) {
-    return <span className="text-sm font-medium text-amber-600 dark:text-amber-400">{percentage}%</span>
+    return (
+      <span className="text-sm font-medium text-amber-600 dark:text-amber-400">
+        {percentage}%
+      </span>
+    )
   }
-  return <span className="text-sm font-medium text-red-600 dark:text-red-400">{percentage}%</span>
+  return (
+    <span className="text-sm font-medium text-red-600 dark:text-red-400">
+      {percentage}%
+    </span>
+  )
 }
 
-export function WebhookSourcesDataTable({ data, squads, orgSlug }: WebhookSourcesDataTableProps) {
+export function WebhookSourcesDataTable({
+  data,
+  squads,
+  orgSlug,
+}: WebhookSourcesDataTableProps) {
   const [, startTransition] = useTransition()
-  const [editingSource, setEditingSource] = useState<WebhookSourceDto | null>(null)
-  const [viewingLogsSourceId, setViewingLogsSourceId] = useState<string | null>(null)
+  const [editingSource, setEditingSource] = useState<WebhookSourceDto | null>(
+    null,
+  )
+  const [viewingLogsSourceId, setViewingLogsSourceId] = useState<string | null>(
+    null,
+  )
   const [viewingLogsSourceName, setViewingLogsSourceName] = useState<string>('')
-  const [deletingSource, setDeletingSource] = useState<WebhookSourceDto | null>(null)
+  const [deletingSource, setDeletingSource] = useState<WebhookSourceDto | null>(
+    null,
+  )
   const [createOpen, setCreateOpen] = useState(false)
 
   // Estado otimístico para o toggle de isActive
@@ -76,7 +107,9 @@ export function WebhookSourcesDataTable({ data, squads, orgSlug }: WebhookSource
     data,
     (current, update: { id: string; isActive: boolean }) =>
       current.map((source) =>
-        source.id === update.id ? { ...source, isActive: update.isActive } : source,
+        source.id === update.id
+          ? { ...source, isActive: update.isActive }
+          : source,
       ),
   )
 
@@ -86,15 +119,18 @@ export function WebhookSourcesDataTable({ data, squads, orgSlug }: WebhookSource
     },
   })
 
-  const { execute: executeDelete, isPending: isDeleting } = useAction(deleteWebhookSource, {
-    onSuccess: () => {
-      toast.success('Webhook deletado com sucesso.')
-      setDeletingSource(null)
+  const { execute: executeDelete, isPending: isDeleting } = useAction(
+    deleteWebhookSource,
+    {
+      onSuccess: () => {
+        toast.success('Webhook deletado com sucesso.')
+        setDeletingSource(null)
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError ?? 'Erro ao deletar webhook.')
+      },
     },
-    onError: ({ error }) => {
-      toast.error(error.serverError ?? 'Erro ao deletar webhook.')
-    },
-  })
+  )
 
   const handleToggleActive = useCallback(
     (source: WebhookSourceDto, newValue: boolean) => {
@@ -121,114 +157,133 @@ export function WebhookSourcesDataTable({ data, squads, orgSlug }: WebhookSource
     toast.success('URL copiada para a área de transferência.')
   }, [])
 
-  const columns: ColumnDef<WebhookSourceDto>[] = useMemo(() => [
-    {
-      accessorKey: 'name',
-      header: 'Nome',
-      cell: ({ row }) => (
-        <button
-          onClick={() => setEditingSource(row.original)}
-          className="text-left font-medium text-foreground underline-offset-4 hover:underline"
-        >
-          {row.original.name}
-        </button>
-      ),
-    },
-    {
-      accessorKey: 'platform',
-      header: 'Plataforma',
-      cell: ({ row }) => (
-        <Badge variant="secondary">
-          {PLATFORM_LABELS[row.original.platform as WebhookPlatform] ?? row.original.platform}
-        </Badge>
-      ),
-    },
-    {
-      accessorKey: 'eventType',
-      header: 'Evento',
-      cell: ({ row }) => (
-        <Badge variant="outline">
-          {EVENT_TYPE_LABELS[row.original.eventType as WebhookEventType] ?? row.original.eventType}
-        </Badge>
-      ),
-    },
-    {
-      accessorKey: 'isActive',
-      header: 'Status',
-      cell: ({ row }) => {
-        const optimistic = optimisticSources.find((s) => s.id === row.original.id)
-        const isActive = optimistic?.isActive ?? row.original.isActive
-
-        return (
-          <Switch
-            checked={isActive}
-            onCheckedChange={(newValue) => handleToggleActive(row.original, newValue)}
-            aria-label={isActive ? 'Desativar webhook' : 'Ativar webhook'}
-          />
-        )
+  const columns: ColumnDef<WebhookSourceDto>[] = useMemo(
+    () => [
+      {
+        accessorKey: 'name',
+        header: 'Nome',
+        cell: ({ row }) => (
+          <button
+            onClick={() => setEditingSource(row.original)}
+            className="text-left font-medium text-foreground underline-offset-4 hover:underline"
+          >
+            {row.original.name}
+          </button>
+        ),
       },
-    },
-    {
-      accessorKey: 'stats.totalEvents',
-      header: 'Total eventos',
-      cell: ({ row }) => (
-        <span className="text-sm tabular-nums">
-          {row.original.stats.totalEvents.toLocaleString('pt-BR')}
-        </span>
-      ),
-    },
-    {
-      accessorKey: 'stats.successRate',
-      header: 'Taxa de sucesso',
-      cell: ({ row }) => (
-        <SuccessRateBadge
-          rate={row.original.stats.successRate}
-          totalEvents={row.original.stats.totalEvents}
-        />
-      ),
-    },
-    {
-      accessorKey: 'lastReceivedAt',
-      header: 'Última atividade',
-      cell: ({ row }) => {
-        const date = row.original.lastReceivedAt
+      {
+        accessorKey: 'platform',
+        header: 'Plataforma',
+        cell: ({ row }) => (
+          <Badge variant="secondary">
+            {PLATFORM_LABELS[row.original.platform as WebhookPlatform] ??
+              row.original.platform}
+          </Badge>
+        ),
+      },
+      {
+        accessorKey: 'eventType',
+        header: 'Evento',
+        cell: ({ row }) => (
+          <Badge variant="outline">
+            {EVENT_TYPE_LABELS[row.original.eventType as WebhookEventType] ??
+              row.original.eventType}
+          </Badge>
+        ),
+      },
+      {
+        accessorKey: 'isActive',
+        header: 'Status',
+        cell: ({ row }) => {
+          const optimistic = optimisticSources.find(
+            (source) => source.id === row.original.id,
+          )
+          const isActive = optimistic?.isActive ?? row.original.isActive
 
-        if (!date) return <span className="text-muted-foreground">—</span>
-
-        return (
-          <span className="text-sm text-muted-foreground">
-            {formatDistanceToNow(new Date(date), { addSuffix: true, locale: ptBR })}
+          return (
+            <Switch
+              checked={isActive}
+              onCheckedChange={(newValue) =>
+                handleToggleActive(row.original, newValue)
+              }
+              aria-label={isActive ? 'Desativar webhook' : 'Ativar webhook'}
+            />
+          )
+        },
+      },
+      {
+        accessorKey: 'stats.totalEvents',
+        header: 'Total eventos',
+        cell: ({ row }) => (
+          <span className="text-sm tabular-nums">
+            {row.original.stats.totalEvents.toLocaleString('pt-BR')}
           </span>
-        )
+        ),
       },
-    },
-    {
-      id: 'url',
-      header: 'URL',
-      cell: ({ row }) => (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="gap-1.5 text-xs"
-          onClick={() => handleCopyUrl(row.original)}
-        >
-          <Copy className="h-3.5 w-3.5" />
-          Copiar
-        </Button>
-      ),
-    },
-    {
-      id: 'actions',
-      cell: ({ row }) => (
-        <TableDropdownMenu
-          source={row.original}
-          onEdit={setEditingSource}
-          onViewLogs={handleViewLogs}
-          onDelete={setDeletingSource}
-        />
-      ),
-    },
-  ], [optimisticSources, handleToggleActive, handleViewLogs, handleCopyUrl, setEditingSource, setDeletingSource])
+      {
+        accessorKey: 'stats.successRate',
+        header: 'Taxa de sucesso',
+        cell: ({ row }) => (
+          <SuccessRateBadge
+            rate={row.original.stats.successRate}
+            totalEvents={row.original.stats.totalEvents}
+          />
+        ),
+      },
+      {
+        accessorKey: 'lastReceivedAt',
+        header: 'Última atividade',
+        cell: ({ row }) => {
+          const date = row.original.lastReceivedAt
+
+          if (!date) return <span className="text-muted-foreground">—</span>
+
+          return (
+            <span className="text-sm text-muted-foreground">
+              {formatDistanceToNow(new Date(date), {
+                addSuffix: true,
+                locale: ptBR,
+              })}
+            </span>
+          )
+        },
+      },
+      {
+        id: 'url',
+        header: 'URL',
+        cell: ({ row }) => (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1.5 text-xs"
+            onClick={() => handleCopyUrl(row.original)}
+          >
+            <Copy className="h-3.5 w-3.5" />
+            Copiar
+          </Button>
+        ),
+      },
+      {
+        id: 'actions',
+        cell: ({ row }) => (
+          <TableDropdownMenu
+            source={row.original}
+            onEdit={setEditingSource}
+            onViewLogs={handleViewLogs}
+            onDelete={setDeletingSource}
+          />
+        ),
+      },
+    ],
+    [
+      optimisticSources,
+      handleToggleActive,
+      handleViewLogs,
+      handleCopyUrl,
+      setEditingSource,
+      setDeletingSource,
+    ],
+  )
 
   const table = useReactTable({
     data: optimisticSources,
@@ -246,7 +301,8 @@ export function WebhookSourcesDataTable({ data, squads, orgSlug }: WebhookSource
           <div className="space-y-1">
             <p className="font-semibold">Nenhum webhook configurado</p>
             <p className="max-w-sm text-sm text-muted-foreground">
-              Crie um endpoint para receber dados de Shopify, Hotmart, Google Forms e outros sistemas.
+              Crie um endpoint para receber dados de Shopify, Hotmart, Google
+              Forms e outros sistemas.
             </p>
           </div>
           <Sheet open={createOpen} onOpenChange={setCreateOpen}>
@@ -278,7 +334,10 @@ export function WebhookSourcesDataTable({ data, squads, orgSlug }: WebhookSource
                   <TableHead key={header.id}>
                     {header.isPlaceholder
                       ? null
-                      : flexRender(header.column.columnDef.header, header.getContext())}
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext(),
+                        )}
                   </TableHead>
                 ))}
               </TableRow>
@@ -300,7 +359,12 @@ export function WebhookSourcesDataTable({ data, squads, orgSlug }: WebhookSource
 
       {/* Sheet de edição */}
       {editingSource && (
-        <Sheet open={editingSource !== null} onOpenChange={(isOpen) => { if (!isOpen) setEditingSource(null) }}>
+        <Sheet
+          open={editingSource !== null}
+          onOpenChange={(isOpen) => {
+            if (!isOpen) setEditingSource(null)
+          }}
+        >
           <UpsertWebhookSheetContent
             key={editingSource.id}
             source={editingSource}
@@ -333,7 +397,9 @@ export function WebhookSourcesDataTable({ data, squads, orgSlug }: WebhookSource
           onConfirm={() => executeDelete({ id: deletingSource.id })}
           isPending={isDeleting}
           open={deletingSource !== null}
-          onOpenChange={(isOpen) => { if (!isOpen) setDeletingSource(null) }}
+          onOpenChange={(isOpen) => {
+            if (!isOpen) setDeletingSource(null)
+          }}
         />
       )}
     </>

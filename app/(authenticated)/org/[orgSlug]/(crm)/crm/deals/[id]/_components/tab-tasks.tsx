@@ -110,8 +110,8 @@ const TabTasks = ({ deal }: TabTasksProps) => {
     return new Intl.DateTimeFormat('pt-BR').format(new Date(date))
   }
 
-  const pendingTasks = optimisticTasks.filter((t) => !t.isCompleted)
-  const completedTasks = optimisticTasks.filter((t) => t.isCompleted)
+  const pendingTasks = optimisticTasks.filter((task) => !task.isCompleted)
+  const completedTasks = optimisticTasks.filter((task) => task.isCompleted)
 
   return (
     <Sheet
@@ -295,7 +295,11 @@ const TabTasks = ({ deal }: TabTasksProps) => {
         <TaskOutcomeDialog
           task={
             outcomeTask
-              ? { id: outcomeTask.id, title: outcomeTask.title, type: outcomeTask.type }
+              ? {
+                  id: outcomeTask.id,
+                  title: outcomeTask.title,
+                  type: outcomeTask.type,
+                }
               : null
           }
           open={!!outcomeTask}

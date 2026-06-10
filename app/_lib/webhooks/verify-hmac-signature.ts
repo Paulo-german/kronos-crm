@@ -8,24 +8,36 @@ interface VerifyHmacInput {
   headers: Headers
 }
 
-function safeEqualBuffer(a: string, b: string): boolean {
-  const bufA = Buffer.from(a)
-  const bufB = Buffer.from(b)
+function safeEqualBuffer(valueA: string, valueB: string): boolean {
+  const bufA = Buffer.from(valueA)
+  const bufB = Buffer.from(valueB)
   if (bufA.length !== bufB.length) return false
   return timingSafeEqual(bufA, bufB)
 }
 
-function verifyShopify(rawBody: string, secretKey: string, headers: Headers): boolean {
+function verifyShopify(
+  rawBody: string,
+  secretKey: string,
+  headers: Headers,
+): boolean {
   const received = headers.get('x-shopify-hmac-sha256')
   if (!received) return false
-  const expected = createHmac('sha256', secretKey).update(rawBody).digest('base64')
+  const expected = createHmac('sha256', secretKey)
+    .update(rawBody)
+    .digest('base64')
   return safeEqualBuffer(received, expected)
 }
 
-function verifyNuvemShop(rawBody: string, secretKey: string, headers: Headers): boolean {
+function verifyNuvemShop(
+  rawBody: string,
+  secretKey: string,
+  headers: Headers,
+): boolean {
   const received = headers.get('x-linkedstore-hmac-sha256')
   if (!received) return false
-  const expected = createHmac('sha256', secretKey).update(rawBody).digest('base64')
+  const expected = createHmac('sha256', secretKey)
+    .update(rawBody)
+    .digest('base64')
   return safeEqualBuffer(received, expected)
 }
 
@@ -38,22 +50,34 @@ function verifyHotmart(secretKey: string, headers: Headers): boolean {
 }
 
 // Padrão GitHub: header X-Webhook-Signature no formato `sha256=<hex>`
-function verifyGenericSha256Hex(rawBody: string, secretKey: string, headers: Headers): boolean {
+function verifyGenericSha256Hex(
+  rawBody: string,
+  secretKey: string,
+  headers: Headers,
+): boolean {
   const received = headers.get('x-webhook-signature')
   if (!received) return false
-  const expectedHex = createHmac('sha256', secretKey).update(rawBody).digest('hex')
+  const expectedHex = createHmac('sha256', secretKey)
+    .update(rawBody)
+    .digest('hex')
   return safeEqualBuffer(received, `sha256=${expectedHex}`)
 }
 
 export function verifyHmacSignature(input: VerifyHmacInput): boolean {
   const { platform, rawBody, secretKey, headers } = input
   switch (platform) {
-    case 'SHOPIFY':      return verifyShopify(rawBody, secretKey, headers)
-    case 'NUVEM_SHOP':   return verifyNuvemShop(rawBody, secretKey, headers)
-    case 'HOTMART':      return verifyHotmart(secretKey, headers)
+    case 'SHOPIFY':
+      return verifyShopify(rawBody, secretKey, headers)
+    case 'NUVEM_SHOP':
+      return verifyNuvemShop(rawBody, secretKey, headers)
+    case 'HOTMART':
+      return verifyHotmart(secretKey, headers)
     case 'GENERIC':
-    case 'OTHER':        return verifyGenericSha256Hex(rawBody, secretKey, headers)
-    case 'GOOGLE_FORMS': return false
-    default:             return false
+    case 'OTHER':
+      return verifyGenericSha256Hex(rawBody, secretKey, headers)
+    case 'GOOGLE_FORMS':
+      return false
+    default:
+      return false
   }
 }

@@ -73,7 +73,9 @@ export const AgentModeSection = ({
   stepActionTypes,
 }: AgentModeSectionProps) => {
   const [currentMode, setCurrentMode] = useState(agentMode)
-  const [pendingMode, setPendingMode] = useState<'PRODUCT' | 'SERVICE' | 'HYBRID' | null>(null)
+  const [pendingMode, setPendingMode] = useState<
+    'PRODUCT' | 'SERVICE' | 'HYBRID' | null
+  >(null)
 
   const { execute, isPending } = useAction(updateAgentMode, {
     onSuccess: () => {
@@ -81,14 +83,21 @@ export const AgentModeSection = ({
     },
     onError: ({ error }) => {
       setCurrentMode(agentMode)
-      toast.error(error.serverError || 'Falha ao atualizar modo. Tente novamente.')
+      toast.error(
+        error.serverError || 'Falha ao atualizar modo. Tente novamente.',
+      )
     },
   })
 
-  const getConflictingTools = (targetMode: 'PRODUCT' | 'SERVICE' | 'HYBRID'): string[] => {
+  const getConflictingTools = (
+    targetMode: 'PRODUCT' | 'SERVICE' | 'HYBRID',
+  ): string[] => {
     if (targetMode === 'HYBRID') return []
-    const incompatible = targetMode === 'SERVICE' ? PRODUCT_ONLY_TOOLS : SERVICE_ONLY_TOOLS
-    return [...new Set(stepActionTypes.filter((type) => incompatible.has(type)))]
+    const incompatible =
+      targetMode === 'SERVICE' ? PRODUCT_ONLY_TOOLS : SERVICE_ONLY_TOOLS
+    return [
+      ...new Set(stepActionTypes.filter((type) => incompatible.has(type))),
+    ]
   }
 
   const applyModeChange = (value: 'PRODUCT' | 'SERVICE' | 'HYBRID') => {
@@ -106,22 +115,30 @@ export const AgentModeSection = ({
     applyModeChange(value)
   }
 
-  const conflictingToolsForPending = pendingMode ? getConflictingTools(pendingMode) : []
-  const pendingModeLabel = OPTIONS.find((o) => o.value === pendingMode)?.label ?? ''
+  const conflictingToolsForPending = pendingMode
+    ? getConflictingTools(pendingMode)
+    : []
+  const pendingModeLabel =
+    OPTIONS.find((option) => option.value === pendingMode)?.label ?? ''
 
   return (
     <>
       <Card className="border-border/50 bg-card">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">Modo de Operação</CardTitle>
+          <CardTitle className="text-base font-semibold">
+            Modo de Operação
+          </CardTitle>
           <CardDescription>
-            Define o comportamento principal do agente e as ferramentas disponíveis.
+            Define o comportamento principal do agente e as ferramentas
+            disponíveis.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <RadioGroup
             value={currentMode}
-            onValueChange={(value) => handleChange(value as 'PRODUCT' | 'SERVICE' | 'HYBRID')}
+            onValueChange={(value) =>
+              handleChange(value as 'PRODUCT' | 'SERVICE' | 'HYBRID')
+            }
             disabled={!canManage || isPending}
             className="space-y-3"
           >
@@ -138,7 +155,8 @@ export const AgentModeSection = ({
                     isSelected
                       ? 'border-primary bg-primary/5'
                       : 'border-border/50 hover:border-border hover:bg-muted/30',
-                    (!canManage || isPending) && 'cursor-not-allowed opacity-60',
+                    (!canManage || isPending) &&
+                      'cursor-not-allowed opacity-60',
                   )}
                 >
                   <RadioGroupItem
@@ -153,8 +171,12 @@ export const AgentModeSection = ({
                     )}
                   />
                   <div className="space-y-0.5">
-                    <p className="text-sm font-medium leading-none">{option.label}</p>
-                    <p className="text-sm text-muted-foreground">{option.description}</p>
+                    <p className="text-sm font-medium leading-none">
+                      {option.label}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {option.description}
+                    </p>
                   </div>
                 </Label>
               )
@@ -166,24 +188,30 @@ export const AgentModeSection = ({
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
                 Você ainda não tem serviços cadastrados. Cadastre em{' '}
-                <strong>Settings → Serviços</strong> para que este agente funcione corretamente.
+                <strong>Settings → Serviços</strong> para que este agente
+                funcione corretamente.
               </AlertDescription>
             </Alert>
           )}
         </CardContent>
       </Card>
 
-      <AlertDialog open={pendingMode !== null} onOpenChange={(open) => { if (!open) setPendingMode(null) }}>
+      <AlertDialog
+        open={pendingMode !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingMode(null)
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Mudar para {pendingModeLabel}?</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-3">
                 <p>
-                  As seguintes ferramentas configuradas nos seus steps não estão disponíveis neste modo
-                  e ficarão inativas:
+                  As seguintes ferramentas configuradas nos seus steps não estão
+                  disponíveis neste modo e ficarão inativas:
                 </p>
-                <ul className="list-disc pl-5 space-y-1">
+                <ul className="list-disc space-y-1 pl-5">
                   {conflictingToolsForPending.map((type) => (
                     <li key={type} className="text-sm font-medium">
                       {TOOL_LABELS[type] ?? type}
@@ -191,14 +219,17 @@ export const AgentModeSection = ({
                   ))}
                 </ul>
                 <p className="text-sm">
-                  As configurações são mantidas — você pode voltar ao modo anterior sem perder nada.
+                  As configurações são mantidas — você pode voltar ao modo
+                  anterior sem perder nada.
                 </p>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => pendingMode && applyModeChange(pendingMode)}>
+            <AlertDialogAction
+              onClick={() => pendingMode && applyModeChange(pendingMode)}
+            >
               Confirmar mudança
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -3,7 +3,11 @@ import { type NextRequest } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import { createClient } from '@/_lib/supabase/server'
 import { db } from '@/_lib/prisma'
-import { exchangeInstagramCodeForToken, getLongLivedInstagramToken, InstagramApiError } from '@/_lib/instagram/exchange-token'
+import {
+  exchangeInstagramCodeForToken,
+  getLongLivedInstagramToken,
+  InstagramApiError,
+} from '@/_lib/instagram/exchange-token'
 import { subscribeInstagramApp } from '@/_lib/instagram/subscribe-instagram-app'
 import { getInstagramUsername } from '@/_lib/instagram/get-instagram-account'
 
@@ -26,7 +30,11 @@ function decodeState(stateParam: string): OAuthState | null {
   }
 }
 
-function buildInboxUrl(orgSlug: string, inboxId: string, params: string): string {
+function buildInboxUrl(
+  orgSlug: string,
+  inboxId: string,
+  params: string,
+): string {
   if (!orgSlug || !inboxId) return `/settings?${params}`
   return `/org/${orgSlug}/inbox/settings/inboxes/${inboxId}?${params}`
 }
@@ -47,6 +55,7 @@ export async function GET(request: NextRequest) {
   // Tentar decodificar state mesmo em caso de erro (para obter orgSlug e inboxId)
   const state = stateParam ? decodeState(stateParam) : null
 
+  // eslint-disable-next-line no-console
   console.log('[instagram/callback] received:', {
     has_code: !!code,
     code_prefix: code?.slice(0, 20),
@@ -57,11 +66,23 @@ export async function GET(request: NextRequest) {
 
   // Usuário negou a permissão no Instagram
   if (error) {
-    redirect(buildInboxUrl(state?.orgSlug ?? '', state?.inboxId ?? '', 'instagram_error=access_denied'))
+    redirect(
+      buildInboxUrl(
+        state?.orgSlug ?? '',
+        state?.inboxId ?? '',
+        'instagram_error=access_denied',
+      ),
+    )
   }
 
   if (!code || !stateParam) {
-    redirect(buildInboxUrl(state?.orgSlug ?? '', state?.inboxId ?? '', 'instagram_error=invalid_request'))
+    redirect(
+      buildInboxUrl(
+        state?.orgSlug ?? '',
+        state?.inboxId ?? '',
+        'instagram_error=invalid_request',
+      ),
+    )
   }
 
   if (!state) {
@@ -70,7 +91,13 @@ export async function GET(request: NextRequest) {
 
   // Verificar janela de tempo (5 minutos)
   if (Date.now() - state.timestamp > STATE_MAX_AGE_MS) {
-    redirect(buildInboxUrl(state.orgSlug, state.inboxId, 'instagram_error=state_expired'))
+    redirect(
+      buildInboxUrl(
+        state.orgSlug,
+        state.inboxId,
+        'instagram_error=state_expired',
+      ),
+    )
   }
 
   // Validar que o usuário logado é o mesmo do state (anti-CSRF)
@@ -80,7 +107,13 @@ export async function GET(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   if (!user || user.id !== state.userId) {
-    redirect(buildInboxUrl(state.orgSlug, state.inboxId, 'instagram_error=user_mismatch'))
+    redirect(
+      buildInboxUrl(
+        state.orgSlug,
+        state.inboxId,
+        'instagram_error=user_mismatch',
+      ),
+    )
   }
 
   // Trocar code por short-lived token + igUserId
@@ -91,7 +124,10 @@ export async function GET(request: NextRequest) {
     shortToken = result.accessToken
     igUserId = result.igUserId
   } catch (err) {
-    console.error('[instagram/callback] exchangeInstagramCodeForToken failed:', err)
+    console.error(
+      '[instagram/callback] exchangeInstagramCodeForToken failed:',
+      err,
+    )
     const detail = err instanceof InstagramApiError ? err.apiMessage : undefined
     const params = detail
       ? `instagram_error=short_token_failed&instagram_error_detail=${encodeURIComponent(detail)}`
@@ -104,7 +140,10 @@ export async function GET(request: NextRequest) {
   try {
     longToken = await getLongLivedInstagramToken(shortToken)
   } catch (err) {
-    console.error('[instagram/callback] getLongLivedInstagramToken failed:', err)
+    console.error(
+      '[instagram/callback] getLongLivedInstagramToken failed:',
+      err,
+    )
     const detail = err instanceof InstagramApiError ? err.apiMessage : undefined
     const params = detail
       ? `instagram_error=long_token_failed&instagram_error_detail=${encodeURIComponent(detail)}`
@@ -119,7 +158,13 @@ export async function GET(request: NextRequest) {
   })
 
   if (conflict) {
-    redirect(buildInboxUrl(state.orgSlug, state.inboxId, 'instagram_error=already_connected'))
+    redirect(
+      buildInboxUrl(
+        state.orgSlug,
+        state.inboxId,
+        'instagram_error=already_connected',
+      ),
+    )
   }
 
   // Subscribe não-bloqueante — falha não impede a conexão
@@ -142,7 +187,13 @@ export async function GET(request: NextRequest) {
   })
 
   if (!inbox) {
-    redirect(buildInboxUrl(state.orgSlug, state.inboxId, 'instagram_error=inbox_not_found'))
+    redirect(
+      buildInboxUrl(
+        state.orgSlug,
+        state.inboxId,
+        'instagram_error=inbox_not_found',
+      ),
+    )
   }
 
   // Atualizar inbox com credenciais do Instagram Login

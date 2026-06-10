@@ -49,14 +49,14 @@ export function DealsFiltersSheet({
 
   const handleStatusToggle = (status: DealStatus) => {
     const newStatus = localFilters.status.includes(status)
-      ? localFilters.status.filter((s) => s !== status)
+      ? localFilters.status.filter((item) => item !== status)
       : [...localFilters.status, status]
     setLocalFilters({ ...localFilters, status: newStatus })
   }
 
   const handlePriorityToggle = (priority: DealPriority) => {
     const newPriority = localFilters.priority.includes(priority)
-      ? localFilters.priority.filter((p) => p !== priority)
+      ? localFilters.priority.filter((item) => item !== priority)
       : [...localFilters.priority, priority]
     setLocalFilters({ ...localFilters, priority: newPriority })
   }

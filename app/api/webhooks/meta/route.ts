@@ -5,19 +5,34 @@ import { CaptureChannel, SalesDistributionModel } from '@prisma/client'
 import { db } from '@/_lib/prisma'
 import { redis } from '@/_lib/redis'
 import { verifyMetaWebhookSignature } from '@/_lib/meta/verify-webhook-signature'
-import { parseMetaMessage, extractMetaContent } from '@/_lib/meta/parse-meta-message'
+import {
+  parseMetaMessage,
+  extractMetaContent,
+} from '@/_lib/meta/parse-meta-message'
 import { sendMetaTextMessage } from '@/_lib/meta/send-meta-message'
 import { sendInstagramText } from '@/_lib/instagram/send-instagram-message'
 import { parseInstagramMessage } from '@/_lib/instagram/parse-instagram-message'
-import type { InstagramWebhookPayload, InstagramMessagingEvent } from '@/_lib/instagram/types'
+import type {
+  InstagramWebhookPayload,
+  InstagramMessagingEvent,
+} from '@/_lib/instagram/types'
 import { resolveConversation } from '@/_lib/whatsapp/resolve-conversation'
 import { checkBusinessHours } from '@/_lib/agent/check-business-hours'
 import { scheduleNotifyOrgAdmins } from '@/_lib/notifications/notify-org-admins'
 import { resolveAgentForConversation } from '@/../trigger/lib/resolve-agent'
 import { tasks } from '@trigger.dev/sdk/v3'
 import type { processAgentMessage } from '@/../../trigger/process-agent-message'
-import type { MetaWebhookPayload, MetaWebhookValue, MetaTemplateStatusUpdate, MetaMessageStatus, MetaWebhookEchoValue } from '@/_lib/meta/types'
-import { updateDeliveryStatus, updateDeliveryStatusFailed } from '@/_lib/message-delivery-status'
+import type {
+  MetaWebhookPayload,
+  MetaWebhookValue,
+  MetaTemplateStatusUpdate,
+  MetaMessageStatus,
+  MetaWebhookEchoValue,
+} from '@/_lib/meta/types'
+import {
+  updateDeliveryStatus,
+  updateDeliveryStatusFailed,
+} from '@/_lib/message-delivery-status'
 import type { BusinessHoursConfig } from '@/_actions/agent/update-agent/schema'
 import type { NormalizedWhatsAppMessage } from '@/_lib/evolution-js/types'
 import { AUTO_REOPEN_FIELDS } from '@/_lib/conversation/auto-reopen'
@@ -59,12 +74,18 @@ export async function POST(req: Request) {
 
   // 2a. Branch Instagram — payload.object === 'instagram' roteia para handler dedicado
   if ((payload as unknown as { object: string }).object === 'instagram') {
-    return processInstagramPayload(payload as unknown as InstagramWebhookPayload, t0)
+    return processInstagramPayload(
+      payload as unknown as InstagramWebhookPayload,
+      t0,
+    )
   }
 
   // 2b. Validar objeto — so processar eventos da WABA
   if (payload.object !== 'whatsapp_business_account') {
-    return NextResponse.json({ ignored: true, reason: 'not_whatsapp_business_account' })
+    return NextResponse.json({
+      ignored: true,
+      reason: 'not_whatsapp_business_account',
+    })
   }
 
   // 3. Processar cada entry/change em paralelo (em producao geralmente e 1)
@@ -79,7 +100,10 @@ export async function POST(req: Request) {
           )
         }
         if (change.field === 'smb_message_echoes') {
-          return processMessageEchoes(change.value as unknown as MetaWebhookEchoValue, t0)
+          return processMessageEchoes(
+            change.value as unknown as MetaWebhookEchoValue,
+            t0,
+          )
         }
         return processChange(change.value, t0)
       }),
@@ -88,7 +112,10 @@ export async function POST(req: Request) {
 
   for (const result of results) {
     if (result.status === 'rejected') {
-      console.error('[meta-webhook] processChange failed (isolated):', result.reason)
+      console.error(
+        '[meta-webhook] processChange failed (isolated):',
+        result.reason,
+      )
     }
   }
 
@@ -103,6 +130,7 @@ async function processTemplateStatusUpdate(
   wabaId: string,
   update: MetaTemplateStatusUpdate,
 ): Promise<void> {
+  // eslint-disable-next-line no-console
   console.log('[meta-webhook] template_status_update', {
     wabaId,
     templateId: update.message_template_id,
@@ -125,20 +153,31 @@ async function processTemplateStatusUpdate(
 // Meta envia esses eventos quando o status de uma mensagem enviada muda.
 // Ex: mensagem aceita mas nao entregue por falta de pagamento → status 'failed'
 // -----------------------------------------------------------------------------
-async function processDeliveryStatuses(statuses: MetaMessageStatus[]): Promise<void> {
+async function processDeliveryStatuses(
+  statuses: MetaMessageStatus[],
+): Promise<void> {
   for (const status of statuses) {
     try {
-      let result: { conversationId: string; organizationId: string } | null = null
+      let result: { conversationId: string; organizationId: string } | null =
+        null
 
       if (status.status === 'failed') {
         const error = status.errors?.[0]
-        result = await updateDeliveryStatusFailed(status.id, error ? {
-          code: error.code,
-          title: error.title,
-          message: error.message,
-        } : undefined)
+        result = await updateDeliveryStatusFailed(
+          status.id,
+          error
+            ? {
+                code: error.code,
+                title: error.title,
+                message: error.message,
+              }
+            : undefined,
+        )
       } else if (['sent', 'delivered', 'read'].includes(status.status)) {
-        result = await updateDeliveryStatus(status.id, status.status as 'sent' | 'delivered' | 'read')
+        result = await updateDeliveryStatus(
+          status.id,
+          status.status as 'sent' | 'delivered' | 'read',
+        )
       } else {
         // Status desconhecido (ex: 'played' para audios) — ignorar silenciosamente
         continue
@@ -150,7 +189,11 @@ async function processDeliveryStatuses(statuses: MetaMessageStatus[]): Promise<v
       }
     } catch (error) {
       // Isolamento: falha em um status nao impede processamento dos demais
-      console.error('[meta-webhook] processDeliveryStatus failed:', { statusId: status.id, status: status.status, error })
+      console.error('[meta-webhook] processDeliveryStatus failed:', {
+        statusId: status.id,
+        status: status.status,
+        error,
+      })
     }
   }
 }
@@ -158,7 +201,10 @@ async function processDeliveryStatuses(statuses: MetaMessageStatus[]): Promise<v
 // -----------------------------------------------------------------------------
 // Processa um change de webhook (field = "messages")
 // -----------------------------------------------------------------------------
-async function processChange(value: MetaWebhookValue, t0: number): Promise<void> {
+async function processChange(
+  value: MetaWebhookValue,
+  t0: number,
+): Promise<void> {
   // 4. Processar delivery status updates (sent, delivered, read, failed)
   if (value.statuses && value.statuses.length > 0) {
     await processDeliveryStatuses(value.statuses)
@@ -170,8 +216,16 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
   const phoneNumberId = value.metadata.phone_number_id
 
   // Helper de log
-  const log = (step: string, outcome: 'PASS' | 'EXIT' | 'SKIP', extra?: Record<string, unknown>) =>
-    console.log(`[meta-webhook] ${step} → ${outcome}`, { phoneNumberId, ...extra })
+  const log = (
+    step: string,
+    outcome: 'PASS' | 'EXIT' | 'SKIP',
+    extra?: Record<string, unknown>,
+  ) =>
+    // eslint-disable-next-line no-console
+    console.log(`[meta-webhook] ${step} → ${outcome}`, {
+      phoneNumberId,
+      ...extra,
+    })
 
   // 5. Lookup da Inbox pelo metaPhoneNumberId
   const inbox = await db.inbox.findFirst({
@@ -228,7 +282,10 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
   })
 
   if (!inbox) {
-    log('step:1 inbox_lookup', 'EXIT', { reason: 'no_inbox_found', phoneNumberId })
+    log('step:1 inbox_lookup', 'EXIT', {
+      reason: 'no_inbox_found',
+      phoneNumberId,
+    })
     return
   }
 
@@ -240,7 +297,11 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
   // processChange() não retorna Response — o early return aqui é silenciosamente ignorado pelo Promise.allSettled
   const orgHasPlan = await hasActivePlan(orgId)
   if (!orgHasPlan) {
-    log('step:2 plan_guard', 'EXIT', { reason: 'no_active_plan', org: orgName, orgSlug })
+    log('step:2 plan_guard', 'EXIT', {
+      reason: 'no_active_plan',
+      org: orgName,
+      orgSlug,
+    })
     return
   }
 
@@ -268,18 +329,38 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
       }
     : undefined
 
-  log('step:1 inbox_lookup', 'PASS', { inboxId: inbox.id, org: orgName, orgSlug, inboxActive: inbox.isActive, hasAgentId: !!inbox.agentId, hasGroupId: !!inbox.agentGroupId })
+  log('step:1 inbox_lookup', 'PASS', {
+    inboxId: inbox.id,
+    org: orgName,
+    orgSlug,
+    inboxActive: inbox.isActive,
+    hasAgentId: !!inbox.agentId,
+    hasGroupId: !!inbox.agentGroupId,
+  })
 
   // Processar cada mensagem do change (normalmente 1)
   for (const message of value.messages) {
-    const contact = value.contacts?.find((c) => c.wa_id === message.from) ?? {
+    const contact = value.contacts?.find(
+      (contact) => contact.wa_id === message.from,
+    ) ?? {
       profile: { name: '' },
       wa_id: message.from,
     }
 
     const messageId = message.id
-    const logMsg = (step: string, outcome: 'PASS' | 'EXIT' | 'SKIP', extra?: Record<string, unknown>) =>
-      console.log(`[meta-webhook] ${step} → ${outcome}`, { msgId: messageId, phoneNumberId, org: orgName, orgSlug, ...extra })
+    const logMsg = (
+      step: string,
+      outcome: 'PASS' | 'EXIT' | 'SKIP',
+      extra?: Record<string, unknown>,
+    ) =>
+      // eslint-disable-next-line no-console
+      console.log(`[meta-webhook] ${step} → ${outcome}`, {
+        msgId: messageId,
+        phoneNumberId,
+        org: orgName,
+        orgSlug,
+        ...extra,
+      })
 
     logMsg('step:3 message_received', 'PASS', {
       type: message.type,
@@ -290,7 +371,9 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
     // 6. Inbox desativada ou sem agente/grupo configurado
     const hasAiConfiguredMeta = !!(inbox.agentId || inbox.agentGroupId)
     if (!inbox.isActive || !hasAiConfiguredMeta) {
-      logMsg('step:5 agent_active_check', 'EXIT', { reason: !inbox.isActive ? 'inbox_inactive' : 'no_ai_configured' })
+      logMsg('step:5 agent_active_check', 'EXIT', {
+        reason: !inbox.isActive ? 'inbox_inactive' : 'no_ai_configured',
+      })
 
       // Notificar OWNER/ADMIN quando inbox esta desativada (WhatsApp desconectado)
       // Anti-spam: verifica se ja existe notificacao nao lida com mesmo titulo nas ultimas 24h
@@ -356,10 +439,14 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
           data: {
             conversationId: resolveResult.conversationId,
             role: 'user',
-            content: resolveMessageContent(normalizedMsg) || '[mensagem não suportada]',
+            content:
+              resolveMessageContent(normalizedMsg) ||
+              '[mensagem não suportada]',
             providerMessageId: messageId,
             metadata: normalizedMsg.media
-              ? ({ media: normalizedMsg.media } as unknown as Prisma.InputJsonValue)
+              ? ({
+                  media: normalizedMsg.media,
+                } as unknown as Prisma.InputJsonValue)
               : undefined,
           },
         })
@@ -393,14 +480,24 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
         })
       : null
 
-    const resolvedAgent = await resolveAgentForConversation(inbox, preResolveConvMeta)
+    const resolvedAgent = await resolveAgentForConversation(
+      inbox,
+      preResolveConvMeta,
+    )
 
     if (!resolvedAgent || !resolvedAgent.isActive) {
-      logMsg('step:5 agent_active_check', 'EXIT', { reason: 'agent_inactive_or_unresolved' })
+      logMsg('step:5 agent_active_check', 'EXIT', {
+        reason: 'agent_inactive_or_unresolved',
+      })
 
       // Salvar mensagem na conversa para aparecer no inbox, mesmo sem IA ativa
-      const normalizedMsgInactive = parseMetaMessage(message, contact, phoneNumberId)
-      if (normalizedMsgInactive.type === 'text' && !normalizedMsgInactive.text) continue
+      const normalizedMsgInactive = parseMetaMessage(
+        message,
+        contact,
+        phoneNumberId,
+      )
+      if (normalizedMsgInactive.type === 'text' && !normalizedMsgInactive.text)
+        continue
 
       const resolveResultInactive = await resolveConversation(
         inbox.id,
@@ -436,10 +533,14 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
           data: {
             conversationId: resolveResultInactive.conversationId,
             role: 'user',
-            content: resolveMessageContent(normalizedMsgInactive) || '[mensagem não suportada]',
+            content:
+              resolveMessageContent(normalizedMsgInactive) ||
+              '[mensagem não suportada]',
             providerMessageId: messageId,
             metadata: normalizedMsgInactive.media
-              ? ({ media: normalizedMsgInactive.media } as unknown as Prisma.InputJsonValue)
+              ? ({
+                  media: normalizedMsgInactive.media,
+                } as unknown as Prisma.InputJsonValue)
               : undefined,
           },
         })
@@ -457,29 +558,42 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
         })
 
         revalidateTag(`conversations:${orgId}`)
-        revalidateTag(`conversation-messages:${resolveResultInactive.conversationId}`)
+        revalidateTag(
+          `conversation-messages:${resolveResultInactive.conversationId}`,
+        )
       }
 
       continue
     }
 
-    logMsg('step:5 agent_active_check', 'PASS', { agentId: resolvedAgent.agentId, requiresRouting: resolvedAgent.requiresRouting })
+    logMsg('step:5 agent_active_check', 'PASS', {
+      agentId: resolvedAgent.agentId,
+      requiresRouting: resolvedAgent.requiresRouting,
+    })
 
     // 7. Business hours check — apenas quando não requer routing (router opera 24h)
-    if (!resolvedAgent.requiresRouting && resolvedAgent.businessHoursEnabled && resolvedAgent.businessHoursConfig) {
+    if (
+      !resolvedAgent.requiresRouting &&
+      resolvedAgent.businessHoursEnabled &&
+      resolvedAgent.businessHoursConfig
+    ) {
       const isOpen = checkBusinessHours(
         resolvedAgent.businessHoursTimezone,
         resolvedAgent.businessHoursConfig as BusinessHoursConfig,
       )
 
       if (!isOpen) {
-        logMsg('step:6 business_hours', 'EXIT', { reason: 'outside_business_hours' })
+        logMsg('step:6 business_hours', 'EXIT', {
+          reason: 'outside_business_hours',
+        })
 
         const normalizedMsg = parseMetaMessage(message, contact, phoneNumberId)
 
         // Usar remoteJid (com @s.whatsapp.net) para consistencia com chave OOH do webhook Evolution
         const oohKey = `ooh-reply:${resolvedAgent.agentId}:${normalizedMsg.remoteJid}`
-        const alreadyReplied = await redis.set(oohKey, '1', 'EX', 3600, 'NX').catch(() => null)
+        const alreadyReplied = await redis
+          .set(oohKey, '1', 'EX', 3600, 'NX')
+          .catch(() => null)
         const resolveResult = await resolveConversation(
           inbox.id,
           orgId,
@@ -514,10 +628,14 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
             data: {
               conversationId: resolveResult.conversationId,
               role: 'user',
-              content: resolveMessageContent(normalizedMsg) || '[mensagem não suportada]',
+              content:
+                resolveMessageContent(normalizedMsg) ||
+                '[mensagem não suportada]',
               providerMessageId: messageId,
               metadata: normalizedMsg.media
-                ? ({ media: normalizedMsg.media } as unknown as Prisma.InputJsonValue)
+                ? ({
+                    media: normalizedMsg.media,
+                  } as unknown as Prisma.InputJsonValue)
                 : undefined,
             },
           })
@@ -537,7 +655,11 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
         }
 
         // Enviar auto-reply apenas se tem mensagem configurada e nao enviou recentemente
-        const shouldSendAutoReply = !!(resolvedAgent.outOfHoursMessage && alreadyReplied !== null && inbox.metaAccessToken)
+        const shouldSendAutoReply = !!(
+          resolvedAgent.outOfHoursMessage &&
+          alreadyReplied !== null &&
+          inbox.metaAccessToken
+        )
         if (shouldSendAutoReply) {
           try {
             const oohIds = await sendMetaTextMessage(
@@ -547,11 +669,20 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
               resolvedAgent.outOfHoursMessage!,
             )
             await Promise.all(
-              oohIds.map((sentId) => redis.set(`dedup:${sentId}`, '1', 'EX', 300).catch(() => {})),
+              oohIds.map((sentId) =>
+                redis.set(`dedup:${sentId}`, '1', 'EX', 300).catch(() => {}),
+              ),
             )
-            logMsg('step:6b ooh_auto_reply', 'PASS', { oohIds, ms: Date.now() - t0 })
+            logMsg('step:6b ooh_auto_reply', 'PASS', {
+              oohIds,
+              ms: Date.now() - t0,
+            })
           } catch (error) {
-            console.error('[meta-webhook] OOH auto-reply failed:', { msgId: messageId, org: orgName, error })
+            console.error('[meta-webhook] OOH auto-reply failed:', {
+              msgId: messageId,
+              org: orgName,
+              error,
+            })
           }
         }
 
@@ -577,12 +708,13 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
 
     // 9. Dedup + Resolve Conversation em paralelo
     const [dedupResult, resolveResult] = await Promise.all([
-      redis
-        .set(`dedup:${messageId}`, '1', 'EX', 300, 'NX')
-        .catch((error) => {
-          console.warn('[meta-webhook] Redis dedup failed, continuing:', { msgId: messageId, error })
-          return 'redis_error' as const
-        }),
+      redis.set(`dedup:${messageId}`, '1', 'EX', 300, 'NX').catch((error) => {
+        console.warn('[meta-webhook] Redis dedup failed, continuing:', {
+          msgId: messageId,
+          error,
+        })
+        return 'redis_error' as const
+      }),
       resolveConversation(
         inbox.id,
         orgId,
@@ -633,7 +765,9 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
             content: resolveMessageContent(normalizedMessage),
             providerMessageId: messageId,
             metadata: normalizedMessage.media
-              ? ({ media: normalizedMessage.media } as unknown as Prisma.InputJsonValue)
+              ? ({
+                  media: normalizedMessage.media,
+                } as unknown as Prisma.InputJsonValue)
               : undefined,
           },
         })
@@ -659,13 +793,19 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
           'code' in error &&
           (error as { code: string }).code === 'P2002'
         ) {
-          logMsg('step:9 ai_paused_save', 'SKIP', { reason: 'duplicate_provider_message_id' })
+          logMsg('step:9 ai_paused_save', 'SKIP', {
+            reason: 'duplicate_provider_message_id',
+          })
           continue
         }
         throw error
       }
 
-      logMsg('step:9 ai_pause_check', 'EXIT', { reason: 'ai_paused', conversationId, ms: Date.now() - t0 })
+      logMsg('step:9 ai_pause_check', 'EXIT', {
+        reason: 'ai_paused',
+        conversationId,
+        ms: Date.now() - t0,
+      })
       continue
     }
 
@@ -678,7 +818,9 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
           content: resolveMessageContent(normalizedMessage),
           providerMessageId: messageId,
           metadata: normalizedMessage.media
-            ? ({ media: normalizedMessage.media } as unknown as Prisma.InputJsonValue)
+            ? ({
+                media: normalizedMessage.media,
+              } as unknown as Prisma.InputJsonValue)
             : undefined,
         },
       })
@@ -688,7 +830,9 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
         'code' in error &&
         (error as { code: string }).code === 'P2002'
       ) {
-        logMsg('step:10 save_message', 'SKIP', { reason: 'duplicate_provider_message_id' })
+        logMsg('step:10 save_message', 'SKIP', {
+          reason: 'duplicate_provider_message_id',
+        })
         continue
       }
       throw error
@@ -701,7 +845,14 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
       // Reset follow-up completo + incrementar unreadCount — qualquer msg do cliente cancela ciclo FUP ativo
       db.conversation.update({
         where: { id: conversationId },
-        data: { unreadCount: { increment: 1 }, lastMessageRole: 'user', nextFollowUpAt: null, followUpCount: 0, lastCustomerMessageAt: new Date(), ...AUTO_REOPEN_FIELDS },
+        data: {
+          unreadCount: { increment: 1 },
+          lastMessageRole: 'user',
+          nextFollowUpAt: null,
+          followUpCount: 0,
+          lastCustomerMessageAt: new Date(),
+          ...AUTO_REOPEN_FIELDS,
+        },
       }),
       redis
         .set(
@@ -711,7 +862,10 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
           resolvedAgent.debounceSeconds + 120,
         )
         .catch((error) => {
-          console.warn('[meta-webhook] Redis debounce set failed:', { msgId: messageId, error })
+          console.warn('[meta-webhook] Redis debounce set failed:', {
+            msgId: messageId,
+            error,
+          })
         }),
       tasks.trigger<typeof processAgentMessage>(
         'process-agent-message',
@@ -724,7 +878,10 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
           requiresRouting: resolvedAgent.requiresRouting,
           groupId: resolvedAgent.groupId,
         },
-        { delay: `${resolvedAgent.debounceSeconds}s`, concurrencyKey: conversationId },
+        {
+          delay: `${resolvedAgent.debounceSeconds}s`,
+          concurrencyKey: conversationId,
+        },
       ),
       // Meta Cloud API nao suporta typing presence para business — pulado intencionalmente
     ])
@@ -759,7 +916,10 @@ async function processChange(value: MetaWebhookValue, t0: number): Promise<void>
 // Aparece quando o operador digita diretamente no WhatsApp Business App linkado ao numero Meta Cloud.
 // Salva como role='assistant' com dedup — nao duplica se a mensagem foi enviada pela plataforma.
 // -----------------------------------------------------------------------------
-async function processMessageEchoes(value: MetaWebhookEchoValue, t0: number): Promise<void> {
+async function processMessageEchoes(
+  value: MetaWebhookEchoValue,
+  t0: number,
+): Promise<void> {
   const phoneNumberId = value.metadata.phone_number_id
 
   const inbox = await db.inbox.findFirst({
@@ -776,7 +936,11 @@ async function processMessageEchoes(value: MetaWebhookEchoValue, t0: number): Pr
   })
 
   if (!inbox) {
-    console.log('[meta-webhook] echo step:1 inbox_lookup → EXIT', { phoneNumberId, reason: 'no_inbox_found' })
+    // eslint-disable-next-line no-console
+    console.log('[meta-webhook] echo step:1 inbox_lookup → EXIT', {
+      phoneNumberId,
+      reason: 'no_inbox_found',
+    })
     return
   }
 
@@ -786,7 +950,13 @@ async function processMessageEchoes(value: MetaWebhookEchoValue, t0: number): Pr
 
   const orgHasPlan = await hasActivePlan(orgId)
   if (!orgHasPlan) {
-    console.log('[meta-webhook] echo step:2 plan_guard → EXIT', { phoneNumberId, org: orgName, orgSlug, reason: 'no_active_plan' })
+    // eslint-disable-next-line no-console
+    console.log('[meta-webhook] echo step:2 plan_guard → EXIT', {
+      phoneNumberId,
+      org: orgName,
+      orgSlug,
+      reason: 'no_active_plan',
+    })
     return
   }
 
@@ -798,14 +968,37 @@ async function processMessageEchoes(value: MetaWebhookEchoValue, t0: number): Pr
     org?.salesDistributionModel ?? SalesDistributionModel.ROUND_ROBIN
 
   const dealContext = inbox.autoCreateDeal
-    ? { pipelineId: inbox.pipelineId, distributionUserIds: inbox.distributionUserIds, inboxId: inbox.id, salesDistributionModel, squadId: inbox.squadId }
+    ? {
+        pipelineId: inbox.pipelineId,
+        distributionUserIds: inbox.distributionUserIds,
+        inboxId: inbox.id,
+        salesDistributionModel,
+        squadId: inbox.squadId,
+      }
     : undefined
 
-  const contactAssignContext = { distributionUserIds: inbox.distributionUserIds, inboxId: inbox.id, salesDistributionModel, squadId: inbox.squadId }
+  const contactAssignContext = {
+    distributionUserIds: inbox.distributionUserIds,
+    inboxId: inbox.id,
+    salesDistributionModel,
+    squadId: inbox.squadId,
+  }
 
   for (const echo of value.message_echoes) {
-    const logEcho = (step: string, outcome: 'PASS' | 'EXIT' | 'SKIP', extra?: Record<string, unknown>) =>
-      console.log(`[meta-webhook] echo ${step} → ${outcome}`, { msgId: echo.id, phoneNumberId, org: orgName, orgSlug, to: echo.to, ...extra })
+    const logEcho = (
+      step: string,
+      outcome: 'PASS' | 'EXIT' | 'SKIP',
+      extra?: Record<string, unknown>,
+    ) =>
+      // eslint-disable-next-line no-console
+      console.log(`[meta-webhook] echo ${step} → ${outcome}`, {
+        msgId: echo.id,
+        phoneNumberId,
+        org: orgName,
+        orgSlug,
+        to: echo.to,
+        ...extra,
+      })
 
     logEcho('step:1 echo_received', 'PASS', { type: echo.type })
 
@@ -850,7 +1043,17 @@ async function processMessageEchoes(value: MetaWebhookEchoValue, t0: number): Pr
     }
 
     const mediaMetadata = media
-      ? { media: { ...media, url: echo.audio?.id ?? echo.image?.id ?? echo.document?.id ?? echo.video?.id ?? media.url } }
+      ? {
+          media: {
+            ...media,
+            url:
+              echo.audio?.id ??
+              echo.image?.id ??
+              echo.document?.id ??
+              echo.video?.id ??
+              media.url,
+          },
+        }
       : {}
 
     await db.message.create({
@@ -860,7 +1063,10 @@ async function processMessageEchoes(value: MetaWebhookEchoValue, t0: number): Pr
         content: text || '[mensagem não suportada]',
         providerMessageId: echo.id,
         deliveryStatus: 'sent',
-        metadata: { sentFrom: 'whatsapp_phone', ...mediaMetadata } as unknown as Prisma.InputJsonValue,
+        metadata: {
+          sentFrom: 'whatsapp_phone',
+          ...mediaMetadata,
+        } as unknown as Prisma.InputJsonValue,
       },
     })
 
@@ -903,7 +1109,10 @@ async function processInstagramPayload(
 
   for (const result of results) {
     if (result.status === 'rejected') {
-      console.error('[ig-webhook] processInstagramMessagingEvent failed (isolated):', result.reason)
+      console.error(
+        '[ig-webhook] processInstagramMessagingEvent failed (isolated):',
+        result.reason,
+      )
     }
   }
 
@@ -917,7 +1126,10 @@ async function processInstagramMessagingEvent(
 ): Promise<void> {
   // Tratar delivery/read como delivery status updates
   if (messagingEvent.read) {
-    const result = await updateDeliveryStatus(messagingEvent.read.mid, 'read').catch(() => null)
+    const result = await updateDeliveryStatus(
+      messagingEvent.read.mid,
+      'read',
+    ).catch(() => null)
     if (result) {
       revalidateTag(`conversations:${result.organizationId}`)
       revalidateTag(`conversation-messages:${result.conversationId}`)
@@ -928,7 +1140,9 @@ async function processInstagramMessagingEvent(
   if (messagingEvent.delivery) {
     await Promise.all(
       messagingEvent.delivery.mids.map(async (mid) => {
-        const result = await updateDeliveryStatus(mid, 'delivered').catch(() => null)
+        const result = await updateDeliveryStatus(mid, 'delivered').catch(
+          () => null,
+        )
         if (result) {
           revalidateTag(`conversations:${result.organizationId}`)
           revalidateTag(`conversation-messages:${result.conversationId}`)
@@ -939,7 +1153,10 @@ async function processInstagramMessagingEvent(
   }
 
   // Normalizar mensagem — retorna null para ecos, deletadas e tipos não suportados
-  const normalizedMessage = parseInstagramMessage({ id: igUserId, time: Date.now(), messaging: [messagingEvent] }, messagingEvent)
+  const normalizedMessage = parseInstagramMessage(
+    { id: igUserId, time: Date.now(), messaging: [messagingEvent] },
+    messagingEvent,
+  )
 
   if (!normalizedMessage) {
     return
@@ -948,8 +1165,18 @@ async function processInstagramMessagingEvent(
   const psid = messagingEvent.sender.id
   const mid = normalizedMessage.messageId
 
-  const log = (step: string, outcome: 'PASS' | 'EXIT' | 'SKIP', extra?: Record<string, unknown>) =>
-    console.log(`[ig-webhook] ${step} → ${outcome}`, { igUserId, psid, mid, ...extra })
+  const log = (
+    step: string,
+    outcome: 'PASS' | 'EXIT' | 'SKIP',
+    extra?: Record<string, unknown>,
+  ) =>
+    // eslint-disable-next-line no-console
+    console.log(`[ig-webhook] ${step} → ${outcome}`, {
+      igUserId,
+      psid,
+      mid,
+      ...extra,
+    })
 
   // Lookup de inbox pelo metaIgUserId
   const inbox = await db.inbox.findFirst({
@@ -1015,8 +1242,20 @@ async function processInstagramMessagingEvent(
   const orgSlug = inbox.organization.slug
 
   // Redefine log com contexto de org após inbox lookup
-  const logCtx = (step: string, outcome: 'PASS' | 'EXIT' | 'SKIP', extra?: Record<string, unknown>) =>
-    console.log(`[ig-webhook] ${step} → ${outcome}`, { igUserId, psid, mid, org: orgName, orgSlug, ...extra })
+  const logCtx = (
+    step: string,
+    outcome: 'PASS' | 'EXIT' | 'SKIP',
+    extra?: Record<string, unknown>,
+  ) =>
+    // eslint-disable-next-line no-console
+    console.log(`[ig-webhook] ${step} → ${outcome}`, {
+      igUserId,
+      psid,
+      mid,
+      org: orgName,
+      orgSlug,
+      ...extra,
+    })
 
   const orgHasPlan = await hasActivePlan(orgId)
   if (!orgHasPlan) {
@@ -1048,8 +1287,14 @@ async function processInstagramMessagingEvent(
       }
     : undefined
 
-  logCtx('step:1 inbox_lookup', 'PASS', { inboxId: inbox.id, inboxActive: inbox.isActive })
-  logCtx('step:3 message_received', 'PASS', { inboxId: inbox.id, inboxActive: inbox.isActive })
+  logCtx('step:1 inbox_lookup', 'PASS', {
+    inboxId: inbox.id,
+    inboxActive: inbox.isActive,
+  })
+  logCtx('step:3 message_received', 'PASS', {
+    inboxId: inbox.id,
+    inboxActive: inbox.isActive,
+  })
 
   const remoteJid = normalizedMessage.remoteJid
 
@@ -1119,10 +1364,14 @@ async function processInstagramMessagingEvent(
         data: {
           conversationId: resolveResult.conversationId,
           role: 'user',
-          content: resolveMessageContent(normalizedMessage) || '[mensagem não suportada]',
+          content:
+            resolveMessageContent(normalizedMessage) ||
+            '[mensagem não suportada]',
           providerMessageId: mid,
           metadata: normalizedMessage.media
-            ? ({ media: normalizedMessage.media } as unknown as Prisma.InputJsonValue)
+            ? ({
+                media: normalizedMessage.media,
+              } as unknown as Prisma.InputJsonValue)
             : undefined,
         },
       })
@@ -1157,7 +1406,9 @@ async function processInstagramMessagingEvent(
   const resolvedAgent = await resolveAgentForConversation(inbox, preResolveConv)
 
   if (!resolvedAgent || !resolvedAgent.isActive) {
-    logCtx('step:5 agent_active_check', 'EXIT', { reason: 'agent_inactive_or_unresolved' })
+    logCtx('step:5 agent_active_check', 'EXIT', {
+      reason: 'agent_inactive_or_unresolved',
+    })
 
     // Salvar mensagem na conversa para aparecer no inbox, mesmo sem IA ativa
     if (normalizedMessage.type === 'text' && !normalizedMessage.text) return
@@ -1197,10 +1448,14 @@ async function processInstagramMessagingEvent(
         data: {
           conversationId: resolveInactiveResult.conversationId,
           role: 'user',
-          content: resolveMessageContent(normalizedMessage) || '[mensagem não suportada]',
+          content:
+            resolveMessageContent(normalizedMessage) ||
+            '[mensagem não suportada]',
           providerMessageId: mid,
           metadata: normalizedMessage.media
-            ? ({ media: normalizedMessage.media } as unknown as Prisma.InputJsonValue)
+            ? ({
+                media: normalizedMessage.media,
+              } as unknown as Prisma.InputJsonValue)
             : undefined,
         },
       })
@@ -1218,26 +1473,39 @@ async function processInstagramMessagingEvent(
       })
 
       revalidateTag(`conversations:${orgId}`)
-      revalidateTag(`conversation-messages:${resolveInactiveResult.conversationId}`)
+      revalidateTag(
+        `conversation-messages:${resolveInactiveResult.conversationId}`,
+      )
     }
 
     return
   }
 
-  logCtx('step:5 agent_active_check', 'PASS', { agentId: resolvedAgent.agentId, requiresRouting: resolvedAgent.requiresRouting })
+  logCtx('step:5 agent_active_check', 'PASS', {
+    agentId: resolvedAgent.agentId,
+    requiresRouting: resolvedAgent.requiresRouting,
+  })
 
   // Business hours check
-  if (!resolvedAgent.requiresRouting && resolvedAgent.businessHoursEnabled && resolvedAgent.businessHoursConfig) {
+  if (
+    !resolvedAgent.requiresRouting &&
+    resolvedAgent.businessHoursEnabled &&
+    resolvedAgent.businessHoursConfig
+  ) {
     const isOpen = checkBusinessHours(
       resolvedAgent.businessHoursTimezone,
       resolvedAgent.businessHoursConfig as BusinessHoursConfig,
     )
 
     if (!isOpen) {
-      logCtx('step:6 business_hours', 'EXIT', { reason: 'outside_business_hours' })
+      logCtx('step:6 business_hours', 'EXIT', {
+        reason: 'outside_business_hours',
+      })
 
       const oohKey = `ooh-reply:${resolvedAgent.agentId}:${remoteJid}`
-      const alreadyReplied = await redis.set(oohKey, '1', 'EX', 3600, 'NX').catch(() => null)
+      const alreadyReplied = await redis
+        .set(oohKey, '1', 'EX', 3600, 'NX')
+        .catch(() => null)
 
       const resolveResult = await resolveConversation(
         inbox.id,
@@ -1274,10 +1542,14 @@ async function processInstagramMessagingEvent(
           data: {
             conversationId: resolveResult.conversationId,
             role: 'user',
-            content: resolveMessageContent(normalizedMessage) || '[mensagem não suportada]',
+            content:
+              resolveMessageContent(normalizedMessage) ||
+              '[mensagem não suportada]',
             providerMessageId: mid,
             metadata: normalizedMessage.media
-              ? ({ media: normalizedMessage.media } as unknown as Prisma.InputJsonValue)
+              ? ({
+                  media: normalizedMessage.media,
+                } as unknown as Prisma.InputJsonValue)
               : undefined,
           },
         })
@@ -1299,7 +1571,12 @@ async function processInstagramMessagingEvent(
       const oohMessage = resolvedAgent.outOfHoursMessage
       const oohIgUserId = inbox.metaIgUserId
       const oohAccessToken = inbox.metaAccessToken
-      if (oohMessage && alreadyReplied !== null && oohAccessToken && oohIgUserId) {
+      if (
+        oohMessage &&
+        alreadyReplied !== null &&
+        oohAccessToken &&
+        oohIgUserId
+      ) {
         try {
           const oohIds = await sendInstagramText(
             oohIgUserId,
@@ -1308,7 +1585,9 @@ async function processInstagramMessagingEvent(
             oohMessage,
           )
           await Promise.all(
-            oohIds.map((sentId) => redis.set(`dedup:${sentId}`, '1', 'EX', 300).catch(() => {})),
+            oohIds.map((sentId) =>
+              redis.set(`dedup:${sentId}`, '1', 'EX', 300).catch(() => {}),
+            ),
           )
         } catch (error) {
           console.error('[ig-webhook] OOH auto-reply failed:', { mid, error })
@@ -1332,12 +1611,13 @@ async function processInstagramMessagingEvent(
 
   // Dedup + Resolve Conversation em paralelo
   const [dedupResult, resolveResult] = await Promise.all([
-    redis
-      .set(`dedup:${mid}`, '1', 'EX', 300, 'NX')
-      .catch((error) => {
-        console.warn('[ig-webhook] Redis dedup failed, continuing:', { mid, error })
-        return 'redis_error' as const
-      }),
+    redis.set(`dedup:${mid}`, '1', 'EX', 300, 'NX').catch((error) => {
+      console.warn('[ig-webhook] Redis dedup failed, continuing:', {
+        mid,
+        error,
+      })
+      return 'redis_error' as const
+    }),
     resolveConversation(
       inbox.id,
       orgId,
@@ -1387,7 +1667,9 @@ async function processInstagramMessagingEvent(
           content: resolveMessageContent(normalizedMessage),
           providerMessageId: mid,
           metadata: normalizedMessage.media
-            ? ({ media: normalizedMessage.media } as unknown as Prisma.InputJsonValue)
+            ? ({
+                media: normalizedMessage.media,
+              } as unknown as Prisma.InputJsonValue)
             : undefined,
         },
       })
@@ -1412,13 +1694,19 @@ async function processInstagramMessagingEvent(
         'code' in error &&
         (error as { code: string }).code === 'P2002'
       ) {
-        logCtx('step:9 ai_paused_save', 'SKIP', { reason: 'duplicate_provider_message_id' })
+        logCtx('step:9 ai_paused_save', 'SKIP', {
+          reason: 'duplicate_provider_message_id',
+        })
         return
       }
       throw error
     }
 
-    logCtx('step:9 ai_pause_check', 'EXIT', { reason: 'ai_paused', conversationId, ms: Date.now() - t0 })
+    logCtx('step:9 ai_pause_check', 'EXIT', {
+      reason: 'ai_paused',
+      conversationId,
+      ms: Date.now() - t0,
+    })
     return
   }
 
@@ -1431,7 +1719,9 @@ async function processInstagramMessagingEvent(
         content: resolveMessageContent(normalizedMessage),
         providerMessageId: mid,
         metadata: normalizedMessage.media
-          ? ({ media: normalizedMessage.media } as unknown as Prisma.InputJsonValue)
+          ? ({
+              media: normalizedMessage.media,
+            } as unknown as Prisma.InputJsonValue)
           : undefined,
       },
     })
@@ -1441,7 +1731,9 @@ async function processInstagramMessagingEvent(
       'code' in error &&
       (error as { code: string }).code === 'P2002'
     ) {
-      logCtx('step:10 save_message', 'SKIP', { reason: 'duplicate_provider_message_id' })
+      logCtx('step:10 save_message', 'SKIP', {
+        reason: 'duplicate_provider_message_id',
+      })
       return
     }
     throw error
@@ -1483,7 +1775,10 @@ async function processInstagramMessagingEvent(
         requiresRouting: resolvedAgent.requiresRouting,
         groupId: resolvedAgent.groupId,
       },
-      { delay: `${resolvedAgent.debounceSeconds}s`, concurrencyKey: conversationId },
+      {
+        delay: `${resolvedAgent.debounceSeconds}s`,
+        concurrencyKey: conversationId,
+      },
     ),
   ])
 
@@ -1518,7 +1813,8 @@ function resolveMessageContent(message: NormalizedWhatsAppMessage): string {
   switch (message.type) {
     case 'audio': {
       // seconds pode ser undefined para Meta Cloud (API nao retorna duracao no webhook)
-      const durationLabel = message.media?.seconds !== undefined ? ` ${message.media.seconds}s` : ''
+      const durationLabel =
+        message.media?.seconds !== undefined ? ` ${message.media.seconds}s` : ''
       return `[Áudio${durationLabel}]`
     }
     case 'image': {

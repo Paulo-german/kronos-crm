@@ -65,11 +65,7 @@ import {
   PopoverTrigger,
 } from '@/_components/ui/popover'
 import { Calendar } from '@/_components/ui/calendar'
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from '@/_components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/_components/ui/avatar'
 import { Badge } from '@/_components/ui/badge'
 import { cn } from '@/_lib/utils'
 
@@ -91,11 +87,7 @@ import {
   SelectValue,
 } from '@/_components/ui/select'
 import { Switch } from '@/_components/ui/switch'
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from '@/_components/ui/alert'
+import { Alert, AlertDescription, AlertTitle } from '@/_components/ui/alert'
 
 const SAO_PAULO_TZ = 'America/Sao_Paulo'
 const MIN_SEARCH_CHARS = 3
@@ -135,7 +127,12 @@ export function UpsertAppointmentDialogContent({
     defaultValues?.dealTitle ?? null,
   )
   const [dealResults, setDealResults] = useState<
-    Array<{ id: string; title: string; contactId: string | null; contactName: string | null }>
+    Array<{
+      id: string
+      title: string
+      contactId: string | null
+      contactName: string | null
+    }>
   >([])
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -145,11 +142,14 @@ export function UpsertAppointmentDialogContent({
   const [openContactCombobox, setOpenContactCombobox] = useState(false)
   const [contactSearch, setContactSearch] = useState('')
   const [contactResults, setContactResults] = useState<ContactOptionDto[]>([])
-  const [selectedContactCache, setSelectedContactCache] = useState<ContactOptionDto | null>(
-    defaultValues?.contactId
-      ? (contactOptions.find((c) => c.id === defaultValues.contactId) ?? null)
-      : null,
-  )
+  const [selectedContactCache, setSelectedContactCache] =
+    useState<ContactOptionDto | null>(
+      defaultValues?.contactId
+        ? (contactOptions.find(
+            (contact) => contact.id === defaultValues.contactId,
+          ) ?? null)
+        : null,
+    )
   const contactDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [openServiceCombobox, setOpenServiceCombobox] = useState(false)
 
@@ -159,7 +159,9 @@ export function UpsertAppointmentDialogContent({
   const [openAssignOwnerPopover, setOpenAssignOwnerPopover] = useState(false)
   const [assignOwnerSearch, setAssignOwnerSearch] = useState('')
   // Rastreia contatos que tiveram responsável atribuído inline nessa sessão
-  const [localContactOwners, setLocalContactOwners] = useState<Record<string, string>>({})
+  const [localContactOwners, setLocalContactOwners] = useState<
+    Record<string, string>
+  >({})
   // Ref para capturar o contactId no momento do dispatch e evitar stale closure no onSuccess
   const assignOwnerContactIdRef = useRef<string | null>(null)
 
@@ -169,9 +171,9 @@ export function UpsertAppointmentDialogContent({
   const [selectedDay, setSelectedDay] = useState<Date | null>(
     defaultValues?.startDate ? new Date(defaultValues.startDate) : null,
   )
-  const [filterProfessionalId, setFilterProfessionalId] = useState<string | null>(
-    defaultValues?.professionalId ?? null,
-  )
+  const [filterProfessionalId, setFilterProfessionalId] = useState<
+    string | null
+  >(defaultValues?.professionalId ?? null)
   const [slots, setSlots] = useState<SlotDto[]>([])
   const [selectedSlotKey, setSelectedSlotKey] = useState<string | null>(null)
 
@@ -188,14 +190,12 @@ export function UpsertAppointmentDialogContent({
     },
   )
 
-  const { execute: executeContactSearch, isPending: isSearchingContacts } = useAction(
-    searchContacts,
-    {
+  const { execute: executeContactSearch, isPending: isSearchingContacts } =
+    useAction(searchContacts, {
       onSuccess: ({ data }) => {
         if (data) setContactResults(data)
       },
-    },
-  )
+    })
 
   const { execute: fetchSlots, isPending: isLoadingSlots } = useAction(
     getSlotsByDateAction,
@@ -255,22 +255,26 @@ export function UpsertAppointmentDialogContent({
   // Foco programático em campo específico (sincronização com DOM — uso legítimo de useEffect)
   useEffect(() => {
     if (!focusField) return
-    const node = document.querySelector<HTMLElement>(`[data-field="${focusField}"]`)
+    const node = document.querySelector<HTMLElement>(
+      `[data-field="${focusField}"]`,
+    )
     if (!node) return
     node.scrollIntoView({ block: 'center', behavior: 'smooth' })
     node.focus()
   }, [focusField])
 
-  const { execute: executeAssignOwner, isPending: isAssigningOwner } = useAction(
-    updateContact,
-    {
+  const { execute: executeAssignOwner, isPending: isAssigningOwner } =
+    useAction(updateContact, {
       onSuccess: () => {
         // Usa a ref em vez do closure de watchedContactId para garantir que registramos
         // o owner no contato correto mesmo que o usuário tenha trocado o contato
         // enquanto o request estava em voo.
         const contactIdAtDispatch = assignOwnerContactIdRef.current
         if (contactIdAtDispatch) {
-          setLocalContactOwners((prev) => ({ ...prev, [contactIdAtDispatch]: 'assigned' }))
+          setLocalContactOwners((prev) => ({
+            ...prev,
+            [contactIdAtDispatch]: 'assigned',
+          }))
         }
         toast.success('Responsável atribuído com sucesso.')
         setOpenAssignOwnerPopover(false)
@@ -281,8 +285,7 @@ export function UpsertAppointmentDialogContent({
         assignOwnerContactIdRef.current = null
         toast.error(error.serverError || 'Erro ao atribuir responsável.')
       },
-    },
-  )
+    })
 
   const { execute: executeCreate, isPending: isCreating } = useAction(
     createAppointment,
@@ -315,7 +318,9 @@ export function UpsertAppointmentDialogContent({
         title: defaultValues.title,
         description: defaultValues.description ?? undefined,
         startDate: new Date(defaultValues.startDate),
-        endDate: defaultValues.endDate ? new Date(defaultValues.endDate) : undefined,
+        endDate: defaultValues.endDate
+          ? new Date(defaultValues.endDate)
+          : undefined,
         dealId: defaultValues.dealId ?? undefined,
         autoCreateDeal: false,
         serviceId: defaultValues.serviceId ?? undefined,
@@ -356,10 +361,18 @@ export function UpsertAppointmentDialogContent({
     const contact =
       contactResults.find((option) => option.id === watchedContactId) ??
       contactOptions.find((option) => option.id === watchedContactId) ??
-      (selectedContactCache?.id === watchedContactId ? selectedContactCache : null)
+      (selectedContactCache?.id === watchedContactId
+        ? selectedContactCache
+        : null)
     if (!contact) return null
     return !!contact.assignedTo
-  }, [watchedContactId, contactOptions, contactResults, localContactOwners, selectedContactCache])
+  }, [
+    watchedContactId,
+    contactOptions,
+    contactResults,
+    localContactOwners,
+    selectedContactCache,
+  ])
 
   // Membros filtrados pela busca no popover de atribuição de responsável
   const filteredAssignableMembers = useMemo(() => {
@@ -390,7 +403,9 @@ export function UpsertAppointmentDialogContent({
   // Contato selecionado (para exibir no trigger do combobox).
   // Cache tem prioridade — persiste após contactResults ser zerado no fechamento do combobox.
   const selectedContact =
-    (selectedContactCache?.id === watchedContactId ? selectedContactCache : null) ??
+    (selectedContactCache?.id === watchedContactId
+      ? selectedContactCache
+      : null) ??
     contactResults.find((contact) => contact.id === watchedContactId) ??
     contactOptions.find((contact) => contact.id === watchedContactId)
 
@@ -403,7 +418,9 @@ export function UpsertAppointmentDialogContent({
   // Profissionais ativos vinculados ao serviço selecionado
   const serviceProfessionals = useMemo(() => {
     if (!selectedService) return []
-    return selectedService.professionalServices.filter((ps) => ps.professional.isActive)
+    return selectedService.professionalServices.filter(
+      (ps) => ps.professional.isActive,
+    )
   }, [selectedService])
 
   // Em modo "Qualquer", deduplica slots por startTime mantendo o primeiro (ordem de distribuição)
@@ -426,8 +443,14 @@ export function UpsertAppointmentDialogContent({
       setSelectedDay(null)
       return
     }
-    const d = watchedStartDate
-    const newDay = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
+    const startDate = watchedStartDate
+    const newDay = new Date(
+      Date.UTC(
+        startDate.getUTCFullYear(),
+        startDate.getUTCMonth(),
+        startDate.getUTCDate(),
+      ),
+    )
     setSelectedDay((prev) => {
       if (prev?.getTime() === newDay.getTime()) return prev
       return newDay
@@ -473,7 +496,10 @@ export function UpsertAppointmentDialogContent({
     const currentDate = form.getValues('startDate')
     if (!currentDate) return
     const dateStr = formatDateUtc(currentDate)
-    const utcDate = fromZonedTime(`${dateStr}T${slot.startTime}:00`, SAO_PAULO_TZ)
+    const utcDate = fromZonedTime(
+      `${dateStr}T${slot.startTime}:00`,
+      SAO_PAULO_TZ,
+    )
     form.setValue('startDate', utcDate)
     form.setValue('professionalId', slot.professionalId)
     setSelectedSlotKey(`${slot.professionalId}-${slot.startTime}`)
@@ -507,7 +533,6 @@ export function UpsertAppointmentDialogContent({
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-
           {/* TIPO DE AGENDAMENTO */}
           <FormField<CreateAppointmentInput, 'type'>
             control={form.control}
@@ -519,7 +544,9 @@ export function UpsertAppointmentDialogContent({
                   <div className="flex gap-2">
                     <Button
                       type="button"
-                      variant={field.value === 'MEETING' ? 'default' : 'outline'}
+                      variant={
+                        field.value === 'MEETING' ? 'default' : 'outline'
+                      }
                       size="sm"
                       className="flex-1 gap-2"
                       onClick={() => {
@@ -537,7 +564,9 @@ export function UpsertAppointmentDialogContent({
                     </Button>
                     <Button
                       type="button"
-                      variant={field.value === 'BOOKING' ? 'default' : 'outline'}
+                      variant={
+                        field.value === 'BOOKING' ? 'default' : 'outline'
+                      }
                       size="sm"
                       className="flex-1 gap-2"
                       onClick={() => {
@@ -583,7 +612,8 @@ export function UpsertAppointmentDialogContent({
                         className={cn(
                           'w-full justify-between',
                           !field.value && 'text-muted-foreground',
-                          form.formState.errors.contactId && 'border-destructive',
+                          form.formState.errors.contactId &&
+                            'border-destructive',
                         )}
                       >
                         <span className="flex items-center gap-2 truncate">
@@ -613,7 +643,9 @@ export function UpsertAppointmentDialogContent({
                             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                           </div>
                         ) : contactResults.length === 0 ? (
-                          <CommandEmpty>Nenhum contato encontrado.</CommandEmpty>
+                          <CommandEmpty>
+                            Nenhum contato encontrado.
+                          </CommandEmpty>
                         ) : (
                           <CommandGroup>
                             {contactResults.map((contact) => (
@@ -630,9 +662,16 @@ export function UpsertAppointmentDialogContent({
                                   if (watchedType === 'BOOKING') {
                                     const serviceName = selectedService?.name
                                     const currentTitle = form.getValues('title')
-                                    const wasAutoFilled = !currentTitle || currentTitle === serviceName
+                                    const wasAutoFilled =
+                                      !currentTitle ||
+                                      currentTitle === serviceName
                                     if (wasAutoFilled) {
-                                      form.setValue('title', serviceName ? `${serviceName} - ${contact.name}` : contact.name)
+                                      form.setValue(
+                                        'title',
+                                        serviceName
+                                          ? `${serviceName} - ${contact.name}`
+                                          : contact.name,
+                                      )
                                     }
                                   }
                                 }}
@@ -665,161 +704,73 @@ export function UpsertAppointmentDialogContent({
           />
 
           {/* ALERTA: contato sem responsável — com botão de atribuição rápida inline */}
-          {watchedType === 'BOOKING' && watchedContactId && contactHasOwner === false && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Contato sem responsável</AlertTitle>
-              <AlertDescription className="space-y-2">
-                <p>
-                  Este contato não tem um responsável de vendas. Atribua um para continuar.
-                </p>
-                <Popover
-                  open={openAssignOwnerPopover}
-                  onOpenChange={(open) => {
-                    setOpenAssignOwnerPopover(open)
-                    if (!open) setAssignOwnerSearch('')
-                  }}
-                >
-                  <PopoverTrigger asChild>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      disabled={isAssigningOwner}
-                      className="border-destructive/50 bg-transparent text-destructive hover:bg-destructive/10"
-                    >
-                      {isAssigningOwner && (
-                        <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                      )}
-                      Atribuir responsável
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-64 p-0" align="start">
-                    <Command shouldFilter={false}>
-                      <CommandInput
-                        placeholder="Buscar membro..."
-                        value={assignOwnerSearch}
-                        onValueChange={setAssignOwnerSearch}
-                      />
-                      <CommandList>
-                        {filteredAssignableMembers.length === 0 ? (
-                          <CommandEmpty>Nenhum membro encontrado.</CommandEmpty>
-                        ) : (
-                          <CommandGroup>
-                            {filteredAssignableMembers.map((member) => (
-                              <CommandItem
-                                key={member.id}
-                                value={member.userId}
-                                disabled={isAssigningOwner}
-                                onSelect={() => {
-                                  if (!watchedContactId) return
-                                  assignOwnerContactIdRef.current = watchedContactId
-                                  executeAssignOwner({
-                                    id: watchedContactId,
-                                    assignedTo: member.userId,
-                                  })
-                                }}
-                              >
-                                <span className="flex-1">{member.user?.fullName}</span>
-                                <span className="ml-2 text-xs text-muted-foreground truncate">
-                                  {member.email}
-                                </span>
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        )}
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {/* NEGÓCIO — MEETING e BOOKING (sem fixedDealId), exceto quando autoCreateDeal está ativo */}
-          {(watchedType === 'MEETING' || watchedType === 'BOOKING') && !fixedDealId && !watchedAutoCreateDeal && (
-            <FormField<CreateAppointmentInput, 'dealId'>
-              control={form.control}
-              name="dealId"
-              render={({ field }) => (
-                <FormItem className="flex flex-col" data-field="dealId" tabIndex={-1}>
-                  <FormLabel className="flex items-center gap-1">
-                    Negócio <span className="text-destructive">*</span>
-                  </FormLabel>
+          {watchedType === 'BOOKING' &&
+            watchedContactId &&
+            contactHasOwner === false && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Contato sem responsável</AlertTitle>
+                <AlertDescription className="space-y-2">
+                  <p>
+                    Este contato não tem um responsável de vendas. Atribua um
+                    para continuar.
+                  </p>
                   <Popover
-                    open={openDealCombobox}
-                    onOpenChange={setOpenDealCombobox}
+                    open={openAssignOwnerPopover}
+                    onOpenChange={(open) => {
+                      setOpenAssignOwnerPopover(open)
+                      if (!open) setAssignOwnerSearch('')
+                    }}
                   >
                     <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant="outline"
-                          role="combobox"
-                          className={cn(
-                            'w-full justify-between',
-                            !field.value && 'text-muted-foreground',
-                            form.formState.errors.dealId && 'border-destructive',
-                          )}
-                        >
-                          {field.value
-                            ? (selectedDealTitle ?? 'Negócio não encontrado')
-                            : 'Selecione um negócio...'}
-                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                      </FormControl>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={isAssigningOwner}
+                        className="border-destructive/50 bg-transparent text-destructive hover:bg-destructive/10"
+                      >
+                        {isAssigningOwner && (
+                          <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                        )}
+                        Atribuir responsável
+                      </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                    <PopoverContent className="w-64 p-0" align="start">
                       <Command shouldFilter={false}>
                         <CommandInput
-                          placeholder="Digite pelo menos 3 caracteres..."
-                          value={dealSearch}
-                          onValueChange={handleDealSearchChange}
+                          placeholder="Buscar membro..."
+                          value={assignOwnerSearch}
+                          onValueChange={setAssignOwnerSearch}
                         />
                         <CommandList>
-                          {dealSearch.length < MIN_SEARCH_CHARS ? (
-                            <div className="py-6 text-center text-sm text-muted-foreground">
-                              Digite pelo menos 3 caracteres
-                            </div>
-                          ) : isSearching ? (
-                            <div className="flex items-center justify-center py-6">
-                              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                            </div>
-                          ) : dealResults.length === 0 ? (
+                          {filteredAssignableMembers.length === 0 ? (
                             <CommandEmpty>
-                              Nenhum negócio encontrado.
+                              Nenhum membro encontrado.
                             </CommandEmpty>
                           ) : (
                             <CommandGroup>
-                              {dealResults.map((deal) => (
+                              {filteredAssignableMembers.map((member) => (
                                 <CommandItem
-                                  key={deal.id}
-                                  value={deal.id}
+                                  key={member.id}
+                                  value={member.userId}
+                                  disabled={isAssigningOwner}
                                   onSelect={() => {
-                                    form.setValue('dealId', deal.id)
-                                    setSelectedDealTitle(deal.title)
-                                    setOpenDealCombobox(false)
-                                    setDealSearch('')
-                                    setDealResults([])
-                                    // Auto-preencher contato do negócio se ainda não selecionado
-                                    if (deal.contactId && !form.getValues('contactId')) {
-                                      form.setValue('contactId', deal.contactId)
-                                    }
+                                    if (!watchedContactId) return
+                                    assignOwnerContactIdRef.current =
+                                      watchedContactId
+                                    executeAssignOwner({
+                                      id: watchedContactId,
+                                      assignedTo: member.userId,
+                                    })
                                   }}
                                 >
-                                  <Check
-                                    className={cn(
-                                      'mr-2 h-4 w-4',
-                                      deal.id === field.value
-                                        ? 'opacity-100'
-                                        : 'opacity-0',
-                                    )}
-                                  />
-                                  {deal.title}
-                                  {deal.contactName && (
-                                    <span className="ml-2 text-xs text-muted-foreground">
-                                      ({deal.contactName})
-                                    </span>
-                                  )}
+                                  <span className="flex-1">
+                                    {member.user?.fullName}
+                                  </span>
+                                  <span className="ml-2 truncate text-xs text-muted-foreground">
+                                    {member.email}
+                                  </span>
                                 </CommandItem>
                               ))}
                             </CommandGroup>
@@ -828,11 +779,120 @@ export function UpsertAppointmentDialogContent({
                       </Command>
                     </PopoverContent>
                   </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          )}
+                </AlertDescription>
+              </Alert>
+            )}
+
+          {/* NEGÓCIO — MEETING e BOOKING (sem fixedDealId), exceto quando autoCreateDeal está ativo */}
+          {(watchedType === 'MEETING' || watchedType === 'BOOKING') &&
+            !fixedDealId &&
+            !watchedAutoCreateDeal && (
+              <FormField<CreateAppointmentInput, 'dealId'>
+                control={form.control}
+                name="dealId"
+                render={({ field }) => (
+                  <FormItem
+                    className="flex flex-col"
+                    data-field="dealId"
+                    tabIndex={-1}
+                  >
+                    <FormLabel className="flex items-center gap-1">
+                      Negócio <span className="text-destructive">*</span>
+                    </FormLabel>
+                    <Popover
+                      open={openDealCombobox}
+                      onOpenChange={setOpenDealCombobox}
+                    >
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            className={cn(
+                              'w-full justify-between',
+                              !field.value && 'text-muted-foreground',
+                              form.formState.errors.dealId &&
+                                'border-destructive',
+                            )}
+                          >
+                            {field.value
+                              ? (selectedDealTitle ?? 'Negócio não encontrado')
+                              : 'Selecione um negócio...'}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                        <Command shouldFilter={false}>
+                          <CommandInput
+                            placeholder="Digite pelo menos 3 caracteres..."
+                            value={dealSearch}
+                            onValueChange={handleDealSearchChange}
+                          />
+                          <CommandList>
+                            {dealSearch.length < MIN_SEARCH_CHARS ? (
+                              <div className="py-6 text-center text-sm text-muted-foreground">
+                                Digite pelo menos 3 caracteres
+                              </div>
+                            ) : isSearching ? (
+                              <div className="flex items-center justify-center py-6">
+                                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                              </div>
+                            ) : dealResults.length === 0 ? (
+                              <CommandEmpty>
+                                Nenhum negócio encontrado.
+                              </CommandEmpty>
+                            ) : (
+                              <CommandGroup>
+                                {dealResults.map((deal) => (
+                                  <CommandItem
+                                    key={deal.id}
+                                    value={deal.id}
+                                    onSelect={() => {
+                                      form.setValue('dealId', deal.id)
+                                      setSelectedDealTitle(deal.title)
+                                      setOpenDealCombobox(false)
+                                      setDealSearch('')
+                                      setDealResults([])
+                                      // Auto-preencher contato do negócio se ainda não selecionado
+                                      if (
+                                        deal.contactId &&
+                                        !form.getValues('contactId')
+                                      ) {
+                                        form.setValue(
+                                          'contactId',
+                                          deal.contactId,
+                                        )
+                                      }
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        'mr-2 h-4 w-4',
+                                        deal.id === field.value
+                                          ? 'opacity-100'
+                                          : 'opacity-0',
+                                      )}
+                                    />
+                                    {deal.title}
+                                    {deal.contactName && (
+                                      <span className="ml-2 text-xs text-muted-foreground">
+                                        ({deal.contactName})
+                                      </span>
+                                    )}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            )}
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
           {/* TOGGLE: Criar negociação junto — apenas BOOKING sem fixedDealId */}
           {watchedType === 'BOOKING' && !fixedDealId && (
@@ -887,7 +947,8 @@ export function UpsertAppointmentDialogContent({
                           className={cn(
                             'w-full justify-between',
                             !field.value && 'text-muted-foreground',
-                            form.formState.errors.serviceId && 'border-destructive',
+                            form.formState.errors.serviceId &&
+                              'border-destructive',
                           )}
                         >
                           <span className="truncate">
@@ -921,14 +982,26 @@ export function UpsertAppointmentDialogContent({
                                       onSelect={() => {
                                         form.setValue('serviceId', service.id)
                                         // Auto-fill do título se vazio ou se ainda é o valor auto-gerado anterior (só contato)
-                                        const contactName = selectedContact?.name
-                                        const currentTitle = form.getValues('title')
-                                        const wasAutoFilled = !currentTitle || currentTitle === contactName
+                                        const contactName =
+                                          selectedContact?.name
+                                        const currentTitle =
+                                          form.getValues('title')
+                                        const wasAutoFilled =
+                                          !currentTitle ||
+                                          currentTitle === contactName
                                         if (wasAutoFilled) {
-                                          form.setValue('title', contactName ? `${service.name} - ${contactName}` : service.name)
+                                          form.setValue(
+                                            'title',
+                                            contactName
+                                              ? `${service.name} - ${contactName}`
+                                              : service.name,
+                                          )
                                         }
                                         // Limpa seleções do booking widget ao trocar serviço
-                                        form.setValue('professionalId', undefined)
+                                        form.setValue(
+                                          'professionalId',
+                                          undefined,
+                                        )
                                         setSlots([])
                                         setSelectedSlotKey(null)
                                         setFilterProfessionalId(null)
@@ -943,7 +1016,9 @@ export function UpsertAppointmentDialogContent({
                                             : 'opacity-0',
                                         )}
                                       />
-                                      <span className="flex-1">{service.name}</span>
+                                      <span className="flex-1">
+                                        {service.name}
+                                      </span>
                                       <span className="ml-2 text-xs text-muted-foreground">
                                         {service.duration} min
                                       </span>
@@ -980,7 +1055,11 @@ export function UpsertAppointmentDialogContent({
 
           {/* DATA DE INÍCIO — BOOKING usa seletor só de dia (hora vem do slot) */}
           {watchedType === 'BOOKING' && (
-            <DateOnlyField form={form} name="startDate" label="Data de Início" />
+            <DateOnlyField
+              form={form}
+              name="startDate"
+              label="Data de Início"
+            />
           )}
 
           {/* FILTRO DE PROFISSIONAL — chips clicáveis após serviço + data selecionados */}
@@ -1039,7 +1118,9 @@ export function UpsertAppointmentDialogContent({
           {/* HORÁRIOS DISPONÍVEIS — grid de chips após serviço + data selecionados */}
           {watchedType === 'BOOKING' && watchedServiceId && selectedDay && (
             <div className="space-y-2">
-              <p className="text-sm font-medium leading-none">Horário disponível</p>
+              <p className="text-sm font-medium leading-none">
+                Horário disponível
+              </p>
 
               {isLoadingSlots ? (
                 <div className="flex items-center justify-center py-6">
@@ -1074,7 +1155,11 @@ export function UpsertAppointmentDialogContent({
 
           {/* DATA DE INÍCIO — apenas MEETING (BOOKING usa o booking widget acima) */}
           {watchedType === 'MEETING' && (
-            <DateTimeField form={form} name="startDate" label="Data de Início" />
+            <DateTimeField
+              form={form}
+              name="startDate"
+              label="Data de Início"
+            />
           )}
 
           {/* DATA DE FIM — apenas MEETING */}
@@ -1120,10 +1205,7 @@ export function UpsertAppointmentDialogContent({
                     </FormControl>
                     <SelectContent>
                       {assignableMembers.map((member) => (
-                        <SelectItem
-                          key={member.id}
-                          value={member.userId}
-                        >
+                        <SelectItem key={member.id} value={member.userId}>
                           {member.user?.fullName} ({member.email})
                         </SelectItem>
                       ))}
@@ -1160,7 +1242,9 @@ export function UpsertAppointmentDialogContent({
               type="submit"
               disabled={
                 isExecuting ||
-                (watchedType === 'BOOKING' && watchedContactId !== undefined && contactHasOwner === false) ||
+                (watchedType === 'BOOKING' &&
+                  watchedContactId !== undefined &&
+                  contactHasOwner === false) ||
                 (watchedType === 'BOOKING' && !selectedSlotKey)
               }
             >
@@ -1251,7 +1335,11 @@ function DateTimeField({
                       ? formatInTimeZone(field.value, SAO_PAULO_TZ, 'HH:mm')
                       : '09:00'
                     // Extrair a data selecionada no timezone de SP
-                    const selectedDateStr = formatInTimeZone(date, SAO_PAULO_TZ, 'yyyy-MM-dd')
+                    const selectedDateStr = formatInTimeZone(
+                      date,
+                      SAO_PAULO_TZ,
+                      'yyyy-MM-dd',
+                    )
                     // Construir data+hora no timezone de SP e converter para UTC
                     const zonedDateStr = `${selectedDateStr}T${currentTime}:00`
                     const utcDate = fromZonedTime(zonedDateStr, SAO_PAULO_TZ)
@@ -1274,7 +1362,11 @@ function DateTimeField({
                   value={(() => {
                     try {
                       if (field.value && !isNaN(field.value.getTime())) {
-                        return formatInTimeZone(field.value, SAO_PAULO_TZ, 'HH:mm')
+                        return formatInTimeZone(
+                          field.value,
+                          SAO_PAULO_TZ,
+                          'HH:mm',
+                        )
                       }
                     } catch {
                       // Se falhar, retorna valor padrão
@@ -1304,7 +1396,11 @@ function DateTimeField({
 
                     // Obter a data atual no timezone de SP para preservar o dia correto
                     const currentDateStr = field.value
-                      ? formatInTimeZone(field.value, SAO_PAULO_TZ, 'yyyy-MM-dd')
+                      ? formatInTimeZone(
+                          field.value,
+                          SAO_PAULO_TZ,
+                          'yyyy-MM-dd',
+                        )
                       : formatInTimeZone(new Date(), SAO_PAULO_TZ, 'yyyy-MM-dd')
 
                     // Construir a data+hora no timezone de SP e converter para UTC
@@ -1364,13 +1460,26 @@ function DateOnlyField({
                     (() => {
                       try {
                         if (isNaN(field.value.getTime())) {
-                          return <span className="text-destructive">Data inválida</span>
+                          return (
+                            <span className="text-destructive">
+                              Data inválida
+                            </span>
+                          )
                         }
-                        return formatInTimeZone(field.value, SAO_PAULO_TZ, 'dd/MM/yyyy', {
-                          locale: ptBR,
-                        })
+                        return formatInTimeZone(
+                          field.value,
+                          SAO_PAULO_TZ,
+                          'dd/MM/yyyy',
+                          {
+                            locale: ptBR,
+                          },
+                        )
                       } catch {
-                        return <span className="text-destructive">Data inválida</span>
+                        return (
+                          <span className="text-destructive">
+                            Data inválida
+                          </span>
+                        )
                       }
                     })()
                   ) : (
@@ -1388,10 +1497,16 @@ function DateOnlyField({
                   if (!date) return
                   // Meia-noite local do dia selecionado — Calendar compara por data local,
                   // e formatDateUtc/getUTCDay ainda funcionam pois UTC-3 não cruza a virada UTC
-                  const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+                  const dayStart = new Date(
+                    date.getFullYear(),
+                    date.getMonth(),
+                    date.getDate(),
+                  )
                   field.onChange(dayStart)
                 }}
-                disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                disabled={(date) =>
+                  date < new Date(new Date().setHours(0, 0, 0, 0))
+                }
                 initialFocus
               />
             </PopoverContent>
