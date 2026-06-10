@@ -1,5 +1,6 @@
 'use server'
 
+import { Prisma } from '@prisma/client'
 import { orgActionClient } from '@/_lib/safe-action'
 import { updateContactSchema } from './schema'
 import { db } from '@/_lib/prisma'
@@ -12,6 +13,7 @@ import {
   isOwnershipChange,
   isElevated,
 } from '@/_lib/rbac'
+import { normalizeEmail } from '@/_lib/contact/normalize-email'
 
 export const updateContact = orgActionClient
   .schema(updateContactSchema)
@@ -33,15 +35,16 @@ export const updateContact = orgActionClient
 
     // 3. Verificar acesso ao registro (MEMBER só edita próprios)
     requirePermission(
-      canAccessRecord(ctx, { assignedTo: existingContact.assignedTo })
+      canAccessRecord(ctx, { assignedTo: existingContact.assignedTo }),
     )
 
     // 4. Bloquear edição de campos PII para MEMBER quando o toggle de proteção está ativo
     if (!isElevated(ctx.userRole) && ctx.hidePiiFromMembers) {
-      const hasPiiUpdate =
-        data.email !== undefined || data.phone !== undefined
+      const hasPiiUpdate = data.email !== undefined || data.phone !== undefined
       if (hasPiiUpdate) {
-        throw new Error('Apenas administradores podem editar informações de contato sensíveis.')
+        throw new Error(
+          'Apenas administradores podem editar informações de contato sensíveis.',
+        )
       }
     }
 
@@ -64,20 +67,34 @@ export const updateContact = orgActionClient
       }
     }
 
-    await db.contact.update({
-      where: { id: data.id },
-      data: {
-        ...(data.name !== undefined && { name: data.name }),
-        ...(data.email !== undefined && { email: data.email || null }),
-        ...(data.phone !== undefined && { phone: data.phone || null }),
-        ...(data.role !== undefined && { role: data.role || null }),
-        ...(data.companyId !== undefined && { companyId: data.companyId }),
-        ...(data.isDecisionMaker !== undefined && {
-          isDecisionMaker: data.isDecisionMaker,
-        }),
-        ...(data.assignedTo !== undefined && { assignedTo: data.assignedTo }),
-      },
-    })
+    try {
+      await db.contact.update({
+        where: { id: data.id },
+        data: {
+          ...(data.name !== undefined && { name: data.name }),
+          ...(data.email !== undefined && {
+            email: normalizeEmail(data.email),
+          }),
+          ...(data.phone !== undefined && { phone: data.phone || null }),
+          ...(data.role !== undefined && { role: data.role || null }),
+          ...(data.companyId !== undefined && { companyId: data.companyId }),
+          ...(data.isDecisionMaker !== undefined && {
+            isDecisionMaker: data.isDecisionMaker,
+          }),
+          ...(data.assignedTo !== undefined && { assignedTo: data.assignedTo }),
+        },
+      })
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new Error(
+          'Já existe um contato com este email nesta organização.',
+        )
+      }
+      throw error
+    }
 
     revalidateTag(`contacts:${ctx.orgId}`)
     revalidateTag(`contact:${data.id}`)

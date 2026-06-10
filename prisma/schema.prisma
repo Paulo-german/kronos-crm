@@ -238,9 +238,9 @@ model Contact {
   privacy              ContactPrivacy?
   consentEvents        ConsentEvent[]
 
+  @@unique([organizationId, email])
   @@index([organizationId, assignedTo, createdAt(sort: Desc)])
   @@index([organizationId, name])
-  @@index([organizationId, email])
   @@index([organizationId, phone])
   @@index([companyId, organizationId])
   @@index([organizationId, lifecycleStage, updatedAt(sort: Desc)])
