@@ -530,7 +530,7 @@ const UpsertContactDialogContent = ({
                           }
                         >
                           <FormControl>
-                            <SelectTrigger className="h-auto min-h-9 py-2">
+                            <SelectTrigger className="h-auto min-h-10 py-2">
                               <SelectValue placeholder="Selecione a base legal" />
                             </SelectTrigger>
                           </FormControl>

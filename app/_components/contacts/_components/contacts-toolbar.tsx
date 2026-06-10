@@ -151,7 +151,7 @@ export function ContactsToolbar({
       <div className="flex flex-wrap items-center gap-2">
         {/* Select de Ordenação */}
         <Select value={sortFromUrl} onValueChange={handleSortChange}>
-          <SelectTrigger className="w-[300px]">
+          <SelectTrigger className="w-[300px] bg-background">
             <ArrowUpDown className="mr-2 h-4 w-4 text-muted-foreground" />
             <SelectValue placeholder="Ordenar por" />
           </SelectTrigger>
@@ -169,7 +169,7 @@ export function ContactsToolbar({
           onValueChange={handleAssigneeChange}
           disabled={isMember}
         >
-          <SelectTrigger className="w-[300px]">
+          <SelectTrigger className="w-[300px] bg-background">
             <UserIcon className="mr-2 h-4 w-4 text-muted-foreground" />
             <SelectValue placeholder="Responsável" />
           </SelectTrigger>

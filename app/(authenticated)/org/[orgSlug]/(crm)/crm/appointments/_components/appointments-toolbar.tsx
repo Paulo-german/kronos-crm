@@ -57,7 +57,11 @@ export function AppointmentsToolbar({
       <div className="flex items-center gap-2">
         <AppointmentViewToggle activeView={activeView} />
         <div className="flex-1" />
-        <CreateAppointmentButton members={members} contactOptions={contactOptions} services={services} />
+        <CreateAppointmentButton
+          members={members}
+          contactOptions={contactOptions}
+          services={services}
+        />
       </div>
 
       {/* Linha 2: Select de responsável + Sheet de filtros + Badges */}
@@ -68,7 +72,7 @@ export function AppointmentsToolbar({
             onValueChange={onAssigneeFilterChange}
             disabled={isMember}
           >
-            <SelectTrigger className="w-[300px]">
+            <SelectTrigger className="w-[300px] bg-background">
               <UserIcon className="mr-2 h-4 w-4 text-muted-foreground" />
               <SelectValue placeholder="Responsável" />
             </SelectTrigger>

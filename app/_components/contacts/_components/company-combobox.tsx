@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { Check, ChevronsUpDown, Loader2, Pencil, Plus, X } from 'lucide-react'
+import { Check, ChevronDown, Loader2, Pencil, Plus, X } from 'lucide-react'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 
@@ -33,12 +33,14 @@ interface CompanyComboboxProps {
   value?: string
   onChange: (value: string) => void
   options: CompanyOption[]
+  className?: string
 }
 
 export function CompanyCombobox({
   value,
   onChange,
   options: initialOptions,
+  className,
 }: CompanyComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const [options, setOptions] = React.useState(initialOptions)
@@ -46,33 +48,41 @@ export function CompanyCombobox({
   const [editingId, setEditingId] = React.useState<string | null>(null)
   const [editingName, setEditingName] = React.useState('')
 
-  const { execute: createCompany, isPending: isCreating } = useAction(createCompanyInline, {
-    onSuccess: ({ data }) => {
-      if (data) {
-        setOptions((prev) => [...prev, data])
-        onChange(data.id)
-        setOpen(false)
-        toast.success(`Empresa "${data.name}" criada e selecionada.`)
-      }
+  const { execute: createCompany, isPending: isCreating } = useAction(
+    createCompanyInline,
+    {
+      onSuccess: ({ data }) => {
+        if (data) {
+          setOptions((prev) => [...prev, data])
+          onChange(data.id)
+          setOpen(false)
+          toast.success(`Empresa "${data.name}" criada e selecionada.`)
+        }
+      },
+      onError: () => {
+        toast.error('Erro ao criar empresa.')
+      },
     },
-    onError: () => {
-      toast.error('Erro ao criar empresa.')
-    },
-  })
+  )
 
-  const { execute: updateCompany, isPending: isUpdating } = useAction(updateCompanyInline, {
-    onSuccess: ({ data }) => {
-      if (data) {
-        setOptions((prev) => prev.map((opt) => (opt.id === data.id ? data : opt)))
-        toast.success(`Empresa renomeada para "${data.name}".`)
-        setEditingId(null)
-        setEditingName('')
-      }
+  const { execute: updateCompany, isPending: isUpdating } = useAction(
+    updateCompanyInline,
+    {
+      onSuccess: ({ data }) => {
+        if (data) {
+          setOptions((prev) =>
+            prev.map((opt) => (opt.id === data.id ? data : opt)),
+          )
+          toast.success(`Empresa renomeada para "${data.name}".`)
+          setEditingId(null)
+          setEditingName('')
+        }
+      },
+      onError: () => {
+        toast.error('Erro ao renomear empresa.')
+      },
     },
-    onError: () => {
-      toast.error('Erro ao renomear empresa.')
-    },
-  })
+  )
 
   const startEditing = (option: CompanyOption, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -102,13 +112,14 @@ export function CompanyCombobox({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between"
+          className={cn('group w-full justify-between bg-input', className)}
+          data-state={open ? 'open' : 'closed'}
         >
           {selectedCompany ? selectedCompany.name : 'Selecione uma empresa...'}
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50 transition-transform duration-200 group-data-[state=open]:rotate-180" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0">
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
         <Command>
           <CommandInput
             placeholder="Buscar empresa..."
@@ -159,14 +170,24 @@ export function CompanyCombobox({
                   />
 
                   {editingId === option.id ? (
-                    <div className="flex flex-1 items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    <div
+                      className="flex flex-1 items-center gap-1"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <Input
                         autoFocus
                         value={editingName}
                         onChange={(e) => setEditingName(e.target.value)}
                         onKeyDown={(e) => {
-                          if (e.key === 'Enter' && editingName.trim()) updateCompany({ id: option.id, name: editingName.trim() })
-                          if (e.key === 'Escape') { setEditingId(null); setEditingName('') }
+                          if (e.key === 'Enter' && editingName.trim())
+                            updateCompany({
+                              id: option.id,
+                              name: editingName.trim(),
+                            })
+                          if (e.key === 'Escape') {
+                            setEditingId(null)
+                            setEditingName('')
+                          }
                         }}
                         className="h-6 flex-1 px-1 py-0 text-sm"
                         disabled={isUpdating}
@@ -178,7 +199,11 @@ export function CompanyCombobox({
                         onClick={(e) => confirmEditing(option.id, e)}
                         disabled={isUpdating || !editingName.trim()}
                       >
-                        {isUpdating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3 text-green-500" />}
+                        {isUpdating ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Check className="h-3 w-3 text-green-500" />
+                        )}
                       </Button>
                       <Button
                         variant="ghost"

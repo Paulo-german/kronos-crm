@@ -53,7 +53,7 @@ const CountrySelector = ({
       onValueChange={(val) => onChange(val ? (val as Country) : undefined)}
       disabled={disabled}
     >
-      <SelectTrigger className="w-[88px] shrink-0 rounded-r-none border-r-0 px-2 focus:ring-0 focus:ring-offset-0">
+      <SelectTrigger className="w-[88px] shrink-0 rounded-r-none border-r-0 bg-background px-2 focus:ring-0 focus:ring-offset-0">
         <SelectValue>
           {value ? (
             <span className="flex items-center gap-1 text-sm">
