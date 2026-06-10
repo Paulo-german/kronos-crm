@@ -11,7 +11,12 @@ import {
 export const contactSchema = z
   .object({
     name: z.string().min(1, 'Nome é obrigatório').max(CONTACT_NAME_MAX),
-    email: z.string().email('Email inválido').max(CONTACT_EMAIL_MAX).optional().or(z.literal('')),
+    email: z
+      .string()
+      .email('Email inválido')
+      .max(CONTACT_EMAIL_MAX)
+      .optional()
+      .or(z.literal('')),
     phone: z.string().max(CONTACT_PHONE_MAX).optional(),
     role: z.string().max(CONTACT_ROLE_MAX).optional(),
     companyId: z.string().uuid().optional().nullable(),
@@ -20,10 +25,29 @@ export const contactSchema = z
     lifecycleStage: z.nativeEnum(LifecycleStage).optional(),
     firstCaptureChannel: z.nativeEnum(CaptureChannel).optional().nullable(),
     legalBasis: z.nativeEnum(LegalBasis).optional().nullable(),
-    inlineDealTitle: z.string().max(CONTACT_INLINE_DEAL_TITLE_MAX).optional().nullable(),
+    inlineDealTitle: z
+      .string()
+      .max(CONTACT_INLINE_DEAL_TITLE_MAX)
+      .optional()
+      .nullable(),
     inlineDealPipelineStageId: z.string().uuid().optional().nullable(),
   })
   .superRefine((data, ctx) => {
+    const hasEmail = !!data.email && data.email.trim() !== ''
+    const hasPhone = !!data.phone && data.phone.trim() !== ''
+    if (!hasEmail && !hasPhone) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Informe ao menos um email ou telefone',
+        path: ['email'],
+      })
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Informe ao menos um email ou telefone',
+        path: ['phone'],
+      })
+    }
+
     const needsDeal =
       data.lifecycleStage === LifecycleStage.OPPORTUNITY ||
       data.lifecycleStage === LifecycleStage.CUSTOMER

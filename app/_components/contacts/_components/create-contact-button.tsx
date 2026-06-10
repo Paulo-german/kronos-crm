@@ -4,7 +4,11 @@ import { useState } from 'react'
 import { Button } from '@/_components/ui/button'
 import { Plus } from 'lucide-react'
 import { Sheet, SheetTrigger } from '@/_components/ui/sheet'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/_components/ui/tooltip'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/_components/ui/tooltip'
 import UpsertContactDialogContent from './upsert-dialog-content'
 import { CompanyDto } from '@/_data-access/company/get-companies'
 import type { PipelineStageSimple } from '@/_data-access/pipeline/get-default-pipeline-with-stages'
@@ -50,6 +54,7 @@ const CreateContactButton = ({
         </Button>
       </SheetTrigger>
       <UpsertContactDialogContent
+        open={isOpen}
         setIsOpen={setIsOpen}
         companyOptions={companyOptions}
         pipelineStages={pipelineStages}

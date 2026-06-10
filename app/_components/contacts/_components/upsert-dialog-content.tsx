@@ -1,6 +1,6 @@
 'use client'
 
-import { Dispatch, SetStateAction } from 'react'
+import { Dispatch, SetStateAction, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAction } from 'next-safe-action/hooks'
@@ -61,6 +61,7 @@ import {
 } from '@/_lib/constants/field-limits'
 
 interface UpsertContactDialogContentProps {
+  open?: boolean
   defaultValues?: ContactInput & { id?: string }
   setIsOpen: Dispatch<SetStateAction<boolean>>
   companyOptions?: { id: string; name: string }[]
@@ -74,6 +75,7 @@ interface UpsertContactDialogContentProps {
 }
 
 const UpsertContactDialogContent = ({
+  open,
   defaultValues,
   setIsOpen,
   companyOptions = [],
@@ -89,7 +91,8 @@ const UpsertContactDialogContent = ({
   const router = useRouter()
   const params = useParams<{ orgSlug: string }>()
   // Ocultar campos PII no modo edição quando: MEMBER + toggle ativo na org
-  const isPiiRestricted = userRole === 'MEMBER' && hidePiiFromMembers && isEditing
+  const isPiiRestricted =
+    userRole === 'MEMBER' && hidePiiFromMembers && isEditing
 
   const form = useForm<ContactInput>({
     resolver: zodResolver(contactSchema),
@@ -123,11 +126,23 @@ const UpsertContactDialogContent = ({
     },
   })
 
-  const { execute: executeUpdateCustomFields } = useAction(updateContactCustomFields, {
-    onError: ({ error }) => {
-      toast.error(error.serverError ?? 'Erro ao salvar campos personalizados.')
+  useEffect(() => {
+    if (!open) {
+      form.reset()
+      customFieldsForm.reset()
+    }
+  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps -- form instances from useForm are stable references
+
+  const { execute: executeUpdateCustomFields } = useAction(
+    updateContactCustomFields,
+    {
+      onError: ({ error }) => {
+        toast.error(
+          error.serverError ?? 'Erro ao salvar campos personalizados.',
+        )
+      },
     },
-  })
+  )
 
   // No modo edição enviamos todos os campos (vazio → null) para permitir limpar valores.
   // No modo criação ignoramos vazios, pois não há valor anterior a limpar.
@@ -145,7 +160,10 @@ const UpsertContactDialogContent = ({
             value: value === '' ? null : value,
           }))
         : entries
-            .filter(([, value]) => value !== '' && value !== null && value !== undefined)
+            .filter(
+              ([, value]) =>
+                value !== '' && value !== null && value !== undefined,
+            )
             .map(([fieldDefinitionId, value]) => ({ fieldDefinitionId, value }))
 
     if (values.length === 0) return
@@ -194,7 +212,8 @@ const UpsertContactDialogContent = ({
     const missingFields = customFieldDefinitions.filter(
       (definition) =>
         definition.isRequired &&
-        (!rawCustomFields[definition.id] || rawCustomFields[definition.id] === ''),
+        (!rawCustomFields[definition.id] ||
+          rawCustomFields[definition.id] === ''),
     )
 
     missingFields.forEach((definition) => {
@@ -232,14 +251,13 @@ const UpsertContactDialogContent = ({
   const isPending = isCreating || isUpdatingProp
   const watchedStage = form.watch('lifecycleStage')
   const needsInlineDeal =
-    watchedStage === LifecycleStage.OPPORTUNITY || watchedStage === LifecycleStage.CUSTOMER
+    watchedStage === LifecycleStage.OPPORTUNITY ||
+    watchedStage === LifecycleStage.CUSTOMER
 
   return (
     <SheetContent className="overflow-y-auto sm:max-w-xl">
       <SheetHeader>
-        <SheetTitle>
-          {isEditing ? 'Editar Contato' : 'Novo Contato'}
-        </SheetTitle>
+        <SheetTitle>{isEditing ? 'Editar Contato' : 'Novo Contato'}</SheetTitle>
         <SheetDescription>
           {isEditing
             ? 'Atualize as informações do contato abaixo.'
@@ -256,7 +274,11 @@ const UpsertContactDialogContent = ({
               <FormItem>
                 <FormLabel>Nome *</FormLabel>
                 <FormControl>
-                  <Input placeholder="Nome completo" maxLength={CONTACT_NAME_MAX} {...field} />
+                  <Input
+                    placeholder="Nome completo"
+                    maxLength={CONTACT_NAME_MAX}
+                    {...field}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -265,7 +287,8 @@ const UpsertContactDialogContent = ({
 
           {isPiiRestricted ? (
             <p className="col-span-full rounded-md border border-border/50 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-              Informações de contato (email, telefone) são gerenciadas por administradores.
+              Informações de contato (email, telefone) são gerenciadas por
+              administradores.
             </p>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
@@ -297,7 +320,6 @@ const UpsertContactDialogContent = ({
                     <FormLabel>Telefone</FormLabel>
                     <FormControl>
                       <PhoneInput
-                        placeholder="(11) 99999-9999"
                         maxLength={CONTACT_PHONE_MAX}
                         value={field.value || ''}
                         onChange={(value) => field.onChange(value)}
@@ -361,7 +383,9 @@ const UpsertContactDialogContent = ({
                       <FormLabel>Estágio inicial</FormLabel>
                       <Select
                         value={field.value ?? ''}
-                        onValueChange={(value) => field.onChange(value || undefined)}
+                        onValueChange={(value) =>
+                          field.onChange(value || undefined)
+                        }
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -374,7 +398,9 @@ const UpsertContactDialogContent = ({
                             return (
                               <SelectItem key={stage} value={stage}>
                                 <span className="flex items-center gap-2">
-                                  <cfg.icon className={`h-3.5 w-3.5 ${cfg.colorClassName}`} />
+                                  <cfg.icon
+                                    className={`h-3.5 w-3.5 ${cfg.colorClassName}`}
+                                  />
                                   {cfg.label}
                                 </span>
                               </SelectItem>
@@ -395,7 +421,11 @@ const UpsertContactDialogContent = ({
                       <FormLabel>Canal de captura</FormLabel>
                       <Select
                         value={field.value ?? ''}
-                        onValueChange={(value) => field.onChange(value ? (value as CaptureChannel) : null)}
+                        onValueChange={(value) =>
+                          field.onChange(
+                            value ? (value as CaptureChannel) : null,
+                          )
+                        }
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -403,7 +433,9 @@ const UpsertContactDialogContent = ({
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {(Object.values(CaptureChannel) as CaptureChannel[]).map((channel) => {
+                          {(
+                            Object.values(CaptureChannel) as CaptureChannel[]
+                          ).map((channel) => {
                             const cfg = CAPTURE_CHANNEL_CONFIG[channel]
                             return (
                               <SelectItem key={channel} value={channel}>
@@ -442,10 +474,18 @@ const UpsertContactDialogContent = ({
                         </FormControl>
                         <SelectContent>
                           {LEGAL_BASIS_OPTIONS.map((option) => (
-                            <SelectItem key={option.value} value={option.value} textValue={option.label}>
+                            <SelectItem
+                              key={option.value}
+                              value={option.value}
+                              textValue={option.label}
+                            >
                               <span className="flex flex-col items-start gap-2">
-                                <span className="font-medium">{option.label}</span>
-                                <span className="text-xs text-muted-foreground">{option.description}</span>
+                                <span className="font-medium">
+                                  {option.label}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  {option.description}
+                                </span>
                               </span>
                             </SelectItem>
                           ))}
@@ -493,7 +533,9 @@ const UpsertContactDialogContent = ({
                         <FormLabel>Etapa do pipeline *</FormLabel>
                         <Select
                           value={field.value ?? ''}
-                          onValueChange={(value) => field.onChange(value || undefined)}
+                          onValueChange={(value) =>
+                            field.onChange(value || undefined)
+                          }
                         >
                           <FormControl>
                             <SelectTrigger>
@@ -540,28 +582,39 @@ const UpsertContactDialogContent = ({
             )}
           />
 
-          {/* Campos personalizados — form separado para evitar conflito com zodResolver do form principal */}
+          {/* Campos personalizados — FormProvider próprio para que FormMessage leia o contexto correto */}
           {customFieldDefinitions.length > 0 && (
-            <div className="space-y-4">
-              <p className="text-sm font-medium text-foreground">Campos personalizados</p>
-              <div className="grid gap-4 md:grid-cols-2">
-                {customFieldDefinitions.map((definition) => (
-                  <CustomFieldInput
-                    key={definition.id}
-                    definition={definition}
-                    control={customFieldsForm.control}
-                    name={`customFields.${definition.id}`}
-                  />
-                ))}
+            <Form {...customFieldsForm}>
+              <div className="space-y-4">
+                <p className="text-sm font-medium text-foreground">
+                  Campos personalizados
+                </p>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {customFieldDefinitions.map((definition) => (
+                    <CustomFieldInput
+                      key={definition.id}
+                      definition={definition}
+                      control={customFieldsForm.control}
+                      name={`customFields.${definition.id}`}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
+            </Form>
           )}
 
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={handleCloseDialog}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={isPending}>
+            <Button
+              type="button"
+              disabled={isPending}
+              onClick={() => {
+                validateRequiredCustomFields()
+                form.handleSubmit(onSubmit)()
+              }}
+            >
               {isPending ? (
                 <div className="flex items-center gap-2">
                   <Loader2 className="animate-spin" />
