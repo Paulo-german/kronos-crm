@@ -1,7 +1,7 @@
 'use client'
 
 import { CheckCircle2, XCircle, AlertTriangle, Info, ArrowRightLeft, UserCheck, ShieldAlert, MessageSquareOff } from 'lucide-react'
-import type { ConversationEventType, ToolSuccessSubtype, InfoSubtype } from '@/_lib/conversation-events/types'
+import type { ConversationEventType, ToolSuccessSubtype, ToolFailureSubtype, InfoSubtype } from '@/_lib/conversation-events/types'
 
 interface ConversationEventBubbleProps {
   type: ConversationEventType
@@ -43,12 +43,17 @@ const BASE_EVENT_CONFIG: Record<ConversationEventType, EventStyleConfig> = {
 
 // Configurações especializadas por subtype de roteamento
 const ROUTING_SUBTYPE_CONFIG: Partial<
-  Record<ToolSuccessSubtype | InfoSubtype, EventStyleConfig>
+  Record<ToolSuccessSubtype | ToolFailureSubtype | InfoSubtype, EventStyleConfig>
 > = {
   AGENT_TRANSFER: {
     icon: ArrowRightLeft,
     colorClass: 'text-blue-500',
     bgClass: 'bg-blue-50 dark:bg-blue-950/20',
+  },
+  AGENT_TRANSFER_FAILED: {
+    icon: ArrowRightLeft,
+    colorClass: 'text-red-500',
+    bgClass: 'bg-red-50 dark:bg-red-950/20',
   },
   ROUTER_ASSIGNED: {
     icon: UserCheck,
@@ -73,13 +78,14 @@ const ROUTING_SUBTYPE_CONFIG: Partial<
   },
 }
 
-// Resolve o subtype a partir dos dados do evento (toolName para TOOL_SUCCESS, content para INFO)
+// Resolve o subtype a partir dos dados do evento (toolName para TOOL_SUCCESS/TOOL_FAILURE, content para INFO)
 function resolveSubtype(
   type: ConversationEventType,
   toolName: string | null | undefined,
   metadata: Record<string, unknown> | null | undefined,
-): ToolSuccessSubtype | InfoSubtype | null {
+): ToolSuccessSubtype | ToolFailureSubtype | InfoSubtype | null {
   if (type === 'TOOL_SUCCESS' && toolName === 'transfer_to_agent') return 'AGENT_TRANSFER'
+  if (type === 'TOOL_FAILURE' && toolName === 'transfer_to_agent') return 'AGENT_TRANSFER_FAILED'
 
   // Para eventos INFO, o subtype vem nos metadados
   const subtype = metadata?.subtype as string | undefined
