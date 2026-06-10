@@ -45,7 +45,7 @@ import {
 } from '@/_lib/lifecycle/lifecycle-stage-config'
 import { CAPTURE_CHANNEL_CONFIG } from '@/_lib/lifecycle/capture-channel-config'
 import { LEGAL_BASIS_OPTIONS } from '@/_lib/privacy/consent-labels'
-import { Loader2 } from 'lucide-react'
+import { Loader2, InfoIcon, UsersIcon } from 'lucide-react'
 import type { MemberRole } from '@prisma/client'
 import { CaptureChannel, LegalBasis, LifecycleStage } from '@prisma/client'
 
@@ -59,6 +59,12 @@ import {
   CONTACT_ROLE_MAX,
   CONTACT_INLINE_DEAL_TITLE_MAX,
 } from '@/_lib/constants/field-limits'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/_components/ui/tooltip'
 
 interface UpsertContactDialogContentProps {
   open?: boolean
@@ -73,6 +79,18 @@ interface UpsertContactDialogContentProps {
   customFieldDefinitions?: FieldDefinitionDto[]
   customFieldValues?: Record<string, string | null>
 }
+
+const FieldLabel = ({ label, tooltip }: { label: string; tooltip: string }) => (
+  <span className="flex items-center gap-1.5">
+    {label}
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <InfoIcon className="size-3.5 cursor-help text-muted-foreground" />
+      </TooltipTrigger>
+      <TooltipContent className="max-w-56">{tooltip}</TooltipContent>
+    </Tooltip>
+  </span>
+)
 
 const UpsertContactDialogContent = ({
   open,
@@ -265,44 +283,131 @@ const UpsertContactDialogContent = ({
         </SheetDescription>
       </SheetHeader>
 
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Nome *</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Nome completo"
-                    maxLength={CONTACT_NAME_MAX}
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+      <TooltipProvider>
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="mt-6 space-y-4"
+          >
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    <FieldLabel
+                      label="Nome completo *"
+                      tooltip="Será usado para identificar o contato em todo o sistema."
+                    />
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Nome completo"
+                      maxLength={CONTACT_NAME_MAX}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          {isPiiRestricted ? (
-            <p className="col-span-full rounded-md border border-border/50 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-              Informações de contato (email, telefone) são gerenciadas por
-              administradores.
-            </p>
-          ) : (
+            {isPiiRestricted ? (
+              <p className="col-span-full rounded-md border border-border/50 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                Informações de contato (email, telefone) são gerenciadas por
+                administradores.
+              </p>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        <FieldLabel
+                          label="Email"
+                          tooltip="Ao menos email ou telefone é obrigatório. Usado para comunicações e deduplicação de contatos."
+                        />
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="email"
+                          placeholder="email@exemplo.com"
+                          maxLength={CONTACT_EMAIL_MAX}
+                          value={field.value || ''}
+                          onChange={field.onChange}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        <FieldLabel
+                          label="Telefone"
+                          tooltip="Ao menos email ou telefone é obrigatório. Utilizado para WhatsApp e ligações rápidas."
+                        />
+                      </FormLabel>
+                      <FormControl>
+                        <PhoneInput
+                          maxLength={CONTACT_PHONE_MAX}
+                          value={field.value || ''}
+                          onChange={(value) => field.onChange(value)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
+
             <div className="grid gap-4 md:grid-cols-2">
               <FormField
                 control={form.control}
-                name="email"
+                name="companyId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>
+                      <FieldLabel
+                        label="Empresa"
+                        tooltip="Vincula o contato a uma empresa cadastrada. Pode ser criada inline digitando o nome."
+                      />
+                    </FormLabel>
+                    <FormControl>
+                      <CompanyCombobox
+                        value={field.value || undefined}
+                        onChange={field.onChange}
+                        options={companyOptions}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="role"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      <FieldLabel
+                        label="Cargo na empresa"
+                        tooltip="Posição do contato na organização. Ex: Diretor Comercial, Comprador."
+                      />
+                    </FormLabel>
                     <FormControl>
                       <Input
-                        type="email"
-                        placeholder="email@exemplo.com"
-                        maxLength={CONTACT_EMAIL_MAX}
+                        placeholder="Ex: Diretor"
+                        maxLength={CONTACT_ROLE_MAX}
                         value={field.value || ''}
                         onChange={field.onChange}
                       />
@@ -311,226 +416,23 @@ const UpsertContactDialogContent = ({
                   </FormItem>
                 )}
               />
-
-              <FormField
-                control={form.control}
-                name="phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Telefone</FormLabel>
-                    <FormControl>
-                      <PhoneInput
-                        maxLength={CONTACT_PHONE_MAX}
-                        value={field.value || ''}
-                        onChange={(value) => field.onChange(value)}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </div>
-          )}
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <FormField
-              control={form.control}
-              name="companyId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Empresa</FormLabel>
-                  <FormControl>
-                    <CompanyCombobox
-                      value={field.value || undefined}
-                      onChange={field.onChange}
-                      options={companyOptions}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="role"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Cargo</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Ex: Diretor"
-                      maxLength={CONTACT_ROLE_MAX}
-                      value={field.value || ''}
-                      onChange={field.onChange}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-
-          {/* Estágio inicial, canal de captura e negociação inline — apenas na criação */}
-          {!isEditing && (
-            <>
-              <div className="grid gap-4 md:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="lifecycleStage"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Estágio inicial</FormLabel>
-                      <Select
-                        value={field.value ?? ''}
-                        onValueChange={(value) =>
-                          field.onChange(value || undefined)
-                        }
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Lead (padrão)" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {LIFECYCLE_STAGE_ORDER.map((stage) => {
-                            const cfg = LIFECYCLE_STAGE_CONFIG[stage]
-                            return (
-                              <SelectItem key={stage} value={stage}>
-                                <span className="flex items-center gap-2">
-                                  <cfg.icon
-                                    className={`h-3.5 w-3.5 ${cfg.colorClassName}`}
-                                  />
-                                  {cfg.label}
-                                </span>
-                              </SelectItem>
-                            )
-                          })}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="firstCaptureChannel"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Canal de captura</FormLabel>
-                      <Select
-                        value={field.value ?? ''}
-                        onValueChange={(value) =>
-                          field.onChange(
-                            value ? (value as CaptureChannel) : null,
-                          )
-                        }
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Não informado" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {(
-                            Object.values(CaptureChannel) as CaptureChannel[]
-                          ).map((channel) => {
-                            const cfg = CAPTURE_CHANNEL_CONFIG[channel]
-                            return (
-                              <SelectItem key={channel} value={channel}>
-                                <span className="flex items-center gap-2">
-                                  <cfg.icon className="h-3.5 w-3.5 text-muted-foreground" />
-                                  {cfg.label}
-                                </span>
-                              </SelectItem>
-                            )
-                          })}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <FormField
-                control={form.control}
-                name="legalBasis"
-                render={({ field }) => {
-                  return (
-                    <FormItem>
-                      <FormLabel>Base legal (LGPD)</FormLabel>
-                      <Select
-                        value={field.value ?? ''}
-                        onValueChange={(value) =>
-                          field.onChange(value ? (value as LegalBasis) : null)
-                        }
-                      >
-                        <FormControl>
-                          <SelectTrigger className="h-auto min-h-9 py-2">
-                            <SelectValue placeholder="Selecione a base legal" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {LEGAL_BASIS_OPTIONS.map((option) => (
-                            <SelectItem
-                              key={option.value}
-                              value={option.value}
-                              textValue={option.label}
-                            >
-                              <span className="flex flex-col items-start gap-2">
-                                <span className="font-medium">
-                                  {option.label}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                  {option.description}
-                                </span>
-                              </span>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )
-                }}
-              />
-
-              {needsInlineDeal && (
+            {/* Estágio inicial, canal de captura e negociação inline — apenas na criação */}
+            {!isEditing && (
+              <>
                 <div className="grid gap-4 md:grid-cols-2">
                   <FormField
                     control={form.control}
-                    name="inlineDealTitle"
+                    name="lifecycleStage"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>
-                          Negociação *{' '}
-                          <span className="font-normal text-muted-foreground">
-                            {watchedStage === LifecycleStage.CUSTOMER
-                              ? '(ganha)'
-                              : '(em aberto)'}
-                          </span>
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Ex: Proposta de serviço anual"
-                            maxLength={CONTACT_INLINE_DEAL_TITLE_MAX}
-                            value={field.value || ''}
-                            onChange={field.onChange}
+                          <FieldLabel
+                            label="Estágio do ciclo de vida"
+                            tooltip="Define onde o contato entra no seu funil. Padrão: Lead. Pode ser alterado depois."
                           />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="inlineDealPipelineStageId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Etapa do pipeline *</FormLabel>
+                        </FormLabel>
                         <Select
                           value={field.value ?? ''}
                           onValueChange={(value) =>
@@ -539,15 +441,68 @@ const UpsertContactDialogContent = ({
                         >
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Selecione a etapa" />
+                              <SelectValue placeholder="Lead (padrão)" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {pipelineStages.map((stage) => (
-                              <SelectItem key={stage.id} value={stage.id}>
-                                {stage.name}
-                              </SelectItem>
-                            ))}
+                            {LIFECYCLE_STAGE_ORDER.map((stage) => {
+                              const cfg = LIFECYCLE_STAGE_CONFIG[stage]
+                              return (
+                                <SelectItem key={stage} value={stage}>
+                                  <span className="flex items-center gap-2">
+                                    <cfg.icon
+                                      className={`h-3.5 w-3.5 ${cfg.colorClassName}`}
+                                    />
+                                    {cfg.label}
+                                  </span>
+                                </SelectItem>
+                              )
+                            })}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="firstCaptureChannel"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          <FieldLabel
+                            label="Canal de origem"
+                            tooltip="Como este contato chegou até você. Usado em relatórios de aquisição."
+                          />
+                        </FormLabel>
+                        <Select
+                          value={field.value ?? ''}
+                          onValueChange={(value) =>
+                            field.onChange(
+                              value ? (value as CaptureChannel) : null,
+                            )
+                          }
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Não informado" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {(
+                              Object.values(CaptureChannel) as CaptureChannel[]
+                            ).map((channel) => {
+                              const cfg = CAPTURE_CHANNEL_CONFIG[channel]
+                              return (
+                                <SelectItem key={channel} value={channel}>
+                                  <span className="flex items-center gap-2">
+                                    <cfg.icon className="h-3.5 w-3.5 text-muted-foreground" />
+                                    {cfg.label}
+                                  </span>
+                                </SelectItem>
+                              )
+                            })}
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -555,78 +510,201 @@ const UpsertContactDialogContent = ({
                     )}
                   />
                 </div>
-              )}
-            </>
-          )}
 
-          <FormField
-            control={form.control}
-            name="isDecisionMaker"
-            render={({ field }) => (
-              <FormItem className="flex items-center justify-between rounded-md border border-border/50 px-4 py-3">
-                <div className="space-y-0.5">
-                  <FormLabel className="cursor-pointer text-sm font-medium">
-                    Tomador de decisão
-                  </FormLabel>
-                  <p className="text-xs text-muted-foreground">
-                    Este contato tem poder de decisão na empresa.
-                  </p>
-                </div>
-                <FormControl>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-              </FormItem>
-            )}
-          />
+                <FormField
+                  control={form.control}
+                  name="legalBasis"
+                  render={({ field }) => {
+                    return (
+                      <FormItem>
+                        <FormLabel>
+                          <FieldLabel
+                            label="Base legal (LGPD)"
+                            tooltip="Justificativa legal para armazenar os dados deste contato conforme a Lei 13.709/18."
+                          />
+                        </FormLabel>
+                        <Select
+                          value={field.value ?? ''}
+                          onValueChange={(value) =>
+                            field.onChange(value ? (value as LegalBasis) : null)
+                          }
+                        >
+                          <FormControl>
+                            <SelectTrigger className="h-auto min-h-9 py-2">
+                              <SelectValue placeholder="Selecione a base legal" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {LEGAL_BASIS_OPTIONS.map((option) => (
+                              <SelectItem
+                                key={option.value}
+                                value={option.value}
+                                textValue={option.label}
+                              >
+                                <span className="flex flex-col items-start gap-2">
+                                  <span className="font-medium">
+                                    {option.label}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {option.description}
+                                  </span>
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )
+                  }}
+                />
 
-          {/* Campos personalizados — FormProvider próprio para que FormMessage leia o contexto correto */}
-          {customFieldDefinitions.length > 0 && (
-            <Form {...customFieldsForm}>
-              <div className="space-y-4">
-                <p className="text-sm font-medium text-foreground">
-                  Campos personalizados
-                </p>
-                <div className="grid gap-4 md:grid-cols-2">
-                  {customFieldDefinitions.map((definition) => (
-                    <CustomFieldInput
-                      key={definition.id}
-                      definition={definition}
-                      control={customFieldsForm.control}
-                      name={`customFields.${definition.id}`}
+                {needsInlineDeal && (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <FormField
+                      control={form.control}
+                      name="inlineDealTitle"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>
+                            <FieldLabel
+                              label={`Negociação vinculada * ${watchedStage === LifecycleStage.CUSTOMER ? '(ganha)' : '(em aberto)'}`}
+                              tooltip="Deal criado automaticamente ao salvar. Obrigatório para estágios Oportunidade e Cliente."
+                            />
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Ex: Proposta de serviço anual"
+                              maxLength={CONTACT_INLINE_DEAL_TITLE_MAX}
+                              value={field.value || ''}
+                              onChange={field.onChange}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                  ))}
-                </div>
-              </div>
-            </Form>
-          )}
 
-          <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={handleCloseDialog}>
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              disabled={isPending}
-              onClick={() => {
-                validateRequiredCustomFields()
-                form.handleSubmit(onSubmit)()
-              }}
-            >
-              {isPending ? (
-                <div className="flex items-center gap-2">
-                  <Loader2 className="animate-spin" />
-                  Salvar
-                </div>
-              ) : (
-                'Salvar'
+                    <FormField
+                      control={form.control}
+                      name="inlineDealPipelineStageId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>
+                            <FieldLabel
+                              label="Etapa do funil de vendas *"
+                              tooltip="Em qual etapa do seu processo de vendas esta negociação começa."
+                            />
+                          </FormLabel>
+                          <Select
+                            value={field.value ?? ''}
+                            onValueChange={(value) =>
+                              field.onChange(value || undefined)
+                            }
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione a etapa" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {pipelineStages.map((stage) => (
+                                <SelectItem key={stage.id} value={stage.id}>
+                                  {stage.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+
+            <FormField
+              control={form.control}
+              name="isDecisionMaker"
+              render={({ field }) => (
+                <FormItem className="flex items-center justify-between rounded-md border border-border/50 px-4 py-3">
+                  <div className="space-y-0.5">
+                    <FormLabel className="cursor-pointer text-sm font-medium">
+                      Tomador de decisão
+                    </FormLabel>
+                    <p className="text-xs text-muted-foreground">
+                      Este contato tem poder de decisão na empresa.
+                    </p>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
               )}
-            </Button>
-          </div>
-        </form>
-      </Form>
+            />
+
+            {/* Campos personalizados — FormProvider próprio para que FormMessage leia o contexto correto */}
+            {customFieldDefinitions.length > 0 && (
+              <Form {...customFieldsForm}>
+                <div className="space-y-4">
+                  <p className="text-sm font-medium text-foreground">
+                    Campos personalizados
+                  </p>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {customFieldDefinitions.map((definition) => (
+                      <CustomFieldInput
+                        key={definition.id}
+                        definition={definition}
+                        control={customFieldsForm.control}
+                        name={`customFields.${definition.id}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </Form>
+            )}
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleCloseDialog}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                disabled={isPending}
+                onClick={() => {
+                  validateRequiredCustomFields()
+                  form.handleSubmit(onSubmit)()
+                }}
+              >
+                {isPending ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="animate-spin" />
+                    {isEditing ? 'Atualizando...' : 'Criando...'}
+                  </div>
+                ) : isEditing ? (
+                  <div className="flex items-center gap-2">
+                    <UsersIcon className="size-4" />
+                    Atualizar Contato
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <UsersIcon className="size-4" />
+                    Criar Contato
+                  </div>
+                )}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </TooltipProvider>
     </SheetContent>
   )
 }
