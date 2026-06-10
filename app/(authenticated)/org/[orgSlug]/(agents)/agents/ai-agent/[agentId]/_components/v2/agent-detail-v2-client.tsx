@@ -34,6 +34,7 @@ import type {
   ExhaustedConfig,
 } from '@/_data-access/follow-up/types'
 import type { InboxConnectionDataMap } from '../agent-detail-client'
+import ExportAgentButton from '../export-agent-button'
 
 interface InboxOptionDto {
   id: string
@@ -145,6 +146,7 @@ const AgentDetailV2Client = ({
                   a mídia inline.
                 </TooltipContent>
               </Tooltip>
+              {canManage && <ExportAgentButton agentId={agent.id} />}
               {canManage && (
                 <Switch
                   checked={isActive}

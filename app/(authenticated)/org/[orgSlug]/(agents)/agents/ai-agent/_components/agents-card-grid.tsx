@@ -41,6 +41,7 @@ import { AGENT_TIERS } from '@/_lib/ai/models'
 import AgentTableDropdownMenu from './table-dropdown-menu'
 import UpsertAgentSheetContent from './upsert-agent-sheet-content'
 import DeleteAgentDialog from './delete-agent-dialog'
+import ImportAgentButton from './import-agent-button'
 import type { AgentDto } from '@/_data-access/agent/get-agents'
 import type { MemberRole } from '@prisma/client'
 
@@ -155,26 +156,29 @@ export function AgentsCardGrid({
               Crie seu primeiro agente de IA para automatizar atendimentos.
             </p>
           </div>
-          {withinQuota ? (
-            <Button onClick={() => setIsCreateOpen(true)}>
-              <PlusIcon className="mr-2 h-4 w-4" />
-              Novo Agente
-            </Button>
-          ) : (
-            <Tooltip delayDuration={0}>
-              <TooltipTrigger asChild>
-                <span tabIndex={0}>
-                  <Button disabled>
-                    <PlusIcon className="mr-2 h-4 w-4" />
-                    Novo Agente
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>
-                Limite atingido. Faça upgrade do plano.
-              </TooltipContent>
-            </Tooltip>
-          )}
+          <div className="flex items-center gap-3">
+            {withinQuota ? (
+              <Button onClick={() => setIsCreateOpen(true)}>
+                <PlusIcon className="mr-2 h-4 w-4" />
+                Novo Agente
+              </Button>
+            ) : (
+              <Tooltip delayDuration={0}>
+                <TooltipTrigger asChild>
+                  <span tabIndex={0}>
+                    <Button disabled>
+                      <PlusIcon className="mr-2 h-4 w-4" />
+                      Novo Agente
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Limite atingido. Faça upgrade do plano.
+                </TooltipContent>
+              </Tooltip>
+            )}
+            <ImportAgentButton orgSlug={orgSlug} withinQuota={withinQuota} />
+          </div>
         </div>
 
         <Sheet open={isCreateOpen} onOpenChange={setIsCreateOpen}>

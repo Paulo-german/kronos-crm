@@ -35,6 +35,7 @@ import type {
   FollowUpDto,
   ExhaustedConfig,
 } from '@/_data-access/follow-up/types'
+import ExportAgentButton from './export-agent-button'
 
 interface InboxOptionDto {
   id: string
@@ -182,6 +183,7 @@ const AgentDetailClient = ({
                       : 'Padrão: respostas diretas e econômicas.'}
                 </TooltipContent>
               </Tooltip>
+              {canManage && <ExportAgentButton agentId={agent.id} />}
               {canManage && (
                 <Switch
                   checked={isActive}

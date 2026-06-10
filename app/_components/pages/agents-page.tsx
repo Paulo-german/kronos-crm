@@ -1,5 +1,6 @@
 import Header, {
   HeaderLeft,
+  HeaderRight,
   HeaderTitle,
   HeaderSubTitle,
 } from '@/_components/header'
@@ -11,6 +12,7 @@ import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 import { getTutorialCompletions } from '@/_data-access/tutorial/get-tutorial-completions'
 import { AgentsCardGrid } from '@/(authenticated)/org/[orgSlug]/(agents)/agents/ai-agent/_components/agents-card-grid'
 import { AgentsListIntroTrigger } from '@/_components/tutorials/agents-list-intro-trigger'
+import ImportAgentButton from '@/(authenticated)/org/[orgSlug]/(agents)/agents/ai-agent/_components/import-agent-button'
 
 interface AgentsPageProps {
   params: Promise<{ orgSlug: string }>
@@ -43,6 +45,12 @@ const AgentsPage = async ({ params }: AgentsPageProps) => {
           <HeaderSubTitle>Gerencie seus agentes de inteligência artificial.</HeaderSubTitle>
           <QuotaHint orgId={ctx.orgId} entity="agent" />
         </HeaderLeft>
+        <HeaderRight>
+          <ImportAgentButton
+            orgSlug={orgSlug}
+            withinQuota={quota.withinQuota}
+          />
+        </HeaderRight>
       </Header>
 
       <AgentsCardGrid
