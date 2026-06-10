@@ -1,4 +1,3 @@
-import { LifecycleStage } from '@prisma/client'
 import { InfoIcon } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import { Badge } from '@/_components/ui/badge'
@@ -15,56 +14,6 @@ interface LifecycleStageCardProps {
   metrics: LifecycleStageMetrics
 }
 
-function formatBRL(value: number): string {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-    notation: value >= 1_000_000 ? 'compact' : 'standard',
-    maximumFractionDigits: value >= 1_000_000 ? 1 : 0,
-  }).format(value)
-}
-
-function StageSubInfo({ metrics }: { metrics: LifecycleStageMetrics }) {
-  if (metrics.stage === LifecycleStage.LEAD) {
-    const count = metrics.autoCaptureCount ?? 0
-    return (
-      <p className="text-sm text-muted-foreground">
-        {count} {count === 1 ? 'captura automática' : 'capturas automáticas'}
-      </p>
-    )
-  }
-
-  if (metrics.stage === LifecycleStage.QUALIFIED) {
-    const aiCount = metrics.aiQualifiedCount ?? 0
-    const total = metrics.aiQualifiedTotal ?? 0
-    if (aiCount === 0 && total === 0) {
-      return <p className="text-sm text-muted-foreground">0/0 pela IA</p>
-    }
-    return (
-      <p className="text-sm text-muted-foreground">
-        {aiCount}/{total} pela IA
-      </p>
-    )
-  }
-
-  if (metrics.stage === LifecycleStage.OPPORTUNITY) {
-    const value = metrics.openPipelineValue ?? 0
-    return (
-      <p className="text-sm text-muted-foreground">
-        <span className="font-medium text-foreground">{formatBRL(value)}</span>{' '}
-        em jogo
-      </p>
-    )
-  }
-
-  // CUSTOMER
-  const unique = metrics.uniqueCustomerCount ?? 0
-  return (
-    <p className="text-xs text-muted-foreground">
-      {unique} {unique === 1 ? 'cliente único' : 'clientes únicos'} no período
-    </p>
-  )
-}
 
 export function LifecycleStageCard({ metrics }: LifecycleStageCardProps) {
   const config = LIFECYCLE_STAGE_CONFIG[metrics.stage]
