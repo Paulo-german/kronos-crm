@@ -1,13 +1,12 @@
 import { LifecycleStage } from '@prisma/client'
 import { InfoIcon } from 'lucide-react'
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/_components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import { Badge } from '@/_components/ui/badge'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/_components/ui/tooltip'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/_components/ui/tooltip'
 import { LIFECYCLE_STAGE_CONFIG } from '@/_lib/lifecycle/lifecycle-stage-config'
 import { formatVariation } from '@/_utils/date-range'
 import type { LifecycleStageMetrics } from '@/_data-access/dashboard-v2/get-lifecycle-funnel-metrics'
@@ -52,7 +51,8 @@ function StageSubInfo({ metrics }: { metrics: LifecycleStageMetrics }) {
     const value = metrics.openPipelineValue ?? 0
     return (
       <p className="text-sm text-muted-foreground">
-        <span className="font-medium text-foreground">{formatBRL(value)}</span> em jogo
+        <span className="font-medium text-foreground">{formatBRL(value)}</span>{' '}
+        em jogo
       </p>
     )
   }
@@ -69,10 +69,14 @@ function StageSubInfo({ metrics }: { metrics: LifecycleStageMetrics }) {
 export function LifecycleStageCard({ metrics }: LifecycleStageCardProps) {
   const config = LIFECYCLE_STAGE_CONFIG[metrics.stage]
   const Icon = config.icon
-  const variation = formatVariation(metrics.periodCount, metrics.prevPeriodCount)
+  const variation = formatVariation(
+    metrics.periodCount,
+    metrics.prevPeriodCount,
+  )
 
   const badgeVariant = (() => {
-    if (metrics.periodCount === 0 && metrics.prevPeriodCount === 0) return 'outline' as const
+    if (metrics.periodCount === 0 && metrics.prevPeriodCount === 0)
+      return 'outline' as const
     if (variation.isPositive) return 'success' as const
     return 'destructive' as const
   })()
@@ -84,7 +88,7 @@ export function LifecycleStageCard({ metrics }: LifecycleStageCardProps) {
 
   return (
     <Card className="flex h-full flex-col">
-      <CardHeader className="pb-2">
+      <CardHeader className="pb-1">
         <CardTitle className="flex items-center justify-between text-sm font-medium">
           <span className="flex items-center gap-1.5">
             <Icon className={`size-4 ${config.colorClassName}`} />
@@ -103,13 +107,15 @@ export function LifecycleStageCard({ metrics }: LifecycleStageCardProps) {
       </CardHeader>
       <CardContent className="flex flex-1 flex-col justify-between gap-3 pt-0">
         <div>
-          <p className="text-3xl font-bold tabular-nums">{metrics.periodCount}</p>
-          {metrics.stage === LifecycleStage.CUSTOMER && (
+          <p className="text-3xl font-bold tabular-nums">
+            {metrics.periodCount}
+          </p>
+          {/* {metrics.stage === LifecycleStage.CUSTOMER && (
             <p className="text-xs text-muted-foreground">entradas no período</p>
-          )}
+          )} */}
         </div>
         <div className="space-y-1">
-          <StageSubInfo metrics={metrics} />
+          {/* <StageSubInfo metrics={metrics} /> */}
           <p className="text-xs text-muted-foreground">
             {metrics.stockCount} contatos atualmente nesta etapa
           </p>
