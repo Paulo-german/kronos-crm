@@ -14,6 +14,9 @@ interface InlineTextFieldProps {
   className?: string
   displayClassName?: string
   inputClassName?: string
+  inputType?: React.HTMLInputTypeAttribute
+  /** Quando fornecido, usa este valor para exibição em vez de `value`. Útil quando o formato de edição difere do de exibição (ex: CPF, datas). */
+  displayValue?: string | null
 }
 
 export const InlineTextField = ({
@@ -24,6 +27,8 @@ export const InlineTextField = ({
   className,
   displayClassName,
   inputClassName,
+  inputType = 'text',
+  displayValue,
 }: InlineTextFieldProps) => {
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState('')
@@ -65,6 +70,7 @@ export const InlineTextField = ({
       <div className={cn('flex items-center gap-2', className)}>
         <Input
           ref={inputRef}
+          type={inputType}
           value={editValue}
           onChange={(e) => setEditValue(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -89,7 +95,7 @@ export const InlineTextField = ({
   return (
     <div className={cn('group flex items-center gap-2', className)}>
       <span className={cn(displayClassName)}>
-        {value || (
+        {(displayValue ?? value) || (
           <span className="italic text-muted-foreground">{placeholder}</span>
         )}
       </span>

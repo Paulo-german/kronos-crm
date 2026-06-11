@@ -5,11 +5,10 @@ import { useState } from 'react'
 import { useAction } from 'next-safe-action/hooks'
 import { useSmartNavigation } from '@/_hooks/use-smart-navigation'
 import { toast } from 'sonner'
-import { ArrowLeft, Briefcase, Building2, Loader2, UserCog } from 'lucide-react'
+import { ArrowLeft, HelpCircle, Loader2, UserCog } from 'lucide-react'
 
 import { Button } from '@/_components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
-import { Badge } from '@/_components/ui/badge'
 import { Switch } from '@/_components/ui/switch'
 import { Label } from '@/_components/ui/label'
 import { Checkbox } from '@/_components/ui/checkbox'
@@ -22,6 +21,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/_components/ui/dialog'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/_components/ui/tooltip'
 import {
   Select,
   SelectContent,
@@ -39,16 +43,13 @@ import { InlineTextField } from '@/_components/form-controls/inline-text-field'
 import { CompanyCombobox } from '../../_components/company-combobox'
 import { useContactFieldUpdate } from '../_hooks/use-contact-field-update'
 import { formatPhone } from '@/_utils/format-phone'
-import { formatCpf } from '@/_lib/utils'
 import { transferContact } from '@/_actions/contact/transfer-contact'
-import { LIFECYCLE_STAGE_CONFIG } from '@/_lib/lifecycle/lifecycle-stage-config'
-import { CUSTOMER_STATUS_CONFIG } from '@/_lib/lifecycle/customer-status-config'
 import { LifecycleStatusCard } from './lifecycle-status-card'
 import { CaptureSourceCard } from './capture-source-card'
 import { ContactLifecycleTimeline } from './contact-lifecycle-timeline'
+import { CustomFieldInlineEditor } from './custom-field-inline-editor'
 import { ContactPrivacyCard } from './contact-privacy-card'
 import type { MemberRole } from '@prisma/client'
-import { FieldType } from '@prisma/client'
 import type { FieldDefinitionDto } from '@/_lib/custom-fields/types'
 
 interface ContactDetailClientProps {
@@ -137,9 +138,6 @@ const ContactDetailClient = ({
 
   const assignableMembers = members.filter((member) => member.user?.fullName)
 
-  const stageConfig = LIFECYCLE_STAGE_CONFIG[contact.lifecycleStage]
-  const statusConfig = CUSTOMER_STATUS_CONFIG[contact.customerStatus]
-
   return (
     <div className="flex h-fit flex-col gap-6 bg-background p-6">
       {/* Header */}
@@ -160,21 +158,6 @@ const ContactDetailClient = ({
               displayClassName="text-2xl font-bold"
               inputClassName="h-9 min-w-[300px]"
             />
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <Badge
-                variant="outline"
-                className={`h-6 gap-1.5 px-2 text-xs font-medium ${stageConfig.badgeClassName}`}
-              >
-                <stageConfig.icon className="h-3 w-3" />
-                {stageConfig.label}
-              </Badge>
-              <Badge
-                variant="outline"
-                className={`h-6 px-2 text-xs font-medium ${statusConfig.badgeClassName}`}
-              >
-                {statusConfig.label}
-              </Badge>
-            </div>
           </div>
           {canTransfer && userRole !== 'MEMBER' && (
             <Button
@@ -210,7 +193,7 @@ const ContactDetailClient = ({
               <Card className="border-border/50 bg-card">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base font-semibold">
-                    Informações de Contato
+                    Dados do Contato
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
@@ -265,9 +248,19 @@ const ContactDetailClient = ({
                   <div className="flex items-center justify-between border-t pt-3 text-sm">
                     <Label
                       htmlFor="decision-maker-page"
-                      className="text-muted-foreground"
+                      className="flex items-center gap-1 text-muted-foreground"
                     >
                       Decisor
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="h-3 w-3 cursor-help text-muted-foreground/50" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-[220px] text-center">
+                          Indica se esta pessoa tem poder de decisão na compra.
+                          Útil para priorizar follow-ups e abordagens
+                          comerciais.
+                        </TooltipContent>
+                      </Tooltip>
                     </Label>
                     <Switch
                       id="decision-maker-page"
@@ -283,15 +276,8 @@ const ContactDetailClient = ({
                     <>
                       <div className="border-t" />
                       {customFieldDefinitions.map((definition) => {
-                        const rawValue = customFieldValues[definition.id]
-                        const displayValue =
-                          definition.type === FieldType.SELECT && rawValue
-                            ? (definition.options?.find(
-                                (option) => option.value === rawValue,
-                              )?.label ?? rawValue)
-                            : definition.type === FieldType.CPF && rawValue
-                              ? formatCpf(rawValue)
-                              : rawValue
+                        const rawValue =
+                          customFieldValues[definition.id] ?? null
                         return (
                           <div
                             key={definition.id}
@@ -300,13 +286,11 @@ const ContactDetailClient = ({
                             <span className="text-muted-foreground">
                               {definition.label}
                             </span>
-                            <span className="font-medium">
-                              {displayValue ?? (
-                                <span className="text-muted-foreground/50">
-                                  —
-                                </span>
-                              )}
-                            </span>
+                            <CustomFieldInlineEditor
+                              contactId={contact.id}
+                              definition={definition}
+                              rawValue={rawValue}
+                            />
                           </div>
                         )
                       })}
@@ -326,8 +310,7 @@ const ContactDetailClient = ({
               {/* Card Empresa */}
               <Card className="border-border/50 bg-card">
                 <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-base font-semibold">
-                    <Building2 className="h-4 w-4" />
+                  <CardTitle className="text-base font-semibold">
                     Empresa
                   </CardTitle>
                 </CardHeader>
@@ -349,8 +332,7 @@ const ContactDetailClient = ({
               {contact.deals?.length > 0 && (
                 <Card className="border-border/50 bg-card">
                   <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-base font-semibold">
-                      <Briefcase className="h-4 w-4" />
+                    <CardTitle className="text-base font-semibold">
                       Negociações Vinculadas
                     </CardTitle>
                   </CardHeader>
