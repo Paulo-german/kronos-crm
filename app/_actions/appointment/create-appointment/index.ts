@@ -44,7 +44,9 @@ export const createAppointment = orgActionClient
     if (data.type === 'BOOKING') {
       // 5a. Garantir que professionalId e serviceId estão presentes (já validado no schema, mas narrowing para TS)
       if (!data.professionalId || !data.serviceId) {
-        throw new Error('professionalId e serviceId são obrigatórios para BOOKING.')
+        throw new Error(
+          'professionalId e serviceId são obrigatórios para BOOKING.',
+        )
       }
 
       const professionalId = data.professionalId
@@ -56,14 +58,20 @@ export const createAppointment = orgActionClient
         select: { assignedTo: true },
       })
       if (!contact?.assignedTo) {
-        throw new Error('Contato sem responsável. Atribua um responsável antes de criar o agendamento.')
+        throw new Error(
+          'Contato sem responsável. Atribua um responsável antes de criar o agendamento.',
+        )
       }
       // Sobrescreve a variável local — apenas para o bloco BOOKING
       const bookingAssignedTo = contact.assignedTo
 
       // 5b. Profissional ativo pertencente à org
       const professional = await db.professional.findFirst({
-        where: { id: professionalId, organizationId: ctx.orgId, isActive: true },
+        where: {
+          id: professionalId,
+          organizationId: ctx.orgId,
+          isActive: true,
+        },
         select: { id: true, userId: true },
       })
       if (!professional) {
@@ -93,11 +101,13 @@ export const createAppointment = orgActionClient
       const startInSP = toZonedTime(data.startDate, 'America/Sao_Paulo')
       const dayOfWeek = startInSP.getDay()
       // @db.Date exige Date de meia-noite UTC — extrai o dia no fuso SP para evitar cruzar a virada UTC
-      const spDateOnly = new Date(Date.UTC(
-        startInSP.getFullYear(),
-        startInSP.getMonth(),
-        startInSP.getDate(),
-      ))
+      const spDateOnly = new Date(
+        Date.UTC(
+          startInSP.getFullYear(),
+          startInSP.getMonth(),
+          startInSP.getDate(),
+        ),
+      )
       const exception = await db.workingHoursException.findFirst({
         where: { professionalId, date: spDateOnly },
         select: { type: true, startTime: true, endTime: true },
@@ -140,7 +150,9 @@ export const createAppointment = orgActionClient
       }
 
       // 5f. Calcular endDate a partir da duração do serviço (em minutos)
-      computedEndDate = new Date(data.startDate.getTime() + service.duration * 60 * 1000)
+      computedEndDate = new Date(
+        data.startDate.getTime() + service.duration * 60 * 1000,
+      )
 
       // 6. Overlap check por professionalId para BOOKING
       // NULL = NULL é FALSE em SQL, então usar professionalId em overlap de MEETING
@@ -188,7 +200,7 @@ export const createAppointment = orgActionClient
           data: { dealId: data.dealId },
         })
       } else if (data.autoCreateDeal) {
-        // 8b. Criar deal OPEN vinculado — sem cascade de lifecycle na criação
+        // 8b. Criar deal OPEN vinculado — avança lifecycle para OPPORTUNITY se facilitatorDealCreatedToOppty estiver ligada
         await createOpenDealForBooking({
           appointmentId: appointment.id,
           orgId: ctx.orgId,
@@ -202,7 +214,9 @@ export const createAppointment = orgActionClient
         revalidateTag(`pipeline:${ctx.orgId}`)
       } else {
         // Safeguard: schema já bloqueia, mas nunca chega aqui
-        throw new Error('Negociação é obrigatória para agendamentos de serviço.')
+        throw new Error(
+          'Negociação é obrigatória para agendamentos de serviço.',
+        )
       }
 
       // 9. Invalidar cache
