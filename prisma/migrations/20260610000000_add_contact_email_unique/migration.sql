@@ -3,6 +3,10 @@
 -- duplicatas como "Paulo@x.com" e "paulo@x.com" impediriam a criação do índice.
 UPDATE "contacts" SET "email" = lower(trim("email")) WHERE "email" IS NOT NULL;
 
+-- Índice auxiliar em automation_executions.contact_id para acelerar o cascade SET NULL
+-- que o DELETE abaixo dispara. Sem ele, a tabela faz full scan e estoura o timeout.
+CREATE INDEX IF NOT EXISTS "automation_executions_contact_id_idx" ON "automation_executions"("contact_id");
+
 -- Resolver duplicatas de email dentro da mesma organização antes de criar o índice único.
 -- Mantém o contato criado mais recentemente (maior created_at) e remove os demais.
 -- Usa DELETE + RETURNING para atomicidade na transação.
