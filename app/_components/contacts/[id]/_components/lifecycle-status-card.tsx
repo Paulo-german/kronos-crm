@@ -4,7 +4,7 @@ import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Activity, Calendar, Star } from 'lucide-react'
+import { Calendar, HelpCircle, Star } from 'lucide-react'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import {
@@ -15,6 +15,11 @@ import {
   SelectValue,
 } from '@/_components/ui/select'
 import { Separator } from '@/_components/ui/separator'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/_components/ui/tooltip'
 
 import type { ContactDetailDto } from '@/_data-access/contact/get-contact-by-id'
 import { changeLifecycleStage } from '@/_actions/contact/change-lifecycle-stage'
@@ -38,6 +43,11 @@ const MANUAL_STATUS_OPTIONS = [
   CustomerStatus.CHURNED,
 ]
 
+const NON_CUSTOMER_STATUS_OPTIONS = [
+  CustomerStatus.NEVER_BOUGHT,
+  ...MANUAL_STATUS_OPTIONS,
+]
+
 interface LifecycleStatusCardProps {
   contact: ContactDetailDto
   userRole: MemberRole
@@ -52,7 +62,6 @@ export function LifecycleStatusCard({
   contact,
   userRole,
 }: LifecycleStatusCardProps) {
-  const statusConfig = CUSTOMER_STATUS_CONFIG[contact.customerStatus]
   const canDowngrade = userRole === 'ADMIN' || userRole === 'OWNER'
 
   const hasDeals = contact.deals.length > 0
@@ -121,15 +130,23 @@ export function LifecycleStatusCard({
   return (
     <Card className="border-border/50 bg-card">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base font-semibold">
-          <Activity className="h-4 w-4" />
-          Ciclo & Status
-        </CardTitle>
+        <CardTitle className="text-base font-semibold">Ciclo de Vida</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Estágio:</span>
+            <span className="flex items-center gap-1 text-sm text-muted-foreground">
+              Estágio:
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="h-3 w-3 cursor-help text-muted-foreground/50" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-[220px] text-center">
+                  Posição do contato no funil de vendas. Avança automaticamente
+                  por eventos ou manualmente por um admin.
+                </TooltipContent>
+              </Tooltip>
+            </span>
             <Select
               value={contact.lifecycleStage}
               onValueChange={handleStageChange}
@@ -194,39 +211,53 @@ export function LifecycleStatusCard({
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Status:</span>
+            <span className="flex items-center gap-1 text-sm text-muted-foreground">
+              Status:
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="h-3 w-3 cursor-help text-muted-foreground/50" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-[220px] text-center">
+                  Detalhe do estado de um cliente: ativo (comprando), dormente
+                  (sem compra recente) ou perdido (churn).
+                </TooltipContent>
+              </Tooltip>
+            </span>
             <Select
               value={contact.customerStatus}
               onValueChange={handleStatusChange}
-              disabled={!isCustomer || isStatusPending || isPending}
+              disabled={isStatusPending || isPending}
             >
               <SelectTrigger className="h-8 w-auto gap-1.5 border-border/50 bg-background text-sm font-medium">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {isCustomer ? (
-                  MANUAL_STATUS_OPTIONS.map((statusOption) => {
-                    const cfg = CUSTOMER_STATUS_CONFIG[statusOption]
-                    return (
-                      <SelectItem key={statusOption} value={statusOption}>
-                        <span
-                          className={`flex items-center gap-1.5 ${cfg.colorClassName}`}
-                        >
-                          {cfg.label}
-                        </span>
-                      </SelectItem>
-                    )
-                  })
-                ) : (
-                  <SelectItem value={contact.customerStatus} disabled>
-                    <span className="text-muted-foreground">
-                      {statusConfig.label}
-                      <span className="ml-1.5 text-xs">
-                        (apenas para clientes)
+                {(isCustomer
+                  ? MANUAL_STATUS_OPTIONS
+                  : NON_CUSTOMER_STATUS_OPTIONS
+                ).map((statusOption) => {
+                  const cfg = CUSTOMER_STATUS_CONFIG[statusOption]
+                  const disabled = !isCustomer
+                  return (
+                    <SelectItem
+                      key={statusOption}
+                      value={statusOption}
+                      disabled={disabled}
+                    >
+                      <span
+                        className={`flex items-center gap-1.5 ${cfg.colorClassName}`}
+                      >
+                        {cfg.label}
+                        {disabled &&
+                          statusOption !== CustomerStatus.NEVER_BOUGHT && (
+                            <span className="text-xs text-muted-foreground">
+                              (apenas para clientes)
+                            </span>
+                          )}
                       </span>
-                    </span>
-                  </SelectItem>
-                )}
+                    </SelectItem>
+                  )
+                })}
               </SelectContent>
             </Select>
           </div>
@@ -234,7 +265,18 @@ export function LifecycleStatusCard({
           {contact.healthScore !== null && (
             <div className="flex items-center gap-2">
               <Star className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Score:</span>
+              <span className="flex items-center gap-1 text-sm text-muted-foreground">
+                Score:
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <HelpCircle className="h-3 w-3 cursor-help text-muted-foreground/50" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-[220px] text-center">
+                    Pontuação de saúde do relacionamento calculada com base em
+                    atividades recentes, negócios e interações.
+                  </TooltipContent>
+                </Tooltip>
+              </span>
               <ScoreBadge score={Math.round(contact.healthScore)} />
             </div>
           )}

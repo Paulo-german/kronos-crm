@@ -98,27 +98,42 @@ const ContactPrivacyCard = ({
 
   const { execute, isPending } = useAction(updateContactPrivacy, {
     onSuccess: () => {
-      toast.success('Configuração de privacidade atualizada.', { position: 'bottom-right' })
+      toast.success('Configuração de privacidade atualizada.', {
+        position: 'bottom-right',
+      })
       router.refresh()
     },
     onError: ({ error }) => {
-      toast.error(error.serverError ?? 'Erro ao atualizar privacidade.', { position: 'bottom-right' })
+      toast.error(error.serverError ?? 'Erro ao atualizar privacidade.', {
+        position: 'bottom-right',
+      })
     },
   })
 
-  const { execute: executeAnonymize, isPending: isAnonymizing } = useAction(anonymizeContact, {
-    onSuccess: () => {
-      toast.success('Contato anonimizado com sucesso.', { position: 'bottom-right' })
-      router.refresh()
+  const { execute: executeAnonymize, isPending: isAnonymizing } = useAction(
+    anonymizeContact,
+    {
+      onSuccess: () => {
+        toast.success('Contato anonimizado com sucesso.', {
+          position: 'bottom-right',
+        })
+        router.refresh()
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError ?? 'Erro ao anonimizar contato.', {
+          position: 'bottom-right',
+        })
+      },
     },
-    onError: ({ error }) => {
-      toast.error(error.serverError ?? 'Erro ao anonimizar contato.', { position: 'bottom-right' })
-    },
-  })
+  )
 
   const handleCcpaToggle = (checked: boolean) => {
     if (!privacy) return
-    execute({ contactId, legalBasis: privacy.legalBasis, ccpaSaleOptOut: checked })
+    execute({
+      contactId,
+      legalBasis: privacy.legalBasis,
+      ccpaSaleOptOut: checked,
+    })
   }
 
   const handleChangeLegalBasis = (value: string) => {
@@ -135,14 +150,17 @@ const ContactPrivacyCard = ({
     return (
       <Card className="border-border/50 bg-card">
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base font-semibold">
-            <ShieldCheck className="h-4 w-4" />
+          <CardTitle className="text-base font-semibold">
             Privacidade & Consentimento
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Badge variant="outline" className="border-zinc-500/30 bg-zinc-500/10 text-zinc-400 text-xs">
-            Contato anonimizado em {format(anonymizedAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+          <Badge
+            variant="outline"
+            className="border-zinc-500/30 bg-zinc-500/10 text-xs text-zinc-400"
+          >
+            Contato anonimizado em{' '}
+            {format(anonymizedAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
           </Badge>
         </CardContent>
       </Card>
@@ -154,8 +172,7 @@ const ContactPrivacyCard = ({
     return (
       <Card className="border-border/50 bg-card">
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base font-semibold">
-            <ShieldCheck className="h-4 w-4" />
+          <CardTitle className="text-base font-semibold">
             Privacidade & Consentimento
           </CardTitle>
         </CardHeader>
@@ -167,20 +184,30 @@ const ContactPrivacyCard = ({
             <div className="space-y-2">
               <Select
                 value={createBasis ?? ''}
-                onValueChange={(value) => setCreateBasis((value || null) as LegalBasis | null)}
+                onValueChange={(value) =>
+                  setCreateBasis((value || null) as LegalBasis | null)
+                }
               >
                 <SelectTrigger className="h-auto min-h-9 py-2">
                   <SelectValue placeholder="Selecione a base legal..." />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="" textValue="Não definido">
-                    <span className="text-xs text-muted-foreground">Não definido</span>
+                    <span className="text-xs text-muted-foreground">
+                      Não definido
+                    </span>
                   </SelectItem>
                   {LEGAL_BASIS_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value} textValue={option.label}>
+                    <SelectItem
+                      key={option.value}
+                      value={option.value}
+                      textValue={option.label}
+                    >
                       <span className="flex flex-col items-start gap-2">
                         <span className="font-medium">{option.label}</span>
-                        <span className="text-xs text-muted-foreground">{option.description}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {option.description}
+                        </span>
                       </span>
                     </SelectItem>
                   ))}
@@ -238,10 +265,16 @@ const ContactPrivacyCard = ({
                 </SelectTrigger>
                 <SelectContent>
                   {LEGAL_BASIS_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value} textValue={option.label}>
+                    <SelectItem
+                      key={option.value}
+                      value={option.value}
+                      textValue={option.label}
+                    >
                       <span className="flex flex-col items-start gap-2">
                         <span className="font-medium">{option.label}</span>
-                        <span className="text-xs text-muted-foreground">{option.description}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {option.description}
+                        </span>
                       </span>
                     </SelectItem>
                   ))}
@@ -264,7 +297,8 @@ const ContactPrivacyCard = ({
               Origem
             </span>
             <span className="font-medium">
-              {LEGAL_BASIS_SOURCE_LABELS[privacy.legalBasisSource] ?? privacy.legalBasisSource}
+              {LEGAL_BASIS_SOURCE_LABELS[privacy.legalBasisSource] ??
+                privacy.legalBasisSource}
             </span>
           </div>
 
@@ -276,7 +310,9 @@ const ContactPrivacyCard = ({
                 Consentimento em
               </span>
               <span className="font-medium">
-                {format(privacy.consentedAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                {format(privacy.consentedAt, "dd/MM/yyyy 'às' HH:mm", {
+                  locale: ptBR,
+                })}
               </span>
             </div>
           )}
@@ -285,7 +321,9 @@ const ContactPrivacyCard = ({
           {privacy.consentVersion && (
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Versão</span>
-              <span className="font-mono text-xs">{privacy.consentVersion}</span>
+              <span className="font-mono text-xs">
+                {privacy.consentVersion}
+              </span>
             </div>
           )}
 
@@ -294,9 +332,11 @@ const ContactPrivacyCard = ({
             <div className="flex items-center justify-between border-t pt-3">
               <Label
                 htmlFor="ccpa-opt-out"
-                className="flex flex-col gap-0.5 cursor-pointer"
+                className="flex cursor-pointer flex-col gap-0.5"
               >
-                <span className="text-sm font-medium">Opt-out de venda de dados (CCPA)</span>
+                <span className="text-sm font-medium">
+                  Opt-out de venda de dados (CCPA)
+                </span>
                 <span className="text-xs text-muted-foreground">
                   {privacy.ccpaKnownAt
                     ? `Registrado em ${format(privacy.ccpaKnownAt, 'dd/MM/yyyy', { locale: ptBR })}`
@@ -311,7 +351,10 @@ const ContactPrivacyCard = ({
                   disabled={isPending}
                 />
               ) : (
-                <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-400 text-xs">
+                <Badge
+                  variant="outline"
+                  className="border-amber-500/30 bg-amber-500/10 text-xs text-amber-400"
+                >
                   Ativo
                 </Badge>
               )}
@@ -348,7 +391,10 @@ const ContactPrivacyCard = ({
                   <AlertDialogHeader>
                     <AlertDialogTitle>Anonimizar contato?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Esta ação apagará permanentemente nome, e-mail, telefone e campos personalizados deste contato. O histórico de consentimento e negociações são preservados para fins de compliance. Esta ação não pode ser desfeita.
+                      Esta ação apagará permanentemente nome, e-mail, telefone e
+                      campos personalizados deste contato. O histórico de
+                      consentimento e negociações são preservados para fins de
+                      compliance. Esta ação não pode ser desfeita.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -397,7 +443,9 @@ const ContactPrivacyCard = ({
                         {CONSENT_EVENT_TYPE_LABELS[event.eventType]}
                       </span>
                       <span className="shrink-0 text-xs text-muted-foreground">
-                        {format(event.createdAt, 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                        {format(event.createdAt, 'dd/MM/yyyy HH:mm', {
+                          locale: ptBR,
+                        })}
                       </span>
                     </div>
 
@@ -413,7 +461,7 @@ const ContactPrivacyCard = ({
                     </div>
 
                     {event.notes && (
-                      <p className="text-xs text-muted-foreground italic">
+                      <p className="text-xs italic text-muted-foreground">
                         {event.notes}
                       </p>
                     )}

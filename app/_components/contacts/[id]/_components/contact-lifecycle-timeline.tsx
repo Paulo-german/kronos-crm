@@ -1,6 +1,6 @@
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ArrowRight, History } from 'lucide-react'
+import { ArrowRight, Clock, User, Zap } from 'lucide-react'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import { Badge } from '@/_components/ui/badge'
@@ -18,9 +18,8 @@ export function ContactLifecycleTimeline({
   return (
     <Card className="border-border/50 bg-card">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base font-semibold">
-          <History className="h-4 w-4" />
-          Histórico de Lifecycle
+        <CardTitle className="text-base font-semibold">
+          Histórico do Ciclo
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -29,7 +28,7 @@ export function ContactLifecycleTimeline({
             Sem histórico registrado.
           </p>
         ) : (
-          <ol className="relative space-y-0 border-l border-border/50">
+          <ol className="relative space-y-0 border-l border-border-strong">
             {items.map((item) => {
               const isStatusEntry = item.toStatus !== null
 
@@ -70,17 +69,25 @@ export function ContactLifecycleTimeline({
                       {toConfig.label}
                     </Badge>
                   </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {item.causeLabel}
-                    {item.changedByName && ` · ${item.changedByName}`}
-                    <span className="ml-1.5">
-                      ·{' '}
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Zap className="h-3 w-3 shrink-0" />
+                      {item.causeLabel}
+                    </span>
+                    {item.changedByName && (
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <User className="h-3 w-3 shrink-0" />
+                        {item.changedByName}
+                      </span>
+                    )}
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Clock className="h-3 w-3 shrink-0" />
                       {formatDistanceToNow(item.createdAt, {
                         addSuffix: true,
                         locale: ptBR,
                       })}
                     </span>
-                  </p>
+                  </div>
                 </li>
               )
             })}
