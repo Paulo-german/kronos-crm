@@ -5,18 +5,7 @@ import { useState } from 'react'
 import { useAction } from 'next-safe-action/hooks'
 import { useSmartNavigation } from '@/_hooks/use-smart-navigation'
 import { toast } from 'sonner'
-import {
-  ArrowLeft,
-  AxeIcon,
-  Briefcase,
-  Building2,
-  CircleIcon,
-  Loader2,
-  Mail,
-  Phone,
-  User2,
-  UserCog,
-} from 'lucide-react'
+import { ArrowLeft, Briefcase, Building2, Loader2, UserCog } from 'lucide-react'
 
 import { Button } from '@/_components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
@@ -24,6 +13,7 @@ import { Badge } from '@/_components/ui/badge'
 import { Switch } from '@/_components/ui/switch'
 import { Label } from '@/_components/ui/label'
 import { Checkbox } from '@/_components/ui/checkbox'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/_components/ui/tabs'
 import {
   Dialog,
   DialogContent,
@@ -89,26 +79,34 @@ const ContactDetailClient = ({
   privacy,
 }: ContactDetailClientProps) => {
   const isPiiRestricted = userRole === 'MEMBER' && hidePiiFromMembers
-  const { handleBack } = useSmartNavigation({ fallbackPath: `/org/${orgSlug}/contacts` })
+  const { handleBack } = useSmartNavigation({
+    fallbackPath: `/org/${orgSlug}/contacts`,
+  })
   const { updateField, isPending } = useContactFieldUpdate({
     contactId: contact.id,
   })
 
   const [isTransferOpen, setIsTransferOpen] = useState(false)
-  const [selectedMemberId, setSelectedMemberId] = useState<string | undefined>(undefined)
+  const [selectedMemberId, setSelectedMemberId] = useState<string | undefined>(
+    undefined,
+  )
   const [cascadeDeals, setCascadeDeals] = useState(true)
 
   const { execute: executeTransfer, isPending: isTransferring } = useAction(
     transferContact,
     {
       onSuccess: () => {
-        toast.success('Contato transferido com sucesso!', { position: 'bottom-right' })
+        toast.success('Contato transferido com sucesso!', {
+          position: 'bottom-right',
+        })
         setIsTransferOpen(false)
         setSelectedMemberId(undefined)
         setCascadeDeals(true)
       },
       onError: ({ error }) => {
-        toast.error(error.serverError || 'Erro ao transferir contato.', { position: 'bottom-right' })
+        toast.error(error.serverError || 'Erro ao transferir contato.', {
+          position: 'bottom-right',
+        })
       },
     },
   )
@@ -121,7 +119,11 @@ const ContactDetailClient = ({
 
   const handleTransfer = () => {
     if (selectedMemberId) {
-      executeTransfer({ contactId: contact.id, newAssigneeId: selectedMemberId, cascadeDeals })
+      executeTransfer({
+        contactId: contact.id,
+        newAssigneeId: selectedMemberId,
+        cascadeDeals,
+      })
     }
   }
 
@@ -139,14 +141,16 @@ const ContactDetailClient = ({
   const statusConfig = CUSTOMER_STATUS_CONFIG[contact.customerStatus]
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 p-6">
-      <Button variant="ghost" size="sm" className="gap-2" onClick={handleBack}>
-        <ArrowLeft className="h-4 w-4" />
-        Voltar
-      </Button>
-
-      {/* Header: Nome + Badges + Ações */}
+    <div className="flex h-fit flex-col gap-6 bg-background p-6">
+      {/* Header */}
       <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <Button variant="ghost" size="sm" onClick={handleBack}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Voltar
+          </Button>
+        </div>
+
         <div className="flex items-start justify-between">
           <div>
             <InlineTextField
@@ -170,17 +174,6 @@ const ContactDetailClient = ({
               >
                 {statusConfig.label}
               </Badge>
-              <Badge
-                variant="outline"
-                className={`h-6 gap-1.5 px-2 text-xs font-semibold transition-colors ${
-                  contact.isDecisionMaker
-                    ? 'border-kronos-green/20 bg-kronos-green/10 text-kronos-green'
-                    : 'border-zinc-500/20 bg-zinc-500/10 text-zinc-400'
-                }`}
-              >
-                <CircleIcon className="h-1.5 w-1.5 fill-current" />
-                {contact.isDecisionMaker ? 'Decisor' : 'Não Decisor'}
-              </Badge>
             </div>
           </div>
           {canTransfer && userRole !== 'MEMBER' && (
@@ -197,200 +190,222 @@ const ContactDetailClient = ({
         </div>
       </div>
 
-      {/* Lifecycle & Status */}
-      <LifecycleStatusCard contact={contact} userRole={userRole} />
+      {/* Tabs */}
+      <Tabs defaultValue="summary" className="h-fit">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="summary" className="rounded-md py-2">
+            Resumo
+          </TabsTrigger>
+          <TabsTrigger value="privacy" className="rounded-md py-2">
+            Privacidade
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Origem & Captura */}
-      <CaptureSourceCard
-        firstCaptureChannel={contact.firstCaptureChannel}
-        firstCaptureAt={contact.firstCaptureAt}
-        lastCaptureChannel={contact.lastCaptureChannel}
-        lastCaptureAt={contact.lastCaptureAt}
-      />
-
-      {/* Grid: Info + Empresa */}
-      <div className="grid gap-4 md:grid-cols-2">
-        {/* Card Informações de Contato */}
-        <Card className="border-border/50 bg-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold">Informações de Contato</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center justify-between text-sm">
-              <span className="flex items-center gap-1.5 text-muted-foreground">
-                <Mail className="h-3.5 w-3.5" />
-                Email
-              </span>
-              {isPiiRestricted ? (
-                <span className="text-sm font-medium">{contact.email ?? '—'}</span>
-              ) : (
-                <InlineTextField
-                  value={contact.email}
-                  onSave={(value) => updateField('email', value)}
-                  isPending={isPending}
-                  placeholder="Adicionar"
-                  displayClassName="font-medium"
-                  inputClassName="h-7 w-[180px]"
-                />
-              )}
-            </div>
-
-            <div className="flex items-center justify-between text-sm">
-              <span className="flex items-center gap-1.5 text-muted-foreground">
-                <User2 className="h-3.5 w-3.5" />
-                Cargo
-              </span>
-              <InlineTextField
-                value={contact.role}
-                onSave={(value) => updateField('role', value)}
-                isPending={isPending}
-                placeholder="Adicionar"
-                displayClassName="font-medium"
-                inputClassName="h-7 w-[180px]"
-              />
-            </div>
-
-            <div className="flex items-center justify-between text-sm">
-              <span className="flex items-center gap-1.5 text-muted-foreground">
-                <Phone className="h-3.5 w-3.5" />
-                Telefone
-              </span>
-              {isPiiRestricted ? (
-                <span className="text-sm font-medium">{contact.phone ?? '—'}</span>
-              ) : (
-                <InlineTextField
-                  value={formatPhone(contact.phone)}
-                  onSave={(value) => updateField('phone', value)}
-                  isPending={isPending}
-                  placeholder="Adicionar"
-                  displayClassName="font-medium"
-                  inputClassName="h-7 w-[180px]"
-                />
-              )}
-            </div>
-
-            <div className="flex items-center justify-between border-t pt-3 text-sm">
-              <Label
-                htmlFor="decision-maker-page"
-                className="flex items-center gap-1.5 text-muted-foreground"
-              >
-                <AxeIcon className="h-3.5 w-3.5" />
-                Decisor
-              </Label>
-              <Switch
-                id="decision-maker-page"
-                checked={contact.isDecisionMaker}
-                onCheckedChange={(checked) => updateField('isDecisionMaker', checked)}
-                disabled={isPending}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Card Empresa */}
-        <Card className="border-border/50 bg-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base font-semibold">
-              <Building2 className="h-4 w-4" />
-              Empresa
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <CompanyCombobox
-              value={contact.companyId ?? undefined}
-              options={companies.map((company) => ({ id: company.id, name: company.name }))}
-              onChange={(value) => updateField('companyId', value || null)}
-            />
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Deals vinculados */}
-      {contact.deals?.length > 0 && (
-        <Card className="border-border/50 bg-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base font-semibold">
-              <Briefcase className="h-4 w-4" />
-              Negociações Vinculadas
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-2">
-              {contact.deals.map((deal) => (
-                <li key={deal.id} className="text-sm">
-                  <Link
-                    href={`/org/${orgSlug}/crm/deals/${deal.id}`}
-                    className="hover:text-primary hover:underline"
-                  >
-                    {deal.title}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Campos personalizados — exibe apenas quando há campos configurados com valores */}
-      {customFieldDefinitions.length > 0 && (
-        <Card className="border-border/50 bg-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base font-semibold">
-              Campos personalizados
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <dl className="grid gap-3 sm:grid-cols-2">
-              {customFieldDefinitions.map((definition) => {
-                const rawValue = customFieldValues[definition.id]
-                // SELECT → rótulo da opção; CPF → formatado com máscara; demais → valor bruto
-                const displayValue =
-                  definition.type === FieldType.SELECT && rawValue
-                    ? (definition.options?.find((option) => option.value === rawValue)?.label ??
-                      rawValue)
-                    : definition.type === FieldType.CPF && rawValue
-                      ? formatCpf(rawValue)
-                      : rawValue
-                return (
-                  <div key={definition.id} className="space-y-0.5">
-                    <dt className="text-xs font-medium text-muted-foreground">
-                      {definition.label}
-                    </dt>
-                    <dd className="text-sm">
-                      {displayValue ?? (
-                        <span className="text-muted-foreground/50">—</span>
-                      )}
-                    </dd>
+        {/* Aba Resumo */}
+        <TabsContent value="summary" className="mt-4">
+          <div className="grid gap-6 lg:grid-cols-[35%_1fr]">
+            {/* Coluna esquerda */}
+            <div className="space-y-4">
+              {/* Card Informações de Contato */}
+              <Card className="border-border/50 bg-card">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base font-semibold">
+                    Informações de Contato
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Email</span>
+                    {isPiiRestricted ? (
+                      <span className="text-sm font-medium">
+                        {contact.email ?? '—'}
+                      </span>
+                    ) : (
+                      <InlineTextField
+                        value={contact.email}
+                        onSave={(value) => updateField('email', value)}
+                        isPending={isPending}
+                        placeholder="Adicionar"
+                        displayClassName="font-medium"
+                        inputClassName="h-7 w-[180px]"
+                      />
+                    )}
                   </div>
-                )
-              })}
-            </dl>
-          </CardContent>
-        </Card>
-      )}
 
-      {/* Privacidade & Consentimento (LGPD/GDPR/CCPA) */}
-      <ContactPrivacyCard
-        privacy={privacy}
-        contactId={contact.id}
-        userRole={userRole}
-        anonymizedAt={contact.anonymizedAt}
-      />
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Cargo</span>
+                    <InlineTextField
+                      value={contact.role}
+                      onSave={(value) => updateField('role', value)}
+                      isPending={isPending}
+                      placeholder="Adicionar"
+                      displayClassName="font-medium"
+                      inputClassName="h-7 w-[180px]"
+                    />
+                  </div>
 
-      {/* Histórico de Lifecycle */}
-      <ContactLifecycleTimeline items={lifecycleHistory} />
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Telefone</span>
+                    {isPiiRestricted ? (
+                      <span className="text-sm font-medium">
+                        {contact.phone ?? '—'}
+                      </span>
+                    ) : (
+                      <InlineTextField
+                        value={formatPhone(contact.phone)}
+                        onSave={(value) => updateField('phone', value)}
+                        isPending={isPending}
+                        placeholder="Adicionar"
+                        displayClassName="font-medium"
+                        inputClassName="h-7 w-[180px]"
+                      />
+                    )}
+                  </div>
 
-      {/* Responsável */}
-      <div className="rounded-lg border bg-card p-4">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <UserCog className="h-4 w-4" />
-          <span>Responsável pelo Contato:</span>
-          <span className="font-medium text-foreground">
-            {members.find((member) => member.userId === contact.assignedTo)?.user?.fullName ||
-              'Não atribuído'}
-          </span>
-        </div>
-      </div>
+                  <div className="flex items-center justify-between border-t pt-3 text-sm">
+                    <Label
+                      htmlFor="decision-maker-page"
+                      className="text-muted-foreground"
+                    >
+                      Decisor
+                    </Label>
+                    <Switch
+                      id="decision-maker-page"
+                      checked={contact.isDecisionMaker}
+                      onCheckedChange={(checked) =>
+                        updateField('isDecisionMaker', checked)
+                      }
+                      disabled={isPending}
+                    />
+                  </div>
+
+                  {customFieldDefinitions.length > 0 && (
+                    <>
+                      <div className="border-t" />
+                      {customFieldDefinitions.map((definition) => {
+                        const rawValue = customFieldValues[definition.id]
+                        const displayValue =
+                          definition.type === FieldType.SELECT && rawValue
+                            ? (definition.options?.find(
+                                (option) => option.value === rawValue,
+                              )?.label ?? rawValue)
+                            : definition.type === FieldType.CPF && rawValue
+                              ? formatCpf(rawValue)
+                              : rawValue
+                        return (
+                          <div
+                            key={definition.id}
+                            className="flex items-center justify-between text-sm"
+                          >
+                            <span className="text-muted-foreground">
+                              {definition.label}
+                            </span>
+                            <span className="font-medium">
+                              {displayValue ?? (
+                                <span className="text-muted-foreground/50">
+                                  —
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Origem & Captura */}
+              <CaptureSourceCard
+                firstCaptureChannel={contact.firstCaptureChannel}
+                firstCaptureAt={contact.firstCaptureAt}
+                lastCaptureChannel={contact.lastCaptureChannel}
+                lastCaptureAt={contact.lastCaptureAt}
+              />
+
+              {/* Card Empresa */}
+              <Card className="border-border/50 bg-card">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                    <Building2 className="h-4 w-4" />
+                    Empresa
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CompanyCombobox
+                    value={contact.companyId ?? undefined}
+                    options={companies.map((company) => ({
+                      id: company.id,
+                      name: company.name,
+                    }))}
+                    onChange={(value) =>
+                      updateField('companyId', value || null)
+                    }
+                  />
+                </CardContent>
+              </Card>
+
+              {/* Deals vinculados */}
+              {contact.deals?.length > 0 && (
+                <Card className="border-border/50 bg-card">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                      <Briefcase className="h-4 w-4" />
+                      Negociações Vinculadas
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-2">
+                      {contact.deals.map((deal) => (
+                        <li key={deal.id} className="text-sm">
+                          <Link
+                            href={`/org/${orgSlug}/crm/deals/${deal.id}`}
+                            className="hover:text-primary hover:underline"
+                          >
+                            {deal.title}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Responsável */}
+              <div className="rounded-lg border bg-card p-4">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <UserCog className="h-4 w-4" />
+                  <span>Responsável pelo Contato:</span>
+                  <span className="font-medium text-foreground">
+                    {members.find(
+                      (member) => member.userId === contact.assignedTo,
+                    )?.user?.fullName || 'Não atribuído'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Coluna direita */}
+            <div className="space-y-4">
+              {/* Ciclo & Status */}
+              <LifecycleStatusCard contact={contact} userRole={userRole} />
+
+              {/* Histórico de Lifecycle */}
+              <ContactLifecycleTimeline items={lifecycleHistory} />
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Aba Privacidade */}
+        <TabsContent value="privacy" className="mt-4">
+          <ContactPrivacyCard
+            privacy={privacy}
+            contactId={contact.id}
+            userRole={userRole}
+            anonymizedAt={contact.anonymizedAt}
+          />
+        </TabsContent>
+      </Tabs>
 
       {/* Dialog de Transferência */}
       <Dialog open={isTransferOpen} onOpenChange={handleCloseTransferDialog}>
@@ -404,7 +419,10 @@ const ContactDetailClient = ({
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="new-owner-page">Novo Responsável</Label>
-              <Select value={selectedMemberId} onValueChange={setSelectedMemberId}>
+              <Select
+                value={selectedMemberId}
+                onValueChange={setSelectedMemberId}
+              >
                 <SelectTrigger id="new-owner-page" className="w-full">
                   <SelectValue placeholder="Selecione um membro..." />
                 </SelectTrigger>
@@ -431,7 +449,10 @@ const ContactDetailClient = ({
                 className="mt-0.5"
               />
               <div className="grid gap-1.5 leading-none">
-                <Label htmlFor="cascade-deals" className="cursor-pointer text-sm font-medium">
+                <Label
+                  htmlFor="cascade-deals"
+                  className="cursor-pointer text-sm font-medium"
+                >
                   Transferir também os negócios vinculados
                 </Label>
                 {contact.deals.length > 0 ? (
@@ -459,7 +480,10 @@ const ContactDetailClient = ({
             >
               Cancelar
             </Button>
-            <Button onClick={handleTransfer} disabled={!selectedMemberId || isTransferring}>
+            <Button
+              onClick={handleTransfer}
+              disabled={!selectedMemberId || isTransferring}
+            >
               {isTransferring ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -99,7 +99,7 @@
     --input: 240 5.9% 97%; /* hsl(240 5.9% 92%) */
     --ring: 261 74% 62%; /* hsl(261 74% 62%) */
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
     /* KRONOS SPECIFIC COLORS */
     --kronos-purple: #8257e5;
