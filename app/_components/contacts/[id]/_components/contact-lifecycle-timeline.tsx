@@ -5,13 +5,16 @@ import { ArrowRight, History } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import { Badge } from '@/_components/ui/badge'
 import { LIFECYCLE_STAGE_CONFIG } from '@/_lib/lifecycle/lifecycle-stage-config'
+import { CUSTOMER_STATUS_CONFIG } from '@/_lib/lifecycle/customer-status-config'
 import type { LifecycleHistoryItemDto } from '@/_data-access/lifecycle/types'
 
 interface ContactLifecycleTimelineProps {
   items: LifecycleHistoryItemDto[]
 }
 
-export function ContactLifecycleTimeline({ items }: ContactLifecycleTimelineProps) {
+export function ContactLifecycleTimeline({
+  items,
+}: ContactLifecycleTimelineProps) {
   return (
     <Card className="border-border/50 bg-card">
       <CardHeader className="pb-3">
@@ -22,18 +25,34 @@ export function ContactLifecycleTimeline({ items }: ContactLifecycleTimelineProp
       </CardHeader>
       <CardContent>
         {items.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Sem histórico registrado.</p>
+          <p className="text-sm text-muted-foreground">
+            Sem histórico registrado.
+          </p>
         ) : (
           <ol className="relative space-y-0 border-l border-border/50">
             {items.map((item) => {
-              const toConfig = LIFECYCLE_STAGE_CONFIG[item.toStage]
-              const fromConfig = item.fromStage ? LIFECYCLE_STAGE_CONFIG[item.fromStage] : null
+              const isStatusEntry = item.toStatus !== null
+
+              const toConfig =
+                isStatusEntry && item.toStatus
+                  ? CUSTOMER_STATUS_CONFIG[item.toStatus]
+                  : LIFECYCLE_STAGE_CONFIG[item.toStage]
+
+              const fromConfig = isStatusEntry
+                ? item.fromStatus
+                  ? CUSTOMER_STATUS_CONFIG[item.fromStatus]
+                  : null
+                : item.fromStage
+                  ? LIFECYCLE_STAGE_CONFIG[item.fromStage]
+                  : null
+
+              const showArrow = fromConfig !== null && fromConfig !== toConfig
 
               return (
                 <li key={item.id} className="pb-5 pl-5 last:pb-0">
                   <span className="absolute -left-[5px] mt-1.5 h-2.5 w-2.5 rounded-full border border-border bg-background ring-2 ring-background" />
                   <div className="flex flex-wrap items-center gap-1.5">
-                    {fromConfig && (
+                    {fromConfig && showArrow && (
                       <>
                         <Badge
                           variant="outline"

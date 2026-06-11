@@ -1,5 +1,13 @@
-import { schedules, logger, metadata as triggerMetadata } from '@trigger.dev/sdk/v3'
-import { CustomerStatus, LifecycleCauseType, LifecycleStage } from '@prisma/client'
+import {
+  schedules,
+  logger,
+  metadata as triggerMetadata,
+} from '@trigger.dev/sdk/v3'
+import {
+  CustomerStatus,
+  LifecycleCauseType,
+  LifecycleStage,
+} from '@prisma/client'
 import { db } from '@/_lib/prisma'
 import { revalidateContactsCache } from './lib/revalidate-cache'
 
@@ -23,11 +31,15 @@ export const dormantCustomersCron = schedules.task({
 
     for (const org of orgs) {
       const dormantThreshold = new Date()
-      dormantThreshold.setMonth(dormantThreshold.getMonth() - org.dormantAfterMonths)
+      dormantThreshold.setMonth(
+        dormantThreshold.getMonth() - org.dormantAfterMonths,
+      )
 
       // Busca contatos CUSTOMER + ACTIVE cujo último Deal WON é anterior ao threshold.
       // Raw SQL necessário para o GROUP BY + HAVING com aggregate por contato.
-      const candidates = await db.$queryRaw<Array<{ contactId: string; lastWonAt: Date }>>`
+      const candidates = await db.$queryRaw<
+        Array<{ contactId: string; lastWonAt: Date }>
+      >`
         SELECT dc.contact_id AS "contactId", MAX(d.updated_at) AS "lastWonAt"
         FROM contacts c
         JOIN deal_contacts dc ON dc.contact_id = c.id
@@ -49,18 +61,31 @@ export const dormantCustomersCron = schedules.task({
           cancelledAt: null,
           OR: [
             { recurrenceType: 'RECURRING_OPEN' },
-            { recurrenceType: 'RECURRING_CONTRACT', contractEndDate: { gt: new Date() } },
+            {
+              recurrenceType: 'RECURRING_CONTRACT',
+              contractEndDate: { gt: new Date() },
+            },
           ],
           deal: {
             status: 'WON',
-            contacts: { some: { contactId: { in: candidates.map((c) => c.contactId) } } },
+            contacts: {
+              some: {
+                contactId: {
+                  in: candidates.map((candidate) => candidate.contactId),
+                },
+              },
+            },
           },
         },
         select: {
           deal: {
             select: {
               contacts: {
-                where: { contactId: { in: candidates.map((c) => c.contactId) } },
+                where: {
+                  contactId: {
+                    in: candidates.map((candidate) => candidate.contactId),
+                  },
+                },
                 select: { contactId: true },
               },
             },
@@ -69,10 +94,14 @@ export const dormantCustomersCron = schedules.task({
       })
 
       const protectedIds = new Set(
-        activeRecurringItems.flatMap((item) => item.deal.contacts.map((c) => c.contactId)),
+        activeRecurringItems.flatMap((item) =>
+          item.deal.contacts.map((contact) => contact.contactId),
+        ),
       )
 
-      const eligibleCandidates = candidates.filter((c) => !protectedIds.has(c.contactId))
+      const eligibleCandidates = candidates.filter(
+        (candidate) => !protectedIds.has(candidate.contactId),
+      )
 
       let processed = 0
       let errors = 0
@@ -106,7 +135,10 @@ export const dormantCustomersCron = schedules.task({
                 cancelledAt: null,
                 OR: [
                   { recurrenceType: 'RECURRING_OPEN' },
-                  { recurrenceType: 'RECURRING_CONTRACT', contractEndDate: { gt: new Date() } },
+                  {
+                    recurrenceType: 'RECURRING_CONTRACT',
+                    contractEndDate: { gt: new Date() },
+                  },
                 ],
                 deal: {
                   status: 'WON',
@@ -128,6 +160,8 @@ export const dormantCustomersCron = schedules.task({
                 organizationId: org.id,
                 fromStage: LifecycleStage.CUSTOMER,
                 toStage: LifecycleStage.CUSTOMER,
+                fromStatus: CustomerStatus.ACTIVE,
+                toStatus: CustomerStatus.DORMANT,
                 causeType: LifecycleCauseType.INACTIVITY,
                 causeRefId: null,
               },
@@ -141,7 +175,10 @@ export const dormantCustomersCron = schedules.task({
           logger.error('dormant-cron:item_failed', {
             organizationId: org.id,
             contactId: candidate.contactId,
-            error: itemError instanceof Error ? itemError.message : String(itemError),
+            error:
+              itemError instanceof Error
+                ? itemError.message
+                : String(itemError),
           })
           errors++
         }
@@ -166,7 +203,11 @@ export const dormantCustomersCron = schedules.task({
     triggerMetadata.set('totalProcessed', totalProcessed)
     triggerMetadata.set('totalErrors', totalErrors)
 
-    logger.info('dormant-cron:done', { totalOrgs: orgs.length, totalProcessed, totalErrors })
+    logger.info('dormant-cron:done', {
+      totalOrgs: orgs.length,
+      totalProcessed,
+      totalErrors,
+    })
 
     return { totalOrgs: orgs.length, totalProcessed, totalErrors }
   },

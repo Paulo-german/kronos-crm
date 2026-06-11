@@ -1,5 +1,9 @@
 import 'server-only'
-import { CustomerStatus, LifecycleCauseType, LifecycleStage } from '@prisma/client'
+import {
+  CustomerStatus,
+  LifecycleCauseType,
+  LifecycleStage,
+} from '@prisma/client'
 import { db } from '@/_lib/prisma'
 import { revalidateLifecycleCache } from './revalidate-lifecycle-cache'
 
@@ -21,8 +25,10 @@ export async function reactivateCustomerIfDormant(
   })
 
   if (!contact) return { applied: false }
-  if (contact.lifecycleStage !== LifecycleStage.CUSTOMER) return { applied: false }
-  if (contact.customerStatus === CustomerStatus.ACTIVE) return { applied: false }
+  if (contact.lifecycleStage !== LifecycleStage.CUSTOMER)
+    return { applied: false }
+  if (contact.customerStatus === CustomerStatus.ACTIVE)
+    return { applied: false }
 
   await db.$transaction([
     db.contact.update({
@@ -35,6 +41,8 @@ export async function reactivateCustomerIfDormant(
         organizationId,
         fromStage: LifecycleStage.CUSTOMER,
         toStage: LifecycleStage.CUSTOMER,
+        fromStatus: contact.customerStatus,
+        toStatus: CustomerStatus.ACTIVE,
         causeType: LifecycleCauseType.DEAL_WON,
         causeRefId,
         changedByUserId: changedByUserId ?? null,

@@ -1,4 +1,8 @@
-import type { LifecycleCauseType, LifecycleStage } from '@prisma/client'
+import type {
+  CustomerStatus,
+  LifecycleCauseType,
+  LifecycleStage,
+} from '@prisma/client'
 
 export interface LifecycleHistoryItemDto {
   id: string
@@ -6,6 +10,8 @@ export interface LifecycleHistoryItemDto {
   contactName: string
   fromStage: LifecycleStage | null
   toStage: LifecycleStage
+  fromStatus: CustomerStatus | null
+  toStatus: CustomerStatus | null
   causeType: LifecycleCauseType
   causeLabel: string
   changedByName: string | null

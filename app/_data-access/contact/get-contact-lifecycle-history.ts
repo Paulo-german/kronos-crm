@@ -25,6 +25,8 @@ async function fetchContactLifecycleHistoryFromDb(
       id: true,
       fromStage: true,
       toStage: true,
+      fromStatus: true,
+      toStatus: true,
       causeType: true,
       changedByUserId: true,
       createdAt: true,
@@ -63,6 +65,8 @@ async function fetchContactLifecycleHistoryFromDb(
       contactName: record.contact.name,
       fromStage: record.fromStage,
       toStage: record.toStage,
+      fromStatus: record.fromStatus,
+      toStatus: record.toStatus,
       causeType: record.causeType,
       causeLabel: mapCauseTypeToLabel(record.causeType, changedByName),
       changedByName,
@@ -72,10 +76,19 @@ async function fetchContactLifecycleHistoryFromDb(
 }
 
 export const getContactLifecycleHistory = cache(
-  async (contactId: string, ctx: RBACContext): Promise<LifecycleHistoryItemDto[]> => {
+  async (
+    contactId: string,
+    ctx: RBACContext,
+  ): Promise<LifecycleHistoryItemDto[]> => {
     const elevated = isElevated(ctx.userRole)
     const getCached = unstable_cache(
-      async () => fetchContactLifecycleHistoryFromDb(contactId, ctx.orgId, ctx.userId, elevated),
+      async () =>
+        fetchContactLifecycleHistoryFromDb(
+          contactId,
+          ctx.orgId,
+          ctx.userId,
+          elevated,
+        ),
       [`contact-lifecycle-history-${contactId}-${ctx.userId}-${elevated}`],
       {
         tags: [`contacts:${ctx.orgId}`, `contact:${contactId}`],
