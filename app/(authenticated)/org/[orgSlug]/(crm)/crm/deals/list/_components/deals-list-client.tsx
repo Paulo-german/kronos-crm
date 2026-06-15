@@ -10,13 +10,19 @@ import { DealsToolbar } from './deals-toolbar'
 import { DealsDataTable } from './deals-data-table'
 import { DealsPagination } from './deals-pagination'
 import { DealsEmptyState } from './deals-empty-state'
-import { DealDialogContent, type DealMemberOption } from '../../_components/deal-dialog-content'
+import {
+  DealDialogContent,
+  type DealMemberOption,
+} from '../../_components/deal-dialog-content'
 import { useDealListFilters } from '../_lib/use-deal-list-filters'
 import { updateDeal } from '@/_actions/deal/update-deal'
 import { deleteDeal } from '@/_actions/deal/delete-deal'
 import { bulkDeleteDeals } from '@/_actions/deal/bulk-delete-deals'
 import type { DealListDto } from '@/_data-access/deal/get-deals'
-import type { StageDto, PipelineWithStagesDto } from '@/_data-access/pipeline/get-user-pipeline'
+import type {
+  StageDto,
+  PipelineWithStagesDto,
+} from '@/_data-access/pipeline/get-user-pipeline'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import type { OrgPipelineDto } from '@/_data-access/pipeline/get-org-pipelines'
 import type { MemberRole } from '@prisma/client'
@@ -146,15 +152,17 @@ export function DealsListClient({
 
   // Verifica se há qualquer filtro URL ativo para distinguir "lista vazia" de "sem resultados"
   // pipelineId incluído: funil sem deals não deve cair no empty state de "crie seu primeiro deal"
-  const hasAnyUrlFilter = hasActiveFilters || !!search || !!assignedTo || !!pipelineId
+  const hasAnyUrlFilter =
+    hasActiveFilters || !!search || !!assignedTo || !!pipelineId
 
   // Empty state premium: total zero E sem nenhum filtro ativo
   const showEmptyState = total === 0 && !hasAnyUrlFilter
 
   // Converte AcceptedMemberDto para o shape simples exigido pelo DealDialogContent
   const dealMembers: DealMemberOption[] = members
-    .filter((member): member is typeof member & { userId: string } =>
-      member.userId !== null && !!member.user?.fullName,
+    .filter(
+      (member): member is typeof member & { userId: string } =>
+        member.userId !== null && !!member.user?.fullName,
     )
     .map((member) => ({ userId: member.userId, name: member.user!.fullName! }))
 
@@ -223,6 +231,7 @@ export function DealsListClient({
         {editingDeal && (
           <DealDialogContent
             key={editingDeal.id}
+            open={isEditSheetOpen}
             defaultValues={{
               id: editingDeal.id,
               title: editingDeal.title,

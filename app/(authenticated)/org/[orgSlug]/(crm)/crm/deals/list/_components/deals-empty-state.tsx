@@ -5,7 +5,10 @@ import { BriefcaseIcon } from 'lucide-react'
 import { Sheet, SheetTrigger } from '@/_components/ui/sheet'
 import { Button } from '@/_components/ui/button'
 import { Plus } from 'lucide-react'
-import { DealDialogContent, type DealMemberOption } from '../../_components/deal-dialog-content'
+import {
+  DealDialogContent,
+  type DealMemberOption,
+} from '../../_components/deal-dialog-content'
 import type { StageDto } from '@/_data-access/pipeline/get-user-pipeline'
 
 interface DealsEmptyStateProps {
@@ -49,6 +52,7 @@ export function DealsEmptyState({
             </Button>
           </SheetTrigger>
           <DealDialogContent
+            open={isOpen}
             stages={stages}
             members={members}
             setIsOpen={setIsOpen}

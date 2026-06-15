@@ -74,7 +74,8 @@ export const PipelineClient = ({
     setAssignees,
   } = usePipelineFilters()
 
-  const canManagePipeline = userRole === 'ADMIN' || userRole === 'OWNER' || userRole === 'SUPPORT'
+  const canManagePipeline =
+    userRole === 'ADMIN' || userRole === 'OWNER' || userRole === 'SUPPORT'
 
   if (!pipeline) {
     return (
@@ -108,68 +109,60 @@ export const PipelineClient = ({
 
   return (
     <>
-      <div data-tour="deals-kanban" className="flex flex-1 min-h-0 flex-col">
-      <KanbanBoard
-        pipeline={pipeline}
-        dealsByStage={dealsByStage}
-        members={members}
-        currentUserId={currentUserId}
-        userRole={userRole}
-        onAddDeal={handleAddDeal}
-        onDealClick={handleDealClick}
-        filters={filters}
-        sortBy={sortBy}
-        onSortChange={setSortBy}
-        assignees={assignees}
-        onAssigneesChange={setAssignees}
-        viewToggle={<ViewToggle activeView="pipeline" />}
-        pipelineSelector={
-          <PipelineSelector
-            pipelines={pipelines}
-            activePipelineId={activePipelineId}
-          />
-        }
-        refreshButton={<RefreshPipelineButton />}
-        settingsButton={
-          canManagePipeline ? (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              asChild
-            >
-              <Link
-                href={`/org/${params.orgSlug}/settings/pipelines/${pipeline.id}`}
-              >
-                <Settings2Icon className="h-4 w-4" />
-              </Link>
-            </Button>
-          ) : null
-        }
-        createButton={
-          <CreateDealButton
-            stages={pipeline.stages}
-            members={members}
-          />
-        }
-        filtersSheet={
-          <div data-tour="deals-filters">
-          <DealFiltersSheet
-            filters={filters}
-            onFiltersChange={setFilters}
-            activeFilterCount={activeFilterCount}
-          />
-          </div>
-        }
-        filterBadges={
-          <PipelineFilterBadges
-            filters={filters}
-            onFiltersChange={setFilters}
-            onClearFilters={clearFilters}
-            hasActiveFilters={hasActiveFilters}
-          />
-        }
-      />
+      <div data-tour="deals-kanban" className="flex min-h-0 flex-1 flex-col">
+        <KanbanBoard
+          pipeline={pipeline}
+          dealsByStage={dealsByStage}
+          members={members}
+          currentUserId={currentUserId}
+          userRole={userRole}
+          onAddDeal={handleAddDeal}
+          onDealClick={handleDealClick}
+          filters={filters}
+          sortBy={sortBy}
+          onSortChange={setSortBy}
+          assignees={assignees}
+          onAssigneesChange={setAssignees}
+          viewToggle={<ViewToggle activeView="pipeline" />}
+          pipelineSelector={
+            <PipelineSelector
+              pipelines={pipelines}
+              activePipelineId={activePipelineId}
+            />
+          }
+          refreshButton={<RefreshPipelineButton />}
+          settingsButton={
+            canManagePipeline ? (
+              <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                <Link
+                  href={`/org/${params.orgSlug}/settings/pipelines/${pipeline.id}`}
+                >
+                  <Settings2Icon className="h-4 w-4" />
+                </Link>
+              </Button>
+            ) : null
+          }
+          createButton={
+            <CreateDealButton stages={pipeline.stages} members={members} />
+          }
+          filtersSheet={
+            <div data-tour="deals-filters">
+              <DealFiltersSheet
+                filters={filters}
+                onFiltersChange={setFilters}
+                activeFilterCount={activeFilterCount}
+              />
+            </div>
+          }
+          filterBadges={
+            <PipelineFilterBadges
+              filters={filters}
+              onFiltersChange={setFilters}
+              onClearFilters={clearFilters}
+              hasActiveFilters={hasActiveFilters}
+            />
+          }
+        />
       </div>
 
       <Sheet
@@ -178,6 +171,7 @@ export const PipelineClient = ({
       >
         <DealDialogContent
           key={`new-${dialogState.stageId}`}
+          open={dialogState.isOpen}
           defaultValues={{ stageId: dialogState.stageId }}
           stages={pipeline.stages}
           members={members}

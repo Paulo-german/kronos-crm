@@ -50,6 +50,7 @@ const CreateDealButton = ({
         </Button>
       </SheetTrigger>
       <DealDialogContent
+        open={isOpen}
         stages={stages}
         members={members}
         setIsOpen={setIsOpen}

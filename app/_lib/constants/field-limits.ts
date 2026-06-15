@@ -9,6 +9,10 @@ export const CONTACT_INLINE_DEAL_TITLE_MAX = 80
 export const CONTACT_COMPANY_NAME_MAX = 200
 export const CONTACT_PRIVACY_NOTES_MAX = 1000
 
+// Campos nativos de negociação (deal)
+export const DEAL_TITLE_MAX = 120
+export const DEAL_NOTES_MAX = 1000
+
 // Definição de campo personalizado
 export const FIELD_DEFINITION_LABEL_MAX = 100
 export const FIELD_DEFINITION_OPTIONS_MAX = 50

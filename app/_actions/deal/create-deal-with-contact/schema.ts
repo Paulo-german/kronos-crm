@@ -1,4 +1,11 @@
 import { z } from 'zod'
+import {
+  DEAL_TITLE_MAX,
+  DEAL_NOTES_MAX,
+  CONTACT_NAME_MAX,
+  CONTACT_EMAIL_MAX,
+  CONTACT_PHONE_MAX,
+} from '@/_lib/constants/field-limits'
 
 // Modo "buscar existente": usuário seleciona contato via combobox
 const existingContactSchema = z.object({
@@ -9,21 +16,30 @@ const existingContactSchema = z.object({
 // Modo "criar novo": usuário preenche campos inline
 const newContactSchema = z.object({
   contactMode: z.literal('new'),
-  contactName: z.string().trim().min(1, 'Nome do contato é obrigatório'),
-  contactEmail: z.string().email('Email inválido').optional().or(z.literal('')),
-  contactPhone: z.string().optional(),
+  contactName: z
+    .string()
+    .trim()
+    .min(1, 'Nome do contato é obrigatório')
+    .max(CONTACT_NAME_MAX),
+  contactEmail: z
+    .string()
+    .email('Email inválido')
+    .max(CONTACT_EMAIL_MAX)
+    .optional()
+    .or(z.literal('')),
+  contactPhone: z.string().max(CONTACT_PHONE_MAX).optional(),
   // Operador confirmou criar mesmo com telefone já usado por outro contato
   confirmDuplicatePhone: z.boolean().optional(),
 })
 
 // Campos base compartilhados por ambos os modos
 const dealBaseSchema = z.object({
-  title: z.string().trim().min(1, 'Título é obrigatório'),
+  title: z.string().trim().min(1, 'Título é obrigatório').max(DEAL_TITLE_MAX),
   stageId: z.string().uuid('ID da etapa inválido'),
   companyId: z.string().uuid('ID da empresa inválido').optional().nullable(),
   assignedTo: z.string().uuid().optional().nullable(),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
-  notes: z.string().optional().nullable(),
+  notes: z.string().max(DEAL_NOTES_MAX).optional().nullable(),
 })
 
 // Schema principal da action: intersection garante que os campos base sempre existam
@@ -44,12 +60,12 @@ export type CreateDealWithContactInput = z.infer<
 // não jogue fora os valores ao trocar de aba — evita reset indesejado no discriminatedUnion.
 export const dealWithContactFormSchema = z.intersection(
   z.object({
-    title: z.string().min(1, 'Título é obrigatório'),
+    title: z.string().min(1, 'Título é obrigatório').max(DEAL_TITLE_MAX),
     stageId: z.string().min(1, 'Etapa é obrigatória'),
     companyId: z.string().optional(),
     assignedTo: z.string().optional(),
     priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
-    notes: z.string().optional(),
+    notes: z.string().max(DEAL_NOTES_MAX).optional(),
   }),
   z.discriminatedUnion('contactMode', [
     z.object({
@@ -62,13 +78,17 @@ export const dealWithContactFormSchema = z.intersection(
     }),
     z.object({
       contactMode: z.literal('new'),
-      contactName: z.string().min(1, 'Nome do contato é obrigatório'),
+      contactName: z
+        .string()
+        .min(1, 'Nome do contato é obrigatório')
+        .max(CONTACT_NAME_MAX),
       contactEmail: z
         .string()
         .email('Email inválido')
+        .max(CONTACT_EMAIL_MAX)
         .optional()
         .or(z.literal('')),
-      contactPhone: z.string().optional(),
+      contactPhone: z.string().max(CONTACT_PHONE_MAX).optional(),
       confirmDuplicatePhone: z.boolean().optional(),
       // Campo do outro modo presente, mas não validado neste branch
       contactId: z.string().optional(),

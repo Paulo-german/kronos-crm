@@ -45,8 +45,9 @@ import {
 } from '@/_lib/lifecycle/lifecycle-stage-config'
 import { CAPTURE_CHANNEL_CONFIG } from '@/_lib/lifecycle/capture-channel-config'
 import { LEGAL_BASIS_OPTIONS } from '@/_lib/privacy/consent-labels'
-import { Loader2, InfoIcon, UsersIcon, PhoneIcon } from 'lucide-react'
+import { Loader2, UsersIcon, PhoneIcon } from 'lucide-react'
 import ConfirmationDialog from '@/_components/confirmation-dialog'
+import { FieldLabel } from '@/_components/form-controls/field-label'
 import type { MemberRole } from '@prisma/client'
 import { CaptureChannel, LegalBasis, LifecycleStage } from '@prisma/client'
 
@@ -60,12 +61,7 @@ import {
   CONTACT_ROLE_MAX,
   CONTACT_INLINE_DEAL_TITLE_MAX,
 } from '@/_lib/constants/field-limits'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/_components/ui/tooltip'
+import { TooltipProvider } from '@/_components/ui/tooltip'
 
 interface UpsertContactDialogContentProps {
   open?: boolean
@@ -80,18 +76,6 @@ interface UpsertContactDialogContentProps {
   customFieldDefinitions?: FieldDefinitionDto[]
   customFieldValues?: Record<string, string | null>
 }
-
-const FieldLabel = ({ label, tooltip }: { label: string; tooltip: string }) => (
-  <span className="flex items-center gap-1.5">
-    {label}
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <InfoIcon className="size-3.5 cursor-help text-muted-foreground" />
-      </TooltipTrigger>
-      <TooltipContent className="max-w-56">{tooltip}</TooltipContent>
-    </Tooltip>
-  </span>
-)
 
 const UpsertContactDialogContent = ({
   open,

@@ -11,6 +11,7 @@ import {
   requireQuota,
   resolveAssignedTo,
 } from '@/_lib/rbac'
+import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 import { createNotification } from '@/_lib/notifications/create-notification'
 import { getOrgSlug } from '@/_lib/notifications/get-org-slug'
 import { toE164 } from '@/_utils/to-e164'
@@ -108,7 +109,13 @@ export const createDealWithContact = orgActionClient
       // Telefone não tem unicidade (diferente do email): se já existe e o operador
       // ainda não confirmou, devolve sem criar para o front pedir confirmação.
       if (phoneAlreadyUsed && !data.confirmDuplicatePhone) {
-        return { success: false, dealId: null, needsPhoneConfirmation: true }
+        return {
+          success: false,
+          dealId: null,
+          needsPhoneConfirmation: true,
+          current: null,
+          limit: null,
+        }
       }
 
       // Transação atômica: se qualquer operação falhar, NADA é persistido
@@ -281,5 +288,13 @@ export const createDealWithContact = orgActionClient
       })
     })
 
-    return { success: true, dealId: deal.id, needsPhoneConfirmation: false }
+    const quota = await checkPlanQuota(ctx.orgId, 'deal')
+
+    return {
+      success: true,
+      dealId: deal.id,
+      needsPhoneConfirmation: false,
+      current: quota.current,
+      limit: quota.limit,
+    }
   })
