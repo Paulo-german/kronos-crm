@@ -6,11 +6,15 @@ import { stripe } from '@/_lib/stripe'
 import { db } from '@/_lib/prisma'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 import { revalidateTag } from 'next/cache'
+import { toE164 } from '@/_utils/to-e164'
 
 export const saveBillingData = freeOrgActionClient
   .schema(saveBillingDataSchema)
   .action(async ({ parsedInput: data, ctx }) => {
     requirePermission(canPerformAction(ctx, 'billing', 'create'))
+
+    // Padroniza o telefone de cobrança em E.164 (banco + Stripe usam o mesmo valor)
+    const billingPhone = toE164(data.billingContactPhone)
 
     // Salvar dados cadastrais na organização
     const org = await db.organization.update({
@@ -22,7 +26,7 @@ export const saveBillingData = freeOrgActionClient
         tradeName: data.tradeName || null,
         billingContactName: data.billingContactName,
         billingContactEmail: data.billingContactEmail,
-        billingContactPhone: data.billingContactPhone,
+        billingContactPhone: billingPhone,
         billingZipCode: data.billingZipCode,
         billingStreet: data.billingStreet,
         billingNumber: data.billingNumber,
@@ -38,7 +42,7 @@ export const saveBillingData = freeOrgActionClient
     const customerData = {
       name: data.legalName,
       email: data.billingContactEmail,
-      phone: data.billingContactPhone,
+      phone: billingPhone ?? undefined,
       address: {
         line1: `${data.billingStreet}, ${data.billingNumber}`,
         line2: data.billingComplement || undefined,

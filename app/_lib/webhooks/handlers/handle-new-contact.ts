@@ -4,6 +4,7 @@ import { db } from '@/_lib/prisma'
 import { resolveSquadMember } from '@/_lib/distribution/resolve-squad-member'
 import { resolveCompanyId } from './resolve-company-id'
 import { createContactPrivacy } from '@/_lib/privacy/create-contact-privacy'
+import { toE164 } from '@/_utils/to-e164'
 
 interface HandlerInput {
   orgId: string
@@ -29,7 +30,10 @@ async function createApiContactPrivacy(contactId: string): Promise<void> {
       performedBy: null,
     })
   } catch (error) {
-    console.warn('[privacy] Falha ao criar ContactPrivacy para contato via webhook', error)
+    console.warn(
+      '[privacy] Falha ao criar ContactPrivacy para contato via webhook',
+      error,
+    )
   }
 }
 
@@ -39,7 +43,9 @@ export async function handleNewContact({
   resolved,
 }: HandlerInput): Promise<ProcessResult> {
   const email = typeof resolved.email === 'string' ? resolved.email : null
-  const phone = typeof resolved.phone === 'string' ? resolved.phone : null
+  // Normaliza para E.164 na fonte — toda gravação abaixo herda o valor padronizado
+  const phone =
+    typeof resolved.phone === 'string' ? toE164(resolved.phone) : null
   const name = typeof resolved.name === 'string' ? resolved.name : null
   const companyName =
     typeof resolved.companyName === 'string' ? resolved.companyName : null
@@ -60,7 +66,10 @@ export async function handleNewContact({
     })
 
     if (!owner?.userId) {
-      return { status: 'ERROR', errorMessage: 'No active OWNER found for organization' }
+      return {
+        status: 'ERROR',
+        errorMessage: 'No active OWNER found for organization',
+      }
     }
 
     assignedUserId = owner.userId

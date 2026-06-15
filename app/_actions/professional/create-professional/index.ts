@@ -7,6 +7,7 @@ import { randomUUID } from 'crypto'
 import { revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
 import { resend } from '@/_lib/resend'
+import { toE164 } from '@/_utils/to-e164'
 
 const INVITE_EXPIRATION_HOURS = 72
 
@@ -44,7 +45,7 @@ export const createProfessional = orgActionClient
         organizationId: ctx.orgId,
         userId: data.userId ?? null,
         name: data.name,
-        phone: data.phone ?? null,
+        phone: toE164(data.phone),
         email: data.email ?? null,
         bio: data.bio ?? null,
         avatarUrl: data.avatarUrl ?? null,
@@ -97,7 +98,9 @@ export const createProfessional = orgActionClient
     // 8. Enviar convite por e-mail para profissionais sem userId vinculado
     if (!data.userId && data.email) {
       const inviteToken = randomUUID()
-      const inviteExpiresAt = new Date(Date.now() + INVITE_EXPIRATION_HOURS * 60 * 60 * 1000)
+      const inviteExpiresAt = new Date(
+        Date.now() + INVITE_EXPIRATION_HOURS * 60 * 60 * 1000,
+      )
 
       await db.professional.update({
         where: { id: professional.id },

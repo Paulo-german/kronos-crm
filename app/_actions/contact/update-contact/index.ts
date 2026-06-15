@@ -14,6 +14,7 @@ import {
   isElevated,
 } from '@/_lib/rbac'
 import { normalizeEmail } from '@/_lib/contact/normalize-email'
+import { toE164 } from '@/_utils/to-e164'
 
 export const updateContact = orgActionClient
   .schema(updateContactSchema)
@@ -75,7 +76,7 @@ export const updateContact = orgActionClient
           ...(data.email !== undefined && {
             email: normalizeEmail(data.email),
           }),
-          ...(data.phone !== undefined && { phone: data.phone || null }),
+          ...(data.phone !== undefined && { phone: toE164(data.phone) }),
           ...(data.role !== undefined && { role: data.role || null }),
           ...(data.companyId !== undefined && { companyId: data.companyId }),
           ...(data.isDecisionMaker !== undefined && {

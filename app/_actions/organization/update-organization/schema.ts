@@ -32,8 +32,8 @@ export const updateOrganizationSchema = z
       .or(z.literal('')),
     billingContactPhone: z
       .string()
-      .regex(/^\d*$/, 'Apenas números são permitidos')
-      .max(11, 'Telefone inválido')
+      // Aceita vazio, dígitos com DDI ou E.164 com `+` (a action normaliza via toE164)
+      .regex(/^(\+?\d{10,14})?$/, 'Telefone inválido')
       .nullable()
       .optional(),
 
@@ -44,17 +44,41 @@ export const updateOrganizationSchema = z
       .nullable()
       .optional()
       .or(z.literal('')),
-    billingStreet: z.string().max(200, 'Endereço muito longo').nullable().optional(),
-    billingNumber: z.string().max(20, 'Número muito longo').nullable().optional(),
+    billingStreet: z
+      .string()
+      .max(200, 'Endereço muito longo')
+      .nullable()
+      .optional(),
+    billingNumber: z
+      .string()
+      .max(20, 'Número muito longo')
+      .nullable()
+      .optional(),
     billingComplement: z
       .string()
       .max(100, 'Complemento muito longo')
       .nullable()
       .optional(),
-    billingNeighborhood: z.string().max(100, 'Bairro muito longo').nullable().optional(),
-    billingCity: z.string().max(100, 'Cidade muito longa').nullable().optional(),
-    billingState: z.string().max(2, 'Use a sigla do estado').nullable().optional(),
-    billingCountry: z.string().max(2, 'Use a sigla do país').nullable().optional(),
+    billingNeighborhood: z
+      .string()
+      .max(100, 'Bairro muito longo')
+      .nullable()
+      .optional(),
+    billingCity: z
+      .string()
+      .max(100, 'Cidade muito longa')
+      .nullable()
+      .optional(),
+    billingState: z
+      .string()
+      .max(2, 'Use a sigla do estado')
+      .nullable()
+      .optional(),
+    billingCountry: z
+      .string()
+      .max(2, 'Use a sigla do país')
+      .nullable()
+      .optional(),
 
     // Configurações de Privacidade
     hidePiiFromMembers: z.boolean().optional(),

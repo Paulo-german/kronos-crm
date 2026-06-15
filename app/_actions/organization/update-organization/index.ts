@@ -5,6 +5,7 @@ import { updateOrganizationSchema } from './schema'
 import { db } from '@/_lib/prisma'
 import { revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
+import { toE164 } from '@/_utils/to-e164'
 import type { PersonType } from '@prisma/client'
 
 export const updateOrganization = orgActionClient
@@ -56,11 +57,11 @@ export const updateOrganization = orgActionClient
         personType: personType as PersonType | null,
         taxId: taxId || null,
         legalName: legalName || null,
-        tradeName: isPF ? null : (tradeName || null),
+        tradeName: isPF ? null : tradeName || null,
         isSimples: isPF ? false : (isSimples ?? false),
         billingContactName: billingContactName || null,
         billingContactEmail: billingContactEmail || null,
-        billingContactPhone: billingContactPhone || null,
+        billingContactPhone: toE164(billingContactPhone),
         billingZipCode: billingZipCode || null,
         billingStreet: billingStreet || null,
         billingNumber: billingNumber || null,

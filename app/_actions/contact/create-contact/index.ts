@@ -24,6 +24,7 @@ import { evaluateAutomations } from '@/_lib/automations/evaluate-automations'
 import { createContactPrivacy } from '@/_lib/privacy/create-contact-privacy'
 import { resolveLegalBasisForChannel } from '@/_lib/privacy/legal-basis-map'
 import { normalizeEmail } from '@/_lib/contact/normalize-email'
+import { toE164 } from '@/_utils/to-e164'
 
 export const createContact = orgActionClient
   .schema(contactSchema)
@@ -122,7 +123,7 @@ export const createContact = orgActionClient
             assignedTo,
             name: data.name,
             email: normalizeEmail(data.email),
-            phone: data.phone || null,
+            phone: toE164(data.phone),
             role: data.role || null,
             companyId: data.companyId || null,
             isDecisionMaker: data.isDecisionMaker,

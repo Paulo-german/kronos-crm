@@ -2,6 +2,7 @@ import { db } from '@/_lib/prisma'
 import { Prisma } from '@prisma/client'
 import { resolveSquadMember } from '@/_lib/distribution/resolve-squad-member'
 import { createContactPrivacy } from '@/_lib/privacy/create-contact-privacy'
+import { toE164 } from '@/_utils/to-e164'
 
 interface HandlerInput {
   orgId: string
@@ -21,7 +22,8 @@ export async function handleNewDeal({
   squadId,
   resolved,
 }: HandlerInput): Promise<ProcessResult> {
-  const dealTitle = typeof resolved.dealTitle === 'string' ? resolved.dealTitle : null
+  const dealTitle =
+    typeof resolved.dealTitle === 'string' ? resolved.dealTitle : null
   if (!dealTitle) return { status: 'IGNORED' }
 
   const pipeline = await db.pipeline.findFirst({
@@ -30,13 +32,18 @@ export async function handleNewDeal({
   })
 
   if (!pipeline || pipeline.stages.length === 0) {
-    return { status: 'ERROR', errorMessage: 'No default pipeline or stages found' }
+    return {
+      status: 'ERROR',
+      errorMessage: 'No default pipeline or stages found',
+    }
   }
 
-  const resolvedStageId = typeof resolved.dealStageId === 'string' ? resolved.dealStageId : null
+  const resolvedStageId =
+    typeof resolved.dealStageId === 'string' ? resolved.dealStageId : null
   const targetStage =
-    (resolvedStageId ? pipeline.stages.find((stage) => stage.id === resolvedStageId) : null) ??
-    pipeline.stages[0]
+    (resolvedStageId
+      ? pipeline.stages.find((stage) => stage.id === resolvedStageId)
+      : null) ?? pipeline.stages[0]
 
   const email = typeof resolved.email === 'string' ? resolved.email : null
 
@@ -57,7 +64,11 @@ export async function handleNewDeal({
   }
 
   // Resolve assignee via squad — fallback para OWNER se nenhum squad configurado
-  const squadResolution = await resolveSquadMember({ orgId, squadId, contactCurrentAssignedTo })
+  const squadResolution = await resolveSquadMember({
+    orgId,
+    squadId,
+    contactCurrentAssignedTo,
+  })
 
   const resolvedSquadId = squadResolution?.squadId ?? null
   let assignedUserId = squadResolution?.userId ?? null
@@ -70,7 +81,10 @@ export async function handleNewDeal({
     })
 
     if (!owner?.userId) {
-      return { status: 'ERROR', errorMessage: 'No active OWNER found for organization' }
+      return {
+        status: 'ERROR',
+        errorMessage: 'No active OWNER found for organization',
+      }
     }
 
     assignedUserId = owner.userId
@@ -83,7 +97,8 @@ export async function handleNewDeal({
         organizationId: orgId,
         email,
         name: typeof resolved.name === 'string' ? resolved.name : email,
-        phone: typeof resolved.phone === 'string' ? resolved.phone : null,
+        phone:
+          typeof resolved.phone === 'string' ? toE164(resolved.phone) : null,
         assignedTo: assignedUserId,
       },
       select: { id: true },
@@ -110,7 +125,8 @@ export async function handleNewDeal({
     if (!Number.isNaN(parsed)) dealValue = new Prisma.Decimal(parsed)
   }
 
-  const dealNotes = typeof resolved.dealNotes === 'string' ? resolved.dealNotes : null
+  const dealNotes =
+    typeof resolved.dealNotes === 'string' ? resolved.dealNotes : null
 
   const deal = await db.deal.create({
     data: {
@@ -121,7 +137,9 @@ export async function handleNewDeal({
       ...(resolvedSquadId ? { squadId: resolvedSquadId } : {}),
       ...(dealValue ? { value: dealValue } : {}),
       ...(dealNotes ? { notes: dealNotes } : {}),
-      ...(contactId ? { contacts: { create: { contactId, isPrimary: true } } } : {}),
+      ...(contactId
+        ? { contacts: { create: { contactId, isPrimary: true } } }
+        : {}),
     },
     select: { id: true },
   })

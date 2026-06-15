@@ -4,6 +4,7 @@ import { db } from '@/_lib/prisma'
 import { logger } from '@trigger.dev/sdk/v3'
 import { revalidateTags } from './lib/revalidate-tags'
 import { withRetry, safeBestEffort } from './lib/with-retry'
+import { toE164 } from '@/_utils/to-e164'
 import type { ToolContext } from './types'
 
 interface UpdateContactResult {
@@ -11,7 +12,10 @@ interface UpdateContactResult {
   message: string
 }
 
-export function createUpdateContactTool(ctx: ToolContext, opts?: { triggerHint?: string }) {
+export function createUpdateContactTool(
+  ctx: ToolContext,
+  opts?: { triggerHint?: string },
+) {
   const baseDescription =
     'Atualiza dados de um contato (nome, email, telefone, cargo). Use quando o cliente fornecer informações novas sobre si.'
   const description = opts?.triggerHint
@@ -28,29 +32,29 @@ export function createUpdateContactTool(ctx: ToolContext, opts?: { triggerHint?:
     }),
     execute: async (updates): Promise<UpdateContactResult> => {
       try {
-      const data: Record<string, string | null> = {}
-      const updatedFields: string[] = []
+        const data: Record<string, string | null> = {}
+        const updatedFields: string[] = []
 
-      if (updates.name !== undefined) {
-        data.name = updates.name
-        updatedFields.push('nome')
-      }
-      if (updates.email !== undefined) {
-        data.email = updates.email || null
-        updatedFields.push('email')
-      }
-      if (updates.phone !== undefined) {
-        data.phone = updates.phone || null
-        updatedFields.push('telefone')
-      }
-      if (updates.role !== undefined) {
-        data.role = updates.role || null
-        updatedFields.push('cargo')
-      }
+        if (updates.name !== undefined) {
+          data.name = updates.name
+          updatedFields.push('nome')
+        }
+        if (updates.email !== undefined) {
+          data.email = updates.email || null
+          updatedFields.push('email')
+        }
+        if (updates.phone !== undefined) {
+          data.phone = toE164(updates.phone)
+          updatedFields.push('telefone')
+        }
+        if (updates.role !== undefined) {
+          data.role = updates.role || null
+          updatedFields.push('cargo')
+        }
 
-      if (updatedFields.length === 0) {
-        return { success: false, message: 'Nenhum campo para atualizar.' }
-      }
+        if (updatedFields.length === 0) {
+          return { success: false, message: 'Nenhum campo para atualizar.' }
+        }
 
         const result = await withRetry(
           () =>
@@ -62,7 +66,10 @@ export function createUpdateContactTool(ctx: ToolContext, opts?: { triggerHint?:
         )
 
         if (result.count === 0) {
-          return { success: false, message: 'Contato não encontrado nesta organização.' }
+          return {
+            success: false,
+            message: 'Contato não encontrado nesta organização.',
+          }
         }
 
         if (ctx.dealId) {
@@ -103,7 +110,10 @@ export function createUpdateContactTool(ctx: ToolContext, opts?: { triggerHint?:
         }
       } catch (error) {
         logger.error('Tool update_contact failed', { error })
-        return { success: false, message: 'Erro interno ao atualizar contato. Tente novamente.' }
+        return {
+          success: false,
+          message: 'Erro interno ao atualizar contato. Tente novamente.',
+        }
       }
     },
   })

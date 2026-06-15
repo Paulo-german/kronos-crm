@@ -5,6 +5,7 @@ import { updateProfessionalSchema } from './schema'
 import { db } from '@/_lib/prisma'
 import { revalidateTag } from 'next/cache'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
+import { toE164 } from '@/_utils/to-e164'
 
 export const updateProfessional = orgActionClient
   .schema(updateProfessionalSchema)
@@ -27,7 +28,7 @@ export const updateProfessional = orgActionClient
       where: { id: data.id },
       data: {
         ...(data.name !== undefined ? { name: data.name } : {}),
-        ...(data.phone !== undefined ? { phone: data.phone } : {}),
+        ...(data.phone !== undefined ? { phone: toE164(data.phone) } : {}),
         ...(data.email !== undefined ? { email: data.email } : {}),
         ...(data.bio !== undefined ? { bio: data.bio } : {}),
         ...(data.avatarUrl !== undefined ? { avatarUrl: data.avatarUrl } : {}),

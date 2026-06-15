@@ -9,6 +9,8 @@ import { matchCaptureEventToCampaign } from '@/_lib/lifecycle/match-capture-even
 import { evaluateAutomations } from '@/_lib/automations/evaluate-automations'
 import { createContactPrivacy } from '@/_lib/privacy/create-contact-privacy'
 import { CHANNEL_DEFAULT_LEGAL_BASIS } from '@/_lib/privacy/legal-basis-map'
+import { toE164 } from '@/_utils/to-e164'
+import { normalizePhoneToDigits } from '@/_lib/whatsapp/normalize-phone'
 
 interface DealCreationContext {
   pipelineId: string | null
@@ -49,6 +51,10 @@ export async function resolveConversation(
   fromMe?: boolean,
   captureChannel: CaptureChannel = CaptureChannel.WHATSAPP,
 ): Promise<ResolveResult> {
+  // Padroniza o número para E.164 com `+` antes de qualquer busca/criação de Contact,
+  // alinhando com o storage do banco (que é E.164). O `remoteJid` permanece em dígitos.
+  const phone = toE164(phoneNumber) ?? phoneNumber
+
   // 1. Buscar conversa existente
   const existing = await db.conversation.findFirst({
     where: { inboxId, remoteJid },
@@ -57,18 +63,31 @@ export async function resolveConversation(
 
   if (existing) {
     // Backfill não-bloqueante: garante que contatos legados tenham ContactPrivacy
-    after(() => ensureContactPrivacy(existing.contactId, captureChannel).catch((error) => {
-      console.warn('[privacy] Falha no backfill de ContactPrivacy para conversa existente', error)
-    }))
+    after(() =>
+      ensureContactPrivacy(existing.contactId, captureChannel).catch(
+        (error) => {
+          console.warn(
+            '[privacy] Falha no backfill de ContactPrivacy para conversa existente',
+            error,
+          )
+        },
+      ),
+    )
 
     // Atualizar nome do contato na primeira resposta inbound (quando nome é placeholder)
     if (!fromMe && pushName) {
       const contact = await db.contact.findFirst({
-        where: { organizationId: orgId, phone: phoneNumber },
+        where: { organizationId: orgId, phone },
         select: { id: true, name: true },
       })
 
-      if (contact && contact.name === phoneNumber) {
+      // Nome ainda é placeholder (= o próprio número)? Compara por dígitos para
+      // também casar contatos legados cujo nome ficou em dígitos puros.
+      const nameIsPhonePlaceholder =
+        contact?.name != null &&
+        normalizePhoneToDigits(contact.name) === normalizePhoneToDigits(phone)
+
+      if (contact && nameIsPhonePlaceholder) {
         const conversation = await db.conversation.findFirst({
           where: { id: existing.id },
           select: { dealId: true },
@@ -95,10 +114,10 @@ export async function resolveConversation(
   }
 
   // 2. Buscar ou criar Contact pelo telefone na org
-  const effectiveName = fromMe ? phoneNumber : (pushName || phoneNumber)
+  const effectiveName = fromMe ? phone : pushName || phone
 
   let contact = await db.contact.findFirst({
-    where: { organizationId: orgId, phone: phoneNumber },
+    where: { organizationId: orgId, phone },
     // Incluir assignedTo para herdar o responsavel na criacao da conversa
     // firstCaptureAt diferencia first-touch de last-touch no bloco de captura
     select: { id: true, name: true, assignedTo: true, firstCaptureAt: true },
@@ -111,7 +130,7 @@ export async function resolveConversation(
       data: {
         organizationId: orgId,
         name: effectiveName,
-        phone: phoneNumber,
+        phone,
       },
       select: { id: true, name: true, assignedTo: true, firstCaptureAt: true },
     })
@@ -119,17 +138,29 @@ export async function resolveConversation(
 
   if (isNewContact) {
     try {
-      const { legalBasis, legalBasisSource } = CHANNEL_DEFAULT_LEGAL_BASIS[captureChannel]
-      await createContactPrivacy(db, { contactId: contact.id, legalBasis, legalBasisSource, performedBy: null })
+      const { legalBasis, legalBasisSource } =
+        CHANNEL_DEFAULT_LEGAL_BASIS[captureChannel]
+      await createContactPrivacy(db, {
+        contactId: contact.id,
+        legalBasis,
+        legalBasisSource,
+        performedBy: null,
+      })
     } catch (error) {
-      console.warn('[privacy] Falha ao criar ContactPrivacy para novo contato', error)
+      console.warn(
+        '[privacy] Falha ao criar ContactPrivacy para novo contato',
+        error,
+      )
     }
   } else {
     // Backfill para contato legado (sem ContactPrivacy) iniciando nova conversa
     try {
       await ensureContactPrivacy(contact.id, captureChannel)
     } catch (error) {
-      console.warn('[privacy] Falha no backfill de ContactPrivacy para contato legado', error)
+      console.warn(
+        '[privacy] Falha no backfill de ContactPrivacy para contato legado',
+        error,
+      )
     }
   }
 
@@ -182,13 +213,15 @@ export async function resolveConversation(
   }
 
   if (isNewContact) {
-    after(() => evaluateAutomations({
-      subjectKind: 'contact',
-      orgId,
-      triggerType: 'CONTACT_CREATED',
-      contactId: contact.id,
-      payload: { source: CaptureChannel.WHATSAPP },
-    }))
+    after(() =>
+      evaluateAutomations({
+        subjectKind: 'contact',
+        orgId,
+        triggerType: 'CONTACT_CREATED',
+        contactId: contact.id,
+        payload: { source: CaptureChannel.WHATSAPP },
+      }),
+    )
   }
 
   return { conversationId: conversation.id, isNew: true }
@@ -204,7 +237,9 @@ interface RecordInboundCaptureInput {
 
 // Cria CaptureEvent e atualiza denorms (first/last touch) do Contact quando uma
 // nova conversa nasce via webhook. Bloco non-fatal: erros aqui só viram log.
-async function recordInboundCaptureEvent(input: RecordInboundCaptureInput): Promise<void> {
+async function recordInboundCaptureEvent(
+  input: RecordInboundCaptureInput,
+): Promise<void> {
   try {
     const inbox = await db.inbox.findUnique({
       where: { id: input.inboxId },
@@ -212,10 +247,13 @@ async function recordInboundCaptureEvent(input: RecordInboundCaptureInput): Prom
     })
 
     if (!inbox?.captureSourceId) {
-      console.warn('[resolveConversation] Inbox sem captureSourceId — pulando CaptureEvent', {
-        inboxId: input.inboxId,
-        orgId: input.orgId,
-      })
+      console.warn(
+        '[resolveConversation] Inbox sem captureSourceId — pulando CaptureEvent',
+        {
+          inboxId: input.inboxId,
+          orgId: input.orgId,
+        },
+      )
       return
     }
 
@@ -255,7 +293,10 @@ async function recordInboundCaptureEvent(input: RecordInboundCaptureInput): Prom
       orgId: input.orgId,
       contactId: input.contactId,
       conversationId: input.conversationId,
-      error: captureError instanceof Error ? captureError.message : String(captureError),
+      error:
+        captureError instanceof Error
+          ? captureError.message
+          : String(captureError),
     })
   }
 }
@@ -289,7 +330,10 @@ export async function assignContactOwner(
       })
     }
   } catch (error) {
-    console.warn('[resolveConversation] Falha ao atribuir contact/conversation:', { orgId, contactId, error })
+    console.warn(
+      '[resolveConversation] Falha ao atribuir contact/conversation:',
+      { orgId, contactId, error },
+    )
   }
 }
 
@@ -302,9 +346,15 @@ export async function createDealForNewConversation(
 ): Promise<void> {
   try {
     // 1. Resolver pipelineStageId
-    const firstStageId = await resolveFirstStageId(orgId, dealContext.pipelineId)
+    const firstStageId = await resolveFirstStageId(
+      orgId,
+      dealContext.pipelineId,
+    )
     if (!firstStageId) {
-      console.warn('[resolveConversation] Nenhum stage encontrado para criar deal', { orgId })
+      console.warn(
+        '[resolveConversation] Nenhum stage encontrado para criar deal',
+        { orgId },
+      )
       return
     }
 
@@ -318,7 +368,10 @@ export async function createDealForNewConversation(
       dealContext.squadId,
     )
     if (!assignedTo) {
-      console.warn('[resolveConversation] Nenhum assignee encontrado para criar deal', { orgId })
+      console.warn(
+        '[resolveConversation] Nenhum assignee encontrado para criar deal',
+        { orgId },
+      )
       return
     }
 
@@ -353,7 +406,11 @@ export async function createDealForNewConversation(
     })
   } catch (error) {
     // Deal é opcional — não deve bloquear a criação da conversa
-    console.warn('[resolveConversation] Falha ao criar deal automático:', { orgId, conversationId, error })
+    console.warn('[resolveConversation] Falha ao criar deal automático:', {
+      orgId,
+      conversationId,
+      error,
+    })
   }
 }
 
@@ -399,7 +456,11 @@ async function resolveAssignedTo(
 ): Promise<string | null> {
   // Squad tem prioridade — usa modelo e membros configurados no squad
   if (squadId) {
-    const squadResolution = await resolveSquadMember({ orgId, squadId, contactCurrentAssignedTo })
+    const squadResolution = await resolveSquadMember({
+      orgId,
+      squadId,
+      contactCurrentAssignedTo,
+    })
     if (squadResolution) return squadResolution.userId
   }
 
@@ -422,7 +483,10 @@ async function resolveAssignedTo(
   }
 
   if (model === SalesDistributionModel.PERFORMANCE_WEIGHTED) {
-    console.warn('[resolveConversation] PERFORMANCE_WEIGHTED not implemented, falling back to ROUND_ROBIN', { orgId })
+    console.warn(
+      '[resolveConversation] PERFORMANCE_WEIGHTED not implemented, falling back to ROUND_ROBIN',
+      { orgId },
+    )
   }
 
   return resolveRoundRobin(orgId, distributionUserIds, inboxId)
@@ -439,14 +503,20 @@ async function resolveRoundRobin(
       const index = (counter - 1) % distributionUserIds.length
       return distributionUserIds[index]
     } catch (error) {
-      console.warn('[resolveConversation] Redis INCR failed, using first user:', { inboxId, error })
+      console.warn(
+        '[resolveConversation] Redis INCR failed, using first user:',
+        { inboxId, error },
+      )
       return distributionUserIds[0]
     }
   }
   return resolveOrgOwner(orgId)
 }
 
-async function resolveByUtilization(orgId: string, userIds: string[]): Promise<string | null> {
+async function resolveByUtilization(
+  orgId: string,
+  userIds: string[],
+): Promise<string | null> {
   const openDealCounts = await db.deal.groupBy({
     by: ['assignedTo'],
     where: {
@@ -457,7 +527,9 @@ async function resolveByUtilization(orgId: string, userIds: string[]): Promise<s
     _count: { id: true },
   })
 
-  const countMap = new Map(openDealCounts.map((row) => [row.assignedTo, row._count.id]))
+  const countMap = new Map(
+    openDealCounts.map((row) => [row.assignedTo, row._count.id]),
+  )
 
   let minCount = Infinity
   let selectedUser = userIds[0]
@@ -475,14 +547,23 @@ async function resolveByUtilization(orgId: string, userIds: string[]): Promise<s
 
 // Garante que um contato tenha ContactPrivacy. Usado no backfill de contatos legados
 // criados antes da feature de privacidade existir. Idempotente: não cria duplicatas.
-async function ensureContactPrivacy(contactId: string, captureChannel: CaptureChannel): Promise<void> {
+async function ensureContactPrivacy(
+  contactId: string,
+  captureChannel: CaptureChannel,
+): Promise<void> {
   const hasPrivacy = await db.contactPrivacy.findUnique({
     where: { contactId },
     select: { contactId: true },
   })
   if (hasPrivacy) return
-  const { legalBasis, legalBasisSource } = CHANNEL_DEFAULT_LEGAL_BASIS[captureChannel]
-  await createContactPrivacy(db, { contactId, legalBasis, legalBasisSource, performedBy: null })
+  const { legalBasis, legalBasisSource } =
+    CHANNEL_DEFAULT_LEGAL_BASIS[captureChannel]
+  await createContactPrivacy(db, {
+    contactId,
+    legalBasis,
+    legalBasisSource,
+    performedBy: null,
+  })
 }
 
 async function resolveOrgOwner(orgId: string): Promise<string | null> {

@@ -13,6 +13,7 @@ import {
 } from '@/_lib/rbac'
 import { createNotification } from '@/_lib/notifications/create-notification'
 import { getOrgSlug } from '@/_lib/notifications/get-org-slug'
+import { toE164 } from '@/_utils/to-e164'
 import { evaluateAutomations } from '@/_lib/automations/evaluate-automations'
 import { advanceContactLifecycle } from '@/_lib/lifecycle/advance-contact-lifecycle'
 import { ensureDealHasPrimaryCaptureEvent } from '@/_lib/lifecycle/ensure-deal-capture-event'
@@ -99,7 +100,7 @@ export const createDealWithContact = orgActionClient
             assignedTo,
             name: data.contactName,
             email: data.contactEmail || null,
-            phone: data.contactPhone || null,
+            phone: toE164(data.contactPhone),
             isDecisionMaker: false,
           },
         })
@@ -191,28 +192,32 @@ export const createDealWithContact = orgActionClient
 
     // Automações rodam depois da resposta mas dentro do contexto do request,
     // para que revalidateTag/revalidatePath dos executores funcionem corretamente
-    after(() => evaluateAutomations({
-      subjectKind: 'deal',
-      orgId: ctx.orgId,
-      triggerType: 'DEAL_CREATED',
-      dealId: deal.id,
-      payload: {
-        stageId: data.stageId,
-        pipelineId: stage.pipelineId,
-        assignedTo,
-      },
-    }))
+    after(() =>
+      evaluateAutomations({
+        subjectKind: 'deal',
+        orgId: ctx.orgId,
+        triggerType: 'DEAL_CREATED',
+        dealId: deal.id,
+        payload: {
+          stageId: data.stageId,
+          pipelineId: stage.pipelineId,
+          assignedTo,
+        },
+      }),
+    )
 
     // Dispara CONTACT_CREATED para o contato criado inline — o contato é novo
     // e deve participar do motor de automações como qualquer outro contato criado
     if (newContactId) {
-      after(() => evaluateAutomations({
-        subjectKind: 'contact',
-        orgId: ctx.orgId,
-        triggerType: 'CONTACT_CREATED',
-        contactId: newContactId,
-        payload: { lifecycleStage: 'LEAD', assignedTo },
-      }))
+      after(() =>
+        evaluateAutomations({
+          subjectKind: 'contact',
+          orgId: ctx.orgId,
+          triggerType: 'CONTACT_CREATED',
+          contactId: newContactId,
+          payload: { lifecycleStage: 'LEAD', assignedTo },
+        }),
+      )
     }
 
     after(async () => {
@@ -230,7 +235,10 @@ export const createDealWithContact = orgActionClient
 
       if (!primaryContact) return
 
-      await ensureDealHasPrimaryCaptureEvent({ dealId: deal.id, organizationId: ctx.orgId })
+      await ensureDealHasPrimaryCaptureEvent({
+        dealId: deal.id,
+        organizationId: ctx.orgId,
+      })
       await advanceContactLifecycle({
         contactId: primaryContact.contactId,
         organizationId: ctx.orgId,

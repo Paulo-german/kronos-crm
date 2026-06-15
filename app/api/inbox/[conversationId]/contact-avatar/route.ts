@@ -4,6 +4,7 @@ import { createClient } from '@/_lib/supabase/server'
 import { validateMembership } from '@/_data-access/organization/validate-membership'
 import { ORG_SLUG_COOKIE } from '@/_lib/constants'
 import { db } from '@/_lib/prisma'
+import { normalizePhoneToDigits } from '@/_lib/whatsapp/normalize-phone'
 
 interface RouteContext {
   params: Promise<{ conversationId: string }>
@@ -72,7 +73,9 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', apikey: apiKey },
-        body: JSON.stringify({ number: phone }),
+        body: JSON.stringify({
+          number: normalizePhoneToDigits(phone) ?? phone,
+        }),
         signal: AbortSignal.timeout(4000),
       },
     )
@@ -97,7 +100,8 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       return new Response(null, { status: 204 })
     }
 
-    const contentType = imageResponse.headers.get('content-type') ?? 'image/jpeg'
+    const contentType =
+      imageResponse.headers.get('content-type') ?? 'image/jpeg'
     const buffer = await imageResponse.arrayBuffer()
 
     return new Response(buffer, {

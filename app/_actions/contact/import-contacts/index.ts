@@ -10,12 +10,17 @@ import {
   resolveAssignedTo,
 } from '@/_lib/rbac'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
+import { toE164 } from '@/_utils/to-e164'
 import type { CustomerStatus, LifecycleStage } from '@prisma/client'
 
 function resolveLifecycleTimestamps(stage: LifecycleStage, now: Date) {
   return {
-    qualifiedAt: ['QUALIFIED', 'OPPORTUNITY', 'CUSTOMER'].includes(stage) ? now : null,
-    becameOpportunityAt: ['OPPORTUNITY', 'CUSTOMER'].includes(stage) ? now : null,
+    qualifiedAt: ['QUALIFIED', 'OPPORTUNITY', 'CUSTOMER'].includes(stage)
+      ? now
+      : null,
+    becameOpportunityAt: ['OPPORTUNITY', 'CUSTOMER'].includes(stage)
+      ? now
+      : null,
     becameCustomerAt: stage === 'CUSTOMER' ? now : null,
   }
 }
@@ -65,7 +70,10 @@ export const importContacts = orgActionClient
     })
 
     const companyMap = new Map(
-      existingCompanies.map((company) => [company.name.toLowerCase().trim(), company.id]),
+      existingCompanies.map((company) => [
+        company.name.toLowerCase().trim(),
+        company.id,
+      ]),
     )
 
     const newCompanyNames = new Set<string>()
@@ -78,7 +86,10 @@ export const importContacts = orgActionClient
     }
 
     const now = new Date()
-    const lifecycleTimestamps = resolveLifecycleTimestamps(data.lifecycleStage, now)
+    const lifecycleTimestamps = resolveLifecycleTimestamps(
+      data.lifecycleStage,
+      now,
+    )
     const customerStatus = resolveCustomerStatus(data.lifecycleStage)
 
     // 5. Transação: criar empresas + contatos + histórico de lifecycle
@@ -96,7 +107,7 @@ export const importContacts = orgActionClient
       const createdContacts = await tx.contact.createManyAndReturn({
         data: data.rows.map((row) => {
           const companyId = row.companyName
-            ? companyMap.get(row.companyName.toLowerCase().trim()) ?? null
+            ? (companyMap.get(row.companyName.toLowerCase().trim()) ?? null)
             : null
 
           return {
@@ -104,7 +115,7 @@ export const importContacts = orgActionClient
             assignedTo,
             name: row.name,
             email: row.email || null,
-            phone: row.phone || null,
+            phone: toE164(row.phone),
             role: row.role || null,
             companyId,
             isDecisionMaker: row.isDecisionMaker ?? false,
@@ -119,7 +130,8 @@ export const importContacts = orgActionClient
       })
 
       // Registrar entrada no histórico de lifecycle para cada contato
-      const causeType = data.lifecycleStage === 'LEAD' ? 'CONTACT_CREATED' : 'BACKFILL'
+      const causeType =
+        data.lifecycleStage === 'LEAD' ? 'CONTACT_CREATED' : 'BACKFILL'
       await tx.contactLifecycleHistory.createMany({
         data: createdContacts.map((contact) => ({
           contactId: contact.id,
@@ -139,7 +151,12 @@ export const importContacts = orgActionClient
           legalBasisSource: 'IMPORT' as const,
           consentedAt: data.legalBasis === 'CONSENT' ? new Date() : null,
         })),
-        select: { id: true, contactId: true, legalBasis: true, legalBasisSource: true },
+        select: {
+          id: true,
+          contactId: true,
+          legalBasis: true,
+          legalBasisSource: true,
+        },
       })
 
       await tx.consentEvent.createMany({
