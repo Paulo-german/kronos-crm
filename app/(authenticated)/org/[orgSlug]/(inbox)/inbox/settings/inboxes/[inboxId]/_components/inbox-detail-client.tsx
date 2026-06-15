@@ -300,8 +300,8 @@ const InboxDetailClient = ({
             canManage={canManage}
             savedApiUrl={inbox.evolutionApiUrl ?? null}
             savedInstanceName={inbox.evolutionInstanceName ?? null}
-            savedApiTokenMasked={inbox.evolutionApiKey ?? null}
-            webhookSecret={inbox.evolutionWebhookSecret ?? null}
+            savedApiTokenMasked={inbox.evolutionApiKeyMasked}
+            hasWebhookSecret={inbox.hasEvolutionWebhookSecret}
           />
           {isEvolutionConnected && (
             <EvolutionGoConnectionCard
@@ -324,8 +324,8 @@ const InboxDetailClient = ({
             canManage={canManage}
             savedApiUrl={inbox.evolutionApiUrl ?? null}
             savedInstanceName={inbox.evolutionInstanceName ?? null}
-            savedApiKeyMasked={inbox.evolutionApiKey ?? null}
-            webhookSecret={inbox.evolutionWebhookSecret ?? null}
+            savedApiKeyMasked={inbox.evolutionApiKeyMasked}
+            hasWebhookSecret={inbox.hasEvolutionWebhookSecret}
           />
           {isEvolutionConnected && (
             <InboxConnectionCard

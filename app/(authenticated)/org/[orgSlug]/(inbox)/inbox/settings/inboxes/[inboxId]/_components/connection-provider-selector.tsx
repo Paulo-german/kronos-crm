@@ -36,7 +36,14 @@ interface ProviderCardProps {
   disabled?: boolean
 }
 
-const ProviderCard = ({ logo, logoAlt, name, badge, onClick, disabled }: ProviderCardProps) => (
+const ProviderCard = ({
+  logo,
+  logoAlt,
+  name,
+  badge,
+  onClick,
+  disabled,
+}: ProviderCardProps) => (
   <button
     type="button"
     disabled={disabled}
@@ -74,7 +81,8 @@ const ConnectionProviderSelector = ({
   connectionStats,
   instanceInfo,
 }: ConnectionProviderSelectorProps) => {
-  const [selectedProvider, setSelectedProvider] = useState<ProviderSelection>(null)
+  const [selectedProvider, setSelectedProvider] =
+    useState<ProviderSelection>(null)
 
   if (selectedProvider === 'evolution') {
     return (
@@ -135,7 +143,7 @@ const ConnectionProviderSelector = ({
           savedApiUrl={null}
           savedInstanceName={null}
           savedApiKeyMasked={null}
-          webhookSecret={null}
+          hasWebhookSecret={false}
           onRemoved={() => setSelectedProvider(null)}
         />
       </div>
@@ -152,7 +160,7 @@ const ConnectionProviderSelector = ({
           savedApiUrl={null}
           savedInstanceName={null}
           savedApiTokenMasked={null}
-          webhookSecret={null}
+          hasWebhookSecret={false}
           onRemoved={() => setSelectedProvider(null)}
         />
       </div>

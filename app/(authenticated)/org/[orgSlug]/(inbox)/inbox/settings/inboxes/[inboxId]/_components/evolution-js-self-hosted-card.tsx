@@ -36,6 +36,7 @@ import {
   FormMessage,
 } from '@/_components/ui/form'
 import ConfirmationDialog from '@/_components/confirmation-dialog'
+import { getInboxWebhookUrl } from '@/_actions/inbox/get-inbox-webhook-url'
 import { saveEvolutionSelfHosted } from '@/_actions/inbox/save-evolution-self-hosted'
 import { removeEvolutionSelfHosted } from '@/_actions/inbox/remove-evolution-self-hosted'
 import { testEvolutionConnection } from '@/_actions/inbox/test-evolution-connection'
@@ -49,10 +50,7 @@ const selfHostedFormSchema = z.object({
       (url) => url.startsWith('https://') || url.startsWith('http://'),
       'URL deve começar com http:// ou https://',
     )
-    .refine(
-      (url) => !url.endsWith('/'),
-      'URL não deve terminar com barra',
-    ),
+    .refine((url) => !url.endsWith('/'), 'URL não deve terminar com barra'),
   evolutionInstanceName: z
     .string()
     .trim()
@@ -74,18 +72,8 @@ interface EvolutionSelfHostedCardProps {
   savedApiUrl: string | null
   savedInstanceName: string | null
   savedApiKeyMasked: string | null
-  webhookSecret: string | null
+  hasWebhookSecret: boolean
   onRemoved?: () => void
-}
-
-const buildWebhookUrl = (webhookSecret: string): string => {
-  const appUrl = 'https://app.kronoshub.com.br'
-  return `${appUrl}/api/webhooks/evolution?secret=${webhookSecret}`
-}
-
-const maskApiKey = (key: string): string => {
-  if (key.length <= 8) return '••••••••'
-  return `${key.slice(0, 4)}${'•'.repeat(key.length - 8)}${key.slice(-4)}`
 }
 
 const EvolutionSelfHostedCard = ({
@@ -94,13 +82,15 @@ const EvolutionSelfHostedCard = ({
   savedApiUrl,
   savedInstanceName,
   savedApiKeyMasked,
-  webhookSecret,
+  hasWebhookSecret,
   onRemoved,
 }: EvolutionSelfHostedCardProps) => {
   const isAlreadySaved = !!savedApiUrl && !!savedInstanceName
   const [showApiKey, setShowApiKey] = useState(false)
   const [webhookCopied, setWebhookCopied] = useState(false)
   const [isRemoveOpen, setIsRemoveOpen] = useState(false)
+  // URL do webhook (contém o secret) só chega ao client sob demanda, via action
+  const [webhookUrl, setWebhookUrl] = useState<string | null>(null)
 
   // Quando as credenciais já estão salvas, exibimos os campos em modo somente leitura
   // e oferecemos a opção de editar (resetar para o modo formulário)
@@ -132,7 +122,9 @@ const EvolutionSelfHostedCard = ({
     removeEvolutionSelfHosted,
     {
       onSuccess: () => {
-        toast.success('Configuração self-hosted removida. Usando WhatsApp padrão.')
+        toast.success(
+          'Configuração self-hosted removida. Usando WhatsApp padrão.',
+        )
         setIsRemoveOpen(false)
         onRemoved?.()
       },
@@ -141,6 +133,16 @@ const EvolutionSelfHostedCard = ({
       },
     },
   )
+
+  const { execute: executeGetWebhookUrl, isPending: isLoadingWebhookUrl } =
+    useAction(getInboxWebhookUrl, {
+      onSuccess: ({ data }) => {
+        setWebhookUrl(data?.webhookUrl ?? null)
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError || 'Erro ao buscar URL do webhook.')
+      },
+    })
 
   const { execute: executeTest, isPending: isTesting } = useAction(
     testEvolutionConnection,
@@ -180,9 +182,8 @@ const EvolutionSelfHostedCard = ({
   }
 
   const handleCopyWebhook = async () => {
-    if (!webhookSecret) return
-    const url = buildWebhookUrl(webhookSecret)
-    await navigator.clipboard.writeText(url)
+    if (!webhookUrl) return
+    await navigator.clipboard.writeText(webhookUrl)
     setWebhookCopied(true)
     setTimeout(() => setWebhookCopied(false), 2000)
   }
@@ -207,7 +208,9 @@ const EvolutionSelfHostedCard = ({
                 />
               </div>
               <div>
-                <CardTitle className="text-base font-semibold">Evolution API</CardTitle>
+                <CardTitle className="text-base font-semibold">
+                  Evolution API
+                </CardTitle>
                 <CardDescription>Self-hosted (Node.js)</CardDescription>
               </div>
             </div>
@@ -222,7 +225,7 @@ const EvolutionSelfHostedCard = ({
                 <p className="text-xs font-medium text-muted-foreground">
                   URL da API
                 </p>
-                <p className="rounded-md border border-border/50 bg-background/70 px-3 py-2 text-sm font-mono break-all">
+                <p className="break-all rounded-md border border-border/50 bg-background/70 px-3 py-2 font-mono text-sm">
                   {savedApiUrl}
                 </p>
               </div>
@@ -232,7 +235,7 @@ const EvolutionSelfHostedCard = ({
                   <p className="text-xs font-medium text-muted-foreground">
                     Instância
                   </p>
-                  <p className="rounded-md border border-border/50 bg-background/70 px-3 py-2 text-sm font-mono break-all">
+                  <p className="break-all rounded-md border border-border/50 bg-background/70 px-3 py-2 font-mono text-sm">
                     {savedInstanceName}
                   </p>
                 </div>
@@ -241,8 +244,8 @@ const EvolutionSelfHostedCard = ({
                   <p className="text-xs font-medium text-muted-foreground">
                     API Key
                   </p>
-                  <p className="rounded-md border border-border/50 bg-background/70 px-3 py-2 text-sm font-mono">
-                    {maskApiKey(savedApiKeyMasked ?? '••••••••')}
+                  <p className="rounded-md border border-border/50 bg-background/70 px-3 py-2 font-mono text-sm">
+                    {savedApiKeyMasked ?? '••••••••'}
                   </p>
                 </div>
               </div>
@@ -362,10 +365,7 @@ const EvolutionSelfHostedCard = ({
 
                 {canManage && (
                   <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                      type="submit"
-                      disabled={isSaving}
-                    >
+                    <Button type="submit" disabled={isSaving}>
                       {isSaving ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       ) : (
@@ -397,7 +397,7 @@ const EvolutionSelfHostedCard = ({
           )}
 
           {/* URL do Webhook — exibida apenas quando credenciais já foram salvas */}
-          {webhookSecret && (
+          {hasWebhookSecret && (
             <Alert className="border-blue-500/20 bg-blue-500/5">
               <Info className="h-4 w-4 text-blue-600" />
               <AlertDescription className="space-y-3">
@@ -405,28 +405,45 @@ const EvolutionSelfHostedCard = ({
                   Configure o webhook na sua instância Evolution
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Copie a URL abaixo e configure como webhook na sua instância
-                  Evolution API. O Kronos usará esta URL para receber mensagens.
+                  Configure a URL abaixo como webhook na sua instância Evolution
+                  API. O Kronos usará esta URL para receber mensagens.
                 </p>
-                <div className="flex items-center gap-2">
-                  <code className="flex-1 overflow-x-auto rounded border border-border/50 bg-background/70 px-3 py-2 text-xs font-mono break-all">
-                    {buildWebhookUrl(webhookSecret)}
-                  </code>
+                {webhookUrl ? (
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 overflow-x-auto break-all rounded border border-border/50 bg-background/70 px-3 py-2 font-mono text-xs">
+                      {webhookUrl}
+                    </code>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-9 w-9 shrink-0"
+                      onClick={handleCopyWebhook}
+                      type="button"
+                      title="Copiar URL do webhook"
+                    >
+                      {webhookCopied ? (
+                        <Check className="h-4 w-4 text-emerald-600" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                ) : (
                   <Button
                     variant="outline"
-                    size="icon"
-                    className="h-9 w-9 shrink-0"
-                    onClick={handleCopyWebhook}
+                    size="sm"
+                    onClick={() => executeGetWebhookUrl({ inboxId })}
+                    disabled={isLoadingWebhookUrl}
                     type="button"
-                    title="Copiar URL do webhook"
                   >
-                    {webhookCopied ? (
-                      <Check className="h-4 w-4 text-emerald-600" />
+                    {isLoadingWebhookUrl ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
-                      <Copy className="h-4 w-4" />
+                      <Eye className="mr-2 h-4 w-4" />
                     )}
+                    Mostrar URL do webhook
                   </Button>
-                </div>
+                )}
               </AlertDescription>
             </Alert>
           )}

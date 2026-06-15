@@ -37,6 +37,7 @@ import {
   FormMessage,
 } from '@/_components/ui/form'
 import ConfirmationDialog from '@/_components/confirmation-dialog'
+import { getInboxWebhookUrl } from '@/_actions/inbox/get-inbox-webhook-url'
 import { saveEvolutionGoCredentials } from '@/_actions/inbox/save-evolution-go-credentials'
 import { removeEvolutionGoCredentials } from '@/_actions/inbox/remove-evolution-go-credentials'
 import { testEvolutionGoConnection } from '@/_actions/inbox/test-evolution-go-connection'
@@ -70,23 +71,8 @@ interface EvolutionGoCardProps {
   savedApiUrl: string | null
   savedInstanceName: string | null
   savedApiTokenMasked: string | null
-  webhookSecret: string | null
+  hasWebhookSecret: boolean
   onRemoved?: () => void
-}
-
-const PRODUCTION_URL = 'https://app.kronoshub.com.br'
-
-const buildGoWebhookUrl = (webhookSecret: string): string => {
-  const appUrl =
-    typeof window !== 'undefined'
-      ? window.location.origin
-      : PRODUCTION_URL
-  return `${appUrl}/api/webhooks/evolution-go?secret=${webhookSecret}`
-}
-
-const maskToken = (token: string): string => {
-  if (token.length <= 8) return '••••••••'
-  return `${token.slice(0, 4)}${'•'.repeat(token.length - 8)}${token.slice(-4)}`
 }
 
 const EvolutionGoCard = ({
@@ -95,7 +81,7 @@ const EvolutionGoCard = ({
   savedApiUrl,
   savedInstanceName,
   savedApiTokenMasked,
-  webhookSecret,
+  hasWebhookSecret,
   onRemoved,
 }: EvolutionGoCardProps) => {
   const isAlreadySaved = !!savedApiUrl && !!savedInstanceName
@@ -103,6 +89,8 @@ const EvolutionGoCard = ({
   const [webhookCopied, setWebhookCopied] = useState(false)
   const [isRemoveOpen, setIsRemoveOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(!isAlreadySaved)
+  // URL do webhook (contém o secret) só chega ao client sob demanda, via action
+  const [webhookUrl, setWebhookUrl] = useState<string | null>(null)
 
   const form = useForm<GoFormValues>({
     resolver: zodResolver(goFormSchema),
@@ -140,6 +128,16 @@ const EvolutionGoCard = ({
     },
   )
 
+  const { execute: executeGetWebhookUrl, isPending: isLoadingWebhookUrl } =
+    useAction(getInboxWebhookUrl, {
+      onSuccess: ({ data }) => {
+        setWebhookUrl(data?.webhookUrl ?? null)
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError || 'Erro ao buscar URL do webhook.')
+      },
+    })
+
   const { execute: executeTest, isPending: isTesting } = useAction(
     testEvolutionGoConnection,
     {
@@ -176,9 +174,8 @@ const EvolutionGoCard = ({
   }
 
   const handleCopyWebhook = async () => {
-    if (!webhookSecret) return
-    const url = buildGoWebhookUrl(webhookSecret)
-    await navigator.clipboard.writeText(url)
+    if (!webhookUrl) return
+    await navigator.clipboard.writeText(webhookUrl)
     setWebhookCopied(true)
     setTimeout(() => setWebhookCopied(false), 2000)
   }
@@ -199,7 +196,9 @@ const EvolutionGoCard = ({
                 />
               </div>
               <div>
-                <CardTitle className="text-base font-semibold">Evolution Go</CardTitle>
+                <CardTitle className="text-base font-semibold">
+                  Evolution Go
+                </CardTitle>
                 <CardDescription>Self-hosted (Go)</CardDescription>
               </div>
             </div>
@@ -211,24 +210,30 @@ const EvolutionGoCard = ({
           {isAlreadySaved && !isEditing ? (
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <p className="text-xs font-medium text-muted-foreground">URL do servidor</p>
-                <p className="rounded-md border border-border/50 bg-background/70 px-3 py-2 text-sm font-mono break-all">
+                <p className="text-xs font-medium text-muted-foreground">
+                  URL do servidor
+                </p>
+                <p className="break-all rounded-md border border-border/50 bg-background/70 px-3 py-2 font-mono text-sm">
                   {savedApiUrl}
                 </p>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <p className="text-xs font-medium text-muted-foreground">Instância</p>
-                  <p className="rounded-md border border-border/50 bg-background/70 px-3 py-2 text-sm font-mono break-all">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Instância
+                  </p>
+                  <p className="break-all rounded-md border border-border/50 bg-background/70 px-3 py-2 font-mono text-sm">
                     {savedInstanceName}
                   </p>
                 </div>
 
                 <div className="space-y-1.5">
-                  <p className="text-xs font-medium text-muted-foreground">Token</p>
-                  <p className="rounded-md border border-border/50 bg-background/70 px-3 py-2 text-sm font-mono">
-                    {maskToken(savedApiTokenMasked ?? '••••••••')}
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Token
+                  </p>
+                  <p className="rounded-md border border-border/50 bg-background/70 px-3 py-2 font-mono text-sm">
+                    {savedApiTokenMasked ?? '••••••••'}
                   </p>
                 </div>
               </div>
@@ -264,7 +269,10 @@ const EvolutionGoCard = ({
           ) : (
             /* Modo formulário — inserir/editar credenciais */
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+              <form
+                onSubmit={form.handleSubmit(handleSubmit)}
+                className="space-y-4"
+              >
                 <FormField
                   control={form.control}
                   name="apiUrl"
@@ -343,7 +351,8 @@ const EvolutionGoCard = ({
                           </div>
                         </FormControl>
                         <FormDescription>
-                          Token definido na própria instância, não a chave global do servidor
+                          Token definido na própria instância, não a chave
+                          global do servidor
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -385,7 +394,7 @@ const EvolutionGoCard = ({
           )}
 
           {/* URL do Webhook — exibida apenas quando credenciais já foram salvas */}
-          {webhookSecret && (
+          {hasWebhookSecret && (
             <Alert className="border-blue-500/20 bg-blue-500/5">
               <Info className="h-4 w-4 text-blue-600" />
               <AlertDescription className="space-y-3">
@@ -393,28 +402,45 @@ const EvolutionGoCard = ({
                   Configure o webhook na sua instância Evolution Go
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Copie a URL abaixo e configure como webhook no seu servidor
-                  Evolution Go. O Kronos usará esta URL para receber mensagens.
+                  Configure a URL abaixo como webhook no seu servidor Evolution
+                  Go. O Kronos usará esta URL para receber mensagens.
                 </p>
-                <div className="flex items-center gap-2">
-                  <code className="flex-1 overflow-x-auto rounded border border-border/50 bg-background/70 px-3 py-2 text-xs font-mono break-all">
-                    {buildGoWebhookUrl(webhookSecret)}
-                  </code>
+                {webhookUrl ? (
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 overflow-x-auto break-all rounded border border-border/50 bg-background/70 px-3 py-2 font-mono text-xs">
+                      {webhookUrl}
+                    </code>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-9 w-9 shrink-0"
+                      onClick={handleCopyWebhook}
+                      type="button"
+                      title="Copiar URL do webhook"
+                    >
+                      {webhookCopied ? (
+                        <Check className="h-4 w-4 text-emerald-600" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                ) : (
                   <Button
                     variant="outline"
-                    size="icon"
-                    className="h-9 w-9 shrink-0"
-                    onClick={handleCopyWebhook}
+                    size="sm"
+                    onClick={() => executeGetWebhookUrl({ inboxId })}
+                    disabled={isLoadingWebhookUrl}
                     type="button"
-                    title="Copiar URL do webhook"
                   >
-                    {webhookCopied ? (
-                      <Check className="h-4 w-4 text-emerald-600" />
+                    {isLoadingWebhookUrl ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
-                      <Copy className="h-4 w-4" />
+                      <Eye className="mr-2 h-4 w-4" />
                     )}
+                    Mostrar URL do webhook
                   </Button>
-                </div>
+                )}
               </AlertDescription>
             </Alert>
           )}
@@ -433,8 +459,8 @@ const EvolutionGoCard = ({
                 Remover configuração
               </Button>
               <p className="mt-1 text-xs text-muted-foreground">
-                Remove as credenciais salvas. Sua instância no servidor Evolution Go
-                não será afetada.
+                Remove as credenciais salvas. Sua instância no servidor
+                Evolution Go não será afetada.
               </p>
             </div>
           )}

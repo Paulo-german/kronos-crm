@@ -1,4 +1,5 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
+import { isElevated } from '@/_lib/rbac'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getInboxById } from '@/_data-access/inbox/get-inbox-by-id'
 import { getAgents } from '@/_data-access/agent/get-agents'
@@ -19,14 +20,20 @@ const InboxDetailPage = async ({ params }: InboxDetailPageProps) => {
   const { orgSlug, inboxId } = await params
   const ctx = await getOrgContext(orgSlug)
 
-  const [inbox, agents, agentGroups, membersData, pipelines, squads] = await Promise.all([
-    getInboxById(inboxId, ctx.orgId),
-    getAgents(ctx.orgId),
-    getAgentGroups(ctx.orgId),
-    getOrganizationMembers(ctx.orgId),
-    getOrgPipelines(ctx.orgId),
-    getSquads(ctx),
-  ])
+  // RBAC: configurações de inbox (credenciais, webhook) só para roles elevados
+  if (!isElevated(ctx.userRole)) {
+    redirect(`/org/${orgSlug}/inbox/settings/inboxes`)
+  }
+
+  const [inbox, agents, agentGroups, membersData, pipelines, squads] =
+    await Promise.all([
+      getInboxById(inboxId, ctx.orgId),
+      getAgents(ctx.orgId),
+      getAgentGroups(ctx.orgId),
+      getOrganizationMembers(ctx.orgId),
+      getOrgPipelines(ctx.orgId),
+      getSquads(ctx),
+    ])
 
   if (!inbox) notFound()
 

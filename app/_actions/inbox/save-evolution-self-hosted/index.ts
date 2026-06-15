@@ -5,7 +5,10 @@ import { Prisma } from '@prisma/client'
 import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
-import { getEvolutionInstanceInfo } from '@/_lib/evolution-js/instance-management'
+import {
+  buildSelfHostedWebhookUrl,
+  getEvolutionInstanceInfo,
+} from '@/_lib/evolution-js/instance-management'
 import { evolutionSelfHostedSchema } from './schema'
 
 export const saveEvolutionSelfHosted = orgActionClient
@@ -77,7 +80,8 @@ export const saveEvolutionSelfHosted = orgActionClient
           evolutionApiUrl: data.evolutionApiUrl,
           evolutionApiKey: resolvedApiKey,
           evolutionInstanceName: data.evolutionInstanceName,
-          evolutionInstanceId: instanceInfo?.ownerJid ?? data.evolutionInstanceName,
+          evolutionInstanceId:
+            instanceInfo?.ownerJid ?? data.evolutionInstanceName,
           connectionType: 'EVOLUTION',
           evolutionWebhookSecret: webhookSecret,
         },
@@ -102,5 +106,9 @@ export const saveEvolutionSelfHosted = orgActionClient
       revalidateTag(`agents:${ctx.orgId}`)
     }
 
-    return { success: true, webhookSecret }
+    // Secret cru nunca retorna ao client — apenas a URL montada, sob RBAC
+    return {
+      success: true,
+      webhookUrl: buildSelfHostedWebhookUrl(webhookSecret),
+    }
   })
