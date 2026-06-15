@@ -12,7 +12,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
-import { Check, ChevronsUpDown, Loader2 } from 'lucide-react'
+import { Check, ChevronsUpDown, Loader2, PhoneIcon } from 'lucide-react'
 import { cn } from '@/_lib/utils'
 import {
   SheetContent,
@@ -63,7 +63,9 @@ import {
 import {
   dealWithContactFormSchema,
   type DealWithContactFormInput,
+  type CreateDealWithContactInput,
 } from '@/_actions/deal/create-deal-with-contact/schema'
+import ConfirmationDialog from '@/_components/confirmation-dialog'
 import type { UpdateDealInput } from '@/_actions/deal/update-deal/schema'
 import type { ContactOptionDto } from '@/_data-access/contact/get-contacts-options'
 import type { StageDto } from '@/_data-access/pipeline/get-user-pipeline'
@@ -99,6 +101,9 @@ export function DealDialogContent({
   const [contactResults, setContactResults] = useState<ContactOptionDto[]>([])
   const [selectedContactCache, setSelectedContactCache] =
     useState<ContactOptionDto | null>(null)
+  // Guarda os dados pendentes quando o telefone já existe e aguarda confirmação
+  const [pendingPhoneConfirm, setPendingPhoneConfirm] =
+    useState<CreateDealWithContactInput | null>(null)
   const contactDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const { execute: executeContactSearch, isPending: isSearchingContacts } =
@@ -164,7 +169,12 @@ export function DealDialogContent({
 
   const { execute: executeCreateWithContact, isPending: isCreating } =
     useAction(createDealWithContact, {
-      onSuccess: () => {
+      onSuccess: ({ data, input }) => {
+        // Telefone duplicado: pede confirmação ao operador antes de criar
+        if (data?.needsPhoneConfirmation) {
+          setPendingPhoneConfirm(input)
+          return
+        }
         const contactMode = createForm.getValues('contactMode')
         const message =
           contactMode === 'new'
@@ -732,6 +742,30 @@ export function DealDialogContent({
           </form>
         </Form>
       )}
+
+      <ConfirmationDialog
+        open={!!pendingPhoneConfirm}
+        onOpenChange={(open) => !open && setPendingPhoneConfirm(null)}
+        title="Telefone já cadastrado"
+        description={
+          <span>
+            Já existe outro contato com este telefone nesta organização. Deseja
+            criar mesmo assim?
+          </span>
+        }
+        icon={<PhoneIcon className="h-6 w-6" />}
+        confirmLabel="Criar mesmo assim"
+        isLoading={isCreating}
+        onConfirm={() => {
+          if (pendingPhoneConfirm?.contactMode === 'new') {
+            executeCreateWithContact({
+              ...pendingPhoneConfirm,
+              confirmDuplicatePhone: true,
+            })
+          }
+          setPendingPhoneConfirm(null)
+        }}
+      />
     </SheetContent>
   )
 }

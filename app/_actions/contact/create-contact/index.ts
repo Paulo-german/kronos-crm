@@ -115,6 +115,31 @@ export const createContact = orgActionClient
       }
     }
 
+    // Aviso não-bloqueante: telefone não tem unicidade (diferente do email).
+    // Detecta duplicata para alertar o operador, mas permite criar.
+    const normalizedPhone = toE164(data.phone)
+    const phoneAlreadyUsed = normalizedPhone
+      ? Boolean(
+          await db.contact.findFirst({
+            where: { organizationId: ctx.orgId, phone: normalizedPhone },
+            select: { id: true },
+          }),
+        )
+      : false
+
+    // Telefone não tem unicidade (diferente do email): se já existe e o operador
+    // ainda não confirmou, devolve sem criar para o front pedir confirmação.
+    if (phoneAlreadyUsed && !data.confirmDuplicatePhone) {
+      return {
+        success: false,
+        needsPhoneConfirmation: true,
+        contactId: null,
+        dealId: null,
+        current: null,
+        limit: null,
+      }
+    }
+
     try {
       const txResult = await db.$transaction(async (tx) => {
         const newContact = await tx.contact.create({
@@ -123,7 +148,7 @@ export const createContact = orgActionClient
             assignedTo,
             name: data.name,
             email: normalizeEmail(data.email),
-            phone: toE164(data.phone),
+            phone: normalizedPhone,
             role: data.role || null,
             companyId: data.companyId || null,
             isDecisionMaker: data.isDecisionMaker,
@@ -218,6 +243,7 @@ export const createContact = orgActionClient
 
       return {
         success: true,
+        needsPhoneConfirmation: false,
         contactId: txResult.contact.id,
         dealId: txResult.dealId,
         current: quota.current,

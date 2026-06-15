@@ -18,6 +18,8 @@ export const contactSchema = z
       .optional()
       .or(z.literal('')),
     phone: z.string().max(CONTACT_PHONE_MAX).optional(),
+    // Operador confirmou criar mesmo com telefone já usado por outro contato
+    confirmDuplicatePhone: z.boolean().optional(),
     role: z.string().max(CONTACT_ROLE_MAX).optional(),
     companyId: z.string().uuid().optional().nullable(),
     isDecisionMaker: z.boolean(),

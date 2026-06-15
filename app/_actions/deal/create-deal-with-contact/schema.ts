@@ -12,6 +12,8 @@ const newContactSchema = z.object({
   contactName: z.string().trim().min(1, 'Nome do contato é obrigatório'),
   contactEmail: z.string().email('Email inválido').optional().or(z.literal('')),
   contactPhone: z.string().optional(),
+  // Operador confirmou criar mesmo com telefone já usado por outro contato
+  confirmDuplicatePhone: z.boolean().optional(),
 })
 
 // Campos base compartilhados por ambos os modos
@@ -27,10 +29,15 @@ const dealBaseSchema = z.object({
 // Schema principal da action: intersection garante que os campos base sempre existam
 export const createDealWithContactSchema = z.intersection(
   dealBaseSchema,
-  z.discriminatedUnion('contactMode', [existingContactSchema, newContactSchema]),
+  z.discriminatedUnion('contactMode', [
+    existingContactSchema,
+    newContactSchema,
+  ]),
 )
 
-export type CreateDealWithContactInput = z.infer<typeof createDealWithContactSchema>
+export type CreateDealWithContactInput = z.infer<
+  typeof createDealWithContactSchema
+>
 
 // Schema do formulário client-side: sem uuid rígido (stageId pode vir como string plain
 // do <Select>), e inclui campos "fantasmas" do outro modo como optional para que o RHF
@@ -56,8 +63,13 @@ export const dealWithContactFormSchema = z.intersection(
     z.object({
       contactMode: z.literal('new'),
       contactName: z.string().min(1, 'Nome do contato é obrigatório'),
-      contactEmail: z.string().email('Email inválido').optional().or(z.literal('')),
+      contactEmail: z
+        .string()
+        .email('Email inválido')
+        .optional()
+        .or(z.literal('')),
       contactPhone: z.string().optional(),
+      confirmDuplicatePhone: z.boolean().optional(),
       // Campo do outro modo presente, mas não validado neste branch
       contactId: z.string().optional(),
     }),

@@ -1,6 +1,6 @@
 'use client'
 
-import { Dispatch, SetStateAction, useEffect } from 'react'
+import { Dispatch, SetStateAction, useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAction } from 'next-safe-action/hooks'
@@ -45,7 +45,8 @@ import {
 } from '@/_lib/lifecycle/lifecycle-stage-config'
 import { CAPTURE_CHANNEL_CONFIG } from '@/_lib/lifecycle/capture-channel-config'
 import { LEGAL_BASIS_OPTIONS } from '@/_lib/privacy/consent-labels'
-import { Loader2, InfoIcon, UsersIcon } from 'lucide-react'
+import { Loader2, InfoIcon, UsersIcon, PhoneIcon } from 'lucide-react'
+import ConfirmationDialog from '@/_components/confirmation-dialog'
 import type { MemberRole } from '@prisma/client'
 import { CaptureChannel, LegalBasis, LifecycleStage } from '@prisma/client'
 
@@ -189,10 +190,19 @@ const UpsertContactDialogContent = ({
     executeUpdateCustomFields({ contactId, values })
   }
 
+  // Guarda os dados pendentes quando o telefone já existe e aguarda confirmação
+  const [pendingPhoneConfirm, setPendingPhoneConfirm] =
+    useState<ContactInput | null>(null)
+
   const { execute: executeCreate, isPending: isCreating } = useAction(
     createContact,
     {
-      onSuccess: ({ data }) => {
+      onSuccess: ({ data, input }) => {
+        // Telefone duplicado: pede confirmação ao operador antes de criar
+        if (data?.needsPhoneConfirmation) {
+          setPendingPhoneConfirm(input)
+          return
+        }
         toast.success('Contato criado com sucesso!')
         if (data?.current && data?.limit && data.limit > 0) {
           const pct = data.current / data.limit
@@ -705,6 +715,30 @@ const UpsertContactDialogContent = ({
           </form>
         </Form>
       </TooltipProvider>
+
+      <ConfirmationDialog
+        open={!!pendingPhoneConfirm}
+        onOpenChange={(open) => !open && setPendingPhoneConfirm(null)}
+        title="Telefone já cadastrado"
+        description={
+          <span>
+            Já existe outro contato com este telefone nesta organização. Deseja
+            criar mesmo assim?
+          </span>
+        }
+        icon={<PhoneIcon className="h-6 w-6" />}
+        confirmLabel="Criar mesmo assim"
+        isLoading={isCreating}
+        onConfirm={() => {
+          if (pendingPhoneConfirm) {
+            executeCreate({
+              ...pendingPhoneConfirm,
+              confirmDuplicatePhone: true,
+            })
+          }
+          setPendingPhoneConfirm(null)
+        }}
+      />
     </SheetContent>
   )
 }

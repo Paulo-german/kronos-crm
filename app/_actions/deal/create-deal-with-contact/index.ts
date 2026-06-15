@@ -18,7 +18,7 @@ import { evaluateAutomations } from '@/_lib/automations/evaluate-automations'
 import { advanceContactLifecycle } from '@/_lib/lifecycle/advance-contact-lifecycle'
 import { ensureDealHasPrimaryCaptureEvent } from '@/_lib/lifecycle/ensure-deal-capture-event'
 import { createContactPrivacy } from '@/_lib/privacy/create-contact-privacy'
-import { LifecycleCauseType, LifecycleStage } from '@prisma/client'
+import { LifecycleCauseType, LifecycleStage, Prisma } from '@prisma/client'
 
 export const createDealWithContact = orgActionClient
   .schema(createDealWithContactSchema)
@@ -92,51 +92,84 @@ export const createDealWithContact = orgActionClient
     let newContactId: string | null = null
 
     if (data.contactMode === 'new') {
+      const normalizedContactPhone = toE164(data.contactPhone)
+      const phoneAlreadyUsed = normalizedContactPhone
+        ? Boolean(
+            await db.contact.findFirst({
+              where: {
+                organizationId: ctx.orgId,
+                phone: normalizedContactPhone,
+              },
+              select: { id: true },
+            }),
+          )
+        : false
+
+      // Telefone não tem unicidade (diferente do email): se já existe e o operador
+      // ainda não confirmou, devolve sem criar para o front pedir confirmação.
+      if (phoneAlreadyUsed && !data.confirmDuplicatePhone) {
+        return { success: false, dealId: null, needsPhoneConfirmation: true }
+      }
+
       // Transação atômica: se qualquer operação falhar, NADA é persistido
-      const result = await db.$transaction(async (tx) => {
-        const newContact = await tx.contact.create({
-          data: {
-            organizationId: ctx.orgId,
-            assignedTo,
-            name: data.contactName,
-            email: data.contactEmail || null,
-            phone: toE164(data.contactPhone),
-            isDecisionMaker: false,
-          },
-        })
+      try {
+        const result = await db.$transaction(async (tx) => {
+          const newContact = await tx.contact.create({
+            data: {
+              organizationId: ctx.orgId,
+              assignedTo,
+              name: data.contactName,
+              email: data.contactEmail || null,
+              phone: normalizedContactPhone,
+              isDecisionMaker: false,
+            },
+          })
 
-        // Operador criou o contato junto com o deal → legítimo interesse / criação manual
-        await createContactPrivacy(tx, {
-          contactId: newContact.id,
-          legalBasis: 'LEGITIMATE_INTEREST',
-          legalBasisSource: 'MANUAL_CREATION',
-          performedBy: ctx.userId,
-        })
+          // Operador criou o contato junto com o deal → legítimo interesse / criação manual
+          await createContactPrivacy(tx, {
+            contactId: newContact.id,
+            legalBasis: 'LEGITIMATE_INTEREST',
+            legalBasisSource: 'MANUAL_CREATION',
+            performedBy: ctx.userId,
+          })
 
-        const newDeal = await tx.deal.create({
-          data: {
-            organizationId: ctx.orgId,
-            title: data.title,
-            pipelineStageId: data.stageId,
-            companyId: data.companyId || null,
-            assignedTo,
-            ...(data.priority ? { priority: data.priority } : {}),
-            ...(data.notes ? { notes: data.notes } : {}),
-            contacts: {
-              create: {
-                contactId: newContact.id,
-                isPrimary: true,
-                role: '',
+          const newDeal = await tx.deal.create({
+            data: {
+              organizationId: ctx.orgId,
+              title: data.title,
+              pipelineStageId: data.stageId,
+              companyId: data.companyId || null,
+              assignedTo,
+              ...(data.priority ? { priority: data.priority } : {}),
+              ...(data.notes ? { notes: data.notes } : {}),
+              contacts: {
+                create: {
+                  contactId: newContact.id,
+                  isPrimary: true,
+                  role: '',
+                },
               },
             },
-          },
+          })
+
+          return { deal: newDeal, contactId: newContact.id }
         })
 
-        return { deal: newDeal, contactId: newContact.id }
-      })
-
-      deal = result.deal
-      newContactId = result.contactId
+        deal = result.deal
+        newContactId = result.contactId
+      } catch (error) {
+        // Email duplicado na org (índice único organization_id+email) → mensagem amigável,
+        // espelhando o tratamento da criação direta de contato (create-contact)
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2002'
+        ) {
+          throw new Error(
+            'Já existe um contato com este email nesta organização.',
+          )
+        }
+        throw error
+      }
     } else {
       // Modo "existing": cria deal com ou sem contato, igual ao createDeal original
       deal = await db.deal.create({
@@ -248,5 +281,5 @@ export const createDealWithContact = orgActionClient
       })
     })
 
-    return { success: true, dealId: deal.id }
+    return { success: true, dealId: deal.id, needsPhoneConfirmation: false }
   })
