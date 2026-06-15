@@ -12,6 +12,9 @@ import { businessProfileSchema } from '@/_lib/onboarding/schemas/business-profil
 import { fetchWebsiteText } from '@/_lib/onboarding/fetch-website-text'
 import type { UIMessage } from 'ai'
 
+// O guard SSRF de fetch-website-text usa node:dns — garante runtime Node.js
+export const runtime = 'nodejs'
+
 // Schema minimo de validacao do body da requisicao
 const chatRequestSchema = z.object({
   messages: z.array(z.unknown()),
@@ -117,7 +120,10 @@ export async function POST(request: NextRequest) {
           description:
             'Busca e extrai o conteudo textual de um site ou pagina web. Use quando o usuario enviar um link de site ou Instagram para coletar informacoes sobre a empresa.',
           inputSchema: z.object({
-            url: z.string().url().describe('URL do site ou pagina a ser analisada'),
+            url: z
+              .string()
+              .url()
+              .describe('URL do site ou pagina a ser analisada'),
           }),
           execute: async ({ url }) => {
             try {
@@ -126,7 +132,8 @@ export async function POST(request: NextRequest) {
             } catch {
               return {
                 success: false,
-                content: 'Nao consegui acessar o site. Pergunte as informacoes diretamente ao usuario.',
+                content:
+                  'Nao consegui acessar o site. Pergunte as informacoes diretamente ao usuario.',
               }
             }
           },

@@ -1,5 +1,10 @@
+import { ssrfSafeValidateUrl } from '@/../trigger/lib/ssrf-guard'
+
 const MAX_CONTENT_LENGTH = 8000
 const FETCH_TIMEOUT_MS = 10000
+const SSRF_VALIDATION_TIMEOUT_MS = 5000
+const MAX_REDIRECT_HOPS = 3
+const ACCEPTED_MIME_PREFIXES = ['text/html', 'application/xhtml', 'text/plain']
 
 /**
  * Faz fetch de uma URL e extrai o conteudo textual relevante.
@@ -7,29 +12,72 @@ const FETCH_TIMEOUT_MS = 10000
  *
  * Usado pela tool fetch_website_info do chat de onboarding para que
  * a Kassandra consiga entender o negocio do cliente a partir do site.
+ *
+ * A URL vem de input do usuario: validamos contra SSRF (IPs privados,
+ * loopback, metadata da cloud) antes de qualquer fetch, e revalidamos
+ * cada hop de redirect manualmente para fechar bypass via 302.
  */
 export async function fetchWebsiteText(url: string): Promise<string> {
+  const check = await ssrfSafeValidateUrl(url, {
+    timeoutMs: SSRF_VALIDATION_TIMEOUT_MS,
+    acceptedMimePrefixes: ACCEPTED_MIME_PREFIXES,
+  })
+  if (!check.allowed) {
+    throw new Error(`URL bloqueada por segurança (${check.reason})`)
+  }
+
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
 
   try {
-    const response = await fetch(url, {
-      signal: controller.signal,
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (compatible; KronosCRM/1.0; +https://kronoscrm.com)',
-        Accept: 'text/html,application/xhtml+xml',
-      },
-    })
+    let currentUrl = url
+    let hops = 0
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`)
+    while (true) {
+      const response = await fetch(currentUrl, {
+        signal: controller.signal,
+        redirect: 'manual',
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (compatible; KronosCRM/1.0; +https://kronoscrm.com)',
+          Accept: 'text/html,application/xhtml+xml',
+        },
+      })
+
+      // Redirect: revalida o destino contra SSRF antes de seguir (TOCTOU)
+      if (response.status >= 300 && response.status < 400) {
+        if (hops >= MAX_REDIRECT_HOPS) {
+          throw new Error('Limite de redirecionamentos excedido')
+        }
+
+        const location = response.headers.get('location')
+        if (!location) {
+          throw new Error(`HTTP ${response.status} sem header Location`)
+        }
+
+        const nextUrl = new URL(location, currentUrl).toString()
+        const hopCheck = await ssrfSafeValidateUrl(nextUrl, {
+          timeoutMs: SSRF_VALIDATION_TIMEOUT_MS,
+          acceptedMimePrefixes: ACCEPTED_MIME_PREFIXES,
+        })
+        if (!hopCheck.allowed) {
+          throw new Error(`URL bloqueada por segurança (${hopCheck.reason})`)
+        }
+
+        currentUrl = nextUrl
+        hops++
+        continue
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+
+      const html = await response.text()
+      const text = extractTextFromHtml(html)
+
+      return text.slice(0, MAX_CONTENT_LENGTH)
     }
-
-    const html = await response.text()
-    const text = extractTextFromHtml(html)
-
-    return text.slice(0, MAX_CONTENT_LENGTH)
   } finally {
     clearTimeout(timeout)
   }
