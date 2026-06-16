@@ -27,7 +27,7 @@ const NotificationsPage = async ({ params }: NotificationsPageProps) => {
     <div className="space-y-6">
       <Header>
         <HeaderLeft>
-          <HeaderTitle>Notificações</HeaderTitle>
+          <HeaderTitle>Central de notificações</HeaderTitle>
           <HeaderSubTitle>Histórico de notificações</HeaderSubTitle>
         </HeaderLeft>
         <HeaderRight>
