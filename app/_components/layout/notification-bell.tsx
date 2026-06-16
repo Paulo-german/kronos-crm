@@ -1,25 +1,18 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Bell, Loader2 } from 'lucide-react'
-import { formatDistanceToNow } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
-import { cn } from '@/_lib/utils'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/_components/ui/popover'
 import { Button } from '@/_components/ui/button'
-import { ScrollArea } from '@/_components/ui/scroll-area'
 import { Separator } from '@/_components/ui/separator'
-import { NotificationVariantIcon } from '@/_components/layout/notification-variant-icon'
-import { resolveNotificationVariant } from '@/_lib/notifications/notification-variant'
-import { markNotificationAsRead } from '@/_actions/notification/mark-as-read'
+import { NotificationCard } from '@/_components/notifications'
 import { markAllNotificationsAsRead } from '@/_actions/notification/mark-all-as-read'
 import type { NotificationDto } from '@/_data-access/notification/types'
 
@@ -40,7 +33,6 @@ export const NotificationBell = ({
 }: NotificationBellProps) => {
   const resolvedNotificationsHref =
     notificationsHref ?? `/org/${orgSlug}/notifications`
-  const router = useRouter()
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount)
   const [notifications, setNotifications] =
     useState<NotificationDto[]>(initialNotifications)
@@ -91,15 +83,6 @@ export const NotificationBell = ({
     return () => clearInterval(intervalId)
   }, [])
 
-  const { execute: executeMarkAsRead } = useAction(markNotificationAsRead, {
-    onSuccess: () => {
-      setUnreadCount((prev) => Math.max(0, prev - 1))
-    },
-    onError: ({ error }) => {
-      toast.error(error.serverError ?? 'Erro ao marcar notificação como lida.')
-    },
-  })
-
   const { execute: executeMarkAllAsRead, isPending: isPendingMarkAll } =
     useAction(markAllNotificationsAsRead, {
       onSuccess: () => {
@@ -116,25 +99,30 @@ export const NotificationBell = ({
       },
     })
 
-  const handleNotificationClick = useCallback(
-    (notification: NotificationDto) => {
-      if (!notification.readAt) {
-        executeMarkAsRead({ notificationId: notification.id })
-        setNotifications((prev) =>
-          prev.map((item) =>
-            item.id === notification.id
-              ? { ...item, readAt: new Date() }
-              : item,
-          ),
-        )
-      }
+  const handleMarkedAsRead = useCallback((id: string) => {
+    setUnreadCount((prev) => Math.max(0, prev - 1))
+    setNotifications((prev) =>
+      prev.map((notification) =>
+        notification.id === id
+          ? { ...notification, readAt: new Date() }
+          : notification,
+      ),
+    )
+  }, [])
 
-      if (notification.actionUrl) {
-        setOpen(false)
-        router.push(notification.actionUrl)
+  const handleDeleted = useCallback(
+    (id: string) => {
+      const target = notifications.find(
+        (notification) => notification.id === id,
+      )
+      if (target && !target.readAt) {
+        setUnreadCount((count) => Math.max(0, count - 1))
       }
+      setNotifications((prev) =>
+        prev.filter((notification) => notification.id !== id),
+      )
     },
-    [executeMarkAsRead, router],
+    [notifications],
   )
 
   const displayCount = unreadCount > 9 ? '9+' : String(unreadCount)
@@ -157,19 +145,14 @@ export const NotificationBell = ({
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent
-        align="end"
-        className="mt-3 w-96 border-none bg-primary-dark p-0"
-      >
+      <PopoverContent align="end" className="mt-3 w-96 p-0">
         <div className="flex items-center justify-between px-4 py-3">
-          <h4 className="font-semibold text-primary-foreground">
-            Notificações
-          </h4>
+          <h4 className="font-semibold">Notificações</h4>
           {unreadCount > 0 && (
             <Button
               variant="ghost"
               size="sm"
-              className="h-auto p-0 text-xs text-primary-foreground hover:text-foreground"
+              className="h-auto p-0 text-xs text-muted-foreground hover:text-foreground"
               onClick={() => executeMarkAllAsRead(undefined)}
               disabled={isPendingMarkAll}
             >
@@ -178,82 +161,47 @@ export const NotificationBell = ({
           )}
         </div>
 
-        <Separator className="bg-primary/50" />
+        <Separator />
 
-        <ScrollArea className="max-h-[400px]">
+        <div className="max-h-[420px] overflow-y-auto">
           {isFetchingList && notifications.length === 0 ? (
             <div className="flex items-center justify-center py-10">
-              <Loader2 className="size-5 animate-spin text-primary" />
+              <Loader2 className="size-5 animate-spin text-muted-foreground" />
             </div>
           ) : notifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
-              <Bell className="size-8 text-muted-foreground/50" />
-              <p className="text-sm text-primary-foreground">
+              <Bell className="size-8 text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground">
                 Nenhuma notificação
               </p>
             </div>
           ) : (
-            <div>
-              {notifications.map((notification) => {
-                const variant = resolveNotificationVariant(notification)
-                const isAlert = variant === 'alert'
-
-                return (
-                  <button
-                    key={notification.id}
-                    type="button"
-                    className={cn(
-                      'flex w-full items-start gap-3 px-4 py-5 text-left transition-colors hover:bg-primary/20',
-                    )}
-                    onClick={() => handleNotificationClick(notification)}
-                  >
-                    <div className="min-w-0 flex-1 gap-1">
-                      <div className="mt-0.5 flex gap-2">
-                        <NotificationVariantIcon notification={notification} />
-                        <p className="text-sm font-semibold leading-none text-kronos-purple-light">
-                          {notification.title}
-                        </p>
-                      </div>
-
-                      <p className="mt-1 line-clamp-1 text-xs text-primary-foreground/60">
-                        {notification.body}
-                      </p>
-                      <p className="mt-1 text-[10px] text-primary-foreground">
-                        {formatDistanceToNow(new Date(notification.createdAt), {
-                          addSuffix: true,
-                          locale: ptBR,
-                        })}
-                      </p>
-                    </div>
-
-                    {!notification.readAt && (
-                      <div
-                        className={cn(
-                          'mt-1.5 h-2 w-2 flex-shrink-0 rounded-full',
-                          isAlert ? 'bg-amber-500' : 'bg-blue-500',
-                        )}
-                      />
-                    )}
-                  </button>
-                )
-              })}
+            <div className="space-y-2 p-2">
+              {notifications.map((notification) => (
+                <NotificationCard
+                  key={notification.id}
+                  notification={notification}
+                  compact
+                  onSelect={() => setOpen(false)}
+                  onMarkedAsRead={handleMarkedAsRead}
+                  onDeleted={handleDeleted}
+                />
+              ))}
             </div>
           )}
-        </ScrollArea>
+        </div>
 
         {notifications.length > 0 && (
           <>
-            <Separator className="bg-primary/50" />
-            <div className="p-0">
-              <Button
-                variant="ghost"
-                size="default"
-                className="w-full py-8 text-xs text-primary-foreground hover:bg-transparent hover:text-primary"
-                asChild
-              >
-                <Link href={resolvedNotificationsHref}>Ver todas</Link>
-              </Button>
-            </div>
+            <Separator />
+            <Button
+              variant="ghost"
+              size="default"
+              className="w-full rounded-none py-6 text-xs text-muted-foreground hover:text-foreground"
+              asChild
+            >
+              <Link href={resolvedNotificationsHref}>Ver todas</Link>
+            </Button>
           </>
         )}
       </PopoverContent>
