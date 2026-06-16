@@ -20,6 +20,7 @@ import type { NotificationDto } from '@/_data-access/notification/types'
 import { ActionableActions } from './actionable-actions'
 import { AssignmentActions } from './assignment-actions'
 import { AlertActions } from './alert-actions'
+import { NotificationCategoryBadge } from './notification-category-badge'
 
 interface NotificationCardProps {
   notification: NotificationDto
@@ -51,15 +52,18 @@ export const NotificationCard = ({
     },
   )
 
-  const { execute: executeDelete, isPending: isPendingDelete } = useAction(deleteNotification, {
-    onSuccess: () => {
-      onDeleted(notification.id)
-      toast.success('Notificação removida.')
+  const { execute: executeDelete, isPending: isPendingDelete } = useAction(
+    deleteNotification,
+    {
+      onSuccess: () => {
+        onDeleted(notification.id)
+        toast.success('Notificação removida.')
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError ?? 'Erro ao remover notificação.')
+      },
     },
-    onError: ({ error }) => {
-      toast.error(error.serverError ?? 'Erro ao remover notificação.')
-    },
-  })
+  )
 
   const handleCardClick = () => {
     if (variant === 'actionable') return
@@ -86,7 +90,7 @@ export const NotificationCard = ({
   // Extrai o token do actionUrl para notificacoes do tipo actionable
   const inviteToken =
     variant === 'actionable' && notification.actionUrl
-      ? notification.actionUrl.split('/invite/')[1] ?? null
+      ? (notification.actionUrl.split('/invite/')[1] ?? null)
       : null
 
   const isClickable =
@@ -98,7 +102,9 @@ export const NotificationCard = ({
         'transition-colors',
         isUnread ? `border-l-2 ${config.borderColor}` : '',
         isClickable ? 'cursor-pointer hover:bg-muted/50' : '',
-        variant === 'alert' && isUnread ? 'bg-amber-50/30 dark:bg-amber-950/10' : '',
+        variant === 'alert' && isUnread
+          ? 'bg-amber-50/30 dark:bg-amber-950/10'
+          : '',
       ]
         .filter(Boolean)
         .join(' ')}
@@ -114,7 +120,10 @@ export const NotificationCard = ({
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <p className="truncate text-sm font-medium">{notification.title}</p>
+                  <p className="truncate text-sm font-medium">
+                    {notification.title}
+                  </p>
+                  <NotificationCategoryBadge category={notification.category} />
                   {isUnread && (
                     <Badge
                       variant={config.badgeVariant}
@@ -124,7 +133,9 @@ export const NotificationCard = ({
                     </Badge>
                   )}
                 </div>
-                <p className="mt-1 text-sm text-muted-foreground">{notification.body}</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {notification.body}
+                </p>
                 <p className="mt-2 text-xs text-muted-foreground">
                   {formatDistanceToNow(new Date(notification.createdAt), {
                     addSuffix: true,
