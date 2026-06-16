@@ -38,10 +38,12 @@ export const NotificationBell = ({
   initialNotifications,
   notificationsHref,
 }: NotificationBellProps) => {
-  const resolvedNotificationsHref = notificationsHref ?? `/org/${orgSlug}/notifications`
+  const resolvedNotificationsHref =
+    notificationsHref ?? `/org/${orgSlug}/notifications`
   const router = useRouter()
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount)
-  const [notifications, setNotifications] = useState<NotificationDto[]>(initialNotifications)
+  const [notifications, setNotifications] =
+    useState<NotificationDto[]>(initialNotifications)
   const [open, setOpen] = useState(false)
   const [isFetchingList, setIsFetchingList] = useState(false)
 
@@ -98,26 +100,32 @@ export const NotificationBell = ({
     },
   })
 
-  const { execute: executeMarkAllAsRead, isPending: isPendingMarkAll } = useAction(
-    markAllNotificationsAsRead,
-    {
+  const { execute: executeMarkAllAsRead, isPending: isPendingMarkAll } =
+    useAction(markAllNotificationsAsRead, {
       onSuccess: () => {
         setUnreadCount(0)
-        setNotifications((prev) => prev.map((notification) => ({ ...notification, readAt: new Date() })))
+        setNotifications((prev) =>
+          prev.map((notification) => ({ ...notification, readAt: new Date() })),
+        )
         toast.success('Todas as notificações foram marcadas como lidas.')
       },
       onError: ({ error }) => {
-        toast.error(error.serverError ?? 'Erro ao marcar todas as notificações.')
+        toast.error(
+          error.serverError ?? 'Erro ao marcar todas as notificações.',
+        )
       },
-    },
-  )
+    })
 
   const handleNotificationClick = useCallback(
     (notification: NotificationDto) => {
       if (!notification.readAt) {
         executeMarkAsRead({ notificationId: notification.id })
         setNotifications((prev) =>
-          prev.map((item) => (item.id === notification.id ? { ...item, readAt: new Date() } : item)),
+          prev.map((item) =>
+            item.id === notification.id
+              ? { ...item, readAt: new Date() }
+              : item,
+          ),
         )
       }
 
@@ -134,7 +142,11 @@ export const NotificationBell = ({
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative text-white/70 hover:bg-white/10 hover:text-white">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="relative text-white/70 hover:bg-white/10 hover:text-white"
+        >
           <Bell className="size-4" />
           {unreadCount > 0 && (
             <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-medium text-destructive-foreground">
@@ -145,14 +157,19 @@ export const NotificationBell = ({
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent align="end" className="w-80 p-0">
+      <PopoverContent
+        align="end"
+        className="mt-3 w-96 border-none bg-primary-dark p-0"
+      >
         <div className="flex items-center justify-between px-4 py-3">
-          <h4 className="font-semibold">Notificações</h4>
+          <h4 className="font-semibold text-primary-foreground">
+            Notificações
+          </h4>
           {unreadCount > 0 && (
             <Button
               variant="ghost"
               size="sm"
-              className="h-auto p-0 text-xs text-muted-foreground hover:text-foreground"
+              className="h-auto p-0 text-xs text-primary-foreground hover:text-foreground"
               onClick={() => executeMarkAllAsRead(undefined)}
               disabled={isPendingMarkAll}
             >
@@ -161,20 +178,22 @@ export const NotificationBell = ({
           )}
         </div>
 
-        <Separator />
+        <Separator className="bg-primary/50" />
 
         <ScrollArea className="max-h-[400px]">
           {isFetchingList && notifications.length === 0 ? (
             <div className="flex items-center justify-center py-10">
-              <Loader2 className="size-5 animate-spin text-muted-foreground" />
+              <Loader2 className="size-5 animate-spin text-primary" />
             </div>
           ) : notifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
               <Bell className="size-8 text-muted-foreground/50" />
-              <p className="text-sm text-muted-foreground">Nenhuma notificação</p>
+              <p className="text-sm text-primary-foreground">
+                Nenhuma notificação
+              </p>
             </div>
           ) : (
-            <div className="divide-y">
+            <div>
               {notifications.map((notification) => {
                 const variant = resolveNotificationVariant(notification)
                 const isAlert = variant === 'alert'
@@ -184,21 +203,22 @@ export const NotificationBell = ({
                     key={notification.id}
                     type="button"
                     className={cn(
-                      'flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50',
-                      isAlert && 'bg-amber-50/40 hover:bg-amber-50/60 dark:bg-amber-950/10 dark:hover:bg-amber-950/20',
+                      'flex w-full items-start gap-3 px-4 py-5 text-left transition-colors hover:bg-primary/20',
                     )}
                     onClick={() => handleNotificationClick(notification)}
                   >
-                    <div className="mt-0.5 flex-shrink-0">
-                      <NotificationVariantIcon notification={notification} />
-                    </div>
+                    <div className="min-w-0 flex-1 gap-1">
+                      <div className="mt-0.5 flex gap-2">
+                        <NotificationVariantIcon notification={notification} />
+                        <p className="text-sm font-semibold leading-none text-kronos-purple-light">
+                          {notification.title}
+                        </p>
+                      </div>
 
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium leading-none">{notification.title}</p>
-                      <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+                      <p className="mt-1 line-clamp-1 text-xs text-primary-foreground/60">
                         {notification.body}
                       </p>
-                      <p className="mt-1 text-[10px] text-muted-foreground">
+                      <p className="mt-1 text-[10px] text-primary-foreground">
                         {formatDistanceToNow(new Date(notification.createdAt), {
                           addSuffix: true,
                           locale: ptBR,
@@ -223,15 +243,15 @@ export const NotificationBell = ({
 
         {notifications.length > 0 && (
           <>
-            <Separator />
-            <div className="p-2">
+            <Separator className="bg-primary/50" />
+            <div className="p-0">
               <Button
                 variant="ghost"
-                size="sm"
-                className="w-full text-xs text-muted-foreground"
+                size="default"
+                className="w-full py-8 text-xs text-primary-foreground hover:bg-transparent hover:text-primary"
                 asChild
               >
-                <Link href={resolvedNotificationsHref}>Ver todas →</Link>
+                <Link href={resolvedNotificationsHref}>Ver todas</Link>
               </Button>
             </div>
           </>

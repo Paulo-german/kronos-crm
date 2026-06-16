@@ -8,7 +8,10 @@ interface AssignmentActionsProps {
   resourceType: string | null
 }
 
-export const AssignmentActions = ({ actionUrl, resourceType }: AssignmentActionsProps) => {
+export const AssignmentActions = ({
+  actionUrl,
+  resourceType,
+}: AssignmentActionsProps) => {
   if (!actionUrl) return null
 
   const label = getResourceTypeLabel(resourceType)
