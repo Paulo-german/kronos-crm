@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Trash2, CheckCheck } from 'lucide-react'
+import { CheckCheck } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import { cn } from '@/_lib/utils'
 import { Notification, useNotification } from '../notification'
@@ -18,47 +18,29 @@ interface NotificationCardProps {
 }
 
 /**
- * Controles do card (lado direito): marcar como lida + excluir.
+ * Controles do card (lado direito): marcar como lida.
  * Lê o context — por isso vive dentro de <Notification.Root>.
  */
 const CardControls = () => {
-  const { isUnread, markAsRead, remove, isPendingRead, isPendingDelete } =
-    useNotification()
+  const { isUnread, markAsRead, isPendingRead } = useNotification()
+
+  if (!isUnread) return null
 
   return (
-    <div className="flex shrink-0 items-center gap-1">
-      {isUnread && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-7"
-          onClick={(event) => {
-            event.stopPropagation()
-            markAsRead()
-          }}
-          disabled={isPendingRead}
-          title="Marcar como lida"
-        >
-          <CheckCheck className="size-3.5" />
-          <span className="sr-only">Marcar como lida</span>
-        </Button>
-      )}
-
-      <Button
-        variant="ghost"
-        size="icon"
-        className="size-7 text-muted-foreground hover:text-destructive"
-        onClick={(event) => {
-          event.stopPropagation()
-          remove()
-        }}
-        disabled={isPendingDelete}
-        title="Remover notificação"
-      >
-        <Trash2 className="size-3.5" />
-        <span className="sr-only">Remover notificação</span>
-      </Button>
-    </div>
+    <Button
+      variant="ghost"
+      size="icon"
+      className="size-7 shrink-0"
+      onClick={(event) => {
+        event.stopPropagation()
+        markAsRead()
+      }}
+      disabled={isPendingRead}
+      title="Marcar como lida"
+    >
+      <CheckCheck className="size-3.5" />
+      <span className="sr-only">Marcar como lida</span>
+    </Button>
   )
 }
 
@@ -68,15 +50,8 @@ const CardControls = () => {
  */
 const CardShell = () => {
   const router = useRouter()
-  const {
-    notification,
-    variant,
-    config,
-    isUnread,
-    compact,
-    markAsRead,
-    onSelect,
-  } = useNotification()
+  const { notification, variant, isUnread, compact, markAsRead, onSelect } =
+    useNotification()
 
   const isClickable =
     variant !== 'actionable' && (!!notification.actionUrl || isUnread)
@@ -91,12 +66,8 @@ const CardShell = () => {
   return (
     <div
       className={cn(
-        'rounded-xl border bg-card text-card-foreground shadow-sm transition-colors',
-        isUnread && `border-l-2 ${config.borderColor}`,
+        'rounded-xl transition-colors',
         isClickable && 'cursor-pointer hover:bg-muted/50',
-        variant === 'alert' &&
-          isUnread &&
-          'bg-amber-50/30 dark:bg-amber-950/10',
       )}
       onClick={isClickable ? handleClick : undefined}
     >
