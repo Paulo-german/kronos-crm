@@ -1,9 +1,10 @@
 import { z } from 'zod'
-import type { NotificationType } from '@prisma/client'
+import type { NotificationType, NotificationCategory } from '@prisma/client'
 
 export interface NotificationDto {
   id: string
   type: NotificationType
+  category: NotificationCategory | null
   title: string
   body: string
   actionUrl: string | null

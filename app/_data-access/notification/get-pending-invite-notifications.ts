@@ -8,6 +8,7 @@ const RECENT_LIMIT = 10
 const NOTIFICATION_SELECT = {
   id: true,
   type: true,
+  category: true,
   title: true,
   body: true,
   actionUrl: true,

@@ -19,6 +19,7 @@ const fetchRecentNotificationsFromDb = async (
     select: {
       id: true,
       type: true,
+      category: true,
       title: true,
       body: true,
       actionUrl: true,

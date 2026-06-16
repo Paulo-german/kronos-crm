@@ -2,17 +2,20 @@ import 'server-only'
 import { after } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import { db } from '@/_lib/prisma'
-import type { NotificationType } from '@prisma/client'
+import type { NotificationType, NotificationCategory } from '@prisma/client'
 import {
   notificationPreferencesSchema,
   DEFAULT_NOTIFICATION_PREFERENCES,
   type NotificationPreferences,
 } from '@/_data-access/notification/types'
+import { resolveCategoryFromSource } from '@/_lib/notifications/notification-category'
 
 interface CreateNotificationInput {
   orgId: string
   userId: string
   type: NotificationType
+  /** Categoria editorial. Se omitida, é derivada de type/resourceType/actionUrl. */
+  category?: NotificationCategory
   title: string
   body: string
   actionUrl?: string
@@ -21,13 +24,18 @@ interface CreateNotificationInput {
 }
 
 // Mapeamento de tipo de notificacao para chave de preferencia
-const TYPE_TO_PREFERENCE_KEY: Record<NotificationType, keyof NotificationPreferences['inApp']> = {
+const TYPE_TO_PREFERENCE_KEY: Record<
+  NotificationType,
+  keyof NotificationPreferences['inApp']
+> = {
   SYSTEM: 'system',
   USER_ACTION: 'userAction',
   PLATFORM_ANNOUNCEMENT: 'platformAnnouncement',
 }
 
-const resolveUserPreferences = async (userId: string): Promise<NotificationPreferences> => {
+const resolveUserPreferences = async (
+  userId: string,
+): Promise<NotificationPreferences> => {
   const user = await db.user.findUnique({
     where: { id: userId },
     select: { notificationPreferences: true },
@@ -37,7 +45,9 @@ const resolveUserPreferences = async (userId: string): Promise<NotificationPrefe
     return DEFAULT_NOTIFICATION_PREFERENCES
   }
 
-  const parsed = notificationPreferencesSchema.safeParse(user.notificationPreferences)
+  const parsed = notificationPreferencesSchema.safeParse(
+    user.notificationPreferences,
+  )
   if (!parsed.success) {
     return DEFAULT_NOTIFICATION_PREFERENCES
   }
@@ -59,11 +69,21 @@ export async function createNotification(input: CreateNotificationInput) {
     return null
   }
 
+  // Se a category não for informada, deriva da origem (mesma regra do variant)
+  const category =
+    input.category ??
+    resolveCategoryFromSource({
+      type: input.type,
+      resourceType: input.resourceType ?? null,
+      actionUrl: input.actionUrl ?? null,
+    })
+
   const notification = await db.notification.create({
     data: {
       organizationId: input.orgId,
       userId: input.userId,
       type: input.type,
+      category,
       title: input.title,
       body: input.body,
       actionUrl: input.actionUrl ?? null,
@@ -96,6 +116,7 @@ export function scheduleNotification(input: CreateNotificationInput) {
 export async function createBulkNotifications(input: {
   orgId: string
   type: NotificationType
+  category?: NotificationCategory
   title: string
   body: string
   actionUrl?: string
@@ -117,6 +138,7 @@ export async function createBulkNotifications(input: {
         orgId: input.orgId,
         userId: member.userId!,
         type: input.type,
+        category: input.category,
         title: input.title,
         body: input.body,
         actionUrl: input.actionUrl,

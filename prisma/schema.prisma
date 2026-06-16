@@ -1481,6 +1481,7 @@ model Notification {
   type           NotificationType
   title          String
   body           String
+  category       NotificationCategory?
   actionUrl      String?          @map("action_url")
   resourceType   String?          @map("resource_type")
   resourceId     String?          @map("resource_id")
@@ -1870,6 +1871,18 @@ enum NotificationType {
   SYSTEM
   USER_ACTION
   PLATFORM_ANNOUNCEMENT
+}
+
+enum NotificationCategory {
+  ASSIGNMENTS
+  ACTIONS
+  ALERTS
+  ANNOUNCEMENTS
+  NEWS
+  OFFERS
+  FEEDBACK
+  REMINDERS
+  GENERAL
 }
 
 enum AgentMode {
