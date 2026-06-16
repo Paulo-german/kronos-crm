@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/_components/ui/select'
-import { DealsFiltersSheet } from './deals-filters-sheet'
+import { DealFiltersSheet } from '../../_components/deal-filters-sheet'
 import { DealFilterBadges } from './deal-filter-badges'
 import { ViewToggle } from '../../_components/view-toggle'
 import { PipelineSelector } from '../../_components/pipeline-selector'
@@ -21,7 +21,10 @@ import { DEAL_SORT_OPTIONS } from '../_lib/deal-list-params'
 import type { DealListSortOption } from '../_lib/use-deal-list-filters'
 import type { DealFilters } from '../../_lib/deal-filters'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
-import type { StageDto, PipelineWithStagesDto } from '@/_data-access/pipeline/get-user-pipeline'
+import type {
+  StageDto,
+  PipelineWithStagesDto,
+} from '@/_data-access/pipeline/get-user-pipeline'
 import type { OrgPipelineDto } from '@/_data-access/pipeline/get-org-pipelines'
 import type { MemberRole } from '@prisma/client'
 
@@ -74,7 +77,8 @@ export function DealsToolbar({
   onSearchChange,
 }: DealsToolbarProps) {
   const isMember = userRole === 'MEMBER'
-  const isElevated = userRole === 'ADMIN' || userRole === 'OWNER' || userRole === 'SUPPORT'
+  const isElevated =
+    userRole === 'ADMIN' || userRole === 'OWNER' || userRole === 'SUPPORT'
 
   // Valor local do input de busca com debounce para URL
   const [searchInputValue, setSearchInputValue] = useState(search)
@@ -118,13 +122,8 @@ export function DealsToolbar({
       <div className="flex items-center gap-2">
         <ViewToggle activeView="list" />
         <div className="flex-1" />
-        {isElevated && (
-          <PipelineSettingsButton pipeline={pipeline} />
-        )}
-        <CreateDealButton
-          stages={stages}
-          withinQuota={withinQuota}
-        />
+        {isElevated && <PipelineSettingsButton pipeline={pipeline} />}
+        <CreateDealButton stages={stages} withinQuota={withinQuota} />
       </div>
 
       {/* Linha 2: Search com largura total */}
@@ -185,7 +184,7 @@ export function DealsToolbar({
             </SelectContent>
           </Select>
 
-          <DealsFiltersSheet
+          <DealFiltersSheet
             filters={filters}
             onFiltersChange={onApplyFilters}
             activeFilterCount={activeFilterCount}
@@ -198,8 +197,12 @@ export function DealsToolbar({
             status: filters.status,
             priority: filters.priority,
             assignedTo: assignedTo ?? undefined,
-            dateFrom: filters.createdAtFrom ? filters.createdAtFrom.toISOString().split('T')[0] : null,
-            dateTo: filters.createdAtTo ? filters.createdAtTo.toISOString().split('T')[0] : null,
+            dateFrom: filters.createdAtFrom
+              ? filters.createdAtFrom.toISOString().split('T')[0]
+              : null,
+            dateTo: filters.createdAtTo
+              ? filters.createdAtTo.toISOString().split('T')[0]
+              : null,
             valueMin: filters.valueMin,
             valueMax: filters.valueMax,
             sort: sort,
