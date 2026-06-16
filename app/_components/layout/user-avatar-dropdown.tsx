@@ -20,7 +20,6 @@ interface UserAvatarDropdownProps {
     email: string
     avatarUrl: string | null
   }
-  orgSlug?: string
 }
 
 function getInitials(fullName: string | null, email: string): string {
@@ -33,7 +32,7 @@ function getInitials(fullName: string | null, email: string): string {
     .slice(0, 2)
 }
 
-export const UserAvatarDropdown = ({ user, orgSlug }: UserAvatarDropdownProps) => {
+export const UserAvatarDropdown = ({ user }: UserAvatarDropdownProps) => {
   const initials = getInitials(user.fullName, user.email)
   const { execute: executeSignOut } = useAction(signOut)
 
@@ -45,8 +44,13 @@ export const UserAvatarDropdown = ({ user, orgSlug }: UserAvatarDropdownProps) =
           className="rounded-full outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           <Avatar className="size-8 cursor-pointer transition-opacity hover:opacity-80">
-            <AvatarImage src={user.avatarUrl ?? undefined} alt={user.fullName ?? user.email} />
-            <AvatarFallback className="text-xs font-medium">{initials}</AvatarFallback>
+            <AvatarImage
+              src={user.avatarUrl ?? undefined}
+              alt={user.fullName ?? user.email}
+            />
+            <AvatarFallback className="text-xs font-medium">
+              {initials}
+            </AvatarFallback>
           </Avatar>
         </button>
       </DropdownMenuTrigger>
@@ -54,12 +58,15 @@ export const UserAvatarDropdown = ({ user, orgSlug }: UserAvatarDropdownProps) =
       <DropdownMenuContent
         align="end"
         sideOffset={12}
-        className="w-72 border-0 bg-primary-dark p-2 text-white [--accent:0_0%_100%_/_0.10] [--accent-foreground:0_0%_100%]"
+        className="w-72 border-0 bg-primary-dark p-2 text-white [--accent-foreground:0_0%_100%] [--accent:0_0%_100%_/_0.10]"
       >
         <DropdownMenuLabel className="px-2 py-3 font-normal">
           <div className="flex items-center gap-3">
             <Avatar className="size-10 shrink-0">
-              <AvatarImage src={user.avatarUrl ?? undefined} alt={user.fullName ?? user.email} />
+              <AvatarImage
+                src={user.avatarUrl ?? undefined}
+                alt={user.fullName ?? user.email}
+              />
               <AvatarFallback className="bg-white/10 text-sm font-semibold text-white">
                 {initials}
               </AvatarFallback>
@@ -82,14 +89,12 @@ export const UserAvatarDropdown = ({ user, orgSlug }: UserAvatarDropdownProps) =
           </Link>
         </DropdownMenuItem>
 
-        {orgSlug && (
-          <DropdownMenuItem asChild>
-            <Link href={`/org/${orgSlug}/notifications/preferences`} className="cursor-pointer py-2.5">
-              <Bell className="mr-2 size-4" />
-              Notificações
-            </Link>
-          </DropdownMenuItem>
-        )}
+        <DropdownMenuItem asChild>
+          <Link href="/account/notifications" className="cursor-pointer py-2.5">
+            <Bell className="mr-2 size-4" />
+            Notificações
+          </Link>
+        </DropdownMenuItem>
 
         <DropdownMenuSeparator className="bg-white/10" />
 

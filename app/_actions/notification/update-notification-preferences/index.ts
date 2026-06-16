@@ -1,11 +1,13 @@
 'use server'
 
-import { freeOrgActionClient } from '@/_lib/safe-action'
+import { authActionClient } from '@/_lib/safe-action'
 import { revalidateTag } from 'next/cache'
 import { db } from '@/_lib/prisma'
 import { notificationPreferencesSchema } from './schema'
 
-export const updateNotificationPreferences = freeOrgActionClient
+// Preferência é puramente do usuário (não depende de org nem de plano), então usa
+// authActionClient — assim a tela funciona em /account, fora do contexto de org.
+export const updateNotificationPreferences = authActionClient
   .schema(notificationPreferencesSchema)
   .action(async ({ parsedInput: data, ctx }) => {
     // Preferencias sao sempre do proprio usuario autenticado (ctx.userId)
