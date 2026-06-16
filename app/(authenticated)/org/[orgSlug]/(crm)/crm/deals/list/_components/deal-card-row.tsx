@@ -49,7 +49,6 @@ interface DealCardRowProps {
   deal: DealListDto
   isSelected: boolean
   onSelectionChange: (checked: boolean) => void
-  onEdit: () => void
   onDelete: () => void
   orgSlug: string
 }
@@ -58,7 +57,6 @@ export function DealCardRow({
   deal,
   isSelected,
   onSelectionChange,
-  onEdit,
   onDelete,
   orgSlug,
 }: DealCardRowProps) {
@@ -190,7 +188,7 @@ export function DealCardRow({
       </div>
 
       {/* Menu de ações */}
-      <DealTableDropdownMenu onEdit={onEdit} onDelete={onDelete} />
+      <DealTableDropdownMenu onDelete={onDelete} />
     </div>
   )
 }

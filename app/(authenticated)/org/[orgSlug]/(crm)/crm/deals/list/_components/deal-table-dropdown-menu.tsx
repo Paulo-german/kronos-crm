@@ -9,17 +9,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/_components/ui/dropdown-menu'
-import { MoreHorizontalIcon, EditIcon, TrashIcon } from 'lucide-react'
+import { MoreHorizontalIcon, TrashIcon } from 'lucide-react'
 
 interface DealTableDropdownMenuProps {
-  onEdit: () => void
   onDelete: () => void
 }
 
-const DealTableDropdownMenu = ({
-  onEdit,
-  onDelete,
-}: DealTableDropdownMenuProps) => {
+const DealTableDropdownMenu = ({ onDelete }: DealTableDropdownMenuProps) => {
   return (
     <div className="flex items-center justify-end">
       <DropdownMenu>
@@ -31,10 +27,6 @@ const DealTableDropdownMenu = ({
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>Ações</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem className="gap-1.5" onSelect={onEdit}>
-            <EditIcon size={16} />
-            Editar
-          </DropdownMenuItem>
           <DropdownMenuItem
             className="gap-1.5 text-destructive focus:text-destructive"
             onSelect={onDelete}

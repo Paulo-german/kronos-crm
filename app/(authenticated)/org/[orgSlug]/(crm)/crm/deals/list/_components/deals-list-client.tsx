@@ -4,18 +4,13 @@ import { useState } from 'react'
 import { TrashIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAction } from 'next-safe-action/hooks'
-import { Sheet } from '@/_components/ui/sheet'
 import ConfirmationDialog from '@/_components/confirmation-dialog'
 import { DealsToolbar } from './deals-toolbar'
 import { DealsDataTable } from './deals-data-table'
 import { DealsPagination } from './deals-pagination'
 import { DealsEmptyState } from './deals-empty-state'
-import {
-  DealDialogContent,
-  type DealMemberOption,
-} from '../../_components/deal-dialog-content'
+import { type DealMemberOption } from '../../_components/deal-dialog-content'
 import { useDealListFilters } from '../_lib/use-deal-list-filters'
-import { updateDeal } from '@/_actions/deal/update-deal'
 import { deleteDeal } from '@/_actions/deal/delete-deal'
 import { bulkDeleteDeals } from '@/_actions/deal/bulk-delete-deals'
 import type { DealListDto } from '@/_data-access/deal/get-deals'
@@ -78,10 +73,6 @@ export function DealsListClient({
     setPipelineId,
   } = useDealListFilters()
 
-  // Estado elevado do Sheet de edição — sobrevive a re-renders
-  const [editingDeal, setEditingDeal] = useState<DealListDto | null>(null)
-  const [isEditSheetOpen, setIsEditSheetOpen] = useState(false)
-
   // Estado elevado do Dialog de deleção individual
   const [deletingDeal, setDeletingDeal] = useState<DealListDto | null>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -90,21 +81,7 @@ export function DealsListClient({
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false)
   const [bulkDeleteIds, setBulkDeleteIds] = useState<string[]>([])
 
-  // 3 hooks de action no orquestrador
-  const { execute: executeUpdate, isPending: isUpdating } = useAction(
-    updateDeal,
-    {
-      onSuccess: () => {
-        toast.success('Negociação atualizada com sucesso!')
-        setIsEditSheetOpen(false)
-        setEditingDeal(null)
-      },
-      onError: ({ error }) => {
-        toast.error(error.serverError ?? 'Erro ao atualizar negociação.')
-      },
-    },
-  )
-
+  // Hooks de action no orquestrador (deleção individual + em massa)
   const { execute: executeDelete, isPending: isDeletingIndividual } = useAction(
     deleteDeal,
     {
@@ -134,11 +111,6 @@ export function DealsListClient({
       },
     },
   )
-
-  const handleEdit = (deal: DealListDto) => {
-    setEditingDeal(deal)
-    setIsEditSheetOpen(true)
-  }
 
   const handleDelete = (deal: DealListDto) => {
     setDeletingDeal(deal)
@@ -202,7 +174,6 @@ export function DealsListClient({
           <>
             <DealsDataTable
               deals={deals}
-              onEdit={handleEdit}
               onDelete={handleDelete}
               onBulkDelete={handleBulkDelete}
               orgSlug={orgSlug}
@@ -219,37 +190,6 @@ export function DealsListClient({
           </>
         )}
       </div>
-
-      {/* Sheet de edição — estado elevado para sobreviver a re-renders */}
-      <Sheet
-        open={isEditSheetOpen}
-        onOpenChange={(open) => {
-          setIsEditSheetOpen(open)
-          if (!open) setEditingDeal(null)
-        }}
-      >
-        {editingDeal && (
-          <DealDialogContent
-            key={editingDeal.id}
-            open={isEditSheetOpen}
-            defaultValues={{
-              id: editingDeal.id,
-              title: editingDeal.title,
-              stageId: editingDeal.stageId,
-              contactId: editingDeal.contactId ?? undefined,
-              companyId: editingDeal.companyId ?? undefined,
-              assignedTo: editingDeal.assignedTo,
-              priority: editingDeal.priority,
-              notes: editingDeal.notes ?? undefined,
-            }}
-            stages={stages}
-            members={dealMembers}
-            setIsOpen={setIsEditSheetOpen}
-            onUpdate={(data) => executeUpdate(data)}
-            isUpdating={isUpdating}
-          />
-        )}
-      </Sheet>
 
       {/* Dialog de deleção individual */}
       <ConfirmationDialog

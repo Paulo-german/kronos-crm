@@ -9,7 +9,6 @@ import type { DealListDto } from '@/_data-access/deal/get-deals'
 
 interface DealsDataTableProps {
   deals: DealListDto[]
-  onEdit: (deal: DealListDto) => void
   onDelete: (deal: DealListDto) => void
   onBulkDelete: (ids: string[]) => void
   orgSlug: string
@@ -17,7 +16,6 @@ interface DealsDataTableProps {
 
 export function DealsDataTable({
   deals,
-  onEdit,
   onDelete,
   onBulkDelete,
   orgSlug,
@@ -97,8 +95,7 @@ export function DealsDataTable({
           </div>
         ) : (
           <span className="text-xs text-muted-foreground">
-            {deals.length}{' '}
-            {deals.length === 1 ? 'negociação' : 'negociações'}
+            {deals.length} {deals.length === 1 ? 'negociação' : 'negociações'}
           </span>
         )}
       </div>
@@ -113,7 +110,6 @@ export function DealsDataTable({
             onSelectionChange={(checked) =>
               handleSelectionChange(deal.id, checked)
             }
-            onEdit={() => onEdit(deal)}
             onDelete={() => onDelete(deal)}
             orgSlug={orgSlug}
           />
