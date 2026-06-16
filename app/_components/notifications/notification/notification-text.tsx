@@ -1,6 +1,6 @@
 'use client'
 
-import { formatDistanceToNow } from 'date-fns'
+import { format, formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Badge } from '@/_components/ui/badge'
 import { cn } from '@/_lib/utils'
@@ -40,7 +40,16 @@ export const NotificationText = ({ className }: NotificationTextProps) => {
         {notification.body}
       </p>
 
-      <p className="mt-2 text-xs text-muted-foreground">
+      <p
+        className="mt-2 text-xs text-muted-foreground"
+        title={format(
+          new Date(notification.createdAt),
+          "dd/MM/yyyy 'às' HH:mm",
+          {
+            locale: ptBR,
+          },
+        )}
+      >
         {formatDistanceToNow(new Date(notification.createdAt), {
           addSuffix: true,
           locale: ptBR,
