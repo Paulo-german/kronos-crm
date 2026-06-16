@@ -1,0 +1,168 @@
+{
+  // ──────────────────────────────────────────────────────────────
+  // Kronos CRM — snippets dos padrões canônicos (rota de contatos)
+  // Prefixo "k" para todos. Tab para navegar entre os campos.
+  // ──────────────────────────────────────────────────────────────
+
+  "Kronos: Server Action (padrão 6 passos)": {
+    "prefix": "kact",
+    "scope": "typescript",
+    "description": "Server action no padrão 6 passos (RBAC, quota, ownership, DB, revalidateTag)",
+    "body": [
+      "'use server'",
+      "",
+      "import { orgActionClient } from '@/_lib/safe-action'",
+      "import { ${1:entity}Schema } from './schema'",
+      "import { db } from '@/_lib/prisma'",
+      "import { revalidateTag } from 'next/cache'",
+      "import {",
+      "  canPerformAction,",
+      "  requirePermission,",
+      "  resolveAssignedTo,",
+      "  requireQuota,",
+      "} from '@/_lib/rbac'",
+      "",
+      "export const ${2:create}${3:Entity} = orgActionClient",
+      "  .schema(${1:entity}Schema)",
+      "  .action(async ({ parsedInput: data, ctx }) => {",
+      "    // 1. RBAC: permissão base",
+      "    requirePermission(canPerformAction(ctx, '${1:entity}', '${4:create}'))",
+      "",
+      "    // 2. Quota: limite do plano",
+      "    await requireQuota(ctx.orgId, '${1:entity}')",
+      "",
+      "    // 3. Ownership: MEMBER forçado para si mesmo",
+      "    const assignedTo = resolveAssignedTo(ctx, data.assignedTo)",
+      "",
+      "    // 4. Validação cross-entity",
+      "    $5",
+      "",
+      "    // 5. Operação no banco",
+      "    const ${6:record} = await db.${1:entity}.create({",
+      "      data: {",
+      "        organizationId: ctx.orgId,",
+      "        assignedTo,",
+      "        $0",
+      "      },",
+      "    })",
+      "",
+      "    // 6. Invalidar cache + retornar",
+      "    revalidateTag(`${1:entity}s:\\${ctx.orgId}`)",
+      "    return { success: true, ${6:record} }",
+      "  })",
+      ""
+    ]
+  },
+
+  "Kronos: Schema Zod": {
+    "prefix": "kschema",
+    "scope": "typescript",
+    "description": "schema.ts com z.object + type inferido",
+    "body": [
+      "import { z } from 'zod'",
+      "",
+      "export const ${1:entity}Schema = z.object({",
+      "  ${2:name}: z.string().min(1, '${3:Nome é obrigatório}'),",
+      "  assignedTo: z.string().uuid().optional().nullable(),",
+      "  $0",
+      "})",
+      "",
+      "export type ${4:Entity}Input = z.infer<typeof ${1:entity}Schema>",
+      ""
+    ]
+  },
+
+  "Kronos: Data Access (cacheado + RBAC)": {
+    "prefix": "kdata",
+    "scope": "typescript",
+    "description": "Data-access com unstable_cache, cache key por userId e RBAC filter",
+    "body": [
+      "import 'server-only'",
+      "import { unstable_cache } from 'next/cache'",
+      "import { db } from '@/_lib/prisma'",
+      "import type { RBACContext } from '@/_lib/rbac'",
+      "import { isElevated } from '@/_lib/rbac'",
+      "",
+      "// Função base (sem cache)",
+      "const fetch${1:Entities}FromDb = async (",
+      "  orgId: string,",
+      "  userId: string,",
+      "  elevated: boolean,",
+      ") => {",
+      "  return db.${2:entity}.findMany({",
+      "    where: {",
+      "      organizationId: orgId,",
+      "      // RBAC: MEMBER só vê os próprios registros",
+      "      ...(elevated ? {} : { assignedTo: userId }),",
+      "    },$0",
+      "  })",
+      "}",
+      "",
+      "// Wrapper com cache",
+      "export const get${1:Entities} = async (ctx: RBACContext) => {",
+      "  const elevated = isElevated(ctx.userRole)",
+      "",
+      "  const getCached = unstable_cache(",
+      "    async () => fetch${1:Entities}FromDb(ctx.orgId, ctx.userId, elevated),",
+      "    [`${2:entity}s-\\${ctx.orgId}-\\${ctx.userId}-\\${elevated}`],",
+      "    {",
+      "      tags: [`${2:entity}s:\\${ctx.orgId}`],",
+      "      revalidate: 3600,",
+      "    },",
+      "  )",
+      "",
+      "  return getCached()",
+      "}",
+      ""
+    ]
+  },
+
+  "Kronos: React Server Component": {
+    "prefix": "krsc",
+    "scope": "typescriptreact",
+    "description": "Server component async com params tipado",
+    "body": [
+      "interface ${1:${TM_FILENAME_BASE}}Props {",
+      "  params: Promise<{ orgSlug: string }>",
+      "}",
+      "",
+      "const ${1:${TM_FILENAME_BASE}} = async ({ params }: ${1:${TM_FILENAME_BASE}}Props) => {",
+      "  const { orgSlug } = await params",
+      "",
+      "  return (",
+      "    <div>$0</div>",
+      "  )",
+      "}",
+      "",
+      "export default ${1:${TM_FILENAME_BASE}}",
+      ""
+    ]
+  },
+
+  "Kronos: React Client Component": {
+    "prefix": "krcc",
+    "scope": "typescriptreact",
+    "description": "'use client' + componente arrow + export",
+    "body": [
+      "'use client'",
+      "",
+      "interface ${1:${TM_FILENAME_BASE}}Props {",
+      "  $2",
+      "}",
+      "",
+      "export const ${1:${TM_FILENAME_BASE}} = ({ $3 }: ${1:${TM_FILENAME_BASE}}Props) => {",
+      "  return (",
+      "    <div>$0</div>",
+      "  )",
+      "}",
+      ""
+    ]
+  },
+
+  "Kronos: console.log": {
+    "prefix": "kclg",
+    "scope": "typescript,typescriptreact,javascript,javascriptreact",
+    "description": "console.log",
+    "body": ["console.log('$1', $0)"]
+  }
+}
