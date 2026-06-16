@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useQueryState } from 'nuqs'
 import { Button } from '@/_components/ui/button'
 import { Plus } from 'lucide-react'
 import { Sheet, SheetTrigger } from '@/_components/ui/sheet'
@@ -11,6 +11,9 @@ import {
 } from '@/_components/ui/tooltip'
 import { DealDialogContent, type DealMemberOption } from './deal-dialog-content'
 import type { StageDto } from '@/_data-access/pipeline/get-user-pipeline'
+
+// Valor do query param `?deal` que representa o modo "criar" (edição usa o id).
+const CREATE_PARAM_VALUE = 'new'
 
 interface CreateDealButtonProps {
   stages: StageDto[]
@@ -23,7 +26,14 @@ const CreateDealButton = ({
   members = [],
   withinQuota = true,
 }: CreateDealButtonProps) => {
-  const [isOpen, setIsOpen] = useState(false)
+  // Abertura do dialog na URL (?deal=new) — sobrevive a remontagem/revalidação.
+  const [dealParam, setDealParam] = useQueryState('deal')
+  const isOpen = dealParam === CREATE_PARAM_VALUE
+
+  const setIsOpen = (value: boolean | ((prev: boolean) => boolean)) => {
+    const next = typeof value === 'function' ? value(isOpen) : value
+    setDealParam(next ? CREATE_PARAM_VALUE : null)
+  }
 
   if (!withinQuota) {
     return (
