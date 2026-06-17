@@ -22,9 +22,10 @@ import { TaskOutcomeDialog } from '../../../tasks/_components/task-outcome-dialo
 
 interface TabTasksProps {
   deal: DealDetailsDto
+  tasks: DealTaskDto[]
 }
 
-const TabTasks = ({ deal }: TabTasksProps) => {
+const TabTasks = ({ deal, tasks }: TabTasksProps) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<DealTaskDto | null>(null)
   const [deletingTask, setDeletingTask] = useState<DealTaskDto | null>(null)
@@ -34,7 +35,7 @@ const TabTasks = ({ deal }: TabTasksProps) => {
 
   // Estado otimista para tarefas
   const [optimisticTasks, setOptimisticTasks] = useOptimistic(
-    deal.tasks,
+    tasks,
     (currentTasks, taskId: string) =>
       currentTasks.map((task) =>
         task.id === taskId ? { ...task, isCompleted: !task.isCompleted } : task,

@@ -1,4 +1,5 @@
 import 'server-only'
+import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 import type { RBACContext } from '@/_lib/rbac'
@@ -39,17 +40,6 @@ export interface DealTaskDto {
   dealId: string
   outcomeType: string | null
   outcomeNotes: string | null
-}
-
-export interface DealAppointmentDto {
-  id: string
-  title: string
-  type: 'MEETING' | 'BOOKING'
-  startDate: Date
-  endDate: Date
-  status: string
-  professional?: { id: string; name: string }
-  service?: { id: string; name: string }
 }
 
 export interface PipelineStageDto {
@@ -93,11 +83,18 @@ export interface DealDetailsDto {
   assigneeId: string
   assigneeName: string | null
   totalValue: number
-  lineItems: DealLineItemDto[]
   activities: DealActivityDto[]
   totalActivities: number
-  tasks: DealTaskDto[]
-  appointments: DealAppointmentDto[]
+  /**
+   * Contadores para os badges das abas. Os dados completos de cada aba
+   * (line items, tasks, appointments) são carregados sob demanda por seus
+   * próprios data-access — ver getDealLineItems / getDealTasks / getDealAppointments.
+   */
+  counts: {
+    lineItems: number
+    tasks: number
+    appointments: number
+  }
 }
 
 const fetchDealDetailsFromDb = async (
@@ -145,11 +142,14 @@ const fetchDealDetailsFromDb = async (
           fullName: true,
         },
       },
+      // Apenas escalares: o suficiente para computar o totalValue do Resumo.
+      // Os itens completos (com nomes) vêm de getDealLineItems na aba Produtos.
       lineItems: {
-        include: {
-          product: { select: { id: true, name: true } },
-          service: { select: { id: true, name: true, duration: true } },
-          promotion: { select: { id: true, name: true } },
+        select: {
+          unitPrice: true,
+          quantity: true,
+          discountType: true,
+          discountValue: true,
         },
       },
       activities: {
@@ -165,23 +165,11 @@ const fetchDealDetailsFromDb = async (
         },
       },
       _count: {
-        select: { activities: true },
-      },
-      tasks: {
-        orderBy: { dueDate: 'asc' },
-      },
-      appointments: {
-        where: { dealId: { not: null } },
-        orderBy: { startDate: 'desc' },
         select: {
-          id: true,
-          title: true,
-          type: true,
-          startDate: true,
-          endDate: true,
-          status: true,
-          professional: { select: { id: true, name: true } },
-          service: { select: { id: true, name: true } },
+          activities: true,
+          lineItems: true,
+          tasks: true,
+          appointments: true,
         },
       },
       lossReason: {
@@ -197,43 +185,15 @@ const fetchDealDetailsFromDb = async (
 
   const masked = !elevated && hidePiiFromMembers
 
-  const lineItems: DealLineItemDto[] = deal.lineItems.map((item) => {
+  // Soma dos subtotais a partir dos escalares (mesma regra de desconto da aba Produtos).
+  const totalValue = deal.lineItems.reduce((sum, item) => {
     const gross = Number(item.unitPrice) * item.quantity
     const discount =
       item.discountType === 'percentage'
         ? gross * (Number(item.discountValue) / 100)
         : Number(item.discountValue)
-
-    return {
-      id: item.id,
-      itemType: item.itemType,
-      product: item.product ?? undefined,
-      service: item.service ?? undefined,
-      promotion: item.promotion ?? undefined,
-      quantity: item.quantity,
-      unitPrice: Number(item.unitPrice),
-      discountType: item.discountType as 'percentage' | 'fixed',
-      discountValue: Number(item.discountValue),
-      subtotal: gross - discount,
-    }
-  })
-
-  const totalValue = lineItems.reduce((sum, item) => sum + item.subtotal, 0)
-
-  const appointments: DealAppointmentDto[] = deal.appointments.map((appt) => ({
-    id: appt.id,
-    title: appt.title,
-    type: appt.type as 'MEETING' | 'BOOKING',
-    startDate: appt.startDate,
-    endDate: appt.endDate,
-    status: appt.status,
-    professional: appt.professional
-      ? { id: appt.professional.id, name: appt.professional.name }
-      : undefined,
-    service: appt.service
-      ? { id: appt.service.id, name: appt.service.name }
-      : undefined,
-  }))
+    return sum + (gross - discount)
+  }, 0)
 
   return {
     id: deal.id,
@@ -272,7 +232,6 @@ const fetchDealDetailsFromDb = async (
     assigneeId: deal.assignedTo,
     assigneeName: deal.assignee?.fullName ?? null,
     totalValue,
-    lineItems,
     activities: deal.activities.map((activity) => ({
       id: activity.id,
       type: activity.type,
@@ -282,17 +241,11 @@ const fetchDealDetailsFromDb = async (
       metadata: (activity.metadata as Record<string, unknown>) ?? null,
     })),
     totalActivities: deal._count.activities,
-    tasks: deal.tasks.map((task) => ({
-      id: task.id,
-      title: task.title,
-      type: task.type,
-      dueDate: task.dueDate,
-      isCompleted: task.isCompleted,
-      dealId: deal.id,
-      outcomeType: task.outcomeType,
-      outcomeNotes: task.outcomeNotes,
-    })),
-    appointments,
+    counts: {
+      lineItems: deal._count.lineItems,
+      tasks: deal._count.tasks,
+      appointments: deal._count.appointments,
+    },
   }
 }
 
@@ -300,28 +253,29 @@ const fetchDealDetailsFromDb = async (
  * Busca detalhes completos de um deal (Cacheado)
  * RBAC: MEMBER só vê deals atribuídos a ele
  */
-export const getDealDetails = async (
-  dealId: string,
-  ctx: RBACContext,
-): Promise<DealDetailsDto | null> => {
-  const elevated = isElevated(ctx.userRole)
-  const hidePiiFromMembers = ctx.hidePiiFromMembers ?? false
+export const getDealDetails = cache(
+  async (dealId: string, ctx: RBACContext): Promise<DealDetailsDto | null> => {
+    const elevated = isElevated(ctx.userRole)
+    const hidePiiFromMembers = ctx.hidePiiFromMembers ?? false
 
-  const getCached = unstable_cache(
-    async () =>
-      fetchDealDetailsFromDb(
-        dealId,
-        ctx.orgId,
-        ctx.userId,
-        elevated,
-        hidePiiFromMembers,
-      ),
-    [`deal-details-${dealId}-${ctx.userId}-${elevated}-${hidePiiFromMembers}`],
-    {
-      tags: [`deal:${dealId}`, `deals:${ctx.orgId}`],
-      revalidate: 3600,
-    },
-  )
+    const getCached = unstable_cache(
+      async () =>
+        fetchDealDetailsFromDb(
+          dealId,
+          ctx.orgId,
+          ctx.userId,
+          elevated,
+          hidePiiFromMembers,
+        ),
+      [
+        `deal-details-${dealId}-${ctx.userId}-${elevated}-${hidePiiFromMembers}`,
+      ],
+      {
+        tags: [`deal:${dealId}`, `deals:${ctx.orgId}`],
+        revalidate: 3600,
+      },
+    )
 
-  return getCached()
-}
+    return getCached()
+  },
+)

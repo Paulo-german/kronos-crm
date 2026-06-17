@@ -56,6 +56,8 @@ type DiscountType = 'percentage' | 'fixed'
 
 interface TabProductsProps {
   deal: DealDetailsDto
+  lineItems: DealLineItemDto[]
+  totalValue: number
   products: ProductDto[]
   services: ServiceDto[]
   promotions: PromotionDto[]
@@ -91,6 +93,8 @@ const getLineItemName = (item: DealLineItemDto): string =>
 
 const TabProducts = ({
   deal,
+  lineItems,
+  totalValue,
   products,
   services,
   promotions,
@@ -237,7 +241,7 @@ const TabProducts = ({
         </CardHeader>
 
         <CardContent>
-          {deal.lineItems.length === 0 ? (
+          {lineItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-4 py-8 text-center text-muted-foreground">
               <p>Nenhum item adicionado a este negócio.</p>
               <Button size="sm" onClick={() => setIsLineItemSheetOpen(true)}>
@@ -261,7 +265,7 @@ const TabProducts = ({
                     </TableRow>
                   </TableHeader>
                   <TableBody className="bg-card">
-                    {deal.lineItems.map((item) => {
+                    {lineItems.map((item) => {
                       const config = ITEM_TYPE_CONFIG[item.itemType]
                       return (
                         <TableRow key={item.id}>
@@ -322,8 +326,8 @@ const TabProducts = ({
                   <span className="text-sm text-muted-foreground">
                     Total geral:{' '}
                   </span>
-                  <span className="text-xl font-bold text-[#00b37e]">
-                    {formatCurrency(deal.totalValue)}
+                  <span className="text-xl font-bold text-kronos-green">
+                    {formatCurrency(totalValue)}
                   </span>
                 </div>
               </div>

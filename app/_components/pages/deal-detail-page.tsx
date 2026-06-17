@@ -66,12 +66,12 @@ const DealDetailPage = async ({ params }: DealDetailPageProps) => {
         }
         productsTabSlot={
           <Suspense fallback={<TabProductsSkeleton />}>
-            <TabProductsServer deal={deal} orgId={ctx.orgId} />
+            <TabProductsServer deal={deal} ctx={ctx} />
           </Suspense>
         }
         tasksTabSlot={
           <Suspense fallback={<TabTasksSkeleton />}>
-            <TabTasksServer deal={deal} />
+            <TabTasksServer deal={deal} ctx={ctx} />
           </Suspense>
         }
         appointmentsTabSlot={
