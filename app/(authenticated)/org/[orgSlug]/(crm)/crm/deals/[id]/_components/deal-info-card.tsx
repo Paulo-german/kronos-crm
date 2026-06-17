@@ -13,7 +13,6 @@ import {
   Check,
   X,
 } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import { Button } from '@/_components/ui/button'
 import { Input } from '@/_components/ui/input'
 import { Calendar } from '@/_components/ui/calendar'
@@ -39,6 +38,7 @@ import {
   DEAL_PRIORITIES,
   type DealPriority,
 } from '@/_lib/deal/deal-display-config'
+import CollapsibleCard from './collapsible-card'
 
 interface DealInfoCardProps {
   deal: DealDetailsDto
@@ -119,13 +119,11 @@ const DealInfoCard = ({ deal, onTabChange }: DealInfoCardProps) => {
   }
 
   return (
-    <Card className="border-border/50 bg-card">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base font-semibold">
-          Informações da Negociação
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <CollapsibleCard
+      title="Informações da Negociação"
+      summary={`Valor ${formatCurrency(deal.totalValue)} · Etapa ${deal.stageName}`}
+    >
+      <div className="space-y-4">
         {/* Título Editável */}
         <div className="border-b pb-4">
           {editingTitle ? (
@@ -303,8 +301,8 @@ const DealInfoCard = ({ deal, onTabChange }: DealInfoCardProps) => {
             </Popover>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </CollapsibleCard>
   )
 }
 

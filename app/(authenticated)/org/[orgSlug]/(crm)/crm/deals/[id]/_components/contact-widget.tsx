@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   User,
   Mail,
@@ -10,6 +10,7 @@ import {
   Plus,
   Check,
   ChevronsUpDown,
+  Loader2,
   Trash2,
   MessageCircle,
 } from 'lucide-react'
@@ -17,7 +18,6 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { useAction } from 'next-safe-action/hooks'
-import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import { Button } from '@/_components/ui/button'
 import {
   Tooltip,
@@ -49,36 +49,46 @@ import ConfirmationDialog from '@/_components/confirmation-dialog'
 import type { DealDetailsDto } from '@/_data-access/deal/get-deal-details'
 import { formatPhone } from '@/_utils/format-phone'
 import { formatPhoneForWhatsApp } from '@/_utils/format-phone-whatsapp'
-import type { ContactDto } from '@/_data-access/contact/get-contacts'
 import { addDealContact } from '@/_actions/deal/add-deal-contact'
 import { removeDealContact } from '@/_actions/deal/remove-deal-contact'
+import { searchContacts } from '@/_actions/contact/search-contacts'
 import { cn } from '@/_lib/utils'
+import CollapsibleCard from './collapsible-card'
+
+const MIN_SEARCH_CHARS = 3
+const SEARCH_DEBOUNCE_MS = 300
+
+interface ContactSearchResult {
+  id: string
+  name: string
+  phone: string | null
+  assignedTo: string | null
+}
 
 interface ContactWidgetProps {
   deal: DealDetailsDto
-  contacts: ContactDto[]
   isPiiRestricted: boolean
 }
 
-const ContactWidget = ({
-  deal,
-  contacts,
-  isPiiRestricted,
-}: ContactWidgetProps) => {
+const ContactWidget = ({ deal, isPiiRestricted }: ContactWidgetProps) => {
   const { orgSlug } = useParams<{ orgSlug: string }>()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isComboboxOpen, setIsComboboxOpen] = useState(false)
-  const [selectedContactId, setSelectedContactId] = useState<string | null>(
-    null,
-  )
+  const [selectedContact, setSelectedContact] =
+    useState<ContactSearchResult | null>(null)
   const [removingContact, setRemovingContact] = useState<
     DealDetailsDto['contacts'][0] | null
   >(null)
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false)
   const [contactSearch, setContactSearch] = useState('')
+  const [searchResults, setSearchResults] = useState<ContactSearchResult[]>([])
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const MIN_SEARCH_CHARS = 3
-  const MAX_RESULTS = 10
+  const resetSearch = () => {
+    setContactSearch('')
+    setSearchResults([])
+    setSelectedContact(null)
+  }
 
   const { execute: executeAddContact, isPending: isAdding } = useAction(
     addDealContact,
@@ -86,7 +96,7 @@ const ContactWidget = ({
       onSuccess: () => {
         toast.success('Contato adicionado com sucesso!')
         setIsDialogOpen(false)
-        setSelectedContactId(null)
+        resetSearch()
       },
       onError: ({ error }) => {
         toast.error(error.serverError || 'Erro ao adicionar contato.')
@@ -108,28 +118,46 @@ const ContactWidget = ({
     },
   )
 
-  // Filtrar contatos que JÁ estão no deal para não mostrar na lista
-  const availableContacts = contacts.filter(
-    (contact) => !deal.contacts.some((dc) => dc.contactId === contact.id),
+  // Busca server-side: dispara só após 3 caracteres, com debounce
+  const { execute: executeSearch, isPending: isSearching } = useAction(
+    searchContacts,
+    {
+      onSuccess: ({ data }) => {
+        if (data) setSearchResults(data)
+      },
+    },
   )
 
-  const filteredAvailableContacts = useMemo(() => {
-    if (contactSearch.length < MIN_SEARCH_CHARS) return []
-    const query = contactSearch.toLowerCase()
-    return availableContacts
-      .filter(
-        (contact) =>
-          contact.name.toLowerCase().includes(query) ||
-          contact.companyName?.toLowerCase().includes(query),
-      )
-      .slice(0, MAX_RESULTS)
-  }, [availableContacts, contactSearch])
+  const handleSearchChange = (value: string) => {
+    setContactSearch(value)
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+
+    if (value.length < MIN_SEARCH_CHARS) {
+      setSearchResults([])
+      return
+    }
+
+    searchDebounceRef.current = setTimeout(() => {
+      executeSearch({ query: value })
+    }, SEARCH_DEBOUNCE_MS)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+    }
+  }, [])
+
+  // Remove da lista os contatos que já estão vinculados ao deal
+  const availableResults = searchResults.filter(
+    (result) => !deal.contacts.some((dc) => dc.contactId === result.id),
+  )
 
   const handleAddContact = () => {
-    if (!selectedContactId) return
+    if (!selectedContact) return
     executeAddContact({
       dealId: deal.id,
-      contactId: selectedContactId,
+      contactId: selectedContact.id,
       isPrimary: deal.contacts.length === 0, // Se for o primeiro, vira primary
     })
   }
@@ -162,17 +190,25 @@ const ContactWidget = ({
     return contactA.name.localeCompare(contactB.name)
   })
 
+  // Resumo exibido quando o card está colapsado: contagem + contato principal
+  const contactsSummary =
+    deal.contacts.length === 0
+      ? 'Nenhum contato vinculado'
+      : `${deal.contacts.length} ${deal.contacts.length === 1 ? 'contato' : 'contatos'} · principal ${sortedContacts[0].name}`
+
   return (
     <>
-      <Card className="border-border/50 bg-card">
-        <CardHeader className="flex flex-row items-center justify-between pb-3">
-          <div className="flex items-center gap-2">
-            <CardTitle className="text-base font-semibold">Contatos</CardTitle>
-            <span className="text-xs text-muted-foreground">
-              {deal.contacts.length}
-            </span>
-          </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <CollapsibleCard
+        title="Contatos"
+        summary={contactsSummary}
+        headerActions={
+          <Dialog
+            open={isDialogOpen}
+            onOpenChange={(open) => {
+              setIsDialogOpen(open)
+              if (!open) resetSearch()
+            }}
+          >
             <DialogTrigger asChild>
               <Button
                 variant="ghost"
@@ -202,10 +238,8 @@ const ContactWidget = ({
                         aria-expanded={isComboboxOpen}
                         className="w-full justify-between font-normal"
                       >
-                        {selectedContactId
-                          ? availableContacts.find(
-                              (contact) => contact.id === selectedContactId,
-                            )?.name
+                        {selectedContact
+                          ? selectedContact.name
                           : 'Selecione um contato...'}
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
@@ -215,43 +249,42 @@ const ContactWidget = ({
                         <CommandInput
                           placeholder="Digite pelo menos 3 caracteres..."
                           value={contactSearch}
-                          onValueChange={setContactSearch}
+                          onValueChange={handleSearchChange}
                         />
                         <CommandList>
                           {contactSearch.length < MIN_SEARCH_CHARS ? (
                             <div className="py-6 text-center text-sm text-muted-foreground">
                               Digite pelo menos 3 caracteres
                             </div>
-                          ) : filteredAvailableContacts.length === 0 ? (
+                          ) : isSearching ? (
+                            <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Buscando...
+                            </div>
+                          ) : availableResults.length === 0 ? (
                             <CommandEmpty>
                               Nenhum contato encontrado.
                             </CommandEmpty>
                           ) : (
                             <CommandGroup>
-                              {filteredAvailableContacts.map((contact) => (
+                              {availableResults.map((contact) => (
                                 <CommandItem
                                   key={contact.id}
                                   value={contact.id}
                                   onSelect={() => {
-                                    setSelectedContactId(contact.id)
+                                    setSelectedContact(contact)
                                     setIsComboboxOpen(false)
-                                    setContactSearch('')
                                   }}
                                 >
                                   <Check
                                     className={cn(
                                       'mr-2 h-4 w-4',
-                                      selectedContactId === contact.id
+                                      selectedContact?.id === contact.id
                                         ? 'opacity-100'
                                         : 'opacity-0',
                                     )}
                                   />
                                   {contact.name}
-                                  {contact.companyName && (
-                                    <span className="ml-1 text-xs text-muted-foreground">
-                                      ({contact.companyName})
-                                    </span>
-                                  )}
                                 </CommandItem>
                               ))}
                             </CommandGroup>
@@ -271,7 +304,7 @@ const ContactWidget = ({
                   </Button>
                   <Button
                     onClick={handleAddContact}
-                    disabled={!selectedContactId || isAdding}
+                    disabled={!selectedContact || isAdding}
                   >
                     {isAdding ? 'Adicionando...' : 'Adicionar'}
                   </Button>
@@ -279,8 +312,9 @@ const ContactWidget = ({
               </div>
             </DialogContent>
           </Dialog>
-        </CardHeader>
-        <CardContent className="space-y-6">
+        }
+      >
+        <div className="space-y-6">
           {deal.contacts.length === 0 && (
             <div className="flex flex-col items-center justify-center py-6 text-center">
               <div className="rounded-full bg-muted p-4">
@@ -444,8 +478,8 @@ const ContactWidget = ({
               </div>
             </div>
           ))}
-        </CardContent>
-      </Card>
+        </div>
+      </CollapsibleCard>
 
       <ConfirmationDialog
         open={isRemoveDialogOpen}
