@@ -3,10 +3,25 @@
 import { useState } from 'react'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
-import { Calendar, DollarSign, Pencil, Check, X } from 'lucide-react'
+import { format } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
+import {
+  Calendar as CalendarIcon,
+  CalendarClock,
+  DollarSign,
+  Pencil,
+  Check,
+  X,
+} from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import { Button } from '@/_components/ui/button'
 import { Input } from '@/_components/ui/input'
+import { Calendar } from '@/_components/ui/calendar'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/_components/ui/popover'
 import {
   Select,
   SelectContent,
@@ -14,10 +29,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/_components/ui/select'
+import { cn } from '@/_lib/utils'
 import { formatCurrency } from '@/_utils/format-currency'
 import { updateDeal } from '@/_actions/deal/update-deal'
 import { moveDealToStage } from '@/_actions/deal/move-deal-to-stage'
 import type { DealDetailsDto } from '@/_data-access/deal/get-deal-details'
+import {
+  PRIORITY_CONFIG,
+  DEAL_PRIORITIES,
+  type DealPriority,
+} from '@/_lib/deal/deal-display-config'
 
 interface DealInfoCardProps {
   deal: DealDetailsDto
@@ -46,6 +67,32 @@ const DealInfoCard = ({ deal, onTabChange }: DealInfoCardProps) => {
       },
       onError: ({ error }) => {
         toast.error(error.serverError || 'Erro ao mudar etapa.')
+      },
+    },
+  )
+
+  const { execute: executePriority, isPending: isChangingPriority } = useAction(
+    updateDeal,
+    {
+      onSuccess: () => {
+        toast.success('Prioridade atualizada!')
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError || 'Erro ao mudar prioridade.')
+      },
+    },
+  )
+
+  const [isDateOpen, setIsDateOpen] = useState(false)
+  const { execute: executeDate, isPending: isChangingDate } = useAction(
+    updateDeal,
+    {
+      onSuccess: () => {
+        toast.success('Previsão atualizada!')
+        setIsDateOpen(false)
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError || 'Erro ao atualizar previsão.')
       },
     },
   )
@@ -170,23 +217,90 @@ const DealInfoCard = ({ deal, onTabChange }: DealInfoCardProps) => {
           </Select>
         </div>
 
+        {/* Prioridade */}
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">
+            Prioridade
+          </p>
+          <Select
+            value={deal.priority}
+            onValueChange={(priority) => {
+              executePriority({
+                id: deal.id,
+                priority: priority as DealPriority,
+              })
+            }}
+            disabled={isChangingPriority}
+          >
+            <SelectTrigger className="font-medium">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {DEAL_PRIORITIES.map((priority) => {
+                const PriorityIcon = PRIORITY_CONFIG[priority].icon
+                return (
+                  <SelectItem key={priority} value={priority}>
+                    <div className="flex items-center gap-2">
+                      <PriorityIcon
+                        className={cn(
+                          'size-3.5',
+                          PRIORITY_CONFIG[priority].color,
+                        )}
+                      />
+                      {PRIORITY_CONFIG[priority].label}
+                    </div>
+                  </SelectItem>
+                )
+              })}
+            </SelectContent>
+          </Select>
+        </div>
+
         {/* Datas */}
         <div className="space-y-2 border-t pt-3">
           <div className="flex items-center justify-between text-sm">
             <span className="flex items-center gap-1.5 text-muted-foreground">
-              <Calendar className="h-3.5 w-3.5" />
+              <CalendarIcon className="h-3.5 w-3.5" />
               Criado em
             </span>
             <span className="font-medium">{formatDate(deal.createdAt)}</span>
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="flex items-center gap-1.5 text-muted-foreground">
-              <Calendar className="h-3.5 w-3.5" />
+              <CalendarClock className="h-3.5 w-3.5" />
               Previsão
             </span>
-            <span className="font-medium">
-              {formatDate(deal.expectedCloseDate)}
-            </span>
+            <Popover open={isDateOpen} onOpenChange={setIsDateOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 font-medium"
+                  disabled={isChangingDate}
+                >
+                  {deal.expectedCloseDate
+                    ? format(new Date(deal.expectedCloseDate), 'dd/MM/yyyy')
+                    : 'Definir'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="single"
+                  selected={
+                    deal.expectedCloseDate
+                      ? new Date(deal.expectedCloseDate)
+                      : undefined
+                  }
+                  onSelect={(date) => {
+                    if (date) {
+                      executeDate({ id: deal.id, expectedCloseDate: date })
+                    }
+                  }}
+                  locale={ptBR}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
       </CardContent>

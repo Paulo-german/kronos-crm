@@ -9,6 +9,7 @@ export const updateDealSchema = z.object({
     .max(DEAL_TITLE_MAX)
     .optional(),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
+  expectedCloseDate: z.coerce.date().optional().nullable(),
   notes: z.string().max(DEAL_NOTES_MAX).optional().nullable(),
   contactId: z.string().uuid('ID do contato inválido').optional().nullable(),
   companyId: z.string().uuid('ID da empresa inválido').optional().nullable(),

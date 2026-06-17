@@ -45,6 +45,8 @@ export const updateDeal = orgActionClient
 
     if (data.title !== undefined) updateData.title = data.title
     if (data.priority !== undefined) updateData.priority = data.priority
+    if (data.expectedCloseDate !== undefined)
+      updateData.expectedCloseDate = data.expectedCloseDate
     if (data.notes !== undefined) updateData.notes = data.notes
     if (data.assignedTo !== undefined) updateData.assignedTo = data.assignedTo
 
@@ -114,7 +116,6 @@ export const updateDeal = orgActionClient
           },
         })
       }
-
     })
 
     revalidateTag(`pipeline:${ctx.orgId}`)

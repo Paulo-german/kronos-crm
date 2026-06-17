@@ -46,6 +46,7 @@ import { Checkbox } from '@/_components/ui/checkbox'
 
 import TabSummary from './tab-summary'
 import { useDealWonCelebration } from '../_hooks/use-deal-won-celebration'
+import { PRIORITY_CONFIG, STATUS_CONFIG } from '@/_lib/deal/deal-display-config'
 
 interface MemberDto {
   id: string
@@ -69,60 +70,6 @@ interface DealDetailClientProps {
   tasksTabSlot: ReactNode
   appointmentsTabSlot: ReactNode
   orgSlug: string
-}
-
-const priorityConfig = {
-  low: {
-    label: 'BAIXA',
-    color:
-      'bg-zinc-500/20 text-zinc-400 hover:bg-zinc-500/20 hover:text-zinc-400',
-  },
-  medium: {
-    label: 'MÉDIA',
-    color: 'bg-primary/20 text-primary hover:bg-primary/20 hover:text-primary',
-  },
-  high: {
-    label: 'ALTA',
-    color:
-      'bg-amber-500/20 text-amber-500 hover:bg-amber-500/20 hover:text-amber-500',
-  },
-  urgent: {
-    label: 'URGENTE',
-    color: 'bg-red-500/20 text-red-500 hover:bg-red-500/20 hover:text-red-500',
-  },
-}
-
-const statusConfig = {
-  OPEN: {
-    label: 'NOVO',
-    color:
-      'bg-kronos-blue/10 text-kronos-blue border-kronos-blue/20 hover:bg-kronos-blue/20',
-    variant: 'secondary' as const,
-  },
-  IN_PROGRESS: {
-    label: 'EM ANDAMENTO',
-    color:
-      'bg-kronos-purple/10 text-kronos-purple border-kronos-purple/20 hover:bg-kronos-purple/20',
-    variant: 'secondary' as const,
-  },
-  WON: {
-    label: 'VENDIDO',
-    color:
-      'bg-kronos-green/10 text-kronos-green border-kronos-green/20 hover:bg-kronos-green/20',
-    variant: 'secondary' as const,
-  },
-  LOST: {
-    label: 'PERDIDO',
-    color:
-      'bg-kronos-red/10 text-kronos-red border-kronos-red/20 hover:bg-kronos-red/20',
-    variant: 'secondary' as const,
-  },
-  PAUSED: {
-    label: 'PAUSADO',
-    color:
-      'bg-kronos-yellow/10 text-kronos-yellow border-kronos-yellow/20 hover:bg-kronos-yellow/20',
-    variant: 'secondary' as const,
-  },
 }
 
 const DealDetailClient = ({
@@ -358,15 +305,15 @@ const DealDetailClient = ({
                 <div className="mt-4 flex items-center gap-2">
                   <Badge
                     variant="outline"
-                    className={`h-6 gap-1.5 px-2 text-xs font-semibold transition-colors ${statusConfig[deal.status].color}`}
+                    className={`h-6 gap-1.5 px-2 text-xs font-semibold transition-colors ${STATUS_CONFIG[deal.status].badgeClassName}`}
                   >
                     <CircleIcon className="h-1.5 w-1.5 fill-current" />
-                    {statusConfig[deal.status].label}
+                    {STATUS_CONFIG[deal.status].label}
                   </Badge>
                   <Badge
-                    className={`h-6 gap-1.5 px-2 text-xs font-semibold transition-colors ${priorityConfig[deal.priority].color}`}
+                    className={`h-6 gap-1.5 px-2 text-xs font-semibold transition-colors ${PRIORITY_CONFIG[deal.priority].badgeClassName}`}
                   >
-                    {priorityConfig[deal.priority].label}
+                    {PRIORITY_CONFIG[deal.priority].label}
                   </Badge>
                 </div>
               </div>
@@ -426,18 +373,33 @@ const DealDetailClient = ({
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="h-fit">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid h-12 w-full grid-cols-4 border border-border/50 bg-tab/30">
           <TabsTrigger value="summary" className="rounded-md py-2">
             Resumo
           </TabsTrigger>
-          <TabsTrigger value="products" className="rounded-md py-2">
+          <TabsTrigger value="products" className="gap-1.5 rounded-md py-2">
             Produtos
+            {deal.counts.lineItems > 0 && (
+              <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+                {deal.counts.lineItems}
+              </Badge>
+            )}
           </TabsTrigger>
-          <TabsTrigger value="tasks" className="rounded-md py-2">
+          <TabsTrigger value="tasks" className="gap-1.5 rounded-md py-2">
             Tarefas
+            {deal.counts.tasks > 0 && (
+              <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+                {deal.counts.tasks}
+              </Badge>
+            )}
           </TabsTrigger>
-          <TabsTrigger value="appointments" className="rounded-md py-2">
+          <TabsTrigger value="appointments" className="gap-1.5 rounded-md py-2">
             Agendamentos
+            {deal.counts.appointments > 0 && (
+              <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+                {deal.counts.appointments}
+              </Badge>
+            )}
           </TabsTrigger>
         </TabsList>
 
@@ -447,16 +409,6 @@ const DealDetailClient = ({
             contactsSlot={contactsSlot}
             onTabChange={setActiveTab}
           />
-          <div className="mt-6 rounded-lg border bg-card p-4">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <UserCog className="h-4 w-4" />
-              <span>Responsável pelo Deal:</span>
-              <span className="font-medium text-foreground">
-                {members.find((member) => member.userId === deal.assigneeId)
-                  ?.user?.fullName || 'Não atribuído'}
-              </span>
-            </div>
-          </div>
         </TabsContent>
 
         <TabsContent value="products" className="mt-4">
