@@ -18,11 +18,6 @@ import {
   LinkIcon,
   TrashIcon,
   UserIcon,
-  Users,
-  Phone,
-  MessageCircle,
-  Briefcase,
-  Mail,
 } from 'lucide-react'
 import Link from 'next/link'
 import {
@@ -37,6 +32,7 @@ import {
 import { ptBR } from 'date-fns/locale'
 import { Sheet } from '@/_components/ui/sheet'
 import { Button } from '@/_components/ui/button'
+import { Checkbox } from '@/_components/ui/checkbox'
 import {
   Tooltip,
   TooltipContent,
@@ -49,27 +45,16 @@ import { cn } from '@/_lib/utils'
 import { toggleTaskStatus } from '@/_actions/task/toggle-task-status'
 import { deleteTask } from '@/_actions/task/delete-task'
 import { updateTask } from '@/_actions/task/update-task'
+import { bulkDeleteTasks } from '@/_actions/task/bulk-delete-tasks'
 import { UpsertTaskDialogContent } from './upsert-dialog-content'
 import TaskTableDropdownMenu from './table-dropdown-menu'
 import ConfirmationDialog from '@/_components/confirmation-dialog'
 import { TaskOutcomeDialog } from './task-outcome-dialog'
 import { TASK_OUTCOME_OPTIONS } from '@/_lib/task/outcome-config'
+import { TASK_TYPE_MAP } from '../_lib/task-types'
 import type { TaskDto } from '@/_data-access/task/get-tasks'
 import type { LucideIcon } from 'lucide-react'
-
-// ---------------------------------------------------------------------------
-// Mapa de ícones por tipo de tarefa
-// ---------------------------------------------------------------------------
-
-const TASK_TYPE_ICON_MAP: Record<string, { icon: LucideIcon; color: string }> =
-  {
-    TASK: { icon: CheckCircle2, color: 'text-slate-500' },
-    MEETING: { icon: Users, color: 'text-blue-500' },
-    CALL: { icon: Phone, color: 'text-green-500' },
-    WHATSAPP: { icon: MessageCircle, color: 'text-emerald-500' },
-    VISIT: { icon: Briefcase, color: 'text-purple-500' },
-    EMAIL: { icon: Mail, color: 'text-yellow-500' },
-  }
+import type { TaskType } from '@prisma/client'
 
 // ---------------------------------------------------------------------------
 // Tipos de seção da timeline
@@ -223,6 +208,10 @@ const TasksDataTable = ({ tasks }: TasksDataTableProps) => {
   // Estado do dialog de outcome (ao concluir uma tarefa)
   const [outcomeTask, setOutcomeTask] = useState<TaskDto | null>(null)
 
+  // Estado de seleção em massa
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false)
+
   // Seção "Concluídas" começa colapsada por padrão
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
     new Set(['completed']),
@@ -287,9 +276,39 @@ const TasksDataTable = ({ tasks }: TasksDataTableProps) => {
       },
     })
 
+  // Hook para deletar tarefas em massa
+  const { execute: executeBulkDelete, isPending: isBulkDeleting } = useAction(
+    bulkDeleteTasks,
+    {
+      onSuccess: ({ data }) => {
+        toast.success(
+          `${data?.count ?? selectedIds.size} tarefa(s) excluída(s).`,
+        )
+        setIsBulkDeleteDialogOpen(false)
+        setSelectedIds(new Set())
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError || 'Erro ao excluir tarefas.')
+      },
+    },
+  )
+
   const handleEdit = useCallback((task: TaskDto) => {
     setEditingTask(task)
     setIsEditSheetOpen(true)
+  }, [])
+
+  // Alterna a seleção de uma tarefa individual
+  const handleSelectionChange = useCallback((taskId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(taskId)) {
+        next.delete(taskId)
+      } else {
+        next.add(taskId)
+      }
+      return next
+    })
   }, [])
 
   const handleDeleteRequest = useCallback((task: TaskDto) => {
@@ -314,6 +333,28 @@ const TasksDataTable = ({ tasks }: TasksDataTableProps) => {
     () => groupTasksByDeadline(optimisticTasks),
     [optimisticTasks],
   )
+
+  // IDs das tarefas visíveis (seções não colapsadas) — base do "selecionar tudo"
+  const visibleTaskIds = useMemo(
+    () =>
+      timelineSections
+        .filter((section) => !collapsedGroups.has(section.key))
+        .flatMap((section) => section.tasks.map((task) => task.id)),
+    [timelineSections, collapsedGroups],
+  )
+
+  const allVisibleSelected =
+    visibleTaskIds.length > 0 &&
+    visibleTaskIds.every((id) => selectedIds.has(id))
+
+  const handleToggleSelectAll = useCallback(() => {
+    setSelectedIds((prev) => {
+      const everyVisibleSelected =
+        visibleTaskIds.length > 0 && visibleTaskIds.every((id) => prev.has(id))
+      if (everyVisibleSelected) return new Set()
+      return new Set(visibleTaskIds)
+    })
+  }, [visibleTaskIds])
 
   return (
     <>
@@ -362,6 +403,27 @@ const TasksDataTable = ({ tasks }: TasksDataTableProps) => {
         confirmLabel="Confirmar Exclusão"
       />
 
+      {/* Dialog de deleção em massa */}
+      <ConfirmationDialog
+        open={isBulkDeleteDialogOpen}
+        onOpenChange={setIsBulkDeleteDialogOpen}
+        title="Excluir tarefas selecionadas?"
+        description={
+          <p>
+            Esta ação não pode ser desfeita. Você está prestes a remover{' '}
+            <span className="font-bold text-foreground">
+              {selectedIds.size} {selectedIds.size === 1 ? 'tarefa' : 'tarefas'}
+            </span>
+            .
+          </p>
+        }
+        icon={<TrashIcon />}
+        variant="destructive"
+        onConfirm={() => executeBulkDelete({ ids: Array.from(selectedIds) })}
+        isLoading={isBulkDeleting}
+        confirmLabel="Confirmar Exclusão"
+      />
+
       {/* Dialog de outcome ao concluir tarefa */}
       <TaskOutcomeDialog
         task={outcomeTask}
@@ -378,6 +440,41 @@ const TasksDataTable = ({ tasks }: TasksDataTableProps) => {
           setOutcomeTask(null)
         }}
       />
+
+      {/* Barra de ação em massa (aparece quando há seleção) */}
+      {selectedIds.size > 0 && (
+        <div className="sticky top-0 z-10 mb-4 flex flex-wrap items-center gap-3 rounded-lg border bg-card px-3 py-2 shadow-sm">
+          <Checkbox
+            checked={allVisibleSelected}
+            onCheckedChange={handleToggleSelectAll}
+            aria-label="Selecionar todas as tarefas visíveis"
+          />
+          <span className="text-sm font-medium">
+            {selectedIds.size}{' '}
+            {selectedIds.size === 1
+              ? 'tarefa selecionada'
+              : 'tarefas selecionadas'}
+          </span>
+          <div className="ml-auto flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedIds(new Set())}
+            >
+              Limpar
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setIsBulkDeleteDialogOpen(true)}
+            >
+              <TrashIcon className="h-4 w-4" />
+              Excluir selecionadas
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Timeline de seções */}
       <div className="flex flex-col gap-6">
@@ -445,9 +542,12 @@ const TasksDataTable = ({ tasks }: TasksDataTableProps) => {
                       task={task}
                       isOverdueSection={isOverdueSection}
                       isDimmed={isDimmedGroup}
+                      isSelected={selectedIds.has(task.id)}
+                      selectionActive={selectedIds.size > 0}
                       onToggle={handleToggle}
                       onEdit={handleEdit}
                       onDeleteRequest={handleDeleteRequest}
+                      onSelectionChange={handleSelectionChange}
                     />
                   ))}
                 </div>
@@ -483,6 +583,52 @@ function getSectionIcon(type: TimelineSectionType): LucideIcon {
 }
 
 // ---------------------------------------------------------------------------
+// Sub-componente: TaskOutcomeBadge (resultado registrado ao concluir)
+// ---------------------------------------------------------------------------
+
+function TaskOutcomeBadge({ task }: { task: TaskDto }) {
+  if (!task.isCompleted || !task.outcomeType) return null
+
+  const options =
+    TASK_OUTCOME_OPTIONS[task.type] ?? TASK_OUTCOME_OPTIONS['TASK']
+  const outcomeOption = options.find(
+    (option) => option.value === task.outcomeType,
+  )
+  if (!outcomeOption) return null
+
+  const OutcomeIcon = outcomeOption.icon
+  const badge = (
+    <span
+      className={cn(
+        'hidden shrink-0 items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium sm:flex',
+        outcomeOption.positive
+          ? 'border-kronos-green/40 bg-kronos-green/10 text-kronos-green'
+          : 'border-border bg-muted/50 text-muted-foreground',
+      )}
+    >
+      <OutcomeIcon className="h-3 w-3 shrink-0" />
+      {outcomeOption.label}
+    </span>
+  )
+
+  if (!task.outcomeNotes) return badge
+
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>{badge}</TooltipTrigger>
+        <TooltipContent
+          side="top"
+          className="max-w-[240px] whitespace-pre-wrap text-xs"
+        >
+          {task.outcomeNotes}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Sub-componente: TimelineTaskRow
 // ---------------------------------------------------------------------------
 
@@ -490,20 +636,26 @@ interface TimelineTaskRowProps {
   task: TaskDto
   isOverdueSection: boolean
   isDimmed: boolean
+  isSelected: boolean
+  selectionActive: boolean
   onToggle: (task: TaskDto) => void
   onEdit: (task: TaskDto) => void
   onDeleteRequest: (task: TaskDto) => void
+  onSelectionChange: (taskId: string) => void
 }
 
 function TimelineTaskRow({
   task,
   isOverdueSection,
   isDimmed,
+  isSelected,
+  selectionActive,
   onToggle,
   onEdit,
   onDeleteRequest,
+  onSelectionChange,
 }: TimelineTaskRowProps) {
-  const typeConfig = TASK_TYPE_ICON_MAP[task.type] ?? TASK_TYPE_ICON_MAP['TASK']
+  const typeConfig = TASK_TYPE_MAP[task.type as TaskType] ?? TASK_TYPE_MAP.TASK
   const TypeIcon = typeConfig.icon
   const dueDate = new Date(task.dueDate)
 
@@ -521,8 +673,22 @@ function TimelineTaskRow({
           'border-kronos-green/30 bg-kronos-green/10 opacity-70 hover:border-kronos-green/30 hover:bg-kronos-green/10 hover:text-kronos-green hover:opacity-100',
         isOverdueSection &&
           'hover:bg-destructive-15 border border-destructive/30 bg-destructive/10 hover:border-destructive/30 hover:text-destructive',
+        isSelected && 'border-primary/50 bg-primary/5',
       )}
     >
+      {/* Checkbox de seleção (visível em hover ou quando há seleção ativa) */}
+      <Checkbox
+        checked={isSelected}
+        onCheckedChange={() => onSelectionChange(task.id)}
+        aria-label={`Selecionar tarefa ${task.title}`}
+        className={cn(
+          'shrink-0 transition-opacity',
+          !isSelected &&
+            !selectionActive &&
+            'opacity-0 group-hover:opacity-100',
+        )}
+      />
+
       {/* Botão de toggle (círculo/check otimista) */}
       <button
         type="button"
@@ -542,7 +708,7 @@ function TimelineTaskRow({
       </button>
 
       {/* Ícone do tipo */}
-      <TypeIcon className={cn('h-4 w-4 shrink-0', typeConfig.color)} />
+      <TypeIcon className={cn('h-4 w-4 shrink-0', typeConfig.iconColor)} />
 
       {/* Título da tarefa */}
       <span
@@ -554,9 +720,9 @@ function TimelineTaskRow({
         {task.title}
       </span>
 
-      {/* Responsável */}
+      {/* Responsável (oculto em telas estreitas) */}
       {task.assignee?.fullName && (
-        <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+        <span className="hidden shrink-0 items-center gap-1 text-xs text-muted-foreground sm:flex">
           <UserIcon className="h-3 w-3 shrink-0" />
           <span className="max-w-[100px] truncate">
             {task.assignee.fullName.split(' ')[0]}
@@ -565,54 +731,18 @@ function TimelineTaskRow({
       )}
 
       {/* Outcome badge (só para tarefas concluídas com outcome registrado) */}
-      {task.isCompleted &&
-        task.outcomeType &&
-        (() => {
-          const options =
-            TASK_OUTCOME_OPTIONS[task.type] ?? TASK_OUTCOME_OPTIONS['TASK']
-          const outcomeOption = options.find(
-            (opt) => opt.value === task.outcomeType,
-          )
-          if (!outcomeOption) return null
-          const OutcomeIcon = outcomeOption.icon
-          const badge = (
-            <span
-              className={cn(
-                'flex shrink-0 items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium',
-                outcomeOption.positive
-                  ? 'border-kronos-green/40 bg-kronos-green/10 text-kronos-green'
-                  : 'border-border bg-muted/50 text-muted-foreground',
-              )}
-            >
-              <OutcomeIcon className="h-3 w-3 shrink-0" />
-              {outcomeOption.label}
-            </span>
-          )
-          if (!task.outcomeNotes) return badge
-          return (
-            <TooltipProvider delayDuration={200}>
-              <Tooltip>
-                <TooltipTrigger asChild>{badge}</TooltipTrigger>
-                <TooltipContent
-                  side="top"
-                  className="max-w-[240px] whitespace-pre-wrap text-xs"
-                >
-                  {task.outcomeNotes}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )
-        })()}
+      <TaskOutcomeBadge task={task} />
 
       {/* Deal badge */}
       {task.deal && task.dealId && (
         <Link
           href={`/crm/deals/${task.dealId}`}
           className="flex shrink-0 items-center gap-1 rounded-md bg-secondary/50 px-2 py-0.5 text-xs font-medium text-secondary-foreground hover:bg-secondary hover:underline"
-          onClick={(event) => event.stopPropagation()}
         >
           <LinkIcon className="h-3 w-3" />
-          <span className="max-w-[120px] truncate">{task.deal.title}</span>
+          <span className="max-w-[90px] truncate sm:max-w-[120px]">
+            {task.deal.title}
+          </span>
         </Link>
       )}
 
@@ -629,7 +759,7 @@ function TimelineTaskRow({
       </span>
 
       {/* Menu de ações */}
-      <div className="shrink-0" onClick={(event) => event.stopPropagation()}>
+      <div className="shrink-0">
         <TaskTableDropdownMenu
           task={task}
           onEdit={() => onEdit(task)}
