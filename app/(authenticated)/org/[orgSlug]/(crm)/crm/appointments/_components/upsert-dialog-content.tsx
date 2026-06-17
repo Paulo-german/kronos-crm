@@ -88,6 +88,12 @@ import {
 } from '@/_components/ui/select'
 import { Switch } from '@/_components/ui/switch'
 import { Alert, AlertDescription, AlertTitle } from '@/_components/ui/alert'
+import { TooltipProvider } from '@/_components/ui/tooltip'
+import { FieldLabel } from '@/_components/form-controls/field-label'
+import {
+  APPOINTMENT_TITLE_MAX,
+  APPOINTMENT_DESCRIPTION_MAX,
+} from '@/_lib/constants/field-limits'
 
 const SAO_PAULO_TZ = 'America/Sao_Paulo'
 const MIN_SEARCH_CHARS = 3
@@ -518,8 +524,14 @@ export function UpsertAppointmentDialogContent({
     }
   }
 
+  // Reseta o formulário ao cancelar para evitar valores stale ao reabrir
+  const handleClose = () => {
+    form.reset()
+    setIsOpen(false)
+  }
+
   return (
-    <SheetContent className="overflow-y-auto sm:max-w-lg">
+    <SheetContent className="overflow-y-auto sm:max-w-xl">
       <SheetHeader>
         <SheetTitle>
           {defaultValues?.id ? 'Editar Agendamento' : 'Novo Agendamento'}
@@ -531,246 +543,175 @@ export function UpsertAppointmentDialogContent({
         </SheetDescription>
       </SheetHeader>
 
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          {/* TIPO DE AGENDAMENTO */}
-          <FormField<CreateAppointmentInput, 'type'>
-            control={form.control}
-            name="type"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Tipo de agendamento</FormLabel>
-                <FormControl>
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant={
-                        field.value === 'MEETING' ? 'default' : 'outline'
-                      }
-                      size="sm"
-                      className="flex-1 gap-2"
-                      onClick={() => {
-                        field.onChange('MEETING')
-                        form.setValue('professionalId', undefined)
-                        form.setValue('serviceId', undefined)
-                        setSlots([])
-                        setSelectedDay(null)
-                        setSelectedSlotKey(null)
-                        setFilterProfessionalId(null)
-                      }}
-                    >
-                      <BriefcaseIcon className="h-3.5 w-3.5" />
-                      Comercial
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={
-                        field.value === 'BOOKING' ? 'default' : 'outline'
-                      }
-                      size="sm"
-                      className="flex-1 gap-2"
-                      onClick={() => {
-                        field.onChange('BOOKING')
-                        form.setValue('dealId', undefined)
-                        form.setValue('endDate', undefined)
-                      }}
-                    >
-                      <ScissorsIcon className="h-3.5 w-3.5" />
-                      Serviço
-                    </Button>
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* CONTATO — primeiro campo de dados, obrigatório para ambos os tipos */}
-          <FormField<CreateAppointmentInput, 'contactId'>
-            control={form.control}
-            name="contactId"
-            render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel className="flex items-center gap-1">
-                  Contato <span className="text-destructive">*</span>
-                </FormLabel>
-                <Popover
-                  open={openContactCombobox}
-                  onOpenChange={(open) => {
-                    setOpenContactCombobox(open)
-                    if (!open) {
-                      setContactSearch('')
-                      setContactResults([])
-                    }
-                  }}
-                >
-                  <PopoverTrigger asChild>
-                    <FormControl>
+      <TooltipProvider>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* TIPO DE AGENDAMENTO */}
+            <FormField<CreateAppointmentInput, 'type'>
+              control={form.control}
+              name="type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    <FieldLabel
+                      label="Tipo de agendamento"
+                      tooltip="Comercial: reunião/demo vinculada a uma negociação. Serviço: atendimento agendado com um profissional via horário disponível."
+                    />
+                  </FormLabel>
+                  <FormControl>
+                    <div className="flex gap-2">
                       <Button
-                        variant="outline"
-                        role="combobox"
-                        className={cn(
-                          'w-full justify-between',
-                          !field.value && 'text-muted-foreground',
-                          form.formState.errors.contactId &&
-                            'border-destructive',
-                        )}
+                        type="button"
+                        variant={
+                          field.value === 'MEETING' ? 'default' : 'outline'
+                        }
+                        size="sm"
+                        className="flex-1 gap-2"
+                        onClick={() => {
+                          field.onChange('MEETING')
+                          form.setValue('professionalId', undefined)
+                          form.setValue('serviceId', undefined)
+                          setSlots([])
+                          setSelectedDay(null)
+                          setSelectedSlotKey(null)
+                          setFilterProfessionalId(null)
+                        }}
                       >
-                        <span className="flex items-center gap-2 truncate">
-                          <UserIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                          {selectedContact
-                            ? selectedContact.name
-                            : 'Selecione um contato...'}
-                        </span>
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        <BriefcaseIcon className="h-3.5 w-3.5" />
+                        Comercial
                       </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                    <Command shouldFilter={false}>
-                      <CommandInput
-                        placeholder="Digite pelo menos 3 caracteres..."
-                        value={contactSearch}
-                        onValueChange={handleContactSearchChange}
-                      />
-                      <CommandList>
-                        {contactSearch.length < MIN_SEARCH_CHARS ? (
-                          <div className="py-6 text-center text-sm text-muted-foreground">
-                            Digite pelo menos 3 caracteres
-                          </div>
-                        ) : isSearchingContacts ? (
-                          <div className="flex items-center justify-center py-6">
-                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                          </div>
-                        ) : contactResults.length === 0 ? (
-                          <CommandEmpty>
-                            Nenhum contato encontrado.
-                          </CommandEmpty>
-                        ) : (
-                          <CommandGroup>
-                            {contactResults.map((contact) => (
-                              <CommandItem
-                                key={contact.id}
-                                value={contact.id}
-                                onSelect={() => {
-                                  form.setValue('contactId', contact.id)
-                                  setSelectedContactCache(contact)
-                                  setOpenContactCombobox(false)
-                                  setContactSearch('')
-                                  setContactResults([])
-                                  // Auto-fill do título no BOOKING: preenche se vazio ou se ainda é o valor auto-gerado anterior
-                                  if (watchedType === 'BOOKING') {
-                                    const serviceName = selectedService?.name
-                                    const currentTitle = form.getValues('title')
-                                    const wasAutoFilled =
-                                      !currentTitle ||
-                                      currentTitle === serviceName
-                                    if (wasAutoFilled) {
-                                      form.setValue(
-                                        'title',
-                                        serviceName
-                                          ? `${serviceName} - ${contact.name}`
-                                          : contact.name,
-                                      )
-                                    }
-                                  }
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    'mr-2 h-4 w-4',
-                                    contact.id === field.value
-                                      ? 'opacity-100'
-                                      : 'opacity-0',
-                                  )}
-                                />
-                                <span className="flex-1">{contact.name}</span>
-                                {contact.phone && (
-                                  <span className="ml-2 text-xs text-muted-foreground">
-                                    {contact.phone}
-                                  </span>
-                                )}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        )}
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+                      <Button
+                        type="button"
+                        variant={
+                          field.value === 'BOOKING' ? 'default' : 'outline'
+                        }
+                        size="sm"
+                        className="flex-1 gap-2"
+                        onClick={() => {
+                          field.onChange('BOOKING')
+                          form.setValue('dealId', undefined)
+                          form.setValue('endDate', undefined)
+                        }}
+                      >
+                        <ScissorsIcon className="h-3.5 w-3.5" />
+                        Serviço
+                      </Button>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          {/* ALERTA: contato sem responsável — com botão de atribuição rápida inline */}
-          {watchedType === 'BOOKING' &&
-            watchedContactId &&
-            contactHasOwner === false && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Contato sem responsável</AlertTitle>
-                <AlertDescription className="space-y-2">
-                  <p>
-                    Este contato não tem um responsável de vendas. Atribua um
-                    para continuar.
-                  </p>
+            {/* CONTATO — primeiro campo de dados, obrigatório para ambos os tipos */}
+            <FormField<CreateAppointmentInput, 'contactId'>
+              control={form.control}
+              name="contactId"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>
+                    <FieldLabel
+                      label="Contato *"
+                      tooltip="Pessoa atendida neste agendamento. Obrigatório para os dois tipos. Digite ao menos 3 caracteres para buscar."
+                    />
+                  </FormLabel>
                   <Popover
-                    open={openAssignOwnerPopover}
+                    open={openContactCombobox}
                     onOpenChange={(open) => {
-                      setOpenAssignOwnerPopover(open)
-                      if (!open) setAssignOwnerSearch('')
+                      setOpenContactCombobox(open)
+                      if (!open) {
+                        setContactSearch('')
+                        setContactResults([])
+                      }
                     }}
                   >
                     <PopoverTrigger asChild>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        disabled={isAssigningOwner}
-                        className="border-destructive/50 bg-transparent text-destructive hover:bg-destructive/10"
-                      >
-                        {isAssigningOwner && (
-                          <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                        )}
-                        Atribuir responsável
-                      </Button>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          className={cn(
+                            'w-full justify-between',
+                            !field.value && 'text-muted-foreground',
+                            form.formState.errors.contactId &&
+                              'border-destructive',
+                          )}
+                        >
+                          <span className="flex items-center gap-2 truncate">
+                            <UserIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                            {selectedContact
+                              ? selectedContact.name
+                              : 'Selecione um contato...'}
+                          </span>
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </FormControl>
                     </PopoverTrigger>
-                    <PopoverContent className="w-64 p-0" align="start">
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                       <Command shouldFilter={false}>
                         <CommandInput
-                          placeholder="Buscar membro..."
-                          value={assignOwnerSearch}
-                          onValueChange={setAssignOwnerSearch}
+                          placeholder="Digite pelo menos 3 caracteres..."
+                          value={contactSearch}
+                          onValueChange={handleContactSearchChange}
                         />
                         <CommandList>
-                          {filteredAssignableMembers.length === 0 ? (
+                          {contactSearch.length < MIN_SEARCH_CHARS ? (
+                            <div className="py-6 text-center text-sm text-muted-foreground">
+                              Digite pelo menos 3 caracteres
+                            </div>
+                          ) : isSearchingContacts ? (
+                            <div className="flex items-center justify-center py-6">
+                              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                            </div>
+                          ) : contactResults.length === 0 ? (
                             <CommandEmpty>
-                              Nenhum membro encontrado.
+                              Nenhum contato encontrado.
                             </CommandEmpty>
                           ) : (
                             <CommandGroup>
-                              {filteredAssignableMembers.map((member) => (
+                              {contactResults.map((contact) => (
                                 <CommandItem
-                                  key={member.id}
-                                  value={member.userId}
-                                  disabled={isAssigningOwner}
+                                  key={contact.id}
+                                  value={contact.id}
                                   onSelect={() => {
-                                    if (!watchedContactId) return
-                                    assignOwnerContactIdRef.current =
-                                      watchedContactId
-                                    executeAssignOwner({
-                                      id: watchedContactId,
-                                      assignedTo: member.userId,
-                                    })
+                                    form.setValue('contactId', contact.id)
+                                    setSelectedContactCache(contact)
+                                    setOpenContactCombobox(false)
+                                    setContactSearch('')
+                                    setContactResults([])
+                                    // Auto-fill do título no BOOKING: preenche se vazio ou se ainda é o valor auto-gerado anterior
+                                    if (watchedType === 'BOOKING') {
+                                      const serviceName = selectedService?.name
+                                      const currentTitle =
+                                        form.getValues('title')
+                                      const wasAutoFilled =
+                                        !currentTitle ||
+                                        currentTitle === serviceName
+                                      if (wasAutoFilled) {
+                                        form.setValue(
+                                          'title',
+                                          serviceName
+                                            ? `${serviceName} - ${contact.name}`
+                                            : contact.name,
+                                        )
+                                      }
+                                    }
                                   }}
                                 >
-                                  <span className="flex-1">
-                                    {member.user?.fullName}
-                                  </span>
-                                  <span className="ml-2 truncate text-xs text-muted-foreground">
-                                    {member.email}
-                                  </span>
+                                  <Check
+                                    className={cn(
+                                      'mr-2 h-4 w-4',
+                                      contact.id === field.value
+                                        ? 'opacity-100'
+                                        : 'opacity-0',
+                                    )}
+                                  />
+                                  <span className="flex-1">{contact.name}</span>
+                                  {contact.phone && (
+                                    <span className="ml-2 text-xs text-muted-foreground">
+                                      {contact.phone}
+                                    </span>
+                                  )}
                                 </CommandItem>
                               ))}
                             </CommandGroup>
@@ -779,29 +720,250 @@ export function UpsertAppointmentDialogContent({
                       </Command>
                     </PopoverContent>
                   </Popover>
-                </AlertDescription>
-              </Alert>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* ALERTA: contato sem responsável — com botão de atribuição rápida inline */}
+            {watchedType === 'BOOKING' &&
+              watchedContactId &&
+              contactHasOwner === false && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Contato sem responsável</AlertTitle>
+                  <AlertDescription className="space-y-2">
+                    <p>
+                      Este contato não tem um responsável de vendas. Atribua um
+                      para continuar.
+                    </p>
+                    <Popover
+                      open={openAssignOwnerPopover}
+                      onOpenChange={(open) => {
+                        setOpenAssignOwnerPopover(open)
+                        if (!open) setAssignOwnerSearch('')
+                      }}
+                    >
+                      <PopoverTrigger asChild>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={isAssigningOwner}
+                          className="border-destructive/50 bg-transparent text-destructive hover:bg-destructive/10"
+                        >
+                          {isAssigningOwner && (
+                            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                          )}
+                          Atribuir responsável
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-64 p-0" align="start">
+                        <Command shouldFilter={false}>
+                          <CommandInput
+                            placeholder="Buscar membro..."
+                            value={assignOwnerSearch}
+                            onValueChange={setAssignOwnerSearch}
+                          />
+                          <CommandList>
+                            {filteredAssignableMembers.length === 0 ? (
+                              <CommandEmpty>
+                                Nenhum membro encontrado.
+                              </CommandEmpty>
+                            ) : (
+                              <CommandGroup>
+                                {filteredAssignableMembers.map((member) => (
+                                  <CommandItem
+                                    key={member.id}
+                                    value={member.userId}
+                                    disabled={isAssigningOwner}
+                                    onSelect={() => {
+                                      if (!watchedContactId) return
+                                      assignOwnerContactIdRef.current =
+                                        watchedContactId
+                                      executeAssignOwner({
+                                        id: watchedContactId,
+                                        assignedTo: member.userId,
+                                      })
+                                    }}
+                                  >
+                                    <span className="flex-1">
+                                      {member.user?.fullName}
+                                    </span>
+                                    <span className="ml-2 truncate text-xs text-muted-foreground">
+                                      {member.email}
+                                    </span>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            )}
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </AlertDescription>
+                </Alert>
+              )}
+
+            {/* NEGÓCIO — MEETING e BOOKING (sem fixedDealId), exceto quando autoCreateDeal está ativo */}
+            {(watchedType === 'MEETING' || watchedType === 'BOOKING') &&
+              !fixedDealId &&
+              !watchedAutoCreateDeal && (
+                <FormField<CreateAppointmentInput, 'dealId'>
+                  control={form.control}
+                  name="dealId"
+                  render={({ field }) => (
+                    <FormItem
+                      className="flex flex-col"
+                      data-field="dealId"
+                      tabIndex={-1}
+                    >
+                      <FormLabel>
+                        <FieldLabel
+                          label="Negociação vinculada *"
+                          tooltip="Negociação vinculada ao agendamento. Garante que reuniões e serviços apareçam corretamente nos relatórios de receita."
+                        />
+                      </FormLabel>
+                      <Popover
+                        open={openDealCombobox}
+                        onOpenChange={setOpenDealCombobox}
+                      >
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              className={cn(
+                                'w-full justify-between',
+                                !field.value && 'text-muted-foreground',
+                                form.formState.errors.dealId &&
+                                  'border-destructive',
+                              )}
+                            >
+                              {field.value
+                                ? (selectedDealTitle ??
+                                  'Negócio não encontrado')
+                                : 'Selecione um negócio...'}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                          <Command shouldFilter={false}>
+                            <CommandInput
+                              placeholder="Digite pelo menos 3 caracteres..."
+                              value={dealSearch}
+                              onValueChange={handleDealSearchChange}
+                            />
+                            <CommandList>
+                              {dealSearch.length < MIN_SEARCH_CHARS ? (
+                                <div className="py-6 text-center text-sm text-muted-foreground">
+                                  Digite pelo menos 3 caracteres
+                                </div>
+                              ) : isSearching ? (
+                                <div className="flex items-center justify-center py-6">
+                                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                </div>
+                              ) : dealResults.length === 0 ? (
+                                <CommandEmpty>
+                                  Nenhum negócio encontrado.
+                                </CommandEmpty>
+                              ) : (
+                                <CommandGroup>
+                                  {dealResults.map((deal) => (
+                                    <CommandItem
+                                      key={deal.id}
+                                      value={deal.id}
+                                      onSelect={() => {
+                                        form.setValue('dealId', deal.id)
+                                        setSelectedDealTitle(deal.title)
+                                        setOpenDealCombobox(false)
+                                        setDealSearch('')
+                                        setDealResults([])
+                                        // Auto-preencher contato do negócio se ainda não selecionado
+                                        if (
+                                          deal.contactId &&
+                                          !form.getValues('contactId')
+                                        ) {
+                                          form.setValue(
+                                            'contactId',
+                                            deal.contactId,
+                                          )
+                                        }
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          'mr-2 h-4 w-4',
+                                          deal.id === field.value
+                                            ? 'opacity-100'
+                                            : 'opacity-0',
+                                        )}
+                                      />
+                                      {deal.title}
+                                      {deal.contactName && (
+                                        <span className="ml-2 text-xs text-muted-foreground">
+                                          ({deal.contactName})
+                                        </span>
+                                      )}
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              )}
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+            {/* TOGGLE: Criar negociação junto — BOOKING sem fixedDealId e com contato já selecionado */}
+            {watchedType === 'BOOKING' && !fixedDealId && watchedContactId && (
+              <FormField<CreateAppointmentInput, 'autoCreateDeal'>
+                control={form.control}
+                name="autoCreateDeal"
+                render={({ field }) => (
+                  <FormItem>
+                    <div className="flex items-center gap-3">
+                      <FormControl>
+                        <Switch
+                          checked={field.value ?? false}
+                          onCheckedChange={(checked) => {
+                            field.onChange(checked)
+                            if (checked) {
+                              form.setValue('dealId', undefined)
+                            }
+                          }}
+                        />
+                      </FormControl>
+                      <FormLabel className="cursor-pointer select-none font-normal">
+                        Criar negociação junto com o agendamento
+                      </FormLabel>
+                    </div>
+                  </FormItem>
+                )}
+              />
             )}
 
-          {/* NEGÓCIO — MEETING e BOOKING (sem fixedDealId), exceto quando autoCreateDeal está ativo */}
-          {(watchedType === 'MEETING' || watchedType === 'BOOKING') &&
-            !fixedDealId &&
-            !watchedAutoCreateDeal && (
-              <FormField<CreateAppointmentInput, 'dealId'>
+            {/* SERVIÇO — apenas BOOKING */}
+            {watchedType === 'BOOKING' && (
+              <FormField<CreateAppointmentInput, 'serviceId'>
                 control={form.control}
-                name="dealId"
+                name="serviceId"
                 render={({ field }) => (
-                  <FormItem
-                    className="flex flex-col"
-                    data-field="dealId"
-                    tabIndex={-1}
-                  >
-                    <FormLabel className="flex items-center gap-1">
-                      Negócio <span className="text-destructive">*</span>
+                  <FormItem className="flex flex-col">
+                    <FormLabel>
+                      <FieldLabel
+                        label="Serviço *"
+                        tooltip="Serviço a ser prestado. Define a duração do atendimento e os profissionais e horários disponíveis."
+                      />
                     </FormLabel>
                     <Popover
-                      open={openDealCombobox}
-                      onOpenChange={setOpenDealCombobox}
+                      open={openServiceCombobox}
+                      onOpenChange={setOpenServiceCombobox}
                     >
                       <PopoverTrigger asChild>
                         <FormControl>
@@ -811,78 +973,86 @@ export function UpsertAppointmentDialogContent({
                             className={cn(
                               'w-full justify-between',
                               !field.value && 'text-muted-foreground',
-                              form.formState.errors.dealId &&
+                              form.formState.errors.serviceId &&
                                 'border-destructive',
                             )}
                           >
-                            {field.value
-                              ? (selectedDealTitle ?? 'Negócio não encontrado')
-                              : 'Selecione um negócio...'}
+                            <span className="truncate">
+                              {selectedService
+                                ? `${selectedService.name} (${selectedService.duration} min)`
+                                : 'Selecione um serviço...'}
+                            </span>
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
                       <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                        <Command shouldFilter={false}>
-                          <CommandInput
-                            placeholder="Digite pelo menos 3 caracteres..."
-                            value={dealSearch}
-                            onValueChange={handleDealSearchChange}
-                          />
+                        <Command>
+                          <CommandInput placeholder="Buscar serviço..." />
                           <CommandList>
-                            {dealSearch.length < MIN_SEARCH_CHARS ? (
-                              <div className="py-6 text-center text-sm text-muted-foreground">
-                                Digite pelo menos 3 caracteres
-                              </div>
-                            ) : isSearching ? (
-                              <div className="flex items-center justify-center py-6">
-                                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                              </div>
-                            ) : dealResults.length === 0 ? (
+                            {services.length === 0 ? (
                               <CommandEmpty>
-                                Nenhum negócio encontrado.
+                                Nenhum serviço cadastrado.
                               </CommandEmpty>
                             ) : (
-                              <CommandGroup>
-                                {dealResults.map((deal) => (
-                                  <CommandItem
-                                    key={deal.id}
-                                    value={deal.id}
-                                    onSelect={() => {
-                                      form.setValue('dealId', deal.id)
-                                      setSelectedDealTitle(deal.title)
-                                      setOpenDealCombobox(false)
-                                      setDealSearch('')
-                                      setDealResults([])
-                                      // Auto-preencher contato do negócio se ainda não selecionado
-                                      if (
-                                        deal.contactId &&
-                                        !form.getValues('contactId')
-                                      ) {
-                                        form.setValue(
-                                          'contactId',
-                                          deal.contactId,
-                                        )
-                                      }
-                                    }}
+                              Object.entries(servicesByCategory).map(
+                                ([categoryName, categoryServices]) => (
+                                  <CommandGroup
+                                    key={categoryName}
+                                    heading={categoryName}
                                   >
-                                    <Check
-                                      className={cn(
-                                        'mr-2 h-4 w-4',
-                                        deal.id === field.value
-                                          ? 'opacity-100'
-                                          : 'opacity-0',
-                                      )}
-                                    />
-                                    {deal.title}
-                                    {deal.contactName && (
-                                      <span className="ml-2 text-xs text-muted-foreground">
-                                        ({deal.contactName})
-                                      </span>
-                                    )}
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
+                                    {categoryServices.map((service) => (
+                                      <CommandItem
+                                        key={service.id}
+                                        value={`${service.name} ${categoryName}`}
+                                        onSelect={() => {
+                                          form.setValue('serviceId', service.id)
+                                          // Auto-fill do título se vazio ou se ainda é o valor auto-gerado anterior (só contato)
+                                          const contactName =
+                                            selectedContact?.name
+                                          const currentTitle =
+                                            form.getValues('title')
+                                          const wasAutoFilled =
+                                            !currentTitle ||
+                                            currentTitle === contactName
+                                          if (wasAutoFilled) {
+                                            form.setValue(
+                                              'title',
+                                              contactName
+                                                ? `${service.name} - ${contactName}`
+                                                : service.name,
+                                            )
+                                          }
+                                          // Limpa seleções do booking widget ao trocar serviço
+                                          form.setValue(
+                                            'professionalId',
+                                            undefined,
+                                          )
+                                          setSlots([])
+                                          setSelectedSlotKey(null)
+                                          setFilterProfessionalId(null)
+                                          setOpenServiceCombobox(false)
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            'mr-2 h-4 w-4',
+                                            service.id === field.value
+                                              ? 'opacity-100'
+                                              : 'opacity-0',
+                                          )}
+                                        />
+                                        <span className="flex-1">
+                                          {service.name}
+                                        </span>
+                                        <span className="ml-2 text-xs text-muted-foreground">
+                                          {service.duration} min
+                                        </span>
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                ),
+                              )
                             )}
                           </CommandList>
                         </Command>
@@ -894,366 +1064,268 @@ export function UpsertAppointmentDialogContent({
               />
             )}
 
-          {/* TOGGLE: Criar negociação junto — apenas BOOKING sem fixedDealId */}
-          {watchedType === 'BOOKING' && !fixedDealId && (
-            <FormField<CreateAppointmentInput, 'autoCreateDeal'>
-              control={form.control}
-              name="autoCreateDeal"
-              render={({ field }) => (
-                <FormItem>
-                  <div className="flex items-center gap-3">
-                    <FormControl>
-                      <Switch
-                        checked={field.value ?? false}
-                        onCheckedChange={(checked) => {
-                          field.onChange(checked)
-                          if (checked) {
-                            form.setValue('dealId', undefined)
-                          }
-                        }}
-                        disabled={!watchedContactId}
-                      />
-                    </FormControl>
-                    <FormLabel className="cursor-pointer select-none font-normal">
-                      {!watchedContactId
-                        ? 'Selecione um contato para habilitar'
-                        : 'Criar negociação junto com o agendamento'}
-                    </FormLabel>
-                  </div>
-                </FormItem>
-              )}
-            />
-          )}
+            {/* SERVICE INFO CARD — exibe detalhes do serviço selecionado */}
+            {watchedType === 'BOOKING' && selectedService && (
+              <div className="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-2 text-sm">
+                <ScissorsIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                <span className="flex-1 font-medium">
+                  {selectedService.name}
+                </span>
+                <Badge variant="secondary">
+                  {selectedService.duration} min
+                </Badge>
+                <Badge variant="secondary">
+                  {Number(selectedService.price).toLocaleString('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL',
+                  })}
+                </Badge>
+              </div>
+            )}
 
-          {/* SERVIÇO — apenas BOOKING */}
-          {watchedType === 'BOOKING' && (
-            <FormField<CreateAppointmentInput, 'serviceId'>
-              control={form.control}
-              name="serviceId"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel className="flex items-center gap-1">
-                    Serviço <span className="text-destructive">*</span>
-                  </FormLabel>
-                  <Popover
-                    open={openServiceCombobox}
-                    onOpenChange={setOpenServiceCombobox}
-                  >
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant="outline"
-                          role="combobox"
-                          className={cn(
-                            'w-full justify-between',
-                            !field.value && 'text-muted-foreground',
-                            form.formState.errors.serviceId &&
-                              'border-destructive',
-                          )}
-                        >
-                          <span className="truncate">
-                            {selectedService
-                              ? `${selectedService.name} (${selectedService.duration} min)`
-                              : 'Selecione um serviço...'}
-                          </span>
-                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                      <Command>
-                        <CommandInput placeholder="Buscar serviço..." />
-                        <CommandList>
-                          {services.length === 0 ? (
-                            <CommandEmpty>
-                              Nenhum serviço cadastrado.
-                            </CommandEmpty>
-                          ) : (
-                            Object.entries(servicesByCategory).map(
-                              ([categoryName, categoryServices]) => (
-                                <CommandGroup
-                                  key={categoryName}
-                                  heading={categoryName}
-                                >
-                                  {categoryServices.map((service) => (
-                                    <CommandItem
-                                      key={service.id}
-                                      value={`${service.name} ${categoryName}`}
-                                      onSelect={() => {
-                                        form.setValue('serviceId', service.id)
-                                        // Auto-fill do título se vazio ou se ainda é o valor auto-gerado anterior (só contato)
-                                        const contactName =
-                                          selectedContact?.name
-                                        const currentTitle =
-                                          form.getValues('title')
-                                        const wasAutoFilled =
-                                          !currentTitle ||
-                                          currentTitle === contactName
-                                        if (wasAutoFilled) {
-                                          form.setValue(
-                                            'title',
-                                            contactName
-                                              ? `${service.name} - ${contactName}`
-                                              : service.name,
-                                          )
-                                        }
-                                        // Limpa seleções do booking widget ao trocar serviço
-                                        form.setValue(
-                                          'professionalId',
-                                          undefined,
-                                        )
-                                        setSlots([])
-                                        setSelectedSlotKey(null)
-                                        setFilterProfessionalId(null)
-                                        setOpenServiceCombobox(false)
-                                      }}
-                                    >
-                                      <Check
-                                        className={cn(
-                                          'mr-2 h-4 w-4',
-                                          service.id === field.value
-                                            ? 'opacity-100'
-                                            : 'opacity-0',
-                                        )}
-                                      />
-                                      <span className="flex-1">
-                                        {service.name}
-                                      </span>
-                                      <span className="ml-2 text-xs text-muted-foreground">
-                                        {service.duration} min
-                                      </span>
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
-                              ),
-                            )
-                          )}
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          )}
+            {/* DATA DE INÍCIO — BOOKING usa seletor só de dia (hora vem do slot) */}
+            {watchedType === 'BOOKING' && (
+              <DateOnlyField
+                form={form}
+                name="startDate"
+                label="Data do atendimento"
+                tooltip="Dia do atendimento. O horário é definido ao escolher um slot disponível abaixo."
+              />
+            )}
 
-          {/* SERVICE INFO CARD — exibe detalhes do serviço selecionado */}
-          {watchedType === 'BOOKING' && selectedService && (
-            <div className="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-2 text-sm">
-              <ScissorsIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              <span className="flex-1 font-medium">{selectedService.name}</span>
-              <Badge variant="secondary">{selectedService.duration} min</Badge>
-              <Badge variant="secondary">
-                {Number(selectedService.price).toLocaleString('pt-BR', {
-                  style: 'currency',
-                  currency: 'BRL',
-                })}
-              </Badge>
-            </div>
-          )}
-
-          {/* DATA DE INÍCIO — BOOKING usa seletor só de dia (hora vem do slot) */}
-          {watchedType === 'BOOKING' && (
-            <DateOnlyField
-              form={form}
-              name="startDate"
-              label="Data de Início"
-            />
-          )}
-
-          {/* FILTRO DE PROFISSIONAL — chips clicáveis após serviço + data selecionados */}
-          {watchedType === 'BOOKING' && watchedServiceId && selectedDay && (
-            <div className="space-y-2">
-              <p className="text-sm font-medium leading-none">Profissional</p>
-              <div className="flex flex-wrap gap-2">
-                {/* Chip "Qualquer disponível" */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFilterProfessionalId(null)
-                    setSelectedSlotKey(null)
-                    form.setValue('professionalId', undefined)
-                  }}
-                  className={cn(
-                    'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors',
-                    filterProfessionalId === null
-                      ? 'border-primary bg-primary text-primary-foreground'
-                      : 'border-border bg-background text-foreground hover:bg-muted',
-                  )}
-                >
-                  Qualquer disponível
-                </button>
-
-                {/* Chip por profissional do serviço */}
-                {serviceProfessionals.map((ps) => (
+            {/* FILTRO DE PROFISSIONAL — chips clicáveis após serviço + data selecionados */}
+            {watchedType === 'BOOKING' && watchedServiceId && selectedDay && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium leading-none">
+                  <FieldLabel
+                    label="Profissional do atendimento"
+                    tooltip="Filtra os horários por profissional. Em 'Qualquer disponível', o sistema distribui entre os profissionais do serviço."
+                  />
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {/* Chip "Qualquer disponível" */}
                   <button
-                    key={ps.professionalId}
                     type="button"
                     onClick={() => {
-                      setFilterProfessionalId(ps.professionalId)
+                      setFilterProfessionalId(null)
                       setSelectedSlotKey(null)
-                      form.setValue('professionalId', ps.professionalId)
+                      form.setValue('professionalId', undefined)
                     }}
                     className={cn(
                       'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors',
-                      filterProfessionalId === ps.professionalId
+                      filterProfessionalId === null
                         ? 'border-primary bg-primary text-primary-foreground'
                         : 'border-border bg-background text-foreground hover:bg-muted',
                     )}
                   >
-                    <Avatar className="h-5 w-5">
-                      <AvatarImage src={ps.professional.avatarUrl ?? ''} />
-                      <AvatarFallback className="text-[10px]">
-                        {getInitials(ps.professional.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    {ps.professional.name}
+                    Qualquer disponível
                   </button>
-                ))}
+
+                  {/* Chip por profissional do serviço */}
+                  {serviceProfessionals.map((ps) => (
+                    <button
+                      key={ps.professionalId}
+                      type="button"
+                      onClick={() => {
+                        setFilterProfessionalId(ps.professionalId)
+                        setSelectedSlotKey(null)
+                        form.setValue('professionalId', ps.professionalId)
+                      }}
+                      className={cn(
+                        'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors',
+                        filterProfessionalId === ps.professionalId
+                          ? 'border-primary bg-primary text-primary-foreground'
+                          : 'border-border bg-background text-foreground hover:bg-muted',
+                      )}
+                    >
+                      <Avatar className="h-5 w-5">
+                        <AvatarImage src={ps.professional.avatarUrl ?? ''} />
+                        <AvatarFallback className="text-[10px]">
+                          {getInitials(ps.professional.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      {ps.professional.name}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
-
-          {/* HORÁRIOS DISPONÍVEIS — grid de chips após serviço + data selecionados */}
-          {watchedType === 'BOOKING' && watchedServiceId && selectedDay && (
-            <div className="space-y-2">
-              <p className="text-sm font-medium leading-none">
-                Horário disponível
-              </p>
-
-              {isLoadingSlots ? (
-                <div className="flex items-center justify-center py-6">
-                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                </div>
-              ) : displaySlots.length === 0 ? (
-                <p className="py-4 text-center text-sm text-muted-foreground">
-                  Nenhum horário disponível para este dia.
-                </p>
-              ) : (
-                <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
-                  {displaySlots.map((slot) => {
-                    const key = `${slot.professionalId}-${slot.startTime}`
-                    const isSelected = selectedSlotKey === key
-                    return (
-                      <Button
-                        key={key}
-                        type="button"
-                        size="sm"
-                        variant={isSelected ? 'default' : 'outline'}
-                        className="w-full"
-                        onClick={() => selectSlot(slot)}
-                      >
-                        {slot.startTime}
-                      </Button>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* DATA DE INÍCIO — apenas MEETING (BOOKING usa o booking widget acima) */}
-          {watchedType === 'MEETING' && (
-            <DateTimeField
-              form={form}
-              name="startDate"
-              label="Data de Início"
-            />
-          )}
-
-          {/* DATA DE FIM — apenas MEETING */}
-          {watchedType === 'MEETING' && (
-            <DateTimeField form={form} name="endDate" label="Data de Fim" />
-          )}
-
-          {/* TÍTULO */}
-          <FormField<CreateAppointmentInput, 'title'>
-            control={form.control}
-            name="title"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="flex items-center gap-1">
-                  Título <span className="text-destructive">*</span>
-                </FormLabel>
-                <FormControl>
-                  <Input placeholder="Ex: Reunião com cliente..." {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
             )}
-          />
 
-          {/* RESPONSÁVEL — apenas MEETING (BOOKING resolve via ctx.userId no servidor) */}
-          {watchedType === 'MEETING' && (
-            <FormField<CreateAppointmentInput, 'assignedTo'>
+            {/* HORÁRIOS DISPONÍVEIS — grid de chips após serviço + data selecionados */}
+            {watchedType === 'BOOKING' && watchedServiceId && selectedDay && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium leading-none">
+                  <FieldLabel
+                    label="Horário disponível"
+                    tooltip="Horários livres para o serviço na data escolhida. A duração do atendimento define a hora de término automaticamente."
+                  />
+                </p>
+
+                {isLoadingSlots ? (
+                  <div className="flex items-center justify-center py-6">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : displaySlots.length === 0 ? (
+                  <p className="py-4 text-center text-sm text-muted-foreground">
+                    Nenhum horário disponível para este dia.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
+                    {displaySlots.map((slot) => {
+                      const key = `${slot.professionalId}-${slot.startTime}`
+                      const isSelected = selectedSlotKey === key
+                      return (
+                        <Button
+                          key={key}
+                          type="button"
+                          size="sm"
+                          variant={isSelected ? 'default' : 'outline'}
+                          className="w-full"
+                          onClick={() => selectSlot(slot)}
+                        >
+                          {slot.startTime}
+                        </Button>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* DATAS — apenas MEETING (BOOKING usa o booking widget acima) */}
+            {watchedType === 'MEETING' && (
+              <div className="grid gap-4 md:grid-cols-2">
+                <DateTimeField
+                  form={form}
+                  name="startDate"
+                  label="Data e hora de início"
+                  tooltip="Data e hora em que a reunião começa, no fuso de São Paulo."
+                />
+                <DateTimeField
+                  form={form}
+                  name="endDate"
+                  label="Data e hora de término"
+                  tooltip="Data e hora de término. Deve ser posterior à data de início."
+                />
+              </div>
+            )}
+
+            {/* TÍTULO */}
+            <FormField<CreateAppointmentInput, 'title'>
               control={form.control}
-              name="assignedTo"
+              name="title"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    Responsável <span className="text-destructive">*</span>
+                    <FieldLabel
+                      label="Título do agendamento *"
+                      tooltip="Identifica o agendamento nas listas e no calendário. Em serviços é preenchido automaticamente, mas pode ser editado."
+                    />
                   </FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value ?? undefined}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione um responsável..." />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {assignableMembers.map((member) => (
-                        <SelectItem key={member.id} value={member.userId}>
-                          {member.user?.fullName} ({member.email})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormControl>
+                    <Input
+                      placeholder="Ex: Reunião com cliente..."
+                      maxLength={APPOINTMENT_TITLE_MAX}
+                      {...field}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-          )}
 
-          {/* DESCRIÇÃO */}
-          <FormField<CreateAppointmentInput, 'description'>
-            control={form.control}
-            name="description"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Descrição</FormLabel>
-                <FormControl>
-                  <Textarea
-                    placeholder="Detalhes do agendamento..."
-                    className="resize-none"
-                    rows={3}
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
+            {/* RESPONSÁVEL — apenas MEETING (BOOKING resolve via ctx.userId no servidor) */}
+            {watchedType === 'MEETING' && (
+              <FormField<CreateAppointmentInput, 'assignedTo'>
+                control={form.control}
+                name="assignedTo"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      <FieldLabel
+                        label="Responsável pelo agendamento *"
+                        tooltip="Membro da equipe dono deste agendamento comercial. Em serviços, o responsável é o dono do contato."
+                      />
+                    </FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value ?? undefined}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione um responsável..." />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {assignableMembers.map((member) => (
+                          <SelectItem key={member.id} value={member.userId}>
+                            {member.user?.fullName} ({member.email})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             )}
-          />
 
-          <SheetFooter>
-            <Button
-              type="submit"
-              disabled={
-                isExecuting ||
-                (watchedType === 'BOOKING' &&
-                  watchedContactId !== undefined &&
-                  contactHasOwner === false) ||
-                (watchedType === 'BOOKING' && !selectedSlotKey)
-              }
-            >
-              {isExecuting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Salvar
-            </Button>
-          </SheetFooter>
-        </form>
-      </Form>
+            {/* DESCRIÇÃO */}
+            <FormField<CreateAppointmentInput, 'description'>
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    <FieldLabel
+                      label="Descrição"
+                      tooltip="Notas internas sobre o agendamento — pauta, observações ou instruções. Opcional."
+                    />
+                  </FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Detalhes do agendamento..."
+                      className="resize-none"
+                      rows={3}
+                      maxLength={APPOINTMENT_DESCRIPTION_MAX}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <SheetFooter className="flex-row justify-end gap-2">
+              <Button type="button" variant="outline" onClick={handleClose}>
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={
+                  isExecuting ||
+                  (watchedType === 'BOOKING' &&
+                    watchedContactId !== undefined &&
+                    contactHasOwner === false) ||
+                  (watchedType === 'BOOKING' && !selectedSlotKey)
+                }
+              >
+                {isExecuting ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="size-4 animate-spin" />
+                    {isEditing ? 'Atualizando...' : 'Criando...'}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <CalendarIcon className="size-4" />
+                    {isEditing ? 'Atualizar Agendamento' : 'Criar Agendamento'}
+                  </div>
+                )}
+              </Button>
+            </SheetFooter>
+          </form>
+        </Form>
+      </TooltipProvider>
     </SheetContent>
   )
 }
@@ -1266,10 +1338,12 @@ function DateTimeField({
   form,
   name,
   label,
+  tooltip,
 }: {
   form: ReturnType<typeof useForm<CreateAppointmentInput>>
   name: 'startDate' | 'endDate'
   label: string
+  tooltip: string
 }) {
   return (
     <FormField<CreateAppointmentInput, typeof name>
@@ -1277,8 +1351,8 @@ function DateTimeField({
       name={name}
       render={({ field }) => (
         <FormItem className="flex flex-col">
-          <FormLabel className="flex items-center gap-1">
-            {label} <span className="text-destructive">*</span>
+          <FormLabel>
+            <FieldLabel label={`${label} *`} tooltip={tooltip} />
           </FormLabel>
           <Popover>
             <PopoverTrigger asChild>
@@ -1431,10 +1505,12 @@ function DateOnlyField({
   form,
   name,
   label,
+  tooltip,
 }: {
   form: ReturnType<typeof useForm<CreateAppointmentInput>>
   name: 'startDate' | 'endDate'
   label: string
+  tooltip: string
 }) {
   return (
     <FormField<CreateAppointmentInput, typeof name>
@@ -1442,8 +1518,8 @@ function DateOnlyField({
       name={name}
       render={({ field }) => (
         <FormItem className="flex flex-col">
-          <FormLabel className="flex items-center gap-1">
-            {label} <span className="text-destructive">*</span>
+          <FormLabel>
+            <FieldLabel label={`${label} *`} tooltip={tooltip} />
           </FormLabel>
           <Popover>
             <PopoverTrigger asChild>

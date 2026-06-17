@@ -1,4 +1,8 @@
 import { z } from 'zod'
+import {
+  APPOINTMENT_TITLE_MAX,
+  APPOINTMENT_DESCRIPTION_MAX,
+} from '@/_lib/constants/field-limits'
 
 /** Schema para o formulário (usa z.date() para compatibilidade com zodResolver) */
 export const createAppointmentFormSchema = z
@@ -12,9 +16,13 @@ export const createAppointmentFormSchema = z
     autoCreateDeal: z.boolean().optional(),
     professionalId: z.string().uuid().optional(),
     serviceId: z.string().uuid().optional(),
-    title: z.string().min(1, 'Título é obrigatório'),
+    title: z
+      .string()
+      .min(1, 'Título é obrigatório')
+      .max(APPOINTMENT_TITLE_MAX, 'Título muito longo'),
     description: z
       .string()
+      .max(APPOINTMENT_DESCRIPTION_MAX, 'Descrição muito longa')
       .optional()
       .transform((val) => (val === '' ? undefined : val)),
     notes: z
@@ -67,7 +75,8 @@ export const createAppointmentFormSchema = z
       if (data.autoCreateDeal && data.dealId) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: 'Selecione uma negociação existente ou marque "Criar negociação junto", não ambos',
+          message:
+            'Selecione uma negociação existente ou marque "Criar negociação junto", não ambos',
           path: ['dealId'],
         })
       }
@@ -98,9 +107,13 @@ export const createAppointmentSchema = z
     autoCreateDeal: z.boolean().optional(),
     professionalId: z.string().uuid().optional(),
     serviceId: z.string().uuid().optional(),
-    title: z.string().min(1, 'Título é obrigatório'),
+    title: z
+      .string()
+      .min(1, 'Título é obrigatório')
+      .max(APPOINTMENT_TITLE_MAX, 'Título muito longo'),
     description: z
       .string()
+      .max(APPOINTMENT_DESCRIPTION_MAX, 'Descrição muito longa')
       .optional()
       .transform((val) => (val === '' ? undefined : val)),
     notes: z
@@ -145,7 +158,8 @@ export const createAppointmentSchema = z
       if (data.autoCreateDeal && data.dealId) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: 'Selecione uma negociação existente ou marque "Criar negociação junto", não ambos',
+          message:
+            'Selecione uma negociação existente ou marque "Criar negociação junto", não ambos',
           path: ['dealId'],
         })
       }

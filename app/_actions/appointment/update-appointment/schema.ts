@@ -1,12 +1,17 @@
 import { z } from 'zod'
 import { AppointmentStatus, PaymentStatus } from '@prisma/client'
+import {
+  APPOINTMENT_TITLE_MAX,
+  APPOINTMENT_DESCRIPTION_MAX,
+} from '@/_lib/constants/field-limits'
 
 export const updateAppointmentSchema = z
   .object({
     id: z.string().uuid(),
-    title: z.string().min(1).optional(),
+    title: z.string().min(1).max(APPOINTMENT_TITLE_MAX).optional(),
     description: z
       .string()
+      .max(APPOINTMENT_DESCRIPTION_MAX)
       .optional()
       .transform((val) => (val === '' ? null : val))
       .nullable(),
