@@ -3,16 +3,13 @@
 import { useState, useCallback, useMemo } from 'react'
 import {
   AlertTriangleIcon,
-  BanIcon,
   CalendarIcon,
-  CheckCircle2Icon,
   ChevronDown,
   LinkIcon,
   TimerIcon,
   TrashIcon,
   UserIcon,
   UserRoundIcon,
-  UserXIcon,
 } from 'lucide-react'
 import Link from 'next/link'
 import { Sheet } from '@/_components/ui/sheet'
@@ -37,11 +34,10 @@ import type { AcceptedMemberDto } from '@/_data-access/organization/get-organiza
 import type { ContactOptionDto } from '@/_data-access/contact/get-contacts-options'
 import type { ServiceDto } from '@/_data-access/service/get-services'
 import type { AppointmentStatus } from '@prisma/client'
-import { formatDuration } from '@/_lib/appointment-utils'
+import { SAO_PAULO_TZ, formatDuration } from '@/_lib/appointment-utils'
+import { RESOLUTION_ACTIONS } from './calendar/calendar-shared'
 import { Button } from '@/_components/ui/button'
 import { cn } from '@/_lib/utils'
-
-const SAO_PAULO_TZ = 'America/Sao_Paulo'
 
 interface AppointmentsDataTableProps {
   appointments: AppointmentDto[]
@@ -513,40 +509,6 @@ export default AppointmentsDataTable
 // Sub-componente: TimelineItem
 // ---------------------------------------------------------------------------
 
-// Configuração dos 3 botões de resolução rápida
-const RESOLUTION_ACTIONS: Array<{
-  status: AppointmentStatus
-  icon: typeof CheckCircle2Icon
-  label: string
-  color: string
-  activeColor: string
-}> = [
-  {
-    status: 'COMPLETED',
-    icon: CheckCircle2Icon,
-    label: 'Concluído',
-    color:
-      'text-muted-foreground/50 hover:text-kronos-green hover:bg-kronos-green/10',
-    activeColor: 'text-kronos-green bg-kronos-green/15',
-  },
-  {
-    status: 'CANCELED',
-    icon: BanIcon,
-    label: 'Cancelado',
-    color:
-      'text-muted-foreground/50 hover:text-kronos-red hover:bg-kronos-red/10',
-    activeColor: 'text-kronos-red bg-kronos-red/15',
-  },
-  {
-    status: 'NO_SHOW',
-    icon: UserXIcon,
-    label: 'Não Compareceu',
-    color:
-      'text-muted-foreground/50 hover:text-kronos-yellow hover:bg-kronos-yellow/10',
-    activeColor: 'text-kronos-yellow bg-kronos-yellow/15',
-  },
-]
-
 interface TimelineItemProps {
   appointment: AppointmentDto
   statusOverrides: Record<string, AppointmentStatus>
@@ -638,10 +600,10 @@ function TimelineItem({
         </div>
 
         {/* Linha 2: Deal + responsável (esquerda) | status + dropdown (direita) */}
-        <div className="mt-2 flex items-center justify-between gap-2">
+        <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           {/* Metadados: deal e responsável — cliques não propagam para o card */}
           <div
-            className="flex items-center gap-3"
+            className="flex flex-wrap items-center gap-x-3 gap-y-1"
             onClick={(event) => event.stopPropagation()}
           >
             {/* Chip do deal */}

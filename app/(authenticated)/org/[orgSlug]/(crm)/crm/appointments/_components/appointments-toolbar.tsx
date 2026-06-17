@@ -9,10 +9,12 @@ import {
   SelectValue,
 } from '@/_components/ui/select'
 import { AppointmentViewToggle } from './appointment-view-toggle'
+import { CalendarGranularityToggle } from './calendar-granularity-toggle'
 import { AppointmentFiltersSheet } from './appointment-filters-sheet'
 import { AppointmentFilterBadges } from './appointment-filter-badges'
 import CreateAppointmentButton from './create-appointment-button'
 import type { AppointmentFilters } from '../_lib/appointment-filters'
+import type { CalendarGranularity } from './calendar/use-calendar-date'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import type { ContactOptionDto } from '@/_data-access/contact/get-contacts-options'
 import type { ServiceDto } from '@/_data-access/service/get-services'
@@ -20,6 +22,8 @@ import type { MemberRole } from '@prisma/client'
 
 interface AppointmentsToolbarProps {
   activeView: 'list' | 'calendar'
+  /** Granularidade ativa quando activeView === 'calendar' (mês/semana/dia) */
+  calendarGranularity?: CalendarGranularity
   members: AcceptedMemberDto[]
   currentUserId: string
   userRole: MemberRole
@@ -36,6 +40,7 @@ interface AppointmentsToolbarProps {
 
 export function AppointmentsToolbar({
   activeView,
+  calendarGranularity,
   members,
   currentUserId,
   userRole,
@@ -53,26 +58,30 @@ export function AppointmentsToolbar({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Linha 1: Toggle de visão + Botão de criação */}
-      <div className="flex items-center gap-2">
+      {/* Linha 1: Toggle de visão + granularidade (calendário) + Botão de criação */}
+      <div className="flex flex-wrap items-center gap-2">
         <AppointmentViewToggle activeView={activeView} />
-        <div className="flex-1" />
-        <CreateAppointmentButton
-          members={members}
-          contactOptions={contactOptions}
-          services={services}
-        />
+        {activeView === 'calendar' && calendarGranularity && (
+          <CalendarGranularityToggle active={calendarGranularity} />
+        )}
+        <div className="sm:ml-auto">
+          <CreateAppointmentButton
+            members={members}
+            contactOptions={contactOptions}
+            services={services}
+          />
+        </div>
       </div>
 
       {/* Linha 2: Select de responsável + Sheet de filtros + Badges */}
       <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Select
             value={assigneeFilter}
             onValueChange={onAssigneeFilterChange}
             disabled={isMember}
           >
-            <SelectTrigger className="w-[300px] bg-background">
+            <SelectTrigger className="w-full bg-background sm:w-[300px]">
               <UserIcon className="mr-2 h-4 w-4 text-muted-foreground" />
               <SelectValue placeholder="Responsável" />
             </SelectTrigger>

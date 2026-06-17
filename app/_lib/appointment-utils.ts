@@ -1,6 +1,9 @@
 import { differenceInMinutes } from 'date-fns'
 import type { AppointmentStatus } from '@prisma/client'
 
+/** Timezone canônico de exibição dos agendamentos */
+export const SAO_PAULO_TZ = 'America/Sao_Paulo'
+
 export const STATUS_CONFIG: Record<
   AppointmentStatus,
   { label: string; color: string }

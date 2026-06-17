@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { endOfDay } from 'date-fns'
+import { useState } from 'react'
 import { AppointmentsToolbar } from './appointments-toolbar'
 import { EmptyAppointments } from './empty-appointments'
 import AppointmentsDataTable from './appointments-data-table'
 import { useAppointmentFilters } from '../_lib/use-appointment-filters'
+import { useFilteredAppointments } from '../_lib/use-filtered-appointments'
 import type { AppointmentDto } from '@/_data-access/appointment/get-appointments'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import type { ContactOptionDto } from '@/_data-access/contact/get-contacts-options'
@@ -31,8 +31,13 @@ export function AppointmentsListClient({
   services,
   orgSlug,
 }: AppointmentsListClientProps) {
-  const { filters, setFilters, clearFilters, activeFilterCount, hasActiveFilters } =
-    useAppointmentFilters()
+  const {
+    filters,
+    setFilters,
+    clearFilters,
+    activeFilterCount,
+    hasActiveFilters,
+  } = useAppointmentFilters()
 
   // MEMBER fica fixado no próprio userId; demais usuários podem escolher
   const isMember = userRole === 'MEMBER'
@@ -40,45 +45,25 @@ export function AppointmentsListClient({
     isMember ? currentUserId : 'all',
   )
 
-  // Filtragem client-side via useMemo para evitar recalculo desnecessário
-  const filteredAppointments = useMemo(() => {
-    let result = appointments
-
-    if (assigneeFilter !== 'all') {
-      result = result.filter(
-        (appointment) => appointment.assignedTo === assigneeFilter,
-      )
-    }
-
-    if (filters.status.length > 0) {
-      result = result.filter((appointment) =>
-        filters.status.includes(appointment.status),
-      )
-    }
-
-    if (filters.dateFrom) {
-      const dateFrom = filters.dateFrom
-      result = result.filter(
-        (appointment) => new Date(appointment.startDate) >= dateFrom,
-      )
-    }
-
-    if (filters.dateTo) {
-      const dateTo = endOfDay(filters.dateTo)
-      result = result.filter(
-        (appointment) => new Date(appointment.startDate) <= dateTo,
-      )
-    }
-
-    return result
-  }, [appointments, filters, assigneeFilter])
+  // Filtragem client-side compartilhada (responsável + status + período)
+  const filteredAppointments = useFilteredAppointments(
+    appointments,
+    filters,
+    assigneeFilter,
+  )
 
   // Empty state premium: lista original vazia E sem filtros ativos
   const showEmptyState =
     appointments.length === 0 && !hasActiveFilters && assigneeFilter === 'all'
 
   if (showEmptyState) {
-    return <EmptyAppointments members={members} contactOptions={contactOptions} services={services} />
+    return (
+      <EmptyAppointments
+        members={members}
+        contactOptions={contactOptions}
+        services={services}
+      />
+    )
   }
 
   return (

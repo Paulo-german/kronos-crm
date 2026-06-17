@@ -1,9 +1,13 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { AppointmentsToolbar } from './appointments-toolbar'
 import { CalendarView } from './calendar-view'
+import { WeekView } from './calendar/week-view'
+import { DayView } from './calendar/day-view'
 import { useAppointmentFilters } from '../_lib/use-appointment-filters'
+import { useFilteredAppointments } from '../_lib/use-filtered-appointments'
+import type { CalendarGranularity } from './calendar/use-calendar-date'
 import type { AppointmentDto } from '@/_data-access/appointment/get-appointments'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import type { ContactOptionDto } from '@/_data-access/contact/get-contacts-options'
@@ -17,6 +21,8 @@ interface AppointmentsCalendarClientProps {
   userRole: MemberRole
   contactOptions: ContactOptionDto[]
   services: ServiceDto[]
+  /** Sub-visão do calendário (mês/semana/dia) — define a rota e a grade */
+  granularity: CalendarGranularity
 }
 
 export function AppointmentsCalendarClient({
@@ -26,9 +32,15 @@ export function AppointmentsCalendarClient({
   userRole,
   contactOptions,
   services,
+  granularity,
 }: AppointmentsCalendarClientProps) {
-  const { filters, setFilters, clearFilters, activeFilterCount, hasActiveFilters } =
-    useAppointmentFilters()
+  const {
+    filters,
+    setFilters,
+    clearFilters,
+    activeFilterCount,
+    hasActiveFilters,
+  } = useAppointmentFilters()
 
   // MEMBER fica fixado no próprio userId; demais usuários podem escolher
   const isMember = userRole === 'MEMBER'
@@ -36,43 +48,25 @@ export function AppointmentsCalendarClient({
     isMember ? currentUserId : 'all',
   )
 
-  // Filtragem client-side via useMemo (mesmo padrão do list client)
-  const filteredAppointments = useMemo(() => {
-    let result = appointments
+  // Filtragem client-side compartilhada (responsável + status + período)
+  const filteredAppointments = useFilteredAppointments(
+    appointments,
+    filters,
+    assigneeFilter,
+  )
 
-    if (assigneeFilter !== 'all') {
-      result = result.filter(
-        (appointment) => appointment.assignedTo === assigneeFilter,
-      )
-    }
-
-    if (filters.status.length > 0) {
-      result = result.filter((appointment) =>
-        filters.status.includes(appointment.status),
-      )
-    }
-
-    if (filters.dateFrom) {
-      const dateFrom = filters.dateFrom
-      result = result.filter(
-        (appointment) => new Date(appointment.startDate) >= dateFrom,
-      )
-    }
-
-    if (filters.dateTo) {
-      const dateTo = filters.dateTo
-      result = result.filter(
-        (appointment) => new Date(appointment.startDate) <= dateTo,
-      )
-    }
-
-    return result
-  }, [appointments, filters, assigneeFilter])
+  const viewProps = {
+    appointments: filteredAppointments,
+    members,
+    contactOptions,
+    services,
+  }
 
   return (
     <div className="flex flex-col gap-4">
       <AppointmentsToolbar
         activeView="calendar"
+        calendarGranularity={granularity}
         members={members}
         currentUserId={currentUserId}
         userRole={userRole}
@@ -86,12 +80,13 @@ export function AppointmentsCalendarClient({
         contactOptions={contactOptions}
         services={services}
       />
-      <CalendarView
-        appointments={filteredAppointments}
-        members={members}
-        contactOptions={contactOptions}
-        services={services}
-      />
+      {granularity === 'week' ? (
+        <WeekView {...viewProps} />
+      ) : granularity === 'day' ? (
+        <DayView {...viewProps} />
+      ) : (
+        <CalendarView {...viewProps} />
+      )}
     </div>
   )
 }
