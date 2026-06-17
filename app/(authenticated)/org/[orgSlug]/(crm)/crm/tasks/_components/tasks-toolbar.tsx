@@ -77,13 +77,13 @@ export function TasksToolbar({
 
       {/* Linha 2: Responsável + Tipo + Status + Filtros + Criar */}
       <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Responsável */}
           <Popover open={assigneeOpen} onOpenChange={setAssigneeOpen}>
             <PopoverTrigger asChild disabled={isMember}>
               <Button
                 variant="outline"
-                className="w-64 justify-between border-border-strong bg-background font-normal hover:bg-accent"
+                className="w-full justify-between border-border-strong bg-background font-normal hover:bg-accent sm:w-64"
               >
                 <UserIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <span className="flex min-w-0 items-center gap-2">
@@ -173,9 +173,7 @@ export function TasksToolbar({
             activeFilterCount={activeFilterCount}
           />
 
-          <div className="flex-1" />
-
-          <CreateTaskButton />
+          <CreateTaskButton className="w-full sm:ml-auto sm:w-auto" />
         </div>
 
         <TaskFilterBadges

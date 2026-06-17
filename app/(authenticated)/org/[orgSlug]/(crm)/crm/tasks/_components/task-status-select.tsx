@@ -29,7 +29,7 @@ export function TaskStatusSelect({ value, onChange }: TaskStatusSelectProps) {
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className="w-56 justify-between border-border-strong bg-background font-normal hover:bg-accent"
+          className="min-w-0 flex-1 justify-between border-border-strong bg-background font-normal hover:bg-accent sm:w-56 sm:flex-none"
         >
           <CircleDot className="h-4 w-4 shrink-0 text-muted-foreground" />
           <span className="flex min-w-0 items-center gap-2">
