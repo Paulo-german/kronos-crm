@@ -1,17 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import {
-  CheckCircle2,
-  Users,
-  Phone,
-  MessageCircle,
-  Briefcase,
-  Mail,
-  ChevronDown,
-  Check,
-  LayoutList,
-} from 'lucide-react'
+import { ChevronDown, Check, LayoutList } from 'lucide-react'
 import { Badge } from '@/_components/ui/badge'
 import {
   Popover,
@@ -20,18 +10,8 @@ import {
 } from '@/_components/ui/popover'
 import { Button } from '@/_components/ui/button'
 import { cn } from '@/_lib/utils'
-import { TASK_TYPE_OPTIONS } from '../_lib/task-filters'
+import { TASK_TYPES, TASK_TYPE_MAP } from '../_lib/task-types'
 import type { TaskType } from '@prisma/client'
-import type { LucideIcon } from 'lucide-react'
-
-const ICON_MAP: Record<string, LucideIcon> = {
-  CheckCircle2,
-  Users,
-  Phone,
-  MessageCircle,
-  Briefcase,
-  Mail,
-}
 
 interface TaskTypeMultiSelectProps {
   value: TaskType[]
@@ -55,8 +35,7 @@ export function TaskTypeMultiSelect({
     value.length === 0
       ? 'Todos os tipos'
       : value.length === 1
-        ? (TASK_TYPE_OPTIONS.find((option) => option.value === value[0])
-            ?.label ?? '1 tipo')
+        ? (TASK_TYPE_MAP[value[0]]?.label ?? '1 tipo')
         : null
 
   return (
@@ -64,7 +43,7 @@ export function TaskTypeMultiSelect({
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className="w-56 justify-between border-border-strong bg-background font-normal hover:bg-accent"
+          className="min-w-0 flex-1 justify-between border-border-strong bg-background font-normal hover:bg-accent sm:w-56 sm:flex-none"
         >
           <LayoutList className="h-4 w-4 shrink-0 text-muted-foreground" />
           <span className="flex min-w-0 items-center gap-2">
@@ -84,8 +63,8 @@ export function TaskTypeMultiSelect({
       </PopoverTrigger>
 
       <PopoverContent className="w-56 p-2" align="start">
-        {TASK_TYPE_OPTIONS.map((option) => {
-          const Icon = ICON_MAP[option.icon]
+        {TASK_TYPES.map((option) => {
+          const Icon = option.icon
           const isSelected = value.includes(option.value)
 
           return (
@@ -101,9 +80,7 @@ export function TaskTypeMultiSelect({
                   isSelected ? 'opacity-100' : 'absolute opacity-0',
                 )}
               />
-              {Icon && (
-                <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              )}
+              <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               {option.label}
             </button>
           )

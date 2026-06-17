@@ -1,26 +1,9 @@
 import { Badge } from '@/_components/ui/badge'
 import type { PendingTask } from '@/_data-access/dashboard'
-import {
-  ListTodo,
-  Users,
-  Phone,
-  MessageSquare,
-  MapPin,
-  Mail,
-} from 'lucide-react'
 import { cn } from '@/_lib/utils'
-import type { TaskType } from '@prisma/client'
 import { format, isToday, isPast, isTomorrow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-
-const TASK_TYPE_ICONS: Record<TaskType, typeof ListTodo> = {
-  TASK: ListTodo,
-  MEETING: Users,
-  CALL: Phone,
-  WHATSAPP: MessageSquare,
-  VISIT: MapPin,
-  EMAIL: Mail,
-}
+import { TASK_TYPE_MAP } from '@/(authenticated)/org/[orgSlug]/(crm)/crm/tasks/_lib/task-types'
 
 interface TaskListItemProps {
   task: PendingTask
@@ -33,7 +16,7 @@ function getDueDateStyle(date: Date) {
 }
 
 export function TaskListItem({ task }: TaskListItemProps) {
-  const Icon = TASK_TYPE_ICONS[task.type] ?? ListTodo
+  const Icon = TASK_TYPE_MAP[task.type]?.icon ?? TASK_TYPE_MAP.TASK.icon
   const variant = getDueDateStyle(task.dueDate)
 
   return (

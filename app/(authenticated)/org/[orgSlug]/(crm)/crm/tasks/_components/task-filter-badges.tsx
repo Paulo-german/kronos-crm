@@ -6,7 +6,8 @@ import { ptBR } from 'date-fns/locale'
 import { Badge } from '@/_components/ui/badge'
 import { Button } from '@/_components/ui/button'
 import type { TaskFilters } from '../_lib/task-filters'
-import { TASK_TYPE_OPTIONS, TASK_STATUS_OPTIONS } from '../_lib/task-filters'
+import { TASK_STATUS_OPTIONS } from '../_lib/task-filters'
+import { TASK_TYPE_MAP } from '../_lib/task-types'
 import type { TaskType } from '@prisma/client'
 
 interface TaskFilterBadgesProps {
@@ -24,8 +25,7 @@ export function TaskFilterBadges({
 }: TaskFilterBadgesProps) {
   if (!hasActiveFilters) return null
 
-  const getTypeLabel = (value: TaskType) =>
-    TASK_TYPE_OPTIONS.find((option) => option.value === value)?.label ?? value
+  const getTypeLabel = (value: TaskType) => TASK_TYPE_MAP[value]?.label ?? value
 
   const getStatusLabel = (value: TaskFilters['status']) =>
     TASK_STATUS_OPTIONS.find((option) => option.value === value)?.label ?? value
