@@ -11,7 +11,6 @@ import {
   Clock,
   MessageCircle,
   SquareIcon,
-  Flag,
   SquareCheckBigIcon,
 } from 'lucide-react'
 import { Label } from '@/_components/ui/label'
@@ -20,6 +19,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/_components/ui/tooltip'
+import {
+  PRIORITY_CONFIG,
+  STATUS_CONFIG,
+  type DealPriority,
+} from '@/_lib/deal/deal-display-config'
 
 interface KanbanCardProps {
   deal: DealDto
@@ -29,56 +33,9 @@ interface KanbanCardProps {
   showIdleDays?: boolean
 }
 
-export const priorityConfig = {
-  low: {
-    label: 'BAIXA',
-    icon: Flag,
-    color: 'border-muted-foreground/30 text-muted-foreground',
-  },
-  medium: {
-    label: 'MÉDIA',
-    icon: Flag,
-    color: 'border-kronos-blue/40 text-kronos-blue',
-  },
-  high: {
-    label: 'ALTA',
-    icon: Flag,
-    color: 'border-kronos-yellow/40 text-kronos-yellow',
-  },
-  urgent: {
-    label: 'URGENTE',
-    icon: Flag,
-    color: 'border-kronos-red/40 text-kronos-red',
-  },
-}
-
-const statusConfig = {
-  OPEN: {
-    label: 'NOVO',
-    color: ' text-kronos-blue border-none bg-transparent',
-    variant: 'secondary' as const,
-  },
-  IN_PROGRESS: {
-    label: 'EM ANDAMENTO',
-    color: ' text-kronos-purple border-none bg-transparent',
-    variant: 'secondary' as const,
-  },
-  WON: {
-    label: 'VENDIDO',
-    color: ' text-kronos-green border-none bg-transparent',
-    variant: 'secondary' as const,
-  },
-  LOST: {
-    label: 'PERDIDO',
-    color: ' text-kronos-red border-none bg-transparent',
-    variant: 'secondary' as const,
-  },
-  PAUSED: {
-    label: 'PAUSADO',
-    color: ' text-kronos-yellow border-none bg-transparent',
-    variant: 'secondary' as const,
-  },
-}
+// Config central de prioridade/status. Reexportada para os consumidores legados
+// (kanban-board e deal-filters-sheet importam `priorityConfig` daqui).
+export { PRIORITY_CONFIG as priorityConfig } from '@/_lib/deal/deal-display-config'
 
 const IDLE_WARNING_DAYS = 12
 const IDLE_DANGER_DAYS = 30
@@ -96,8 +53,7 @@ const KanbanCard = ({
   priorityOverride,
   showIdleDays = true,
 }: KanbanCardProps) => {
-  const priority = (priorityOverride ??
-    deal.priority) as keyof typeof priorityConfig
+  const priority = (priorityOverride ?? deal.priority) as DealPriority
 
   const {
     attributes,
@@ -146,20 +102,20 @@ const KanbanCard = ({
       style={style}
       {...attributes}
       {...listeners}
-      className={`border-border-strong relative cursor-grab border bg-kanban-card shadow-none transition-all ${draggingClass}`}
+      className={`relative cursor-grab border border-border-strong bg-kanban-card shadow-none transition-all ${draggingClass}`}
       onClick={handleCardClick}
     >
       <CardContent className="flex flex-col gap-4 p-3.5">
         {/* 1. Topo: Badge de Status + Prioridade */}
         <div className="flex justify-between">
           {/* Badge de Status */}
-          {statusConfig[deal.status] && (
+          {STATUS_CONFIG[deal.status] && (
             <Badge
               variant="outline"
-              className={`h-6 gap-1.5 px-2 text-[10px] font-semibold transition-colors ${statusConfig[deal.status].color}`}
+              className={`h-6 gap-1.5 px-2 text-[10px] font-semibold transition-colors ${STATUS_CONFIG[deal.status].textClassName}`}
             >
               <SquareIcon size={10} className="fill-current" />
-              {statusConfig[deal.status].label}
+              {STATUS_CONFIG[deal.status].label}
             </Badge>
           )}
 
@@ -171,11 +127,11 @@ const KanbanCard = ({
           >
             <button
               type="button"
-              className={`flex h-6 w-6 items-center justify-center rounded-md border bg-transparent transition-colors hover:bg-accent ${priorityConfig[priority].color}`}
+              className={`flex h-6 w-6 items-center justify-center rounded-md border bg-transparent transition-colors hover:bg-accent ${PRIORITY_CONFIG[priority].color}`}
               onClick={(e) => onPriorityClick?.(deal.id, e.currentTarget)}
             >
               {(() => {
-                const Icon = priorityConfig[priority].icon
+                const Icon = PRIORITY_CONFIG[priority].icon
                 return <Icon className="h-3.5 w-3.5" />
               })()}
             </button>
@@ -281,7 +237,7 @@ const KanbanCard = ({
 
         {/* 4. Base: Observações */}
         {deal.notes && (
-          <div className="border-border-strong flex flex-col gap-1 border-t pt-2">
+          <div className="flex flex-col gap-1 border-t border-border-strong pt-2">
             <Label className="text-[10px] uppercase text-muted-foreground">
               Observações
             </Label>
