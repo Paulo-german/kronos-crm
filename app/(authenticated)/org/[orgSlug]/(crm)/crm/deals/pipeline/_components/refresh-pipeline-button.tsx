@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useAction } from 'next-safe-action/hooks'
+import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/_components/ui/button'
 import {
@@ -17,13 +18,18 @@ const COOLDOWN_MS = 2 * 60 * 1000
 
 export const RefreshPipelineButton = () => {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const lastRefreshRef = useRef<number>(0)
   const [remainingSeconds, setRemainingSeconds] = useState(0)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const { execute, isPending } = useAction(revalidatePipeline, {
     onSuccess: () => {
+      // router.refresh atualiza o pipeline/stages (Server Component); as colunas e
+      // agregados leem via React Query, então também invalidamos essas queries.
       router.refresh()
+      void queryClient.invalidateQueries({ queryKey: ['pipeline-deals'] })
+      void queryClient.invalidateQueries({ queryKey: ['pipeline-aggregates'] })
       toast.success('Pipeline atualizado.')
     },
     onError: ({ error }) => {

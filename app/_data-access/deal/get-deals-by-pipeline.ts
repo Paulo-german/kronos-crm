@@ -1,10 +1,6 @@
 import 'server-only'
-import { unstable_cache } from 'next/cache'
-import { db } from '@/_lib/prisma'
 import { DealStatus, DealPriority } from '@prisma/client'
-import type { RBACContext } from '@/_lib/rbac'
-import { isElevated } from '@/_lib/rbac'
-import { SIMULATOR_CONTACT_PHONE } from '@/_lib/simulator'
+import type { Prisma } from '@prisma/client'
 
 export interface DealDto {
   id: string
@@ -31,107 +27,59 @@ export interface DealsByStageDto {
   [stageId: string]: DealDto[]
 }
 
-const fetchDealsByPipelineFromDb = async (
-  stageIds: string[],
-  orgId: string,
-  userId: string,
-  elevated: boolean,
-): Promise<DealsByStageDto> => {
-  const result: DealsByStageDto = stageIds.reduce((acc, stageId) => {
-    acc[stageId] = []
-    return acc
-  }, {} as DealsByStageDto)
-
-  const deals = await db.deal.findMany({
-    where: {
-      pipelineStageId: { in: stageIds },
-      organizationId: orgId,
-      ...(elevated ? {} : { assignedTo: userId }),
-      // Exclui deals simulados do kanban
-      contacts: { none: { contact: { phone: SIMULATOR_CONTACT_PHONE } } },
-    },
+/**
+ * Include + mapper compartilhados pela paginação por coluna do Kanban
+ * (get-deals-by-pipeline-stage). Centralizados aqui para que o DealDto seja
+ * montado de forma idêntica onde quer que os cards sejam carregados.
+ */
+export const dealKanbanInclude = {
+  contacts: {
+    orderBy: { isPrimary: 'desc' },
+    take: 1,
     include: {
-      contacts: {
-        orderBy: { isPrimary: 'desc' },
-        take: 1,
-        include: {
-          contact: {
-            select: { name: true },
-          },
-        },
-      },
-      company: {
+      contact: {
         select: { name: true },
       },
-      _count: {
-        select: { tasks: true, appointments: true, conversations: true },
-      },
-      // Última atividade para calcular dias de inatividade no card do Kanban
-      activities: {
-        orderBy: { createdAt: 'desc' },
-        take: 1,
-        select: { createdAt: true },
-      },
     },
-    orderBy: {
-      createdAt: 'desc',
-    },
-  })
+  },
+  company: {
+    select: { name: true },
+  },
+  _count: {
+    select: { tasks: true, appointments: true, conversations: true },
+  },
+  // Última atividade para calcular dias de inatividade no card do Kanban
+  activities: {
+    orderBy: { createdAt: 'desc' },
+    take: 1,
+    select: { createdAt: true },
+  },
+} satisfies Prisma.DealInclude
 
-  for (const deal of deals) {
-    const totalValue = Number(deal.value ?? 0)
+type DealWithKanbanInclude = Prisma.DealGetPayload<{
+  include: typeof dealKanbanInclude
+}>
 
-    const primaryLink = deal.contacts[0]
-    const contactName = primaryLink?.contact?.name ?? null
-    const contactId = primaryLink?.contactId ?? null
-
-    if (result[deal.pipelineStageId]) {
-      result[deal.pipelineStageId].push({
-        id: deal.id,
-        title: deal.title,
-        stageId: deal.pipelineStageId,
-        status: deal.status,
-        priority: deal.priority,
-        contactId,
-        contactName,
-        companyId: deal.companyId,
-        companyName: deal.company?.name ?? null,
-        expectedCloseDate: deal.expectedCloseDate,
-        totalValue,
-        notes: deal.notes,
-        assignedTo: deal.assignedTo,
-        createdAt: deal.createdAt,
-        lastActivityAt: deal.activities[0]?.createdAt ?? null,
-        taskCount: deal._count.tasks,
-        appointmentCount: deal._count.appointments,
-        conversationCount: deal._count.conversations,
-      })
-    }
+export const mapDealToDto = (deal: DealWithKanbanInclude): DealDto => {
+  const primaryLink = deal.contacts[0]
+  return {
+    id: deal.id,
+    title: deal.title,
+    stageId: deal.pipelineStageId,
+    status: deal.status,
+    priority: deal.priority,
+    contactId: primaryLink?.contactId ?? null,
+    contactName: primaryLink?.contact?.name ?? null,
+    companyId: deal.companyId,
+    companyName: deal.company?.name ?? null,
+    expectedCloseDate: deal.expectedCloseDate,
+    totalValue: Number(deal.value ?? 0),
+    notes: deal.notes,
+    assignedTo: deal.assignedTo,
+    createdAt: deal.createdAt,
+    lastActivityAt: deal.activities[0]?.createdAt ?? null,
+    taskCount: deal._count.tasks,
+    appointmentCount: deal._count.appointments,
+    conversationCount: deal._count.conversations,
   }
-
-  return result
-}
-
-/**
- * Busca todos os deals de um pipeline agrupados por stage (Cacheado)
- * RBAC: MEMBER só vê deals atribuídos a ele
- */
-export const getDealsByPipeline = async (
-  stageIds: string[],
-  ctx: RBACContext,
-): Promise<DealsByStageDto> => {
-  if (stageIds.length === 0) return {}
-
-  const elevated = isElevated(ctx.userRole)
-
-  const getCached = unstable_cache(
-    async () => fetchDealsByPipelineFromDb(stageIds, ctx.orgId, ctx.userId, elevated),
-    [`deals-by-pipeline-${ctx.orgId}-${ctx.userId}-${elevated}-${[...stageIds].sort().join(',')}`],
-    {
-      tags: [`deals:${ctx.orgId}`],
-      revalidate: 3600,
-    },
-  )
-
-  return getCached()
 }

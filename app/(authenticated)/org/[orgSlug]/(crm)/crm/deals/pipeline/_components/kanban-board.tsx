@@ -1,14 +1,7 @@
 'use client'
 
-import {
-  useState,
-  useMemo,
-  useOptimistic,
-  startTransition,
-  useRef,
-  useCallback,
-  useEffect,
-} from 'react'
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
+import { useQueryClient, type InfiniteData } from '@tanstack/react-query'
 import {
   DndContext,
   DragEndEvent,
@@ -26,10 +19,13 @@ import KanbanCard, { priorityConfig } from './kanban-card'
 import { moveDealToStage } from '@/_actions/deal/move-deal-to-stage'
 import { updateDealPriority } from '@/_actions/deal/update-deal-priority'
 import type { PipelineWithStagesDto } from '@/_data-access/pipeline/get-user-pipeline'
-import type {
-  DealDto,
-  DealsByStageDto,
-} from '@/_data-access/deal/get-deals-by-pipeline'
+import type { DealDto } from '@/_data-access/deal/get-deals-by-pipeline'
+import type { PipelineStageDealsResult } from '@/_data-access/deal/get-deals-by-pipeline-stage'
+import { usePipelineAggregates } from '../_hooks/use-pipeline-aggregates'
+import {
+  buildPipelineQueryInput,
+  pipelineDealsKey,
+} from '../_lib/pipeline-deals-query'
 import {
   Select,
   SelectContent,
@@ -61,7 +57,6 @@ import type { MemberOption } from './pipeline-client'
 
 interface KanbanBoardProps {
   pipeline: PipelineWithStagesDto
-  dealsByStage: DealsByStageDto
   members: MemberOption[]
   currentUserId: string
   userRole: MemberRole
@@ -81,23 +76,10 @@ interface KanbanBoardProps {
   filterBadges: React.ReactNode
 }
 
-type OptimisticAction = {
-  type: 'move'
-  dealId: string
-  fromStageId: string
-  toStageId: string
-}
-
-const priorityWeight: Record<string, number> = {
-  urgent: 4,
-  high: 3,
-  medium: 2,
-  low: 1,
-}
+type InfiniteDeals = InfiniteData<PipelineStageDealsResult>
 
 export function KanbanBoard({
   pipeline,
-  dealsByStage,
   members,
   currentUserId,
   userRole,
@@ -116,7 +98,6 @@ export function KanbanBoard({
   filtersSheet,
   filterBadges,
 }: KanbanBoardProps) {
-  const [activeId, setActiveId] = useState<string | null>(null)
   const isMember = userRole === 'MEMBER'
 
   // MEMBER sempre filtra pelos próprios deals (RBAC)
@@ -143,33 +124,42 @@ export function KanbanBoard({
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
 
-  // Optimistic state: atualiza instantaneamente a UI antes do servidor responder
-  const [optimisticDeals, setOptimisticDeals] = useOptimistic(
-    dealsByStage,
-    (state: DealsByStageDto, action: OptimisticAction) => {
-      if (action.type === 'move') {
-        const newState = { ...state }
-        const deal = newState[action.fromStageId]?.find(
-          (item) => item.id === action.dealId,
-        )
+  const queryClient = useQueryClient()
 
-        if (!deal) return state
+  // Input serializável dos filtros/sort — chave das queries por coluna e dos agregados
+  const queryInput = useMemo(
+    () => buildPipelineQueryInput(sortBy, filters, effectiveAssignees),
+    [sortBy, filters, effectiveAssignees],
+  )
 
-        // Remove da coluna antiga
-        newState[action.fromStageId] = newState[action.fromStageId].filter(
-          (item) => item.id !== action.dealId,
-        )
+  const stageIds = useMemo(
+    () => pipeline.stages.map((stage) => stage.id),
+    [pipeline.stages],
+  )
 
-        // Adiciona na nova coluna
-        if (!newState[action.toStageId]) {
-          newState[action.toStageId] = []
+  // Agregados (count + soma de valor) por estágio — refletem o total real, não o carregado
+  const aggregates = usePipelineAggregates(pipeline.id, stageIds, queryInput)
+
+  // Deal sendo arrastado: capturado do cache no dragStart para o DragOverlay
+  const [activeDeal, setActiveDeal] = useState<DealDto | null>(null)
+
+  // Localiza um deal e seu estágio varrendo o cache das colunas (só durante o drag)
+  const findDealInCache = useCallback(
+    (dealId: string): { stageId: string; deal: DealDto } | null => {
+      const entries = queryClient.getQueriesData<InfiniteDeals>({
+        queryKey: ['pipeline-deals'],
+      })
+      for (const [key, data] of entries) {
+        if (!data) continue
+        const stageId = key[1] as string
+        for (const page of data.pages) {
+          const found = page.deals.find((deal) => deal.id === dealId)
+          if (found) return { stageId, deal: found }
         }
-        newState[action.toStageId] = [...newState[action.toStageId], deal]
-
-        return newState
       }
-      return state
+      return null
     },
+    [queryClient],
   )
 
   const sensors = useSensors(
@@ -183,9 +173,14 @@ export function KanbanBoard({
   const { execute: executeMove } = useAction(moveDealToStage, {
     onSuccess: () => {
       toast.success('Negociação movida com sucesso!')
+      // Recontagem dos headers após mover entre colunas
+      void queryClient.invalidateQueries({ queryKey: ['pipeline-aggregates'] })
     },
     onError: ({ error }) => {
       toast.error(error.serverError || 'Erro ao mover negociação.')
+      // Reverte para a verdade do servidor
+      void queryClient.invalidateQueries({ queryKey: ['pipeline-deals'] })
+      void queryClient.invalidateQueries({ queryKey: ['pipeline-aggregates'] })
     },
   })
 
@@ -197,6 +192,9 @@ export function KanbanBoard({
         delete next[input.dealId]
         return next
       })
+      // Reflete a prioridade persistida (e eventual saída por filtro de prioridade)
+      void queryClient.invalidateQueries({ queryKey: ['pipeline-deals'] })
+      void queryClient.invalidateQueries({ queryKey: ['pipeline-aggregates'] })
     },
     onError: ({ error, input }) => {
       setPriorityOverrides((prev) => {
@@ -208,129 +206,49 @@ export function KanbanBoard({
     },
   })
 
-  // Filtra e Ordena deals
-  const filteredDealsByStage = useMemo(() => {
-    const filtered: DealsByStageDto = {}
-
-    for (const [stageId, deals] of Object.entries(optimisticDeals)) {
-      let stageDeals = deals
-
-      // Filtro de Responsável (multi-select)
-      if (effectiveAssignees.length > 0) {
-        stageDeals = stageDeals.filter((deal) =>
-          effectiveAssignees.includes(deal.assignedTo),
-        )
-      }
-
-      // Filtro de Status
-      if (filters.status.length > 0) {
-        stageDeals = stageDeals.filter((deal) =>
-          filters.status.includes(deal.status),
-        )
-      }
-
-      // Filtro de Prioridade
-      if (filters.priority.length > 0) {
-        stageDeals = stageDeals.filter((deal) =>
-          filters.priority.includes(deal.priority),
-        )
-      }
-
-      // Filtro de Range de Datas (data de criação)
-      if (filters.createdAtFrom || filters.createdAtTo) {
-        stageDeals = stageDeals.filter((deal) => {
-          const dealDate = new Date(deal.createdAt)
-          if (filters.createdAtFrom && dealDate < filters.createdAtFrom)
-            return false
-          if (filters.createdAtTo && dealDate > filters.createdAtTo)
-            return false
-          return true
-        })
-      }
-
-      // Filtro de Range de Valor
-      if (filters.valueMin !== null || filters.valueMax !== null) {
-        stageDeals = stageDeals.filter((deal) => {
-          if (filters.valueMin !== null && deal.totalValue < filters.valueMin)
-            return false
-          if (filters.valueMax !== null && deal.totalValue > filters.valueMax)
-            return false
-          return true
-        })
-      }
-
-      // Ordenação
-      filtered[stageId] = [...stageDeals].sort((dealA, dealB) => {
-        switch (sortBy) {
-          case 'created-desc':
-            return (
-              new Date(dealB.createdAt).getTime() -
-              new Date(dealA.createdAt).getTime()
-            )
-          case 'created-asc':
-            return (
-              new Date(dealA.createdAt).getTime() -
-              new Date(dealB.createdAt).getTime()
-            )
-          case 'value-desc':
-            return dealB.totalValue - dealA.totalValue
-          case 'value-asc':
-            return dealA.totalValue - dealB.totalValue
-          case 'priority-desc':
-            return (
-              (priorityWeight[dealB.priority] || 0) -
-              (priorityWeight[dealA.priority] || 0)
-            )
-          case 'title-asc':
-            return dealA.title.localeCompare(dealB.title)
-          default:
-            return 0
-        }
-      })
-    }
-
-    return filtered
-  }, [optimisticDeals, sortBy, filters, effectiveAssignees])
-
-  // Valor total do pipeline (filtrado) — usado na barra de progresso por coluna
-  const totalPipelineValue = useMemo(() => {
-    let total = 0
-    for (const deals of Object.values(filteredDealsByStage)) {
-      for (const deal of deals) {
-        total += deal.totalValue
-      }
-    }
-    return total
-  }, [filteredDealsByStage])
-
-  // Mapa de lookup dealId → stageId para O(1) no drag-end
-  const dealToStageMap = useMemo(() => {
-    const map = new Map<string, string>()
-    for (const [stageId, deals] of Object.entries(optimisticDeals)) {
-      for (const deal of deals) {
-        map.set(deal.id, stageId)
-      }
-    }
-    return map
-  }, [optimisticDeals])
-
-  // Encontra o deal ativo para o overlay (usa optimisticDeals)
-  const activeDeal = useMemo(() => {
-    if (!activeId) return null
-    for (const deals of Object.values(optimisticDeals)) {
-      const found = deals.find((deal) => deal.id === activeId)
-      if (found) return found
-    }
-    return null
-  }, [activeId, optimisticDeals])
-
   const handleDragStart = (event: DragStartEvent) => {
-    setActiveId(event.active.id as string)
+    const dealId = event.active.id as string
+    setActiveDeal(findDealInCache(dealId)?.deal ?? null)
+  }
+
+  // Move otimista no cache: remove da coluna origem, insere no topo da destino
+  const applyOptimisticMove = (
+    dealId: string,
+    deal: DealDto,
+    fromStageId: string,
+    toStageId: string,
+  ) => {
+    queryClient.setQueryData<InfiniteDeals>(
+      pipelineDealsKey(fromStageId, queryInput),
+      (old) =>
+        old
+          ? {
+              ...old,
+              pages: old.pages.map((page) => ({
+                ...page,
+                deals: page.deals.filter((item) => item.id !== dealId),
+              })),
+            }
+          : old,
+    )
+    queryClient.setQueryData<InfiniteDeals>(
+      pipelineDealsKey(toStageId, queryInput),
+      (old) => {
+        if (!old || old.pages.length === 0) return old
+        const movedDeal: DealDto = { ...deal, stageId: toStageId }
+        return {
+          ...old,
+          pages: old.pages.map((page, index) =>
+            index === 0 ? { ...page, deals: [movedDeal, ...page.deals] } : page,
+          ),
+        }
+      },
+    )
   }
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
-    setActiveId(null)
+    setActiveDeal(null)
 
     if (!over) return
 
@@ -341,25 +259,17 @@ export function KanbanBoard({
     const targetStageId =
       over.data.current?.type === 'column'
         ? overId
-        : (dealToStageMap.get(overId) ?? null)
+        : (findDealInCache(overId)?.stageId ?? null)
 
     if (!targetStageId) return
 
-    // Encontra a stage atual do deal via lookup O(1)
-    const currentStageId = dealToStageMap.get(dealId) ?? null
+    const current = findDealInCache(dealId)
+    const currentStageId = current?.stageId ?? null
 
     // Só move se mudou de stage
-    if (currentStageId && currentStageId !== targetStageId) {
-      startTransition(() => {
-        setOptimisticDeals({
-          type: 'move',
-          dealId,
-          fromStageId: currentStageId!,
-          toStageId: targetStageId!,
-        })
-
-        executeMove({ dealId, stageId: targetStageId! })
-      })
+    if (current && currentStageId && currentStageId !== targetStageId) {
+      applyOptimisticMove(dealId, current.deal, currentStageId, targetStageId)
+      executeMove({ dealId, stageId: targetStageId })
     }
   }
 
@@ -545,8 +455,9 @@ export function KanbanBoard({
               <KanbanColumn
                 key={stage.id}
                 stage={stage}
-                deals={filteredDealsByStage[stage.id] || []}
-                totalPipelineValue={totalPipelineValue}
+                queryInput={queryInput}
+                count={aggregates[stage.id]?.count ?? 0}
+                totalValue={aggregates[stage.id]?.totalValue ?? 0}
                 onAddDeal={onAddDeal}
                 onDealClick={onDealClick}
                 onPriorityClick={handlePriorityClick}

@@ -1,24 +1,29 @@
 'use client'
 
-import { useMemo } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import {
   CircleDollarSignIcon,
   HandshakeIcon,
   Inbox,
+  Loader2,
   Plus,
 } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import { formatCurrency } from '@/_utils/format-currency'
 import KanbanCard from './kanban-card'
+import { usePipelineColumn } from '../_hooks/use-pipeline-column'
+import type { PipelineQueryInput } from '../_lib/pipeline-deals-query'
 import type { StageDto } from '@/_data-access/pipeline/get-user-pipeline'
 import type { DealDto } from '@/_data-access/deal/get-deals-by-pipeline'
 
 interface KanbanColumnProps {
   stage: StageDto
-  deals: DealDto[]
-  totalPipelineValue: number
+  queryInput: PipelineQueryInput
+  /** Contagem total real do estágio (agregado, não o que está carregado). */
+  count: number
+  /** Soma total real do valor do estágio (agregado). */
+  totalValue: number
   onAddDeal: (stageId: string) => void
   onDealClick: (deal: DealDto) => void
   onPriorityClick: (dealId: string, anchorEl: HTMLElement) => void
@@ -28,7 +33,9 @@ interface KanbanColumnProps {
 
 export function KanbanColumn({
   stage,
-  deals,
+  queryInput,
+  count,
+  totalValue,
   onAddDeal,
   onDealClick,
   onPriorityClick,
@@ -40,10 +47,8 @@ export function KanbanColumn({
     data: { type: 'column', stage },
   })
 
-  const totalValue = useMemo(
-    () => formatCurrency(deals.reduce((sum, deal) => sum + deal.totalValue, 0)),
-    [deals],
-  )
+  const { deals, isLoading, isLoadingMore, hasMore, sentinelRef } =
+    usePipelineColumn(stage.id, queryInput)
 
   return (
     <div
@@ -54,7 +59,7 @@ export function KanbanColumn({
       }`}
     >
       {/* Header */}
-      <div className="border-border-strong bg-kanban-c space-y-1 p-3">
+      <div className="bg-kanban-c space-y-1 border-border-strong p-3">
         <div className="flex items-center justify-between">
           <span className="text-base font-semibold">{stage.name}</span>
           <Button
@@ -69,12 +74,12 @@ export function KanbanColumn({
         <p className="flex items-center gap-2 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
             <HandshakeIcon className="size-3" />
-            {deals.length} {deals.length === 1 ? 'negociação' : 'negociações'}
+            {count} {count === 1 ? 'negociação' : 'negociações'}
           </span>
           <span>·</span>
           <span className="flex items-center gap-1">
             <CircleDollarSignIcon className="size-3" />
-            {totalValue}
+            {formatCurrency(totalValue)}
           </span>
         </p>
       </div>
@@ -100,7 +105,26 @@ export function KanbanColumn({
           ))}
         </SortableContext>
 
-        {deals.length === 0 && (
+        {/* Carga inicial */}
+        {isLoading && (
+          <div className="flex h-32 items-center justify-center">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground/50" />
+          </div>
+        )}
+
+        {/* Sentinela: dispara o próximo lote ao entrar em viewport */}
+        {hasMore && (
+          <div
+            ref={sentinelRef}
+            className="flex items-center justify-center py-3"
+          >
+            {isLoadingMore && (
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground/50" />
+            )}
+          </div>
+        )}
+
+        {!isLoading && deals.length === 0 && (
           <div
             className={`flex h-32 flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed transition-all duration-200 ${
               isOver

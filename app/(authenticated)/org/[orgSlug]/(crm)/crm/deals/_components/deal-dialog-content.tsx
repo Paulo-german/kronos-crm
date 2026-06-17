@@ -99,6 +99,9 @@ interface DealDialogContentProps {
   setIsOpen: Dispatch<SetStateAction<boolean>>
   onUpdate?: (data: UpdateDealInput) => void
   isUpdating?: boolean
+  // Disparado após criar/editar com sucesso. No Kanban (React Query) é usado para
+  // invalidar as queries das colunas, já que a revalidateTag do servidor não as alcança.
+  onMutationSuccess?: () => void
 }
 
 const MIN_SEARCH_CHARS = 3
@@ -112,6 +115,7 @@ export function DealDialogContent({
   setIsOpen,
   onUpdate,
   isUpdating: externalIsUpdating,
+  onMutationSuccess,
 }: DealDialogContentProps) {
   const isEditing = !!defaultValues?.id
   const [open, setOpen] = useState(false)
@@ -221,6 +225,7 @@ export function DealDialogContent({
 
         createForm.reset()
         setIsOpen(false)
+        onMutationSuccess?.()
       },
       onError: ({ error }) => {
         toast.error(error.serverError || 'Erro ao criar deal.')
@@ -232,6 +237,7 @@ export function DealDialogContent({
       onSuccess: () => {
         toast.success('Deal atualizado com sucesso!')
         setIsOpen(false)
+        onMutationSuccess?.()
       },
       onError: ({ error }) => {
         toast.error(error.serverError || 'Erro ao atualizar deal.')

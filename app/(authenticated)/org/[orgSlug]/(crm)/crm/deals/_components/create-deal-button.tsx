@@ -19,12 +19,14 @@ interface CreateDealButtonProps {
   stages: StageDto[]
   members?: DealMemberOption[]
   withinQuota?: boolean
+  onMutationSuccess?: () => void
 }
 
 const CreateDealButton = ({
   stages,
   members = [],
   withinQuota = true,
+  onMutationSuccess,
 }: CreateDealButtonProps) => {
   // Abertura do dialog na URL (?deal=new) — sobrevive a remontagem/revalidação.
   const [dealParam, setDealParam] = useQueryState('deal')
@@ -64,6 +66,7 @@ const CreateDealButton = ({
         stages={stages}
         members={members}
         setIsOpen={setIsOpen}
+        onMutationSuccess={onMutationSuccess}
       />
     </Sheet>
   )

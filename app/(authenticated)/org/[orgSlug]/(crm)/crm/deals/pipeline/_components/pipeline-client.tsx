@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useParams } from 'next/navigation'
@@ -15,10 +16,7 @@ import { DealFiltersSheet } from '../../_components/deal-filters-sheet'
 import { PipelineFilterBadges } from './pipeline-filter-badges'
 import { usePipelineFilters } from '../_lib/use-pipeline-filters'
 import type { PipelineWithStagesDto } from '@/_data-access/pipeline/get-user-pipeline'
-import type {
-  DealDto,
-  DealsByStageDto,
-} from '@/_data-access/deal/get-deals-by-pipeline'
+import type { DealDto } from '@/_data-access/deal/get-deals-by-pipeline'
 import type { OrgPipelineDto } from '@/_data-access/pipeline/get-org-pipelines'
 import type { MemberRole } from '@prisma/client'
 import { Settings2Icon } from 'lucide-react'
@@ -36,7 +34,6 @@ interface PipelineClientProps {
   pipeline: PipelineWithStagesDto | null
   pipelines: OrgPipelineDto[]
   activePipelineId: string
-  dealsByStage: DealsByStageDto
   members: MemberOption[]
   currentUserId: string
   userRole: MemberRole
@@ -51,7 +48,6 @@ export const PipelineClient = ({
   pipeline,
   pipelines,
   activePipelineId,
-  dealsByStage,
   members,
   currentUserId,
   userRole,
@@ -62,6 +58,14 @@ export const PipelineClient = ({
     isOpen: false,
     stageId: '',
   })
+  const queryClient = useQueryClient()
+
+  // Criar/editar deal revalida a tag no servidor, mas as colunas leem via React
+  // Query — então invalidamos as queries do Kanban para refletir a mudança na hora.
+  const invalidatePipelineData = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ['pipeline-deals'] })
+    void queryClient.invalidateQueries({ queryKey: ['pipeline-aggregates'] })
+  }, [queryClient])
   const {
     filters,
     setFilters,
@@ -112,7 +116,6 @@ export const PipelineClient = ({
       <div data-tour="deals-kanban" className="flex min-h-0 flex-1 flex-col">
         <KanbanBoard
           pipeline={pipeline}
-          dealsByStage={dealsByStage}
           members={members}
           currentUserId={currentUserId}
           userRole={userRole}
@@ -143,7 +146,11 @@ export const PipelineClient = ({
             ) : null
           }
           createButton={
-            <CreateDealButton stages={pipeline.stages} members={members} />
+            <CreateDealButton
+              stages={pipeline.stages}
+              members={members}
+              onMutationSuccess={invalidatePipelineData}
+            />
           }
           filtersSheet={
             <div data-tour="deals-filters">
@@ -180,6 +187,7 @@ export const PipelineClient = ({
               closeDialog()
             }
           }}
+          onMutationSuccess={invalidatePipelineData}
         />
       </Sheet>
 
