@@ -1,8 +1,12 @@
 import { z } from 'zod'
+import { TASK_TITLE_MAX } from '@/_lib/constants/field-limits'
 
 export const updateTaskSchema = z.object({
   id: z.string().uuid(),
-  title: z.string().min(1, 'Título é obrigatório'),
+  title: z
+    .string()
+    .min(1, 'Título é obrigatório')
+    .max(TASK_TITLE_MAX, 'Título muito longo'),
   dueDate: z
     .date({ message: 'Data e hora são obrigatórias' })
     .refine((date) => !isNaN(date.getTime()), {

@@ -1,7 +1,11 @@
 import { z } from 'zod'
+import { TASK_TITLE_MAX } from '@/_lib/constants/field-limits'
 
 export const createTaskSchema = z.object({
-  title: z.string().min(1, 'Título é obrigatório'),
+  title: z
+    .string()
+    .min(1, 'Título é obrigatório')
+    .max(TASK_TITLE_MAX, 'Título muito longo'),
   dealId: z
     .string({ message: 'Vincular a um negócio é obrigatório' })
     .min(1, 'Vincular a um negócio é obrigatório')

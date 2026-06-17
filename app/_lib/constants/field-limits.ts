@@ -17,6 +17,9 @@ export const DEAL_NOTES_MAX = 1000
 export const APPOINTMENT_TITLE_MAX = 120
 export const APPOINTMENT_DESCRIPTION_MAX = 1000
 
+// Campos nativos de tarefa (task)
+export const TASK_TITLE_MAX = 120
+
 // Definição de campo personalizado
 export const FIELD_DEFINITION_LABEL_MAX = 100
 export const FIELD_DEFINITION_OPTIONS_MAX = 50
