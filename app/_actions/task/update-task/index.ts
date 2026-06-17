@@ -1,6 +1,7 @@
 'use server'
 
 import { after } from 'next/server'
+import { Prisma } from '@prisma/client'
 import { orgActionClient } from '@/_lib/safe-action'
 import { updateTaskSchema } from './schema'
 import { db } from '@/_lib/prisma'
@@ -35,7 +36,7 @@ export const updateTask = orgActionClient
 
     // 3. Verificar acesso ao registro (MEMBER só edita próprias)
     requirePermission(
-      canAccessRecord(ctx, { assignedTo: existingTask.assignedTo })
+      canAccessRecord(ctx, { assignedTo: existingTask.assignedTo }),
     )
 
     // 4. Se está mudando assignedTo, verificar permissão de transferência
@@ -54,19 +55,14 @@ export const updateTask = orgActionClient
       }
     }
 
-    // Build update data dynamically to avoid Prisma type conflicts
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const updateData: Record<string, any> = {
+    // Monta o payload tipado; assignedTo só entra se informado (campo obrigatório no schema)
+    const updateData: Prisma.TaskUncheckedUpdateInput = {
       title: data.title,
       dueDate: data.dueDate,
       dealId: data.dealId,
       type: data.type,
       isCompleted: data.isCompleted,
-    }
-
-    // Only update assignedTo if provided and not null (field is required in schema)
-    if (data.assignedTo !== undefined && data.assignedTo !== null) {
-      updateData.assignedTo = data.assignedTo
+      ...(data.assignedTo != null ? { assignedTo: data.assignedTo } : {}),
     }
 
     await db.task.update({
