@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
-import { Pencil, Check, FileText, Loader2 } from 'lucide-react'
+import { Pencil, Check, Loader2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import { Button } from '@/_components/ui/button'
 import { Textarea } from '@/_components/ui/textarea'
@@ -20,11 +20,11 @@ const NotesSection = ({ deal }: NotesSectionProps) => {
 
   const { execute, isPending } = useAction(updateDeal, {
     onSuccess: () => {
-      toast.success('Observações atualizadas!')
+      toast.success('Anotações atualizadas!')
       setIsEditing(false)
     },
     onError: ({ error }) => {
-      toast.error(error.serverError || 'Erro ao atualizar observações.')
+      toast.error(error.serverError || 'Erro ao atualizar anotações.')
     },
   })
 
@@ -43,10 +43,7 @@ const NotesSection = ({ deal }: NotesSectionProps) => {
   return (
     <Card className="border-border/50 bg-card">
       <CardHeader className="flex flex-row items-center justify-between pb-3">
-        <CardTitle className="flex items-center gap-2 text-base font-semibold">
-          <FileText className="h-4 w-4 text-muted-foreground" />
-          Observações
-        </CardTitle>
+        <CardTitle className="text-base font-semibold">Anotações</CardTitle>
         {!isEditing && (
           <Button
             size="sm"
@@ -64,9 +61,9 @@ const NotesSection = ({ deal }: NotesSectionProps) => {
             <Textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="Adicione observações sobre esta negociação..."
+              placeholder="Adicione anotações sobre esta negociação..."
               rows={6}
-              className="resize-none"
+              className="resize-none bg-background"
             />
             <div className="flex justify-end gap-2">
               <Button
@@ -89,7 +86,7 @@ const NotesSection = ({ deal }: NotesSectionProps) => {
           </div>
         ) : (
           <div
-            className="min-h-[120px] cursor-pointer rounded-md border bg-muted/30 p-4 text-sm transition-colors hover:bg-muted/50"
+            className="min-h-[120px] cursor-pointer rounded-md border bg-background p-4 text-sm transition-colors hover:bg-muted/30"
             onClick={() => setIsEditing(true)}
           >
             {deal.notes ? (
@@ -98,7 +95,7 @@ const NotesSection = ({ deal }: NotesSectionProps) => {
               </p>
             ) : (
               <p className="text-muted-foreground">
-                Clique para adicionar observações sobre esta negociação...
+                Clique para adicionar anotações sobre esta negociação...
               </p>
             )}
           </div>

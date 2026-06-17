@@ -7,15 +7,22 @@ import { toast } from 'sonner'
 import {
   ArrowLeft,
   ArrowRightLeft,
-  CircleIcon,
+  SquareIcon,
   CircleCheck,
   CircleX,
+  MoreVertical,
   RotateCcw,
   UserCog,
 } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/_components/ui/tabs'
 import { Badge } from '@/_components/ui/badge'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/_components/ui/dropdown-menu'
 
 import { markDealWon } from '@/_actions/deal/mark-deal-won'
 import { reopenDeal } from '@/_actions/deal/reopen-deal'
@@ -25,7 +32,7 @@ import type { MemberRole } from '@prisma/client'
 
 import TabSummary from './tab-summary'
 import { useDealWonCelebration } from '../_hooks/use-deal-won-celebration'
-import { PRIORITY_CONFIG, STATUS_CONFIG } from '@/_lib/deal/deal-display-config'
+import { STATUS_CONFIG } from '@/_lib/deal/deal-display-config'
 import TransferDealDialog, {
   type MemberDto,
 } from './dialogs/transfer-deal-dialog'
@@ -147,50 +154,17 @@ const DealDetailClient = ({
         </div>
 
         <div className="flex items-start justify-between">
-          <div className="flex justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">{deal.title}</h1>
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="mt-4 flex items-center gap-2">
-                  <Badge
-                    variant="outline"
-                    className={`h-6 gap-1.5 px-2 text-xs font-semibold transition-colors ${STATUS_CONFIG[deal.status].badgeClassName}`}
-                  >
-                    <CircleIcon className="h-1.5 w-1.5 fill-current" />
-                    {STATUS_CONFIG[deal.status].label}
-                  </Badge>
-                  <Badge
-                    className={`h-6 gap-1.5 px-2 text-xs font-semibold transition-colors ${PRIORITY_CONFIG[deal.priority].badgeClassName}`}
-                  >
-                    {PRIORITY_CONFIG[deal.priority].label}
-                  </Badge>
-                </div>
-              </div>
-            </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-bold">{deal.title}</h1>
+            <Badge
+              variant="outline"
+              className={`h-6 gap-1.5 px-2 text-[10px] font-semibold transition-colors ${STATUS_CONFIG[deal.status].textClassName}`}
+            >
+              <SquareIcon size={10} className="fill-current" />
+              {STATUS_CONFIG[deal.status].label}
+            </Badge>
           </div>
-          <div className="flex gap-2.5">
-            {canTransfer && userRole !== 'MEMBER' && (
-              <Button
-                variant="outline"
-                onClick={() => setIsTransferOpen(true)}
-                disabled={isPending}
-              >
-                <UserCog className="mr-2 h-4 w-4" />
-                Transferir Negociação
-              </Button>
-            )}
-
-            {canTransfer && availablePipelines.length > 0 && (
-              <Button
-                variant="outline"
-                onClick={() => setIsPipelineTransferOpen(true)}
-                disabled={isPending}
-              >
-                <ArrowRightLeft className="mr-2 h-4 w-4" />
-                Transferir Pipeline
-              </Button>
-            )}
-
+          <div className="flex items-center gap-2.5">
             {deal.status === 'WON' || deal.status === 'LOST' ? (
               <Button
                 onClick={handleReopen}
@@ -216,17 +190,42 @@ const DealDetailClient = ({
                 </Button>
               </>
             )}
+
+            {canTransfer &&
+              (userRole !== 'MEMBER' || availablePipelines.length > 0) && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="icon" disabled={isPending}>
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {userRole !== 'MEMBER' && (
+                      <DropdownMenuItem onClick={() => setIsTransferOpen(true)}>
+                        <UserCog className="mr-2 h-4 w-4" />
+                        Transferir responsável
+                      </DropdownMenuItem>
+                    )}
+                    {availablePipelines.length > 0 && (
+                      <DropdownMenuItem
+                        onClick={() => setIsPipelineTransferOpen(true)}
+                      >
+                        <ArrowRightLeft className="mr-2 h-4 w-4" />
+                        Transferir pipeline
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
           </div>
         </div>
       </div>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="h-fit">
-        <TabsList className="grid h-12 w-full grid-cols-4 border border-border/50 bg-tab/30">
-          <TabsTrigger value="summary" className="rounded-md py-2">
-            Resumo
-          </TabsTrigger>
-          <TabsTrigger value="products" className="gap-1.5 rounded-md py-2">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="summary">Resumo</TabsTrigger>
+          <TabsTrigger value="products">
             Produtos
             {deal.counts.lineItems > 0 && (
               <Badge variant="secondary" className="h-5 px-1.5 text-xs">
@@ -234,7 +233,7 @@ const DealDetailClient = ({
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="tasks" className="gap-1.5 rounded-md py-2">
+          <TabsTrigger value="tasks">
             Tarefas
             {deal.counts.tasks > 0 && (
               <Badge variant="secondary" className="h-5 px-1.5 text-xs">
@@ -242,7 +241,7 @@ const DealDetailClient = ({
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="appointments" className="gap-1.5 rounded-md py-2">
+          <TabsTrigger value="appointments">
             Agendamentos
             {deal.counts.appointments > 0 && (
               <Badge variant="secondary" className="h-5 px-1.5 text-xs">
