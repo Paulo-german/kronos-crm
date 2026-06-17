@@ -302,7 +302,7 @@ const ContactWidget = ({
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Link
-                        href={`/contacts/${contact.contactId}`}
+                        href={`/org/${orgSlug}/crm/contacts/${contact.contactId}`}
                         className="flex min-w-0 flex-1 items-center gap-3 rounded-md p-2 transition-colors hover:bg-muted/50"
                       >
                         <div className="relative">
