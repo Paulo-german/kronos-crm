@@ -3,11 +3,11 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { useAction } from 'next-safe-action/hooks'
-import { useSmartNavigation } from '@/_hooks/use-smart-navigation'
 import { toast } from 'sonner'
-import { ArrowLeft, HelpCircle, Loader2, UserCog } from 'lucide-react'
+import { HelpCircle, Loader2, UserCog } from 'lucide-react'
 
 import { Button } from '@/_components/ui/button'
+import { BackButton } from '@/_components/layout/back-button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import { Switch } from '@/_components/ui/switch'
 import { Label } from '@/_components/ui/label'
@@ -80,9 +80,6 @@ const ContactDetailClient = ({
   privacy,
 }: ContactDetailClientProps) => {
   const isPiiRestricted = userRole === 'MEMBER' && hidePiiFromMembers
-  const { handleBack } = useSmartNavigation({
-    fallbackPath: `/org/${orgSlug}/contacts`,
-  })
   const { updateField, isPending } = useContactFieldUpdate({
     contactId: contact.id,
   })
@@ -143,10 +140,10 @@ const ContactDetailClient = ({
       {/* Header */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <Button variant="ghost" size="sm" onClick={handleBack}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar
-          </Button>
+          <BackButton
+            orgSlug={orgSlug}
+            fallbackPath={`/org/${orgSlug}/contacts`}
+          />
         </div>
 
         <div className="flex items-start justify-between">

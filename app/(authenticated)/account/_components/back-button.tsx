@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { ArrowLeft } from 'lucide-react'
+import { ChevronLeft } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 
 export function BackButton() {
@@ -16,8 +16,8 @@ export function BackButton() {
   }
 
   return (
-    <Button variant="ghost" size="sm" onClick={handleBack}>
-      <ArrowLeft className="mr-2 h-4 w-4" />
+    <Button variant="outline" size="sm" onClick={handleBack}>
+      <ChevronLeft className="mr-2 h-4 w-4" />
       Voltar
     </Button>
   )
