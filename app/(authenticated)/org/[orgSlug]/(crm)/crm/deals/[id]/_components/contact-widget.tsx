@@ -190,11 +190,31 @@ const ContactWidget = ({ deal, isPiiRestricted }: ContactWidgetProps) => {
     return contactA.name.localeCompare(contactB.name)
   })
 
-  // Resumo exibido quando o card está colapsado: contagem + contato principal
+  // Resumo exibido quando o card está colapsado: avatar do principal + extras
+  const primaryContact = sortedContacts[0]
+  const extraContacts = deal.contacts.length - 1
   const contactsSummary =
-    deal.contacts.length === 0
-      ? 'Nenhum contato vinculado'
-      : `${deal.contacts.length} ${deal.contacts.length === 1 ? 'contato' : 'contatos'} · principal ${sortedContacts[0].name}`
+    deal.contacts.length === 0 ? (
+      <span className="text-sm text-muted-foreground">
+        Nenhum contato vinculado
+      </span>
+    ) : (
+      <div className="flex items-center gap-2.5">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/60 text-xs font-bold text-white shadow-sm">
+          {getInitials(primaryContact.name)}
+        </div>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-foreground">
+            {primaryContact.name}
+          </p>
+          <p className="truncate text-xs text-muted-foreground">
+            {primaryContact.role ?? 'Contato principal'}
+            {extraContacts > 0 &&
+              ` · +${extraContacts} ${extraContacts === 1 ? 'outro' : 'outros'}`}
+          </p>
+        </div>
+      </div>
+    )
 
   return (
     <>

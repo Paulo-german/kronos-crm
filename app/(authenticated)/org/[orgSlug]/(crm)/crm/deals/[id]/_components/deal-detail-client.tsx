@@ -2,10 +2,8 @@
 
 import { useState, type ReactNode } from 'react'
 import { useAction } from 'next-safe-action/hooks'
-import { useSmartNavigation } from '@/_hooks/use-smart-navigation'
 import { toast } from 'sonner'
 import {
-  ArrowLeft,
   ArrowRightLeft,
   SquareIcon,
   CircleCheck,
@@ -15,6 +13,7 @@ import {
   UserCog,
 } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
+import { BackButton } from '@/_components/layout/back-button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/_components/ui/tabs'
 import { Badge } from '@/_components/ui/badge'
 import {
@@ -66,9 +65,6 @@ const DealDetailClient = ({
   appointmentsTabSlot,
   orgSlug,
 }: DealDetailClientProps) => {
-  const { handleBack } = useSmartNavigation({
-    fallbackPath: `/org/${orgSlug}/crm/deals/pipeline`,
-  })
   const [activeTab, setActiveTab] = useState('summary')
   const { celebrate } = useDealWonCelebration()
 
@@ -147,10 +143,10 @@ const DealDetailClient = ({
       {/* Header */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <Button variant="ghost" size="sm" onClick={handleBack}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar
-          </Button>
+          <BackButton
+            orgSlug={orgSlug}
+            fallbackPath={`/org/${orgSlug}/crm/deals/pipeline`}
+          />
         </div>
 
         <div className="flex items-start justify-between">
@@ -165,32 +161,6 @@ const DealDetailClient = ({
             </Badge>
           </div>
           <div className="flex items-center gap-2.5">
-            {deal.status === 'WON' || deal.status === 'LOST' ? (
-              <Button
-                onClick={handleReopen}
-                disabled={isPending}
-                variant="outline"
-              >
-                <RotateCcw className="mr-2 h-4 w-4" />
-                Retomar Negociação
-              </Button>
-            ) : (
-              <>
-                <Button
-                  variant="soft"
-                  onClick={() => setIsLostOpen(true)}
-                  disabled={isPending}
-                >
-                  <CircleX className="h-4 w-4" />
-                  Marcar perda
-                </Button>
-                <Button onClick={handleMarkWon} disabled={isPending}>
-                  <CircleCheck className="h-4 w-4" />
-                  Marcar venda
-                </Button>
-              </>
-            )}
-
             {canTransfer &&
               (userRole !== 'MEMBER' || availablePipelines.length > 0) && (
                 <DropdownMenu>
@@ -217,6 +187,32 @@ const DealDetailClient = ({
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
+
+            {deal.status === 'WON' || deal.status === 'LOST' ? (
+              <Button
+                onClick={handleReopen}
+                disabled={isPending}
+                variant="outline"
+              >
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Retomar Negociação
+              </Button>
+            ) : (
+              <>
+                <Button
+                  variant="soft"
+                  onClick={() => setIsLostOpen(true)}
+                  disabled={isPending}
+                >
+                  <CircleX className="h-4 w-4" />
+                  Marcar perda
+                </Button>
+                <Button onClick={handleMarkWon} disabled={isPending}>
+                  <CircleCheck className="h-4 w-4" />
+                  Marcar venda
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>

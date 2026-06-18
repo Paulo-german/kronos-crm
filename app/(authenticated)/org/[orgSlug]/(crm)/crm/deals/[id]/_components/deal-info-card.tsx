@@ -33,12 +33,13 @@ import { formatCurrency } from '@/_utils/format-currency'
 import { updateDeal } from '@/_actions/deal/update-deal'
 import { moveDealToStage } from '@/_actions/deal/move-deal-to-stage'
 import type { DealDetailsDto } from '@/_data-access/deal/get-deal-details'
+import { Badge } from '@/_components/ui/badge'
 import {
   PRIORITY_CONFIG,
   DEAL_PRIORITIES,
   type DealPriority,
 } from '@/_lib/deal/deal-display-config'
-import CollapsibleCard from './collapsible-card'
+import CollapsibleCard, { SummaryRow } from './collapsible-card'
 
 interface DealInfoCardProps {
   deal: DealDetailsDto
@@ -120,8 +121,41 @@ const DealInfoCard = ({ deal, onTabChange }: DealInfoCardProps) => {
 
   return (
     <CollapsibleCard
-      title="Informações da Negociação"
-      summary={`Valor ${formatCurrency(deal.totalValue)} · Etapa ${deal.stageName}`}
+      title="Negociação"
+      summary={
+        <div className="space-y-2">
+          <SummaryRow
+            label="Valor"
+            value={
+              <span className="font-semibold text-primary">
+                {formatCurrency(deal.totalValue)}
+              </span>
+            }
+          />
+          <SummaryRow label="Etapa" value={deal.stageName} />
+          <SummaryRow
+            label="Prioridade"
+            value={
+              <Badge
+                className={cn(
+                  'h-5 px-1.5 text-[10px] font-semibold',
+                  PRIORITY_CONFIG[deal.priority].badgeClassName,
+                )}
+              >
+                {PRIORITY_CONFIG[deal.priority].label}
+              </Badge>
+            }
+          />
+          <SummaryRow
+            label="Previsão"
+            value={
+              deal.expectedCloseDate
+                ? format(new Date(deal.expectedCloseDate), 'dd/MM/yyyy')
+                : 'Não definida'
+            }
+          />
+        </div>
+      }
     >
       <div className="space-y-4">
         {/* Título Editável */}
