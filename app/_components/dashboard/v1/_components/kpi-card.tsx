@@ -1,6 +1,8 @@
+import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { TrendingUp, TrendingDown } from 'lucide-react'
 import { Card, CardContent } from '@/_components/ui/card'
+import { InfoTooltip } from '@/_components/ui/info-tooltip'
 import { cn } from '@/_lib/utils'
 import type { LucideIcon } from 'lucide-react'
 
@@ -19,6 +21,8 @@ interface KpiCardProps {
   iconClassName?: string
   iconBgClassName?: string
   footnote?: string
+  /** Texto explicativo opcional mostrado num tooltip "(?)" ao lado do título. */
+  info?: ReactNode
 }
 
 export function KpiCard({
@@ -30,6 +34,7 @@ export function KpiCard({
   iconClassName,
   iconBgClassName,
   footnote,
+  info,
 }: KpiCardProps) {
   const showVariation = variation != null && variation.hasBaseline !== false
   const card = (
@@ -52,6 +57,7 @@ export function KpiCard({
             />
           </div>
           <p className="text-sm text-muted-foreground">{title}</p>
+          {info && <InfoTooltip>{info}</InfoTooltip>}
         </div>
         <div className="mt-3 flex items-end gap-2">
           <p className="text-2xl font-bold">{value}</p>

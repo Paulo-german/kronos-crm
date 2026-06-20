@@ -4,6 +4,7 @@ import { getTopLabels } from '@/_data-access/dashboard'
 import type { DateRange, InboxDashboardFilters } from '@/_data-access/dashboard'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import { Badge } from '@/_components/ui/badge'
+import { InfoTooltip } from '@/_components/ui/info-tooltip'
 import { cn } from '@/_lib/utils'
 import { getLabelColor } from '@/_lib/constants/label-colors'
 
@@ -25,7 +26,13 @@ export async function InboxTopLabelsSection({
   return (
     <Card className="flex h-full flex-col">
       <CardHeader className="pb-2">
-        <CardTitle className="text-base font-semibold">Top Etiquetas</CardTitle>
+        <CardTitle className="flex items-center gap-1.5 text-base font-semibold">
+          Top Etiquetas
+          <InfoTooltip>
+            As etiquetas mais aplicadas às conversas do período — mostra os
+            assuntos mais frequentes do atendimento.
+          </InfoTooltip>
+        </CardTitle>
       </CardHeader>
       <CardContent className="flex-1">
         {labels.length === 0 ? (

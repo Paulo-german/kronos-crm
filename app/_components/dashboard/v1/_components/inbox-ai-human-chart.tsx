@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { PieChart, Pie, Label } from 'recharts'
 import type { AiHumanBreakdown } from '@/_data-access/dashboard'
+import { formatDurationMs } from '@/_utils/format-duration-ms'
 import {
   type ChartConfig,
   ChartContainer,
@@ -151,6 +152,34 @@ export function InboxAiHumanChart({ breakdown }: InboxAiHumanChartProps) {
           label="Taxa de Sucesso IA"
           value={`${breakdown.aiSuccessRate.toFixed(1)}%`}
         />
+
+        {/* Tempo de resolução: IA vs humano */}
+        {(breakdown.aiAvgResolutionMs != null ||
+          breakdown.humanAvgResolutionMs != null) && (
+          <div className="mt-1 border-t border-border/40 pt-3">
+            <p className="mb-2 text-xs text-muted-foreground">
+              Tempo médio de resolução
+            </p>
+            <div className="flex gap-6">
+              <div>
+                <p className="text-[11px] text-muted-foreground">Com IA</p>
+                <p className="text-sm font-bold tabular-nums">
+                  {breakdown.aiAvgResolutionMs != null
+                    ? formatDurationMs(breakdown.aiAvgResolutionMs)
+                    : '—'}
+                </p>
+              </div>
+              <div>
+                <p className="text-[11px] text-muted-foreground">Só humano</p>
+                <p className="text-sm font-bold tabular-nums">
+                  {breakdown.humanAvgResolutionMs != null
+                    ? formatDurationMs(breakdown.humanAvgResolutionMs)
+                    : '—'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

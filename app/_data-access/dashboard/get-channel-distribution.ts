@@ -24,20 +24,60 @@ async function fetchChannelDistribution(
 ): Promise<ChannelDistribution[]> {
   const baseWhere = buildInboxDashboardWhere(orgId, userId, elevated, filters)
 
-  const groups = await db.conversation.groupBy({
-    by: ['channel'],
-    _count: { _all: true },
+  // findMany (em vez de groupBy) para computar, na mesma passada, a contagem
+  // por canal e o tempo médio de 1ª resposta por canal (benchmark entre canais).
+  const conversations = await db.conversation.findMany({
     where: {
       ...baseWhere,
       createdAt: { gte: dateRange.start, lte: dateRange.end },
     },
-    orderBy: { _count: { channel: 'desc' } },
+    select: {
+      channel: true,
+      createdAt: true,
+      messages: {
+        where: { role: 'assistant' },
+        orderBy: { createdAt: 'asc' },
+        take: 1,
+        select: { createdAt: true },
+      },
+    },
   })
 
-  return groups.map((group) => ({
-    channel: group.channel,
-    count: group._count._all,
-  }))
+  const byChannel = new Map<
+    string,
+    { count: number; responseTimes: number[] }
+  >()
+
+  for (const conversation of conversations) {
+    const entry = byChannel.get(conversation.channel) ?? {
+      count: 0,
+      responseTimes: [],
+    }
+    entry.count += 1
+
+    const firstReply = conversation.messages[0]
+    if (firstReply) {
+      entry.responseTimes.push(
+        firstReply.createdAt.getTime() - conversation.createdAt.getTime(),
+      )
+    }
+
+    byChannel.set(conversation.channel, entry)
+  }
+
+  return Array.from(byChannel.entries())
+    .map(([channel, entry]) => ({
+      channel,
+      count: entry.count,
+      avgFirstResponseTimeMs:
+        entry.responseTimes.length > 0
+          ? Math.round(
+              entry.responseTimes.reduce((sum, ms) => sum + ms, 0) /
+                entry.responseTimes.length,
+            )
+          : null,
+    }))
+    .sort((channelA, channelB) => channelB.count - channelA.count)
 }
 
 export const getChannelDistribution = cache(

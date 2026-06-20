@@ -2,6 +2,7 @@ import type { MemberRole } from '@prisma/client'
 import { getHourlyHeatmap } from '@/_data-access/dashboard'
 import type { DateRange, InboxDashboardFilters } from '@/_data-access/dashboard'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
+import { InfoTooltip } from '@/_components/ui/info-tooltip'
 import { InboxHeatmapGrid } from './inbox-heatmap-grid'
 
 interface InboxHeatmapSectionProps {
@@ -20,8 +21,13 @@ export async function InboxHeatmapSection({
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base font-semibold">
+        <CardTitle className="flex items-center gap-1.5 text-base font-semibold">
           Horários de Pico
+          <InfoTooltip>
+            Concentração de mensagens recebidas por dia da semana e hora, no
+            horário de Brasília. Útil para escalar a equipe nos momentos de
+            maior demanda.
+          </InfoTooltip>
         </CardTitle>
       </CardHeader>
       <CardContent>

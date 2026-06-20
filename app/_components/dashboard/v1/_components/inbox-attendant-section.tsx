@@ -3,6 +3,7 @@ import { isElevated } from '@/_lib/rbac/permissions'
 import { getAttendantPerformance } from '@/_data-access/dashboard'
 import type { DateRange, InboxDashboardFilters } from '@/_data-access/dashboard'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
+import { InfoTooltip } from '@/_components/ui/info-tooltip'
 import { InboxAttendantChart } from './inbox-attendant-chart'
 
 interface InboxAttendantSectionProps {
@@ -25,8 +26,12 @@ export async function InboxAttendantSection({
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base font-semibold">
+        <CardTitle className="flex items-center gap-1.5 text-base font-semibold">
           Performance por Atendente
+          <InfoTooltip>
+            Ranking dos atendentes por volume de conversas, com o tempo médio de
+            1ª resposta e a taxa de resolução de cada um.
+          </InfoTooltip>
         </CardTitle>
       </CardHeader>
       <CardContent>
