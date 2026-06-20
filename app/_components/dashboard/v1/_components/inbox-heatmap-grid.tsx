@@ -1,5 +1,6 @@
 'use client'
 
+import { Clock } from 'lucide-react'
 import { cn } from '@/_lib/utils'
 import type { HourlyHeatmapEntry } from '@/_data-access/dashboard'
 
@@ -26,6 +27,25 @@ interface InboxHeatmapGridProps {
 }
 
 export function InboxHeatmapGrid({ data }: InboxHeatmapGridProps) {
+  // Sem atividade no período: empty state alinhado aos demais cards do Inbox,
+  // em vez de exibir uma grade cinza vazia.
+  const isEmpty = data.length === 0 || data.every((entry) => entry.count === 0)
+  if (isEmpty) {
+    return (
+      <div className="flex h-[200px] flex-col items-center justify-center gap-3">
+        <div className="relative">
+          <div className="absolute inset-0 animate-pulse rounded-full bg-primary/20 blur-2xl" />
+          <div className="relative flex size-14 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/25">
+            <Clock className="size-7 text-white" />
+          </div>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Nenhuma atividade no período
+        </p>
+      </div>
+    )
+  }
+
   // Indexar os dados num mapa para lookup O(1)
   const countMap = new Map<string, number>()
   for (const entry of data) {

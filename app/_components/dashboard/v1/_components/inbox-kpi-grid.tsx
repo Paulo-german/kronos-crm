@@ -108,6 +108,7 @@ export async function InboxKpiGrid({
         icon={AlertTriangle}
         iconClassName="text-orange-500"
         iconBgClassName="bg-orange-500/10"
+        footnote="Estado atual — não filtra por período"
       />
     </div>
   )

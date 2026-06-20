@@ -1,7 +1,12 @@
 'use client'
 
 import type { ComponentType } from 'react'
-import { Bot, ArrowRightLeft, CheckCircle2, PieChart as PieChartIcon } from 'lucide-react'
+import {
+  Bot,
+  ArrowRightLeft,
+  CheckCircle2,
+  PieChart as PieChartIcon,
+} from 'lucide-react'
 import { PieChart, Pie, Label } from 'recharts'
 import type { AiHumanBreakdown } from '@/_data-access/dashboard'
 import {
@@ -14,7 +19,9 @@ import {
 const aiHumanChartConfig = {
   count: { label: 'Conversas' },
   ai: { label: 'IA', color: 'hsl(var(--primary))' },
-  human: { label: 'Humano', color: 'hsl(var(--muted-foreground))' },
+  // Azul para o atendimento humano — distinto do roxo da IA e legível mesmo
+  // quando o donut é 100% humano (antes usava muted-foreground/cinza apagado).
+  human: { label: 'Humano', color: '#3b82f6' },
 } satisfies ChartConfig
 
 interface InboxAiHumanChartProps {

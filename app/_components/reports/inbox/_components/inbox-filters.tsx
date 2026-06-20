@@ -2,6 +2,7 @@
 
 import { parseAsString, useQueryStates } from 'nuqs'
 import { MessageSquare, Tag, CheckCircle2, Bot, X } from 'lucide-react'
+import { DateRangePicker } from '@/_components/dashboard/_shared/date-range-picker'
 import { Button } from '@/_components/ui/button'
 import {
   Select,
@@ -13,6 +14,7 @@ import {
 } from '@/_components/ui/select'
 import { Badge } from '@/_components/ui/badge'
 import { cn } from '@/_lib/utils'
+import { getLabelColor } from '@/_lib/constants/label-colors'
 import type { ConversationLabelDto } from '@/_data-access/conversation-label/get-conversation-labels'
 
 // Parsers nuqs — apenas filtros NÃO cobertos pelo shell global (start/end/assignee)
@@ -78,8 +80,10 @@ function LabelTriggerContent({ labels, selectedId }: LabelTriggerContentProps) {
   return (
     <div className="flex items-center gap-1.5">
       <span
-        className="size-2.5 shrink-0 rounded-full"
-        style={{ backgroundColor: label.color }}
+        className={cn(
+          'size-2.5 shrink-0 rounded-full',
+          getLabelColor(label.color).dot,
+        )}
       />
       <span className="max-w-[100px] truncate">{label.name}</span>
     </div>
@@ -135,6 +139,9 @@ export function InboxFilters({ labels }: InboxFiltersProps) {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
+        {/* Período — alinha o Inbox reports com o filtro de data do CRM */}
+        <DateRangePicker />
+
         {/* Canal */}
         <Select
           value={filters.channel ?? 'all'}
@@ -194,8 +201,10 @@ export function InboxFilters({ labels }: InboxFiltersProps) {
                 <SelectItem key={label.id} value={label.id}>
                   <div className="flex items-center gap-2">
                     <span
-                      className="size-2.5 shrink-0 rounded-full"
-                      style={{ backgroundColor: label.color }}
+                      className={cn(
+                        'size-2.5 shrink-0 rounded-full',
+                        getLabelColor(label.color).dot,
+                      )}
                     />
                     <span>{label.name}</span>
                   </div>

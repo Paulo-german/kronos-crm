@@ -11,10 +11,14 @@ interface KpiCardProps {
   variation?: {
     value: string
     isPositive: boolean
+    // Quando false, não há base de comparação real (período anterior zerado);
+    // o badge é ocultado para não exibir um "+100%"/"-100%" enganoso.
+    hasBaseline?: boolean
   }
   href?: string
   iconClassName?: string
   iconBgClassName?: string
+  footnote?: string
 }
 
 export function KpiCard({
@@ -25,7 +29,9 @@ export function KpiCard({
   href,
   iconClassName,
   iconBgClassName,
+  footnote,
 }: KpiCardProps) {
+  const showVariation = variation != null && variation.hasBaseline !== false
   const card = (
     <Card
       className={cn(
@@ -41,13 +47,15 @@ export function KpiCard({
               iconBgClassName ?? 'bg-muted',
             )}
           >
-            <Icon className={cn('size-4', iconClassName ?? 'text-muted-foreground')} />
+            <Icon
+              className={cn('size-4', iconClassName ?? 'text-muted-foreground')}
+            />
           </div>
           <p className="text-sm text-muted-foreground">{title}</p>
         </div>
         <div className="mt-3 flex items-end gap-2">
           <p className="text-2xl font-bold">{value}</p>
-          {variation && (
+          {showVariation && (
             <span
               className={cn(
                 'mb-0.5 flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-xs font-semibold',
@@ -65,6 +73,9 @@ export function KpiCard({
             </span>
           )}
         </div>
+        {footnote && (
+          <p className="mt-1 text-[10px] text-muted-foreground">{footnote}</p>
+        )}
       </CardContent>
     </Card>
   )
