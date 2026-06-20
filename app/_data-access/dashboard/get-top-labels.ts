@@ -6,6 +6,7 @@ import { db } from '@/_lib/prisma'
 import type { RBACContext } from '@/_lib/rbac'
 import { isElevated } from '@/_lib/rbac'
 import { buildInboxDashboardWhere } from './build-inbox-dashboard-where'
+import { buildInboxFiltersKey } from './_shared/build-inbox-filters-key'
 import type { DateRange } from './types'
 import type { InboxDashboardFilters, TopLabel } from './inbox-dashboard-types'
 
@@ -70,13 +71,7 @@ export const getTopLabels = cache(
     const elevated = isElevated(ctx.userRole)
     const startISO = dateRange.start.toISOString()
     const endISO = dateRange.end.toISOString()
-    const filtersKey = JSON.stringify({
-      ch: filters.channel ?? '',
-      as: filters.assignee ?? '',
-      la: filters.labelId ?? '',
-      st: filters.status ?? '',
-      ai: filters.aiVsHuman ?? '',
-    })
+    const filtersKey = buildInboxFiltersKey(filters)
 
     const getCached = unstable_cache(
       async () =>

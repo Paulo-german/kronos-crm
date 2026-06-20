@@ -26,6 +26,15 @@ async function fetchAiMetrics(
   orgId: string,
   dateRange: DateRange,
 ): Promise<AiMetrics> {
+  // LIMITAÇÃO CONHECIDA (granularidade): as métricas de crédito e mensagens
+  // (creditsUsed, messagesCount, prevCreditsUsed, prevMessagesCount, monthlyHistory)
+  // vêm de AiUsage, que é agregado por (periodYear, periodMonth). O filtro abaixo seleciona
+  // os registros pelos MESES que tocam o dateRange e soma o MÊS INTEIRO de cada um — mesmo
+  // quando o range é parcial (ex.: 10–20 de junho ainda contabiliza junho inteiro). Não há
+  // como recortar o uso por dia/hora pois AiUsage não guarda granularidade abaixo do mês.
+  // Difere das métricas de execução (executionTotals/executionByStatus e tudo derivado delas),
+  // que usam o range exato via `startedAt: { gte, lte }`. Recortar créditos/mensagens pelo
+  // range exato dependeria de uma fonte com granularidade diária (ex.: agregar AgentExecution).
   const previousPeriod = getPreviousPeriod(dateRange)
 
   // Meses do período selecionado (mais antigo ao mais recente)

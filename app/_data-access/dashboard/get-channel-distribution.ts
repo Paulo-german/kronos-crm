@@ -6,8 +6,12 @@ import { db } from '@/_lib/prisma'
 import type { RBACContext } from '@/_lib/rbac'
 import { isElevated } from '@/_lib/rbac'
 import { buildInboxDashboardWhere } from './build-inbox-dashboard-where'
+import { buildInboxFiltersKey } from './_shared/build-inbox-filters-key'
 import type { DateRange } from './types'
-import type { ChannelDistribution, InboxDashboardFilters } from './inbox-dashboard-types'
+import type {
+  ChannelDistribution,
+  InboxDashboardFilters,
+} from './inbox-dashboard-types'
 
 const CACHE_REVALIDATE_SECONDS = 3600
 
@@ -45,17 +49,17 @@ export const getChannelDistribution = cache(
     const elevated = isElevated(ctx.userRole)
     const startISO = dateRange.start.toISOString()
     const endISO = dateRange.end.toISOString()
-    const filtersKey = JSON.stringify({
-      ch: filters.channel ?? '',
-      as: filters.assignee ?? '',
-      la: filters.labelId ?? '',
-      st: filters.status ?? '',
-      ai: filters.aiVsHuman ?? '',
-    })
+    const filtersKey = buildInboxFiltersKey(filters)
 
     const getCached = unstable_cache(
       async () =>
-        fetchChannelDistribution(ctx.orgId, ctx.userId, elevated, dateRange, filters),
+        fetchChannelDistribution(
+          ctx.orgId,
+          ctx.userId,
+          elevated,
+          dateRange,
+          filters,
+        ),
       [
         `inbox-channel-${ctx.orgId}-${ctx.userId}-${elevated}-${startISO}-${endISO}-${filtersKey}`,
       ],

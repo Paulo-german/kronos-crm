@@ -2,6 +2,7 @@ import 'server-only'
 
 import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
+import { DealStatus } from '@prisma/client'
 import { db } from '@/_lib/prisma'
 import { isElevated } from '@/_lib/rbac'
 import type { RBACContext } from '@/_lib/rbac'
@@ -36,7 +37,9 @@ async function fetchDealsAtRisk(
   elevated: boolean,
   options: DealsAtRiskOptions,
 ): Promise<{ deals: DealAtRisk[]; total: number }> {
-  const cutoff = new Date(Date.now() - options.inactiveDays * MILLISECONDS_PER_DAY)
+  const cutoff = new Date(
+    Date.now() - options.inactiveDays * MILLISECONDS_PER_DAY,
+  )
   const filters: ReportsFilters = {
     ...(options.pipelineId ? { pipelineId: options.pipelineId } : {}),
     ...(options.assignee ? { assignee: options.assignee } : {}),
@@ -47,7 +50,11 @@ async function fetchDealsAtRisk(
 
   const where = {
     ...baseWhere,
-    status: 'OPEN' as const,
+    // "Em risco" = deal ativo (aberto ou em andamento) sem movimentação há
+    // `inactiveDays`. Incluímos IN_PROGRESS pois deals em andamento parados
+    // são justamente os mais arriscados — consistente com a definição de
+    // "pipeline ativo" usada nos KPIs.
+    status: { in: [DealStatus.OPEN, DealStatus.IN_PROGRESS] },
     updatedAt: { lt: cutoff },
   }
 

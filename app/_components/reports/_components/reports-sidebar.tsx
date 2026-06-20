@@ -2,28 +2,25 @@
 
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { Compass, GitBranch, Users, Package, XCircle, Inbox, Sparkles, type LucideIcon } from 'lucide-react'
 import { cn } from '@/_lib/utils'
 import { isElevated } from '@/_lib/rbac/permissions'
 import { REPORT_SECTIONS } from '../_config/report-sections'
+import { getReportSectionIcon } from '../_config/report-section-icons'
 import type { MemberRole } from '@prisma/client'
-
-const ICON_MAP: Record<string, LucideIcon> = {
-  Compass,
-  GitBranch,
-  Users,
-  Package,
-  XCircle,
-  Inbox,
-  Sparkles,
-}
 
 interface ReportsSidebarProps {
   userRole: MemberRole
   orgSlug: string
+  // Segmento base da rota (ex.: 'crm/reports'). Espelha ReportsNavTabs para
+  // que os links apontem para o contexto correto.
+  basePath?: string
 }
 
-export function ReportsSidebar({ userRole, orgSlug }: ReportsSidebarProps) {
+export function ReportsSidebar({
+  userRole,
+  orgSlug,
+  basePath = 'reports',
+}: ReportsSidebarProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const elevated = isElevated(userRole)
@@ -35,10 +32,10 @@ export function ReportsSidebar({ userRole, orgSlug }: ReportsSidebarProps) {
     <nav className="hidden w-52 shrink-0 flex-col gap-1 border-r border-border/50 bg-sidebar p-3 md:flex">
       {REPORT_SECTIONS.map((section) => {
         if (section.requiresElevated && !elevated) return null
-        const href = `/org/${orgSlug}/reports/${section.slug}`
+        const href = `/org/${orgSlug}/${basePath}/${section.slug}`
         const isActive = pathname === href || pathname.startsWith(`${href}/`)
         const linkHref = queryString ? `${href}?${queryString}` : href
-        const Icon = ICON_MAP[section.iconName] ?? Compass
+        const Icon = getReportSectionIcon(section.iconName)
         return (
           <Link
             key={section.slug}

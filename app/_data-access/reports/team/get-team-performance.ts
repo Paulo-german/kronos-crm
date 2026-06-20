@@ -44,7 +44,11 @@ interface OpenSnapshotAggregate {
 // Convertemos os groupBy do Prisma em Maps por assignedTo para facilitar o join no app layer
 // sem precisar de N findFirst por usuário.
 function indexWonByAssignee(
-  rows: Array<{ assignedTo: string; _count: { id: number }; _sum: { value: unknown } }>,
+  rows: Array<{
+    assignedTo: string
+    _count: { id: number }
+    _sum: { value: unknown }
+  }>,
 ): Map<string, WonAggregate> {
   const map = new Map<string, WonAggregate>()
   for (const row of rows) {
@@ -56,17 +60,9 @@ function indexWonByAssignee(
   return map
 }
 
-function indexOpenedByAssignee(
-  rows: Array<{ assignedTo: string; _count: { id: number } }>,
-): Map<string, number> {
-  const map = new Map<string, number>()
-  for (const row of rows) {
-    map.set(row.assignedTo, row._count.id)
-  }
-  return map
-}
-
-function indexLostByAssignee(
+// Indexa contagens simples (_count.id) por assignedTo — reusado para os
+// agregados de "deals abertos no período" e "deals perdidos".
+function indexCountByAssignee(
   rows: Array<{ assignedTo: string; _count: { id: number } }>,
 ): Map<string, number> {
   const map = new Map<string, number>()
@@ -77,7 +73,11 @@ function indexLostByAssignee(
 }
 
 function indexOpenSnapshotByAssignee(
-  rows: Array<{ assignedTo: string; _count: { id: number }; _sum: { value: unknown } }>,
+  rows: Array<{
+    assignedTo: string
+    _count: { id: number }
+    _sum: { value: unknown }
+  }>,
 ): Map<string, OpenSnapshotAggregate> {
   const map = new Map<string, OpenSnapshotAggregate>()
   for (const row of rows) {
@@ -102,81 +102,88 @@ async function fetchTeamPerformance(
     ignoreStatus: true,
   })
 
-  const [wonCurrent, openedCurrent, wonPrev, openedPrev, lostCurrent, lostPrev, openSnapshot] =
-    await Promise.all([
-      db.deal.groupBy({
-        by: ['assignedTo'],
-        _count: { id: true },
-        _sum: { value: true },
-        where: {
-          ...baseWhere,
-          status: DealStatus.WON,
-          updatedAt: { gte: dateRange.start, lte: dateRange.end },
-        },
-      }),
-      db.deal.groupBy({
-        by: ['assignedTo'],
-        _count: { id: true },
-        where: {
-          ...baseWhere,
-          createdAt: { gte: dateRange.start, lte: dateRange.end },
-        },
-      }),
-      db.deal.groupBy({
-        by: ['assignedTo'],
-        _count: { id: true },
-        _sum: { value: true },
-        where: {
-          ...baseWhere,
-          status: DealStatus.WON,
-          updatedAt: { gte: prevRange.start, lte: prevRange.end },
-        },
-      }),
-      db.deal.groupBy({
-        by: ['assignedTo'],
-        _count: { id: true },
-        where: {
-          ...baseWhere,
-          createdAt: { gte: prevRange.start, lte: prevRange.end },
-        },
-      }),
-      db.deal.groupBy({
-        by: ['assignedTo'],
-        _count: { id: true },
-        where: {
-          ...baseWhere,
-          status: DealStatus.LOST,
-          updatedAt: { gte: dateRange.start, lte: dateRange.end },
-        },
-      }),
-      db.deal.groupBy({
-        by: ['assignedTo'],
-        _count: { id: true },
-        where: {
-          ...baseWhere,
-          status: DealStatus.LOST,
-          updatedAt: { gte: prevRange.start, lte: prevRange.end },
-        },
-      }),
-      // Pipeline ativo é snapshot ALL TIME (sem filtro temporal) — mesma convenção de
-      // get-kpi-metrics-for-reports.ts. O valor não muda entre períodos para a mesma cache key.
-      db.deal.groupBy({
-        by: ['assignedTo'],
-        _count: { id: true },
-        _sum: { value: true },
-        where: {
-          ...baseWhere,
-          status: { in: [DealStatus.OPEN, DealStatus.IN_PROGRESS] },
-        },
-      }),
-    ])
+  const [
+    wonCurrent,
+    openedCurrent,
+    wonPrev,
+    openedPrev,
+    lostCurrent,
+    lostPrev,
+    openSnapshot,
+  ] = await Promise.all([
+    db.deal.groupBy({
+      by: ['assignedTo'],
+      _count: { id: true },
+      _sum: { value: true },
+      where: {
+        ...baseWhere,
+        status: DealStatus.WON,
+        updatedAt: { gte: dateRange.start, lte: dateRange.end },
+      },
+    }),
+    db.deal.groupBy({
+      by: ['assignedTo'],
+      _count: { id: true },
+      where: {
+        ...baseWhere,
+        createdAt: { gte: dateRange.start, lte: dateRange.end },
+      },
+    }),
+    db.deal.groupBy({
+      by: ['assignedTo'],
+      _count: { id: true },
+      _sum: { value: true },
+      where: {
+        ...baseWhere,
+        status: DealStatus.WON,
+        updatedAt: { gte: prevRange.start, lte: prevRange.end },
+      },
+    }),
+    db.deal.groupBy({
+      by: ['assignedTo'],
+      _count: { id: true },
+      where: {
+        ...baseWhere,
+        createdAt: { gte: prevRange.start, lte: prevRange.end },
+      },
+    }),
+    db.deal.groupBy({
+      by: ['assignedTo'],
+      _count: { id: true },
+      where: {
+        ...baseWhere,
+        status: DealStatus.LOST,
+        updatedAt: { gte: dateRange.start, lte: dateRange.end },
+      },
+    }),
+    db.deal.groupBy({
+      by: ['assignedTo'],
+      _count: { id: true },
+      where: {
+        ...baseWhere,
+        status: DealStatus.LOST,
+        updatedAt: { gte: prevRange.start, lte: prevRange.end },
+      },
+    }),
+    // Pipeline ativo é snapshot ALL TIME (sem filtro temporal) — mesma convenção de
+    // get-kpi-metrics-for-reports.ts. O valor não muda entre períodos para a mesma cache key.
+    db.deal.groupBy({
+      by: ['assignedTo'],
+      _count: { id: true },
+      _sum: { value: true },
+      where: {
+        ...baseWhere,
+        status: { in: [DealStatus.OPEN, DealStatus.IN_PROGRESS] },
+      },
+    }),
+  ])
 
   const wonCurrentMap = indexWonByAssignee(wonCurrent)
-  const openedCurrentMap = indexOpenedByAssignee(openedCurrent)
+  const openedCurrentMap = indexCountByAssignee(openedCurrent)
   const wonPrevMap = indexWonByAssignee(wonPrev)
-  const openedPrevMap = indexOpenedByAssignee(openedPrev)
-  const lostCurrentMap = indexLostByAssignee(lostCurrent)
-  const lostPrevMap = indexLostByAssignee(lostPrev)
+  const openedPrevMap = indexCountByAssignee(openedPrev)
+  const lostCurrentMap = indexCountByAssignee(lostCurrent)
+  const lostPrevMap = indexCountByAssignee(lostPrev)
   const openSnapshotMap = indexOpenSnapshotByAssignee(openSnapshot)
 
   // Vendedor pode ter pipeline ativo sem atividade no período (won/opened) — incluímos
@@ -187,16 +194,13 @@ async function fetchTeamPerformance(
   for (const id of lostCurrentMap.keys()) activeUserIds.add(id)
   for (const id of openSnapshotMap.keys()) activeUserIds.add(id)
 
-  // Coletamos todos os ids (atual + anterior) só para popular o userMap em um único findMany.
-  const allUserIds = new Set<string>(activeUserIds)
-  for (const id of wonPrevMap.keys()) allUserIds.add(id)
-  for (const id of openedPrevMap.keys()) allUserIds.add(id)
-  for (const id of lostPrevMap.keys()) allUserIds.add(id)
-
   if (activeUserIds.size === 0) return []
 
+  // Buscamos apenas os usuários que serão exibidos (activeUserIds). Ids que só
+  // aparecem no período anterior não entram no loop de `rows`, então não há
+  // motivo para carregá-los.
   const users = await db.user.findMany({
-    where: { id: { in: Array.from(allUserIds) } },
+    where: { id: { in: Array.from(activeUserIds) } },
     select: { id: true, fullName: true, avatarUrl: true },
   })
 
@@ -211,9 +215,17 @@ async function fetchTeamPerformance(
     const openedPast = openedPrevMap.get(assigneeId) ?? 0
 
     const avgTicket = won.count > 0 ? won.revenue / won.count : 0
-    const conversionRate = opened > 0 ? (won.count / opened) * 100 : 0
-    const prevAvgTicket = wonPast.count > 0 ? wonPast.revenue / wonPast.count : 0
-    const prevConversionRate = openedPast > 0 ? (wonPast.count / openedPast) * 100 : 0
+    // LIMITAÇÃO CONHECIDA: conversão é uma aproximação. O numerador (won) conta
+    // deals ganhos NO período (por updatedAt/fechamento), enquanto o denominador
+    // (opened) conta deals criados NO período (por createdAt) — coortes distintas.
+    // Sem um campo de data de fechamento, clampamos em 100% para evitar exibir
+    // taxas absurdas (>100%) quando um vendedor fecha deals criados antes.
+    const conversionRate =
+      opened > 0 ? Math.min((won.count / opened) * 100, 100) : 0
+    const prevAvgTicket =
+      wonPast.count > 0 ? wonPast.revenue / wonPast.count : 0
+    const prevConversionRate =
+      openedPast > 0 ? Math.min((wonPast.count / openedPast) * 100, 100) : 0
 
     rows.push({
       userId: assigneeId,
@@ -234,7 +246,14 @@ async function fetchTeamPerformance(
     })
   }
 
-  rows.sort((left, right) => right.revenue - left.revenue)
+  // Ordena por receita; desempata por deals ganhos e depois por nome para que
+  // a posição/medalha seja determinística (evita ranking arbitrário em empates).
+  rows.sort(
+    (left, right) =>
+      right.revenue - left.revenue ||
+      right.dealsWonCount - left.dealsWonCount ||
+      left.fullName.localeCompare(right.fullName),
+  )
   return rows
 }
 

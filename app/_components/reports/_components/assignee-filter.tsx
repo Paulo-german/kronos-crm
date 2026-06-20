@@ -24,13 +24,14 @@ interface AssigneeFilterProps {
 }
 
 function getMemberInitials(member: MemberOption): string {
-  const name = member.fullName.trim()
-  if (!name) return '?'
-  const parts = name.split(' ')
-  if (parts.length === 1) return parts[0]!.charAt(0).toUpperCase()
-  return (
-    parts[0]!.charAt(0) + parts[parts.length - 1]!.charAt(0)
-  ).toUpperCase()
+  // split(/\s+/) + filter(Boolean) evita partes vazias com espaços múltiplos;
+  // [...part][0] pega o primeiro code point (suporta emoji/fora do BMP).
+  const parts = member.fullName.split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '?'
+  const first = [...parts[0]!][0] ?? ''
+  if (parts.length === 1) return first.toUpperCase() || '?'
+  const last = [...parts[parts.length - 1]!][0] ?? ''
+  return (first + last).toUpperCase() || '?'
 }
 
 export function AssigneeFilter({
