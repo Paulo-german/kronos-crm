@@ -1,8 +1,16 @@
-import { TrendingUp, TrendingDown, Gauge, Trophy, Banknote, Timer } from 'lucide-react'
+import {
+  TrendingUp,
+  TrendingDown,
+  Gauge,
+  Trophy,
+  Banknote,
+  Timer,
+} from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import { cn } from '@/_lib/utils'
 import { formatVariation } from '@/_utils/date-range'
 import { formatCompactCurrency } from '@/_utils/format-currency'
+import { VariationBadge } from '@/_components/reports/_components/variation-badge'
 import type { PipelineVelocityDto } from '@/_data-access/reports/pipeline/get-pipeline-velocity'
 
 interface PipelineVelocityCardProps {
@@ -12,7 +20,9 @@ interface PipelineVelocityCardProps {
 interface MetricMiniCardProps {
   label: string
   value: string
-  variation?: { value: string; isPositive: boolean }
+  variation?: ReturnType<typeof formatVariation>
+  // Quando true, queda = verde e alta = vermelha (ex.: ciclo médio — menos é melhor).
+  invertPolarity?: boolean
   icon: React.ComponentType<{ className?: string }>
   iconClassName?: string
   iconBgClassName?: string
@@ -22,6 +32,7 @@ function MetricMiniCard({
   label,
   value,
   variation,
+  invertPolarity,
   icon: Icon,
   iconClassName,
   iconBgClassName,
@@ -29,29 +40,27 @@ function MetricMiniCard({
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-border/40 bg-card/60 p-4">
       <div className="flex items-center gap-2">
-        <div className={cn('flex size-7 items-center justify-center rounded-md', iconBgClassName ?? 'bg-muted')}>
-          <Icon className={cn('size-3.5', iconClassName ?? 'text-muted-foreground')} />
+        <div
+          className={cn(
+            'flex size-7 items-center justify-center rounded-md',
+            iconBgClassName ?? 'bg-muted',
+          )}
+        >
+          <Icon
+            className={cn('size-3.5', iconClassName ?? 'text-muted-foreground')}
+          />
         </div>
         <span className="text-xs text-muted-foreground">{label}</span>
       </div>
       <div className="flex items-end gap-2">
         <span className="text-xl font-bold tabular-nums">{value}</span>
         {variation && (
-          <span
-            className={cn(
-              'mb-0.5 flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
-              variation.isPositive
-                ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400'
-                : 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400',
-            )}
-          >
-            {variation.isPositive ? (
-              <TrendingUp className="size-2.5" />
-            ) : (
-              <TrendingDown className="size-2.5" />
-            )}
-            {variation.value}
-          </span>
+          <VariationBadge
+            size="xs"
+            variation={variation}
+            invertPolarity={invertPolarity}
+            className="mb-0.5 ml-0"
+          />
         )}
       </div>
     </div>
@@ -60,8 +69,13 @@ function MetricMiniCard({
 
 export function PipelineVelocityCard({ data }: PipelineVelocityCardProps) {
   const velocityVariation = formatVariation(data.velocity, data.prevVelocity)
-  // Para ciclo médio: menor é melhor → invertemos a comparação (prev vs current em vez de current vs prev)
-  const cycleVariation = formatVariation(data.prevAvgCycleDays, data.avgCycleDays)
+  // Ciclo médio: comparamos na ordem real (current vs prev) para que o valor
+  // exibido reflita a variação correta, e usamos `invertPolarity` no badge
+  // para colorir "menos é melhor" (queda no ciclo = verde).
+  const cycleVariation = formatVariation(
+    data.avgCycleDays,
+    data.prevAvgCycleDays,
+  )
 
   return (
     <Card>
@@ -76,7 +90,9 @@ export function PipelineVelocityCard({ data }: PipelineVelocityCardProps) {
           <div className="text-right">
             <p className="text-2xl font-bold tabular-nums text-primary">
               {formatCompactCurrency(data.velocity)}
-              <span className="ml-1 text-sm font-normal text-muted-foreground">/dia</span>
+              <span className="ml-1 text-sm font-normal text-muted-foreground">
+                /dia
+              </span>
             </p>
             <span
               className={cn(
@@ -126,6 +142,7 @@ export function PipelineVelocityCard({ data }: PipelineVelocityCardProps) {
           label="Ciclo médio"
           value={`${data.avgCycleDays.toFixed(0)} dias`}
           variation={cycleVariation}
+          invertPolarity
           icon={Timer}
           iconClassName="text-violet-500"
           iconBgClassName="bg-violet-500/10"

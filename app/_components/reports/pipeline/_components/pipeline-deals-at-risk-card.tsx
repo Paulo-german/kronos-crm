@@ -36,7 +36,11 @@ function DaysIdleBadge({ days }: { days: number }) {
 
 const VISIBLE_LIMIT = 5
 
-export function PipelineDealsAtRiskCard({ deals, total, orgSlug }: PipelineDealsAtRiskCardProps) {
+export function PipelineDealsAtRiskCard({
+  deals,
+  total,
+  orgSlug,
+}: PipelineDealsAtRiskCardProps) {
   const visibleDeals = deals.slice(0, VISIBLE_LIMIT)
   const hasMore = total > VISIBLE_LIMIT
 
@@ -51,7 +55,9 @@ export function PipelineDealsAtRiskCard({ deals, total, orgSlug }: PipelineDeals
             <div className="flex size-10 items-center justify-center rounded-full bg-emerald-500/10">
               <AlertTriangle className="size-5 text-emerald-500" />
             </div>
-            <p className="text-sm text-muted-foreground">Nenhum deal em risco no momento</p>
+            <p className="text-sm text-muted-foreground">
+              Nenhum deal em risco no momento
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -78,7 +84,9 @@ export function PipelineDealsAtRiskCard({ deals, total, orgSlug }: PipelineDeals
               {/* Conteúdo principal */}
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="truncate text-sm font-medium">{deal.title}</span>
+                  <span className="truncate text-sm font-medium">
+                    {deal.title}
+                  </span>
                 </div>
                 <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
                   <span className="truncate">{deal.assigneeName}</span>
@@ -105,7 +113,7 @@ export function PipelineDealsAtRiskCard({ deals, total, orgSlug }: PipelineDeals
               className="h-7 w-full gap-1 text-xs text-muted-foreground hover:text-foreground"
               asChild
             >
-              <Link href={`/org/${orgSlug}/pipeline`}>
+              <Link href={`/org/${orgSlug}/crm/deals/pipeline`}>
                 Ver todos ({total})
                 <ChevronRight className="size-3" />
               </Link>

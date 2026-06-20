@@ -101,16 +101,19 @@ async function aggregateContactModel(
       id: true,
       firstCaptureChannel: true,
       lastCaptureChannel: true,
+      // Filtramos os deals WON no próprio banco (mesmo escopo de org/assignee
+      // que era aplicado em memória) em vez de trazer TODOS os deals de cada
+      // contato e descartar a maioria — evita over-fetch em orgs grandes.
       deals: {
-        select: {
+        where: {
           deal: {
-            select: {
-              status: true,
-              value: true,
-              organizationId: true,
-              assignedTo: true,
-            },
+            status: 'WON',
+            organizationId: orgId,
+            ...(assigneeFilter ? { assignedTo: assigneeFilter } : {}),
           },
+        },
+        select: {
+          deal: { select: { value: true } },
         },
       },
     },
@@ -124,14 +127,8 @@ async function aggregateContactModel(
 
     incrementMap(aggregate.leadsByChannel, channel, 1)
 
-    // Filtra deals respeitando o mesmo escopo de assignee do contato (defense in depth)
-    const wonDeals = contact.deals.filter((dealLink) => {
-      const deal = dealLink.deal
-      if (deal.status !== 'WON') return false
-      if (deal.organizationId !== orgId) return false
-      if (assigneeFilter && deal.assignedTo !== assigneeFilter) return false
-      return true
-    })
+    // `contact.deals` já vem filtrado para WON no escopo correto.
+    const wonDeals = contact.deals
 
     if (wonDeals.length > 0) {
       incrementMap(aggregate.customersByChannel, channel, 1)
@@ -236,7 +233,14 @@ async function fetchChannelAttribution(
 ): Promise<ChannelAttributionDto> {
   const [current, previous] = await Promise.all([
     model === 'per_deal'
-      ? aggregatePerDealModel(orgId, userId, elevated, dateRange, includeManual, filters)
+      ? aggregatePerDealModel(
+          orgId,
+          userId,
+          elevated,
+          dateRange,
+          includeManual,
+          filters,
+        )
       : aggregateContactModel(
           orgId,
           userId,
@@ -248,7 +252,14 @@ async function fetchChannelAttribution(
           filters,
         ),
     model === 'per_deal'
-      ? aggregatePerDealModel(orgId, userId, elevated, prevRange, includeManual, filters)
+      ? aggregatePerDealModel(
+          orgId,
+          userId,
+          elevated,
+          prevRange,
+          includeManual,
+          filters,
+        )
       : aggregateContactModel(
           orgId,
           userId,
@@ -274,9 +285,12 @@ async function fetchChannelAttribution(
     const prevCustomersCount = previous.customersByChannel.get(channel) ?? 0
     const prevRevenue = previous.revenueByChannel.get(channel) ?? 0
 
-    const conversionRate = leadsCount > 0 ? (customersCount / leadsCount) * PERCENT_BASE : 0
+    const conversionRate =
+      leadsCount > 0 ? (customersCount / leadsCount) * PERCENT_BASE : 0
     const prevConversionRate =
-      prevLeadsCount > 0 ? (prevCustomersCount / prevLeadsCount) * PERCENT_BASE : 0
+      prevLeadsCount > 0
+        ? (prevCustomersCount / prevLeadsCount) * PERCENT_BASE
+        : 0
 
     return {
       channel,
@@ -324,7 +338,10 @@ export const getChannelAttribution = cache(
           filters,
         ),
       // Inclui filters na chave de cache para isolar resultados por assignee/filtros
-      makeReportsCacheKey('channel-attribution', ctx, dateRange, { ...options, ...filters }),
+      makeReportsCacheKey('channel-attribution', ctx, dateRange, {
+        ...options,
+        ...filters,
+      }),
       {
         tags: [`reports:${ctx.orgId}`, `deals:${ctx.orgId}`],
         revalidate: CACHE_REVALIDATE_SECONDS,

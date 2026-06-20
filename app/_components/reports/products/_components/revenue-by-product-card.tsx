@@ -32,40 +32,62 @@ export function RevenueByProductCard({ data }: RevenueByProductCardProps) {
     return (
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold">Receita por produto</CardTitle>
+          <CardTitle className="text-sm font-semibold">
+            Receita por produto
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-10">
-            <p className="text-sm text-muted-foreground">Nenhum dado disponível para o período.</p>
+            <p className="text-sm text-muted-foreground">
+              Nenhum dado disponível para o período.
+            </p>
           </div>
         </CardContent>
       </Card>
     )
   }
 
+  // Usamos productId como chave de série (dataKey) para evitar colisão entre
+  // produtos de mesmo nome; productName fica só como label/legenda.
   const chartData = data.map((point) => {
     const row: Record<string, string | number> = { month: point.month }
     for (const product of point.products) {
-      row[product.productName] = product.revenue
+      row[product.productId] = product.revenue
     }
     return row
   })
 
-  const productNames = [
-    ...new Set(
-      data.flatMap((point) => point.products.map((product) => product.productName)),
-    ),
-  ]
+  const seriesMap = new Map<string, string>()
+  for (const point of data) {
+    for (const product of point.products) {
+      if (!seriesMap.has(product.productId)) {
+        seriesMap.set(product.productId, product.productName)
+      }
+    }
+  }
+  const series = [...seriesMap.entries()].map(([productId, productName]) => ({
+    productId,
+    productName,
+  }))
 
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-semibold">Receita por produto</CardTitle>
+        <CardTitle className="text-sm font-semibold">
+          Receita por produto
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={240}>
-          <BarChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 4 }}>
-            <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" vertical={false} />
+          <BarChart
+            data={chartData}
+            margin={{ top: 4, right: 4, left: 0, bottom: 4 }}
+          >
+            <CartesianGrid
+              strokeDasharray="3 3"
+              className="stroke-border/50"
+              vertical={false}
+            />
             <XAxis
               dataKey="month"
               tick={{ fontSize: 12 }}
@@ -80,17 +102,23 @@ export function RevenueByProductCard({ data }: RevenueByProductCardProps) {
               width={80}
             />
             <Tooltip
-              formatter={(value: number, name: string) => [formatCurrency(value), name]}
+              formatter={(value: number, name: string) => [
+                formatCurrency(value),
+                name,
+              ]}
               contentStyle={{ fontSize: 12 }}
             />
             <Legend wrapperStyle={{ fontSize: 12 }} />
-            {productNames.map((productName, index) => (
+            {series.map((item, index) => (
               <Bar
-                key={productName}
-                dataKey={productName}
+                key={item.productId}
+                dataKey={item.productId}
+                name={item.productName}
                 stackId="product"
                 fill={PRODUCT_COLORS[index % PRODUCT_COLORS.length]}
-                radius={index === productNames.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                radius={
+                  index === series.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]
+                }
               />
             ))}
           </BarChart>

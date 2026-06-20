@@ -1,5 +1,6 @@
 import {
   parse,
+  isValid,
   startOfDay,
   endOfDay,
   startOfMonth,
@@ -15,18 +16,38 @@ const URL_DATE_FORMAT = 'yyyy-MM-dd'
 
 export function parseDateRange(start?: string, end?: string): DateRange {
   const now = new Date()
+  const defaultStart = startOfMonth(now)
+  const defaultEnd = endOfMonth(now)
 
   // Usamos `parse` (date-fns) em vez de `new Date(string)` para evitar o
   // shift de timezone do parser nativo, que interpreta "yyyy-MM-dd" como
   // UTC midnight. `startOfDay`/`endOfDay` normalizam para que o range cubra
   // o dia inteiro (00:00:00.000 → 23:59:59.999) nas queries `gte/lte` do
   // Prisma, cobrindo também seleções de 1 dia (start=end).
-  return {
-    start: start
-      ? startOfDay(parse(start, URL_DATE_FORMAT, now))
-      : startOfMonth(now),
-    end: end ? endOfDay(parse(end, URL_DATE_FORMAT, now)) : endOfMonth(now),
+  //
+  // Entradas malformadas (ex.: ?start=abc, ?start=2026-13-99) produzem
+  // `Invalid Date`, que ao virar `.toISOString()` na cache key lançaria
+  // RangeError e derrubaria o report. Validamos com `isValid` e caímos no
+  // default (mês corrente) quando inválido.
+  let rangeStart = defaultStart
+  if (start) {
+    const parsed = startOfDay(parse(start, URL_DATE_FORMAT, now))
+    if (isValid(parsed)) rangeStart = parsed
   }
+
+  let rangeEnd = defaultEnd
+  if (end) {
+    const parsed = endOfDay(parse(end, URL_DATE_FORMAT, now))
+    if (isValid(parsed)) rangeEnd = parsed
+  }
+
+  // Garante ordem cronológica. Um range invertido (start > end) gera
+  // duração negativa em `getPreviousPeriod`, corrompendo as variações.
+  if (rangeStart > rangeEnd) {
+    return { start: defaultStart, end: defaultEnd }
+  }
+
+  return { start: rangeStart, end: rangeEnd }
 }
 
 export function getPreviousPeriod(dateRange: DateRange): DateRange {
@@ -41,17 +62,22 @@ export function getPreviousPeriod(dateRange: DateRange): DateRange {
 export function formatVariation(
   current: number,
   previous: number,
-): { value: string; isPositive: boolean } {
+): { value: string; isPositive: boolean; hasBaseline: boolean } {
+  // `hasBaseline: false` sinaliza que não há base de comparação real
+  // (período anterior zerado). A UI deve ocultar o badge nesses casos em
+  // vez de exibir um "+100%"/"0%" enganoso — ex.: produto/canal que não
+  // existia no período anterior apareceria como "cresceu 100%".
   if (previous === 0) {
-    if (current === 0) return { value: '0%', isPositive: true }
-    return { value: '+100%', isPositive: true }
+    if (current === 0)
+      return { value: '0%', isPositive: true, hasBaseline: false }
+    return { value: '+100%', isPositive: true, hasBaseline: false }
   }
 
   const change = ((current - previous) / previous) * 100
   const isPositive = change >= 0
   const formatted = `${isPositive ? '+' : ''}${change.toFixed(1)}%`
 
-  return { value: formatted, isPositive }
+  return { value: formatted, isPositive, hasBaseline: true }
 }
 
 export function getDateRangePresets(): Array<{

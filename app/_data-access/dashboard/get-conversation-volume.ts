@@ -8,8 +8,12 @@ import { ptBR } from 'date-fns/locale'
 import type { RBACContext } from '@/_lib/rbac'
 import { isElevated } from '@/_lib/rbac'
 import { buildInboxDashboardWhere } from './build-inbox-dashboard-where'
+import { buildInboxFiltersKey } from './_shared/build-inbox-filters-key'
 import type { DateRange } from './types'
-import type { ConversationVolumeByDay, InboxDashboardFilters } from './inbox-dashboard-types'
+import type {
+  ConversationVolumeByDay,
+  InboxDashboardFilters,
+} from './inbox-dashboard-types'
 
 const CACHE_REVALIDATE_SECONDS = 3600
 
@@ -85,17 +89,17 @@ export const getConversationVolume = cache(
     const elevated = isElevated(ctx.userRole)
     const startISO = dateRange.start.toISOString()
     const endISO = dateRange.end.toISOString()
-    const filtersKey = JSON.stringify({
-      ch: filters.channel ?? '',
-      as: filters.assignee ?? '',
-      la: filters.labelId ?? '',
-      st: filters.status ?? '',
-      ai: filters.aiVsHuman ?? '',
-    })
+    const filtersKey = buildInboxFiltersKey(filters)
 
     const getCached = unstable_cache(
       async () =>
-        fetchConversationVolume(ctx.orgId, ctx.userId, elevated, dateRange, filters),
+        fetchConversationVolume(
+          ctx.orgId,
+          ctx.userId,
+          elevated,
+          dateRange,
+          filters,
+        ),
       [
         `inbox-volume-${ctx.orgId}-${ctx.userId}-${elevated}-${startISO}-${endISO}-${filtersKey}`,
       ],

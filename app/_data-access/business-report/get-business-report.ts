@@ -2,7 +2,8 @@ import 'server-only'
 import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
-import type { BusinessReportDto, CostItem } from './types'
+import { costItemSchema } from '@/_actions/business-report/update-business-report/schema'
+import type { BusinessReportDto } from './types'
 
 const DEFAULT_TARGET_MARGIN = 30
 
@@ -23,9 +24,13 @@ const fetchBusinessReportFromDb = async (): Promise<BusinessReportDto> => {
     }
   }
 
+  // `costItems` é Json no banco — validamos em runtime em vez de confiar num
+  // cast cego. JSON legado/malformado cai em [] sem quebrar a UI.
+  const parsedCostItems = costItemSchema.array().safeParse(report.costItems)
+
   return {
     id: report.id,
-    costItems: (report.costItems as unknown as CostItem[]) ?? [],
+    costItems: parsedCostItems.success ? parsedCostItems.data : [],
     aiMonthlyCostBrl: report.aiMonthlyCostBrl.toNumber(),
     targetMarginPct: report.targetMarginPct.toNumber(),
     updatedAt: report.updatedAt.toISOString(),

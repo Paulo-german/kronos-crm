@@ -11,6 +11,10 @@ export function PipelineFunnelCard({ data }: PipelineFunnelCardProps) {
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-base">Funil de Conversão</CardTitle>
+        <p className="text-xs text-muted-foreground">
+          Distribuição atual dos deals por estágio (snapshot), não a passagem
+          histórica entre etapas.
+        </p>
       </CardHeader>
       <CardContent>
         <PipelineFunnel

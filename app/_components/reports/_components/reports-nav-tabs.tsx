@@ -2,19 +2,9 @@
 
 import Link from 'next/link'
 import { useParams, usePathname, useSearchParams } from 'next/navigation'
-import { Compass, GitBranch, Users, Package, XCircle, Inbox, Sparkles, type LucideIcon } from 'lucide-react'
 import { cn } from '@/_lib/utils'
 import { REPORT_SECTIONS, type ReportSection } from '../_config/report-sections'
-
-const ICON_MAP: Record<string, LucideIcon> = {
-  Compass,
-  GitBranch,
-  Users,
-  Package,
-  XCircle,
-  Inbox,
-  Sparkles,
-}
+import { getReportSectionIcon } from '../_config/report-section-icons'
 
 interface ReportsNavTabsProps {
   isElevated: boolean
@@ -22,7 +12,11 @@ interface ReportsNavTabsProps {
   sections?: readonly ReportSection[]
 }
 
-export function ReportsNavTabs({ isElevated, basePath = 'reports', sections = REPORT_SECTIONS }: ReportsNavTabsProps) {
+export function ReportsNavTabs({
+  isElevated,
+  basePath = 'reports',
+  sections = REPORT_SECTIONS,
+}: ReportsNavTabsProps) {
   const pathname = usePathname()
   const params = useParams()
   const searchParams = useSearchParams()
@@ -41,7 +35,7 @@ export function ReportsNavTabs({ isElevated, basePath = 'reports', sections = RE
           const href = `/org/${orgSlug}/${basePath}/${section.slug}`
           const isActive = pathname === href || pathname.startsWith(`${href}/`)
           const linkHref = queryString ? `${href}?${queryString}` : href
-          const Icon = ICON_MAP[section.iconName] ?? Compass
+          const Icon = getReportSectionIcon(section.iconName)
 
           return (
             <Link

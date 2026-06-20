@@ -2,7 +2,12 @@ import 'server-only'
 
 import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
-import { CatalogItemType, DealStatus, DiscountType, Prisma } from '@prisma/client'
+import {
+  CatalogItemType,
+  DealStatus,
+  DiscountType,
+  Prisma,
+} from '@prisma/client'
 import { db } from '@/_lib/prisma'
 import { isElevated } from '@/_lib/rbac'
 import type { RBACContext } from '@/_lib/rbac'
@@ -19,19 +24,23 @@ export interface ProductMixRow {
   productName: string
   unitsSold: number
   revenue: number
+  // `share` é a fatia da receita deste produto sobre o total global do catálogo
+  // no período atual (não sobre o subconjunto Top-N exibido na tabela).
   share: number
   prevUnitsSold: number
   prevRevenue: number
-  prevShare: number
 }
 
-interface LineItemRow {
+export interface LineItemRow {
   productId: string | null
   quantity: number
   unitPrice: Prisma.Decimal
   discountType: DiscountType
   discountValue: Prisma.Decimal
   product: { id: string; name: string } | null
+  // updatedAt do deal: usado pelo get-revenue-by-product para o bucket mensal.
+  // Barato de incluir e ignorado pelo product-mix.
+  deal: { updatedAt: Date }
 }
 
 interface AggregateBucket {
@@ -59,6 +68,7 @@ export async function fetchProductLineItems(
       discountType: true,
       discountValue: true,
       product: { select: { id: true, name: true } },
+      deal: { select: { updatedAt: true } },
     },
   })
 }
@@ -78,7 +88,9 @@ export function calcItemRevenue(item: {
   return Math.max(0, base - Number(item.discountValue))
 }
 
-function aggregateByProduct(items: LineItemRow[]): Map<string, AggregateBucket> {
+function aggregateByProduct(
+  items: LineItemRow[],
+): Map<string, AggregateBucket> {
   const buckets = new Map<string, AggregateBucket>()
   for (const item of items) {
     if (!item.productId || !item.product) continue
@@ -132,8 +144,6 @@ async function fetchProductMix(
 
   let currentTotal = 0
   for (const bucket of currentBuckets.values()) currentTotal += bucket.revenue
-  let prevTotal = 0
-  for (const bucket of prevBuckets.values()) prevTotal += bucket.revenue
 
   const productIds = new Set<string>([
     ...currentBuckets.keys(),
@@ -155,8 +165,8 @@ async function fetchProductMix(
     const unitsSold = current?.unitsSold ?? 0
     const prevRevenue = prev?.revenue ?? 0
     const prevUnitsSold = prev?.unitsSold ?? 0
-    const share = currentTotal > 0 ? (revenue / currentTotal) * PERCENTAGE_MAX : 0
-    const prevShare = prevTotal > 0 ? (prevRevenue / prevTotal) * PERCENTAGE_MAX : 0
+    const share =
+      currentTotal > 0 ? (revenue / currentTotal) * PERCENTAGE_MAX : 0
 
     rows.push({
       productId,
@@ -166,7 +176,6 @@ async function fetchProductMix(
       share,
       prevUnitsSold,
       prevRevenue,
-      prevShare,
     })
   }
 

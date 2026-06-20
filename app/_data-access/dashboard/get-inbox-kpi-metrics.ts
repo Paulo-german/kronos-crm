@@ -6,8 +6,12 @@ import { db } from '@/_lib/prisma'
 import type { RBACContext } from '@/_lib/rbac'
 import { isElevated } from '@/_lib/rbac'
 import { buildInboxDashboardWhere } from './build-inbox-dashboard-where'
+import { buildInboxFiltersKey } from './_shared/build-inbox-filters-key'
 import type { DateRange } from './types'
-import type { InboxDashboardFilters, InboxKpiMetrics } from './inbox-dashboard-types'
+import type {
+  InboxDashboardFilters,
+  InboxKpiMetrics,
+} from './inbox-dashboard-types'
 
 const CACHE_REVALIDATE_SECONDS = 3600
 
@@ -46,7 +50,9 @@ async function calcAvgFirstResponseTimeMs(
   for (const conversation of conversations) {
     const firstReply = conversation.messages[0]
     if (firstReply) {
-      responseTimes.push(firstReply.createdAt.getTime() - conversation.createdAt.getTime())
+      responseTimes.push(
+        firstReply.createdAt.getTime() - conversation.createdAt.getTime(),
+      )
     }
   }
 
@@ -84,7 +90,9 @@ async function calcAvgResolutionTimeMs(
 
   for (const conversation of resolved) {
     if (conversation.resolvedAt) {
-      resolutionTimes.push(conversation.resolvedAt.getTime() - conversation.createdAt.getTime())
+      resolutionTimes.push(
+        conversation.resolvedAt.getTime() - conversation.createdAt.getTime(),
+      )
     }
   }
 
@@ -257,17 +265,18 @@ export const getInboxKpiMetrics = cache(
     const elevated = isElevated(ctx.userRole)
     const startISO = dateRange.start.toISOString()
     const endISO = dateRange.end.toISOString()
-    const filtersKey = JSON.stringify({
-      ch: filters.channel ?? '',
-      as: filters.assignee ?? '',
-      la: filters.labelId ?? '',
-      st: filters.status ?? '',
-      ai: filters.aiVsHuman ?? '',
-    })
+    const filtersKey = buildInboxFiltersKey(filters)
 
     const getCached = unstable_cache(
       async () =>
-        fetchInboxKpiMetrics(ctx.orgId, ctx.userId, elevated, dateRange, prevRange, filters),
+        fetchInboxKpiMetrics(
+          ctx.orgId,
+          ctx.userId,
+          elevated,
+          dateRange,
+          prevRange,
+          filters,
+        ),
       [
         `inbox-kpi-${ctx.orgId}-${ctx.userId}-${elevated}-${startISO}-${endISO}-${filtersKey}`,
       ],

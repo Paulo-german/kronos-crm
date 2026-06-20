@@ -2,13 +2,12 @@ import 'server-only'
 
 import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
-import { CatalogItemType, DealStatus, Prisma } from '@prisma/client'
-import { db } from '@/_lib/prisma'
+import { DealStatus, Prisma } from '@prisma/client'
 import { isElevated } from '@/_lib/rbac'
 import type { RBACContext } from '@/_lib/rbac'
 import { buildReportsWhere } from '../shared/build-reports-where'
 import { makeReportsCacheKey } from '../shared/reports-cache'
-import { calcItemRevenue } from './get-product-mix'
+import { calcItemRevenue, fetchProductLineItems } from './get-product-mix'
 import type { DateRange, ReportsFilters } from '../shared/reports-types'
 
 const CACHE_REVALIDATE_SECONDS = 3600
@@ -64,31 +63,17 @@ async function fetchRevenueByProduct(
     updatedAt: { gte: dateRange.start, lte: dateRange.end },
   }
 
-  // Incluímos deal.updatedAt no select porque o agrupamento por mês acontece no app layer.
-  // Prisma não tem groupBy por expressão derivada (date_trunc), então pagamos esse custo
-  // memória vs. cair em $queryRaw.
-  const items = await db.dealLineItem.findMany({
-    where: {
-      organizationId: orgId,
-      itemType: CatalogItemType.PRODUCT,
-      productId: { not: null },
-      deal: dealWhere,
-    },
-    select: {
-      productId: true,
-      quantity: true,
-      unitPrice: true,
-      discountType: true,
-      discountValue: true,
-      product: { select: { id: true, name: true } },
-      deal: { select: { updatedAt: true } },
-    },
-  })
+  // Reusa o fetch compartilhado com get-product-mix. O select já inclui deal.updatedAt,
+  // que precisamos porque o agrupamento por mês acontece no app layer (Prisma não tem
+  // groupBy por expressão derivada como date_trunc; pagamos custo de memória vs. $queryRaw).
+  const items = await fetchProductLineItems(orgId, dealWhere)
 
   const months = new Map<string, MonthBucket>()
   for (const item of items) {
     if (!item.productId || !item.product) continue
-    const monthIso = item.deal.updatedAt.toISOString().slice(0, MONTH_ISO_LENGTH)
+    const monthIso = item.deal.updatedAt
+      .toISOString()
+      .slice(0, MONTH_ISO_LENGTH)
     let bucket = months.get(monthIso)
     if (!bucket) {
       bucket = { byProduct: new Map() }
@@ -133,7 +118,13 @@ export const getRevenueByProduct = cache(
 
     const getCached = unstable_cache(
       async () =>
-        fetchRevenueByProduct(ctx.orgId, ctx.userId, elevated, dateRange, filters),
+        fetchRevenueByProduct(
+          ctx.orgId,
+          ctx.userId,
+          elevated,
+          dateRange,
+          filters,
+        ),
       makeReportsCacheKey('revenue-by-product', ctx, dateRange, { ...filters }),
       {
         tags: [`reports:${ctx.orgId}`, `deals:${ctx.orgId}`],
