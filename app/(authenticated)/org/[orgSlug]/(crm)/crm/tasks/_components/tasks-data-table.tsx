@@ -666,17 +666,9 @@ function TimelineTaskRow({
       : format(dueDate, 'dd/MM', { locale: ptBR })
 
   return (
-    <div
-      className={cn(
-        'group flex items-center gap-3 rounded-lg border bg-card px-3 py-2.5 transition-all hover:border-primary/30 hover:bg-primary/10 hover:text-primary hover:shadow-sm',
-        isDimmed &&
-          'border-kronos-green/30 bg-kronos-green/10 opacity-70 hover:border-kronos-green/30 hover:bg-kronos-green/10 hover:text-kronos-green hover:opacity-100',
-        isOverdueSection &&
-          'hover:bg-destructive-15 border border-destructive/30 bg-destructive/10 hover:border-destructive/30 hover:text-destructive',
-        isSelected && 'border-primary/50 bg-primary/5',
-      )}
-    >
-      {/* Checkbox de seleção (visível em hover ou quando há seleção ativa) */}
+    <div className="group/row flex items-center gap-2">
+      {/* Checkbox de seleção fora do card, à esquerda.
+          No mobile (sem hover) fica sempre visível; no desktop revela em hover/seleção. */}
       <Checkbox
         checked={isSelected}
         onCheckedChange={() => onSelectionChange(task.id)}
@@ -685,86 +677,97 @@ function TimelineTaskRow({
           'shrink-0 transition-opacity',
           !isSelected &&
             !selectionActive &&
-            'opacity-0 group-hover:opacity-100',
+            'sm:opacity-0 sm:group-hover/row:opacity-100',
         )}
       />
 
-      {/* Botão de toggle (círculo/check otimista) */}
-      <button
-        type="button"
-        className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
-        onClick={() => onToggle(task)}
-        aria-label={
-          task.isCompleted ? 'Marcar como pendente' : 'Marcar como concluída'
-        }
-      >
-        {task.isCompleted ? (
-          <CheckCircle2 className="h-5 w-5 text-kronos-green" />
-        ) : (
-          <Circle
-            className={cn('h-5 w-5', isOverdueSection && 'text-destructive')}
-          />
-        )}
-      </button>
-
-      {/* Ícone do tipo */}
-      <TypeIcon className={cn('h-4 w-4 shrink-0', typeConfig.iconColor)} />
-
-      {/* Título da tarefa */}
-      <span
+      <div
         className={cn(
-          'flex-1 truncate text-sm font-medium',
-          task.isCompleted && 'text-muted-foreground line-through',
-        )}
-      >
-        {task.title}
-      </span>
-
-      {/* Responsável (oculto em telas estreitas) */}
-      {task.assignee?.fullName && (
-        <span className="hidden shrink-0 items-center gap-1 text-xs text-muted-foreground sm:flex">
-          <UserIcon className="h-3 w-3 shrink-0" />
-          <span className="max-w-[100px] truncate">
-            {task.assignee.fullName.split(' ')[0]}
-          </span>
-        </span>
-      )}
-
-      {/* Outcome badge (só para tarefas concluídas com outcome registrado) */}
-      <TaskOutcomeBadge task={task} />
-
-      {/* Deal badge */}
-      {task.deal && task.dealId && (
-        <Link
-          href={`/crm/deals/${task.dealId}`}
-          className="flex shrink-0 items-center gap-1 rounded-md bg-secondary/50 px-2 py-0.5 text-xs font-medium text-secondary-foreground hover:bg-secondary hover:underline"
-        >
-          <LinkIcon className="h-3 w-3" />
-          <span className="max-w-[90px] truncate sm:max-w-[120px]">
-            {task.deal.title}
-          </span>
-        </Link>
-      )}
-
-      {/* Data/horário */}
-      <span
-        className={cn(
-          'shrink-0 text-xs tabular-nums text-muted-foreground',
+          'group flex min-w-0 flex-1 items-center gap-3 rounded-lg border bg-card px-3 py-2.5 transition-all hover:border-primary/30 hover:bg-primary/10 hover:text-primary hover:shadow-sm',
+          isDimmed &&
+            'border-kronos-green/30 bg-kronos-green/10 opacity-70 hover:border-kronos-green/30 hover:bg-kronos-green/10 hover:text-kronos-green hover:opacity-100',
           isOverdueSection &&
-            !task.isCompleted &&
-            'font-medium text-destructive',
+            'hover:bg-destructive-15 border border-destructive/30 bg-destructive/10 hover:border-destructive/30 hover:text-destructive',
+          isSelected && 'border-primary/50 bg-primary/5',
         )}
       >
-        {formattedDate}
-      </span>
+        {/* Botão de toggle (círculo/check otimista) */}
+        <button
+          type="button"
+          className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
+          onClick={() => onToggle(task)}
+          aria-label={
+            task.isCompleted ? 'Marcar como pendente' : 'Marcar como concluída'
+          }
+        >
+          {task.isCompleted ? (
+            <CheckCircle2 className="h-5 w-5 text-kronos-green" />
+          ) : (
+            <Circle
+              className={cn('h-5 w-5', isOverdueSection && 'text-destructive')}
+            />
+          )}
+        </button>
 
-      {/* Menu de ações */}
-      <div className="shrink-0">
-        <TaskTableDropdownMenu
-          task={task}
-          onEdit={() => onEdit(task)}
-          onDelete={() => onDeleteRequest(task)}
-        />
+        {/* Ícone do tipo */}
+        <TypeIcon className={cn('h-4 w-4 shrink-0', typeConfig.iconColor)} />
+
+        {/* Título da tarefa */}
+        <span
+          className={cn(
+            'min-w-0 flex-1 truncate text-sm font-medium',
+            task.isCompleted && 'text-muted-foreground line-through',
+          )}
+        >
+          {task.title}
+        </span>
+
+        {/* Responsável (oculto em telas estreitas) */}
+        {task.assignee?.fullName && (
+          <span className="hidden shrink-0 items-center gap-1 text-xs text-muted-foreground sm:flex">
+            <UserIcon className="h-3 w-3 shrink-0" />
+            <span className="max-w-[100px] truncate">
+              {task.assignee.fullName.split(' ')[0]}
+            </span>
+          </span>
+        )}
+
+        {/* Outcome badge (só para tarefas concluídas com outcome registrado) */}
+        <TaskOutcomeBadge task={task} />
+
+        {/* Deal badge */}
+        {task.deal && task.dealId && (
+          <Link
+            href={`/crm/deals/${task.dealId}`}
+            className="flex shrink-0 items-center gap-1 rounded-md bg-secondary/50 px-2 py-0.5 text-xs font-medium text-secondary-foreground hover:bg-secondary hover:underline"
+          >
+            <LinkIcon className="h-3 w-3" />
+            <span className="max-w-[90px] truncate sm:max-w-[120px]">
+              {task.deal.title}
+            </span>
+          </Link>
+        )}
+
+        {/* Data/horário */}
+        <span
+          className={cn(
+            'shrink-0 text-xs tabular-nums text-muted-foreground',
+            isOverdueSection &&
+              !task.isCompleted &&
+              'font-medium text-destructive',
+          )}
+        >
+          {formattedDate}
+        </span>
+
+        {/* Menu de ações */}
+        <div className="shrink-0">
+          <TaskTableDropdownMenu
+            task={task}
+            onEdit={() => onEdit(task)}
+            onDelete={() => onDeleteRequest(task)}
+          />
+        </div>
       </div>
     </div>
   )
