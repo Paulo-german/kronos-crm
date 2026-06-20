@@ -8,8 +8,13 @@ import {
   Briefcase,
   CalendarDays,
   Zap,
+  FileText,
 } from 'lucide-react'
-import Header, { HeaderLeft, HeaderTitle, HeaderSubTitle } from '@/_components/header'
+import Header, {
+  HeaderLeft,
+  HeaderTitle,
+  HeaderSubTitle,
+} from '@/_components/header'
 
 interface CrmSettingsPageProps {
   params: Promise<{ orgSlug: string }>
@@ -64,6 +69,13 @@ const settingsItems = [
     description: 'Configure regras automáticas para negócios e contatos.',
     icon: Zap,
   },
+  {
+    key: 'capture-forms',
+    label: 'Formulários de Captura',
+    description:
+      'Crie formulários para capturar leads diretamente no seu site.',
+    icon: FileText,
+  },
 ]
 
 const CrmSettingsPage = async ({ params }: CrmSettingsPageProps) => {
@@ -81,25 +93,29 @@ const CrmSettingsPage = async ({ params }: CrmSettingsPageProps) => {
       </Header>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {settingsItems.map((item) => {
-            const Icon = item.icon
-            return (
-              <Link
-                key={item.key}
-                href={`/org/${orgSlug}/crm/settings/${item.key}`}
-                className="group flex items-start gap-4 rounded-lg border border-border/50 bg-card p-4 transition-colors hover:border-border hover:bg-accent/30"
-              >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border/50 bg-background text-muted-foreground group-hover:text-foreground">
-                  <Icon className="h-4 w-4" />
-                </div>
-                <div className="min-w-0 space-y-0.5">
-                  <p className="text-sm font-medium text-foreground">{item.label}</p>
-                  <p className="text-xs text-muted-foreground">{item.description}</p>
-                </div>
-              </Link>
-            )
-          })}
-        </div>
+        {settingsItems.map((item) => {
+          const Icon = item.icon
+          return (
+            <Link
+              key={item.key}
+              href={`/org/${orgSlug}/crm/settings/${item.key}`}
+              className="group flex items-start gap-4 rounded-lg border border-border/50 bg-card p-4 transition-colors hover:border-border hover:bg-accent/30"
+            >
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border/50 bg-background text-muted-foreground group-hover:text-foreground">
+                <Icon className="h-4 w-4" />
+              </div>
+              <div className="min-w-0 space-y-0.5">
+                <p className="text-sm font-medium text-foreground">
+                  {item.label}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {item.description}
+                </p>
+              </div>
+            </Link>
+          )
+        })}
+      </div>
     </div>
   )
 }

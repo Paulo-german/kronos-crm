@@ -17,7 +17,11 @@ interface CaptureFormDropdownMenuProps {
   onDelete: () => void
 }
 
-const CaptureFormDropdownMenu = ({ onEdit, onEmbed, onDelete }: CaptureFormDropdownMenuProps) => {
+const CaptureFormDropdownMenu = ({
+  onEdit,
+  onEmbed,
+  onDelete,
+}: CaptureFormDropdownMenuProps) => {
   return (
     <div className="flex items-center justify-end">
       <DropdownMenu>

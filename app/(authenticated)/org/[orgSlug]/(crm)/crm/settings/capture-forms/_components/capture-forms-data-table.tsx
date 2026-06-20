@@ -30,7 +30,13 @@ interface CaptureFormsDataTableProps {
   privacyPolicyUrl: string | null
 }
 
-export const CaptureFormsDataTable = ({ forms, members, squads, fieldDefinitions, privacyPolicyUrl }: CaptureFormsDataTableProps) => {
+export const CaptureFormsDataTable = ({
+  forms,
+  members,
+  squads,
+  fieldDefinitions,
+  privacyPolicyUrl,
+}: CaptureFormsDataTableProps) => {
   const [editingForm, setEditingForm] = useState<CaptureFormDto | null>(null)
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [embedForm, setEmbedForm] = useState<CaptureFormDto | null>(null)
@@ -38,29 +44,37 @@ export const CaptureFormsDataTable = ({ forms, members, squads, fieldDefinitions
   const [deletingForm, setDeletingForm] = useState<CaptureFormDto | null>(null)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
 
-  const { execute: executeUpdate, isExecuting: isUpdating } = useAction(updateCaptureForm, {
-    onSuccess: () => {
-      toast.success('Formulário atualizado.')
-      setIsEditOpen(false)
+  const { execute: executeUpdate, isExecuting: isUpdating } = useAction(
+    updateCaptureForm,
+    {
+      onSuccess: () => {
+        toast.success('Formulário atualizado.')
+        setIsEditOpen(false)
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError ?? 'Erro ao atualizar formulário.')
+      },
     },
-    onError: ({ error }) => {
-      toast.error(error.serverError ?? 'Erro ao atualizar formulário.')
-    },
-  })
+  )
 
-  const { execute: executeDelete, isExecuting: isDeleting } = useAction(deleteCaptureForm, {
-    onSuccess: () => {
-      toast.success('Formulário excluído.')
-      setIsDeleteOpen(false)
+  const { execute: executeDelete, isExecuting: isDeleting } = useAction(
+    deleteCaptureForm,
+    {
+      onSuccess: () => {
+        toast.success('Formulário excluído.')
+        setIsDeleteOpen(false)
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError ?? 'Erro ao excluir formulário.')
+      },
     },
-    onError: ({ error }) => {
-      toast.error(error.serverError ?? 'Erro ao excluir formulário.')
-    },
-  })
+  )
 
   const { execute: executeToggle } = useAction(toggleCaptureFormStatus, {
     onSuccess: ({ input }) => {
-      toast.success(input.isActive ? 'Formulário ativado.' : 'Formulário desativado.')
+      toast.success(
+        input.isActive ? 'Formulário ativado.' : 'Formulário desativado.',
+      )
     },
     onError: ({ error }) => {
       toast.error(error.serverError ?? 'Erro ao alterar status.')
@@ -79,7 +93,9 @@ export const CaptureFormsDataTable = ({ forms, members, squads, fieldDefinitions
       accessorKey: 'submissionCount',
       header: 'Respostas',
       cell: ({ row }) => (
-        <span className="text-sm text-muted-foreground">{row.original.submissionCount}</span>
+        <span className="text-sm text-muted-foreground">
+          {row.original.submissionCount}
+        </span>
       ),
     },
     {
@@ -87,7 +103,11 @@ export const CaptureFormsDataTable = ({ forms, members, squads, fieldDefinitions
       header: 'Distribuição',
       cell: ({ row }) => {
         if (row.original.squadName) {
-          return <span className="text-sm text-muted-foreground">{row.original.squadName}</span>
+          return (
+            <span className="text-sm text-muted-foreground">
+              {row.original.squadName}
+            </span>
+          )
         }
         if (row.original.distributionUserIds.length > 0) {
           return (
@@ -121,7 +141,10 @@ export const CaptureFormsDataTable = ({ forms, members, squads, fieldDefinitions
       header: 'Criado',
       cell: ({ row }) => (
         <span className="text-sm text-muted-foreground">
-          {formatDistanceToNow(row.original.createdAt, { locale: ptBR, addSuffix: true })}
+          {formatDistanceToNow(row.original.createdAt, {
+            locale: ptBR,
+            addSuffix: true,
+          })}
         </span>
       ),
     },
@@ -177,8 +200,8 @@ export const CaptureFormsDataTable = ({ forms, members, squads, fieldDefinitions
         title="Excluir formulário"
         description={
           <>
-            Tem certeza que deseja excluir <strong>{deletingForm?.name}</strong>?
-            Os dados de captura já realizados serão preservados.
+            Tem certeza que deseja excluir <strong>{deletingForm?.name}</strong>
+            ? Os dados de captura já realizados serão preservados.
           </>
         }
         icon={<TrashIcon size={20} />}
