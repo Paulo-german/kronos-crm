@@ -19,7 +19,9 @@ interface EmbedSnippetDialogProps {
 }
 
 // NEXT_PUBLIC_APP_URL em produção; window.location.origin como fallback seguro no dev
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? (typeof window !== 'undefined' ? window.location.origin : '')
+const BASE_URL =
+  process.env.NEXT_PUBLIC_APP_URL ??
+  (typeof window !== 'undefined' ? window.location.origin : '')
 
 export const EmbedSnippetDialog = ({
   open,
@@ -56,7 +58,8 @@ window.addEventListener('message', function(e) {
         <DialogHeader>
           <DialogTitle>Código de embed — {formName}</DialogTitle>
           <DialogDescription>
-            Cole este código no HTML do seu site onde deseja exibir o formulário.
+            Cole este código no HTML do seu site onde deseja exibir o
+            formulário.
           </DialogDescription>
         </DialogHeader>
 
@@ -70,7 +73,11 @@ window.addEventListener('message', function(e) {
             className="absolute right-3 top-3"
             onClick={handleCopy}
           >
-            {copied ? <CheckIcon size={14} className="mr-1.5" /> : <CopyIcon size={14} className="mr-1.5" />}
+            {copied ? (
+              <CheckIcon size={14} className="mr-1.5" />
+            ) : (
+              <CopyIcon size={14} className="mr-1.5" />
+            )}
             {copied ? 'Copiado!' : 'Copiar'}
           </Button>
         </div>
