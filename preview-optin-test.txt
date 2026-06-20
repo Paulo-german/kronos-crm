@@ -1,0 +1,1 @@
+Teste do opt-in: branch preview/teste DEVE gerar preview (exit 1).
