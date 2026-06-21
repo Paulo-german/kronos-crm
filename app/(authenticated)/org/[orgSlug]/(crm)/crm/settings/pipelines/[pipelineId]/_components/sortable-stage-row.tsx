@@ -16,10 +16,7 @@ interface SortableStageRowProps {
   onDelete: (stage: StageDto) => void
 }
 
-export function SortableStageRow({
-  stage,
-  onDelete,
-}: SortableStageRowProps) {
+export function SortableStageRow({ stage, onDelete }: SortableStageRowProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [name, setName] = useState(stage.name)
 
@@ -68,7 +65,7 @@ export function SortableStageRow({
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-3 rounded-md border bg-card p-3 ${
+      className={`flex items-center gap-3 rounded-md border bg-background p-3 ${
         isDragging ? 'shadow-lg ring-2 ring-primary' : ''
       }`}
     >
@@ -90,7 +87,12 @@ export function SortableStageRow({
           className="flex-1"
         />
       ) : (
-        <span className="flex-1 font-medium">{stage.name}</span>
+        <span
+          className="min-w-0 flex-1 truncate font-medium"
+          title={stage.name}
+        >
+          {stage.name.length > 35 ? `${stage.name.slice(0, 35)}…` : stage.name}
+        </span>
       )}
 
       {/* Deal count */}
@@ -127,11 +129,7 @@ export function SortableStageRow({
           >
             <Pencil className="h-4 w-4" />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleDelete}
-          >
+          <Button variant="ghost" size="icon" onClick={handleDelete}>
             <Trash2 className="h-4 w-4" />
           </Button>
         </>

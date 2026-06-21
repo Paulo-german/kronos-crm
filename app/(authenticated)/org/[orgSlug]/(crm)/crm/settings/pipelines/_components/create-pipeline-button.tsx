@@ -15,6 +15,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/_components/ui/dialog'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from '@/_components/ui/sheet'
 import { Input } from '@/_components/ui/input'
 import { Label } from '@/_components/ui/label'
 import { createPipeline } from '@/_actions/pipeline/create-pipeline'
@@ -42,7 +50,7 @@ export function CreatePipelineButton({
       setIsCreateOpen(false)
       setName('')
       if (data?.pipelineId) {
-        router.push(`/org/${orgSlug}/settings/pipelines/${data.pipelineId}`)
+        router.push(`/org/${orgSlug}/crm/settings/pipelines/${data.pipelineId}`)
       }
     },
     onError: ({ error }) => {
@@ -74,16 +82,17 @@ export function CreatePipelineButton({
         Novo Funil
       </Button>
 
-      {/* Dialog de criação */}
-      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Novo Funil de Vendas</DialogTitle>
-            <DialogDescription>
-              Dê um nome ao seu funil. Você poderá configurar as etapas em seguida.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
+      {/* Sheet de criação */}
+      <Sheet open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
+          <SheetHeader>
+            <SheetTitle>Novo Funil de Vendas</SheetTitle>
+            <SheetDescription>
+              Dê um nome ao seu funil. Você poderá configurar as etapas em
+              seguida.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-6 space-y-2">
             <Label htmlFor="create-pipeline-name">Nome do funil</Label>
             <Input
               id="create-pipeline-name"
@@ -96,7 +105,7 @@ export function CreatePipelineButton({
               autoFocus
             />
           </div>
-          <DialogFooter>
+          <SheetFooter className="mt-6 flex justify-end gap-2">
             <Button
               variant="outline"
               onClick={() => {
@@ -107,16 +116,13 @@ export function CreatePipelineButton({
             >
               Cancelar
             </Button>
-            <Button
-              onClick={handleCreate}
-              disabled={!name.trim() || isPending}
-            >
+            <Button onClick={handleCreate} disabled={!name.trim() || isPending}>
               {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Criar Funil
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
       {/* Dialog de upgrade (plano Light) */}
       <Dialog open={isUpgradeOpen} onOpenChange={setIsUpgradeOpen}>
@@ -132,10 +138,7 @@ export function CreatePipelineButton({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsUpgradeOpen(false)}
-            >
+            <Button variant="outline" onClick={() => setIsUpgradeOpen(false)}>
               Cancelar
             </Button>
             <Button asChild>

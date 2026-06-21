@@ -24,6 +24,7 @@ import { Clock, Loader2, Pencil, Trash2 } from 'lucide-react'
 import { SortableStageRow } from './sortable-stage-row'
 import { AddStageButton } from './add-stage-button'
 import { DeleteStageDialog } from './delete-stage-dialog'
+import { SetDefaultPipelineButton } from './set-default-pipeline-button'
 import ConfirmationDialog from '@/_components/confirmation-dialog'
 import { reorderStages } from '@/_actions/pipeline/reorder-stages'
 import { deleteStage } from '@/_actions/pipeline/delete-stage'
@@ -33,7 +34,13 @@ import { Switch } from '@/_components/ui/switch'
 import { Label } from '@/_components/ui/label'
 import { Input } from '@/_components/ui/input'
 import { Button } from '@/_components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/_components/ui/card'
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '@/_components/ui/card'
 
 import type {
   PipelineWithStagesDto,
@@ -224,6 +231,18 @@ export function PipelineDetailClient({ pipeline }: PipelineDetailClientProps) {
                   </Button>
                 </div>
               )}
+
+              {!pipeline.isDefault && (
+                <div className="mt-4 flex items-center justify-between border-t pt-4">
+                  <div>
+                    <p className="text-sm font-medium">Funil padrão</p>
+                    <p className="text-xs text-muted-foreground">
+                      Torne este o funil padrão da organização.
+                    </p>
+                  </div>
+                  <SetDefaultPipelineButton pipelineId={pipeline.id} />
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -268,9 +287,7 @@ export function PipelineDetailClient({ pipeline }: PipelineDetailClientProps) {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Etapas do funil</CardTitle>
-            <CardDescription>
-              Arraste para reordenar as etapas.
-            </CardDescription>
+            <CardDescription>Arraste para reordenar as etapas.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {isMounted ? (

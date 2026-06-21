@@ -6,9 +6,9 @@ import {
   MoreHorizontal,
   Pencil,
   Trash2,
-  Star,
   Loader2,
   GitBranch,
+  Handshake,
   LayoutList,
 } from 'lucide-react'
 import { useAction } from 'next-safe-action/hooks'
@@ -198,7 +198,7 @@ export function PipelinesSettingsClient({
         {pipelines.map((pipeline) => (
           <Link
             key={pipeline.id}
-            href={`/org/${orgSlug}/settings/pipelines/${pipeline.id}`}
+            href={`/org/${orgSlug}/crm/settings/pipelines/${pipeline.id}`}
             className="block"
           >
             <Card className="flex min-h-[50px] cursor-pointer flex-col transition-colors hover:border-primary/50">
@@ -214,7 +214,6 @@ export function PipelinesSettingsClient({
                         variant="secondary"
                         className="bg-primary/10 text-primary"
                       >
-                        <Star className="mr-1 h-3 w-3" />
                         Padrão
                       </Badge>
                     )}
@@ -251,7 +250,6 @@ export function PipelinesSettingsClient({
                             }}
                             disabled={isSettingDefault}
                           >
-                            <Star className="mr-2 h-4 w-4" />
                             Definir como padrão
                           </DropdownMenuItem>
                         )}
@@ -281,7 +279,7 @@ export function PipelinesSettingsClient({
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <GitBranch className="h-3.5 w-3.5" />
+                    <Handshake className="h-3.5 w-3.5" />
                     <span>
                       {pipeline.dealCount}{' '}
                       {pipeline.dealCount === 1 ? 'negócio' : 'negócios'}
@@ -292,7 +290,6 @@ export function PipelinesSettingsClient({
             </Card>
           </Link>
         ))}
-
       </div>
 
       {renderDialogs()}
@@ -468,7 +465,6 @@ export function PipelinesSettingsClient({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-
       </>
     )
   }
