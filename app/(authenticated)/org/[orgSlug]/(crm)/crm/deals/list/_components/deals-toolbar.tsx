@@ -26,6 +26,7 @@ import type {
   PipelineWithStagesDto,
 } from '@/_data-access/pipeline/get-user-pipeline'
 import type { OrgPipelineDto } from '@/_data-access/pipeline/get-org-pipelines'
+import type { FieldDefinitionDto } from '@/_lib/custom-fields/types'
 import type { MemberRole } from '@prisma/client'
 
 const SEARCH_DEBOUNCE_MS = 300
@@ -52,6 +53,7 @@ interface DealsToolbarProps {
   onAssignedToChange: (value: string | null) => void
   search: string
   onSearchChange: (value: string | null) => void
+  customFieldDefinitions?: FieldDefinitionDto[]
 }
 
 export function DealsToolbar({
@@ -75,6 +77,7 @@ export function DealsToolbar({
   onAssignedToChange,
   search,
   onSearchChange,
+  customFieldDefinitions = [],
 }: DealsToolbarProps) {
   const isMember = userRole === 'MEMBER'
   const isElevated =
@@ -123,7 +126,11 @@ export function DealsToolbar({
         <ViewToggle activeView="list" />
         <div className="flex-1" />
         {isElevated && <PipelineSettingsButton pipeline={pipeline} />}
-        <CreateDealButton stages={stages} withinQuota={withinQuota} />
+        <CreateDealButton
+          stages={stages}
+          withinQuota={withinQuota}
+          customFieldDefinitions={customFieldDefinitions}
+        />
       </div>
 
       {/* Linha 2: Search com largura total */}

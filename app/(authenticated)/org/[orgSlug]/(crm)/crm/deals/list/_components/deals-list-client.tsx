@@ -20,6 +20,7 @@ import type {
 } from '@/_data-access/pipeline/get-user-pipeline'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import type { OrgPipelineDto } from '@/_data-access/pipeline/get-org-pipelines'
+import type { FieldDefinitionDto } from '@/_lib/custom-fields/types'
 import type { MemberRole } from '@prisma/client'
 
 interface DealsListClientProps {
@@ -37,6 +38,7 @@ interface DealsListClientProps {
   userRole: MemberRole
   withinQuota: boolean
   orgSlug: string
+  customFieldDefinitions?: FieldDefinitionDto[]
 }
 
 export function DealsListClient({
@@ -54,6 +56,7 @@ export function DealsListClient({
   userRole,
   withinQuota,
   orgSlug,
+  customFieldDefinitions = [],
 }: DealsListClientProps) {
   const {
     filters,
@@ -162,6 +165,7 @@ export function DealsListClient({
           onAssignedToChange={setAssignedTo}
           search={search}
           onSearchChange={setSearch}
+          customFieldDefinitions={customFieldDefinitions}
         />
 
         {showEmptyState ? (
@@ -169,6 +173,7 @@ export function DealsListClient({
             stages={stages}
             members={dealMembers}
             withinQuota={withinQuota}
+            customFieldDefinitions={customFieldDefinitions}
           />
         ) : (
           <>

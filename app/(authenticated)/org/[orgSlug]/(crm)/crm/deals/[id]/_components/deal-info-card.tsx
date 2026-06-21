@@ -40,13 +40,22 @@ import {
   type DealPriority,
 } from '@/_lib/deal/deal-display-config'
 import CollapsibleCard, { SummaryRow } from './collapsible-card'
+import { DealCustomFieldInlineEditor } from './deal-custom-field-inline-editor'
+import type { FieldDefinitionDto } from '@/_lib/custom-fields/types'
 
 interface DealInfoCardProps {
   deal: DealDetailsDto
   onTabChange?: (tab: string) => void
+  customFieldDefinitions?: FieldDefinitionDto[]
+  customFieldValues?: Record<string, string | null>
 }
 
-const DealInfoCard = ({ deal, onTabChange }: DealInfoCardProps) => {
+const DealInfoCard = ({
+  deal,
+  onTabChange,
+  customFieldDefinitions = [],
+  customFieldValues = {},
+}: DealInfoCardProps) => {
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleValue, setTitleValue] = useState(deal.title)
 
@@ -335,6 +344,30 @@ const DealInfoCard = ({ deal, onTabChange }: DealInfoCardProps) => {
             </Popover>
           </div>
         </div>
+
+        {/* Campos personalizados */}
+        {customFieldDefinitions.length > 0 && (
+          <div className="space-y-2 border-t pt-3">
+            <p className="text-xs font-medium text-muted-foreground">
+              Campos personalizados
+            </p>
+            {customFieldDefinitions.map((definition) => (
+              <div
+                key={definition.id}
+                className="flex items-center justify-between text-sm"
+              >
+                <span className="text-muted-foreground">
+                  {definition.label}
+                </span>
+                <DealCustomFieldInlineEditor
+                  dealId={deal.id}
+                  definition={definition}
+                  rawValue={customFieldValues[definition.id] ?? null}
+                />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </CollapsibleCard>
   )

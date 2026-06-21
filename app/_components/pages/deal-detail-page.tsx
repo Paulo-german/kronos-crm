@@ -7,6 +7,9 @@ import { getDealLostReasons } from '@/_data-access/settings/get-lost-reasons'
 import { getTutorialCompletions } from '@/_data-access/tutorial/get-tutorial-completions'
 import { getOrgPipelines } from '@/_data-access/pipeline/get-org-pipelines'
 import { getPipelineStages } from '@/_data-access/pipeline/get-pipeline-stages'
+import { getFieldDefinitions } from '@/_data-access/field-definition/get-field-definitions'
+import { getDealCustomFieldValues } from '@/_data-access/deal/get-deal-custom-field-values'
+import { EntityType } from '@prisma/client'
 import DealDetailClient from '@/(authenticated)/org/[orgSlug]/(crm)/crm/deals/[id]/_components/deal-detail-client'
 import ContactWidgetServer from '@/(authenticated)/org/[orgSlug]/(crm)/crm/deals/[id]/_components/contact-widget-server'
 import TabProductsServer from '@/(authenticated)/org/[orgSlug]/(crm)/crm/deals/[id]/_components/tab-products-server'
@@ -33,13 +36,25 @@ const DealDetailPage = async ({ params }: DealDetailPageProps) => {
     redirect(`/org/${orgSlug}/crm/deals/pipeline`)
   }
 
-  const [members, lostReasons, completedTutorialIds, orgPipelines] =
-    await Promise.all([
-      getOrganizationMembers(ctx.orgId),
-      getDealLostReasons(ctx.orgId),
-      getTutorialCompletions(ctx.userId, ctx.orgId),
-      getOrgPipelines(ctx.orgId),
-    ])
+  const [
+    members,
+    lostReasons,
+    completedTutorialIds,
+    orgPipelines,
+    dealFieldDefinitions,
+    customFieldValues,
+  ] = await Promise.all([
+    getOrganizationMembers(ctx.orgId),
+    getDealLostReasons(ctx.orgId),
+    getTutorialCompletions(ctx.userId, ctx.orgId),
+    getOrgPipelines(ctx.orgId),
+    getFieldDefinitions(ctx.orgId, EntityType.DEAL),
+    getDealCustomFieldValues(id, ctx.orgId),
+  ])
+
+  const customFieldDefinitions = dealFieldDefinitions.filter(
+    (definition) => !definition.isSystem,
+  )
 
   const pipelineStageOptions = await getPipelineStages(
     orgPipelines.map((pipeline) => pipeline.id),
@@ -59,6 +74,8 @@ const DealDetailPage = async ({ params }: DealDetailPageProps) => {
         lostReasons={lostReasons}
         orgSlug={orgSlug}
         pipelineStageOptions={pipelineStageOptions}
+        customFieldDefinitions={customFieldDefinitions}
+        customFieldValues={customFieldValues}
         contactsSlot={
           <Suspense fallback={<ContactWidgetSkeleton />}>
             <ContactWidgetServer deal={deal} ctx={ctx} />

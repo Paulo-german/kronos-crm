@@ -10,17 +10,20 @@ import {
   type DealMemberOption,
 } from '../../_components/deal-dialog-content'
 import type { StageDto } from '@/_data-access/pipeline/get-user-pipeline'
+import type { FieldDefinitionDto } from '@/_lib/custom-fields/types'
 
 interface DealsEmptyStateProps {
   stages: StageDto[]
   members?: DealMemberOption[]
   withinQuota: boolean
+  customFieldDefinitions?: FieldDefinitionDto[]
 }
 
 export function DealsEmptyState({
   stages,
   members = [],
   withinQuota,
+  customFieldDefinitions = [],
 }: DealsEmptyStateProps) {
   const [isOpen, setIsOpen] = useState(false)
 
@@ -56,6 +59,7 @@ export function DealsEmptyState({
             stages={stages}
             members={members}
             setIsOpen={setIsOpen}
+            customFieldDefinitions={customFieldDefinitions}
           />
         </Sheet>
       ) : (

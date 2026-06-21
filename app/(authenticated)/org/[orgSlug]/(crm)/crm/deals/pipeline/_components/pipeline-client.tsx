@@ -18,6 +18,7 @@ import { usePipelineFilters } from '../_lib/use-pipeline-filters'
 import type { PipelineWithStagesDto } from '@/_data-access/pipeline/get-user-pipeline'
 import type { DealDto } from '@/_data-access/deal/get-deals-by-pipeline'
 import type { OrgPipelineDto } from '@/_data-access/pipeline/get-org-pipelines'
+import type { FieldDefinitionDto } from '@/_lib/custom-fields/types'
 import type { MemberRole } from '@prisma/client'
 import { Settings2Icon } from 'lucide-react'
 import { PageTourTrigger } from '@/_components/onboarding/page-tour-trigger'
@@ -37,6 +38,7 @@ interface PipelineClientProps {
   members: MemberOption[]
   currentUserId: string
   userRole: MemberRole
+  customFieldDefinitions?: FieldDefinitionDto[]
 }
 
 interface DealDialogState {
@@ -51,6 +53,7 @@ export const PipelineClient = ({
   members,
   currentUserId,
   userRole,
+  customFieldDefinitions = [],
 }: PipelineClientProps) => {
   const router = useRouter()
   const params = useParams<{ orgSlug: string }>()
@@ -150,6 +153,7 @@ export const PipelineClient = ({
               stages={pipeline.stages}
               members={members}
               onMutationSuccess={invalidatePipelineData}
+              customFieldDefinitions={customFieldDefinitions}
             />
           }
           filtersSheet={
@@ -188,6 +192,7 @@ export const PipelineClient = ({
             }
           }}
           onMutationSuccess={invalidatePipelineData}
+          customFieldDefinitions={customFieldDefinitions}
         />
       </Sheet>
 

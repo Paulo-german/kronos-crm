@@ -5,11 +5,11 @@ import { getFieldDefinitions } from '@/_data-access/field-definition/get-field-d
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 import { FieldDefinitionsTable } from '@/(authenticated)/org/[orgSlug]/(crm)/crm/settings/custom-fields/_components/field-definitions-table'
 
-interface ContactFieldsPageProps {
+interface DealFieldsPageProps {
   params: Promise<{ orgSlug: string }>
 }
 
-const ContactFieldsPage = async ({ params }: ContactFieldsPageProps) => {
+const DealFieldsPage = async ({ params }: DealFieldsPageProps) => {
   const { orgSlug } = await params
   const ctx = await getOrgContext(orgSlug)
 
@@ -19,14 +19,14 @@ const ContactFieldsPage = async ({ params }: ContactFieldsPageProps) => {
   }
 
   const [definitions, quota] = await Promise.all([
-    getFieldDefinitions(ctx.orgId, EntityType.CONTACT),
+    getFieldDefinitions(ctx.orgId, EntityType.DEAL),
     checkPlanQuota(ctx.orgId, 'custom_field'),
   ])
 
   return (
     <FieldDefinitionsTable
       definitions={definitions}
-      entityType={EntityType.CONTACT}
+      entityType={EntityType.DEAL}
       withinQuota={quota.withinQuota}
       quotaCurrent={quota.current}
       quotaLimit={quota.limit}
@@ -34,4 +34,4 @@ const ContactFieldsPage = async ({ params }: ContactFieldsPageProps) => {
   )
 }
 
-export default ContactFieldsPage
+export default DealFieldsPage

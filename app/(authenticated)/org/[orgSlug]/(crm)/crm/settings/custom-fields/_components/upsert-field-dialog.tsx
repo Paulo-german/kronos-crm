@@ -60,12 +60,14 @@ const upsertFormSchema = z.object({
   label: z.string().trim().min(1, 'Nome do campo é obrigatório'),
   type: z.nativeEnum(FieldType),
   isRequired: z.boolean().default(false),
-  options: z.array(
-    z.object({
-      label: z.string(),
-      value: z.string(),
-    }),
-  ).optional(),
+  options: z
+    .array(
+      z.object({
+        label: z.string(),
+        value: z.string(),
+      }),
+    )
+    .optional(),
 })
 
 type UpsertFormValues = z.input<typeof upsertFormSchema>
@@ -95,7 +97,11 @@ export const UpsertFieldDialog = ({
     },
   })
 
-  const { fields: optionFields, append: appendOption, remove: removeOption } = useFieldArray({
+  const {
+    fields: optionFields,
+    append: appendOption,
+    remove: removeOption,
+  } = useFieldArray({
     control: form.control,
     name: 'options',
   })
@@ -120,32 +126,39 @@ export const UpsertFieldDialog = ({
     }
   }, [open, defaultValues, form])
 
-  const { execute: executeCreate, isPending: isCreating } = useAction(createFieldDefinition, {
-    onSuccess: () => {
-      toast.success('Campo criado com sucesso!')
-      onOpenChange(false)
+  const { execute: executeCreate, isPending: isCreating } = useAction(
+    createFieldDefinition,
+    {
+      onSuccess: () => {
+        toast.success('Campo criado com sucesso!')
+        onOpenChange(false)
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError ?? 'Erro ao criar campo.')
+      },
     },
-    onError: ({ error }) => {
-      toast.error(error.serverError ?? 'Erro ao criar campo.')
-    },
-  })
+  )
 
-  const { execute: executeUpdate, isPending: isUpdating } = useAction(updateFieldDefinition, {
-    onSuccess: () => {
-      toast.success('Campo atualizado com sucesso!')
-      onOpenChange(false)
+  const { execute: executeUpdate, isPending: isUpdating } = useAction(
+    updateFieldDefinition,
+    {
+      onSuccess: () => {
+        toast.success('Campo atualizado com sucesso!')
+        onOpenChange(false)
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError ?? 'Erro ao atualizar campo.')
+      },
     },
-    onError: ({ error }) => {
-      toast.error(error.serverError ?? 'Erro ao atualizar campo.')
-    },
-  })
+  )
 
   const watchedType = form.watch('type')
   const isPending = isCreating || isUpdating
 
   const onSubmit = (data: UpsertFormValues) => {
     const validOptions = (data.options ?? []).filter(
-      (option) => option.label.trim().length > 0 && option.value.trim().length > 0,
+      (option) =>
+        option.label.trim().length > 0 && option.value.trim().length > 0,
     )
 
     if (isEditing && defaultValues) {
@@ -195,7 +208,11 @@ export const UpsertFieldDialog = ({
                 <FormItem>
                   <FormLabel>Nome do campo *</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ex: Origem do Lead" maxLength={FIELD_DEFINITION_LABEL_MAX} {...field} />
+                    <Input
+                      placeholder="Ex: Origem do Lead"
+                      maxLength={FIELD_DEFINITION_LABEL_MAX}
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -250,7 +267,7 @@ export const UpsertFieldDialog = ({
                   <div className="space-y-0.5">
                     <FormLabel>Campo obrigatório</FormLabel>
                     <p className="text-xs text-muted-foreground">
-                      Exige preenchimento ao salvar o contato.
+                      Exige preenchimento ao salvar o registro.
                     </p>
                   </div>
                 </FormItem>
@@ -265,8 +282,8 @@ export const UpsertFieldDialog = ({
                     <p className="text-sm font-medium">Opções de seleção</p>
                     {isEditing && (
                       <p className="text-xs text-muted-foreground">
-                        Apenas o rótulo pode ser alterado. O valor interno é imutável para preservar
-                        os dados já preenchidos.
+                        Apenas o rótulo pode ser alterado. O valor interno é
+                        imutável para preservar os dados já preenchidos.
                       </p>
                     )}
                   </div>
@@ -283,13 +300,17 @@ export const UpsertFieldDialog = ({
 
                 {optionFields.length === 0 && (
                   <p className="rounded-md border border-dashed px-3 py-4 text-center text-xs text-muted-foreground">
-                    Nenhuma opção adicionada. Clique em &quot;Adicionar opção&quot; para começar.
+                    Nenhuma opção adicionada. Clique em &quot;Adicionar
+                    opção&quot; para começar.
                   </p>
                 )}
 
                 <div className="space-y-2">
                   {optionFields.map((optionField, index) => (
-                    <div key={optionField.id} className="flex items-start gap-2">
+                    <div
+                      key={optionField.id}
+                      className="flex items-start gap-2"
+                    >
                       <FormField
                         control={form.control}
                         name={`options.${index}.label`}
@@ -299,7 +320,11 @@ export const UpsertFieldDialog = ({
                               Rótulo da opção {index + 1}
                             </FormLabel>
                             <FormControl>
-                              <Input placeholder="Rótulo" maxLength={FIELD_OPTION_LABEL_MAX} {...field} />
+                              <Input
+                                placeholder="Rótulo"
+                                maxLength={FIELD_OPTION_LABEL_MAX}
+                                {...field}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>

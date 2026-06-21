@@ -11,6 +11,7 @@ import {
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAction } from 'next-safe-action/hooks'
+import { useParams, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
   Check,
@@ -85,6 +86,9 @@ import {
   CONTACT_EMAIL_MAX,
   CONTACT_PHONE_MAX,
 } from '@/_lib/constants/field-limits'
+import { CustomFieldInput } from '@/_components/custom-fields/custom-field-input'
+import type { FieldDefinitionDto } from '@/_lib/custom-fields/types'
+import { updateDealCustomFields } from '@/_actions/deal/update-deal-custom-fields'
 
 export interface DealMemberOption {
   userId: string
@@ -102,6 +106,8 @@ interface DealDialogContentProps {
   // Disparado após criar/editar com sucesso. No Kanban (React Query) é usado para
   // invalidar as queries das colunas, já que a revalidateTag do servidor não as alcança.
   onMutationSuccess?: () => void
+  customFieldDefinitions?: FieldDefinitionDto[]
+  customFieldValues?: Record<string, string | null>
 }
 
 const MIN_SEARCH_CHARS = 3
@@ -116,7 +122,11 @@ export function DealDialogContent({
   onUpdate,
   isUpdating: externalIsUpdating,
   onMutationSuccess,
+  customFieldDefinitions = [],
+  customFieldValues = {},
 }: DealDialogContentProps) {
+  const router = useRouter()
+  const params = useParams<{ orgSlug: string }>()
   const isEditing = !!defaultValues?.id
   const [open, setOpen] = useState(false)
   const [contactSearch, setContactSearch] = useState('')
@@ -189,17 +199,111 @@ export function DealDialogContent({
     },
   })
 
-  // Limpa os dois forms ao fechar sem salvar — evita valores stale na próxima abertura
+  // Form separado apenas para campos personalizados — evita conflito com o zodResolver dos forms principais
+  const customFieldsForm = useForm<{ customFields: Record<string, string> }>({
+    defaultValues: {
+      customFields: customFieldDefinitions.reduce<Record<string, string>>(
+        (map, definition) => {
+          map[definition.id] = customFieldValues[definition.id] ?? ''
+          return map
+        },
+        {},
+      ),
+    },
+  })
+
+  // Limpa os forms ao fechar sem salvar — evita valores stale na próxima abertura
   useEffect(() => {
     if (!isSheetOpen) {
       editForm.reset()
       createForm.reset()
+      customFieldsForm.reset()
     }
   }, [isSheetOpen]) // eslint-disable-line react-hooks/exhaustive-deps -- form instances from useForm are stable references
 
+  const { executeAsync: executeUpdateCustomFieldsAsync } = useAction(
+    updateDealCustomFields,
+    {
+      onError: ({ error }) => {
+        toast.error(
+          error.serverError ?? 'Erro ao salvar campos personalizados.',
+        )
+      },
+    },
+  )
+
+  // No modo edição enviamos todos os campos (vazio → null) para permitir limpar valores.
+  // No modo criação ignoramos vazios, pois não há valor anterior a limpar.
+  const buildCustomFieldsPayload = async (
+    dealId: string,
+    mode: 'create' | 'edit',
+  ) => {
+    const rawCustomFields = customFieldsForm.getValues('customFields')
+    const entries = Object.entries(rawCustomFields)
+
+    const values =
+      mode === 'edit'
+        ? entries.map(([fieldDefinitionId, value]) => ({
+            fieldDefinitionId,
+            value: value === '' ? null : value,
+          }))
+        : entries
+            .filter(
+              ([, value]) =>
+                value !== '' && value !== null && value !== undefined,
+            )
+            .map(([fieldDefinitionId, value]) => ({ fieldDefinitionId, value }))
+
+    if (values.length === 0) return
+
+    await executeUpdateCustomFieldsAsync({ dealId, values })
+  }
+
+  const validateRequiredCustomFields = (): boolean => {
+    customFieldsForm.clearErrors('customFields')
+
+    const rawCustomFields = customFieldsForm.getValues('customFields')
+    const missingFields = customFieldDefinitions.filter(
+      (definition) =>
+        definition.isRequired &&
+        (!rawCustomFields[definition.id] ||
+          rawCustomFields[definition.id] === ''),
+    )
+
+    missingFields.forEach((definition) => {
+      customFieldsForm.setError(`customFields.${definition.id}`, {
+        type: 'required',
+        message: 'Campo obrigatório.',
+      })
+    })
+
+    return missingFields.length === 0
+  }
+
+  const customFieldsSection =
+    customFieldDefinitions.length > 0 ? (
+      <Form {...customFieldsForm}>
+        <div className="space-y-4">
+          <p className="text-sm font-medium text-foreground">
+            Campos personalizados
+          </p>
+          <div className="grid gap-4 md:grid-cols-2">
+            {customFieldDefinitions.map((definition) => (
+              <CustomFieldInput
+                key={definition.id}
+                definition={definition}
+                control={customFieldsForm.control}
+                name={`customFields.${definition.id}`}
+              />
+            ))}
+          </div>
+        </div>
+      </Form>
+    ) : null
+
   const { execute: executeCreateWithContact, isPending: isCreating } =
     useAction(createDealWithContact, {
-      onSuccess: ({ data, input }) => {
+      onSuccess: async ({ data, input }) => {
         // Telefone duplicado: pede confirmação ao operador antes de criar
         if (data?.needsPhoneConfirmation) {
           setPendingPhoneConfirm(input)
@@ -223,9 +327,25 @@ export function DealDialogContent({
           }
         }
 
+        // Aguarda a gravação dos campos personalizados antes de navegar,
+        // para o detalhe já carregar com os valores preenchidos.
+        if (data?.dealId && customFieldDefinitions.length > 0) {
+          await buildCustomFieldsPayload(data.dealId, 'create')
+        }
+
         createForm.reset()
-        setIsOpen(false)
+        customFieldsForm.reset()
         onMutationSuccess?.()
+
+        if (data?.dealId) {
+          // Vai direto pro detalhe — a própria navegação desmonta o sheet.
+          // NÃO chamar setIsOpen aqui: no CreateDealButton o "fechar" altera a
+          // URL (nuqs ?deal) e brigaria com o push, fazendo a tela "piscar" sem
+          // entrar no detalhe.
+          router.push(`/org/${params.orgSlug}/crm/deals/${data.dealId}`)
+        } else {
+          setIsOpen(false)
+        }
       },
       onError: ({ error }) => {
         toast.error(error.serverError || 'Erro ao criar deal.')
@@ -246,6 +366,7 @@ export function DealDialogContent({
 
   const onSubmitEdit = (data: DealFormInput) => {
     if (!defaultValues?.id) return
+    if (!validateRequiredCustomFields()) return
 
     const updatePayload: UpdateDealInput = {
       id: defaultValues.id,
@@ -262,9 +383,15 @@ export function DealDialogContent({
     } else {
       executeInternalUpdate(updatePayload)
     }
+
+    if (customFieldDefinitions.length > 0) {
+      void buildCustomFieldsPayload(defaultValues.id, 'edit')
+    }
   }
 
   const onSubmitCreate = (data: DealWithContactFormInput) => {
+    if (!validateRequiredCustomFields()) return
+
     executeCreateWithContact({
       title: data.title,
       stageId: data.stageId,
@@ -433,6 +560,8 @@ export function DealDialogContent({
                   </FormItem>
                 )}
               />
+
+              {customFieldsSection}
 
               <div className="flex justify-end gap-2 pt-4">
                 <Button
@@ -854,6 +983,8 @@ export function DealDialogContent({
                   </FormItem>
                 )}
               />
+
+              {customFieldsSection}
 
               <div className="flex justify-end gap-2 pt-4">
                 <Button

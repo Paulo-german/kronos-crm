@@ -10,15 +10,23 @@ import { createFieldDefinitionSchema } from './schema'
 
 const POSITION_STEP = 1
 
+// Entidades com campos personalizados habilitados (COMPANY ainda não suportado).
+const SUPPORTED_ENTITY_TYPES: EntityType[] = [
+  EntityType.CONTACT,
+  EntityType.DEAL,
+]
+
 export const createFieldDefinition = orgActionClient
   .schema(createFieldDefinitionSchema)
   .action(async ({ parsedInput: data, ctx }) => {
     // 1. RBAC: gerenciar definições é operação administrativa da org (OWNER/ADMIN)
     requirePermission(canPerformAction(ctx, 'organization', 'update'))
 
-    // 2. MVP guard: apenas CONTACT é suportado
-    if (data.entityType !== EntityType.CONTACT) {
-      throw new Error('Campos personalizados para esta entidade ainda não estão disponíveis.')
+    // 2. Guard de entidade: CONTACT e DEAL suportados (COMPANY ainda não)
+    if (!SUPPORTED_ENTITY_TYPES.includes(data.entityType)) {
+      throw new Error(
+        'Campos personalizados para esta entidade ainda não estão disponíveis.',
+      )
     }
 
     // 3. Quota do plano (Light = 0 bloqueia; demais têm limite numérico)
@@ -29,7 +37,11 @@ export const createFieldDefinition = orgActionClient
 
     // 5. Posição = última posição da entidade + 1
     const lastDefinition = await db.fieldDefinition.findFirst({
-      where: { organizationId: ctx.orgId, entityType: data.entityType, isActive: true },
+      where: {
+        organizationId: ctx.orgId,
+        entityType: data.entityType,
+        isActive: true,
+      },
       orderBy: { position: 'desc' },
       select: { position: true },
     })
@@ -44,7 +56,10 @@ export const createFieldDefinition = orgActionClient
         type: data.type,
         isSystem: false,
         isRequired: data.isRequired,
-        options: data.options && data.options.length > 0 ? data.options : Prisma.JsonNull,
+        options:
+          data.options && data.options.length > 0
+            ? data.options
+            : Prisma.JsonNull,
         position,
         isActive: true,
       },
