@@ -1176,7 +1176,13 @@ model Broadcast {
   // Snapshot do tipo de conexão usada (auditoria e dashboards históricos)
   connectionType  ConnectionType  @map("connection_type")
   name            String
-  messageContent  String          @map("message_content")
+  // Texto livre (EVOLUTION/Z_API). Para META_CLOUD o conteúdo vem do template HSM.
+  messageContent  String?         @map("message_content")
+  // Template HSM — obrigatório para META_CLOUD (Meta exige template fora da janela de 24h).
+  // templateParams: valores fixos das variáveis, iguais para todos os contatos (v1).
+  templateName     String?        @map("template_name")
+  templateLanguage String?        @map("template_language")
+  templateParams   Json?          @map("template_params")
   // Throttle entre mensagens do MESMO broadcast (não entre broadcasts diferentes)
   throttleMs      Int             @default(1500) @map("throttle_ms")
   status          BroadcastStatus @default(DRAFT)

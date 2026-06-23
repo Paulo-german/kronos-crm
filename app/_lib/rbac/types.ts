@@ -45,6 +45,8 @@ export type RBACEntity =
   | 'squad'
   // Formulários de captura embeddable
   | 'captureForm'
+  // Disparos em massa (Kronos Prospection)
+  | 'broadcast'
 
 /**
  * Ações possíveis em cada entidade

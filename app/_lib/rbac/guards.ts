@@ -1,4 +1,10 @@
-import type { RBACEntity, RBACAction, PermissionContext, PermissionResult, OwnershipData } from './types'
+import type {
+  RBACEntity,
+  RBACAction,
+  PermissionContext,
+  PermissionResult,
+  OwnershipData,
+} from './types'
 import { hasPermission, isElevated } from './permissions'
 
 /**
@@ -8,7 +14,7 @@ import { hasPermission, isElevated } from './permissions'
 export function canPerformAction(
   ctx: PermissionContext,
   entity: RBACEntity,
-  action: RBACAction
+  action: RBACAction,
 ): PermissionResult {
   const allowed = hasPermission(ctx.userRole, entity, action)
 
@@ -30,7 +36,7 @@ export function canPerformAction(
  */
 export function canAccessRecord(
   ctx: PermissionContext,
-  ownership: OwnershipData
+  ownership: OwnershipData,
 ): PermissionResult {
   // ADMIN e OWNER podem acessar qualquer registro
   if (isElevated(ctx.userRole)) {
@@ -66,7 +72,8 @@ export function canTransferOwnership(ctx: PermissionContext): PermissionResult {
 
   return {
     allowed: false,
-    reason: 'Apenas administradores podem transferir registros para outros usuários.',
+    reason:
+      'Apenas administradores podem transferir registros para outros usuários.',
   }
 }
 
@@ -77,7 +84,7 @@ export function canTransferOwnership(ctx: PermissionContext): PermissionResult {
  */
 export function resolveAssignedTo(
   ctx: PermissionContext,
-  requestedAssignedTo?: string | null
+  requestedAssignedTo?: string | null,
 ): string {
   // MEMBER sempre é forçado para si mesmo
   if (!isElevated(ctx.userRole)) {
@@ -103,7 +110,7 @@ export function requirePermission(result: PermissionResult): void {
  */
 export function isOwnershipChange(
   newAssignedTo: string | undefined | null,
-  currentAssignedTo: string | null
+  currentAssignedTo: string | null,
 ): boolean {
   // Se não está tentando mudar, não é uma mudança
   if (newAssignedTo === undefined) {
@@ -158,6 +165,8 @@ function getEntityLabel(entity: RBACEntity): string {
     squad: 'squads',
     // Formulários de captura
     captureForm: 'formulários de captura',
+    // Disparos em massa
+    broadcast: 'disparos em massa',
   }
   return labels[entity]
 }

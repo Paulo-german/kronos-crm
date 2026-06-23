@@ -12,7 +12,10 @@ import type { RBACEntity, RBACAction } from './types'
  * Nota: Esta é a permissão BASE. Para entidades com ownership (contact, deal, task),
  * MEMBER ainda precisa passar pela verificação de ownership em guards.ts
  */
-const PERMISSION_MATRIX: Record<RBACEntity, Record<RBACAction, MemberRole[]>> = {
+const PERMISSION_MATRIX: Record<
+  RBACEntity,
+  Record<RBACAction, MemberRole[]>
+> = {
   contact: {
     create: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'],
     read: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'], // MEMBER: só próprios (verificado em guards)
@@ -203,6 +206,15 @@ const PERMISSION_MATRIX: Record<RBACEntity, Record<RBACAction, MemberRole[]>> = 
     delete: ['OWNER', 'ADMIN'],
     transfer: [],
   },
+  // Disparos em massa: recurso de alto impacto (custo de provedor, risco de spam).
+  // MEMBER NÃO cria — apenas vê os próprios (via createdBy) se um admin criar.
+  broadcast: {
+    create: ['OWNER', 'ADMIN', 'SUPPORT'],
+    read: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'], // MEMBER: só próprios (filtro por createdBy)
+    update: ['OWNER', 'ADMIN', 'SUPPORT'],
+    delete: ['OWNER', 'ADMIN', 'SUPPORT'], // = cancelar
+    transfer: [],
+  },
 }
 
 /**
@@ -211,7 +223,7 @@ const PERMISSION_MATRIX: Record<RBACEntity, Record<RBACAction, MemberRole[]>> = 
 export function hasPermission(
   role: MemberRole,
   entity: RBACEntity,
-  action: RBACAction
+  action: RBACAction,
 ): boolean {
   const allowedRoles = PERMISSION_MATRIX[entity]?.[action] ?? []
   return allowedRoles.includes(role)
