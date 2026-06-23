@@ -44,8 +44,11 @@ export const BroadcastsToolbar = ({
   const pushParams = (updates: Record<string, string | undefined>) => {
     const next = new URLSearchParams(params.toString())
     Object.entries(updates).forEach(([key, val]) => {
-      if (val) next.set(key, val)
-      else next.delete(key)
+      if (val) {
+        next.set(key, val)
+        return
+      }
+      next.delete(key)
     })
     // Qualquer mudança de filtro volta para a primeira página
     next.delete('page')

@@ -65,13 +65,12 @@ export const createBroadcast = orgActionClient
     //    que é exatamente o caso de lista fria).
     //  - EVOLUTION/Z_API usam texto livre.
     const isMetaCloud = inbox.connectionType === 'META_CLOUD'
-    if (isMetaCloud) {
-      if (!data.templateName || !data.templateLanguage) {
-        throw new Error(
-          'Disparos por Meta Cloud exigem um template aprovado (a Meta não permite texto livre fora da janela de 24h).',
-        )
-      }
-    } else if (!data.messageContent?.trim()) {
+    if (isMetaCloud && (!data.templateName || !data.templateLanguage)) {
+      throw new Error(
+        'Disparos por Meta Cloud exigem um template aprovado (a Meta não permite texto livre fora da janela de 24h).',
+      )
+    }
+    if (!isMetaCloud && !data.messageContent?.trim()) {
       throw new Error('A mensagem do disparo é obrigatória.')
     }
 
