@@ -142,6 +142,7 @@ export const createBroadcast = orgActionClient
           throttleMs: data.throttleMs,
           status,
           totalRecipients,
+          skippedCount,
           scheduledFor: data.scheduledFor ?? null,
           startedAt: status === BroadcastStatus.RUNNING ? new Date() : null,
           createdBy: ctx.userId,

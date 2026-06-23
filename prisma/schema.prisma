@@ -1190,6 +1190,9 @@ model Broadcast {
   totalRecipients Int             @default(0) @map("total_recipients")
   sentCount       Int             @default(0) @map("sent_count")
   failedCount     Int             @default(0) @map("failed_count")
+  // Denormalizado: definido na criação (sem telefone/opt-out/anonimizado) e
+  // incrementado no cancel (PENDING→SKIPPED). Evita groupBy na listagem.
+  skippedCount    Int             @default(0) @map("skipped_count")
   // null = começa imediato
   scheduledFor    DateTime?       @map("scheduled_for")
   startedAt       DateTime?       @map("started_at")

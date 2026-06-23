@@ -43,17 +43,22 @@ export const cancelBroadcast = orgActionClient
     }
 
     // 5. Cancela e impede que recipients PENDING sejam pegos pelo worker.
-    //    Mensagens já enviadas (SENT) permanecem intactas.
-    await db.$transaction([
-      db.broadcast.update({
-        where: { id: broadcastId },
-        data: { status: BroadcastStatus.CANCELLED, cancelledAt: new Date() },
-      }),
-      db.broadcastRecipient.updateMany({
+    //    Mensagens já enviadas (SENT) permanecem intactas. Os PENDING que viram
+    //    SKIPPED são somados ao contador denormalizado skippedCount.
+    await db.$transaction(async (tx) => {
+      const { count } = await tx.broadcastRecipient.updateMany({
         where: { broadcastId, status: BroadcastRecipientStatus.PENDING },
         data: { status: BroadcastRecipientStatus.SKIPPED },
-      }),
-    ])
+      })
+      await tx.broadcast.update({
+        where: { id: broadcastId },
+        data: {
+          status: BroadcastStatus.CANCELLED,
+          cancelledAt: new Date(),
+          skippedCount: { increment: count },
+        },
+      })
+    })
 
     revalidateTag(`broadcasts:${ctx.orgId}`)
     revalidateTag(`broadcast:${broadcastId}`)

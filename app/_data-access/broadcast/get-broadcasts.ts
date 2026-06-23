@@ -15,6 +15,7 @@ export interface BroadcastDto {
   totalRecipients: number
   sentCount: number
   failedCount: number
+  skippedCount: number
   scheduledFor: Date | null
   startedAt: Date | null
   completedAt: Date | null
@@ -74,6 +75,7 @@ const fetchBroadcastsFromDb = async (
         totalRecipients: true,
         sentCount: true,
         failedCount: true,
+        skippedCount: true,
         scheduledFor: true,
         startedAt: true,
         completedAt: true,
@@ -99,6 +101,7 @@ const fetchBroadcastsFromDb = async (
       totalRecipients: broadcast.totalRecipients,
       sentCount: broadcast.sentCount,
       failedCount: broadcast.failedCount,
+      skippedCount: broadcast.skippedCount,
       scheduledFor: broadcast.scheduledFor,
       startedAt: broadcast.startedAt,
       completedAt: broadcast.completedAt,
