@@ -37,6 +37,7 @@ model User {
   changelogEntries        ChangelogEntry[]
   professional            Professional?     @relation("ProfessionalUser")
   goals                   Goal[]
+  broadcastsCreated       Broadcast[]       @relation("BroadcastCreator")
   @@map("users")
 }
 
@@ -129,6 +130,7 @@ model Organization {
   processingActivities         ProcessingActivity[]
   emailBlocklist               EmailBlocklist[]
   dsrRequests                  DsrRequest[]
+  broadcasts                   Broadcast[]
 
   @@map("organizations")
 }
@@ -237,6 +239,7 @@ model Contact {
   anonymizedAt         DateTime?            @map("anonymized_at")
   privacy              ContactPrivacy?
   consentEvents        ConsentEvent[]
+  broadcastRecipients  BroadcastRecipient[]
 
   @@unique([organizationId, email])
   @@index([organizationId, assignedTo, createdAt(sort: Desc)])
@@ -1149,6 +1152,7 @@ model Inbox {
   organization          Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   captureSource         CaptureSource? @relation(fields: [captureSourceId], references: [id], onDelete: SetNull)
   squad                 Squad?         @relation(fields: [squadId], references: [id], onDelete: SetNull)
+  broadcasts            Broadcast[]
 
   @@index([organizationId])
   @@index([agentId])
@@ -1159,6 +1163,77 @@ model Inbox {
   @@index([captureSourceId])
   @@index([squadId])
   @@map("inboxes")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Broadcasts (Disparos em massa — Kronos Prospection)
+// ─────────────────────────────────────────────────────────────
+
+model Broadcast {
+  id              String          @id @default(uuid())
+  organizationId  String          @map("organization_id")
+  inboxId         String          @map("inbox_id")
+  // Snapshot do tipo de conexão usada (auditoria e dashboards históricos)
+  connectionType  ConnectionType  @map("connection_type")
+  name            String
+  messageContent  String          @map("message_content")
+  // Throttle entre mensagens do MESMO broadcast (não entre broadcasts diferentes)
+  throttleMs      Int             @default(1500) @map("throttle_ms")
+  status          BroadcastStatus @default(DRAFT)
+  // Contadores denormalizados — atualizados pela task após cada chunk
+  totalRecipients Int             @default(0) @map("total_recipients")
+  sentCount       Int             @default(0) @map("sent_count")
+  failedCount     Int             @default(0) @map("failed_count")
+  // null = começa imediato
+  scheduledFor    DateTime?       @map("scheduled_for")
+  startedAt       DateTime?       @map("started_at")
+  completedAt     DateTime?       @map("completed_at")
+  cancelledAt     DateTime?       @map("cancelled_at")
+  // Quem criou — para filtro RBAC de MEMBER
+  createdBy       String          @map("created_by")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  inbox        Inbox                @relation(fields: [inboxId], references: [id], onDelete: Restrict)
+  creator      User                 @relation("BroadcastCreator", fields: [createdBy], references: [id])
+  recipients   BroadcastRecipient[]
+
+  // Index do worker: pegar broadcasts em andamento dentro da janela agendada
+  @@index([status, scheduledFor])
+  // Index da listagem por org
+  @@index([organizationId, status, createdAt(sort: Desc)])
+  @@index([organizationId, createdBy, createdAt(sort: Desc)])
+  @@map("broadcasts")
+}
+
+model BroadcastRecipient {
+  id                String                   @id @default(uuid())
+  broadcastId       String                   @map("broadcast_id")
+  contactId         String                   @map("contact_id")
+  // Snapshot do telefone no momento da criação — fonte da verdade do envio
+  phoneSnapshot     String                   @map("phone_snapshot")
+  status            BroadcastRecipientStatus @default(PENDING)
+  // Id externo retornado pelo provedor — útil para debug
+  providerMessageId String?                  @map("provider_message_id")
+  errorMessage      String?                  @map("error_message")
+  // Incrementado pelo worker em caso de erro retentável
+  attempts          Int                      @default(0)
+  sentAt            DateTime?                @map("sent_at")
+  // Conversa criada/encontrada para registrar a mensagem (espelho do inbox)
+  conversationId    String?                  @map("conversation_id")
+  createdAt         DateTime                 @default(now()) @map("created_at")
+  updatedAt         DateTime                 @updatedAt @map("updated_at")
+
+  broadcast Broadcast @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
+  contact   Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  // Index crítico do worker — usado pelo SELECT FOR UPDATE SKIP LOCKED
+  @@index([broadcastId, status])
+  @@index([contactId])
+  // Garante que um contato não receba o mesmo disparo duas vezes
+  @@unique([broadcastId, contactId])
+  @@map("broadcast_recipients")
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1835,6 +1910,27 @@ enum InboxChannel {
   WHATSAPP
   WEB_CHAT
   INSTAGRAM_DM
+}
+
+enum BroadcastStatus {
+  DRAFT       // reservado para edição pré-disparo; v1 nasce SCHEDULED ou RUNNING
+  SCHEDULED   // aguardando scheduledFor
+  RUNNING     // worker está processando
+  COMPLETED   // todos recipients finalizados (sent ou failed)
+  CANCELLED   // cancelado manualmente
+  FAILED      // falha fatal no broadcast (ex.: inbox desconectada)
+
+  @@map("broadcast_status")
+}
+
+enum BroadcastRecipientStatus {
+  PENDING
+  SENDING     // pego pelo worker, antes de chamar o provedor
+  SENT
+  FAILED
+  SKIPPED     // contato sem telefone válido, ou broadcast cancelado
+
+  @@map("broadcast_recipient_status")
 }
 
 enum ConversationEventType {
