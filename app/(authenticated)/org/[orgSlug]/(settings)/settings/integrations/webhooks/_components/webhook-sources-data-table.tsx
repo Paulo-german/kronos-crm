@@ -148,6 +148,16 @@ export function WebhookSourcesDataTable({
     setViewingLogsSourceName(sourceName)
   }, [])
 
+  // Sugestão proativa dos logs: fecha o sheet de logs e abre a edição do mesmo
+  // webhook (onde fica o detector de campos).
+  const handleConfigureFromLogs = useCallback(() => {
+    const source = data.find((item) => item.id === viewingLogsSourceId)
+    if (!source) return
+    setViewingLogsSourceId(null)
+    setViewingLogsSourceName('')
+    setEditingSource(source)
+  }, [data, viewingLogsSourceId])
+
   const handleCopyUrl = useCallback((source: WebhookSourceDto) => {
     const origin =
       typeof window !== 'undefined'
@@ -392,6 +402,7 @@ export function WebhookSourcesDataTable({
               setViewingLogsSourceName('')
             }
           }}
+          onConfigure={handleConfigureFromLogs}
         />
       )}
 
