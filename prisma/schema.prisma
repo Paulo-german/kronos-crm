@@ -2270,6 +2270,11 @@ enum WebhookPlatform {
   HOTMART
   GOOGLE_FORMS
   OTHER
+  KIWIFY
+  WOOCOMMERCE
+  CALENDLY
+  EDUZZ
+  MONETIZZE
 
   @@map("webhook_platform")
 }
