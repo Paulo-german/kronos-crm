@@ -454,14 +454,29 @@ async function seedModules() {
     return
   }
 
-  // Todos os planos desbloqueiam todos os módulos (por enquanto)
+  // Política de acesso por plano:
+  // - Módulos base são liberados em todos os planos.
+  // - Prospection é disponível a partir do Scale (o add-on avulso virá depois).
+  const RESTRICTED_MODULE_PLANS: Record<string, string[]> = {
+    prospection: ['scale', 'enterprise'],
+  }
+
   let planModuleCount = 0
 
   for (const plan of allPlans) {
-    for (const moduleId of Object.values(moduleRecords)) {
+    for (const mod of modules) {
+      const allowedPlans = RESTRICTED_MODULE_PLANS[mod.slug]
+      // Módulo restrito: só vincula nos planos permitidos
+      if (allowedPlans && !allowedPlans.includes(plan.slug)) continue
+
       await db.planModule.upsert({
-        where: { planId_moduleId: { planId: plan.id, moduleId } },
-        create: { planId: plan.id, moduleId },
+        where: {
+          planId_moduleId: {
+            planId: plan.id,
+            moduleId: moduleRecords[mod.slug],
+          },
+        },
+        create: { planId: plan.id, moduleId: moduleRecords[mod.slug] },
         update: {},
       })
       planModuleCount++
