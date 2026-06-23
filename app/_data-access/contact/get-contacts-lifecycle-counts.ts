@@ -92,6 +92,7 @@ const fetchCountsFromDb = async (
   })
 
   const defaults: Record<LifecycleStage, number> = {
+    COLD: 0,
     LEAD: 0,
     QUALIFIED: 0,
     OPPORTUNITY: 0,

@@ -74,17 +74,20 @@ export const createContact = orgActionClient
               }
             : {}
 
-    // Cadeia de histórico: um registro por estágio percorrido — analytics conta cada transição
-    const stageChain: LifecycleStage[] = [
+    // Cadeia de histórico: um registro por estágio percorrido — analytics conta cada transição.
+    // COLD é entrada fria isolada (lista importada): não percorre o funil quente LEAD→…,
+    // gera um único registro (null → COLD). Os demais estágios fazem backfill a partir de LEAD.
+    const warmChain: LifecycleStage[] = [
       LifecycleStage.LEAD,
       LifecycleStage.QUALIFIED,
       LifecycleStage.OPPORTUNITY,
       LifecycleStage.CUSTOMER,
     ]
-    const targetIndex = stageChain.indexOf(initialStage)
-    const historyChain = stageChain
-      .slice(0, targetIndex + 1)
-      .map((stage, index, arr) => ({
+    const historyStages =
+      initialStage === LifecycleStage.COLD
+        ? [LifecycleStage.COLD]
+        : warmChain.slice(0, warmChain.indexOf(initialStage) + 1)
+    const historyChain = historyStages.map((stage, index, arr) => ({
         organizationId: ctx.orgId,
         fromStage: index === 0 ? null : arr[index - 1],
         toStage: stage,

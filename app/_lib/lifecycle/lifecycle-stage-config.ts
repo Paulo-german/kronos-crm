@@ -1,4 +1,4 @@
-import { Crown, Flame, Handshake, UserPlus, type LucideIcon } from 'lucide-react'
+import { Crown, Flame, Handshake, Snowflake, UserPlus, type LucideIcon } from 'lucide-react'
 import { LifecycleStage } from '@prisma/client'
 
 /**
@@ -10,8 +10,8 @@ import { LifecycleStage } from '@prisma/client'
  * - `badgeClassName`: classes completas para badges (bg + text + border).
  * - `chartColor`: valor CSS (HSL token) consumido pelo Recharts no AreaChart de evolução.
  *
- * Progressão visual LEAD → CUSTOMER:
- * cinza (LEAD) → laranja (QUALIFIED) → azul (OPPORTUNITY) → roxo/primary (CUSTOMER)
+ * Progressão visual COLD → CUSTOMER:
+ * cinza-azulado (COLD) → cinza (LEAD) → laranja (QUALIFIED) → azul (OPPORTUNITY) → roxo/primary (CUSTOMER)
  */
 
 export interface LifecycleStageVisualConfig {
@@ -24,6 +24,15 @@ export interface LifecycleStageVisualConfig {
 }
 
 export const LIFECYCLE_STAGE_CONFIG: Record<LifecycleStage, LifecycleStageVisualConfig> = {
+  [LifecycleStage.COLD]: {
+    label: 'Frio',
+    icon: Snowflake,
+    colorClassName: 'text-slate-400',
+    badgeClassName: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
+    chartColor: '#94a3b8',
+    dashboardHint:
+      'Contatos frios — lista importada que ainda não levantou a mão. Viram Lead quando respondem a um disparo ou interagem.',
+  },
   [LifecycleStage.LEAD]: {
     label: 'Lead',
     icon: UserPlus,
@@ -64,6 +73,7 @@ export const LIFECYCLE_STAGE_CONFIG: Record<LifecycleStage, LifecycleStageVisual
 
 // Ordem visual canônica usada em listagens, funis e arrays de pontos do gráfico
 export const LIFECYCLE_STAGE_ORDER: LifecycleStage[] = [
+  LifecycleStage.COLD,
   LifecycleStage.LEAD,
   LifecycleStage.QUALIFIED,
   LifecycleStage.OPPORTUNITY,

@@ -261,7 +261,7 @@ section('Invariantes — score sempre dentro de 0–100 com valores extremos')
     agentEngagementEventsLast30d: 0,
   }
 
-  for (const stage of ['LEAD', 'QUALIFIED', 'OPPORTUNITY', 'CUSTOMER'] as const) {
+  for (const stage of ['COLD', 'LEAD', 'QUALIFIED', 'OPPORTUNITY', 'CUSTOMER'] as const) {
     const rHigh = computeHealthScore({ contactId: CONTACT_ID, organizationId: ORG_ID, stage, signals: extremeHigh })
     const rLow = computeHealthScore({ contactId: CONTACT_ID, organizationId: ORG_ID, stage, signals: extremeLow })
     assertRange(rHigh.score, 0, 100, `score 0–100 com sinais altíssimos (${stage})`)

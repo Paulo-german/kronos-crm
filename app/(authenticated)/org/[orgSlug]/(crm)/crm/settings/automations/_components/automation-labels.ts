@@ -95,8 +95,9 @@ export const LIFECYCLE_STAGE_OPTIONS: { label: string; value: string; descriptio
   { label: 'Cliente', value: 'CUSTOMER', description: 'Conversão realizada' },
 ]
 
-// Inclui LEAD (para uso em conditions de CONTACT_CREATED)
+// Inclui COLD e LEAD (para uso em conditions de CONTACT_CREATED / listas frias)
 export const LIFECYCLE_STAGE_CONDITION_OPTIONS: { label: string; value: string }[] = [
+  { label: 'Frio', value: 'COLD' },
   { label: 'Lead', value: 'LEAD' },
   { label: 'Qualificado', value: 'QUALIFIED' },
   { label: 'Oportunidade', value: 'OPPORTUNITY' },

@@ -9,6 +9,7 @@ import {
 import { LifecycleStage } from '@prisma/client'
 
 const STAGE_DESCRIPTIONS: Record<LifecycleStage, string> = {
+  [LifecycleStage.COLD]: 'lista fria, ainda não respondeu',
   [LifecycleStage.LEAD]: 'ainda está conhecendo você',
   [LifecycleStage.QUALIFIED]: 'demonstrou interesse real',
   [LifecycleStage.OPPORTUNITY]: 'negociação em andamento',
