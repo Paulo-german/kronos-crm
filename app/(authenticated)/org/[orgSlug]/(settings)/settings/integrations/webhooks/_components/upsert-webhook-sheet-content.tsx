@@ -6,7 +6,6 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 import {
-  Wand2,
   Loader2,
   ShieldCheck,
   ShieldOff,
@@ -48,6 +47,8 @@ import {
 import { z } from 'zod'
 import { FieldMappingEditor } from './field-mapping-editor'
 import { PlatformLogo } from './platform-logo'
+import { ProviderEventSelect } from './provider-event-select'
+import { ProviderSetupGuide } from './provider-setup-guide'
 import { WebhookUrlDisplay } from './webhook-url-display'
 import { WebhookPayloadTester } from './webhook-payload-tester'
 import { WebhookFieldDetector } from './webhook-field-detector'
@@ -124,6 +125,7 @@ export function UpsertWebhookSheetContent({
           name: source.name,
           platform: source.platform as WebhookPlatform,
           eventType: source.eventType as WebhookEventType,
+          providerEvent: source.providerEvent,
           fieldMapping: source.fieldMapping as Record<string, string>,
           isActive: source.isActive,
           squadId: source.squadId ?? null,
@@ -132,6 +134,7 @@ export function UpsertWebhookSheetContent({
           name: '',
           platform: 'GENERIC',
           eventType: 'UPSERT_CONTACT',
+          providerEvent: null,
           fieldMapping: {},
           isActive: true,
           squadId: null,
@@ -145,6 +148,14 @@ export function UpsertWebhookSheetContent({
         if (data?.token && data?.id) {
           setCreatedToken(data.token)
           setCreatedSourceId(data.id)
+          // Auto-aplica o template do provedor já no step 2 (substitui o antigo
+          // botão "Usar template"): o mapeamento nasce sugerido e editável.
+          const platform = form.getValues('platform') as WebhookPlatform
+          const eventType = form.getValues('eventType') as WebhookEventType
+          const tpl = PLATFORM_TEMPLATES[platform]?.[eventType]
+          if (tpl && Object.keys(tpl).length > 0) {
+            setWizardMapping(tpl as Record<string, string>)
+          }
           setStep('step2')
         }
       },
@@ -222,17 +233,18 @@ export function UpsertWebhookSheetContent({
   >
   const showSquadField = watchedEventType === 'UPSERT_CONTACT'
 
-  const template = PLATFORM_TEMPLATES[watchedPlatform]?.[watchedEventType]
-  const hasTemplate =
-    watchedPlatform !== 'GENERIC' &&
-    watchedPlatform !== 'OTHER' &&
-    template !== undefined &&
-    Object.keys(template).length > 0
-
-  const handleApplyTemplate = () => {
-    if (!template) return
-    form.setValue('fieldMapping', template as Record<string, string>)
-    toast.info('Sugestão aplicada! Ajuste se necessário.')
+  // Troca de provedor: aplica o template automaticamente (substitui o antigo
+  // botão "Usar template") e reseta o gatilho — o catálogo de eventos é por
+  // provedor, então o evento selecionado do provedor anterior não faz sentido.
+  const handlePlatformChange = (newPlatform: string) => {
+    form.setValue('platform', newPlatform as WebhookPlatform)
+    form.setValue('providerEvent', null)
+    const eventType = form.getValues('eventType') as WebhookEventType
+    const nextTemplate =
+      PLATFORM_TEMPLATES[newPlatform as WebhookPlatform]?.[eventType]
+    if (nextTemplate && Object.keys(nextTemplate).length > 0) {
+      form.setValue('fieldMapping', nextTemplate as Record<string, string>)
+    }
   }
 
   // Modo CREATE step 2: mapeamento após criação do webhook
@@ -261,30 +273,15 @@ export function UpsertWebhookSheetContent({
 
         <Separator />
 
+        <ProviderSetupGuide platform={watchedPlatform} />
+
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium">Campos recebidos</p>
-              <p className="text-xs text-muted-foreground">
-                Defina quais informações do sistema externo vão para cada campo
-                do CRM.
-              </p>
-            </div>
-            {hasTemplate && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setWizardMapping(template as Record<string, string>)
-                  toast.info('Sugestão aplicada! Ajuste se necessário.')
-                }}
-                className="shrink-0 gap-1.5"
-              >
-                <Wand2 className="h-3.5 w-3.5" />
-                Usar template
-              </Button>
-            )}
+          <div>
+            <p className="text-sm font-medium">Campos recebidos</p>
+            <p className="text-xs text-muted-foreground">
+              Já preenchemos a sugestão do provedor — ajuste se necessário ou
+              use o detector abaixo para confirmar com um envio real.
+            </p>
           </div>
 
           <WebhookFieldDetector
@@ -393,7 +390,10 @@ export function UpsertWebhookSheetContent({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Plataforma</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
+                  <Select
+                    value={field.value}
+                    onValueChange={handlePlatformChange}
+                  >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione a plataforma" />
@@ -441,6 +441,12 @@ export function UpsertWebhookSheetContent({
             />
           </div>
 
+          <ProviderEventSelect
+            platform={watchedPlatform}
+            value={(form.watch('providerEvent') as string | null) ?? null}
+            onChange={(value) => form.setValue('providerEvent', value)}
+          />
+
           {showSquadField && (
             <FormField
               control={form.control}
@@ -485,26 +491,15 @@ export function UpsertWebhookSheetContent({
             <>
               <Separator />
 
+              <ProviderSetupGuide platform={watchedPlatform} />
+
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium">Mapeamento de campos</p>
-                    <p className="text-xs text-muted-foreground">
-                      Mapeie os campos do payload externo para os campos do CRM.
-                    </p>
-                  </div>
-                  {hasTemplate && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleApplyTemplate}
-                      className="shrink-0 gap-1.5"
-                    >
-                      <Wand2 className="h-3.5 w-3.5" />
-                      Usar template
-                    </Button>
-                  )}
+                <div>
+                  <p className="text-sm font-medium">Mapeamento de campos</p>
+                  <p className="text-xs text-muted-foreground">
+                    Mapeie os campos do payload externo para os campos do CRM. A
+                    sugestão do provedor é aplicada ao trocar a plataforma.
+                  </p>
                 </div>
 
                 {source && (
