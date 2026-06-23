@@ -2178,6 +2178,9 @@ enum LifecycleStage {
   QUALIFIED
   OPPORTUNITY
   CUSTOMER
+  // Adicionado no fim para casar com a ordem física do enum no banco.
+  // A posição lógica no funil (antes de LEAD) é dada pelo STAGE_ORDER no código.
+  COLD
 
   @@map("lifecycle_stage")
 }
