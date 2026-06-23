@@ -2416,6 +2416,9 @@ model WebhookSource {
   secretKey      String?          @map("secret_key")
   platform       WebhookPlatform  @default(GENERIC)
   eventType      WebhookEventType @map("event_type")
+  // Evento curado do provedor selecionado na UI (ex: "orders/paid", "PURCHASE_APPROVED").
+  // NULL = sem filtro de gatilho (comportamento legado: aceita qualquer evento).
+  providerEvent  String?          @map("provider_event")
   // Mapa dot-notation: { "email": "data.customer.email", ... }
   fieldMapping   Json             @default("{}") @map("field_mapping")
   isActive        Boolean          @default(true) @map("is_active")

@@ -40,6 +40,7 @@ import {
   type WebhookPlatform,
   type WebhookEventType,
 } from '../_lib/platform-templates'
+import { PlatformLogo } from './platform-logo'
 import { TableDropdownMenu } from './table-dropdown-menu'
 import { DeleteWebhookDialogContent } from './delete-webhook-dialog-content'
 import { UpsertWebhookSheetContent } from './upsert-webhook-sheet-content'
@@ -175,7 +176,11 @@ export function WebhookSourcesDataTable({
         accessorKey: 'platform',
         header: 'Plataforma',
         cell: ({ row }) => (
-          <Badge variant="secondary">
+          <Badge variant="secondary" className="gap-1.5">
+            <PlatformLogo
+              platform={row.original.platform as WebhookPlatform}
+              size={14}
+            />
             {PLATFORM_LABELS[row.original.platform as WebhookPlatform] ??
               row.original.platform}
           </Badge>

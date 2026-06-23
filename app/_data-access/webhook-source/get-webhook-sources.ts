@@ -14,6 +14,7 @@ const fetchSourcesFromDb = async (orgId: string) => {
       token: true,
       platform: true,
       eventType: true,
+      providerEvent: true,
       fieldMapping: true,
       isActive: true,
       squadId: true,
@@ -32,8 +33,13 @@ const fetchSourcesFromDb = async (orgId: string) => {
   })
 
   return sources.map((source) => {
-    const sourceStats = stats.filter((stat) => stat.webhookSourceId === source.id)
-    const totalEvents = sourceStats.reduce((acc, stat) => acc + stat._count._all, 0)
+    const sourceStats = stats.filter(
+      (stat) => stat.webhookSourceId === source.id,
+    )
+    const totalEvents = sourceStats.reduce(
+      (acc, stat) => acc + stat._count._all,
+      0,
+    )
     const processed =
       sourceStats.find((stat) => stat.status === 'PROCESSED')?._count._all ?? 0
     const successRate = totalEvents === 0 ? 0 : processed / totalEvents

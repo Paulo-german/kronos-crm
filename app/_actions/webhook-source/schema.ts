@@ -8,6 +8,11 @@ export const webhookPlatformSchema = z.enum([
   'NUVEM_SHOP',
   'HOTMART',
   'GOOGLE_FORMS',
+  'KIWIFY',
+  'WOOCOMMERCE',
+  'CALENDLY',
+  'EDUZZ',
+  'MONETIZZE',
   'OTHER',
 ])
 
@@ -61,10 +66,22 @@ const secretKeyField = z
   })
   .optional()
 
+// Evento curado do provedor (chave técnica do catálogo, ex: 'orders/paid').
+// Não é enum: a lista é grande, varia por provedor e o catálogo pode evoluir.
+// A pertinência é validada em "melhor esforço" no resolver (fail-open), não no schema.
+const providerEventField = z
+  .string()
+  .trim()
+  .min(1)
+  .max(120)
+  .nullable()
+  .optional()
+
 export const createWebhookSourceSchema = z.object({
   name: z.string().trim().min(1, 'Nome é obrigatório').max(120),
   platform: webhookPlatformSchema.default('GENERIC'),
   eventType: webhookEventTypeSchema,
+  providerEvent: providerEventField,
   fieldMapping: fieldMappingSchema.default({}),
   isActive: z.boolean().default(true),
   secretKey: secretKeyField,
@@ -76,6 +93,7 @@ export const updateWebhookSourceSchema = z.object({
   name: z.string().trim().min(1).max(120).optional(),
   platform: webhookPlatformSchema.optional(),
   eventType: webhookEventTypeSchema.optional(),
+  providerEvent: providerEventField,
   fieldMapping: fieldMappingRequiredSchema.optional(),
   isActive: z.boolean().optional(),
   secretKey: secretKeyField,
@@ -115,6 +133,7 @@ export interface WebhookSourceDto {
   token: string
   platform: z.infer<typeof webhookPlatformSchema>
   eventType: WebhookEventTypeValue
+  providerEvent: string | null
   fieldMapping: Record<string, string>
   isActive: boolean
   squadId: string | null

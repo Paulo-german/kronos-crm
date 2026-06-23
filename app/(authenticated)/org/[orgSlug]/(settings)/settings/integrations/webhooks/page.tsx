@@ -37,19 +37,24 @@ export default async function WebhooksPage({ params }: PageProps) {
   })) satisfies WebhookSourceDto[]
 
   return (
-    <>
+    <div className="space-y-6 p-6 md:p-8">
       <Header>
         <HeaderLeft>
           <HeaderTitle>Inbound Webhooks</HeaderTitle>
           <HeaderSubTitle>
-            Receba dados de Shopify, Hotmart, Google Forms e outros sistemas externos.
+            Receba dados de Shopify, Hotmart, Google Forms e outros sistemas
+            externos.
           </HeaderSubTitle>
         </HeaderLeft>
         <HeaderRight>
           <CreateWebhookButton squads={squads} />
         </HeaderRight>
       </Header>
-      <WebhookSourcesDataTable data={sources} squads={squads} orgSlug={orgSlug} />
-    </>
+      <WebhookSourcesDataTable
+        data={sources}
+        squads={squads}
+        orgSlug={orgSlug}
+      />
+    </div>
   )
 }

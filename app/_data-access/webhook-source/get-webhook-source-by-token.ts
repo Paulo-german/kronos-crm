@@ -9,6 +9,7 @@ export async function getWebhookSourceByToken(token: string) {
       organizationId: true,
       squadId: true,
       eventType: true,
+      providerEvent: true,
       fieldMapping: true,
       isActive: true,
       platform: true,

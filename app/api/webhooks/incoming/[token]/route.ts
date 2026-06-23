@@ -77,7 +77,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
     // 5. HMAC — import dinâmico mantém o módulo fora do bundle quando sem secret
     if (source.secretKey) {
-      const { verifyHmacSignature } = await import('@/_lib/webhooks/verify-hmac-signature')
+      const { verifyHmacSignature } =
+        await import('@/_lib/webhooks/verify-hmac-signature')
       const signatureValid = verifyHmacSignature({
         platform: source.platform,
         rawBody,
@@ -93,7 +94,10 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           status: 'ERROR',
           errorMessage: 'Invalid HMAC signature',
         })
-        return NextResponse.json({ error: 'invalid_signature' }, { status: 401 })
+        return NextResponse.json(
+          { error: 'invalid_signature' },
+          { status: 401 },
+        )
       }
     }
 
@@ -113,8 +117,49 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ success: true, logId: log.id })
     }
 
-    // 7. Idempotência: se o emissor envia X-Webhook-Event-Id, retornamos o log original
-    const rawEventId = request.headers.get('x-webhook-event-id')
+    // 7. Token-no-payload (PÓS-parse) — barreira dura (401), igual ao HMAC.
+    // Monetizze (chave_unica) e Eduzz (token) mandam o segredo dentro do corpo,
+    // então só dá pra validar depois do parse. Demais provedores passam direto.
+    if (source.secretKey) {
+      const { verifyPayloadToken } =
+        await import('@/_lib/webhooks/verify-payload-token')
+      const tokenValid = verifyPayloadToken({
+        platform: source.platform,
+        payload,
+        secretKey: source.secretKey,
+      })
+      if (!tokenValid) {
+        await persistWebhookLog({
+          webhookSourceId: source.id,
+          organizationId: source.organizationId,
+          payload: { _rejected: true, reason: 'invalid_payload_token' },
+          resolvedData: {},
+          status: 'ERROR',
+          errorMessage: 'Invalid payload token',
+        })
+        return NextResponse.json(
+          { error: 'invalid_signature' },
+          { status: 401 },
+        )
+      }
+    }
+
+    // 8. Resolver evento — só agora (HMAC e token já validados). Resolvido NA ROTA
+    // porque Headers não serializa de forma trivial para o waitUntil. Fail-open
+    // daqui pra frente: o filtro de gatilho nunca retorna 4xx.
+    const { resolveProviderEvent } =
+      await import('@/_lib/webhooks/resolve-provider-event')
+    const resolvedEvent = resolveProviderEvent({
+      platform: source.platform,
+      headers: request.headers,
+      payload,
+    })
+
+    // 9. Idempotência: aceita X-Webhook-Event-Id; fallback X-Shopify-Webhook-Id
+    // (headers case-insensitive via Headers.get) quando o primeiro está ausente.
+    const rawEventId =
+      request.headers.get('x-webhook-event-id') ??
+      request.headers.get('x-shopify-webhook-id')
     const externalEventId = rawEventId ? rawEventId.slice(0, 255) : null
     if (externalEventId) {
       const since = new Date(Date.now() - DEDUP_WINDOW_HOURS * MS_PER_HOUR)
@@ -127,11 +172,15 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         select: { id: true },
       })
       if (duplicate) {
-        return NextResponse.json({ success: true, logId: duplicate.id, deduplicated: true })
+        return NextResponse.json({
+          success: true,
+          logId: duplicate.id,
+          deduplicated: true,
+        })
       }
     }
 
-    // 8. Pipeline de processamento — retorna 200 imediatamente, processa em background
+    // 10. Pipeline de processamento — retorna 200 imediatamente, processa em background
     waitUntil(
       processInboundWebhook({
         source: {
@@ -140,12 +189,14 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           squadId: source.squadId,
           platform: source.platform,
           eventType: source.eventType,
+          providerEvent: source.providerEvent,
           fieldMapping: source.fieldMapping as Record<string, string>,
           isActive: source.isActive,
           secretKey: source.secretKey,
         },
         payload,
         externalEventId,
+        resolvedEvent,
         isReplay: false,
       }),
     )
@@ -154,7 +205,10 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   } catch (error) {
     // Erro inesperado (banco indisponível, etc.) — 500 é correto aqui: sinaliza ao emissor
     // que deve retentar. O dedup window (24h) protege contra duplicatas no retry.
-    console.error('[webhook/incoming] Unhandled error:', error instanceof Error ? error.message : error)
+    console.error(
+      '[webhook/incoming] Unhandled error:',
+      error instanceof Error ? error.message : error,
+    )
     return NextResponse.json({ error: 'internal_error' }, { status: 500 })
   }
 }
