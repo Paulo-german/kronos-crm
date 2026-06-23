@@ -12,7 +12,7 @@ import {
 } from '@/_components/ui/tooltip'
 import type { NotificationDto } from '@/_data-access/notification/types'
 
-type Product = 'crm' | 'inbox' | 'agents'
+type Product = 'crm' | 'inbox' | 'agents' | 'prospection'
 
 interface SecondaryMenuProps {
   product: Product
@@ -31,12 +31,14 @@ const PRODUCT_SETTINGS_HREF: Record<Product, (slug: string) => string> = {
   crm: (slug) => `/org/${slug}/crm/settings`,
   inbox: (slug) => `/org/${slug}/inbox/settings`,
   agents: (slug) => `/org/${slug}/agents/settings`,
+  prospection: (slug) => `/org/${slug}/prospection/settings`,
 }
 
 const PRODUCT_NOTIFICATIONS_HREF: Record<Product, (slug: string) => string> = {
   crm: (slug) => `/org/${slug}/crm/notifications`,
   inbox: (slug) => `/org/${slug}/inbox/notifications`,
   agents: (slug) => `/org/${slug}/agents/notifications`,
+  prospection: (slug) => `/org/${slug}/prospection/notifications`,
 }
 
 export const SecondaryMenu = ({
@@ -57,7 +59,12 @@ export const SecondaryMenu = ({
       {product === 'inbox' && (
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="text-white/70 hover:bg-white/10 hover:text-white" asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-white/70 hover:bg-white/10 hover:text-white"
+              asChild
+            >
               <Link href={`/org/${orgSlug}/inbox/settings/inboxes`}>
                 <Radio className="size-4" />
                 <span className="sr-only">Canais</span>
@@ -72,7 +79,12 @@ export const SecondaryMenu = ({
       {product === 'agents' && credits && credits.monthlyLimit > 0 && (
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="text-white/70 hover:bg-white/10 hover:text-white" asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-white/70 hover:bg-white/10 hover:text-white"
+              asChild
+            >
               <Link href={`/org/${orgSlug}/agents/settings/credits`}>
                 <Zap className="size-4" />
                 <span className="sr-only">Créditos IA</span>
@@ -80,7 +92,8 @@ export const SecondaryMenu = ({
             </Button>
           </TooltipTrigger>
           <TooltipContent side="bottom">
-            Créditos IA: {credits.available.toLocaleString('pt-BR')} / {credits.monthlyLimit.toLocaleString('pt-BR')}
+            Créditos IA: {credits.available.toLocaleString('pt-BR')} /{' '}
+            {credits.monthlyLimit.toLocaleString('pt-BR')}
           </TooltipContent>
         </Tooltip>
       )}
@@ -99,10 +112,15 @@ export const SecondaryMenu = ({
         notificationsHref={notificationsHref}
       />
 
-{/* Configurações do produto */}
+      {/* Configurações do produto */}
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button variant="ghost" size="icon" className="text-white/70 hover:bg-white/10 hover:text-white" asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-white/70 hover:bg-white/10 hover:text-white"
+            asChild
+          >
             <Link href={settingsHref}>
               <Settings2 className="size-4" />
               <span className="sr-only">Configurações</span>
@@ -116,7 +134,12 @@ export const SecondaryMenu = ({
       {isSuperAdmin && (
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="text-white/70 hover:bg-white/10 hover:text-white" asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-white/70 hover:bg-white/10 hover:text-white"
+              asChild
+            >
               <Link href="/admin/dashboard">
                 <Shield className="size-4" />
                 <span className="sr-only">Admin</span>

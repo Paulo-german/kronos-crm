@@ -22,7 +22,7 @@ import { TrialReminderDialog } from '@/_components/trial/trial-reminder-dialog'
 import { DashboardTourTrigger } from '@/_components/onboarding/dashboard-tour-trigger'
 import { WelcomeSurveyModal } from '@/_components/welcome-survey/welcome-survey-modal'
 
-type Product = 'crm' | 'inbox' | 'agents'
+type Product = 'crm' | 'inbox' | 'agents' | 'prospection'
 
 interface ProductLayoutBaseProps {
   orgSlug: string

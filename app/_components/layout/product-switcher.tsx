@@ -1,7 +1,13 @@
 'use client'
 
 import Link from 'next/link'
-import { ChevronDown, PanelsTopLeft, MessageSquare, Bot, Telescope } from 'lucide-react'
+import {
+  ChevronDown,
+  PanelsTopLeft,
+  MessageSquare,
+  Bot,
+  Telescope,
+} from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,7 +20,7 @@ import { Button } from '@/_components/ui/button'
 import { KronosLogo } from '@/_components/icons/kronos-logo'
 import type { ModuleSlug } from '@/_data-access/module/types'
 
-type Product = 'crm' | 'inbox' | 'agents'
+type Product = 'crm' | 'inbox' | 'agents' | 'prospection'
 
 const PRODUCT_CONFIG: Record<
   Product,
@@ -55,6 +61,15 @@ const PRODUCT_CONFIG: Record<
     href: (slug) => `/org/${slug}/agents/home`,
     module: 'ai-agent',
   },
+  prospection: {
+    label: 'Kronos Prospection',
+    badge: 'PROSPECTION',
+    badgeClass: 'bg-kronos-orange/15 text-kronos-orange',
+    icon: <Telescope className="h-4 w-4" />,
+    iconClass: 'bg-kronos-orange/20 text-kronos-orange',
+    href: (slug) => `/org/${slug}/prospection/home`,
+    module: 'prospection',
+  },
 }
 
 interface ProductSwitcherProps {
@@ -90,7 +105,9 @@ export const ProductSwitcher = ({
           <span className="hidden text-base font-bold tracking-tight md:inline">
             KRONOS
           </span>
-          <span className={`hidden rounded px-1.5 py-0.5 text-[11px] font-semibold tracking-wide md:inline ${current.badgeClass}`}>
+          <span
+            className={`hidden rounded px-1.5 py-0.5 text-[11px] font-semibold tracking-wide md:inline ${current.badgeClass}`}
+          >
             {current.badge}
           </span>
           <ChevronDown className="h-3.5 w-3.5 text-white" />
@@ -109,27 +126,24 @@ export const ProductSwitcher = ({
         {availableProducts.map(([key, config]) => (
           <DropdownMenuItem key={key} asChild>
             <Link href={config.href(orgSlug)} className="cursor-pointer py-2.5">
-              <span className={`mr-3 flex size-7 shrink-0 items-center justify-center rounded-md ${config.iconClass}`}>
+              <span
+                className={`mr-3 flex size-7 shrink-0 items-center justify-center rounded-md ${config.iconClass}`}
+              >
                 {config.icon}
               </span>
               {config.label}
             </Link>
           </DropdownMenuItem>
         ))}
-        <DropdownMenuItem className="cursor-default pointer-events-none py-2.5 text-white">
-          <span className="mr-3 flex size-7 shrink-0 items-center justify-center rounded-md bg-kronos-orange/10 text-kronos-orange">
-            <Telescope className="h-4 w-4" />
-          </span>
-          Kronos Prospection
-          <span className="ml-auto rounded bg-kronos-cyan/10 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-kronos-cyan">EM BREVE</span>
-        </DropdownMenuItem>
         <DropdownMenuSeparator className="bg-white/10" />
-        <DropdownMenuItem className="cursor-default pointer-events-none py-2.5 text-white">
+        <DropdownMenuItem className="pointer-events-none cursor-default py-2.5 text-white">
           <span className="mr-3 flex size-7 shrink-0 items-center justify-center rounded-md bg-white/5 text-white">
             <KronosLogo className="h-4 w-4" />
           </span>
           Kronos Hub
-          <span className="ml-auto rounded bg-kronos-cyan/10 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-kronos-cyan">EM BREVE</span>
+          <span className="ml-auto rounded bg-kronos-cyan/10 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-kronos-cyan">
+            EM BREVE
+          </span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

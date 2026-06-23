@@ -6,7 +6,7 @@ import { GlobalSearch } from '@/_components/global-search'
 import type { NotificationDto } from '@/_data-access/notification/types'
 import type { ModuleSlug } from '@/_data-access/module/types'
 
-type Product = 'crm' | 'inbox' | 'agents'
+type Product = 'crm' | 'inbox' | 'agents' | 'prospection'
 
 interface ProductTopBarProps {
   product: Product
