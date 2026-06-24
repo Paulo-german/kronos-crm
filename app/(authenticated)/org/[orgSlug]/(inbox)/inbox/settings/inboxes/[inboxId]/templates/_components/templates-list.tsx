@@ -47,7 +47,7 @@ import type {
 } from '@/_lib/meta/types'
 import { CreateTemplateDialog } from './create-template-dialog'
 import { DeleteTemplateDialog } from './delete-template-dialog'
-import { TemplatePreview } from './template-preview'
+import { TemplatePreview } from '@/_components/whatsapp/template-preview'
 
 // ---------------------------------------------------------------------------
 // Configurações de status
