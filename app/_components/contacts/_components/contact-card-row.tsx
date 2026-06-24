@@ -17,6 +17,10 @@ import { LEGAL_BASIS_CONFIG } from '@/_lib/privacy/consent-labels'
 import { ShieldCheck } from 'lucide-react'
 import ContactTableDropdownMenu from './table-dropdown-menu'
 import type { ContactDto } from '@/_data-access/contact/get-contacts'
+import {
+  useContactCapabilities,
+  useContactBasePath,
+} from '../_lib/contact-capabilities-context'
 
 // Paleta de cores determinísticas para avatares
 const AVATAR_COLORS = [
@@ -69,11 +73,13 @@ export function ContactCardRow({
   isScoreEnabled,
 }: ContactCardRowProps) {
   const router = useRouter()
+  const { deals: showDeals } = useContactCapabilities()
+  const basePath = useContactBasePath()
   const avatarColor = getAvatarColor(contact.name)
   const initials = getInitials(contact.name)
   const formattedPhone = contact.phone ? formatPhone(contact.phone) : null
   const stageCfg = LIFECYCLE_STAGE_CONFIG[contact.lifecycleStage]
-  const detailHref = `/org/${orgSlug}/contacts/${contact.id}`
+  const detailHref = `/org/${orgSlug}/${basePath}/contacts/${contact.id}`
 
   return (
     <div
@@ -154,7 +160,7 @@ export function ContactCardRow({
               {LEGAL_BASIS_CONFIG[contact.legalBasis].label}
             </Badge>
           )}
-          {contact.deals.length > 0 && (
+          {showDeals && contact.deals.length > 0 && (
             <Badge variant="secondary" className="h-5 gap-1 px-1.5 text-[10px]">
               <BriefcaseIcon className="size-2.5" />
               {contact.deals.length}{' '}

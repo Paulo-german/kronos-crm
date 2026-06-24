@@ -49,6 +49,10 @@ import { CaptureSourceCard } from './capture-source-card'
 import { ContactLifecycleTimeline } from './contact-lifecycle-timeline'
 import { CustomFieldInlineEditor } from './custom-field-inline-editor'
 import { ContactPrivacyCard } from './contact-privacy-card'
+import {
+  useContactCapabilities,
+  useContactBasePath,
+} from '../../_lib/contact-capabilities-context'
 import type { MemberRole } from '@prisma/client'
 import type { FieldDefinitionDto } from '@/_lib/custom-fields/types'
 
@@ -89,6 +93,9 @@ const ContactDetailClient = ({
     undefined,
   )
   const [cascadeDeals, setCascadeDeals] = useState(true)
+  const { deals: showDeals, customFields: showCustomFields } =
+    useContactCapabilities()
+  const basePath = useContactBasePath()
 
   const { execute: executeTransfer, isPending: isTransferring } = useAction(
     transferContact,
@@ -142,7 +149,7 @@ const ContactDetailClient = ({
         <div className="flex items-center justify-between">
           <BackButton
             orgSlug={orgSlug}
-            fallbackPath={`/org/${orgSlug}/contacts`}
+            fallbackPath={`/org/${orgSlug}/${basePath}/contacts`}
           />
         </div>
 
@@ -269,7 +276,7 @@ const ContactDetailClient = ({
                     />
                   </div>
 
-                  {customFieldDefinitions.length > 0 && (
+                  {showCustomFields && customFieldDefinitions.length > 0 && (
                     <>
                       <div className="border-t" />
                       {customFieldDefinitions.map((definition) => {
@@ -325,8 +332,8 @@ const ContactDetailClient = ({
                 </CardContent>
               </Card>
 
-              {/* Deals vinculados */}
-              {contact.deals?.length > 0 && (
+              {/* Deals vinculados — só com módulo de negociação (CRM) */}
+              {showDeals && contact.deals?.length > 0 && (
                 <Card className="border-border/50 bg-card">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base font-semibold">
@@ -415,41 +422,45 @@ const ContactDetailClient = ({
               </Select>
             </div>
 
-            <div
-              className={`flex items-start gap-3 rounded-md border p-3 transition-opacity ${
-                contact.deals.length === 0 ? 'opacity-60' : ''
-              }`}
-            >
-              <Checkbox
-                id="cascade-deals"
-                checked={contact.deals.length > 0 ? cascadeDeals : false}
-                disabled={contact.deals.length === 0}
-                onCheckedChange={(checked) => setCascadeDeals(checked === true)}
-                className="mt-0.5"
-              />
-              <div className="grid gap-1.5 leading-none">
-                <Label
-                  htmlFor="cascade-deals"
-                  className="cursor-pointer text-sm font-medium"
-                >
-                  Transferir também os negócios vinculados
-                </Label>
-                {contact.deals.length > 0 ? (
-                  <ul className="mt-1 space-y-1 text-xs text-muted-foreground">
-                    {contact.deals.map((deal) => (
-                      <li key={deal.id} className="flex items-center gap-1.5">
-                        <span className="h-1 w-1 shrink-0 rounded-full bg-muted-foreground/50" />
-                        {deal.title}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    Nenhum negócio vinculado a este contato.
-                  </p>
-                )}
+            {showDeals && (
+              <div
+                className={`flex items-start gap-3 rounded-md border p-3 transition-opacity ${
+                  contact.deals.length === 0 ? 'opacity-60' : ''
+                }`}
+              >
+                <Checkbox
+                  id="cascade-deals"
+                  checked={contact.deals.length > 0 ? cascadeDeals : false}
+                  disabled={contact.deals.length === 0}
+                  onCheckedChange={(checked) =>
+                    setCascadeDeals(checked === true)
+                  }
+                  className="mt-0.5"
+                />
+                <div className="grid gap-1.5 leading-none">
+                  <Label
+                    htmlFor="cascade-deals"
+                    className="cursor-pointer text-sm font-medium"
+                  >
+                    Transferir também os negócios vinculados
+                  </Label>
+                  {contact.deals.length > 0 ? (
+                    <ul className="mt-1 space-y-1 text-xs text-muted-foreground">
+                      {contact.deals.map((deal) => (
+                        <li key={deal.id} className="flex items-center gap-1.5">
+                          <span className="h-1 w-1 shrink-0 rounded-full bg-muted-foreground/50" />
+                          {deal.title}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Nenhum negócio vinculado a este contato.
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
           </div>
           <DialogFooter>
             <Button

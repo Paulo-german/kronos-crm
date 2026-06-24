@@ -7,6 +7,7 @@ import { LIFECYCLE_STAGE_CONFIG } from '@/_lib/lifecycle/lifecycle-stage-config'
 import { CUSTOMER_STATUS_CONFIG } from '@/_lib/lifecycle/customer-status-config'
 import type { ContactFilters } from '../_lib/contact-filters'
 import type { CompanyDto } from '@/_data-access/company/get-companies'
+import { useContactCapabilities } from '../_lib/contact-capabilities-context'
 
 interface ContactFilterBadgesProps {
   filters: ContactFilters
@@ -23,6 +24,7 @@ export function ContactFilterBadges({
   onClearFilters,
   hasActiveFilters,
 }: ContactFilterBadgesProps) {
+  const { deals: showDeals } = useContactCapabilities()
   if (!hasActiveFilters) return null
 
   const companyName = filters.companyId
@@ -139,7 +141,7 @@ export function ContactFilterBadges({
       )}
 
       {/* Badge de tem negócios */}
-      {filters.hasDeals !== null && (
+      {showDeals && filters.hasDeals !== null && (
         <Badge variant="secondary" className="gap-1 pr-1 text-xs font-normal">
           Negócios: {filters.hasDeals ? 'Sim' : 'Não'}
           <button

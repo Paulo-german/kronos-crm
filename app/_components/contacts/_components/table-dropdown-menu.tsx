@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { ContactDto } from '@/_data-access/contact/get-contacts'
 import { formatPhoneForWhatsApp } from '@/_utils/format-phone-whatsapp'
+import { useContactCapabilities } from '../_lib/contact-capabilities-context'
 import { toast } from 'sonner'
 
 interface ContactTableDropdownMenuProps {
@@ -38,6 +39,8 @@ const ContactTableDropdownMenu = ({
   isPiiRestricted,
   orgSlug,
 }: ContactTableDropdownMenuProps) => {
+  const { inbox: hasInbox } = useContactCapabilities()
+
   return (
     <div className="flex items-center justify-end">
       <DropdownMenu>
@@ -84,12 +87,14 @@ const ContactTableDropdownMenu = ({
               </a>
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem className="gap-1.5" asChild>
-            <Link href={`/org/${orgSlug}/inbox?contactId=${contact.id}`}>
-              <MessageCircle size={16} className="text-primary" />
-              Abrir Inbox
-            </Link>
-          </DropdownMenuItem>
+          {hasInbox && (
+            <DropdownMenuItem className="gap-1.5" asChild>
+              <Link href={`/org/${orgSlug}/inbox?contactId=${contact.id}`}>
+                <MessageCircle size={16} className="text-primary" />
+                Abrir Inbox
+              </Link>
+            </DropdownMenuItem>
+          )}
           <DropdownMenuSeparator />
           {contact.email && !isPiiRestricted && (
             <DropdownMenuItem

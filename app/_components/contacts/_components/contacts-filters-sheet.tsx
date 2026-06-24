@@ -31,6 +31,7 @@ import {
 import { CUSTOMER_STATUS_CONFIG } from '@/_lib/lifecycle/customer-status-config'
 import type { ContactFilters } from '../_lib/contact-filters'
 import { DEFAULT_CONTACT_FILTERS } from '../_lib/contact-filters'
+import { useContactCapabilities } from '../_lib/contact-capabilities-context'
 interface ContactsFiltersSheetProps {
   filters: ContactFilters
   onApplyFilters: (filters: Partial<ContactFilters>) => void
@@ -46,6 +47,7 @@ export function ContactsFiltersSheet({
 }: ContactsFiltersSheetProps) {
   const [localFilters, setLocalFilters] = useState<ContactFilters>(filters)
   const [isOpen, setIsOpen] = useState(false)
+  const { deals: showDeals } = useContactCapabilities()
 
   const handleOpenChange = (open: boolean) => {
     if (open) {
@@ -286,50 +288,52 @@ export function ContactsFiltersSheet({
               </div>
             )}
 
-            {/* Filtro de Tem Negócios */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-1.5">
-                <Label className="text-sm font-semibold">
-                  Possui Negócios Vinculados
-                </Label>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <InfoIcon className="size-3.5 cursor-help text-muted-foreground" />
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-56">
-                    Filtra contatos que já têm ao menos um negócio criado no
-                    pipeline, independente do status do negócio.
-                  </TooltipContent>
-                </Tooltip>
+            {/* Filtro de Tem Negócios — só com módulo de deals (CRM) */}
+            {showDeals && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-sm font-semibold">
+                    Possui Negócios Vinculados
+                  </Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <InfoIcon className="size-3.5 cursor-help text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-56">
+                      Filtra contatos que já têm ao menos um negócio criado no
+                      pipeline, independente do status do negócio.
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {(
+                    [
+                      { value: true, label: 'Sim' },
+                      { value: false, label: 'Não' },
+                    ] as const
+                  ).map((option) => (
+                    <label
+                      key={String(option.value)}
+                      className={cn(
+                        'flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 transition-colors',
+                        localFilters.hasDeals === option.value
+                          ? 'border-primary/40 bg-primary/10 text-primary'
+                          : 'border-border-strong hover:bg-accent',
+                      )}
+                    >
+                      <Checkbox
+                        checked={localFilters.hasDeals === option.value}
+                        onCheckedChange={() =>
+                          toggleBooleanFilter('hasDeals', option.value)
+                        }
+                        className="sr-only"
+                      />
+                      <span className="text-sm">{option.label}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {(
-                  [
-                    { value: true, label: 'Sim' },
-                    { value: false, label: 'Não' },
-                  ] as const
-                ).map((option) => (
-                  <label
-                    key={String(option.value)}
-                    className={cn(
-                      'flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 transition-colors',
-                      localFilters.hasDeals === option.value
-                        ? 'border-primary/40 bg-primary/10 text-primary'
-                        : 'border-border-strong hover:bg-accent',
-                    )}
-                  >
-                    <Checkbox
-                      checked={localFilters.hasDeals === option.value}
-                      onCheckedChange={() =>
-                        toggleBooleanFilter('hasDeals', option.value)
-                      }
-                      className="sr-only"
-                    />
-                    <span className="text-sm">{option.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
+            )}
           </div>
         </TooltipProvider>
 
