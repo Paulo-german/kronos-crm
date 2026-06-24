@@ -35,9 +35,15 @@ import { Alert, AlertDescription } from '@/_components/ui/alert'
 import { Label } from '@/_components/ui/label'
 import { Checkbox } from '@/_components/ui/checkbox'
 import { importContacts } from '@/_actions/contact/import-contacts'
-import { importRowSchema, type ImportRow } from '@/_actions/contact/import-contacts/schema'
+import {
+  importRowSchema,
+  type ImportRow,
+} from '@/_actions/contact/import-contacts/schema'
 import type { CompanyDto } from '@/_data-access/company/get-companies'
-import { LIFECYCLE_STAGE_CONFIG, LIFECYCLE_STAGE_ORDER } from '@/_lib/lifecycle/lifecycle-stage-config'
+import {
+  LIFECYCLE_STAGE_CONFIG,
+  LIFECYCLE_STAGE_ORDER,
+} from '@/_lib/lifecycle/lifecycle-stage-config'
 import type { LegalBasis, LifecycleStage } from '@prisma/client'
 import { LEGAL_BASIS_OPTIONS } from '@/_lib/privacy/consent-labels'
 
@@ -63,6 +69,7 @@ interface PreviewStepProps {
   quotaCurrent: number
   quotaLimit: number
   onBack: () => void
+  basePath: string
 }
 
 export function PreviewStep({
@@ -71,11 +78,14 @@ export function PreviewStep({
   quotaCurrent,
   quotaLimit,
   onBack,
+  basePath,
 }: PreviewStepProps) {
   const router = useRouter()
   const { orgSlug } = useParams<{ orgSlug: string }>()
   const [lifecycleStage, setLifecycleStage] = useState<LifecycleStage>('LEAD')
-  const [legalBasis, setLegalBasis] = useState<LegalBasis>('LEGITIMATE_INTEREST')
+  const [legalBasis, setLegalBasis] = useState<LegalBasis>(
+    'LEGITIMATE_INTEREST',
+  )
   const [legalBasisConfirmed, setLegalBasisConfirmed] = useState(false)
 
   const { execute, isPending } = useAction(importContacts, {
@@ -88,9 +98,11 @@ export function PreviewStep({
             : ''),
       )
       if (blocklistCount > 0) {
-        toast.warning(`${blocklistCount} e-mail(s) importados constam na lista de saída. Verifique em Configurações → Privacidade.`)
+        toast.warning(
+          `${blocklistCount} e-mail(s) importados constam na lista de saída. Verifique em Configurações → Privacidade.`,
+        )
       }
-      router.push(`/org/${orgSlug}/crm/contacts`)
+      router.push(`/org/${orgSlug}/${basePath}/contacts`)
     },
     onError: ({ error }) => {
       toast.error(error.serverError || 'Erro ao importar contatos.')
@@ -103,10 +115,13 @@ export function PreviewStep({
   )
 
   const allValid = validationResults.every((result) => result.valid)
-  const invalidCount = validationResults.filter((result) => !result.valid).length
+  const invalidCount = validationResults.filter(
+    (result) => !result.valid,
+  ).length
 
   const existingCompanyNames = useMemo(
-    () => new Set(companies.map((company) => company.name.toLowerCase().trim())),
+    () =>
+      new Set(companies.map((company) => company.name.toLowerCase().trim())),
     [companies],
   )
 
@@ -125,7 +140,12 @@ export function PreviewStep({
   const quotaExceeded = quotaCurrent + mappedRows.length > quotaLimit
 
   const handleImport = () => {
-    execute({ rows: mappedRows, lifecycleStage, legalBasis, legalBasisConfirmed: true })
+    execute({
+      rows: mappedRows,
+      lifecycleStage,
+      legalBasis,
+      legalBasisConfirmed: true,
+    })
   }
 
   return (
@@ -176,14 +196,18 @@ export function PreviewStep({
         {/* Estágio de lifecycle */}
         <div className="flex items-center gap-3 rounded-lg border p-4">
           <div className="flex-1">
-            <Label className="text-sm font-medium">Estágio do ciclo de vida</Label>
+            <Label className="text-sm font-medium">
+              Estágio do ciclo de vida
+            </Label>
             <p className="mt-0.5 text-xs text-muted-foreground">
               Todos os contatos desta lista serão importados com este estágio.
             </p>
           </div>
           <Select
             value={lifecycleStage}
-            onValueChange={(value) => setLifecycleStage(value as LifecycleStage)}
+            onValueChange={(value) =>
+              setLifecycleStage(value as LifecycleStage)
+            }
           >
             <SelectTrigger className="w-44">
               <SelectValue />
@@ -195,7 +219,9 @@ export function PreviewStep({
                 return (
                   <SelectItem key={stage} value={stage}>
                     <div className="flex items-center gap-2">
-                      <Icon className={`h-3.5 w-3.5 ${config.colorClassName}`} />
+                      <Icon
+                        className={`h-3.5 w-3.5 ${config.colorClassName}`}
+                      />
                       {config.label}
                     </div>
                   </SelectItem>
@@ -223,15 +249,18 @@ export function PreviewStep({
               {mappedRows.map((row, index) => {
                 const validation = validationResults[index]
                 const isNewCompany =
-                  row.companyName &&
-                  newCompanyNames.has(row.companyName.trim())
+                  row.companyName && newCompanyNames.has(row.companyName.trim())
 
                 return (
-                  <TableRow key={`row-${index}-${row.email ?? row.name ?? index}`}>
+                  <TableRow
+                    key={`row-${index}-${row.email ?? row.name ?? index}`}
+                  >
                     <TableCell className="text-muted-foreground">
                       {index + 1}
                     </TableCell>
-                    <TableCell className="font-medium">{row.name || '—'}</TableCell>
+                    <TableCell className="font-medium">
+                      {row.name || '—'}
+                    </TableCell>
                     <TableCell>{row.email || '—'}</TableCell>
                     <TableCell>{row.phone || '—'}</TableCell>
                     <TableCell>
@@ -272,10 +301,13 @@ export function PreviewStep({
         <div className="space-y-3 rounded-lg border p-4">
           <div className="flex items-center gap-2">
             <ShieldCheck className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium">Base legal para tratamento de dados</span>
+            <span className="text-sm font-medium">
+              Base legal para tratamento de dados
+            </span>
           </div>
           <p className="text-xs text-muted-foreground">
-            Selecione a base legal que justifica o tratamento dos dados pessoais deste lote (LGPD / GDPR).
+            Selecione a base legal que justifica o tratamento dos dados pessoais
+            deste lote (LGPD / GDPR).
           </p>
           <div className="flex items-center gap-3">
             <Label htmlFor="legal-basis-select" className="shrink-0 text-sm">
@@ -301,7 +333,9 @@ export function PreviewStep({
             <Checkbox
               id="legal-basis-confirmed"
               checked={legalBasisConfirmed}
-              onCheckedChange={(checked) => setLegalBasisConfirmed(checked === true)}
+              onCheckedChange={(checked) =>
+                setLegalBasisConfirmed(checked === true)
+              }
             />
             <label
               htmlFor="legal-basis-confirmed"
@@ -320,7 +354,9 @@ export function PreviewStep({
           </Button>
           <Button
             onClick={handleImport}
-            disabled={!allValid || quotaExceeded || isPending || !legalBasisConfirmed}
+            disabled={
+              !allValid || quotaExceeded || isPending || !legalBasisConfirmed
+            }
           >
             {isPending ? (
               <>

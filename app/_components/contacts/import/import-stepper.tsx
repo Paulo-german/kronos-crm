@@ -15,7 +15,10 @@ interface ImportStepperProps {
 
 export function ImportStepper({ currentStep }: ImportStepperProps) {
   return (
-    <nav aria-label="Etapas da importação" className="flex items-center justify-center gap-2">
+    <nav
+      aria-label="Etapas da importação"
+      className="flex items-center justify-center gap-2"
+    >
       {IMPORT_STEPS.map((step, index) => {
         const isCompleted = index < currentStep
         const isCurrent = index === currentStep
@@ -27,9 +30,11 @@ export function ImportStepper({ currentStep }: ImportStepperProps) {
               <div
                 className={cn(
                   'flex size-8 items-center justify-center rounded-full border-2 text-sm font-medium transition-colors',
-                  isCompleted && 'border-primary bg-primary text-primary-foreground',
+                  isCompleted &&
+                    'border-primary bg-primary text-primary-foreground',
                   isCurrent && 'border-primary text-primary',
-                  isFuture && 'border-muted-foreground/30 text-muted-foreground/50',
+                  isFuture &&
+                    'border-muted-foreground/30 text-muted-foreground/50',
                 )}
               >
                 {isCompleted ? (

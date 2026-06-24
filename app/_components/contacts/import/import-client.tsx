@@ -17,12 +17,14 @@ interface ImportClientProps {
   companies: CompanyDto[]
   quotaCurrent: number
   quotaLimit: number
+  basePath: string
 }
 
 export function ImportClient({
   companies,
   quotaCurrent,
   quotaLimit,
+  basePath,
 }: ImportClientProps) {
   const [currentStep, setCurrentStep] = useState(0)
   const [parsedData, setParsedData] = useState<ParsedData | null>(null)
@@ -64,6 +66,7 @@ export function ImportClient({
           quotaCurrent={quotaCurrent}
           quotaLimit={quotaLimit}
           onBack={goBack}
+          basePath={basePath}
         />
       )}
     </div>

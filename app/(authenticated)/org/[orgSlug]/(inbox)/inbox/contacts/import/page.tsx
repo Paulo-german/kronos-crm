@@ -5,5 +5,5 @@ type PageProps = {
 }
 
 export default async function Page({ params }: PageProps) {
-  return ContactImportPage({ params, basePath: 'crm' })
+  return ContactImportPage({ params, basePath: 'inbox' })
 }

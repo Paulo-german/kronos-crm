@@ -82,7 +82,12 @@ interface MappingStepProps {
   onBack: () => void
 }
 
-export function MappingStep({ headers, rows, onMapped, onBack }: MappingStepProps) {
+export function MappingStep({
+  headers,
+  rows,
+  onMapped,
+  onBack,
+}: MappingStepProps) {
   const [mapping, setMapping] = useState<Record<number, FieldValue>>(() =>
     autoDetectMapping(headers),
   )
@@ -120,9 +125,10 @@ export function MappingStep({ headers, rows, onMapped, onBack }: MappingStepProp
         const colIndex = Number(colIndexStr)
         const value = row[colIndex] ?? ''
 
-        mapped[field] = field === 'isDecisionMaker'
-          ? TRUTHY_VALUES.has(value.toLowerCase().trim())
-          : value
+        mapped[field] =
+          field === 'isDecisionMaker'
+            ? TRUTHY_VALUES.has(value.toLowerCase().trim())
+            : value
       }
 
       // Garantir defaults
@@ -148,11 +154,11 @@ export function MappingStep({ headers, rows, onMapped, onBack }: MappingStepProp
 
         <div className="space-y-3">
           {headers.map((header, index) => (
-            <div
-              key={header}
-              className="flex items-center gap-4"
-            >
-              <span className="w-48 truncate text-sm font-medium" title={header}>
+            <div key={header} className="flex items-center gap-4">
+              <span
+                className="w-48 truncate text-sm font-medium"
+                title={header}
+              >
                 {header}
               </span>
               <Select
@@ -180,7 +186,8 @@ export function MappingStep({ headers, rows, onMapped, onBack }: MappingStepProp
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              O campo &quot;Nome&quot; é obrigatório. Mapeie uma coluna para ele.
+              O campo &quot;Nome&quot; é obrigatório. Mapeie uma coluna para
+              ele.
             </AlertDescription>
           </Alert>
         )}

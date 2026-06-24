@@ -20,7 +20,14 @@ const downloadTemplate = async () => {
 
   const rows = [
     ['Nome', 'Email', 'Telefone', 'Empresa', 'Cargo', 'Decisor'],
-    ['Maria Silva', 'maria@empresa.com', '11999990000', 'Empresa Ltda', 'Gerente', 'Sim'],
+    [
+      'Maria Silva',
+      'maria@empresa.com',
+      '11999990000',
+      'Empresa Ltda',
+      'Gerente',
+      'Sim',
+    ],
     ['João Souza', 'joao@cliente.com.br', '21988887777', '', 'Diretor', 'Não'],
   ]
 
@@ -42,7 +49,9 @@ export function UploadStep({ onParsed }: UploadStepProps) {
       setFileName(file.name)
 
       const validExtensions = ['.csv', '.xlsx', '.xls']
-      const extension = file.name.toLowerCase().slice(file.name.lastIndexOf('.'))
+      const extension = file.name
+        .toLowerCase()
+        .slice(file.name.lastIndexOf('.'))
 
       if (!validExtensions.includes(extension)) {
         setError('Formato inválido. Envie um arquivo CSV, XLSX ou XLS.')
@@ -61,7 +70,10 @@ export function UploadStep({ onParsed }: UploadStepProps) {
 
         // Filtrar linhas completamente vazias
         const data = rawData.filter((row) =>
-          row.some((cell) => cell !== undefined && cell !== null && String(cell).trim() !== ''),
+          row.some(
+            (cell) =>
+              cell !== undefined && cell !== null && String(cell).trim() !== '',
+          ),
         )
 
         if (data.length < 2) {
@@ -75,7 +87,9 @@ export function UploadStep({ onParsed }: UploadStepProps) {
         const rows = data.slice(1).map((row) =>
           headers.map((_, colIndex) => {
             const cell = row[colIndex]
-            return cell !== undefined && cell !== null ? String(cell).trim() : ''
+            return cell !== undefined && cell !== null
+              ? String(cell).trim()
+              : ''
           }),
         )
 
@@ -140,9 +154,7 @@ export function UploadStep({ onParsed }: UploadStepProps) {
               <FileSpreadsheet className="h-8 w-8 text-primary" />
               <div>
                 <p className="font-medium">{fileName}</p>
-                <p className="text-sm text-muted-foreground">
-                  Processando...
-                </p>
+                <p className="text-sm text-muted-foreground">Processando...</p>
               </div>
               <Button
                 variant="ghost"
@@ -185,9 +197,7 @@ export function UploadStep({ onParsed }: UploadStepProps) {
           />
         </div>
 
-        {error && (
-          <p className="mt-3 text-sm text-destructive">{error}</p>
-        )}
+        {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
 
         <div className="mt-4 flex justify-center">
           <Button
@@ -204,4 +214,3 @@ export function UploadStep({ onParsed }: UploadStepProps) {
     </Card>
   )
 }
-
