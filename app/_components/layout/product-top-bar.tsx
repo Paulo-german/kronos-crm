@@ -46,6 +46,7 @@ export const ProductTopBar = ({
           orgSlug={orgSlug}
           currentProduct={product}
           activeModules={activeModules}
+          isSuperAdmin={isSuperAdmin}
         />
       </div>
 

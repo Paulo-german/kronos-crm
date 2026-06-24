@@ -76,23 +76,28 @@ interface ProductSwitcherProps {
   orgSlug: string
   currentProduct: Product
   activeModules: ModuleSlug[]
+  isSuperAdmin: boolean
 }
 
 export const ProductSwitcher = ({
   orgSlug,
   currentProduct,
   activeModules,
+  isSuperAdmin,
 }: ProductSwitcherProps) => {
   const current = PRODUCT_CONFIG[currentProduct]
+  // Prospection ainda não está liberado: clicável só para superadmin; os demais
+  // veem "EM BREVE". Os outros produtos seguem o gating normal por módulo.
   const availableProducts = (
     Object.entries(PRODUCT_CONFIG) as [
       Product,
       (typeof PRODUCT_CONFIG)[Product],
     ][]
-  ).filter(
-    ([, config]) =>
-      config.module === null || activeModules.includes(config.module),
-  )
+  ).filter(([key, config]) => {
+    if (key === 'prospection') return isSuperAdmin
+    return config.module === null || activeModules.includes(config.module)
+  })
+  const showProspectionSoon = !isSuperAdmin
 
   return (
     <DropdownMenu>
@@ -135,6 +140,19 @@ export const ProductSwitcher = ({
             </Link>
           </DropdownMenuItem>
         ))}
+        {showProspectionSoon && (
+          <DropdownMenuItem className="pointer-events-none cursor-default py-2.5 text-white">
+            <span
+              className={`mr-3 flex size-7 shrink-0 items-center justify-center rounded-md ${PRODUCT_CONFIG.prospection.iconClass}`}
+            >
+              {PRODUCT_CONFIG.prospection.icon}
+            </span>
+            {PRODUCT_CONFIG.prospection.label}
+            <span className="ml-auto rounded bg-kronos-cyan/10 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-kronos-cyan">
+              EM BREVE
+            </span>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator className="bg-white/10" />
         <DropdownMenuItem className="pointer-events-none cursor-default py-2.5 text-white">
           <span className="mr-3 flex size-7 shrink-0 items-center justify-center rounded-md bg-white/5 text-white">
