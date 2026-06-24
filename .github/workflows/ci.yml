@@ -38,3 +38,6 @@ jobs:
 
       - name: Unit test (health score)
         run: pnpm tsx trigger/lib/__tests__/compute-health-score.test.ts
+
+      - name: Unit test (webhook event resolver)
+        run: pnpm tsx trigger/lib/__tests__/webhook-event-resolver.test.ts

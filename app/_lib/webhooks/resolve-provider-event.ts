@@ -100,22 +100,25 @@ function normalizeWooStatus(status: string): string | null {
   return null
 }
 
-// Monetizze: status numérico em venda.codigo_status (1..5). Abandono (7) e
-// cancelamento de assinatura (103) só aparecem em tipoEvento.codigo.
+// Monetizze: tipoEvento.codigo é o sinal primário (cobre tudo, inclusive abandono=7
+// e assinatura=103, que não têm `venda` no payload). venda.codigo_status (mesmos
+// códigos 1-5) é o fallback quando o postback não traz tipoEvento. Qualquer um dos
+// dois pode faltar — por isso o sinal primário aqui pode chegar null.
 function matchMonetizze(
   catalog: ProviderEventCatalog,
-  statusCode: string,
+  tipoEventoSignal: string | null,
   payload: unknown,
 ): ProviderEvent | null {
-  const secondaryPath = catalog.secondarySource
-  if (secondaryPath) {
-    const tipoEvento = safeGetPath(payload, secondaryPath)
-    if (tipoEvento) {
-      const tipoMatch = findEvent(catalog, `tipoEvento:${tipoEvento}`)
-      if (tipoMatch) return tipoMatch
-    }
+  if (tipoEventoSignal) {
+    const direct = findEvent(catalog, tipoEventoSignal)
+    if (direct) return direct
   }
-  return findEvent(catalog, statusCode)
+  const fallbackPath = catalog.secondarySource
+  if (fallbackPath) {
+    const statusCode = safeGetPath(payload, fallbackPath)
+    if (statusCode) return findEvent(catalog, statusCode)
+  }
+  return null
 }
 
 export function resolveProviderEvent(
@@ -129,10 +132,10 @@ export function resolveProviderEvent(
     return { detectedEventId: null, category: null, noCatalog: true }
   }
 
+  // primarySignal pode ser null: a maioria dos provedores não resolve sem ele, mas
+  // Monetizze tem um fallback (venda.codigo_status) — por isso a decisão de desistir
+  // fica com o matcher de cada provedor, não num early-return aqui.
   const primarySignal = readPrimarySignal(catalog, headers, payload)
-  if (!primarySignal) {
-    return { detectedEventId: null, category: null, noCatalog: false }
-  }
 
   const matched = matchEventByProvider(
     platform,
@@ -152,18 +155,20 @@ export function resolveProviderEvent(
 }
 
 // Discriminação secundária por provedor (Woo/Monetizze). Demais provedores
-// resolvem direto pelo sinal primário.
+// resolvem direto pelo sinal primário. Monetizze é o único que tolera sinal
+// primário ausente (tem fallback interno); os demais não resolvem sem ele.
 function matchEventByProvider(
   platform: WebhookPlatform,
   catalog: ProviderEventCatalog,
-  primarySignal: string,
+  primarySignal: string | null,
   payload: unknown,
 ): ProviderEvent | null {
-  if (platform === 'WOOCOMMERCE') {
-    return matchWooCommerce(catalog, primarySignal, payload)
-  }
   if (platform === 'MONETIZZE') {
     return matchMonetizze(catalog, primarySignal, payload)
+  }
+  if (!primarySignal) return null
+  if (platform === 'WOOCOMMERCE') {
+    return matchWooCommerce(catalog, primarySignal, payload)
   }
   return findEvent(catalog, primarySignal)
 }

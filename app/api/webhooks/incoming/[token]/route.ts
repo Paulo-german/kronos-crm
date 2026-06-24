@@ -101,10 +101,18 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       }
     }
 
-    // 6. Parse JSON — JSON inválido é registrado como ERROR mas retorna 200 pra evitar retry loop
+    // 6. Parse do corpo — JSON puro, ou form-encoded com o postback no campo `json`
+    // (Monetizze). Body inválido é registrado como ERROR mas retorna 200 pra evitar
+    // retry loop. O parser é desacoplado em parse-webhook-payload.ts.
     let payload: unknown = null
     try {
-      payload = JSON.parse(rawBody)
+      const { parseWebhookPayload } =
+        await import('@/_lib/webhooks/parse-webhook-payload')
+      payload = parseWebhookPayload({
+        rawBody,
+        contentType: request.headers.get('content-type'),
+        platform: source.platform,
+      })
     } catch {
       const log = await persistWebhookLog({
         webhookSourceId: source.id,

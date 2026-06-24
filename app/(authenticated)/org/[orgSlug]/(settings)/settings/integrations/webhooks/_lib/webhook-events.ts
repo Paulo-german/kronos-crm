@@ -317,9 +317,12 @@ export const WEBHOOK_EVENT_CATALOG: Partial<
 
   MONETIZZE: {
     mode: 'payloadField',
-    source: 'venda.codigo_status',
-    // Abandono (7) e cancelamento de assinatura (103) só vêm em tipoEvento.codigo.
-    secondarySource: 'tipoEvento.codigo',
+    // tipoEvento.codigo é o sinal primário: cobre TODOS os casos, inclusive abandono (7)
+    // e assinatura (101-104), que não têm `venda` no payload. venda.codigo_status fica
+    // como fallback (mesmos códigos 1-5) para postbacks que não tragam tipoEvento.
+    // Fonte: docs/INTEGRATIONS-WEBHOOK-EVENTS.md (revisão 2, via exemplo.php oficial).
+    source: 'tipoEvento.codigo',
+    secondarySource: 'venda.codigo_status',
     events: [
       {
         id: '1',
@@ -353,17 +356,17 @@ export const WEBHOOK_EVENT_CATALOG: Partial<
         category: 'refund_chargeback',
       },
       {
-        id: 'tipoEvento:7',
+        id: '7',
         label: 'Carrinho abandonado',
         description:
-          'Dispara quando o comprador abandona o carrinho (identificado por tipoEvento.codigo = 7).',
+          'Dispara quando o comprador abandona o carrinho (tipoEvento.codigo = 7).',
         category: 'abandoned',
       },
       {
-        id: 'tipoEvento:103',
+        id: '103',
         label: 'Assinatura cancelada',
         description:
-          'Dispara quando uma assinatura é cancelada (identificado por tipoEvento.codigo = 103).',
+          'Dispara quando uma assinatura é cancelada (tipoEvento.codigo = 103).',
         category: 'subscription_canceled',
       },
     ],
