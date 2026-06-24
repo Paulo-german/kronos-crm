@@ -115,6 +115,12 @@ async function seedFeaturesAndPlans() {
       type: 'STATIC' as const,
       valueType: 'NUMBER' as const,
     },
+    {
+      key: 'crm.max_segments',
+      name: 'Segmentações',
+      type: 'STATIC' as const,
+      valueType: 'NUMBER' as const,
+    },
   ]
 
   const featureRecords: Record<string, { id: string }> = {}
@@ -386,6 +392,15 @@ async function seedFeaturesAndPlans() {
     {
       planSlug: 'enterprise',
       featureKey: 'crm.max_custom_fields',
+      valueNumber: 50,
+    },
+    // Segmentações (Light = 0 bloqueado; Essential = 10, Scale = 25, Enterprise = 50)
+    { planSlug: 'light', featureKey: 'crm.max_segments', valueNumber: 0 },
+    { planSlug: 'essential', featureKey: 'crm.max_segments', valueNumber: 10 },
+    { planSlug: 'scale', featureKey: 'crm.max_segments', valueNumber: 25 },
+    {
+      planSlug: 'enterprise',
+      featureKey: 'crm.max_segments',
       valueNumber: 50,
     },
   ]

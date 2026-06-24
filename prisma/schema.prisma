@@ -38,6 +38,7 @@ model User {
   professional            Professional?     @relation("ProfessionalUser")
   goals                   Goal[]
   broadcastsCreated       Broadcast[]       @relation("BroadcastCreator")
+  contactSegmentsCreated  ContactSegment[]  @relation("ContactSegmentCreator")
   @@map("users")
 }
 
@@ -131,6 +132,7 @@ model Organization {
   emailBlocklist               EmailBlocklist[]
   dsrRequests                  DsrRequest[]
   broadcasts                   Broadcast[]
+  contactSegments              ContactSegment[]
 
   @@map("organizations")
 }
@@ -1200,12 +1202,16 @@ model Broadcast {
   cancelledAt     DateTime?       @map("cancelled_at")
   // Quem criou — para filtro RBAC de MEMBER
   createdBy       String          @map("created_by")
+  // Segmento que originou o disparo (auditoria). Os recipients são o snapshot
+  // real do envio — apagar o segmento não quebra disparos passados (SetNull).
+  segmentId       String?         @map("segment_id")
   createdAt       DateTime        @default(now()) @map("created_at")
   updatedAt       DateTime        @updatedAt @map("updated_at")
 
   organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   inbox        Inbox                @relation(fields: [inboxId], references: [id], onDelete: Restrict)
   creator      User                 @relation("BroadcastCreator", fields: [createdBy], references: [id])
+  segment      ContactSegment?      @relation(fields: [segmentId], references: [id], onDelete: SetNull)
   recipients   BroadcastRecipient[]
 
   // Index do worker: pegar broadcasts em andamento dentro da janela agendada
@@ -1214,6 +1220,28 @@ model Broadcast {
   @@index([organizationId, status, createdAt(sort: Desc)])
   @@index([organizationId, createdBy, createdAt(sort: Desc)])
   @@map("broadcasts")
+}
+
+// Segmentação: lista DINÂMICA de contatos. Guarda os filtros (shape de
+// ContactFilters), reavaliados a cada uso — não uma lista estática de IDs.
+// Transversal (módulo CRM); usada por disparos e futuras features.
+model ContactSegment {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  name           String
+  description    String?
+  // Filtros nativos salvos no shape de ContactFilters
+  filters        Json
+  createdBy      String   @map("created_by")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  creator      User         @relation("ContactSegmentCreator", fields: [createdBy], references: [id])
+  broadcasts   Broadcast[]
+
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@map("contact_segments")
 }
 
 model BroadcastRecipient {
