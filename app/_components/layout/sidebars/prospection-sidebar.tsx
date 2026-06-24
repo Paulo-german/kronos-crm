@@ -1,4 +1,12 @@
-import { Home, Users, Megaphone, FileText, BarChart3 } from 'lucide-react'
+import {
+  Home,
+  Users,
+  Megaphone,
+  FileText,
+  BarChart3,
+  MessageCircle,
+  Filter,
+} from 'lucide-react'
 import { NavItem } from '@/_components/layout/sidebars/nav-item'
 
 interface ProspectionSidebarProps {
@@ -22,6 +30,11 @@ export const ProspectionSidebar = ({ orgSlug }: ProspectionSidebarProps) => {
           label="Contatos"
         />
         <NavItem
+          href={`${base}/segments`}
+          icon={<Filter className="h-4 w-4" />}
+          label="Segmentações"
+        />
+        <NavItem
           href={`${base}/reports`}
           icon={<BarChart3 className="h-4 w-4" />}
           label="Analisar"
@@ -38,6 +51,11 @@ export const ProspectionSidebar = ({ orgSlug }: ProspectionSidebarProps) => {
           href={`${base}/templates`}
           icon={<FileText className="h-4 w-4" />}
           label="Templates"
+        />
+        <NavItem
+          href={`${base}/channels`}
+          icon={<MessageCircle className="h-4 w-4" />}
+          label="Canais"
         />
       </nav>
     </aside>
