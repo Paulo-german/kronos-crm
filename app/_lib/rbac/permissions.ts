@@ -215,6 +215,14 @@ const PERMISSION_MATRIX: Record<
     delete: ['OWNER', 'ADMIN', 'SUPPORT'], // = cancelar
     transfer: [],
   },
+  // Segmentações: gerência só OWNER/ADMIN (espelha Campos Personalizados)
+  segment: {
+    create: ['OWNER', 'ADMIN'],
+    read: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'],
+    update: ['OWNER', 'ADMIN'],
+    delete: ['OWNER', 'ADMIN'],
+    transfer: [],
+  },
 }
 
 /**

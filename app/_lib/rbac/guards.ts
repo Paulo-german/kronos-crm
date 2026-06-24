@@ -167,6 +167,7 @@ function getEntityLabel(entity: RBACEntity): string {
     captureForm: 'formulários de captura',
     // Disparos em massa
     broadcast: 'disparos em massa',
+    segment: 'segmentações',
   }
   return labels[entity]
 }
