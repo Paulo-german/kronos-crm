@@ -10,6 +10,7 @@ import { Button } from '@/_components/ui/button'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getBroadcasts } from '@/_data-access/broadcast/get-broadcasts'
 import { getEligibleInboxes } from '@/_data-access/broadcast/get-eligible-inboxes'
+import { getSegments } from '@/_data-access/segment/get-segments'
 import { BroadcastsListClient } from './_components/broadcasts-list-client'
 import { BroadcastsToolbar } from './_components/broadcasts-toolbar'
 import { BroadcastsPagination } from './_components/broadcasts-pagination'
@@ -48,9 +49,10 @@ const BroadcastsPage = async ({
   const status = parseStatus(statusParam)
   const search = q ?? ''
 
-  const [broadcasts, inboxes] = await Promise.all([
+  const [broadcasts, inboxes, segments] = await Promise.all([
     getBroadcasts(ctx, { page, pageSize: PAGE_SIZE, status, search }),
     getEligibleInboxes(ctx),
+    getSegments(ctx),
   ])
 
   return (
@@ -65,6 +67,7 @@ const BroadcastsPage = async ({
         <HeaderRight>
           <CreateBroadcastSheet
             inboxes={inboxes}
+            segments={segments}
             trigger={
               <Button>
                 <Plus className="size-4" />

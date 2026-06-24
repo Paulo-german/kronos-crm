@@ -1,13 +1,14 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useMemo, useState } from 'react'
+import Link from 'next/link'
+import { useParams, useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAction } from 'next-safe-action/hooks'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Users } from 'lucide-react'
 import {
   Sheet,
   SheetContent,
@@ -36,11 +37,16 @@ import { Input } from '@/_components/ui/input'
 import { Textarea } from '@/_components/ui/textarea'
 import { Button } from '@/_components/ui/button'
 import { Label } from '@/_components/ui/label'
+import { RadioGroup, RadioGroupItem } from '@/_components/ui/radio-group'
 import { createBroadcast } from '@/_actions/broadcast/create-broadcast'
 import { listWhatsAppTemplates } from '@/_actions/inbox/list-whatsapp-templates'
+import { previewSegmentCount } from '@/_actions/segment/preview-segment-count'
 import type { EligibleInbox } from '@/_data-access/broadcast/get-eligible-inboxes'
+import type { SegmentDto } from '@/_data-access/segment/get-segments'
 import type { BroadcastContactOption } from '@/_actions/broadcast/search-broadcast-contacts'
 import type { MetaTemplate } from '@/_lib/meta/types'
+import { extractVariableIndices } from '@/_lib/meta/template-variables'
+import { TemplatePreview } from '@/_components/whatsapp/template-preview'
 import { getConnectionLabel } from '../../_lib/broadcast-labels'
 import { ContactMultiSelect } from './contact-multi-select'
 
@@ -64,21 +70,31 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>
 
+type RecipientMode = 'manual' | 'segment'
+
 interface CreateBroadcastSheetProps {
   trigger: React.ReactNode
   inboxes: EligibleInbox[]
+  segments: SegmentDto[]
 }
 
 export const CreateBroadcastSheet = ({
   trigger,
   inboxes,
+  segments,
 }: CreateBroadcastSheetProps) => {
   const router = useRouter()
+  const { orgSlug } = useParams<{ orgSlug: string }>()
   const [isOpen, setIsOpen] = useState(false)
+  const [recipientMode, setRecipientMode] = useState<RecipientMode>('manual')
   const [selectedContacts, setSelectedContacts] = useState<
     BroadcastContactOption[]
   >([])
+  const [segmentId, setSegmentId] = useState('')
   const [templates, setTemplates] = useState<MetaTemplate[]>([])
+  // Valores das variáveis {{N}} do corpo do template, fixos para todos os
+  // contatos do disparo (v1). Persistidos como templateParams na action.
+  const [bodyValues, setBodyValues] = useState<string[]>([])
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -102,6 +118,41 @@ export const CreateBroadcastSheet = ({
   const selectedInbox = inboxes.find((inbox) => inbox.id === inboxId)
   const isMeta = selectedInbox?.connectionType === 'META_CLOUD'
 
+  const selectedTemplate = useMemo(
+    () =>
+      templates.find(
+        (template) =>
+          template.name === templateName &&
+          template.language === templateLanguage,
+      ) ?? null,
+    [templates, templateName, templateLanguage],
+  )
+
+  const bodyComponent = selectedTemplate?.components.find(
+    (component) => component.type === 'BODY',
+  )
+
+  // Índices das variáveis {{N}} no corpo do template selecionado
+  const bodyVariableIndices = useMemo(
+    () =>
+      bodyComponent?.text ? extractVariableIndices(bodyComponent.text) : [],
+    [bodyComponent],
+  )
+
+  // Variáveis no cabeçalho de texto ainda não são suportadas no disparo (v1):
+  // templateParams é uma lista única (corpo). Detectamos para bloquear o envio
+  // e evitar um disparo que a Meta rejeitaria.
+  const headerComponent = selectedTemplate?.components.find(
+    (component) => component.type === 'HEADER' && component.format === 'TEXT',
+  )
+  const hasHeaderVariables = useMemo(
+    () =>
+      headerComponent?.text
+        ? extractVariableIndices(headerComponent.text).length > 0
+        : false,
+    [headerComponent],
+  )
+
   const { execute: fetchTemplates, isPending: isFetchingTemplates } = useAction(
     listWhatsAppTemplates,
     {
@@ -117,6 +168,22 @@ export const CreateBroadcastSheet = ({
     },
   )
 
+  const {
+    execute: fetchSegmentCount,
+    result: segmentCountResult,
+    isPending: isCountingSegment,
+  } = useAction(previewSegmentCount)
+
+  const segmentCount = segmentCountResult.data?.count
+
+  const handleSegmentChange = (value: string) => {
+    setSegmentId(value)
+    const segment = segments.find((item) => item.id === value)
+    if (segment) {
+      fetchSegmentCount(segment.filters)
+    }
+  }
+
   const { execute, isPending } = useAction(createBroadcast, {
     onSuccess: ({ data }) => {
       if (!data?.success) return
@@ -128,7 +195,10 @@ export const CreateBroadcastSheet = ({
       toast.success(`Disparo criado — ${parts.join(', ')}.`)
       form.reset()
       setSelectedContacts([])
+      setSegmentId('')
+      setRecipientMode('manual')
       setTemplates([])
+      setBodyValues([])
       setIsOpen(false)
       router.refresh()
     },
@@ -142,6 +212,7 @@ export const CreateBroadcastSheet = ({
     form.setValue('templateName', '')
     form.setValue('templateLanguage', '')
     setTemplates([])
+    setBodyValues([])
     const inbox = inboxes.find((item) => item.id === value)
     if (inbox?.connectionType === 'META_CLOUD') {
       fetchTemplates({ inboxId: value })
@@ -152,16 +223,46 @@ export const CreateBroadcastSheet = ({
     const [name, language] = value.split('|')
     form.setValue('templateName', name)
     form.setValue('templateLanguage', language)
+    // Reinicia os valores das variáveis dimensionando pelo maior índice {{N}}
+    const template = templates.find(
+      (item) => item.name === name && item.language === language,
+    )
+    const bodyText = template?.components.find(
+      (component) => component.type === 'BODY',
+    )?.text
+    const indices = bodyText ? extractVariableIndices(bodyText) : []
+    const size = indices.length ? Math.max(...indices) : 0
+    setBodyValues(new Array(size).fill(''))
   }
 
   const onSubmit = (values: FormValues) => {
-    if (selectedContacts.length === 0) {
+    const usingSegment = recipientMode === 'segment'
+    if (usingSegment && !segmentId) {
+      toast.error('Selecione um segmento.')
+      return
+    }
+    if (!usingSegment && selectedContacts.length === 0) {
       toast.error('Selecione ao menos um contato.')
       return
     }
     if (isMeta && !values.templateName) {
       toast.error('Selecione um template aprovado.')
       return
+    }
+    if (isMeta && hasHeaderVariables) {
+      toast.error(
+        'Templates com variável no cabeçalho ainda não são suportados em disparos. Escolha outro template.',
+      )
+      return
+    }
+    if (isMeta) {
+      const hasEmptyVariable = bodyVariableIndices.some(
+        (index) => !bodyValues[index - 1]?.trim(),
+      )
+      if (hasEmptyVariable) {
+        toast.error('Preencha todas as variáveis do template.')
+        return
+      }
     }
     if (!isMeta && !values.messageContent?.trim()) {
       form.setError('messageContent', { message: 'Escreva a mensagem.' })
@@ -171,11 +272,16 @@ export const CreateBroadcastSheet = ({
     execute({
       inboxId: values.inboxId,
       name: values.name,
-      contactIds: selectedContacts.map((contact) => contact.id),
+      contactIds: usingSegment
+        ? undefined
+        : selectedContacts.map((contact) => contact.id),
+      segmentId: usingSegment ? segmentId : undefined,
       throttleMs: values.throttleMs,
       messageContent: isMeta ? undefined : values.messageContent,
       templateName: isMeta ? values.templateName : undefined,
       templateLanguage: isMeta ? values.templateLanguage : undefined,
+      templateParams:
+        isMeta && bodyVariableIndices.length > 0 ? bodyValues : undefined,
       scheduledFor: values.scheduledFor
         ? new Date(values.scheduledFor)
         : undefined,
@@ -194,9 +300,13 @@ export const CreateBroadcastSheet = ({
         </SheetHeader>
 
         {inboxes.length === 0 ? (
-          <div className="mt-6 rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-            Nenhuma caixa de entrada elegível. Conecte um WhatsApp (Evolution,
-            Meta Cloud ou Z-API) para disparar.
+          <div className="mt-6 space-y-3 rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+            <p>Nenhum canal conectado para disparar.</p>
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/org/${orgSlug}/prospection/channels`}>
+                Conectar canal
+              </Link>
+            </Button>
           </div>
         ) : (
           <Form {...form}>
@@ -253,16 +363,89 @@ export const CreateBroadcastSheet = ({
                 )}
               />
 
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label>Destinatários *</Label>
-                <ContactMultiSelect
-                  selected={selectedContacts}
-                  onChange={setSelectedContacts}
-                />
-                <p className="text-[0.8rem] text-muted-foreground">
-                  Contatos sem telefone, anonimizados ou com opt-out são
-                  ignorados automaticamente.
-                </p>
+                <RadioGroup
+                  value={recipientMode}
+                  onValueChange={(value) =>
+                    setRecipientMode(value as RecipientMode)
+                  }
+                  className="grid grid-cols-2 gap-2"
+                >
+                  <Label
+                    htmlFor="mode-manual"
+                    className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm font-normal [&:has([data-state=checked])]:border-primary/40 [&:has([data-state=checked])]:bg-primary/10"
+                  >
+                    <RadioGroupItem value="manual" id="mode-manual" />
+                    Escolher manualmente
+                  </Label>
+                  <Label
+                    htmlFor="mode-segment"
+                    className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm font-normal [&:has([data-state=checked])]:border-primary/40 [&:has([data-state=checked])]:bg-primary/10"
+                  >
+                    <RadioGroupItem value="segment" id="mode-segment" />
+                    Filtrar por segmento
+                  </Label>
+                </RadioGroup>
+
+                {recipientMode === 'manual' ? (
+                  <>
+                    <ContactMultiSelect
+                      selected={selectedContacts}
+                      onChange={setSelectedContacts}
+                    />
+                    <p className="text-[0.8rem] text-muted-foreground">
+                      Contatos sem telefone, anonimizados ou com opt-out são
+                      ignorados automaticamente.
+                    </p>
+                  </>
+                ) : segments.length === 0 ? (
+                  <div className="space-y-2 rounded-md border border-dashed p-4 text-center text-[0.8rem] text-muted-foreground">
+                    <p>Nenhum segmento criado ainda.</p>
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href={`/org/${orgSlug}/prospection/segments`}>
+                        Criar segmento
+                      </Link>
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <Select
+                      value={segmentId}
+                      onValueChange={handleSegmentChange}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um segmento" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {segments.map((segment) => (
+                          <SelectItem key={segment.id} value={segment.id}>
+                            {segment.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {segmentId && (
+                      <div className="flex items-center gap-1.5 text-[0.8rem] text-muted-foreground">
+                        <Users className="h-3.5 w-3.5" />
+                        {isCountingSegment ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : segmentCount !== undefined ? (
+                          <span>
+                            <span className="font-semibold text-foreground">
+                              {segmentCount.toLocaleString('pt-BR')}
+                            </span>{' '}
+                            contatos elegíveis no momento
+                          </span>
+                        ) : null}
+                      </div>
+                    )}
+                    <p className="text-[0.8rem] text-muted-foreground">
+                      O público é recalculado no envio. Contatos sem telefone,
+                      anonimizados ou com opt-out são ignorados.
+                    </p>
+                  </>
+                )}
               </div>
 
               {isMeta ? (
@@ -305,6 +488,58 @@ export const CreateBroadcastSheet = ({
                     A Meta exige template aprovado para mensagens fora da janela
                     de 24h (o caso de listas frias).
                   </p>
+
+                  {selectedTemplate && hasHeaderVariables && (
+                    <p className="text-[0.8rem] text-destructive">
+                      Este template usa variável no cabeçalho, que ainda não é
+                      suportada em disparos. Escolha um template sem variável no
+                      cabeçalho.
+                    </p>
+                  )}
+
+                  {selectedTemplate && (
+                    <div className="space-y-4 rounded-lg border bg-muted/20 p-4">
+                      {bodyVariableIndices.length > 0 && (
+                        <div className="space-y-3">
+                          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            Variáveis do corpo
+                          </p>
+                          {bodyVariableIndices.map((index) => (
+                            <div key={`body-${index}`} className="space-y-1.5">
+                              <Label className="text-xs">{`{{${index}}}`}</Label>
+                              <Input
+                                value={bodyValues[index - 1] ?? ''}
+                                onChange={(event) => {
+                                  const nextValue = event.target.value
+                                  setBodyValues((previous) => {
+                                    const updated = [...previous]
+                                    updated[index - 1] = nextValue
+                                    return updated
+                                  })
+                                }}
+                                placeholder={`Valor para {{${index}}}`}
+                                className="h-9"
+                              />
+                            </div>
+                          ))}
+                          <p className="text-[0.8rem] text-muted-foreground">
+                            Os mesmos valores são usados para todos os contatos
+                            deste disparo.
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                          Preview
+                        </p>
+                        <TemplatePreview
+                          template={selectedTemplate}
+                          bodyVariableValues={bodyValues}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <FormField

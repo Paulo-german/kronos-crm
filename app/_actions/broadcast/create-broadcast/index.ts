@@ -4,13 +4,20 @@ import {
   BroadcastRecipientStatus,
   BroadcastStatus,
   ConsentEventType,
+  type Prisma,
 } from '@prisma/client'
 import { revalidateTag } from 'next/cache'
 import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
-import { canPerformAction, requirePermission } from '@/_lib/rbac'
+import { canPerformAction, isElevated, requirePermission } from '@/_lib/rbac'
 import { toE164 } from '@/_utils/to-e164'
-import { ALLOWED_BROADCAST_CONNECTIONS, createBroadcastSchema } from '../schema'
+import { buildContactFilterWhere } from '@/_data-access/contact/build-contact-filter-where'
+import type { ContactFilters } from '@/_components/contacts/_lib/contact-filters'
+import {
+  ALLOWED_BROADCAST_CONNECTIONS,
+  MAX_BROADCAST_RECIPIENTS,
+  createBroadcastSchema,
+} from '../schema'
 
 // Provedores cuja prontidão exige conexão ativa confirmada antes do disparo
 const CONNECTION_REQUIRES_EVOLUTION_LINK = 'EVOLUTION'
@@ -74,11 +81,39 @@ export const createBroadcast = orgActionClient
       throw new Error('A mensagem do disparo é obrigatória.')
     }
 
-    // 5. Resolve contatos da org com snapshot do telefone e estado de privacidade.
-    //    SKIPPED (mantém o contador honesto) quando: sem telefone válido,
-    //    contato anonimizado (LGPD/DSR) ou com consentimento retirado (opt-out).
+    // 5. Resolve o conjunto de contatos conforme o modo de seleção.
+    //    Modo manual → ids escolhidos. Modo segmento → filtros salvos resolvidos
+    //    no servidor (RBAC + elegibilidade), nunca confiando em ids do client.
+    const elevated = isElevated(ctx.userRole)
+    let contactWhere: Prisma.ContactWhereInput
+
+    if (data.segmentId) {
+      const segment = await db.contactSegment.findFirst({
+        where: { id: data.segmentId, organizationId: ctx.orgId },
+        select: { filters: true },
+      })
+      if (!segment) {
+        throw new Error('Segmentação não encontrada ou sem acesso.')
+      }
+      const filters = segment.filters as unknown as ContactFilters
+      contactWhere = {
+        organizationId: ctx.orgId,
+        // Elegibilidade (mesma do preview): telefone presente, não anonimizado
+        phone: { not: null },
+        anonymizedAt: null,
+        ...(elevated ? {} : { assignedTo: ctx.userId }),
+        ...buildContactFilterWhere(filters),
+      }
+    } else {
+      contactWhere = {
+        id: { in: data.contactIds ?? [] },
+        organizationId: ctx.orgId,
+        ...(elevated ? {} : { assignedTo: ctx.userId }),
+      }
+    }
+
     const contacts = await db.contact.findMany({
-      where: { id: { in: data.contactIds }, organizationId: ctx.orgId },
+      where: contactWhere,
       select: {
         id: true,
         phone: true,
@@ -89,10 +124,18 @@ export const createBroadcast = orgActionClient
           select: { eventType: true },
         },
       },
+      // Teto de segurança: segmento amplo não pode estourar o limite do disparo
+      take: MAX_BROADCAST_RECIPIENTS + 1,
     })
 
     if (contacts.length === 0) {
       throw new Error('Nenhum contato válido foi encontrado para o disparo.')
+    }
+
+    if (contacts.length > MAX_BROADCAST_RECIPIENTS) {
+      throw new Error(
+        `O segmento resolve mais de ${MAX_BROADCAST_RECIPIENTS.toLocaleString('pt-BR')} contatos. Refine os filtros para reduzir o público.`,
+      )
     }
 
     const recipientsData = contacts.map((contact) => {
@@ -114,8 +157,10 @@ export const createBroadcast = orgActionClient
       (recipient) => recipient.status === BroadcastRecipientStatus.SKIPPED,
     ).length
     const totalRecipients = recipientsData.length
-    // Contatos pedidos que não existem/não são da org — informa para o front avisar
-    const notFoundCount = new Set(data.contactIds).size - recipientsData.length
+    // Contatos pedidos que não existem/não são da org — só no modo manual
+    const notFoundCount = data.contactIds
+      ? new Set(data.contactIds).size - recipientsData.length
+      : 0
 
     // Agendado → SCHEDULED (worker promove na janela); imediato → RUNNING
     const status = data.scheduledFor
@@ -130,6 +175,8 @@ export const createBroadcast = orgActionClient
           // Snapshot do provedor usado (auditoria/dashboards históricos)
           connectionType: inbox.connectionType,
           name: data.name,
+          // Segmento que originou o disparo (auditoria); null no modo manual
+          segmentId: data.segmentId ?? null,
           messageContent: data.messageContent ?? null,
           // Template só para META_CLOUD; demais provedores ficam null
           templateName: isMetaCloud ? data.templateName : null,
