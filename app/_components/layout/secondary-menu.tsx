@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Settings2, Radio, Zap, Shield } from 'lucide-react'
+import { Settings2, Zap, Shield } from 'lucide-react'
 import { Button } from '@/_components/ui/button'
 import { NotificationBell } from '@/_components/layout/notification-bell'
 import { TutorialsPopoverButton } from '@/_components/layout/tutorials-popover-button'
@@ -55,26 +55,6 @@ export const SecondaryMenu = ({
 
   return (
     <div className="flex items-center gap-0.5">
-      {/* Canais — apenas Inbox */}
-      {product === 'inbox' && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-white/70 hover:bg-white/10 hover:text-white"
-              asChild
-            >
-              <Link href={`/org/${orgSlug}/inbox/settings/inboxes`}>
-                <Radio className="size-4" />
-                <span className="sr-only">Canais</span>
-              </Link>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">Canais</TooltipContent>
-        </Tooltip>
-      )}
-
       {/* Créditos IA — apenas Agents */}
       {product === 'agents' && credits && credits.monthlyLimit > 0 && (
         <Tooltip>

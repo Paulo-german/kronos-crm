@@ -15,6 +15,9 @@ import {
   FolderOpen,
   Megaphone,
   FileText,
+  MessageCircle,
+  Inbox,
+  Filter,
 } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/_components/ui/button'
@@ -87,6 +90,12 @@ export const ProductMobileDrawer = ({
           label="Contatos"
           onNavigate={close}
         />
+        <DrawerNavItem
+          href={`/org/${orgSlug}/crm/segments`}
+          icon={<Filter className="h-4 w-4" />}
+          label="Segmentações"
+          onNavigate={close}
+        />
         <div className="mx-3 my-1 h-px bg-border/50" />
         <DrawerNavItem
           href={`/org/${orgSlug}/crm/deals`}
@@ -129,11 +138,23 @@ export const ProductMobileDrawer = ({
           label="Contatos"
           onNavigate={close}
         />
+        <DrawerNavItem
+          href={`/org/${orgSlug}/inbox/segments`}
+          icon={<Filter className="h-4 w-4" />}
+          label="Segmentações"
+          onNavigate={close}
+        />
         <div className="mx-3 my-1 h-px bg-border/50" />
         <DrawerNavItem
           href={`/org/${orgSlug}/inbox`}
           icon={<MessageSquare className="h-4 w-4" />}
           label="Conversas"
+          onNavigate={close}
+        />
+        <DrawerNavItem
+          href={`/org/${orgSlug}/inbox/settings/inboxes`}
+          icon={<Inbox className="h-4 w-4" />}
+          label="Caixas de Entrada"
           onNavigate={close}
         />
         <div className="mx-3 my-1 h-px bg-border/50" />
@@ -157,6 +178,12 @@ export const ProductMobileDrawer = ({
           href={`/org/${orgSlug}/agents/contacts`}
           icon={<Users className="h-4 w-4" />}
           label="Contatos"
+          onNavigate={close}
+        />
+        <DrawerNavItem
+          href={`/org/${orgSlug}/agents/segments`}
+          icon={<Filter className="h-4 w-4" />}
+          label="Segmentações"
           onNavigate={close}
         />
         <div className="mx-3 my-1 h-px bg-border/50" />
@@ -195,6 +222,12 @@ export const ProductMobileDrawer = ({
           label="Contatos"
           onNavigate={close}
         />
+        <DrawerNavItem
+          href={`/org/${orgSlug}/prospection/segments`}
+          icon={<Filter className="h-4 w-4" />}
+          label="Segmentações"
+          onNavigate={close}
+        />
         <div className="mx-3 my-1 h-px bg-border/50" />
         <DrawerNavItem
           href={`/org/${orgSlug}/prospection/broadcasts`}
@@ -206,6 +239,12 @@ export const ProductMobileDrawer = ({
           href={`/org/${orgSlug}/prospection/templates`}
           icon={<FileText className="h-4 w-4" />}
           label="Templates"
+          onNavigate={close}
+        />
+        <DrawerNavItem
+          href={`/org/${orgSlug}/prospection/channels`}
+          icon={<MessageCircle className="h-4 w-4" />}
+          label="Canais"
           onNavigate={close}
         />
         <div className="mx-3 my-1 h-px bg-border/50" />
