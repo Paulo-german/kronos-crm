@@ -6,6 +6,7 @@ import type { Prisma, LifecycleStage } from '@prisma/client'
 import type { RBACContext } from '@/_lib/rbac'
 import { isElevated } from '@/_lib/rbac'
 import type { ContactListParams } from './get-contacts'
+import { buildContactFilterWhere } from './build-contact-filter-where'
 
 export interface ContactsLifecycleCounts extends Record<
   LifecycleStage,
@@ -29,32 +30,9 @@ const fetchCountsFromDb = async (
     organizationId: orgId,
     ...(elevated ? {} : { assignedTo: userId }),
     ...(elevated && params.assignedTo ? { assignedTo: params.assignedTo } : {}),
-    ...(params.companyId ? { companyId: params.companyId } : {}),
-    ...(params.isDecisionMaker !== undefined
-      ? { isDecisionMaker: params.isDecisionMaker }
-      : {}),
-    ...(params.hasDeals !== undefined
-      ? params.hasDeals
-        ? { deals: { some: {} } }
-        : { deals: { none: {} } }
-      : {}),
-    ...(params.customerStatuses?.length
-      ? { customerStatus: { in: params.customerStatuses } }
-      : {}),
-    ...(params.healthScoreMin !== undefined ||
-    params.healthScoreMax !== undefined
-      ? {
-          healthScore: {
-            ...(params.healthScoreMin !== undefined
-              ? { gte: params.healthScoreMin }
-              : {}),
-            ...(params.healthScoreMax !== undefined
-              ? { lte: params.healthScoreMax }
-              : {}),
-            not: null,
-          },
-        }
-      : {}),
+    // Filtros nativos compartilhados, exceto lifecycleStages (a contagem
+    // ignora esse filtro de propósito — cada tab conta o próprio estágio)
+    ...buildContactFilterWhere({ ...params, lifecycleStages: undefined }),
     ...(params.search.trim()
       ? {
           OR: [

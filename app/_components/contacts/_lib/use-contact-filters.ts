@@ -4,18 +4,23 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { useCallback, useMemo } from 'react'
 import { LifecycleStage, CustomerStatus } from '@prisma/client'
 import type { ContactFilters } from './contact-filters'
+import { countActiveContactFilters } from './contact-filters'
 
 const VALID_STAGES = new Set<string>(Object.values(LifecycleStage))
 const VALID_STATUSES = new Set<string>(Object.values(CustomerStatus))
 
 function parseCsvStages(csv: string | null): LifecycleStage[] {
   if (!csv) return []
-  return csv.split(',').filter((value): value is LifecycleStage => VALID_STAGES.has(value))
+  return csv
+    .split(',')
+    .filter((value): value is LifecycleStage => VALID_STAGES.has(value))
 }
 
 function parseCsvStatuses(csv: string | null): CustomerStatus[] {
   if (!csv) return []
-  return csv.split(',').filter((value): value is CustomerStatus => VALID_STATUSES.has(value))
+  return csv
+    .split(',')
+    .filter((value): value is CustomerStatus => VALID_STATUSES.has(value))
 }
 
 function parseScore(raw: string | null): number | null {
@@ -69,7 +74,10 @@ export function useContactFilters() {
         params.delete('companyId')
       }
 
-      if (merged.isDecisionMaker !== null && merged.isDecisionMaker !== undefined) {
+      if (
+        merged.isDecisionMaker !== null &&
+        merged.isDecisionMaker !== undefined
+      ) {
         params.set('isDecisionMaker', String(merged.isDecisionMaker))
       } else {
         params.delete('isDecisionMaker')
@@ -93,13 +101,19 @@ export function useContactFilters() {
         params.delete('customerStatuses')
       }
 
-      if (merged.healthScoreMin !== null && merged.healthScoreMin !== undefined) {
+      if (
+        merged.healthScoreMin !== null &&
+        merged.healthScoreMin !== undefined
+      ) {
         params.set('healthScoreMin', String(merged.healthScoreMin))
       } else {
         params.delete('healthScoreMin')
       }
 
-      if (merged.healthScoreMax !== null && merged.healthScoreMax !== undefined) {
+      if (
+        merged.healthScoreMax !== null &&
+        merged.healthScoreMax !== undefined
+      ) {
         params.set('healthScoreMax', String(merged.healthScoreMax))
       } else {
         params.delete('healthScoreMax')
@@ -125,16 +139,10 @@ export function useContactFilters() {
     router.replace(`${pathname}?${params.toString()}`, { scroll: false })
   }, [searchParams, router, pathname])
 
-  const activeFilterCount = useMemo(() => {
-    let count = 0
-    if (filters.companyId) count++
-    if (filters.isDecisionMaker !== null) count++
-    if (filters.hasDeals !== null) count++
-    if (filters.lifecycleStages.length > 0) count++
-    if (filters.customerStatuses.length > 0) count++
-    if (filters.healthScoreMin !== null || filters.healthScoreMax !== null) count++
-    return count
-  }, [filters])
+  const activeFilterCount = useMemo(
+    () => countActiveContactFilters(filters),
+    [filters],
+  )
 
   return {
     filters,
