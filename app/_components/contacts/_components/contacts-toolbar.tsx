@@ -15,6 +15,7 @@ import {
 } from '@/_components/ui/select'
 import { ContactsFiltersSheet } from './contacts-filters-sheet'
 import { ContactFilterBadges } from './contact-filter-badges'
+import { ExportContactsButton } from './export-contacts-button'
 import CreateContactButton from './create-contact-button'
 import type { ContactFilters } from '../_lib/contact-filters'
 import { useContactBasePath } from '../_lib/contact-capabilities-context'
@@ -199,6 +200,16 @@ export function ContactsToolbar({
         />
 
         <div className="ml-auto flex items-center gap-2">
+          <ExportContactsButton
+            filters={filters}
+            search={searchFromUrl}
+            assignedTo={
+              !isMember && assignedToFromUrl !== 'all'
+                ? assignedToFromUrl
+                : undefined
+            }
+          />
+
           <Button variant="outline" asChild>
             {/* Import é transversal: a rota existe em cada produto que tem contatos */}
             <Link href={`/org/${orgSlug}/${basePath}/contacts/import`}>
