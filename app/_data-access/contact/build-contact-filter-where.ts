@@ -1,4 +1,5 @@
 import type { Prisma, LifecycleStage, CustomerStatus } from '@prisma/client'
+import { endOfDay } from 'date-fns'
 
 /**
  * Shape de entrada dos filtros nativos de contato. Aceita tanto `null`
@@ -13,6 +14,9 @@ export interface ContactFilterInput {
   customerStatuses?: CustomerStatus[]
   healthScoreMin?: number | null
   healthScoreMax?: number | null
+  // Intervalo de data de criação (ISO 'yyyy-MM-dd')
+  createdAtFrom?: string | null
+  createdAtTo?: string | null
 }
 
 /**
@@ -58,6 +62,20 @@ export function buildContactFilterWhere(
               ? { lte: filters.healthScoreMax }
               : {}),
             not: null,
+          },
+        }
+      : {}),
+    // Filtro de data de criação (intervalo). O limite superior usa endOfDay
+    // para incluir o dia inteiro selecionado (mesmo padrão dos deals).
+    ...(filters.createdAtFrom || filters.createdAtTo
+      ? {
+          createdAt: {
+            ...(filters.createdAtFrom
+              ? { gte: new Date(filters.createdAtFrom) }
+              : {}),
+            ...(filters.createdAtTo
+              ? { lte: endOfDay(new Date(filters.createdAtTo)) }
+              : {}),
           },
         }
       : {}),

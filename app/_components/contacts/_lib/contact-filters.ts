@@ -8,6 +8,9 @@ export interface ContactFilters {
   customerStatuses: CustomerStatus[]
   healthScoreMin: number | null
   healthScoreMax: number | null
+  // Intervalo de data de criação (ISO 'yyyy-MM-dd'); null = limite ausente
+  createdAtFrom: string | null
+  createdAtTo: string | null
 }
 
 export const DEFAULT_CONTACT_FILTERS: ContactFilters = {
@@ -18,6 +21,8 @@ export const DEFAULT_CONTACT_FILTERS: ContactFilters = {
   customerStatuses: [],
   healthScoreMin: null,
   healthScoreMax: null,
+  createdAtFrom: null,
+  createdAtTo: null,
 }
 
 /** Conta quantos grupos de filtro estão ativos (reuso: hook de URL e segmentos) */
@@ -30,5 +35,6 @@ export function countActiveContactFilters(filters: ContactFilters): number {
   if (filters.customerStatuses.length > 0) count++
   if (filters.healthScoreMin !== null || filters.healthScoreMax !== null)
     count++
+  if (filters.createdAtFrom !== null || filters.createdAtTo !== null) count++
   return count
 }

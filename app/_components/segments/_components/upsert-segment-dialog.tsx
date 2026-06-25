@@ -172,6 +172,7 @@ export function UpsertSegmentDialog({
                 filters={filters}
                 onChange={setFilters}
                 isScoreEnabled={isScoreEnabled}
+                showCreatedAt
               />
             </div>
           </div>

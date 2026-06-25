@@ -1,10 +1,12 @@
 import {
   Building2,
+  CalendarRange,
   Gauge,
   Handshake,
   UserCheck,
   type LucideIcon,
 } from 'lucide-react'
+import { format } from 'date-fns'
 import { LIFECYCLE_STAGE_CONFIG } from '@/_lib/lifecycle/lifecycle-stage-config'
 import { CUSTOMER_STATUS_CONFIG } from '@/_lib/lifecycle/customer-status-config'
 import type { ContactFilters } from '@/_components/contacts/_lib/contact-filters'
@@ -74,6 +76,27 @@ export function describeContactFilters(filters: ContactFilters): FilterChip[] {
       key: 'deals',
       label: filters.hasDeals ? 'Com negócios' : 'Sem negócios',
       icon: Handshake,
+    })
+  }
+
+  const { createdAtFrom, createdAtTo } = filters
+  if (createdAtFrom && createdAtTo) {
+    chips.push({
+      key: 'created',
+      label: `Criado ${format(new Date(createdAtFrom), 'dd/MM/yy')} – ${format(new Date(createdAtTo), 'dd/MM/yy')}`,
+      icon: CalendarRange,
+    })
+  } else if (createdAtFrom) {
+    chips.push({
+      key: 'created',
+      label: `Criado a partir de ${format(new Date(createdAtFrom), 'dd/MM/yy')}`,
+      icon: CalendarRange,
+    })
+  } else if (createdAtTo) {
+    chips.push({
+      key: 'created',
+      label: `Criado até ${format(new Date(createdAtTo), 'dd/MM/yy')}`,
+      icon: CalendarRange,
     })
   }
 

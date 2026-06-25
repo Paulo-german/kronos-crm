@@ -26,6 +26,9 @@ export const contactFiltersSchema = z.object({
     .max(HEALTH_SCORE_MAX)
     .nullable()
     .default(null),
+  // Intervalo de data de criação (ISO 'yyyy-MM-dd')
+  createdAtFrom: z.string().nullable().default(null),
+  createdAtTo: z.string().nullable().default(null),
 })
 
 export const createSegmentSchema = z.object({

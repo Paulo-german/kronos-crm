@@ -1,10 +1,12 @@
 'use client'
 
 import { InfoIcon } from 'lucide-react'
+import { format } from 'date-fns'
 import { CustomerStatus, LifecycleStage } from '@prisma/client'
 import { Checkbox } from '@/_components/ui/checkbox'
 import { Input } from '@/_components/ui/input'
 import { Label } from '@/_components/ui/label'
+import { DateRangePicker } from '@/_components/ui/date-range-picker'
 import {
   Tooltip,
   TooltipContent,
@@ -26,6 +28,11 @@ interface ContactFilterControlsProps {
   /** Chamado a cada alteração com o conjunto completo de filtros */
   onChange: (filters: ContactFilters) => void
   isScoreEnabled: boolean
+  /**
+   * Exibe a seção de data de criação. Habilitado nas segmentações; off na
+   * toolbar de contatos (que ainda não persiste esse filtro na URL).
+   */
+  showCreatedAt?: boolean
 }
 
 /**
@@ -38,8 +45,28 @@ export function ContactFilterControls({
   filters,
   onChange,
   isScoreEnabled,
+  showCreatedAt = false,
 }: ContactFilterControlsProps) {
   const { deals: showDeals } = useContactCapabilities()
+
+  // Converte o intervalo de strings ISO em DateRange (e vice-versa) na borda da UI
+  const createdAtRange =
+    filters.createdAtFrom || filters.createdAtTo
+      ? {
+          from: filters.createdAtFrom
+            ? new Date(filters.createdAtFrom)
+            : undefined,
+          to: filters.createdAtTo ? new Date(filters.createdAtTo) : undefined,
+        }
+      : undefined
+
+  const updateCreatedAtRange = (from?: Date, to?: Date) => {
+    onChange({
+      ...filters,
+      createdAtFrom: from ? format(from, 'yyyy-MM-dd') : null,
+      createdAtTo: to ? format(to, 'yyyy-MM-dd') : null,
+    })
+  }
 
   /** Alterna um filtro boolean exclusivo — clica novamente para deselecionar */
   const toggleBooleanFilter = (
@@ -286,6 +313,29 @@ export function ContactFilterControls({
                 </label>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Filtro de Data de Criação — intervalo de/até */}
+        {showCreatedAt && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-1.5">
+              <Label className="text-sm font-semibold">Data de Criação</Label>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <InfoIcon className="size-3.5 cursor-help text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-56">
+                  Filtra contatos pela data em que entraram na base. Deixe vazio
+                  para ignorar este critério.
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <DateRangePicker
+              value={createdAtRange}
+              onChange={(range) => updateCreatedAtRange(range?.from, range?.to)}
+              placeholder="Selecione um período"
+            />
           </div>
         )}
       </div>

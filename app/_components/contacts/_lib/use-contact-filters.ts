@@ -57,6 +57,9 @@ export function useContactFilters() {
       customerStatuses: parseCsvStatuses(searchParams.get('customerStatuses')),
       healthScoreMin: parseScore(searchParams.get('healthScoreMin')),
       healthScoreMax: parseScore(searchParams.get('healthScoreMax')),
+      // Filtro de data de criação é exclusivo das segmentações por enquanto
+      createdAtFrom: null,
+      createdAtTo: null,
     }
   }, [searchParams])
 
