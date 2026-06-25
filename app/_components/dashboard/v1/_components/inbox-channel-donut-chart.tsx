@@ -3,6 +3,7 @@
 import { PieChart as PieChartIcon } from 'lucide-react'
 import { PieChart, Pie, Label } from 'recharts'
 import type { ChannelDistribution } from '@/_data-access/dashboard'
+import { formatDurationMs } from '@/_utils/format-duration-ms'
 import {
   type ChartConfig,
   ChartContainer,
@@ -109,7 +110,7 @@ export function InboxChannelDonutChart({ data }: InboxChannelDonutChartProps) {
         </PieChart>
       </ChartContainer>
 
-      {/* Legenda */}
+      {/* Legenda — inclui o tempo médio de 1ª resposta por canal (benchmark) */}
       <div className="flex flex-col gap-1.5 text-sm">
         {chartData.map((entry) => (
           <div key={entry.channel} className="flex items-center gap-2">
@@ -118,6 +119,11 @@ export function InboxChannelDonutChart({ data }: InboxChannelDonutChartProps) {
               style={{ backgroundColor: entry.fill }}
             />
             <span className="text-muted-foreground">{entry.label}</span>
+            {entry.avgFirstResponseTimeMs != null && (
+              <span className="text-[10px] text-muted-foreground/70">
+                · resp. {formatDurationMs(entry.avgFirstResponseTimeMs)}
+              </span>
+            )}
             <span className="ml-auto font-medium tabular-nums">
               {entry.count}
             </span>

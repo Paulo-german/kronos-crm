@@ -4,6 +4,9 @@ import { getTopLabels } from '@/_data-access/dashboard'
 import type { DateRange, InboxDashboardFilters } from '@/_data-access/dashboard'
 import { Card, CardContent, CardHeader, CardTitle } from '@/_components/ui/card'
 import { Badge } from '@/_components/ui/badge'
+import { InfoTooltip } from '@/_components/ui/info-tooltip'
+import { cn } from '@/_lib/utils'
+import { getLabelColor } from '@/_lib/constants/label-colors'
 
 interface InboxTopLabelsSectionProps {
   ctx: { userId: string; orgId: string; userRole: MemberRole }
@@ -23,8 +26,12 @@ export async function InboxTopLabelsSection({
   return (
     <Card className="flex h-full flex-col">
       <CardHeader className="pb-2">
-        <CardTitle className="text-base font-semibold">
+        <CardTitle className="flex items-center gap-1.5 text-base font-semibold">
           Top Etiquetas
+          <InfoTooltip>
+            As etiquetas mais aplicadas às conversas do período — mostra os
+            assuntos mais frequentes do atendimento.
+          </InfoTooltip>
         </CardTitle>
       </CardHeader>
       <CardContent className="flex-1">
@@ -35,14 +42,20 @@ export async function InboxTopLabelsSection({
             {labels.map((label) => {
               const percentage =
                 maxCount > 0 ? (label.count / maxCount) * 100 : 0
+              // labelColor é uma KEY da paleta (slate/amber/...), não uma cor CSS.
+              // Resolvemos para a classe Tailwind correspondente — usar a key crua
+              // como `backgroundColor` quebrava para keys sem nome CSS (amber, slate).
+              const dotClass = getLabelColor(label.labelColor).dot
 
               return (
                 <li key={label.labelId}>
                   <div className="mb-1 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span
-                        className="size-2.5 shrink-0 rounded-full"
-                        style={{ backgroundColor: label.labelColor }}
+                        className={cn(
+                          'size-2.5 shrink-0 rounded-full',
+                          dotClass,
+                        )}
                       />
                       <span className="text-sm font-medium">
                         {label.labelName}
@@ -58,11 +71,11 @@ export async function InboxTopLabelsSection({
                   {/* Barra de progresso relativa ao maior count */}
                   <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                     <div
-                      className="h-full rounded-full transition-all duration-500"
-                      style={{
-                        width: `${percentage}%`,
-                        backgroundColor: label.labelColor,
-                      }}
+                      className={cn(
+                        'h-full rounded-full transition-all duration-500',
+                        dotClass,
+                      )}
+                      style={{ width: `${percentage}%` }}
                     />
                   </div>
                 </li>

@@ -4,6 +4,8 @@ import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 import { getDay, getHours } from 'date-fns'
+import { toZonedTime } from 'date-fns-tz'
+import { SAO_PAULO_TZ } from '@/_lib/appointment-utils'
 import type { RBACContext } from '@/_lib/rbac'
 import { isElevated } from '@/_lib/rbac'
 import { buildInboxDashboardWhere } from './build-inbox-dashboard-where'
@@ -41,8 +43,12 @@ async function fetchHourlyHeatmap(
   const counts = new Map<string, number>()
 
   for (const message of messages) {
-    const dayOfWeek = getDay(message.createdAt)
-    const hour = getHours(message.createdAt)
+    // createdAt é UTC. Convertemos para o fuso de Brasília antes de extrair
+    // dia/hora, senão o "horário de pico" apareceria ~3h deslocado (no servidor
+    // de produção o fuso local é UTC). Mesmo padrão de agendamentos/agentes.
+    const localDate = toZonedTime(message.createdAt, SAO_PAULO_TZ)
+    const dayOfWeek = getDay(localDate)
+    const hour = getHours(localDate)
     const key = `${dayOfWeek}:${hour}`
     const current = counts.get(key) ?? 0
     counts.set(key, current + 1)

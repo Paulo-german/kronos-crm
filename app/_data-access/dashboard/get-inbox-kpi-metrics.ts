@@ -8,25 +8,34 @@ import { isElevated } from '@/_lib/rbac'
 import { buildInboxDashboardWhere } from './build-inbox-dashboard-where'
 import { buildInboxFiltersKey } from './_shared/build-inbox-filters-key'
 import type { DateRange } from './types'
-import type {
-  InboxDashboardFilters,
-  InboxKpiMetrics,
+import {
+  SLA_FIRST_RESPONSE_MINUTES,
+  type InboxDashboardFilters,
+  type InboxKpiMetrics,
 } from './inbox-dashboard-types'
 
 const CACHE_REVALIDATE_SECONDS = 3600
+const SLA_FIRST_RESPONSE_MS = SLA_FIRST_RESPONSE_MINUTES * 60 * 1000
+
+interface FirstResponseStats {
+  /** TTFR médio em ms — null se nenhuma conversa respondida no período. */
+  avgMs: number | null
+  /** 0-100: % das conversas respondidas cuja 1ª resposta ficou dentro do SLA. */
+  withinSlaRate: number | null
+}
 
 /**
- * Calcula o TTFR (tempo até primeira resposta) médio em ms para conversas no período.
- * Usa Prisma ORM com cálculo no app layer para manter consistência com o restante do dashboard
- * (zero raw SQL). Fallback para $queryRaw documentado na seção de Critérios de Aceite do PLAN.
+ * Calcula o TTFR (tempo até primeira resposta) das conversas no período: média
+ * em ms e % dentro do SLA. Ambos derivam da mesma busca (1ª resposta por
+ * conversa), evitando uma query extra. Cálculo no app layer (zero raw SQL).
  */
-async function calcAvgFirstResponseTimeMs(
+async function calcFirstResponseStats(
   orgId: string,
   userId: string,
   elevated: boolean,
   dateRange: DateRange,
   filters: InboxDashboardFilters,
-): Promise<number | null> {
+): Promise<FirstResponseStats> {
   const baseWhere = buildInboxDashboardWhere(orgId, userId, elevated, filters)
 
   const conversations = await db.conversation.findMany({
@@ -56,10 +65,17 @@ async function calcAvgFirstResponseTimeMs(
     }
   }
 
-  if (responseTimes.length === 0) return null
+  if (responseTimes.length === 0) return { avgMs: null, withinSlaRate: null }
 
   const total = responseTimes.reduce((sum, ms) => sum + ms, 0)
-  return Math.round(total / responseTimes.length)
+  const withinSla = responseTimes.filter(
+    (ms) => ms <= SLA_FIRST_RESPONSE_MS,
+  ).length
+
+  return {
+    avgMs: Math.round(total / responseTimes.length),
+    withinSlaRate: Math.round((withinSla / responseTimes.length) * 100),
+  }
 }
 
 /**
@@ -150,10 +166,10 @@ async function fetchInboxKpiMetrics(
     prevResolvedConversations,
     prevMessagesReceived,
     prevMessagesSent,
-    avgFirstResponseTimeMs,
+    firstResponseStats,
     avgResolutionTimeMs,
     responseRate,
-    prevAvgFirstResponseTimeMs,
+    prevFirstResponseStats,
     prevAvgResolutionTimeMs,
     prevResponseRate,
   ] = await Promise.all([
@@ -227,11 +243,11 @@ async function fetchInboxKpiMetrics(
       },
     }),
     // Métricas calculadas no app layer (período atual)
-    calcAvgFirstResponseTimeMs(orgId, userId, elevated, dateRange, filters),
+    calcFirstResponseStats(orgId, userId, elevated, dateRange, filters),
     calcAvgResolutionTimeMs(orgId, userId, elevated, dateRange, filters),
     calcResponseRate(orgId, userId, elevated, dateRange, filters),
     // Métricas calculadas no app layer (período anterior)
-    calcAvgFirstResponseTimeMs(orgId, userId, elevated, prevRange, filters),
+    calcFirstResponseStats(orgId, userId, elevated, prevRange, filters),
     calcAvgResolutionTimeMs(orgId, userId, elevated, prevRange, filters),
     calcResponseRate(orgId, userId, elevated, prevRange, filters),
   ])
@@ -239,7 +255,8 @@ async function fetchInboxKpiMetrics(
   return {
     openConversations,
     resolvedConversations,
-    avgFirstResponseTimeMs,
+    avgFirstResponseTimeMs: firstResponseStats.avgMs,
+    firstResponseSlaRate: firstResponseStats.withinSlaRate,
     avgResolutionTimeMs,
     responseRate,
     messagesReceived,
@@ -247,7 +264,8 @@ async function fetchInboxKpiMetrics(
     unansweredConversations,
     prevOpenConversations,
     prevResolvedConversations,
-    prevAvgFirstResponseTimeMs,
+    prevAvgFirstResponseTimeMs: prevFirstResponseStats.avgMs,
+    prevFirstResponseSlaRate: prevFirstResponseStats.withinSlaRate,
     prevAvgResolutionTimeMs,
     prevResponseRate,
     prevMessagesReceived,

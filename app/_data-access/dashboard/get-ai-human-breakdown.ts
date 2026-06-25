@@ -91,11 +91,43 @@ async function fetchAiHumanBreakdown(
       ? Math.round((aiResolvedWithoutHandoff / aiConversations) * 100)
       : 0
 
+  // Tempo de resolução IA vs humano: compara quanto a IA acelera o atendimento.
+  // Segmenta as conversas resolvidas por terem (ou não) execução de IA.
+  const resolvedConversations = await db.conversation.findMany({
+    where: { ...baseWhere, ...dateFilter, status: 'RESOLVED' },
+    select: {
+      createdAt: true,
+      resolvedAt: true,
+      _count: { select: { agentExecutions: true } },
+    },
+  })
+
+  const aiResolutionTimes: number[] = []
+  const humanResolutionTimes: number[] = []
+
+  for (const conversation of resolvedConversations) {
+    if (!conversation.resolvedAt) continue
+    const ms =
+      conversation.resolvedAt.getTime() - conversation.createdAt.getTime()
+    if (conversation._count.agentExecutions > 0) {
+      aiResolutionTimes.push(ms)
+    } else {
+      humanResolutionTimes.push(ms)
+    }
+  }
+
+  const avgMs = (times: number[]): number | null =>
+    times.length > 0
+      ? Math.round(times.reduce((sum, ms) => sum + ms, 0) / times.length)
+      : null
+
   return {
     aiConversations,
     humanOnlyConversations,
     handoffCount,
     aiSuccessRate,
+    aiAvgResolutionMs: avgMs(aiResolutionTimes),
+    humanAvgResolutionMs: avgMs(humanResolutionTimes),
   }
 }
 
