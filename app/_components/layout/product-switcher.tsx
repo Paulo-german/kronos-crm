@@ -86,18 +86,20 @@ export const ProductSwitcher = ({
   isSuperAdmin,
 }: ProductSwitcherProps) => {
   const current = PRODUCT_CONFIG[currentProduct]
-  // Prospection ainda não está liberado: clicável só para superadmin; os demais
-  // veem "EM BREVE". Os outros produtos seguem o gating normal por módulo.
+  // Todos os produtos seguem o gating por módulo do plano. Prospection é um
+  // add-on do plano Scale+: superadmin sempre entra (teste); quem não tem o
+  // módulo vê o item bloqueado com o badge "SCALE".
+  const hasProspection = activeModules.includes('prospection') || isSuperAdmin
   const availableProducts = (
     Object.entries(PRODUCT_CONFIG) as [
       Product,
       (typeof PRODUCT_CONFIG)[Product],
     ][]
   ).filter(([key, config]) => {
-    if (key === 'prospection') return isSuperAdmin
+    if (key === 'prospection') return hasProspection
     return config.module === null || activeModules.includes(config.module)
   })
-  const showProspectionSoon = !isSuperAdmin
+  const showProspectionLocked = !hasProspection
 
   return (
     <DropdownMenu>
@@ -140,7 +142,7 @@ export const ProductSwitcher = ({
             </Link>
           </DropdownMenuItem>
         ))}
-        {showProspectionSoon && (
+        {showProspectionLocked && (
           <DropdownMenuItem className="pointer-events-none cursor-default py-2.5 text-white">
             <span
               className={`mr-3 flex size-7 shrink-0 items-center justify-center rounded-md ${PRODUCT_CONFIG.prospection.iconClass}`}
@@ -148,8 +150,8 @@ export const ProductSwitcher = ({
               {PRODUCT_CONFIG.prospection.icon}
             </span>
             {PRODUCT_CONFIG.prospection.label}
-            <span className="ml-auto rounded bg-kronos-cyan/10 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-kronos-cyan">
-              EM BREVE
+            <span className="ml-auto rounded bg-primary px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-primary-foreground">
+              SCALE
             </span>
           </DropdownMenuItem>
         )}

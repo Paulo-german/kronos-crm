@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
 import { getUserById } from '@/_data-access/user/get-user-by-id'
+import { hasModuleAccess } from '@/_data-access/module/check-module-access'
 import { ProductLayoutBase } from '@/_components/layout/product-layout-base'
 import { ProspectionSidebar } from '@/_components/layout/sidebars/prospection-sidebar'
 
@@ -14,12 +15,15 @@ const ProspectionLayout = async ({
   params,
 }: ProspectionLayoutProps) => {
   const { orgSlug } = await params
-  const { userId } = await getOrgContext(orgSlug)
+  const { userId, orgId } = await getOrgContext(orgSlug)
 
-  // Prospection ainda não está liberado ao público: acesso restrito a superadmin.
-  // Os demais usuários veem "EM BREVE" no switcher e não podem entrar via URL.
-  const user = await getUserById(userId)
-  if (!user?.isSuperAdmin) {
+  // Prospection é um módulo de plano (Scale+). Quem não tem o módulo vê o badge
+  // "SCALE" no switcher e não pode entrar via URL. Superadmin sempre entra (teste).
+  const [hasAccess, user] = await Promise.all([
+    hasModuleAccess(orgId, 'prospection'),
+    getUserById(userId),
+  ])
+  if (!hasAccess && !user?.isSuperAdmin) {
     redirect(`/org/${orgSlug}/crm/home`)
   }
 

@@ -7,7 +7,16 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Building2, Plus, Loader2, PanelsTopLeft, MessageSquare, Bot, ChevronRight } from 'lucide-react'
+import {
+  Building2,
+  Plus,
+  Loader2,
+  PanelsTopLeft,
+  MessageSquare,
+  Bot,
+  Telescope,
+  ChevronRight,
+} from 'lucide-react'
 import { cn } from '@/_lib/utils'
 import { Button } from '@/_components/ui/button'
 import { Badge } from '@/_components/ui/badge'
@@ -50,9 +59,38 @@ interface Organization {
 }
 
 const PRODUCT_OPTIONS = [
-  { key: 'crm', label: 'Kronos Crm', icon: PanelsTopLeft, iconClass: 'bg-kronos-cyan/20 text-kronos-cyan', module: 'crm', href: (slug: string) => `/org/${slug}/crm/home` },
-  { key: 'inbox', label: 'Kronos Inbox', icon: MessageSquare, iconClass: 'bg-kronos-green/20 text-kronos-green', module: 'inbox', href: (slug: string) => `/org/${slug}/inbox/home` },
-  { key: 'agents', label: 'Kronos Agents', icon: Bot, iconClass: 'bg-kronos-purple/20 text-kronos-purple', module: 'ai-agent', href: (slug: string) => `/org/${slug}/agents/home` },
+  {
+    key: 'crm',
+    label: 'Kronos Crm',
+    icon: PanelsTopLeft,
+    iconClass: 'bg-kronos-cyan/20 text-kronos-cyan',
+    module: 'crm',
+    href: (slug: string) => `/org/${slug}/crm/home`,
+  },
+  {
+    key: 'inbox',
+    label: 'Kronos Inbox',
+    icon: MessageSquare,
+    iconClass: 'bg-kronos-green/20 text-kronos-green',
+    module: 'inbox',
+    href: (slug: string) => `/org/${slug}/inbox/home`,
+  },
+  {
+    key: 'agents',
+    label: 'Kronos Agents',
+    icon: Bot,
+    iconClass: 'bg-kronos-purple/20 text-kronos-purple',
+    module: 'ai-agent',
+    href: (slug: string) => `/org/${slug}/agents/home`,
+  },
+  {
+    key: 'prospection',
+    label: 'Kronos Prospection',
+    icon: Telescope,
+    iconClass: 'bg-kronos-orange/20 text-kronos-orange',
+    module: 'prospection',
+    href: (slug: string) => `/org/${slug}/prospection/home`,
+  },
 ]
 
 interface OrgSelectorClientProps {
@@ -102,14 +140,25 @@ function getOrgInitials(name: string): string {
 function OrgListItemInternal({ org }: { org: Organization }) {
   const router = useRouter()
   const activeModules = org.activeModules ?? []
-  const availableProducts = PRODUCT_OPTIONS.filter((product) => activeModules.includes(product.module))
+  const availableProducts = PRODUCT_OPTIONS.filter((product) =>
+    activeModules.includes(product.module),
+  )
+  // Prospection é add-on do Scale+: quando a org não tem o módulo, mostramos o
+  // item bloqueado com o badge "SCALE" para sinalizar o upgrade.
+  const showProspectionLocked = !activeModules.includes('prospection')
 
-  const cardClassName = 'group flex w-full items-center gap-4 rounded-xl border border-border/50 bg-card p-4 text-left transition-all duration-150 hover:border-primary/40 hover:bg-primary/5'
+  const cardClassName =
+    'group flex w-full items-center gap-4 rounded-xl border border-border/50 bg-card p-4 text-left transition-all duration-150 hover:border-primary/40 hover:bg-primary/5'
 
   const cardContent = (
     <>
       <Avatar className="size-11 shrink-0">
-        <AvatarFallback className={cn('text-sm font-semibold text-white', getOrgColor(org.name))}>
+        <AvatarFallback
+          className={cn(
+            'text-sm font-semibold text-white',
+            getOrgColor(org.name),
+          )}
+        >
           {getOrgInitials(org.name)}
         </AvatarFallback>
       </Avatar>
@@ -142,7 +191,10 @@ function OrgListItemInternal({ org }: { org: Organization }) {
           {cardContent}
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-56 rounded-2xl border-0 bg-primary-dark p-2 text-white [--accent-foreground:0_0%_100%] [--accent:0_0%_100%_/_0.10]">
+      <PopoverContent
+        align="end"
+        className="w-56 rounded-2xl border-0 bg-primary-dark p-2 text-white [--accent-foreground:0_0%_100%] [--accent:0_0%_100%_/_0.10]"
+      >
         <p className="px-2 py-1.5 text-xs font-medium uppercase tracking-wider text-white/40">
           Entrar em
         </p>
@@ -155,13 +207,26 @@ function OrgListItemInternal({ org }: { org: Organization }) {
               onClick={() => router.push(productOption.href(org.slug))}
               className="flex w-full items-center gap-2.5 rounded-md px-2 py-2.5 text-sm transition-colors hover:bg-white/10"
             >
-              <span className={`flex size-7 shrink-0 items-center justify-center rounded-md ${productOption.iconClass}`}>
+              <span
+                className={`flex size-7 shrink-0 items-center justify-center rounded-md ${productOption.iconClass}`}
+              >
                 <Icon className="size-4" />
               </span>
               {productOption.label}
             </button>
           )
         })}
+        {showProspectionLocked && (
+          <div className="flex w-full cursor-default items-center gap-2.5 rounded-md px-2 py-2.5 text-sm">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-kronos-orange/20 text-kronos-orange">
+              <Telescope className="size-4" />
+            </span>
+            Kronos Prospection
+            <span className="ml-auto rounded bg-primary px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-primary-foreground">
+              SCALE
+            </span>
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   )
