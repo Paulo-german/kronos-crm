@@ -1,17 +1,8 @@
 import { z } from 'zod'
 import { businessHoursConfigSchema } from '@/_actions/agent/update-agent/schema'
 
-/**
- * Whitelist de provedores que suportam disparo em massa: apenas os SELFHOSTED
- * do cliente — Evolution JS e Evolution Go. O `EVOLUTION` (legacy) é o provedor
- * INTERNO da plataforma e fica de fora, assim como Meta Cloud, Z-API e
- * provedores internos (ex.: SIMULATOR).
- * Whitelist > blacklist: qualquer connectionType novo fica bloqueado por padrão.
- */
-export const ALLOWED_BROADCAST_CONNECTIONS = [
-  'EVOLUTION_JS',
-  'EVOLUTION_GO',
-] as const
+// O critério de canal elegível para disparo (selfhosted real) vive em
+// `@/_lib/whatsapp/broadcast-eligibility` — usado na query e na validação.
 
 // Ritmo de envio entre números. Default alto (30s) para preservar a reputação do
 // número; teto de 5 min para listas frias muito sensíveis.

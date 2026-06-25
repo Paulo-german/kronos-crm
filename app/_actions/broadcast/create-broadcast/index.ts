@@ -13,12 +13,9 @@ import { canPerformAction, isElevated, requirePermission } from '@/_lib/rbac'
 import { toE164 } from '@/_utils/to-e164'
 import { buildContactFilterWhere } from '@/_data-access/contact/build-contact-filter-where'
 import { triggerBroadcastRun } from '@/../trigger/lib/broadcast-queue'
+import { isInboxEligibleForBroadcast } from '@/_lib/whatsapp/broadcast-eligibility'
 import type { ContactFilters } from '@/_components/contacts/_lib/contact-filters'
-import {
-  ALLOWED_BROADCAST_CONNECTIONS,
-  MAX_BROADCAST_RECIPIENTS,
-  createBroadcastSchema,
-} from '../schema'
+import { MAX_BROADCAST_RECIPIENTS, createBroadcastSchema } from '../schema'
 
 export const createBroadcast = orgActionClient
   .schema(createBroadcastSchema)
@@ -34,6 +31,8 @@ export const createBroadcast = orgActionClient
         isActive: true,
         connectionType: true,
         evolutionConnected: true,
+        evolutionApiUrl: true,
+        evolutionApiKey: true,
       },
     })
 
@@ -43,24 +42,19 @@ export const createBroadcast = orgActionClient
       )
     }
 
-    // 3. Validação de provedor: whitelist > blacklist. Bloqueia SIMULATOR e
-    //    qualquer connectionType interno futuro automaticamente.
-    const allowedConnections: readonly string[] = ALLOWED_BROADCAST_CONNECTIONS
-    if (!allowedConnections.includes(inbox.connectionType)) {
+    // 3. Só canais selfhosted reais (Evolution Go ou Evolution com servidor
+    //    próprio) suportam disparo em massa. Mesmo critério da query elegível.
+    if (!isInboxEligibleForBroadcast(inbox)) {
       throw new Error(
-        'Esta caixa de entrada usa um provedor interno e não suporta disparos em massa.',
+        'Esta caixa de entrada não é um canal self-hosted e não suporta disparos em massa.',
       )
     }
 
-    // 4. A inbox precisa estar pronta para enviar
+    // 4. A inbox precisa estar pronta para enviar (WhatsApp vinculado)
     if (!inbox.isActive) {
       throw new Error('Esta caixa de entrada está inativa.')
     }
-    // Provedores Evolution selfhosted (JS/Go) exigem WhatsApp Web vinculado
-    const isSelfHostedEvolution =
-      inbox.connectionType === 'EVOLUTION_JS' ||
-      inbox.connectionType === 'EVOLUTION_GO'
-    if (isSelfHostedEvolution && !inbox.evolutionConnected) {
+    if (!inbox.evolutionConnected) {
       throw new Error(
         'A conexão desta caixa de entrada não está ativa no momento.',
       )

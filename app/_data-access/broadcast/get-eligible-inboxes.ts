@@ -3,7 +3,7 @@ import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
 import type { ConnectionType } from '@prisma/client'
 import type { RBACContext } from '@/_lib/rbac'
-import { ALLOWED_BROADCAST_CONNECTIONS } from '@/_actions/broadcast/schema'
+import { BROADCAST_ELIGIBLE_WHERE } from '@/_lib/whatsapp/broadcast-eligibility'
 
 export interface EligibleInbox {
   id: string
@@ -18,8 +18,8 @@ const fetchEligibleInboxesFromDb = async (
     where: {
       organizationId: orgId,
       isActive: true,
-      // Só provedores externos da whitelist suportam disparo em massa
-      connectionType: { in: [...ALLOWED_BROADCAST_CONNECTIONS] },
+      // Só canais selfhosted reais (Evolution Go ou Evolution com servidor próprio)
+      ...BROADCAST_ELIGIBLE_WHERE,
     },
     select: { id: true, name: true, connectionType: true },
     orderBy: { name: 'asc' },

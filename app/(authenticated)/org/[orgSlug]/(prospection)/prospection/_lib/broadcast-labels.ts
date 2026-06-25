@@ -26,6 +26,8 @@ export const RECIPIENT_STATUS_LABELS: Record<BroadcastRecipientStatus, string> =
 // Só os provedores que suportam disparo; fallback para o próprio valor do enum
 const CONNECTION_LABELS_MAP: Partial<Record<ConnectionType, string>> = {
   EVOLUTION: 'Evolution API',
+  EVOLUTION_JS: 'Evolution API',
+  EVOLUTION_GO: 'Evolution Go',
   META_CLOUD: 'Meta Cloud',
   Z_API: 'Z-API',
 }
