@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/_components/ui/dropdown-menu'
-import { TaskDto } from '@/_data-access/task/get-tasks'
+import { TaskDto } from '@/_data-access/crm-task/get-tasks'
 
 interface TaskTableDropdownMenuProps {
   task: TaskDto

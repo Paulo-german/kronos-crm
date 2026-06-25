@@ -22,7 +22,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import type { TaskDto } from '@/_data-access/task/get-tasks'
+import type { TaskDto } from '@/_data-access/crm-task/get-tasks'
 
 import {
   SheetContent,
@@ -70,13 +70,13 @@ import { TASK_TITLE_MAX } from '@/_lib/constants/field-limits'
 import { TASK_TYPES } from '../_lib/task-types'
 import { cn } from '@/_lib/utils'
 
-import { createTask } from '@/_actions/task/create-task'
+import { createTask } from '@/_actions/crm-task/create-task'
 import { searchDeals } from '@/_actions/deal/search-deals'
 import {
   createTaskSchema,
   CreateTaskInput,
-} from '@/_actions/task/create-task/schema'
-import type { UpdateTaskInput } from '@/_actions/task/update-task/schema'
+} from '@/_actions/crm-task/create-task/schema'
+import type { UpdateTaskInput } from '@/_actions/crm-task/update-task/schema'
 
 interface UpsertTaskDialogContentProps {
   defaultValues?: TaskDto

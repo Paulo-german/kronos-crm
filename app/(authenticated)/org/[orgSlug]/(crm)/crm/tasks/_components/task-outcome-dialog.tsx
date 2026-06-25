@@ -26,8 +26,8 @@ import { RadioGroup, RadioGroupItem } from '@/_components/ui/radio-group'
 import { Textarea } from '@/_components/ui/textarea'
 import { Label } from '@/_components/ui/label'
 import { cn } from '@/_lib/utils'
-import { completeTaskWithOutcome } from '@/_actions/task/complete-task-with-outcome'
-import { toggleTaskStatus } from '@/_actions/task/toggle-task-status'
+import { completeTaskWithOutcome } from '@/_actions/crm-task/complete-task-with-outcome'
+import { toggleTaskStatus } from '@/_actions/crm-task/toggle-task-status'
 import {
   TASK_OUTCOME_OPTIONS,
   getOutcomeLabel,

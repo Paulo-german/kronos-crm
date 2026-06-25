@@ -1,5 +1,5 @@
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
-import { getTasks } from '@/_data-access/task/get-tasks'
+import { getTasks } from '@/_data-access/crm-task/get-tasks'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
 import { getTutorialCompletions } from '@/_data-access/tutorial/get-tutorial-completions'
 import { TaskOutcomeIntroTrigger } from '@/_components/tutorials/task-outcome-intro-trigger'
@@ -35,7 +35,9 @@ const TasksPage = async ({ params }: TasksPageProps) => {
         userRole={ctx.userRole}
       />
       <TaskOutcomeIntroTrigger
-        hasSeenTaskOutcomeIntro={completedTutorialIds.includes('task-outcome-intro')}
+        hasSeenTaskOutcomeIntro={completedTutorialIds.includes(
+          'task-outcome-intro',
+        )}
       />
     </>
   )

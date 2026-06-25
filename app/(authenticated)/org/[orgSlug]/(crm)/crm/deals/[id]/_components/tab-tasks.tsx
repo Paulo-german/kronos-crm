@@ -10,13 +10,13 @@ import { Checkbox } from '@/_components/ui/checkbox'
 import { Sheet, SheetTrigger } from '@/_components/ui/sheet'
 import ConfirmationDialog from '@/_components/confirmation-dialog'
 import { toggleTask } from '@/_actions/deal/toggle-task'
-import { updateTask } from '@/_actions/task/update-task'
-import { deleteTask } from '@/_actions/task/delete-task'
+import { updateTask } from '@/_actions/crm-task/update-task'
+import { deleteTask } from '@/_actions/crm-task/delete-task'
 import type {
   DealDetailsDto,
   DealTaskDto,
 } from '@/_data-access/deal/get-deal-details'
-import type { TaskDto } from '@/_data-access/task/get-tasks'
+import type { TaskDto } from '@/_data-access/crm-task/get-tasks'
 import { UpsertTaskDialogContent } from '../../../tasks/_components/upsert-dialog-content'
 import { TaskOutcomeDialog } from '../../../tasks/_components/task-outcome-dialog'
 

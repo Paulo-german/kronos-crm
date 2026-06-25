@@ -4,7 +4,11 @@ import { orgActionClient } from '@/_lib/safe-action'
 import { toggleTaskStatusSchema } from './schema'
 import { db } from '@/_lib/prisma'
 import { revalidateTag } from 'next/cache'
-import { findTaskWithRBAC, canPerformAction, requirePermission } from '@/_lib/rbac'
+import {
+  findTaskWithRBAC,
+  canPerformAction,
+  requirePermission,
+} from '@/_lib/rbac'
 
 export const toggleTaskStatus = orgActionClient
   .schema(toggleTaskStatusSchema)

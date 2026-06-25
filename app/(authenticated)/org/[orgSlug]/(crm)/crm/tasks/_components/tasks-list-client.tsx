@@ -6,7 +6,7 @@ import { TasksToolbar } from './tasks-toolbar'
 import { EmptyTasks } from './empty-tasks'
 import TasksDataTable from './tasks-data-table'
 import { useTaskFilters } from '../_lib/use-task-filters'
-import type { TaskDto } from '@/_data-access/task/get-tasks'
+import type { TaskDto } from '@/_data-access/crm-task/get-tasks'
 import type { MemberRole, TaskType } from '@prisma/client'
 
 // Tipo simplificado para o select de responsável (normalizado na page.tsx)
@@ -28,8 +28,13 @@ export function TasksListClient({
   currentUserId,
   userRole,
 }: TasksListClientProps) {
-  const { filters, setFilters, clearFilters, activeFilterCount, hasActiveFilters } =
-    useTaskFilters()
+  const {
+    filters,
+    setFilters,
+    clearFilters,
+    activeFilterCount,
+    hasActiveFilters,
+  } = useTaskFilters()
 
   // Estado de busca local (não vai pra URL — é transiente e alto-frequência)
   const [searchQuery, setSearchQuery] = useState('')
@@ -72,7 +77,8 @@ export function TasksListClient({
     } else if (filters.status === 'overdue') {
       const todayStart = startOfToday()
       result = result.filter(
-        (task) => !task.isCompleted && isBefore(new Date(task.dueDate), todayStart),
+        (task) =>
+          !task.isCompleted && isBefore(new Date(task.dueDate), todayStart),
       )
     } else if (filters.status === 'completed') {
       result = result.filter((task) => task.isCompleted)
@@ -93,7 +99,9 @@ export function TasksListClient({
     // Filtro de data de criação (createdAtFrom)
     if (filters.createdAtFrom) {
       const createdAtFrom = filters.createdAtFrom
-      result = result.filter((task) => new Date(task.createdAt) >= createdAtFrom)
+      result = result.filter(
+        (task) => new Date(task.createdAt) >= createdAtFrom,
+      )
     }
 
     // Filtro de data de criação (createdAtTo)
