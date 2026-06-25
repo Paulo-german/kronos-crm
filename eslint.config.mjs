@@ -33,6 +33,15 @@ const eslintConfig = [
       ],
     },
   },
+  {
+    // Scripts de seed/manutenção: console.log de progresso e ids curtos
+    // em callbacks são legítimos aqui — não são código de aplicação.
+    files: ['prisma/scripts/**/*.{ts,tsx}', 'prisma/seed.ts'],
+    rules: {
+      'no-console': 'off',
+      'id-length': 'off',
+    },
+  },
 ]
 
 export default eslintConfig
