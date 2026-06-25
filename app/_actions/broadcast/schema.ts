@@ -2,14 +2,15 @@ import { z } from 'zod'
 import { businessHoursConfigSchema } from '@/_actions/agent/update-agent/schema'
 
 /**
- * Whitelist de provedores externos que suportam disparo em massa.
- * Provedores internos (ex.: SIMULATOR) são PROIBIDOS. Whitelist > blacklist:
- * qualquer connectionType interno futuro fica bloqueado por padrão.
+ * Whitelist de provedores que suportam disparo em massa: apenas os SELFHOSTED
+ * do cliente — Evolution JS e Evolution Go. O `EVOLUTION` (legacy) é o provedor
+ * INTERNO da plataforma e fica de fora, assim como Meta Cloud, Z-API e
+ * provedores internos (ex.: SIMULATOR).
+ * Whitelist > blacklist: qualquer connectionType novo fica bloqueado por padrão.
  */
 export const ALLOWED_BROADCAST_CONNECTIONS = [
-  'EVOLUTION',
-  'META_CLOUD',
-  'Z_API',
+  'EVOLUTION_JS',
+  'EVOLUTION_GO',
 ] as const
 
 // Ritmo de envio entre números. Default alto (30s) para preservar a reputação do

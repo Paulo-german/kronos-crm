@@ -20,9 +20,6 @@ import {
   createBroadcastSchema,
 } from '../schema'
 
-// Provedores cuja prontidão exige conexão ativa confirmada antes do disparo
-const CONNECTION_REQUIRES_EVOLUTION_LINK = 'EVOLUTION'
-
 export const createBroadcast = orgActionClient
   .schema(createBroadcastSchema)
   .action(async ({ parsedInput: data, ctx }) => {
@@ -59,10 +56,11 @@ export const createBroadcast = orgActionClient
     if (!inbox.isActive) {
       throw new Error('Esta caixa de entrada está inativa.')
     }
-    if (
-      inbox.connectionType === CONNECTION_REQUIRES_EVOLUTION_LINK &&
-      !inbox.evolutionConnected
-    ) {
+    // Provedores Evolution selfhosted (JS/Go) exigem WhatsApp Web vinculado
+    const isSelfHostedEvolution =
+      inbox.connectionType === 'EVOLUTION_JS' ||
+      inbox.connectionType === 'EVOLUTION_GO'
+    if (isSelfHostedEvolution && !inbox.evolutionConnected) {
       throw new Error(
         'A conexão desta caixa de entrada não está ativa no momento.',
       )
