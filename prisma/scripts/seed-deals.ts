@@ -54,13 +54,17 @@ function seedId(entity: string, index: number): string {
  * da entidade + índice do deal têm mais de 4 caracteres combinados.
  * Usa o índice do deal como parte do sufixo de 12 dígitos (deal * 1000 + posição).
  */
-function seedChildId(childType: 'dc' | 'dp' | 'act' | 'tsk' | 'apt', dealIdx: number, childIdx: number): string {
+function seedChildId(
+  childType: 'dc' | 'dp' | 'act' | 'tsk' | 'apt',
+  dealIdx: number,
+  childIdx: number,
+): string {
   const prefixes: Record<typeof childType, string> = {
-    dc: 'dcnt',  // deal contact
-    dp: 'dPrd',  // deal product
-    act: 'actv',  // activity
-    tsk: 'task',  // task
-    apt: 'appt',  // appointment
+    dc: 'dcnt', // deal contact
+    dp: 'dPrd', // deal product
+    act: 'actv', // activity
+    tsk: 'task', // task
+    apt: 'appt', // appointment
   }
   const prefix = prefixes[childType]
   // Sufixo: 6 dígitos do dealIdx + 6 dígitos do childIdx
@@ -89,11 +93,6 @@ function pick<T>(array: T[], index: number): T {
   return array[index % array.length]
 }
 
-/** Escolhe os primeiros N elementos do array */
-function takeFirst<T>(array: T[], count: number): T[] {
-  return array.slice(0, Math.min(count, array.length))
-}
-
 // ============================================================
 // DADOS ESTÁTICOS
 // ============================================================
@@ -107,16 +106,76 @@ interface CompanyData {
 }
 
 const COMPANIES: CompanyData[] = [
-  { id: seedId('comp', 0), name: 'TechNova Soluções', domain: 'technova.com.br', industry: 'Tecnologia', size: 'SIZE_11_50' },
-  { id: seedId('comp', 1), name: 'Saúde+ Clínicas', domain: 'saudemais.com.br', industry: 'Saúde', size: 'SIZE_50_PLUS' },
-  { id: seedId('comp', 2), name: 'EduPrime Ensino', domain: 'eduprime.com.br', industry: 'Educação', size: 'SIZE_11_50' },
-  { id: seedId('comp', 3), name: 'LogiExpress Transportes', domain: 'logiexpress.com.br', industry: 'Logística', size: 'SIZE_50_PLUS' },
-  { id: seedId('comp', 4), name: 'Bella Vista Imóveis', domain: 'bellavista.com.br', industry: 'Imobiliário', size: 'SIZE_1_10' },
-  { id: seedId('comp', 5), name: 'AgroVerde Alimentos', domain: 'agroverde.com.br', industry: 'Agronegócio', size: 'SIZE_50_PLUS' },
-  { id: seedId('comp', 6), name: 'FinControl Consultoria', domain: 'fincontrol.com.br', industry: 'Financeiro', size: 'SIZE_1_10' },
-  { id: seedId('comp', 7), name: 'Digital Wave Marketing', domain: 'digitalwave.com.br', industry: 'Marketing', size: 'SIZE_11_50' },
-  { id: seedId('comp', 8), name: 'Construtora Horizonte', domain: 'horizonte.eng.br', industry: 'Construção Civil', size: 'SIZE_50_PLUS' },
-  { id: seedId('comp', 9), name: 'Pet & Cia Veterinária', domain: 'petecia.com.br', industry: 'Veterinária', size: 'SIZE_1_10' },
+  {
+    id: seedId('comp', 0),
+    name: 'TechNova Soluções',
+    domain: 'technova.com.br',
+    industry: 'Tecnologia',
+    size: 'SIZE_11_50',
+  },
+  {
+    id: seedId('comp', 1),
+    name: 'Saúde+ Clínicas',
+    domain: 'saudemais.com.br',
+    industry: 'Saúde',
+    size: 'SIZE_50_PLUS',
+  },
+  {
+    id: seedId('comp', 2),
+    name: 'EduPrime Ensino',
+    domain: 'eduprime.com.br',
+    industry: 'Educação',
+    size: 'SIZE_11_50',
+  },
+  {
+    id: seedId('comp', 3),
+    name: 'LogiExpress Transportes',
+    domain: 'logiexpress.com.br',
+    industry: 'Logística',
+    size: 'SIZE_50_PLUS',
+  },
+  {
+    id: seedId('comp', 4),
+    name: 'Bella Vista Imóveis',
+    domain: 'bellavista.com.br',
+    industry: 'Imobiliário',
+    size: 'SIZE_1_10',
+  },
+  {
+    id: seedId('comp', 5),
+    name: 'AgroVerde Alimentos',
+    domain: 'agroverde.com.br',
+    industry: 'Agronegócio',
+    size: 'SIZE_50_PLUS',
+  },
+  {
+    id: seedId('comp', 6),
+    name: 'FinControl Consultoria',
+    domain: 'fincontrol.com.br',
+    industry: 'Financeiro',
+    size: 'SIZE_1_10',
+  },
+  {
+    id: seedId('comp', 7),
+    name: 'Digital Wave Marketing',
+    domain: 'digitalwave.com.br',
+    industry: 'Marketing',
+    size: 'SIZE_11_50',
+  },
+  {
+    id: seedId('comp', 8),
+    name: 'Construtora Horizonte',
+    domain: 'horizonte.eng.br',
+    industry: 'Construção Civil',
+    size: 'SIZE_50_PLUS',
+  },
+  {
+    id: seedId('comp', 9),
+    name: 'Pet & Cia Veterinária',
+    domain: 'petecia.com.br',
+    industry: 'Veterinária',
+    size: 'SIZE_1_10',
+  },
 ]
 
 interface ContactData {
@@ -132,45 +191,285 @@ interface ContactData {
 // 3 contatos por empresa (30 total): posição 0 = decisor, 1 = influenciador, 2 = operacional
 const CONTACTS_DATA: ContactData[] = [
   // TechNova (0)
-  { id: seedId('cont', 0), name: 'Carlos Eduardo Silva', email: 'carlos.silva@technova.com.br', phone: '11987654321', role: 'CEO', isDecisionMaker: true, companyIdx: 0 },
-  { id: seedId('cont', 1), name: 'Ana Paula Ferreira', email: 'ana.ferreira@technova.com.br', phone: '11976543210', role: 'CTO', isDecisionMaker: true, companyIdx: 0 },
-  { id: seedId('cont', 2), name: 'Lucas Martins', email: 'lucas.martins@technova.com.br', phone: '11965432109', role: 'Gerente de Projetos', isDecisionMaker: false, companyIdx: 0 },
+  {
+    id: seedId('cont', 0),
+    name: 'Carlos Eduardo Silva',
+    email: 'carlos.silva@technova.com.br',
+    phone: '11987654321',
+    role: 'CEO',
+    isDecisionMaker: true,
+    companyIdx: 0,
+  },
+  {
+    id: seedId('cont', 1),
+    name: 'Ana Paula Ferreira',
+    email: 'ana.ferreira@technova.com.br',
+    phone: '11976543210',
+    role: 'CTO',
+    isDecisionMaker: true,
+    companyIdx: 0,
+  },
+  {
+    id: seedId('cont', 2),
+    name: 'Lucas Martins',
+    email: 'lucas.martins@technova.com.br',
+    phone: '11965432109',
+    role: 'Gerente de Projetos',
+    isDecisionMaker: false,
+    companyIdx: 0,
+  },
   // Saúde+ (1)
-  { id: seedId('cont', 3), name: 'Dr. Marcos Oliveira', email: 'marcos.oliveira@saudemais.com.br', phone: '21987654321', role: 'Diretor Clínico', isDecisionMaker: true, companyIdx: 1 },
-  { id: seedId('cont', 4), name: 'Patrícia Souza', email: 'patricia.souza@saudemais.com.br', phone: '21976543210', role: 'Gerente Administrativa', isDecisionMaker: true, companyIdx: 1 },
-  { id: seedId('cont', 5), name: 'Renato Barbosa', email: 'renato.barbosa@saudemais.com.br', phone: '21965432109', role: 'Coordenador de TI', isDecisionMaker: false, companyIdx: 1 },
+  {
+    id: seedId('cont', 3),
+    name: 'Dr. Marcos Oliveira',
+    email: 'marcos.oliveira@saudemais.com.br',
+    phone: '21987654321',
+    role: 'Diretor Clínico',
+    isDecisionMaker: true,
+    companyIdx: 1,
+  },
+  {
+    id: seedId('cont', 4),
+    name: 'Patrícia Souza',
+    email: 'patricia.souza@saudemais.com.br',
+    phone: '21976543210',
+    role: 'Gerente Administrativa',
+    isDecisionMaker: true,
+    companyIdx: 1,
+  },
+  {
+    id: seedId('cont', 5),
+    name: 'Renato Barbosa',
+    email: 'renato.barbosa@saudemais.com.br',
+    phone: '21965432109',
+    role: 'Coordenador de TI',
+    isDecisionMaker: false,
+    companyIdx: 1,
+  },
   // EduPrime (2)
-  { id: seedId('cont', 6), name: 'Prof. Ricardo Lima', email: 'ricardo.lima@eduprime.com.br', phone: '31987654321', role: 'Diretor Acadêmico', isDecisionMaker: true, companyIdx: 2 },
-  { id: seedId('cont', 7), name: 'Beatriz Nascimento', email: 'beatriz.nascimento@eduprime.com.br', phone: '31976543210', role: 'Coordenadora Pedagógica', isDecisionMaker: false, companyIdx: 2 },
-  { id: seedId('cont', 8), name: 'Thiago Pereira', email: 'thiago.pereira@eduprime.com.br', phone: '31965432109', role: 'Gerente de TI', isDecisionMaker: true, companyIdx: 2 },
+  {
+    id: seedId('cont', 6),
+    name: 'Prof. Ricardo Lima',
+    email: 'ricardo.lima@eduprime.com.br',
+    phone: '31987654321',
+    role: 'Diretor Acadêmico',
+    isDecisionMaker: true,
+    companyIdx: 2,
+  },
+  {
+    id: seedId('cont', 7),
+    name: 'Beatriz Nascimento',
+    email: 'beatriz.nascimento@eduprime.com.br',
+    phone: '31976543210',
+    role: 'Coordenadora Pedagógica',
+    isDecisionMaker: false,
+    companyIdx: 2,
+  },
+  {
+    id: seedId('cont', 8),
+    name: 'Thiago Pereira',
+    email: 'thiago.pereira@eduprime.com.br',
+    phone: '31965432109',
+    role: 'Gerente de TI',
+    isDecisionMaker: true,
+    companyIdx: 2,
+  },
   // LogiExpress (3)
-  { id: seedId('cont', 9), name: 'André Gomes', email: 'andre.gomes@logiexpress.com.br', phone: '41987654321', role: 'CEO', isDecisionMaker: true, companyIdx: 3 },
-  { id: seedId('cont', 10), name: 'Claudia Farias', email: 'claudia.farias@logiexpress.com.br', phone: '41976543210', role: 'Diretora de Operações', isDecisionMaker: true, companyIdx: 3 },
-  { id: seedId('cont', 11), name: 'Pedro Henrique Souza', email: 'pedro.souza@logiexpress.com.br', phone: '41965432109', role: 'Gerente de Logística', isDecisionMaker: false, companyIdx: 3 },
+  {
+    id: seedId('cont', 9),
+    name: 'André Gomes',
+    email: 'andre.gomes@logiexpress.com.br',
+    phone: '41987654321',
+    role: 'CEO',
+    isDecisionMaker: true,
+    companyIdx: 3,
+  },
+  {
+    id: seedId('cont', 10),
+    name: 'Claudia Farias',
+    email: 'claudia.farias@logiexpress.com.br',
+    phone: '41976543210',
+    role: 'Diretora de Operações',
+    isDecisionMaker: true,
+    companyIdx: 3,
+  },
+  {
+    id: seedId('cont', 11),
+    name: 'Pedro Henrique Souza',
+    email: 'pedro.souza@logiexpress.com.br',
+    phone: '41965432109',
+    role: 'Gerente de Logística',
+    isDecisionMaker: false,
+    companyIdx: 3,
+  },
   // Bella Vista (4)
-  { id: seedId('cont', 12), name: 'Rafael Cardoso', email: 'rafael.cardoso@bellavista.com.br', phone: '51987654321', role: 'Sócio-Fundador', isDecisionMaker: true, companyIdx: 4 },
-  { id: seedId('cont', 13), name: 'Tatiana Moreira', email: 'tatiana.moreira@bellavista.com.br', phone: '51976543210', role: 'Corretora Sênior', isDecisionMaker: false, companyIdx: 4 },
-  { id: seedId('cont', 14), name: 'Diego Nogueira', email: 'diego.nogueira@bellavista.com.br', phone: '51965432109', role: 'Gerente Comercial', isDecisionMaker: true, companyIdx: 4 },
+  {
+    id: seedId('cont', 12),
+    name: 'Rafael Cardoso',
+    email: 'rafael.cardoso@bellavista.com.br',
+    phone: '51987654321',
+    role: 'Sócio-Fundador',
+    isDecisionMaker: true,
+    companyIdx: 4,
+  },
+  {
+    id: seedId('cont', 13),
+    name: 'Tatiana Moreira',
+    email: 'tatiana.moreira@bellavista.com.br',
+    phone: '51976543210',
+    role: 'Corretora Sênior',
+    isDecisionMaker: false,
+    companyIdx: 4,
+  },
+  {
+    id: seedId('cont', 14),
+    name: 'Diego Nogueira',
+    email: 'diego.nogueira@bellavista.com.br',
+    phone: '51965432109',
+    role: 'Gerente Comercial',
+    isDecisionMaker: true,
+    companyIdx: 4,
+  },
   // AgroVerde (5)
-  { id: seedId('cont', 15), name: 'João Paulo Rezende', email: 'joao.rezende@agroverde.com.br', phone: '62987654321', role: 'Diretor Geral', isDecisionMaker: true, companyIdx: 5 },
-  { id: seedId('cont', 16), name: 'Sandra Melo', email: 'sandra.melo@agroverde.com.br', phone: '62976543210', role: 'Gerente de Produção', isDecisionMaker: false, companyIdx: 5 },
-  { id: seedId('cont', 17), name: 'Henrique Bastos', email: 'henrique.bastos@agroverde.com.br', phone: '62965432109', role: 'Diretor Comercial', isDecisionMaker: true, companyIdx: 5 },
+  {
+    id: seedId('cont', 15),
+    name: 'João Paulo Rezende',
+    email: 'joao.rezende@agroverde.com.br',
+    phone: '62987654321',
+    role: 'Diretor Geral',
+    isDecisionMaker: true,
+    companyIdx: 5,
+  },
+  {
+    id: seedId('cont', 16),
+    name: 'Sandra Melo',
+    email: 'sandra.melo@agroverde.com.br',
+    phone: '62976543210',
+    role: 'Gerente de Produção',
+    isDecisionMaker: false,
+    companyIdx: 5,
+  },
+  {
+    id: seedId('cont', 17),
+    name: 'Henrique Bastos',
+    email: 'henrique.bastos@agroverde.com.br',
+    phone: '62965432109',
+    role: 'Diretor Comercial',
+    isDecisionMaker: true,
+    companyIdx: 5,
+  },
   // FinControl (6)
-  { id: seedId('cont', 18), name: 'Rodrigo Campos', email: 'rodrigo.campos@fincontrol.com.br', phone: '71987654321', role: 'Sócio-Fundador', isDecisionMaker: true, companyIdx: 6 },
-  { id: seedId('cont', 19), name: 'Adriana Pinto', email: 'adriana.pinto@fincontrol.com.br', phone: '71976543210', role: 'Consultora Sênior', isDecisionMaker: false, companyIdx: 6 },
-  { id: seedId('cont', 20), name: 'Marcelo Andrade', email: 'marcelo.andrade@fincontrol.com.br', phone: '71965432109', role: 'Diretor de Consultoria', isDecisionMaker: true, companyIdx: 6 },
+  {
+    id: seedId('cont', 18),
+    name: 'Rodrigo Campos',
+    email: 'rodrigo.campos@fincontrol.com.br',
+    phone: '71987654321',
+    role: 'Sócio-Fundador',
+    isDecisionMaker: true,
+    companyIdx: 6,
+  },
+  {
+    id: seedId('cont', 19),
+    name: 'Adriana Pinto',
+    email: 'adriana.pinto@fincontrol.com.br',
+    phone: '71976543210',
+    role: 'Consultora Sênior',
+    isDecisionMaker: false,
+    companyIdx: 6,
+  },
+  {
+    id: seedId('cont', 20),
+    name: 'Marcelo Andrade',
+    email: 'marcelo.andrade@fincontrol.com.br',
+    phone: '71965432109',
+    role: 'Diretor de Consultoria',
+    isDecisionMaker: true,
+    companyIdx: 6,
+  },
   // Digital Wave (7)
-  { id: seedId('cont', 21), name: 'Felipe Araújo', email: 'felipe.araujo@digitalwave.com.br', phone: '81987654321', role: 'CEO', isDecisionMaker: true, companyIdx: 7 },
-  { id: seedId('cont', 22), name: 'Gabriela Mendonça', email: 'gabriela.mendonca@digitalwave.com.br', phone: '81976543210', role: 'Diretora Criativa', isDecisionMaker: true, companyIdx: 7 },
-  { id: seedId('cont', 23), name: 'Vinícius Brito', email: 'vinicius.brito@digitalwave.com.br', phone: '81965432109', role: 'Head de Performance', isDecisionMaker: false, companyIdx: 7 },
+  {
+    id: seedId('cont', 21),
+    name: 'Felipe Araújo',
+    email: 'felipe.araujo@digitalwave.com.br',
+    phone: '81987654321',
+    role: 'CEO',
+    isDecisionMaker: true,
+    companyIdx: 7,
+  },
+  {
+    id: seedId('cont', 22),
+    name: 'Gabriela Mendonça',
+    email: 'gabriela.mendonca@digitalwave.com.br',
+    phone: '81976543210',
+    role: 'Diretora Criativa',
+    isDecisionMaker: true,
+    companyIdx: 7,
+  },
+  {
+    id: seedId('cont', 23),
+    name: 'Vinícius Brito',
+    email: 'vinicius.brito@digitalwave.com.br',
+    phone: '81965432109',
+    role: 'Head de Performance',
+    isDecisionMaker: false,
+    companyIdx: 7,
+  },
   // Construtora Horizonte (8)
-  { id: seedId('cont', 24), name: 'Paulo Roberto Neves', email: 'paulo.neves@horizonte.eng.br', phone: '85987654321', role: 'Diretor de Engenharia', isDecisionMaker: true, companyIdx: 8 },
-  { id: seedId('cont', 25), name: 'Mariana Tavares', email: 'mariana.tavares@horizonte.eng.br', phone: '85976543210', role: 'Gerente de Obras', isDecisionMaker: false, companyIdx: 8 },
-  { id: seedId('cont', 26), name: 'Sérgio Barros', email: 'sergio.barros@horizonte.eng.br', phone: '85965432109', role: 'Diretor Comercial', isDecisionMaker: true, companyIdx: 8 },
+  {
+    id: seedId('cont', 24),
+    name: 'Paulo Roberto Neves',
+    email: 'paulo.neves@horizonte.eng.br',
+    phone: '85987654321',
+    role: 'Diretor de Engenharia',
+    isDecisionMaker: true,
+    companyIdx: 8,
+  },
+  {
+    id: seedId('cont', 25),
+    name: 'Mariana Tavares',
+    email: 'mariana.tavares@horizonte.eng.br',
+    phone: '85976543210',
+    role: 'Gerente de Obras',
+    isDecisionMaker: false,
+    companyIdx: 8,
+  },
+  {
+    id: seedId('cont', 26),
+    name: 'Sérgio Barros',
+    email: 'sergio.barros@horizonte.eng.br',
+    phone: '85965432109',
+    role: 'Diretor Comercial',
+    isDecisionMaker: true,
+    companyIdx: 8,
+  },
   // Pet & Cia (9)
-  { id: seedId('cont', 27), name: 'Dr. Renata Azevedo', email: 'renata.azevedo@petecia.com.br', phone: '91987654321', role: 'Veterinária Sócia', isDecisionMaker: true, companyIdx: 9 },
-  { id: seedId('cont', 28), name: 'Matheus Guimarães', email: 'matheus.guimaraes@petecia.com.br', phone: '91976543210', role: 'Gerente da Loja', isDecisionMaker: false, companyIdx: 9 },
-  { id: seedId('cont', 29), name: 'Luana Peixoto', email: 'luana.peixoto@petecia.com.br', phone: '91965432109', role: 'Veterinária', isDecisionMaker: false, companyIdx: 9 },
+  {
+    id: seedId('cont', 27),
+    name: 'Dr. Renata Azevedo',
+    email: 'renata.azevedo@petecia.com.br',
+    phone: '91987654321',
+    role: 'Veterinária Sócia',
+    isDecisionMaker: true,
+    companyIdx: 9,
+  },
+  {
+    id: seedId('cont', 28),
+    name: 'Matheus Guimarães',
+    email: 'matheus.guimaraes@petecia.com.br',
+    phone: '91976543210',
+    role: 'Gerente da Loja',
+    isDecisionMaker: false,
+    companyIdx: 9,
+  },
+  {
+    id: seedId('cont', 29),
+    name: 'Luana Peixoto',
+    email: 'luana.peixoto@petecia.com.br',
+    phone: '91965432109',
+    role: 'Veterinária',
+    isDecisionMaker: false,
+    companyIdx: 9,
+  },
 ]
 
 interface ProductData {
@@ -181,14 +480,56 @@ interface ProductData {
 }
 
 const PRODUCTS_DATA: ProductData[] = [
-  { id: seedId('prod', 0), name: 'Consultoria Estratégica', description: 'Análise e planejamento estratégico para transformação digital', price: 15000 },
-  { id: seedId('prod', 1), name: 'Implantação CRM', description: 'Setup completo do CRM com migração de dados e treinamento', price: 25000 },
-  { id: seedId('prod', 2), name: 'Suporte Premium Mensal', description: 'Suporte técnico prioritário com SLA de 2h', price: 2500 },
-  { id: seedId('prod', 3), name: 'Treinamento de Equipe', description: 'Capacitação presencial ou online para até 20 pessoas', price: 8000 },
-  { id: seedId('prod', 4), name: 'Integração de Sistemas', description: 'Integração via API com ERPs, e-commerces e ferramentas externas', price: 18000 },
-  { id: seedId('prod', 5), name: 'Automação de Marketing', description: 'Configuração de fluxos automatizados de email e WhatsApp', price: 12000 },
-  { id: seedId('prod', 6), name: 'Dashboard Analytics', description: 'Painel customizado de BI com métricas do negócio', price: 9500 },
-  { id: seedId('prod', 7), name: 'Licença Enterprise Anual', description: 'Licença anual com todas as funcionalidades desbloqueadas', price: 45000 },
+  {
+    id: seedId('prod', 0),
+    name: 'Consultoria Estratégica',
+    description:
+      'Análise e planejamento estratégico para transformação digital',
+    price: 15000,
+  },
+  {
+    id: seedId('prod', 1),
+    name: 'Implantação CRM',
+    description: 'Setup completo do CRM com migração de dados e treinamento',
+    price: 25000,
+  },
+  {
+    id: seedId('prod', 2),
+    name: 'Suporte Premium Mensal',
+    description: 'Suporte técnico prioritário com SLA de 2h',
+    price: 2500,
+  },
+  {
+    id: seedId('prod', 3),
+    name: 'Treinamento de Equipe',
+    description: 'Capacitação presencial ou online para até 20 pessoas',
+    price: 8000,
+  },
+  {
+    id: seedId('prod', 4),
+    name: 'Integração de Sistemas',
+    description:
+      'Integração via API com ERPs, e-commerces e ferramentas externas',
+    price: 18000,
+  },
+  {
+    id: seedId('prod', 5),
+    name: 'Automação de Marketing',
+    description: 'Configuração de fluxos automatizados de email e WhatsApp',
+    price: 12000,
+  },
+  {
+    id: seedId('prod', 6),
+    name: 'Dashboard Analytics',
+    description: 'Painel customizado de BI com métricas do negócio',
+    price: 9500,
+  },
+  {
+    id: seedId('prod', 7),
+    name: 'Licença Enterprise Anual',
+    description: 'Licença anual com todas as funcionalidades desbloqueadas',
+    price: 45000,
+  },
 ]
 
 const LOST_REASONS = [
@@ -233,14 +574,6 @@ const ACTIVITY_NOTES = [
   'Enviamos o contrato assinado digitalmente. Aguardando retorno com assinatura do cliente.',
   'Primeiro pagamento confirmado. Ativando acessos e iniciando onboarding.',
   'Call de alinhamento: cliente quer incluir módulo adicional no escopo do projeto.',
-]
-
-const APPOINTMENT_TITLES = [
-  'Demo do produto',
-  'Reunião de discovery',
-  'Alinhamento técnico',
-  'Apresentação executiva',
-  'Kickoff do projeto',
 ]
 
 // ============================================================
@@ -326,7 +659,8 @@ const DEAL_CONFIGS: SeedDealConfig[] = [
     contactIndices: [9, 10],
     daysAgo: 5,
     expectedCloseDaysFromNow: 40,
-    notes: 'Interesse em integrar WhatsApp com CRM para equipe de 15 atendentes.',
+    notes:
+      'Interesse em integrar WhatsApp com CRM para equipe de 15 atendentes.',
   },
   {
     idx: 4,
@@ -429,7 +763,8 @@ const DEAL_CONFIGS: SeedDealConfig[] = [
     contactIndices: [4, 5],
     daysAgo: 30,
     expectedCloseDaysFromNow: 20,
-    notes: 'Cliente atual migrando de plano. Potencial de upsell para Enterprise.',
+    notes:
+      'Cliente atual migrando de plano. Potencial de upsell para Enterprise.',
   },
 
   // ── Demo Agendada (5) ─────────────────────────────────────────────────────
@@ -481,7 +816,8 @@ const DEAL_CONFIGS: SeedDealConfig[] = [
     contactIndices: [15, 16],
     daysAgo: 24,
     expectedCloseDaysFromNow: 25,
-    notes: 'Cliente atual com pipeline desatualizado. Demo focada em nova estrutura.',
+    notes:
+      'Cliente atual com pipeline desatualizado. Demo focada em nova estrutura.',
   },
   {
     idx: 16,
@@ -494,7 +830,8 @@ const DEAL_CONFIGS: SeedDealConfig[] = [
     contactIndices: [18, 20],
     daysAgo: 15,
     expectedCloseDaysFromNow: 7,
-    notes: 'Requisito específico: integração com sistema legado de ERP customizado.',
+    notes:
+      'Requisito específico: integração com sistema legado de ERP customizado.',
   },
 
   // ── Proposta Enviada (4) ──────────────────────────────────────────────────
@@ -508,12 +845,18 @@ const DEAL_CONFIGS: SeedDealConfig[] = [
     companyIdx: 7,
     contactIndices: [21, 22],
     productConfigs: [
-      { productIdx: 1, quantity: 1, discountType: 'percentage', discountValue: 5 },
+      {
+        productIdx: 1,
+        quantity: 1,
+        discountType: 'percentage',
+        discountValue: 5,
+      },
       { productIdx: 3, quantity: 2, discountType: 'fixed', discountValue: 500 },
     ],
     daysAgo: 35,
     expectedCloseDaysFromNow: 10,
-    notes: '3 filiais com dados separados. Proposta enviada com desconto de fidelidade.',
+    notes:
+      '3 filiais com dados separados. Proposta enviada com desconto de fidelidade.',
   },
   {
     idx: 18,
@@ -525,8 +868,18 @@ const DEAL_CONFIGS: SeedDealConfig[] = [
     companyIdx: 8,
     contactIndices: [24, 25, 26],
     productConfigs: [
-      { productIdx: 4, quantity: 1, discountType: 'percentage', discountValue: 10 },
-      { productIdx: 7, quantity: 1, discountType: 'percentage', discountValue: 0 },
+      {
+        productIdx: 4,
+        quantity: 1,
+        discountType: 'percentage',
+        discountValue: 10,
+      },
+      {
+        productIdx: 7,
+        quantity: 1,
+        discountType: 'percentage',
+        discountValue: 0,
+      },
     ],
     daysAgo: 40,
     expectedCloseDaysFromNow: 5,
@@ -542,7 +895,12 @@ const DEAL_CONFIGS: SeedDealConfig[] = [
     companyIdx: 9,
     contactIndices: [27, 28],
     productConfigs: [
-      { productIdx: 2, quantity: 12, discountType: 'percentage', discountValue: 8 },
+      {
+        productIdx: 2,
+        quantity: 12,
+        discountType: 'percentage',
+        discountValue: 8,
+      },
     ],
     daysAgo: 28,
     expectedCloseDaysFromNow: 15,
@@ -558,12 +916,23 @@ const DEAL_CONFIGS: SeedDealConfig[] = [
     companyIdx: 0,
     contactIndices: [0, 2],
     productConfigs: [
-      { productIdx: 0, quantity: 1, discountType: 'fixed', discountValue: 1000 },
-      { productIdx: 5, quantity: 1, discountType: 'percentage', discountValue: 5 },
+      {
+        productIdx: 0,
+        quantity: 1,
+        discountType: 'fixed',
+        discountValue: 1000,
+      },
+      {
+        productIdx: 5,
+        quantity: 1,
+        discountType: 'percentage',
+        discountValue: 5,
+      },
     ],
     daysAgo: 32,
     expectedCloseDaysFromNow: 3,
-    notes: 'Proposta de PoC com prazo apertado. Cliente comparando com 1 concorrente.',
+    notes:
+      'Proposta de PoC com prazo apertado. Cliente comparando com 1 concorrente.',
   },
 
   // ── Negociação (5) ───────────────────────────────────────────────────────
@@ -577,12 +946,18 @@ const DEAL_CONFIGS: SeedDealConfig[] = [
     companyIdx: 1,
     contactIndices: [3, 4],
     productConfigs: [
-      { productIdx: 1, quantity: 1, discountType: 'percentage', discountValue: 5 },
+      {
+        productIdx: 1,
+        quantity: 1,
+        discountType: 'percentage',
+        discountValue: 5,
+      },
       { productIdx: 3, quantity: 1, discountType: 'fixed', discountValue: 0 },
     ],
     daysAgo: 50,
     expectedCloseDaysFromNow: 7,
-    notes: 'Cliente atual migrando para versão maior. Negociando desconto por fidelidade.',
+    notes:
+      'Cliente atual migrando para versão maior. Negociando desconto por fidelidade.',
   },
   {
     idx: 22,
@@ -594,11 +969,17 @@ const DEAL_CONFIGS: SeedDealConfig[] = [
     companyIdx: 2,
     contactIndices: [6, 8],
     productConfigs: [
-      { productIdx: 2, quantity: 12, discountType: 'percentage', discountValue: 10 },
+      {
+        productIdx: 2,
+        quantity: 12,
+        discountType: 'percentage',
+        discountValue: 10,
+      },
     ],
     daysAgo: 45,
     expectedCloseDaysFromNow: 5,
-    notes: 'Renovação anual. Discutindo inclusão de horas de consultoria no pacote.',
+    notes:
+      'Renovação anual. Discutindo inclusão de horas de consultoria no pacote.',
   },
   {
     idx: 23,
@@ -614,7 +995,8 @@ const DEAL_CONFIGS: SeedDealConfig[] = [
     ],
     daysAgo: 60,
     expectedCloseDaysFromNow: 30,
-    notes: 'Pausado aguardando orçamento Q2. Cliente confirmou interesse para próximo trimestre.',
+    notes:
+      'Pausado aguardando orçamento Q2. Cliente confirmou interesse para próximo trimestre.',
   },
   {
     idx: 24,
@@ -626,13 +1008,24 @@ const DEAL_CONFIGS: SeedDealConfig[] = [
     companyIdx: 4,
     contactIndices: [12, 13, 14],
     productConfigs: [
-      { productIdx: 0, quantity: 2, discountType: 'percentage', discountValue: 8 },
-      { productIdx: 4, quantity: 1, discountType: 'percentage', discountValue: 5 },
+      {
+        productIdx: 0,
+        quantity: 2,
+        discountType: 'percentage',
+        discountValue: 8,
+      },
+      {
+        productIdx: 4,
+        quantity: 1,
+        discountType: 'percentage',
+        discountValue: 5,
+      },
       { productIdx: 6, quantity: 1, discountType: 'fixed', discountValue: 500 },
     ],
     daysAgo: 55,
     expectedCloseDaysFromNow: 3,
-    notes: 'Maior deal do trimestre. Jurídico do cliente revisando cláusulas contratuais.',
+    notes:
+      'Maior deal do trimestre. Jurídico do cliente revisando cláusulas contratuais.',
   },
   {
     idx: 25,
@@ -644,8 +1037,18 @@ const DEAL_CONFIGS: SeedDealConfig[] = [
     companyIdx: 5,
     contactIndices: [15, 17],
     productConfigs: [
-      { productIdx: 4, quantity: 1, discountType: 'percentage', discountValue: 7 },
-      { productIdx: 1, quantity: 1, discountType: 'percentage', discountValue: 5 },
+      {
+        productIdx: 4,
+        quantity: 1,
+        discountType: 'percentage',
+        discountValue: 7,
+      },
+      {
+        productIdx: 1,
+        quantity: 1,
+        discountType: 'percentage',
+        discountValue: 5,
+      },
     ],
     daysAgo: 48,
     expectedCloseDaysFromNow: 10,
@@ -662,8 +1065,18 @@ const DEAL_CONFIGS: SeedDealConfig[] = [
     companyIdx: 6,
     contactIndices: [18, 19, 20],
     productConfigs: [
-      { productIdx: 0, quantity: 1, discountType: 'percentage', discountValue: 0 },
-      { productIdx: 6, quantity: 1, discountType: 'percentage', discountValue: 5 },
+      {
+        productIdx: 0,
+        quantity: 1,
+        discountType: 'percentage',
+        discountValue: 0,
+      },
+      {
+        productIdx: 6,
+        quantity: 1,
+        discountType: 'percentage',
+        discountValue: 5,
+      },
     ],
     daysAgo: 70,
     expectedCloseDaysFromNow: -10,
@@ -679,13 +1092,29 @@ const DEAL_CONFIGS: SeedDealConfig[] = [
     companyIdx: 7,
     contactIndices: [21, 22, 23],
     productConfigs: [
-      { productIdx: 7, quantity: 1, discountType: 'percentage', discountValue: 10 },
-      { productIdx: 1, quantity: 1, discountType: 'percentage', discountValue: 5 },
-      { productIdx: 3, quantity: 3, discountType: 'fixed', discountValue: 1000 },
+      {
+        productIdx: 7,
+        quantity: 1,
+        discountType: 'percentage',
+        discountValue: 10,
+      },
+      {
+        productIdx: 1,
+        quantity: 1,
+        discountType: 'percentage',
+        discountValue: 5,
+      },
+      {
+        productIdx: 3,
+        quantity: 3,
+        discountType: 'fixed',
+        discountValue: 1000,
+      },
     ],
     daysAgo: 85,
     expectedCloseDaysFromNow: -5,
-    notes: 'Maior contrato do ano. Inclui licença Enterprise + implantação + treinamento.',
+    notes:
+      'Maior contrato do ano. Inclui licença Enterprise + implantação + treinamento.',
   },
 
   // ── Fechamento — LOST (2) ────────────────────────────────────────────────
@@ -699,12 +1128,18 @@ const DEAL_CONFIGS: SeedDealConfig[] = [
     companyIdx: 8,
     contactIndices: [24, 25],
     productConfigs: [
-      { productIdx: 3, quantity: 3, discountType: 'percentage', discountValue: 5 },
+      {
+        productIdx: 3,
+        quantity: 3,
+        discountType: 'percentage',
+        discountValue: 5,
+      },
     ],
     daysAgo: 60,
     expectedCloseDaysFromNow: -15,
     lostReasonIdx: 0, // Preço acima do orçamento
-    notes: 'Cliente foi para concorrente com preço 20% menor. Sem margem para negociar.',
+    notes:
+      'Cliente foi para concorrente com preço 20% menor. Sem margem para negociar.',
   },
   {
     idx: 29,
@@ -716,13 +1151,24 @@ const DEAL_CONFIGS: SeedDealConfig[] = [
     companyIdx: 9,
     contactIndices: [27, 28, 29],
     productConfigs: [
-      { productIdx: 7, quantity: 1, discountType: 'percentage', discountValue: 0 },
-      { productIdx: 4, quantity: 1, discountType: 'percentage', discountValue: 0 },
+      {
+        productIdx: 7,
+        quantity: 1,
+        discountType: 'percentage',
+        discountValue: 0,
+      },
+      {
+        productIdx: 4,
+        quantity: 1,
+        discountType: 'percentage',
+        discountValue: 0,
+      },
     ],
     daysAgo: 75,
     expectedCloseDaysFromNow: -20,
     lostReasonIdx: 2, // Projeto adiado / sem timing
-    notes: 'Projeto cortado no orçamento anual da empresa. Possível retomada no próximo ano.',
+    notes:
+      'Projeto cortado no orçamento anual da empresa. Possível retomada no próximo ano.',
   },
 ]
 
@@ -743,7 +1189,9 @@ async function cleanup(): Promise<void> {
   // Para entidades filhas dos deals, deleta cascateando pelo dealId ao invés de
   // tentar reconstruir todos os IDs compostos (evita divergência entre execuções)
   if (dealIds.length > 0) {
-    await db.automationExecution.deleteMany({ where: { dealId: { in: dealIds } } })
+    await db.automationExecution.deleteMany({
+      where: { dealId: { in: dealIds } },
+    })
     await db.appointment.deleteMany({ where: { dealId: { in: dealIds } } })
     await db.activity.deleteMany({ where: { dealId: { in: dealIds } } })
     await db.crmTask.deleteMany({ where: { dealId: { in: dealIds } } })
@@ -783,7 +1231,10 @@ interface ActivitySpec {
   metadata?: Record<string, string>
 }
 
-function buildActivities(config: SeedDealConfig, stageNames: Record<StageName, string>): ActivitySpec[] {
+function buildActivities(
+  config: SeedDealConfig,
+  stageNames: Record<StageName, string>,
+): ActivitySpec[] {
   const stageName = config.stageKey
   const baseDay = config.daysAgo
 
@@ -806,7 +1257,10 @@ function buildActivities(config: SeedDealConfig, stageNames: Record<StageName, s
       type: 'stage_change',
       content: `Movido para ${stageNames['Qualificação']}`,
       daysAgo: baseDay - 3,
-      metadata: { fromStage: stageNames['Novo Contato'], toStage: stageNames['Qualificação'] },
+      metadata: {
+        fromStage: stageNames['Novo Contato'],
+        toStage: stageNames['Qualificação'],
+      },
     })
     activities.push({
       type: 'call',
@@ -830,18 +1284,25 @@ function buildActivities(config: SeedDealConfig, stageNames: Record<StageName, s
       type: 'stage_change',
       content: `Movido para ${stageNames['Qualificação']}`,
       daysAgo: baseDay - 3,
-      metadata: { fromStage: stageNames['Novo Contato'], toStage: stageNames['Qualificação'] },
+      metadata: {
+        fromStage: stageNames['Novo Contato'],
+        toStage: stageNames['Qualificação'],
+      },
     })
     activities.push({
       type: 'call',
-      content: 'Ligação de qualificação bem-sucedida. Cliente tem budget e urgência confirmados.',
+      content:
+        'Ligação de qualificação bem-sucedida. Cliente tem budget e urgência confirmados.',
       daysAgo: baseDay - 6,
     })
     activities.push({
       type: 'stage_change',
       content: `Movido para ${stageNames['Demo Agendada']}`,
       daysAgo: baseDay - 8,
-      metadata: { fromStage: stageNames['Qualificação'], toStage: stageNames['Demo Agendada'] },
+      metadata: {
+        fromStage: stageNames['Qualificação'],
+        toStage: stageNames['Demo Agendada'],
+      },
     })
     activities.push({
       type: 'meeting',
@@ -857,11 +1318,15 @@ function buildActivities(config: SeedDealConfig, stageNames: Record<StageName, s
       type: 'stage_change',
       content: `Movido para ${stageNames['Qualificação']}`,
       daysAgo: baseDay - 3,
-      metadata: { fromStage: stageNames['Novo Contato'], toStage: stageNames['Qualificação'] },
+      metadata: {
+        fromStage: stageNames['Novo Contato'],
+        toStage: stageNames['Qualificação'],
+      },
     })
     activities.push({
       type: 'call',
-      content: 'Qualificação detalhada. Identificados decisores e prazo de decisão.',
+      content:
+        'Qualificação detalhada. Identificados decisores e prazo de decisão.',
       daysAgo: baseDay - 7,
     })
     activities.push({
@@ -873,11 +1338,15 @@ function buildActivities(config: SeedDealConfig, stageNames: Record<StageName, s
       type: 'stage_change',
       content: `Movido para ${stageNames['Proposta Enviada']}`,
       daysAgo: baseDay - 15,
-      metadata: { fromStage: stageNames['Demo Agendada'], toStage: stageNames['Proposta Enviada'] },
+      metadata: {
+        fromStage: stageNames['Demo Agendada'],
+        toStage: stageNames['Proposta Enviada'],
+      },
     })
     activities.push({
       type: 'email',
-      content: 'Enviada proposta comercial detalhada com cronograma e condições de pagamento.',
+      content:
+        'Enviada proposta comercial detalhada com cronograma e condições de pagamento.',
       daysAgo: baseDay - 18,
     })
     if (config.productConfigs && config.productConfigs.length > 0) {
@@ -894,7 +1363,8 @@ function buildActivities(config: SeedDealConfig, stageNames: Record<StageName, s
     }
     activities.push({
       type: 'note',
-      content: 'Cliente está analisando proposta internamente. Follow-up previsto em 5 dias.',
+      content:
+        'Cliente está analisando proposta internamente. Follow-up previsto em 5 dias.',
       daysAgo: Math.max(2, baseDay - 25),
     })
     return activities
@@ -928,7 +1398,10 @@ function buildActivities(config: SeedDealConfig, stageNames: Record<StageName, s
       type: 'stage_change',
       content: `Movido para ${stageNames['Negociação']}`,
       daysAgo: baseDay - 25,
-      metadata: { fromStage: stageNames['Proposta Enviada'], toStage: stageNames['Negociação'] },
+      metadata: {
+        fromStage: stageNames['Proposta Enviada'],
+        toStage: stageNames['Negociação'],
+      },
     })
     activities.push({
       type: 'call',
@@ -938,13 +1411,15 @@ function buildActivities(config: SeedDealConfig, stageNames: Record<StageName, s
     if (config.status === 'PAUSED') {
       activities.push({
         type: 'note',
-        content: 'Deal pausado por solicitação do cliente. Orçamento bloqueado até próximo trimestre.',
+        content:
+          'Deal pausado por solicitação do cliente. Orçamento bloqueado até próximo trimestre.',
         daysAgo: baseDay - 35,
       })
     } else {
       activities.push({
         type: 'meeting',
-        content: 'Reunião de negociação final. Discutidas cláusulas contratuais e SLA.',
+        content:
+          'Reunião de negociação final. Discutidas cláusulas contratuais e SLA.',
         daysAgo: Math.max(1, baseDay - 40),
       })
     }
@@ -953,25 +1428,57 @@ function buildActivities(config: SeedDealConfig, stageNames: Record<StageName, s
 
   // Fechamento — WON
   if (stageName === 'Fechamento' && config.status === 'WON') {
-    activities.push({ type: 'call', content: 'Qualificação. Oportunidade confirmada com alto potencial.', daysAgo: baseDay - 5 })
-    activities.push({ type: 'meeting', content: 'Demo executada com excelente receptividade.', daysAgo: baseDay - 12 })
-    activities.push({ type: 'email', content: 'Proposta formal enviada. Tres opções de contratação.', daysAgo: baseDay - 18 })
+    activities.push({
+      type: 'call',
+      content: 'Qualificação. Oportunidade confirmada com alto potencial.',
+      daysAgo: baseDay - 5,
+    })
+    activities.push({
+      type: 'meeting',
+      content: 'Demo executada com excelente receptividade.',
+      daysAgo: baseDay - 12,
+    })
+    activities.push({
+      type: 'email',
+      content: 'Proposta formal enviada. Tres opções de contratação.',
+      daysAgo: baseDay - 18,
+    })
     if (config.productConfigs) {
-      activities.push({ type: 'product_added', content: `Produtos finalizados para proposta: ${config.productConfigs.length} item(s)`, daysAgo: baseDay - 20 })
+      activities.push({
+        type: 'product_added',
+        content: `Produtos finalizados para proposta: ${config.productConfigs.length} item(s)`,
+        daysAgo: baseDay - 20,
+      })
     }
     activities.push({
       type: 'stage_change',
       content: `Movido para ${stageNames['Negociação']}`,
       daysAgo: baseDay - 25,
-      metadata: { fromStage: stageNames['Proposta Enviada'], toStage: stageNames['Negociação'] },
+      metadata: {
+        fromStage: stageNames['Proposta Enviada'],
+        toStage: stageNames['Negociação'],
+      },
     })
-    activities.push({ type: 'call', content: 'Negociação final. Acordado desconto adicional para pagamento à vista.', daysAgo: baseDay - 35 })
-    activities.push({ type: 'meeting', content: 'Apresentação executiva para tomadores de decisão. Aprovação obtida!', daysAgo: baseDay - 45 })
+    activities.push({
+      type: 'call',
+      content:
+        'Negociação final. Acordado desconto adicional para pagamento à vista.',
+      daysAgo: baseDay - 35,
+    })
+    activities.push({
+      type: 'meeting',
+      content:
+        'Apresentação executiva para tomadores de decisão. Aprovação obtida!',
+      daysAgo: baseDay - 45,
+    })
     activities.push({
       type: 'stage_change',
       content: `Movido para ${stageNames['Fechamento']}`,
       daysAgo: baseDay - 50,
-      metadata: { fromStage: stageNames['Negociação'], toStage: stageNames['Fechamento'] },
+      metadata: {
+        fromStage: stageNames['Negociação'],
+        toStage: stageNames['Fechamento'],
+      },
     })
     // deal_won é sempre a última atividade
     activities.push({
@@ -984,18 +1491,46 @@ function buildActivities(config: SeedDealConfig, stageNames: Record<StageName, s
 
   // Fechamento — LOST
   if (stageName === 'Fechamento' && config.status === 'LOST') {
-    activities.push({ type: 'call', content: 'Qualificação inicial realizada.', daysAgo: baseDay - 5 })
-    activities.push({ type: 'meeting', content: 'Demo apresentada ao time de decisão.', daysAgo: baseDay - 15 })
-    activities.push({ type: 'email', content: 'Proposta enviada com condições comerciais detalhadas.', daysAgo: baseDay - 22 })
-    activities.push({ type: 'call', content: 'Follow-up após proposta. Cliente pediu mais tempo para avaliar.', daysAgo: baseDay - 30 })
+    activities.push({
+      type: 'call',
+      content: 'Qualificação inicial realizada.',
+      daysAgo: baseDay - 5,
+    })
+    activities.push({
+      type: 'meeting',
+      content: 'Demo apresentada ao time de decisão.',
+      daysAgo: baseDay - 15,
+    })
+    activities.push({
+      type: 'email',
+      content: 'Proposta enviada com condições comerciais detalhadas.',
+      daysAgo: baseDay - 22,
+    })
+    activities.push({
+      type: 'call',
+      content:
+        'Follow-up após proposta. Cliente pediu mais tempo para avaliar.',
+      daysAgo: baseDay - 30,
+    })
     activities.push({
       type: 'stage_change',
       content: `Movido para ${stageNames['Negociação']}`,
       daysAgo: baseDay - 38,
-      metadata: { fromStage: stageNames['Proposta Enviada'], toStage: stageNames['Negociação'] },
+      metadata: {
+        fromStage: stageNames['Proposta Enviada'],
+        toStage: stageNames['Negociação'],
+      },
     })
-    activities.push({ type: 'note', content: 'Sinais negativos na última call. Cliente muito focado em preço.', daysAgo: baseDay - 45 })
-    const lostReasonName = config.lostReasonIdx !== undefined ? LOST_REASONS[config.lostReasonIdx] : 'Motivo não informado'
+    activities.push({
+      type: 'note',
+      content:
+        'Sinais negativos na última call. Cliente muito focado em preço.',
+      daysAgo: baseDay - 45,
+    })
+    const lostReasonName =
+      config.lostReasonIdx !== undefined
+        ? LOST_REASONS[config.lostReasonIdx]
+        : 'Motivo não informado'
     // deal_lost é sempre a última atividade
     activities.push({
       type: 'deal_lost',
@@ -1012,7 +1547,13 @@ function buildActivities(config: SeedDealConfig, stageNames: Record<StageName, s
 // CRIAÇÃO DE TASKS POR ESTÁGIO
 // ============================================================
 
-type TaskTypeValue = 'TASK' | 'MEETING' | 'CALL' | 'WHATSAPP' | 'VISIT' | 'EMAIL'
+type TaskTypeValue =
+  | 'TASK'
+  | 'MEETING'
+  | 'CALL'
+  | 'WHATSAPP'
+  | 'VISIT'
+  | 'EMAIL'
 
 interface TaskSpec {
   title: string
@@ -1028,54 +1569,144 @@ function buildTasks(config: SeedDealConfig): TaskSpec[] {
     // 0-1 task futura de follow-up
     if (config.idx % 3 === 0) return []
     return [
-      { title: pick(TASK_TITLES, config.idx), type: 'CALL', isCompleted: false, daysFromNowDue: 3 },
+      {
+        title: pick(TASK_TITLES, config.idx),
+        type: 'CALL',
+        isCompleted: false,
+        daysFromNowDue: 3,
+      },
     ]
   }
 
   if (stageKey === 'Qualificação') {
     return [
-      { title: TASK_TITLES[config.idx % TASK_TITLES.length], type: 'EMAIL', isCompleted: true, daysFromNowDue: -(config.daysAgo - 10) },
-      { title: pick(TASK_TITLES, config.idx + 1), type: 'CALL', isCompleted: false, daysFromNowDue: 5 },
+      {
+        title: TASK_TITLES[config.idx % TASK_TITLES.length],
+        type: 'EMAIL',
+        isCompleted: true,
+        daysFromNowDue: -(config.daysAgo - 10),
+      },
+      {
+        title: pick(TASK_TITLES, config.idx + 1),
+        type: 'CALL',
+        isCompleted: false,
+        daysFromNowDue: 5,
+      },
     ]
   }
 
   if (stageKey === 'Demo Agendada') {
     return [
-      { title: 'Preparar roteiro da demo', type: 'TASK', isCompleted: true, daysFromNowDue: -(config.daysAgo - 12) },
-      { title: 'Agendar demo do produto', type: 'MEETING', isCompleted: true, daysFromNowDue: -(config.daysAgo - 8) },
-      { title: 'Follow-up pós apresentação', type: 'CALL', isCompleted: false, daysFromNowDue: 2 },
+      {
+        title: 'Preparar roteiro da demo',
+        type: 'TASK',
+        isCompleted: true,
+        daysFromNowDue: -(config.daysAgo - 12),
+      },
+      {
+        title: 'Agendar demo do produto',
+        type: 'MEETING',
+        isCompleted: true,
+        daysFromNowDue: -(config.daysAgo - 8),
+      },
+      {
+        title: 'Follow-up pós apresentação',
+        type: 'CALL',
+        isCompleted: false,
+        daysFromNowDue: 2,
+      },
     ]
   }
 
   if (stageKey === 'Proposta Enviada') {
     return [
-      { title: 'Enviar proposta comercial atualizada', type: 'EMAIL', isCompleted: true, daysFromNowDue: -(config.daysAgo - 18) },
-      { title: 'Revisar requisitos técnicos', type: 'TASK', isCompleted: true, daysFromNowDue: -(config.daysAgo - 15) },
-      { title: 'Follow-up da proposta enviada', type: 'CALL', isCompleted: false, daysFromNowDue: 4 },
+      {
+        title: 'Enviar proposta comercial atualizada',
+        type: 'EMAIL',
+        isCompleted: true,
+        daysFromNowDue: -(config.daysAgo - 18),
+      },
+      {
+        title: 'Revisar requisitos técnicos',
+        type: 'TASK',
+        isCompleted: true,
+        daysFromNowDue: -(config.daysAgo - 15),
+      },
+      {
+        title: 'Follow-up da proposta enviada',
+        type: 'CALL',
+        isCompleted: false,
+        daysFromNowDue: 4,
+      },
     ]
   }
 
   if (stageKey === 'Negociação') {
     return [
-      { title: 'Enviar proposta comercial atualizada', type: 'EMAIL', isCompleted: true, daysFromNowDue: -(config.daysAgo - 20) },
-      { title: 'Reunião de alinhamento interno', type: 'MEETING', isCompleted: true, daysFromNowDue: -(config.daysAgo - 30) },
-      { title: 'Preparar contrato para assinatura', type: 'TASK', isCompleted: false, daysFromNowDue: 3 },
-      { title: 'Verificar status do pagamento', type: 'CALL', isCompleted: false, daysFromNowDue: 1 },
+      {
+        title: 'Enviar proposta comercial atualizada',
+        type: 'EMAIL',
+        isCompleted: true,
+        daysFromNowDue: -(config.daysAgo - 20),
+      },
+      {
+        title: 'Reunião de alinhamento interno',
+        type: 'MEETING',
+        isCompleted: true,
+        daysFromNowDue: -(config.daysAgo - 30),
+      },
+      {
+        title: 'Preparar contrato para assinatura',
+        type: 'TASK',
+        isCompleted: false,
+        daysFromNowDue: 3,
+      },
+      {
+        title: 'Verificar status do pagamento',
+        type: 'CALL',
+        isCompleted: false,
+        daysFromNowDue: 1,
+      },
     ]
   }
 
   if (stageKey === 'Fechamento' && config.status === 'WON') {
     return [
-      { title: 'Preparar contrato para assinatura', type: 'TASK', isCompleted: true, daysFromNowDue: -(config.daysAgo - 40) },
-      { title: 'Agendar kickoff do projeto', type: 'MEETING', isCompleted: true, daysFromNowDue: -(config.daysAgo - 55) },
-      { title: 'Enviar NDA para assinatura', type: 'EMAIL', isCompleted: true, daysFromNowDue: -(config.daysAgo - 60) },
+      {
+        title: 'Preparar contrato para assinatura',
+        type: 'TASK',
+        isCompleted: true,
+        daysFromNowDue: -(config.daysAgo - 40),
+      },
+      {
+        title: 'Agendar kickoff do projeto',
+        type: 'MEETING',
+        isCompleted: true,
+        daysFromNowDue: -(config.daysAgo - 55),
+      },
+      {
+        title: 'Enviar NDA para assinatura',
+        type: 'EMAIL',
+        isCompleted: true,
+        daysFromNowDue: -(config.daysAgo - 60),
+      },
     ]
   }
 
   if (stageKey === 'Fechamento' && config.status === 'LOST') {
     return [
-      { title: 'Ligar para confirmar reunião', type: 'CALL', isCompleted: true, daysFromNowDue: -(config.daysAgo - 30) },
-      { title: 'Enviar case de sucesso por email', type: 'EMAIL', isCompleted: false, daysFromNowDue: -3 },
+      {
+        title: 'Ligar para confirmar reunião',
+        type: 'CALL',
+        isCompleted: true,
+        daysFromNowDue: -(config.daysAgo - 30),
+      },
+      {
+        title: 'Enviar case de sucesso por email',
+        type: 'EMAIL',
+        isCompleted: false,
+        daysFromNowDue: -3,
+      },
     ]
   }
 
@@ -1086,7 +1717,12 @@ function buildTasks(config: SeedDealConfig): TaskSpec[] {
 // CRIAÇÃO DE APPOINTMENTS POR ESTÁGIO
 // ============================================================
 
-type AppointmentStatusValue = 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELED' | 'NO_SHOW'
+type AppointmentStatusValue =
+  | 'SCHEDULED'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'CANCELED'
+  | 'NO_SHOW'
 
 interface AppointmentSpec {
   title: string
@@ -1102,47 +1738,116 @@ function buildAppointments(config: SeedDealConfig): AppointmentSpec[] {
   if (stageKey === 'Novo Contato' || stageKey === 'Qualificação') {
     // Qualificação: apenas 1/3 dos deals tem appointment agendado
     if (stageKey === 'Qualificação' && config.idx % 3 === 0) {
-      return [{ title: 'Reunião de discovery', description: 'Entender necessidades e contexto do cliente', startDaysFromNow: 5, durationHours: 1, status: 'SCHEDULED' }]
+      return [
+        {
+          title: 'Reunião de discovery',
+          description: 'Entender necessidades e contexto do cliente',
+          startDaysFromNow: 5,
+          durationHours: 1,
+          status: 'SCHEDULED',
+        },
+      ]
     }
     return []
   }
 
   if (stageKey === 'Demo Agendada') {
     return [
-      { title: 'Demo do produto', description: 'Demonstração completa da plataforma para equipe do cliente', startDaysFromNow: -(config.daysAgo - 14), durationHours: 1, status: 'COMPLETED' },
-      { title: 'Alinhamento técnico', description: 'Reunião de acompanhamento com time de TI do cliente', startDaysFromNow: 7, durationHours: 1, status: 'SCHEDULED' },
+      {
+        title: 'Demo do produto',
+        description:
+          'Demonstração completa da plataforma para equipe do cliente',
+        startDaysFromNow: -(config.daysAgo - 14),
+        durationHours: 1,
+        status: 'COMPLETED',
+      },
+      {
+        title: 'Alinhamento técnico',
+        description: 'Reunião de acompanhamento com time de TI do cliente',
+        startDaysFromNow: 7,
+        durationHours: 1,
+        status: 'SCHEDULED',
+      },
     ]
   }
 
   if (stageKey === 'Proposta Enviada') {
     return [
-      { title: 'Apresentação da proposta', description: 'Apresentar e detalhar proposta comercial enviada', startDaysFromNow: -(config.daysAgo - 20), durationHours: 1, status: 'COMPLETED' },
-      { title: 'Reunião de esclarecimento', description: 'Tirar dúvidas sobre escopo e condições', startDaysFromNow: 3, durationHours: 1, status: 'SCHEDULED' },
+      {
+        title: 'Apresentação da proposta',
+        description: 'Apresentar e detalhar proposta comercial enviada',
+        startDaysFromNow: -(config.daysAgo - 20),
+        durationHours: 1,
+        status: 'COMPLETED',
+      },
+      {
+        title: 'Reunião de esclarecimento',
+        description: 'Tirar dúvidas sobre escopo e condições',
+        startDaysFromNow: 3,
+        durationHours: 1,
+        status: 'SCHEDULED',
+      },
     ]
   }
 
   if (stageKey === 'Negociação') {
     if (config.status === 'PAUSED') {
       return [
-        { title: 'Reunião de retomada', description: 'Retomar negociação após aprovação de orçamento', startDaysFromNow: 30, durationHours: 1, status: 'SCHEDULED' },
+        {
+          title: 'Reunião de retomada',
+          description: 'Retomar negociação após aprovação de orçamento',
+          startDaysFromNow: 30,
+          durationHours: 1,
+          status: 'SCHEDULED',
+        },
       ]
     }
     return [
-      { title: 'Apresentação executiva', description: 'Apresentação para tomadores de decisão', startDaysFromNow: -(config.daysAgo - 35), durationHours: 2, status: 'COMPLETED' },
-      { title: 'Kickoff do projeto', description: 'Reunião de kick-off para início da implantação', startDaysFromNow: 5, durationHours: 1, status: 'SCHEDULED' },
+      {
+        title: 'Apresentação executiva',
+        description: 'Apresentação para tomadores de decisão',
+        startDaysFromNow: -(config.daysAgo - 35),
+        durationHours: 2,
+        status: 'COMPLETED',
+      },
+      {
+        title: 'Kickoff do projeto',
+        description: 'Reunião de kick-off para início da implantação',
+        startDaysFromNow: 5,
+        durationHours: 1,
+        status: 'SCHEDULED',
+      },
     ]
   }
 
   if (stageKey === 'Fechamento' && config.status === 'WON') {
     return [
-      { title: 'Apresentação executiva', description: 'Apresentação final para aprovação do board', startDaysFromNow: -(config.daysAgo - 50), durationHours: 2, status: 'COMPLETED' },
-      { title: 'Kickoff do projeto', description: 'Início oficial do projeto contratado', startDaysFromNow: -(config.daysAgo - 60), durationHours: 1, status: 'COMPLETED' },
+      {
+        title: 'Apresentação executiva',
+        description: 'Apresentação final para aprovação do board',
+        startDaysFromNow: -(config.daysAgo - 50),
+        durationHours: 2,
+        status: 'COMPLETED',
+      },
+      {
+        title: 'Kickoff do projeto',
+        description: 'Início oficial do projeto contratado',
+        startDaysFromNow: -(config.daysAgo - 60),
+        durationHours: 1,
+        status: 'COMPLETED',
+      },
     ]
   }
 
   if (stageKey === 'Fechamento' && config.status === 'LOST') {
     return [
-      { title: 'Demo do produto', description: 'Última tentativa de demonstração de valor', startDaysFromNow: -(config.daysAgo - 20), durationHours: 1, status: config.lostReasonIdx === 2 ? 'CANCELED' : 'NO_SHOW' },
+      {
+        title: 'Demo do produto',
+        description: 'Última tentativa de demonstração de valor',
+        startDaysFromNow: -(config.daysAgo - 20),
+        durationHours: 1,
+        status: config.lostReasonIdx === 2 ? 'CANCELED' : 'NO_SHOW',
+      },
     ]
   }
 
@@ -1166,7 +1871,9 @@ export async function seedDeals(): Promise<void> {
   })
 
   if (!ownerMember || !ownerMember.userId || !ownerMember.user) {
-    throw new Error('[seed-deals] Nenhuma org com OWNER encontrada. Execute o seed principal primeiro.')
+    throw new Error(
+      '[seed-deals] Nenhuma org com OWNER encontrada. Execute o seed principal primeiro.',
+    )
   }
 
   const org = ownerMember.organization
@@ -1174,7 +1881,11 @@ export async function seedDeals(): Promise<void> {
 
   // Busca todos os membros ACCEPTED para distribuir assignedTo entre eles
   const allMembers = await db.member.findMany({
-    where: { organizationId: org.id, status: 'ACCEPTED', userId: { not: null } },
+    where: {
+      organizationId: org.id,
+      status: 'ACCEPTED',
+      userId: { not: null },
+    },
     select: { userId: true },
   })
 
@@ -1197,7 +1908,9 @@ export async function seedDeals(): Promise<void> {
   })
 
   if (!pipeline) {
-    throw new Error('[seed-deals] Nenhum pipeline encontrado na org. Execute o seed principal primeiro.')
+    throw new Error(
+      '[seed-deals] Nenhum pipeline encontrado na org. Execute o seed principal primeiro.',
+    )
   }
 
   // Mapeia nome do stage para seu ID real
@@ -1212,15 +1925,26 @@ export async function seedDeals(): Promise<void> {
   // Verifica se todos os estágios necessários existem
   const missingStages = STAGE_NAMES.filter((name) => !stageIdByName[name])
   if (missingStages.length > 0) {
-    console.warn(`[seed-deals] Estágios não encontrados: ${missingStages.join(', ')}`)
-    console.warn('[seed-deals] Estágios disponíveis:', pipeline.stages.map((s) => s.name).join(', '))
-    throw new Error('[seed-deals] Pipeline incompleto. Verifique os nomes dos estágios.')
+    console.warn(
+      `[seed-deals] Estágios não encontrados: ${missingStages.join(', ')}`,
+    )
+    console.warn(
+      '[seed-deals] Estágios disponíveis:',
+      pipeline.stages.map((s) => s.name).join(', '),
+    )
+    throw new Error(
+      '[seed-deals] Pipeline incompleto. Verifique os nomes dos estágios.',
+    )
   }
 
   // Garante que todos os IDs estão presentes (narrowing após verificação acima)
   const resolvedStageIds = stageIdByName as Record<StageName, string>
 
-  console.log('[seed-deals] Pipeline encontrado com', pipeline.stages.length, 'estágios')
+  console.log(
+    '[seed-deals] Pipeline encontrado com',
+    pipeline.stages.length,
+    'estágios',
+  )
 
   // ── 3. Cleanup ──────────────────────────────────────────────────────────
   await cleanup()
@@ -1238,8 +1962,8 @@ export async function seedDeals(): Promise<void> {
           size: company.size,
           organizationId: org.id,
         },
-      })
-    )
+      }),
+    ),
   )
   console.log('[seed-deals] 10 empresas criadas.')
 
@@ -1261,7 +1985,7 @@ export async function seedDeals(): Promise<void> {
           assignedTo: memberUserIds[contact.companyIdx % memberUserIds.length],
         },
       })
-    })
+    }),
   )
   console.log('[seed-deals] 30 contatos criados.')
 
@@ -1277,8 +2001,8 @@ export async function seedDeals(): Promise<void> {
           price: product.price,
           organizationId: org.id,
         },
-      })
-    )
+      }),
+    ),
   )
   console.log('[seed-deals] 8 produtos criados.')
 
@@ -1293,7 +2017,7 @@ export async function seedDeals(): Promise<void> {
       return db.dealLostReason.create({
         data: { id, name: reason, organizationId: org.id },
       })
-    })
+    }),
   )
   console.log('[seed-deals] 5 motivos de perda criados.')
 
@@ -1331,15 +2055,26 @@ export async function seedDeals(): Promise<void> {
         value: config.value,
         notes: config.notes ?? null,
         expectedCloseDate,
-        lossReasonId: config.lostReasonIdx !== undefined ? lostReasonIds[config.lostReasonIdx] : null,
+        lossReasonId:
+          config.lostReasonIdx !== undefined
+            ? lostReasonIds[config.lostReasonIdx]
+            : null,
         createdAt,
         // Deal pausado tem pausedAt definido
-        ...(config.status === 'PAUSED' ? { pausedAt: daysFromNow(-Math.floor(config.daysAgo * 0.3)) } : {}),
+        ...(config.status === 'PAUSED'
+          ? { pausedAt: daysFromNow(-Math.floor(config.daysAgo * 0.3)) }
+          : {}),
       },
     })
 
     // DealContacts ──────────────────────────────────────────────────────
-    const contactRoles = ['Decisor', 'Influenciador', 'Comprador', 'Usuário Final', 'Sponsor']
+    const contactRoles = [
+      'Decisor',
+      'Influenciador',
+      'Comprador',
+      'Usuário Final',
+      'Sponsor',
+    ]
 
     for (let roleIdx = 0; roleIdx < config.contactIndices.length; roleIdx++) {
       const contactIdx = config.contactIndices[roleIdx]
@@ -1383,11 +2118,11 @@ export async function seedDeals(): Promise<void> {
     // Activities ────────────────────────────────────────────────────────
     const stageDisplayNames: Record<StageName, string> = {
       'Novo Contato': 'Novo Contato',
-      'Qualificação': 'Qualificação',
+      Qualificação: 'Qualificação',
       'Demo Agendada': 'Demo Agendada',
       'Proposta Enviada': 'Proposta Enviada',
-      'Negociação': 'Negociação',
-      'Fechamento': 'Fechamento',
+      Negociação: 'Negociação',
+      Fechamento: 'Fechamento',
     }
 
     const activitySpecs = buildActivities(config, stageDisplayNames)
@@ -1457,7 +2192,9 @@ export async function seedDeals(): Promise<void> {
       totalAppointments++
     }
 
-    console.log(`[seed-deals]   ✓ Deal ${config.idx + 1}/30: "${config.title}" (${config.stageKey} — ${config.status})`)
+    console.log(
+      `[seed-deals]   ✓ Deal ${config.idx + 1}/30: "${config.title}" (${config.stageKey} — ${config.status})`,
+    )
   }
 
   // ── 9. Resumo final ────────────────────────────────────────────────────
