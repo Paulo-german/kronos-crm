@@ -10,6 +10,10 @@ import {
   SIMULATOR_DEAL_TITLE,
   SIMULATOR_REMOTE_JID,
 } from '@/_lib/simulator'
+import {
+  agentCreatesDealViaLifecycle,
+  resetSimulatorContactState,
+} from '../_lib/simulator-contact'
 import { createSimulatorConversationSchema } from './schema'
 
 export const createSimulatorConversation = orgActionClient
@@ -32,12 +36,22 @@ export const createSimulatorConversation = orgActionClient
     // 2. Validar que o agente pertence à organização e carregar pipelineIds
     const agent = await db.agent.findFirst({
       where: { id: data.agentId, organizationId: ctx.orgId },
-      select: { id: true, isActive: true, pipelineIds: true },
+      select: {
+        id: true,
+        isActive: true,
+        pipelineIds: true,
+        steps: { select: { lifecycleTrigger: true } },
+      },
     })
 
     if (!agent) {
       throw new Error('Agente não encontrado.')
     }
+
+    // Quando o agente cria o deal via lifecycle (step com trigger OPPORTUNITY),
+    // o simulador NÃO cria o deal na largada — ele nasce pelo lifecycle, como em
+    // produção. Caso contrário, criamos o deal para as tools de deal funcionarem.
+    const lifecycleCreatesDeal = agentCreatesDealViaLifecycle(agent.steps)
 
     // 3. Resolver primeira stage do primeiro pipeline configurado no agente.
     // Sem pipeline configurado, o simulador segue sem deal — tools de deal falharão
@@ -116,8 +130,13 @@ export const createSimulatorConversation = orgActionClient
       }
     }
 
+    // 6b. Resetar todo o estado de lifecycle do contato (reutilizado entre
+    // simulações) para que triggers de lifecycle voltem a disparar do zero.
+    await resetSimulatorContactState(contactId, ctx.orgId)
+
     // 7. Criar conversa + deal em transação atômica.
-    // Deal só é criado quando o agente tem pipeline configurado.
+    // Deal só é criado com pipeline configurado E quando o agente NÃO cria o
+    // deal via lifecycle (nesse caso o deal nasce ao chegar em OPPORTUNITY).
     const created = await db.$transaction(async (tx) => {
       const newConversation = await tx.conversation.create({
         data: {
@@ -132,8 +151,11 @@ export const createSimulatorConversation = orgActionClient
         select: { id: true },
       })
 
-      if (!firstStage) {
-        return { conversationId: newConversation.id, dealId: null as string | null }
+      if (!firstStage || lifecycleCreatesDeal) {
+        return {
+          conversationId: newConversation.id,
+          dealId: null as string | null,
+        }
       }
 
       const newDeal = await tx.deal.create({
@@ -170,7 +192,12 @@ export const createSimulatorConversation = orgActionClient
     // 9. Retornar DTO da conversa para a UI selecionar imediatamente no inbox
     const elevated = isElevated(ctx.userRole)
     const hidePii = ctx.hidePiiFromMembers ?? false
-    const dto = await getConversationAsDto(ctx.orgId, created.conversationId, elevated, hidePii)
+    const dto = await getConversationAsDto(
+      ctx.orgId,
+      created.conversationId,
+      elevated,
+      hidePii,
+    )
 
     return { conversation: dto }
   })

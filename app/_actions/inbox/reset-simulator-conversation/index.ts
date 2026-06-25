@@ -5,10 +5,11 @@ import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { canPerformAction, requirePermission, isElevated } from '@/_lib/rbac'
 import { getConversationAsDto } from '@/_data-access/conversation/get-conversations'
+import { SIMULATOR_DEAL_TITLE, SIMULATOR_REMOTE_JID } from '@/_lib/simulator'
 import {
-  SIMULATOR_DEAL_TITLE,
-  SIMULATOR_REMOTE_JID,
-} from '@/_lib/simulator'
+  agentCreatesDealViaLifecycle,
+  resetSimulatorContactState,
+} from '../_lib/simulator-contact'
 import { resetSimulatorConversationSchema } from './schema'
 
 export const resetSimulatorConversation = orgActionClient
@@ -38,7 +39,12 @@ export const resetSimulatorConversation = orgActionClient
             id: true,
             agentId: true,
             connectionType: true,
-            agent: { select: { pipelineIds: true } },
+            agent: {
+              select: {
+                pipelineIds: true,
+                steps: { select: { lifecycleTrigger: true } },
+              },
+            },
           },
         },
       },
@@ -69,13 +75,22 @@ export const resetSimulatorConversation = orgActionClient
           })
         : null
 
+    const lifecycleCreatesDeal = agentCreatesDealViaLifecycle(
+      conversation.inbox.agent?.steps ?? [],
+    )
+
     // Delete conversa atual (cascade em messages + events) e deal (FK Restrict — explícito).
     await db.conversation.delete({ where: { id: conversation.id } })
     if (conversation.dealId) {
       await db.deal.delete({ where: { id: conversation.dealId } })
     }
 
-    // Recria conversa + deal em transação atômica.
+    // Resetar todo o estado de lifecycle do contato para que triggers voltem a
+    // disparar do zero na nova simulação.
+    await resetSimulatorContactState(contactId, ctx.orgId)
+
+    // Recria conversa. Deal só é criado com pipeline configurado E quando o
+    // agente NÃO cria o deal via lifecycle (nesse caso nasce ao chegar em OPPORTUNITY).
     const created = await db.$transaction(async (tx) => {
       const newConversation = await tx.conversation.create({
         data: {
@@ -90,7 +105,7 @@ export const resetSimulatorConversation = orgActionClient
         select: { id: true },
       })
 
-      if (!firstStage) {
+      if (!firstStage || lifecycleCreatesDeal) {
         return { conversationId: newConversation.id }
       }
 
@@ -125,7 +140,12 @@ export const resetSimulatorConversation = orgActionClient
 
     const elevated = isElevated(ctx.userRole)
     const hidePii = ctx.hidePiiFromMembers ?? false
-    const dto = await getConversationAsDto(ctx.orgId, created.conversationId, elevated, hidePii)
+    const dto = await getConversationAsDto(
+      ctx.orgId,
+      created.conversationId,
+      elevated,
+      hidePii,
+    )
 
     return { conversation: dto }
   })
