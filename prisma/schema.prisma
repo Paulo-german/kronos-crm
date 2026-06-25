@@ -28,8 +28,8 @@ model User {
   dealsAssigned           Deal[]            @relation("DealAssignee")
   memberships             Member[]
   notifications           Notification[]
-  tasksAssigned           Task[]            @relation("TaskAssignee")
-  tasksCreated            Task[]            @relation("TaskCreator")
+  tasksAssigned           CrmTask[]         @relation("TaskAssignee")
+  tasksCreated            CrmTask[]         @relation("TaskCreator")
   integrations            UserIntegration[]
   automationsCreated      Automation[]      @relation("AutomationCreator")
   userProfiles            UserProfile[]
@@ -102,7 +102,7 @@ model Organization {
   products               Product[]
   productMedia           ProductMedia[]
   subscriptions          Subscription[]
-  tasks                  Task[]
+  tasks                  CrmTask[]
   userIntegrations       UserIntegration[]
   followUps                    FollowUp[]
   automations                  Automation[]
@@ -549,7 +549,7 @@ model Deal {
   organization         Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   squad                Squad?          @relation(fields: [squadId], references: [id], onDelete: SetNull)
   stage                PipelineStage   @relation(fields: [pipelineStageId], references: [id])
-  tasks                Task[]
+  tasks                CrmTask[]
   automationExecutions AutomationExecution[]
   captureEvents        DealCaptureEvent[]
 
@@ -562,7 +562,7 @@ model Deal {
   @@map("deals")
 }
 
-model Task {
+model CrmTask {
   id             String       @id @default(uuid())
   dealId         String       @map("deal_id")
   title          String
@@ -583,7 +583,7 @@ model Task {
   @@index([organizationId, assignedTo, isCompleted, dueDate])
   @@index([organizationId, isCompleted, dueDate])
   @@index([dealId, organizationId])
-  @@map("tasks")
+  @@map("crm_tasks")
 }
 
 model Activity {
