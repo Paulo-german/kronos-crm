@@ -84,6 +84,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         rawBody,
         secretKey: source.secretKey,
         headers: request.headers,
+        searchParams: request.nextUrl.searchParams,
       })
       if (!signatureValid) {
         await persistWebhookLog({

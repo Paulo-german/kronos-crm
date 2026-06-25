@@ -6,6 +6,8 @@ interface VerifyHmacInput {
   rawBody: string
   secretKey: string
   headers: Headers
+  // Query params da URL do webhook — Kiwify assina via `?signature=` (não header).
+  searchParams: URLSearchParams
 }
 
 // Calendly assina com formato `t=<ts>,v1=<hex>` e exige anti-replay (padrão Stripe).
@@ -101,6 +103,44 @@ function verifyCalendly(
   return safeEqualBuffer(signature, expected)
 }
 
+// Eduzz (Myeduzz v3): header `x-signature` = HMAC-SHA256(secretKey, rawBody).
+// A doc oficial não fixa a codificação do digest — aceitamos hex OU base64 (e o
+// prefixo opcional `sha256=`) pra não barrar (401) webhook legítimo por causa do
+// formato. Forjar continua exigindo o secret: a barreira segue dura.
+function verifyEduzz(
+  rawBody: string,
+  secretKey: string,
+  headers: Headers,
+): boolean {
+  const received = headers.get('x-signature')
+  if (!received) return false
+  const normalized = received.replace(/^sha256=/i, '')
+  const expectedHex = createHmac('sha256', secretKey)
+    .update(rawBody)
+    .digest('hex')
+  const expectedB64 = createHmac('sha256', secretKey)
+    .update(rawBody)
+    .digest('base64')
+  return (
+    safeEqualBuffer(normalized, expectedHex) ||
+    safeEqualBuffer(normalized, expectedB64)
+  )
+}
+
+// Kiwify: query param `?signature=<hex>` = HMAC-SHA1(rawBody, token) em hex.
+// O token é o secret definido na criação do webhook. Barreira real, pré-parse —
+// validar sobre o raw body (re-serializar com JSON.stringify quebraria o hash).
+function verifyKiwify(
+  rawBody: string,
+  secretKey: string,
+  searchParams: URLSearchParams,
+): boolean {
+  const received = searchParams.get('signature')
+  if (!received) return false
+  const expected = createHmac('sha1', secretKey).update(rawBody).digest('hex')
+  return safeEqualBuffer(received, expected)
+}
+
 // Padrão GitHub: header X-Webhook-Signature no formato `sha256=<hex>`
 function verifyGenericSha256Hex(
   rawBody: string,
@@ -116,7 +156,7 @@ function verifyGenericSha256Hex(
 }
 
 export function verifyHmacSignature(input: VerifyHmacInput): boolean {
-  const { platform, rawBody, secretKey, headers } = input
+  const { platform, rawBody, secretKey, headers, searchParams } = input
   switch (platform) {
     case 'SHOPIFY':
       return verifyShopify(rawBody, secretKey, headers)
@@ -128,18 +168,19 @@ export function verifyHmacSignature(input: VerifyHmacInput): boolean {
       return verifyWooCommerce(rawBody, secretKey, headers)
     case 'CALENDLY':
       return verifyCalendly(rawBody, secretKey, headers)
-    // Monetizze e Eduzz mandam o segredo DENTRO do corpo (chave_unica / token),
-    // então só dá pra validar PÓS-parse. Sua verificação ocorre em
-    // verify-payload-token.ts (etapa pós-parse do pipeline), também como barreira
-    // dura (401). Aqui no verificador de header NÃO podemos retornar `false` cego:
-    // isso rejeitaria todo webhook deles. Retornamos `true` (header não é a barreira deles).
+    // Eduzz (Myeduzz v3) tem HMAC oficial de header (`x-signature`, SHA256 do raw
+    // body) — barreira dura, validada aqui PRÉ-parse. Kiwify assina via query param
+    // (`?signature=`, SHA1 do raw body), também pré-parse.
     case 'EDUZZ':
+      return verifyEduzz(rawBody, secretKey, headers)
+    case 'KIWIFY':
+      return verifyKiwify(rawBody, secretKey, searchParams)
+    // Monetizze manda o segredo DENTRO do corpo (chave_unica), então só dá pra
+    // validar PÓS-parse. Sua verificação ocorre em verify-payload-token.ts, também
+    // como barreira dura (401). Aqui NÃO podemos retornar `false` cego: rejeitaria
+    // todo webhook dela. Retornamos `true` (header não é a barreira da Monetizze).
     case 'MONETIZZE':
       return true
-    // Kiwify assina via query param (HMAC-SHA1), ainda não verificado nesta rodada
-    // (decisão do usuário jun/2026: token-only). Cai no formato genérico; a UI
-    // orienta deixar o secret em branco — a segurança vem do token único da URL.
-    case 'KIWIFY':
     case 'GENERIC':
     case 'OTHER':
       return verifyGenericSha256Hex(rawBody, secretKey, headers)

@@ -41,3 +41,6 @@ jobs:
 
       - name: Unit test (webhook event resolver)
         run: pnpm tsx trigger/lib/__tests__/webhook-event-resolver.test.ts
+
+      - name: Unit test (webhook HMAC)
+        run: pnpm tsx trigger/lib/__tests__/webhook-hmac.test.ts

@@ -45,10 +45,8 @@ export function verifyPayloadToken(input: VerifyPayloadTokenInput): boolean {
   switch (platform) {
     case 'MONETIZZE':
       return verifyMonetizze(payload, secretKey)
-    // Eduzz: o local exato do token de origem no payload do Myeduzz NÃO foi
-    // confirmado (ver §6 do PLAN). Transformar um chute em barreira 401 bloquearia
-    // todo webhook legítimo da Eduzz — viola o princípio "nunca bloquear". Fica
-    // token-only (segurança via token único da URL) até validar com payload real.
+    // Eduzz e Kiwify validam por HMAC de PRÉ-parse (header `x-signature` / query
+    // param `?signature=`), em verify-hmac-signature.ts. Não barram nesta etapa.
     case 'EDUZZ':
     case 'SHOPIFY':
     case 'WOOCOMMERCE':
