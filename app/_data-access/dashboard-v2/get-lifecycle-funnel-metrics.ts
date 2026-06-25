@@ -76,6 +76,7 @@ export interface LifecycleEvolutionPoint {
   label: string
   // Chave única do bucket — usada para agrupamento e React key
   bucketKey: string
+  COLD: number
   LEAD: number
   QUALIFIED: number
   OPPORTUNITY: number
@@ -177,6 +178,7 @@ function buildEvolutionPoints(
     return {
       label,
       bucketKey,
+      COLD: stageTally[LifecycleStage.COLD],
       LEAD: stageTally[LifecycleStage.LEAD],
       QUALIFIED: stageTally[LifecycleStage.QUALIFIED],
       OPPORTUNITY: stageTally[LifecycleStage.OPPORTUNITY],

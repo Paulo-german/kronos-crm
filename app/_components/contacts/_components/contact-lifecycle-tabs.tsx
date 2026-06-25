@@ -32,7 +32,7 @@ export function ContactLifecycleTabs({ counts }: ContactLifecycleTabsProps) {
 
   return (
     <Tabs value={activeTab} onValueChange={handleValueChange}>
-      <TabsList className="grid w-full grid-cols-5">
+      <TabsList className="grid w-full grid-cols-6">
         <TabsTrigger value="all">
           Todos
           <Badge className="flex h-4 min-w-5 items-center justify-center rounded-full bg-muted px-1 text-[10px] font-medium text-muted-foreground hover:bg-muted">
