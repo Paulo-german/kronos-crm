@@ -8,6 +8,7 @@ import {
 const STATUS_STYLES: Record<BroadcastStatus, string> = {
   DRAFT: 'bg-muted text-muted-foreground',
   SCHEDULED: 'bg-blue-500/15 text-blue-600 dark:text-blue-400',
+  QUEUED: 'bg-slate-500/15 text-slate-600 dark:text-slate-400',
   RUNNING: 'bg-kronos-orange/15 text-kronos-orange',
   COMPLETED: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400',
   CANCELLED: 'bg-amber-500/15 text-amber-700 dark:text-amber-400',

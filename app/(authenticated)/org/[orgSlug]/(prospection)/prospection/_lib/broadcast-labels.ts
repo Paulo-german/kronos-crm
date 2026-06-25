@@ -7,6 +7,7 @@ import type {
 export const STATUS_LABELS: Record<BroadcastStatus, string> = {
   DRAFT: 'Rascunho',
   SCHEDULED: 'Agendado',
+  QUEUED: 'Na fila',
   RUNNING: 'Enviando',
   COMPLETED: 'Concluído',
   CANCELLED: 'Cancelado',

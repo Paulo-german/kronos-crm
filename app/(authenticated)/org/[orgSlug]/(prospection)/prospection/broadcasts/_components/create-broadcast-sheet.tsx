@@ -37,7 +37,10 @@ import { Input } from '@/_components/ui/input'
 import { Textarea } from '@/_components/ui/textarea'
 import { Button } from '@/_components/ui/button'
 import { Label } from '@/_components/ui/label'
+import { Switch } from '@/_components/ui/switch'
+import { Checkbox } from '@/_components/ui/checkbox'
 import { RadioGroup, RadioGroupItem } from '@/_components/ui/radio-group'
+import { businessHoursConfigSchema } from '@/_actions/agent/update-agent/schema'
 import { createBroadcast } from '@/_actions/broadcast/create-broadcast'
 import { listWhatsAppTemplates } from '@/_actions/inbox/list-whatsapp-templates'
 import { previewSegmentCount } from '@/_actions/segment/preview-segment-count'
@@ -53,10 +56,42 @@ import { ContactMultiSelect } from './contact-multi-select'
 const MAX_MESSAGE_LENGTH = 4096
 
 const THROTTLE_PRESETS: { value: string; label: string }[] = [
-  { value: '3000', label: 'Lento — 1 msg / 3s (mais seguro)' },
-  { value: '1500', label: 'Normal — 1 msg / 1,5s' },
-  { value: '500', label: 'Rápido — 1 msg / 0,5s (maior risco)' },
+  { value: '60000', label: 'Muito lento — 1 msg / 60s' },
+  { value: '30000', label: 'Recomendado — 1 msg / 30s' },
+  { value: '15000', label: 'Moderado — 1 msg / 15s' },
+  { value: '5000', label: 'Rápido — 1 msg / 5s (maior risco)' },
 ]
+
+// Dias da semana para o editor de janela de envio (ordem seg→dom)
+const WINDOW_DAYS: { key: keyof BroadcastWindowConfig; label: string }[] = [
+  { key: 'monday', label: 'Seg' },
+  { key: 'tuesday', label: 'Ter' },
+  { key: 'wednesday', label: 'Qua' },
+  { key: 'thursday', label: 'Qui' },
+  { key: 'friday', label: 'Sex' },
+  { key: 'saturday', label: 'Sáb' },
+  { key: 'sunday', label: 'Dom' },
+]
+
+const WINDOW_TIMEZONES: { value: string; label: string }[] = [
+  { value: 'America/Sao_Paulo', label: 'Brasília (GMT-3)' },
+  { value: 'America/Manaus', label: 'Manaus (GMT-4)' },
+  { value: 'America/Rio_Branco', label: 'Rio Branco (GMT-5)' },
+  { value: 'America/Noronha', label: 'Fernando de Noronha (GMT-2)' },
+]
+
+type BroadcastWindowConfig = z.infer<typeof businessHoursConfigSchema>
+
+// Default da janela: dias úteis 08:00–20:00, sábado 08:00–12:00, domingo off
+const DEFAULT_WINDOW_CONFIG: BroadcastWindowConfig = {
+  monday: { enabled: true, start: '08:00', end: '20:00' },
+  tuesday: { enabled: true, start: '08:00', end: '20:00' },
+  wednesday: { enabled: true, start: '08:00', end: '20:00' },
+  thursday: { enabled: true, start: '08:00', end: '20:00' },
+  friday: { enabled: true, start: '08:00', end: '20:00' },
+  saturday: { enabled: true, start: '08:00', end: '12:00' },
+  sunday: { enabled: false, start: '08:00', end: '12:00' },
+}
 
 const formSchema = z.object({
   inboxId: z.string().min(1, 'Selecione um canal de origem.'),
@@ -66,6 +101,9 @@ const formSchema = z.object({
   templateLanguage: z.string().optional(),
   throttleMs: z.number().int(),
   scheduledFor: z.string().optional(),
+  sendingWindowEnabled: z.boolean(),
+  sendingWindowTimezone: z.string(),
+  sendingWindowConfig: businessHoursConfigSchema,
 })
 
 type FormValues = z.infer<typeof formSchema>
@@ -104,14 +142,18 @@ export const CreateBroadcastSheet = ({
       messageContent: '',
       templateName: '',
       templateLanguage: '',
-      throttleMs: 1500,
+      throttleMs: 30000,
       scheduledFor: '',
+      sendingWindowEnabled: false,
+      sendingWindowTimezone: 'America/Sao_Paulo',
+      sendingWindowConfig: DEFAULT_WINDOW_CONFIG,
     },
   })
 
   const inboxId = form.watch('inboxId')
   const messageValue = form.watch('messageContent') ?? ''
   const scheduledForValue = form.watch('scheduledFor')
+  const windowEnabled = form.watch('sendingWindowEnabled')
   const templateName = form.watch('templateName')
   const templateLanguage = form.watch('templateLanguage')
 
@@ -285,6 +327,11 @@ export const CreateBroadcastSheet = ({
       scheduledFor: values.scheduledFor
         ? new Date(values.scheduledFor)
         : undefined,
+      sendingWindowEnabled: values.sendingWindowEnabled,
+      sendingWindowConfig: values.sendingWindowEnabled
+        ? values.sendingWindowConfig
+        : undefined,
+      sendingWindowTimezone: values.sendingWindowTimezone,
     })
   }
 
@@ -597,6 +644,132 @@ export const CreateBroadcastSheet = ({
                   </FormItem>
                 )}
               />
+
+              <div className="space-y-3 rounded-lg border border-border/50 p-3">
+                <FormField
+                  control={form.control}
+                  name="sendingWindowEnabled"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center justify-between space-y-0">
+                      <div className="space-y-0.5">
+                        <FormLabel>Restringir horários de envio</FormLabel>
+                        <FormDescription>
+                          Fora da janela, o disparo pausa e retoma sozinho na
+                          próxima abertura.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                {windowEnabled && (
+                  <div className="space-y-3 pt-1">
+                    <FormField
+                      control={form.control}
+                      name="sendingWindowTimezone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Fuso horário</FormLabel>
+                          <Select
+                            value={field.value}
+                            onValueChange={field.onChange}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {WINDOW_TIMEZONES.map((tz) => (
+                                <SelectItem key={tz.value} value={tz.value}>
+                                  {tz.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="space-y-2">
+                      <Label>Dias e horários</Label>
+                      <div className="rounded-md border border-border/50">
+                        {WINDOW_DAYS.map((day) => {
+                          const dayEnabled = form.watch(
+                            `sendingWindowConfig.${day.key}.enabled`,
+                          )
+                          return (
+                            <div
+                              key={day.key}
+                              className="flex items-center gap-3 border-b border-border/30 px-3 py-2 last:border-b-0"
+                            >
+                              <FormField
+                                control={form.control}
+                                name={`sendingWindowConfig.${day.key}.enabled`}
+                                render={({ field }) => (
+                                  <FormItem className="space-y-0">
+                                    <FormControl>
+                                      <Checkbox
+                                        checked={field.value}
+                                        onCheckedChange={field.onChange}
+                                      />
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
+                              <span className="w-10 text-sm font-medium">
+                                {day.label}
+                              </span>
+                              <FormField
+                                control={form.control}
+                                name={`sendingWindowConfig.${day.key}.start`}
+                                render={({ field }) => (
+                                  <FormItem className="space-y-0">
+                                    <FormControl>
+                                      <Input
+                                        type="time"
+                                        className="h-8 w-28"
+                                        disabled={!dayEnabled}
+                                        {...field}
+                                      />
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
+                              <span className="text-sm text-muted-foreground">
+                                até
+                              </span>
+                              <FormField
+                                control={form.control}
+                                name={`sendingWindowConfig.${day.key}.end`}
+                                render={({ field }) => (
+                                  <FormItem className="space-y-0">
+                                    <FormControl>
+                                      <Input
+                                        type="time"
+                                        className="h-8 w-28"
+                                        disabled={!dayEnabled}
+                                        {...field}
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               <FormField
                 control={form.control}
