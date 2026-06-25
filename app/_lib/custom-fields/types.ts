@@ -17,6 +17,21 @@ export const CUSTOM_FIELD_TYPES = [
   FieldType.CPF,
 ] as const
 
+// Rótulos PT-BR do registro por entidade — usados em textos compartilhados da UI
+// (concordância de gênero/número entre contato/negociação/empresa).
+export const ENTITY_RECORD_LABELS: Record<
+  EntityType,
+  { singular: string; plural: string; none: string }
+> = {
+  CONTACT: { singular: 'contato', plural: 'contatos', none: 'Nenhum contato' },
+  DEAL: {
+    singular: 'negociação',
+    plural: 'negociações',
+    none: 'Nenhuma negociação',
+  },
+  COMPANY: { singular: 'empresa', plural: 'empresas', none: 'Nenhuma empresa' },
+}
+
 export const fieldOptionSchema = z.object({
   label: z.string().trim().min(1).max(FIELD_OPTION_LABEL_MAX),
   value: z.string().trim().min(1).max(FIELD_OPTION_VALUE_MAX),

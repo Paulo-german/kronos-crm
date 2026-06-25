@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react'
 import type { DealDetailsDto } from '@/_data-access/deal/get-deal-details'
+import type { FieldDefinitionDto } from '@/_lib/custom-fields/types'
 import DealInfoCard from './deal-info-card'
 import CompanyOwnerWidget from './company-owner-widget'
 import NotesSection from './notes-section'
@@ -11,16 +12,29 @@ interface TabSummaryProps {
   deal: DealDetailsDto
   contactsSlot: ReactNode
   onTabChange?: (tab: string) => void
+  customFieldDefinitions?: FieldDefinitionDto[]
+  customFieldValues?: Record<string, string | null>
 }
 
-const TabSummary = ({ deal, contactsSlot, onTabChange }: TabSummaryProps) => {
+const TabSummary = ({
+  deal,
+  contactsSlot,
+  onTabChange,
+  customFieldDefinitions = [],
+  customFieldValues = {},
+}: TabSummaryProps) => {
   return (
     <div className="space-y-6">
       {/* Grid Principal: 35% | 65% */}
       <div className="grid gap-6 lg:grid-cols-[35%_1fr]">
         {/* Coluna Esquerda: Contexto */}
         <div className="space-y-4">
-          <DealInfoCard deal={deal} onTabChange={onTabChange} />
+          <DealInfoCard
+            deal={deal}
+            onTabChange={onTabChange}
+            customFieldDefinitions={customFieldDefinitions}
+            customFieldValues={customFieldValues}
+          />
           {contactsSlot}
           <CompanyOwnerWidget deal={deal} />
         </div>

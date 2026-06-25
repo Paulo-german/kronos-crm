@@ -2,13 +2,29 @@
 
 import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
-import { Menu, Home, Users, Kanban, CheckSquare, CalendarClock, BarChart3, MessageSquare, Bot, FolderOpen } from 'lucide-react'
+import {
+  Menu,
+  Home,
+  Users,
+  Kanban,
+  CheckSquare,
+  CalendarClock,
+  BarChart3,
+  MessageSquare,
+  Bot,
+  FolderOpen,
+  Megaphone,
+  FileText,
+  MessageCircle,
+  Inbox,
+  Filter,
+} from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/_components/ui/button'
 import { Sheet, SheetContent, SheetTitle } from '@/_components/ui/sheet'
 import { cn } from '@/_lib/utils'
 
-type Product = 'crm' | 'inbox' | 'agents'
+type Product = 'crm' | 'inbox' | 'agents' | 'prospection'
 
 interface DrawerNavItemProps {
   href: string
@@ -17,7 +33,12 @@ interface DrawerNavItemProps {
   onNavigate: () => void
 }
 
-const DrawerNavItem = ({ href, icon, label, onNavigate }: DrawerNavItemProps) => {
+const DrawerNavItem = ({
+  href,
+  icon,
+  label,
+  onNavigate,
+}: DrawerNavItemProps) => {
   const pathname = usePathname()
   const isActive = pathname === href || pathname.startsWith(`${href}/`)
 
@@ -41,7 +62,10 @@ interface ProductMobileDrawerProps {
   orgSlug: string
 }
 
-export const ProductMobileDrawer = ({ product, orgSlug }: ProductMobileDrawerProps) => {
+export const ProductMobileDrawer = ({
+  product,
+  orgSlug,
+}: ProductMobileDrawerProps) => {
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
 
@@ -54,35 +78,182 @@ export const ProductMobileDrawer = ({ product, orgSlug }: ProductMobileDrawerPro
   const navItems = {
     crm: (
       <>
-        <DrawerNavItem href={`/org/${orgSlug}/crm/home`} icon={<Home className="h-4 w-4" />} label="Início" onNavigate={close} />
-        <DrawerNavItem href={`/org/${orgSlug}/crm/contacts`} icon={<Users className="h-4 w-4" />} label="Contatos" onNavigate={close} />
-        <div className="my-1 h-px bg-border/50 mx-3" />
-        <DrawerNavItem href={`/org/${orgSlug}/crm/deals`} icon={<Kanban className="h-4 w-4" />} label="Negociações" onNavigate={close} />
-        <DrawerNavItem href={`/org/${orgSlug}/crm/tasks`} icon={<CheckSquare className="h-4 w-4" />} label="Tarefas" onNavigate={close} />
-        <DrawerNavItem href={`/org/${orgSlug}/crm/appointments`} icon={<CalendarClock className="h-4 w-4" />} label="Agendamentos" onNavigate={close} />
-        <div className="my-1 h-px bg-border/50 mx-3" />
-        <DrawerNavItem href={`/org/${orgSlug}/crm/reports/overview`} icon={<BarChart3 className="h-4 w-4" />} label="Analisar" onNavigate={close} />
+        <DrawerNavItem
+          href={`/org/${orgSlug}/crm/home`}
+          icon={<Home className="h-4 w-4" />}
+          label="Início"
+          onNavigate={close}
+        />
+        <DrawerNavItem
+          href={`/org/${orgSlug}/crm/contacts`}
+          icon={<Users className="h-4 w-4" />}
+          label="Contatos"
+          onNavigate={close}
+        />
+        <DrawerNavItem
+          href={`/org/${orgSlug}/crm/segments`}
+          icon={<Filter className="h-4 w-4" />}
+          label="Segmentações"
+          onNavigate={close}
+        />
+        <div className="mx-3 my-1 h-px bg-border/50" />
+        <DrawerNavItem
+          href={`/org/${orgSlug}/crm/deals`}
+          icon={<Kanban className="h-4 w-4" />}
+          label="Negociações"
+          onNavigate={close}
+        />
+        <DrawerNavItem
+          href={`/org/${orgSlug}/crm/tasks`}
+          icon={<CheckSquare className="h-4 w-4" />}
+          label="Tarefas"
+          onNavigate={close}
+        />
+        <DrawerNavItem
+          href={`/org/${orgSlug}/crm/appointments`}
+          icon={<CalendarClock className="h-4 w-4" />}
+          label="Agendamentos"
+          onNavigate={close}
+        />
+        <div className="mx-3 my-1 h-px bg-border/50" />
+        <DrawerNavItem
+          href={`/org/${orgSlug}/crm/reports/overview`}
+          icon={<BarChart3 className="h-4 w-4" />}
+          label="Analisar"
+          onNavigate={close}
+        />
       </>
     ),
     inbox: (
       <>
-        <DrawerNavItem href={`/org/${orgSlug}/inbox/home`} icon={<Home className="h-4 w-4" />} label="Início" onNavigate={close} />
-        <DrawerNavItem href={`/org/${orgSlug}/inbox/contacts`} icon={<Users className="h-4 w-4" />} label="Contatos" onNavigate={close} />
-        <div className="my-1 h-px bg-border/50 mx-3" />
-        <DrawerNavItem href={`/org/${orgSlug}/inbox`} icon={<MessageSquare className="h-4 w-4" />} label="Conversas" onNavigate={close} />
-        <div className="my-1 h-px bg-border/50 mx-3" />
-        <DrawerNavItem href={`/org/${orgSlug}/inbox/reports`} icon={<BarChart3 className="h-4 w-4" />} label="Analisar" onNavigate={close} />
+        <DrawerNavItem
+          href={`/org/${orgSlug}/inbox/home`}
+          icon={<Home className="h-4 w-4" />}
+          label="Início"
+          onNavigate={close}
+        />
+        <DrawerNavItem
+          href={`/org/${orgSlug}/inbox/contacts`}
+          icon={<Users className="h-4 w-4" />}
+          label="Contatos"
+          onNavigate={close}
+        />
+        <DrawerNavItem
+          href={`/org/${orgSlug}/inbox/segments`}
+          icon={<Filter className="h-4 w-4" />}
+          label="Segmentações"
+          onNavigate={close}
+        />
+        <div className="mx-3 my-1 h-px bg-border/50" />
+        <DrawerNavItem
+          href={`/org/${orgSlug}/inbox`}
+          icon={<MessageSquare className="h-4 w-4" />}
+          label="Conversas"
+          onNavigate={close}
+        />
+        <DrawerNavItem
+          href={`/org/${orgSlug}/inbox/settings/inboxes`}
+          icon={<Inbox className="h-4 w-4" />}
+          label="Caixas de Entrada"
+          onNavigate={close}
+        />
+        <div className="mx-3 my-1 h-px bg-border/50" />
+        <DrawerNavItem
+          href={`/org/${orgSlug}/inbox/reports`}
+          icon={<BarChart3 className="h-4 w-4" />}
+          label="Analisar"
+          onNavigate={close}
+        />
       </>
     ),
     agents: (
       <>
-        <DrawerNavItem href={`/org/${orgSlug}/agents/home`} icon={<Home className="h-4 w-4" />} label="Início" onNavigate={close} />
-        <DrawerNavItem href={`/org/${orgSlug}/agents/contacts`} icon={<Users className="h-4 w-4" />} label="Contatos" onNavigate={close} />
-        <div className="my-1 h-px bg-border/50 mx-3" />
-        <DrawerNavItem href={`/org/${orgSlug}/agents/ai-agent`} icon={<Bot className="h-4 w-4" />} label="Agentes" onNavigate={close} />
-        <DrawerNavItem href={`/org/${orgSlug}/agents/ai-agent/groups`} icon={<FolderOpen className="h-4 w-4" />} label="Grupos" onNavigate={close} />
-        <div className="my-1 h-px bg-border/50 mx-3" />
-        <DrawerNavItem href={`/org/${orgSlug}/agents/reports`} icon={<BarChart3 className="h-4 w-4" />} label="Analisar" onNavigate={close} />
+        <DrawerNavItem
+          href={`/org/${orgSlug}/agents/home`}
+          icon={<Home className="h-4 w-4" />}
+          label="Início"
+          onNavigate={close}
+        />
+        <DrawerNavItem
+          href={`/org/${orgSlug}/agents/contacts`}
+          icon={<Users className="h-4 w-4" />}
+          label="Contatos"
+          onNavigate={close}
+        />
+        <DrawerNavItem
+          href={`/org/${orgSlug}/agents/segments`}
+          icon={<Filter className="h-4 w-4" />}
+          label="Segmentações"
+          onNavigate={close}
+        />
+        <div className="mx-3 my-1 h-px bg-border/50" />
+        <DrawerNavItem
+          href={`/org/${orgSlug}/agents/ai-agent`}
+          icon={<Bot className="h-4 w-4" />}
+          label="Agentes"
+          onNavigate={close}
+        />
+        <DrawerNavItem
+          href={`/org/${orgSlug}/agents/ai-agent/groups`}
+          icon={<FolderOpen className="h-4 w-4" />}
+          label="Grupos"
+          onNavigate={close}
+        />
+        <div className="mx-3 my-1 h-px bg-border/50" />
+        <DrawerNavItem
+          href={`/org/${orgSlug}/agents/reports`}
+          icon={<BarChart3 className="h-4 w-4" />}
+          label="Analisar"
+          onNavigate={close}
+        />
+      </>
+    ),
+    prospection: (
+      <>
+        <DrawerNavItem
+          href={`/org/${orgSlug}/prospection/home`}
+          icon={<Home className="h-4 w-4" />}
+          label="Início"
+          onNavigate={close}
+        />
+        <DrawerNavItem
+          href={`/org/${orgSlug}/prospection/contacts`}
+          icon={<Users className="h-4 w-4" />}
+          label="Contatos"
+          onNavigate={close}
+        />
+        <DrawerNavItem
+          href={`/org/${orgSlug}/prospection/segments`}
+          icon={<Filter className="h-4 w-4" />}
+          label="Segmentações"
+          onNavigate={close}
+        />
+        <div className="mx-3 my-1 h-px bg-border/50" />
+        <DrawerNavItem
+          href={`/org/${orgSlug}/prospection/broadcasts`}
+          icon={<Megaphone className="h-4 w-4" />}
+          label="Disparos"
+          onNavigate={close}
+        />
+        <DrawerNavItem
+          href={`/org/${orgSlug}/prospection/templates`}
+          icon={<FileText className="h-4 w-4" />}
+          label="Templates"
+          onNavigate={close}
+        />
+        <DrawerNavItem
+          href={`/org/${orgSlug}/prospection/channels`}
+          icon={<MessageCircle className="h-4 w-4" />}
+          label="Canais"
+          onNavigate={close}
+        />
+        <div className="mx-3 my-1 h-px bg-border/50" />
+        <DrawerNavItem
+          href={`/org/${orgSlug}/prospection/reports`}
+          icon={<BarChart3 className="h-4 w-4" />}
+          label="Analisar"
+          onNavigate={close}
+        />
       </>
     ),
   }
@@ -100,7 +271,10 @@ export const ProductMobileDrawer = ({ product, orgSlug }: ProductMobileDrawerPro
       </Button>
 
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="left" className="w-60 p-0 [&>button:first-child]:hidden">
+        <SheetContent
+          side="left"
+          className="w-60 p-0 [&>button:first-child]:hidden"
+        >
           <SheetTitle className="sr-only">Navegação</SheetTitle>
           <nav className="flex flex-col gap-1 px-2 py-4">
             {navItems[product]}

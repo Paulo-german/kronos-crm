@@ -62,6 +62,7 @@ import {
   CONTACT_INLINE_DEAL_TITLE_MAX,
 } from '@/_lib/constants/field-limits'
 import { TooltipProvider } from '@/_components/ui/tooltip'
+import { useContactCapabilities } from '../_lib/contact-capabilities-context'
 
 interface UpsertContactDialogContentProps {
   open?: boolean
@@ -91,6 +92,7 @@ const UpsertContactDialogContent = ({
   customFieldValues = {},
 }: UpsertContactDialogContentProps) => {
   const isEditing = !!defaultValues?.id
+  const { customFields: showCustomFields } = useContactCapabilities()
   const router = useRouter()
   const params = useParams<{ orgSlug: string }>()
   // Ocultar campos PII no modo edição quando: MEMBER + toggle ativo na org
@@ -642,7 +644,7 @@ const UpsertContactDialogContent = ({
             />
 
             {/* Campos personalizados — FormProvider próprio para que FormMessage leia o contexto correto */}
-            {customFieldDefinitions.length > 0 && (
+            {showCustomFields && customFieldDefinitions.length > 0 && (
               <Form {...customFieldsForm}>
                 <div className="space-y-4">
                   <p className="text-sm font-medium text-foreground">

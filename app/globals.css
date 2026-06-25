@@ -200,6 +200,10 @@
 [data-product='agents'] {
   --primary: var(--kronos-purple-hsl);
   --primary-dark: 261 74% 5%;
+}
+[data-product='prospection'] {
+  --primary: var(--kronos-orange-hsl);
+  --primary-dark: 25 95% 6%;
 } */
 
 /* Custom Kronos Utility Classes for Gradients and Glows */

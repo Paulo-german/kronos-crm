@@ -12,13 +12,23 @@ import { getFieldDefinitions } from '@/_data-access/field-definition/get-field-d
 import { LifecycleIntroTrigger } from '@/_components/tutorials/lifecycle-intro-trigger'
 import { ContactsListClient } from '@/_components/contacts/_components/contacts-list-client'
 import { parseContactListParams } from '@/_components/contacts/_lib/contact-list-params'
+import { getOrgModules } from '@/_data-access/module/get-org-modules'
+import { resolveContactCapabilities } from '@/_lib/contact/contact-capabilities'
+import { ContactCapabilitiesProvider } from '@/_components/contacts/_lib/contact-capabilities-context'
 
 interface ContactsPageProps {
   params: Promise<{ orgSlug: string }>
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+  // Produto que está renderizando a tela (crm | prospection | inbox | agents).
+  // Usado para montar links internos de contato relativos ao produto.
+  basePath?: string
 }
 
-const ContactsPage = async ({ params, searchParams }: ContactsPageProps) => {
+const ContactsPage = async ({
+  params,
+  searchParams,
+  basePath = 'crm',
+}: ContactsPageProps) => {
   const { orgSlug } = await params
   const resolvedSearchParams = await searchParams
   const ctx = await getOrgContext(orgSlug)
@@ -34,6 +44,7 @@ const ContactsPage = async ({ params, searchParams }: ContactsPageProps) => {
     pipelineStages,
     completedTutorialIds,
     allFieldDefinitions,
+    orgModules,
   ] = await Promise.all([
     getContactsPaginated(ctx, listParams),
     getCompanies(ctx.orgId),
@@ -44,6 +55,7 @@ const ContactsPage = async ({ params, searchParams }: ContactsPageProps) => {
     getDefaultPipelineWithStages(ctx.orgId),
     getTutorialCompletions(ctx.userId, ctx.orgId),
     getFieldDefinitions(ctx.orgId, EntityType.CONTACT),
+    getOrgModules(ctx.orgId),
   ])
 
   const customFieldDefinitions = allFieldDefinitions.filter(
@@ -54,8 +66,16 @@ const ContactsPage = async ({ params, searchParams }: ContactsPageProps) => {
     ? (SCORE_ELIGIBLE_PRODUCT_KEYS as readonly string[]).includes(planInfo.plan)
     : false
 
+  // Borda: traduz módulos da org → capabilities do contato (único lugar)
+  const capabilities = resolveContactCapabilities(
+    orgModules.map((mod) => mod.slug),
+  )
+
   return (
-    <>
+    <ContactCapabilitiesProvider
+      capabilities={capabilities}
+      basePath={basePath}
+    >
       <ContactsListClient
         contacts={result.data}
         total={result.total}
@@ -77,7 +97,7 @@ const ContactsPage = async ({ params, searchParams }: ContactsPageProps) => {
       <LifecycleIntroTrigger
         hasSeenLifecycleIntro={completedTutorialIds.includes('lifecycle-intro')}
       />
-    </>
+    </ContactCapabilitiesProvider>
   )
 }
 

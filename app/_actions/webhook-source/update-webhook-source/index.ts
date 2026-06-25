@@ -23,7 +23,8 @@ export const updateWebhookSource = orgActionClient
     }
 
     // Nova secret tem prioridade; só remove se clearSecretKey === true e não há novo valor
-    const newSecret = data.secretKey && data.secretKey.length > 0 ? data.secretKey : undefined
+    const newSecret =
+      data.secretKey && data.secretKey.length > 0 ? data.secretKey : undefined
     const secretKeyUpdate = newSecret
       ? { secretKey: newSecret }
       : data.clearSecretKey === true
@@ -36,6 +37,10 @@ export const updateWebhookSource = orgActionClient
         ...(data.name !== undefined ? { name: data.name } : {}),
         ...(data.platform !== undefined ? { platform: data.platform } : {}),
         ...(data.eventType !== undefined ? { eventType: data.eventType } : {}),
+        // undefined = sem alteração; null = limpar o filtro (volta ao comportamento legado)
+        ...(data.providerEvent !== undefined
+          ? { providerEvent: data.providerEvent }
+          : {}),
         ...(data.fieldMapping !== undefined
           ? { fieldMapping: data.fieldMapping as Prisma.InputJsonValue }
           : {}),

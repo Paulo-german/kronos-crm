@@ -47,6 +47,13 @@ import type { FieldDefinitionDto } from '@/_lib/custom-fields/types'
 import { UpsertFieldDialog } from './upsert-field-dialog'
 import { DeleteFieldDialog } from './delete-field-dialog'
 
+// Título da seção por entidade
+const ENTITY_TITLE_LABELS: Partial<Record<EntityType, string>> = {
+  CONTACT: 'Campos de Contato',
+  DEAL: 'Campos de Negociação',
+  COMPANY: 'Campos de Empresa',
+}
+
 // Labels PT-BR para os tipos de campo
 const FIELD_TYPE_LABELS: Record<FieldType, string> = {
   TEXT: 'Texto',
@@ -153,7 +160,7 @@ const SystemFieldRow = ({ definition }: SystemFieldRowProps) => {
   return (
     <div className="flex items-center gap-3 rounded-md border bg-muted/30 px-4 py-3">
       {/* Espaço para alinhar com as linhas arrastáveis */}
-      <span className="shrink-0 w-4 h-4 text-muted-foreground/30">
+      <span className="h-4 w-4 shrink-0 text-muted-foreground/30">
         <GripVertical className="h-4 w-4" />
       </span>
 
@@ -170,7 +177,7 @@ const SystemFieldRow = ({ definition }: SystemFieldRowProps) => {
             Obrigatório
           </Badge>
         )}
-        <Badge className="text-xs font-normal bg-primary/10 text-primary border-primary/20">
+        <Badge className="border-primary/20 bg-primary/10 text-xs font-normal text-primary">
           Sistema
         </Badge>
       </div>
@@ -200,8 +207,8 @@ export const FieldDefinitionsTable = ({
 
   const systemFields = definitions.filter((definition) => definition.isSystem)
 
-  const [customFields, setCustomFields] = useState<FieldDefinitionDto[]>(
-    () => definitions.filter((definition) => !definition.isSystem),
+  const [customFields, setCustomFields] = useState<FieldDefinitionDto[]>(() =>
+    definitions.filter((definition) => !definition.isSystem),
   )
 
   // Snapshot do estado pré-drag para rollback preciso em caso de erro
@@ -215,9 +222,12 @@ export const FieldDefinitionsTable = ({
 
   // Estado dos dialogs — elevado para fora das linhas
   const [isUpsertOpen, setIsUpsertOpen] = useState(false)
-  const [editingDefinition, setEditingDefinition] = useState<FieldDefinitionDto | undefined>(undefined)
+  const [editingDefinition, setEditingDefinition] = useState<
+    FieldDefinitionDto | undefined
+  >(undefined)
   const [isDeletingOpen, setIsDeletingOpen] = useState(false)
-  const [deletingDefinition, setDeletingDefinition] = useState<FieldDefinitionDto | null>(null)
+  const [deletingDefinition, setDeletingDefinition] =
+    useState<FieldDefinitionDto | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -291,10 +301,13 @@ export const FieldDefinitionsTable = ({
         {/* Cabeçalho com quota e botão de criação */}
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-base font-semibold">Campos de Contato</h2>
+            <h2 className="text-base font-semibold">
+              {ENTITY_TITLE_LABELS[entityType] ?? 'Campos personalizados'}
+            </h2>
             {quotaLimit !== undefined && quotaLimit > 0 && (
               <p className="text-xs text-muted-foreground">
-                {quotaCurrent ?? 0} de {quotaLimit} campos personalizados utilizados
+                {quotaCurrent ?? 0} de {quotaLimit} campos personalizados
+                utilizados
               </p>
             )}
           </div>
@@ -303,11 +316,7 @@ export const FieldDefinitionsTable = ({
             <Tooltip>
               <TooltipTrigger asChild>
                 <span>
-                  <Button
-                    onClick={handleOpenCreate}
-                    disabled={!withinQuota}
-                    size="sm"
-                  >
+                  <Button onClick={handleOpenCreate} disabled={!withinQuota}>
                     <Plus className="mr-1.5 h-4 w-4" />
                     Novo campo
                   </Button>
@@ -315,7 +324,10 @@ export const FieldDefinitionsTable = ({
               </TooltipTrigger>
               {!withinQuota && (
                 <TooltipContent>
-                  <p>Você atingiu o limite do seu plano. Faça upgrade para adicionar mais campos.</p>
+                  <p>
+                    Você atingiu o limite do seu plano. Faça upgrade para
+                    adicionar mais campos.
+                  </p>
                 </TooltipContent>
               )}
             </Tooltip>

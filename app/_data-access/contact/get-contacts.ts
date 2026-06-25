@@ -1,10 +1,16 @@
 import 'server-only'
 import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
-import type { Prisma, LifecycleStage, CustomerStatus, LegalBasis } from '@prisma/client'
+import type {
+  Prisma,
+  LifecycleStage,
+  CustomerStatus,
+  LegalBasis,
+} from '@prisma/client'
 import type { RBACContext } from '@/_lib/rbac'
 import { isElevated } from '@/_lib/rbac'
 import { maskEmail, maskPhone } from '@/_lib/pii-mask'
+import { buildContactFilterWhere } from './build-contact-filter-where'
 
 export interface ContactDto {
   id: string
@@ -136,7 +142,8 @@ export const getContacts = async (ctx: RBACContext): Promise<ContactDto[]> => {
   const hidePiiFromMembers = ctx.hidePiiFromMembers ?? false
 
   const getCached = unstable_cache(
-    async () => fetchContactsFromDb(ctx.orgId, ctx.userId, elevated, hidePiiFromMembers),
+    async () =>
+      fetchContactsFromDb(ctx.orgId, ctx.userId, elevated, hidePiiFromMembers),
     [`contacts-${ctx.orgId}-${ctx.userId}-${elevated}-${hidePiiFromMembers}`],
     {
       tags: [`contacts:${ctx.orgId}`],
@@ -167,32 +174,9 @@ const fetchContactsPaginatedFromDb = async (
     ...(elevated ? {} : { assignedTo: userId }),
     // Filtro manual de responsável (só aplicado quando elevated)
     ...(elevated && params.assignedTo ? { assignedTo: params.assignedTo } : {}),
-    // Filtro por empresa
-    ...(params.companyId ? { companyId: params.companyId } : {}),
-    // Filtro de decisor
-    ...(params.isDecisionMaker !== undefined
-      ? { isDecisionMaker: params.isDecisionMaker }
-      : {}),
-    // Filtro por presença de negócios vinculados
-    ...(params.hasDeals !== undefined
-      ? params.hasDeals
-        ? { deals: { some: {} } }
-        : { deals: { none: {} } }
-      : {}),
-    // Filtros de lifecycle stage (multi-select)
-    ...(params.lifecycleStages?.length ? { lifecycleStage: { in: params.lifecycleStages } } : {}),
-    // Filtros de customer status (multi-select)
-    ...(params.customerStatuses?.length ? { customerStatus: { in: params.customerStatuses } } : {}),
-    // Filtro de health score range
-    ...(params.healthScoreMin !== undefined || params.healthScoreMax !== undefined
-      ? {
-          healthScore: {
-            ...(params.healthScoreMin !== undefined ? { gte: params.healthScoreMin } : {}),
-            ...(params.healthScoreMax !== undefined ? { lte: params.healthScoreMax } : {}),
-            not: null,
-          },
-        }
-      : {}),
+    // Filtros nativos (empresa, decisor, negócios, lifecycle, status, score)
+    // — fonte única compartilhada com segmentos e disparos
+    ...buildContactFilterWhere(params),
     // Busca textual: nome, email ou telefone (case-insensitive)
     // Quando masked: email e phone removidos para não vazar PII por busca
     ...(params.search.trim()
@@ -314,8 +298,16 @@ export const getContactsPaginated = async (
 
   const getCached = unstable_cache(
     async () =>
-      fetchContactsPaginatedFromDb(ctx.orgId, ctx.userId, elevated, hidePiiFromMembers, params),
-    [`contacts-${ctx.orgId}-${ctx.userId}-${elevated}-${hidePiiFromMembers}-${paramsKey}`],
+      fetchContactsPaginatedFromDb(
+        ctx.orgId,
+        ctx.userId,
+        elevated,
+        hidePiiFromMembers,
+        params,
+      ),
+    [
+      `contacts-${ctx.orgId}-${ctx.userId}-${elevated}-${hidePiiFromMembers}-${paramsKey}`,
+    ],
     {
       tags: [`contacts:${ctx.orgId}`],
       revalidate: 3600,

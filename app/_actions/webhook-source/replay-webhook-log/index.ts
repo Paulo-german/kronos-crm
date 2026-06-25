@@ -28,13 +28,20 @@ export const replayWebhookLog = orgActionClient
         squadId: original.webhookSource.squadId,
         platform: original.webhookSource.platform,
         eventType: original.webhookSource.eventType,
-        fieldMapping: original.webhookSource.fieldMapping as Record<string, string>,
+        providerEvent: original.webhookSource.providerEvent,
+        fieldMapping: original.webhookSource.fieldMapping as Record<
+          string,
+          string
+        >,
         isActive: original.webhookSource.isActive,
         secretKey: original.webhookSource.secretKey,
       },
       payload: original.payload,
       // Replay nunca propaga externalEventId — evita colisão com dedup window do original
       externalEventId: null,
+      // Replay reprocessa o efeito; não reaplica o filtro de gatilho (sem headers
+      // originais para resolver o evento). null => fail-open (sem filtro).
+      resolvedEvent: null,
       isReplay: true,
     })
 

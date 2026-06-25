@@ -11,6 +11,8 @@ import { STALE_DEAL_DAYS, REACTIVATION_MIN_LTV } from './shared/insights-constan
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
+// COLD é intencionalmente excluído: contato frio é pré-pipeline (ainda não levantou a mão),
+// não deve poluir as métricas de saúde do pipeline ativo. CUSTOMER também fica de fora (pós-venda).
 const PIPELINE_STAGES = ['LEAD', 'QUALIFIED', 'OPPORTUNITY'] as const
 
 function scoreLabel(score: number): ScoreBucketLabel {

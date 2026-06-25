@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 
 interface ProductThemeProps {
-  product: 'crm' | 'inbox' | 'agents'
+  product: 'crm' | 'inbox' | 'agents' | 'prospection'
 }
 
 export function ProductTheme({ product }: ProductThemeProps) {

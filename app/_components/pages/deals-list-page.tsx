@@ -4,6 +4,8 @@ import { getOrgPipeline } from '@/_data-access/pipeline/get-user-pipeline'
 import { getOrgPipelines } from '@/_data-access/pipeline/get-org-pipelines'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
+import { getFieldDefinitions } from '@/_data-access/field-definition/get-field-definitions'
+import { EntityType } from '@prisma/client'
 import { createDefaultPipeline } from '@/_data-access/pipeline/create-default-pipeline'
 import { parseDealListParams } from '@/(authenticated)/org/[orgSlug]/(crm)/crm/deals/list/_lib/deal-list-params'
 import { DealsListClient } from '@/(authenticated)/org/[orgSlug]/(crm)/crm/deals/list/_components/deals-list-client'
@@ -24,21 +26,29 @@ const DealsListPage = async ({ params, searchParams }: DealsListPageProps) => {
     getOrgPipeline(ctx.orgId, listParams.pipelineId),
   ])
 
-  const pipeline = pipelineRaw ?? (await createDefaultPipeline({ orgId: ctx.orgId }))
+  const pipeline =
+    pipelineRaw ?? (await createDefaultPipeline({ orgId: ctx.orgId }))
 
   // Garante que effectiveParams sempre carrega um pipelineId resolvido:
   // - URL sem pipelineId → usa o pipeline default/fallback resolvido
   // - URL com pipelineId deletado (pipelineRaw null) → neutraliza para evitar 0 resultados
   const effectiveParams = {
     ...listParams,
-    pipelineId: pipelineRaw ? (listParams.pipelineId ?? pipeline.id) : undefined,
+    pipelineId: pipelineRaw
+      ? (listParams.pipelineId ?? pipeline.id)
+      : undefined,
   }
 
-  const [result, members, quota] = await Promise.all([
+  const [result, members, quota, dealFieldDefinitions] = await Promise.all([
     getDealsPaginated(ctx, effectiveParams),
     getOrganizationMembers(ctx.orgId),
     checkPlanQuota(ctx.orgId, 'deal'),
+    getFieldDefinitions(ctx.orgId, EntityType.DEAL),
   ])
+
+  const customFieldDefinitions = dealFieldDefinitions.filter(
+    (definition) => !definition.isSystem,
+  )
 
   return (
     <DealsListClient
@@ -56,6 +66,7 @@ const DealsListPage = async ({ params, searchParams }: DealsListPageProps) => {
       userRole={ctx.userRole}
       withinQuota={quota.withinQuota}
       orgSlug={orgSlug}
+      customFieldDefinitions={customFieldDefinitions}
     />
   )
 }

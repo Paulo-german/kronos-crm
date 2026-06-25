@@ -5,7 +5,13 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
-import { Wand2, Loader2, ShieldCheck, ShieldOff, ArrowRight, ArrowLeft } from 'lucide-react'
+import {
+  Loader2,
+  ShieldCheck,
+  ShieldOff,
+  ArrowRight,
+  ArrowLeft,
+} from 'lucide-react'
 import {
   SheetContent,
   SheetDescription,
@@ -40,6 +46,9 @@ import {
 } from '@/_actions/webhook-source/schema'
 import { z } from 'zod'
 import { FieldMappingEditor } from './field-mapping-editor'
+import { PlatformLogo } from './platform-logo'
+import { ProviderEventSelect } from './provider-event-select'
+import { ProviderSetupGuide } from './provider-setup-guide'
 import { WebhookUrlDisplay } from './webhook-url-display'
 import { WebhookPayloadTester } from './webhook-payload-tester'
 import { WebhookFieldDetector } from './webhook-field-detector'
@@ -68,7 +77,7 @@ const EVENT_TYPES = Object.keys(EVENT_TYPE_LABELS) as WebhookEventType[]
 
 function CreateWizardStepper({ step }: { step: 'step1' | 'step2' }) {
   return (
-    <div className="flex items-center gap-2 mt-1">
+    <div className="mt-1 flex items-center gap-2">
       <span
         className={cn(
           'rounded-full px-2.5 py-0.5 text-xs font-medium',
@@ -116,6 +125,7 @@ export function UpsertWebhookSheetContent({
           name: source.name,
           platform: source.platform as WebhookPlatform,
           eventType: source.eventType as WebhookEventType,
+          providerEvent: source.providerEvent,
           fieldMapping: source.fieldMapping as Record<string, string>,
           isActive: source.isActive,
           squadId: source.squadId ?? null,
@@ -124,6 +134,7 @@ export function UpsertWebhookSheetContent({
           name: '',
           platform: 'GENERIC',
           eventType: 'UPSERT_CONTACT',
+          providerEvent: null,
           fieldMapping: {},
           isActive: true,
           squadId: null,
@@ -137,6 +148,14 @@ export function UpsertWebhookSheetContent({
         if (data?.token && data?.id) {
           setCreatedToken(data.token)
           setCreatedSourceId(data.id)
+          // Auto-aplica o template do provedor já no step 2 (substitui o antigo
+          // botão "Usar template"): o mapeamento nasce sugerido e editável.
+          const platform = form.getValues('platform') as WebhookPlatform
+          const eventType = form.getValues('eventType') as WebhookEventType
+          const tpl = PLATFORM_TEMPLATES[platform]?.[eventType]
+          if (tpl && Object.keys(tpl).length > 0) {
+            setWizardMapping(tpl as Record<string, string>)
+          }
           setStep('step2')
         }
       },
@@ -208,20 +227,24 @@ export function UpsertWebhookSheetContent({
 
   const watchedPlatform = form.watch('platform') as WebhookPlatform
   const watchedEventType = form.watch('eventType') as WebhookEventType
-  const watchedFieldMapping = form.watch('fieldMapping') as Record<string, string>
+  const watchedFieldMapping = form.watch('fieldMapping') as Record<
+    string,
+    string
+  >
   const showSquadField = watchedEventType === 'UPSERT_CONTACT'
 
-  const template = PLATFORM_TEMPLATES[watchedPlatform]?.[watchedEventType]
-  const hasTemplate =
-    watchedPlatform !== 'GENERIC' &&
-    watchedPlatform !== 'OTHER' &&
-    template !== undefined &&
-    Object.keys(template).length > 0
-
-  const handleApplyTemplate = () => {
-    if (!template) return
-    form.setValue('fieldMapping', template as Record<string, string>)
-    toast.info('Sugestão aplicada! Ajuste se necessário.')
+  // Troca de provedor: aplica o template automaticamente (substitui o antigo
+  // botão "Usar template") e reseta o gatilho — o catálogo de eventos é por
+  // provedor, então o evento selecionado do provedor anterior não faz sentido.
+  const handlePlatformChange = (newPlatform: string) => {
+    form.setValue('platform', newPlatform as WebhookPlatform)
+    form.setValue('providerEvent', null)
+    const eventType = form.getValues('eventType') as WebhookEventType
+    const nextTemplate =
+      PLATFORM_TEMPLATES[newPlatform as WebhookPlatform]?.[eventType]
+    if (nextTemplate && Object.keys(nextTemplate).length > 0) {
+      form.setValue('fieldMapping', nextTemplate as Record<string, string>)
+    }
   }
 
   // Modo CREATE step 2: mapeamento após criação do webhook
@@ -232,7 +255,8 @@ export function UpsertWebhookSheetContent({
           <SheetTitle>Novo Webhook</SheetTitle>
           <CreateWizardStepper step="step2" />
           <SheetDescription>
-            Configure quais informações do sistema externo vão para cada campo do CRM.
+            Configure quais informações do sistema externo vão para cada campo
+            do CRM.
           </SheetDescription>
         </SheetHeader>
 
@@ -242,35 +266,22 @@ export function UpsertWebhookSheetContent({
           </label>
           <WebhookUrlDisplay token={createdToken} />
           <p className="text-xs text-muted-foreground">
-            Copie este endereço no sistema externo e faça um envio de teste para detectar os campos automaticamente.
+            Copie este endereço no sistema externo e faça um envio de teste para
+            detectar os campos automaticamente.
           </p>
         </div>
 
         <Separator />
 
+        <ProviderSetupGuide platform={watchedPlatform} />
+
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium">Campos recebidos</p>
-              <p className="text-xs text-muted-foreground">
-                Defina quais informações do sistema externo vão para cada campo do CRM.
-              </p>
-            </div>
-            {hasTemplate && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setWizardMapping(template as Record<string, string>)
-                  toast.info('Sugestão aplicada! Ajuste se necessário.')
-                }}
-                className="gap-1.5 shrink-0"
-              >
-                <Wand2 className="h-3.5 w-3.5" />
-                Usar template
-              </Button>
-            )}
+          <div>
+            <p className="text-sm font-medium">Campos recebidos</p>
+            <p className="text-xs text-muted-foreground">
+              Já preenchemos a sugestão do provedor — ajuste se necessário ou
+              use o detector abaixo para confirmar com um envio real.
+            </p>
           </div>
 
           <WebhookFieldDetector
@@ -306,28 +317,28 @@ export function UpsertWebhookSheetContent({
             Voltar
           </Button>
           <div className="flex gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={isUpdating}
-            onClick={() => onSuccess?.()}
-          >
-            Pular por agora
-          </Button>
-          <Button
-            type="button"
-            disabled={isUpdating}
-            onClick={handleSaveMapping}
-          >
-            {isUpdating ? (
-              <span className="flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Salvando...
-              </span>
-            ) : (
-              'Salvar configuração'
-            )}
-          </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={isUpdating}
+              onClick={() => onSuccess?.()}
+            >
+              Pular por agora
+            </Button>
+            <Button
+              type="button"
+              disabled={isUpdating}
+              onClick={handleSaveMapping}
+            >
+              {isUpdating ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Salvando...
+                </span>
+              ) : (
+                'Salvar configuração'
+              )}
+            </Button>
           </div>
         </div>
       </SheetContent>
@@ -337,9 +348,7 @@ export function UpsertWebhookSheetContent({
   return (
     <SheetContent className="flex flex-col overflow-y-auto sm:max-w-2xl">
       <SheetHeader>
-        <SheetTitle>
-          {isEditing ? 'Editar Webhook' : 'Novo Webhook'}
-        </SheetTitle>
+        <SheetTitle>{isEditing ? 'Editar Webhook' : 'Novo Webhook'}</SheetTitle>
         {!isEditing && <CreateWizardStepper step="step1" />}
         <SheetDescription>
           {isEditing
@@ -381,7 +390,10 @@ export function UpsertWebhookSheetContent({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Plataforma</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
+                  <Select
+                    value={field.value}
+                    onValueChange={handlePlatformChange}
+                  >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione a plataforma" />
@@ -390,7 +402,10 @@ export function UpsertWebhookSheetContent({
                     <SelectContent>
                       {PLATFORMS.map((platform) => (
                         <SelectItem key={platform} value={platform}>
-                          {PLATFORM_LABELS[platform]}
+                          <span className="flex items-center gap-2">
+                            <PlatformLogo platform={platform} />
+                            {PLATFORM_LABELS[platform]}
+                          </span>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -426,6 +441,12 @@ export function UpsertWebhookSheetContent({
             />
           </div>
 
+          <ProviderEventSelect
+            platform={watchedPlatform}
+            value={(form.watch('providerEvent') as string | null) ?? null}
+            onChange={(value) => form.setValue('providerEvent', value)}
+          />
+
           {showSquadField && (
             <FormField
               control={form.control}
@@ -435,7 +456,9 @@ export function UpsertWebhookSheetContent({
                   <FormLabel>Time responsável</FormLabel>
                   <Select
                     value={field.value ?? 'default'}
-                    onValueChange={(value) => field.onChange(value === 'default' ? null : value)}
+                    onValueChange={(value) =>
+                      field.onChange(value === 'default' ? null : value)
+                    }
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -454,7 +477,8 @@ export function UpsertWebhookSheetContent({
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">
-                    Define qual time receberá os leads deste webhook. Sem seleção, usa o time padrão.
+                    Define qual time receberá os leads deste webhook. Sem
+                    seleção, usa o time padrão.
                   </p>
                   <FormMessage />
                 </FormItem>
@@ -467,33 +491,24 @@ export function UpsertWebhookSheetContent({
             <>
               <Separator />
 
+              <ProviderSetupGuide platform={watchedPlatform} />
+
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium">Mapeamento de campos</p>
-                    <p className="text-xs text-muted-foreground">
-                      Mapeie os campos do payload externo para os campos do CRM.
-                    </p>
-                  </div>
-                  {hasTemplate && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleApplyTemplate}
-                      className="gap-1.5 shrink-0"
-                    >
-                      <Wand2 className="h-3.5 w-3.5" />
-                      Usar template
-                    </Button>
-                  )}
+                <div>
+                  <p className="text-sm font-medium">Mapeamento de campos</p>
+                  <p className="text-xs text-muted-foreground">
+                    Mapeie os campos do payload externo para os campos do CRM. A
+                    sugestão do provedor é aplicada ao trocar a plataforma.
+                  </p>
                 </div>
 
                 {source && (
                   <WebhookFieldDetector
                     webhookSourceId={source.id}
                     token={source.token}
-                    onApply={(mapping) => form.setValue('fieldMapping', mapping)}
+                    onApply={(mapping) =>
+                      form.setValue('fieldMapping', mapping)
+                    }
                   />
                 )}
 
@@ -532,7 +547,8 @@ export function UpsertWebhookSheetContent({
             <div>
               <p className="text-sm font-medium">Verificação de segurança</p>
               <p className="text-xs text-muted-foreground">
-                Opcional. Adicione uma chave para confirmar que os dados vêm do sistema correto.
+                Opcional. Adicione uma chave para confirmar que os dados vêm do
+                sistema correto.
               </p>
             </div>
 
@@ -580,7 +596,9 @@ export function UpsertWebhookSheetContent({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      {isEditing && source?.hasSecretKey ? 'Nova chave' : 'Chave de segurança'}
+                      {isEditing && source?.hasSecretKey
+                        ? 'Nova chave'
+                        : 'Chave de segurança'}
                     </FormLabel>
                     <FormControl>
                       <Input
@@ -602,8 +620,8 @@ export function UpsertWebhookSheetContent({
               />
             )}
 
-            {(!isEditing || !source?.hasSecretKey || clearSecretKey) && (
-              PLATFORM_HMAC_HINTS[watchedPlatform] ? (
+            {(!isEditing || !source?.hasSecretKey || clearSecretKey) &&
+              (PLATFORM_HMAC_HINTS[watchedPlatform] ? (
                 <Badge variant="secondary" className="text-xs font-normal">
                   {PLATFORM_HMAC_HINTS[watchedPlatform]}
                 </Badge>
@@ -611,8 +629,7 @@ export function UpsertWebhookSheetContent({
                 <p className="text-xs text-muted-foreground">
                   Google Forms não suporta verificação de segurança.
                 </p>
-              ) : null
-            )}
+              ) : null)}
           </div>
 
           <div className="flex justify-end gap-2 pt-2">

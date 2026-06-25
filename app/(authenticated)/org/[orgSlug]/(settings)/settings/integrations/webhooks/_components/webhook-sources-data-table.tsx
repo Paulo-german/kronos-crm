@@ -40,6 +40,7 @@ import {
   type WebhookPlatform,
   type WebhookEventType,
 } from '../_lib/platform-templates'
+import { PlatformLogo } from './platform-logo'
 import { TableDropdownMenu } from './table-dropdown-menu'
 import { DeleteWebhookDialogContent } from './delete-webhook-dialog-content'
 import { UpsertWebhookSheetContent } from './upsert-webhook-sheet-content'
@@ -147,6 +148,16 @@ export function WebhookSourcesDataTable({
     setViewingLogsSourceName(sourceName)
   }, [])
 
+  // Sugestão proativa dos logs: fecha o sheet de logs e abre a edição do mesmo
+  // webhook (onde fica o detector de campos).
+  const handleConfigureFromLogs = useCallback(() => {
+    const source = data.find((item) => item.id === viewingLogsSourceId)
+    if (!source) return
+    setViewingLogsSourceId(null)
+    setViewingLogsSourceName('')
+    setEditingSource(source)
+  }, [data, viewingLogsSourceId])
+
   const handleCopyUrl = useCallback((source: WebhookSourceDto) => {
     const origin =
       typeof window !== 'undefined'
@@ -175,7 +186,11 @@ export function WebhookSourcesDataTable({
         accessorKey: 'platform',
         header: 'Plataforma',
         cell: ({ row }) => (
-          <Badge variant="secondary">
+          <Badge variant="secondary" className="gap-1.5">
+            <PlatformLogo
+              platform={row.original.platform as WebhookPlatform}
+              size={14}
+            />
             {PLATFORM_LABELS[row.original.platform as WebhookPlatform] ??
               row.original.platform}
           </Badge>
@@ -387,6 +402,7 @@ export function WebhookSourcesDataTable({
               setViewingLogsSourceName('')
             }
           }}
+          onConfigure={handleConfigureFromLogs}
         />
       )}
 

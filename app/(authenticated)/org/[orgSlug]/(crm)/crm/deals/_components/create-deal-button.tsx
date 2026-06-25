@@ -11,6 +11,7 @@ import {
 } from '@/_components/ui/tooltip'
 import { DealDialogContent, type DealMemberOption } from './deal-dialog-content'
 import type { StageDto } from '@/_data-access/pipeline/get-user-pipeline'
+import type { FieldDefinitionDto } from '@/_lib/custom-fields/types'
 
 // Valor do query param `?deal` que representa o modo "criar" (edição usa o id).
 const CREATE_PARAM_VALUE = 'new'
@@ -20,6 +21,7 @@ interface CreateDealButtonProps {
   members?: DealMemberOption[]
   withinQuota?: boolean
   onMutationSuccess?: () => void
+  customFieldDefinitions?: FieldDefinitionDto[]
 }
 
 const CreateDealButton = ({
@@ -27,6 +29,7 @@ const CreateDealButton = ({
   members = [],
   withinQuota = true,
   onMutationSuccess,
+  customFieldDefinitions = [],
 }: CreateDealButtonProps) => {
   // Abertura do dialog na URL (?deal=new) — sobrevive a remontagem/revalidação.
   const [dealParam, setDealParam] = useQueryState('deal')
@@ -67,6 +70,7 @@ const CreateDealButton = ({
         members={members}
         setIsOpen={setIsOpen}
         onMutationSuccess={onMutationSuccess}
+        customFieldDefinitions={customFieldDefinitions}
       />
     </Sheet>
   )

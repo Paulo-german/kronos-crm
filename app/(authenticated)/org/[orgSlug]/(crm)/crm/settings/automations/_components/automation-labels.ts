@@ -2,7 +2,9 @@ import { AutomationTrigger } from '@prisma/client'
 import type { AutomationAction } from '@prisma/client'
 
 // Fonte canônica dos triggers de contato — importada por todos os steps do wizard
-export const CONTACT_TRIGGER_SET = new Set<AutomationTrigger>([AutomationTrigger.CONTACT_CREATED])
+export const CONTACT_TRIGGER_SET = new Set<AutomationTrigger>([
+  AutomationTrigger.CONTACT_CREATED,
+])
 
 export const TRIGGER_LABELS: Record<AutomationTrigger, string> = {
   DEAL_CREATED: 'Negociação criada',
@@ -89,14 +91,40 @@ export const NOTIFY_TARGET_LABELS: Record<string, string> = {
   org_admins: 'Gestores da organização',
 }
 
-export const LIFECYCLE_STAGE_OPTIONS: { label: string; value: string; description: string }[] = [
-  { label: 'Qualificado', value: 'QUALIFIED', description: 'Demonstrou interesse e fit' },
-  { label: 'Oportunidade', value: 'OPPORTUNITY', description: 'Em negociação ativa' },
+export const LIFECYCLE_STAGE_OPTIONS: {
+  label: string
+  value: string
+  description: string
+}[] = [
+  {
+    label: 'Frio',
+    value: 'COLD',
+    description: 'Lista importada que ainda não levantou a mão',
+  },
+  {
+    label: 'Lead',
+    value: 'LEAD',
+    description: 'Entrou no funil, sem qualificação ainda',
+  },
+  {
+    label: 'Qualificado',
+    value: 'QUALIFIED',
+    description: 'Demonstrou interesse e fit',
+  },
+  {
+    label: 'Oportunidade',
+    value: 'OPPORTUNITY',
+    description: 'Em negociação ativa',
+  },
   { label: 'Cliente', value: 'CUSTOMER', description: 'Conversão realizada' },
 ]
 
-// Inclui LEAD (para uso em conditions de CONTACT_CREATED)
-export const LIFECYCLE_STAGE_CONDITION_OPTIONS: { label: string; value: string }[] = [
+// Inclui COLD e LEAD (para uso em conditions de CONTACT_CREATED / listas frias)
+export const LIFECYCLE_STAGE_CONDITION_OPTIONS: {
+  label: string
+  value: string
+}[] = [
+  { label: 'Frio', value: 'COLD' },
   { label: 'Lead', value: 'LEAD' },
   { label: 'Qualificado', value: 'QUALIFIED' },
   { label: 'Oportunidade', value: 'OPPORTUNITY' },

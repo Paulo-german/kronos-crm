@@ -3,6 +3,8 @@ import { getOrgPipeline } from '@/_data-access/pipeline/get-user-pipeline'
 import { getOrgPipelines } from '@/_data-access/pipeline/get-org-pipelines'
 import { getOrganizationMembers } from '@/_data-access/organization/get-organization-members'
 import { getTutorialCompletions } from '@/_data-access/tutorial/get-tutorial-completions'
+import { getFieldDefinitions } from '@/_data-access/field-definition/get-field-definitions'
+import { EntityType } from '@prisma/client'
 import { PipelineIntroTrigger } from '@/_components/tutorials/pipeline-intro-trigger'
 import { PipelineClient } from '@/(authenticated)/org/[orgSlug]/(crm)/crm/deals/pipeline/_components/pipeline-client'
 import { PipelineQueryProvider } from '@/(authenticated)/org/[orgSlug]/(crm)/crm/deals/pipeline/_components/pipeline-query-provider'
@@ -29,14 +31,20 @@ const DealsPipelinePage = async ({
   const finalPipeline =
     pipeline || (await createDefaultPipeline({ orgId: ctx.orgId }))
 
-  const [orgMembers, completedTutorialIds] = await Promise.all([
-    getOrganizationMembers(ctx.orgId),
-    getTutorialCompletions(ctx.userId, ctx.orgId),
-  ])
+  const [orgMembers, completedTutorialIds, dealFieldDefinitions] =
+    await Promise.all([
+      getOrganizationMembers(ctx.orgId),
+      getTutorialCompletions(ctx.userId, ctx.orgId),
+      getFieldDefinitions(ctx.orgId, EntityType.DEAL),
+    ])
 
   const members = orgMembers.accepted
     .filter((member) => member.userId && member.user?.fullName)
     .map((member) => ({ userId: member.userId!, name: member.user!.fullName! }))
+
+  const customFieldDefinitions = dealFieldDefinitions.filter(
+    (definition) => !definition.isSystem,
+  )
 
   return (
     <PipelineQueryProvider>
@@ -48,6 +56,7 @@ const DealsPipelinePage = async ({
           members={members}
           currentUserId={ctx.userId}
           userRole={ctx.userRole}
+          customFieldDefinitions={customFieldDefinitions}
         />
       </div>
       <PipelineIntroTrigger

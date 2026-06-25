@@ -10,6 +10,14 @@ export const SCORE_YELLOW_MAX = 69
 export const SCORE_ELIGIBLE_PRODUCT_KEYS = ['scale', 'enterprise'] as const
 
 export const STAGE_WEIGHTS: Record<LifecycleStage, ScoreWeights> = {
+  COLD: {
+    recency: 0.5,
+    dealActivity: 0.0,
+    repurchaseFrequency: 0.0,
+    daysSinceLastPurchase: 0.0,
+    ltv: 0.1,
+    agentEngagement: 0.4,
+  },
   LEAD: {
     recency: 0.5,
     dealActivity: 0.0,

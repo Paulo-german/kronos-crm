@@ -24,6 +24,7 @@ interface TabContactsAtRiskProps {
 }
 
 const LIFECYCLE_LABELS: Record<LifecycleStage, string> = {
+  COLD: 'Frio',
   LEAD: 'Lead',
   QUALIFIED: 'Qualificado',
   OPPORTUNITY: 'Oportunidade',
@@ -70,6 +71,7 @@ export function TabContactsAtRisk({ initial, orgSlug }: TabContactsAtRiskProps) 
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos os estágios</SelectItem>
+            <SelectItem value="COLD">Frio</SelectItem>
             <SelectItem value="LEAD">Lead</SelectItem>
             <SelectItem value="QUALIFIED">Qualificado</SelectItem>
             <SelectItem value="OPPORTUNITY">Oportunidade</SelectItem>

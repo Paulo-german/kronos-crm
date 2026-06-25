@@ -76,6 +76,7 @@ export interface LifecycleEvolutionPoint {
   label: string
   // Chave única do bucket — usada para agrupamento e React key
   bucketKey: string
+  COLD: number
   LEAD: number
   QUALIFIED: number
   OPPORTUNITY: number
@@ -101,6 +102,7 @@ function tallyByStage(
   groups: StageFlowGroup[],
 ): Record<LifecycleStage, number> {
   const tally: Record<LifecycleStage, number> = {
+    [LifecycleStage.COLD]: 0,
     [LifecycleStage.LEAD]: 0,
     [LifecycleStage.QUALIFIED]: 0,
     [LifecycleStage.OPPORTUNITY]: 0,
@@ -140,6 +142,7 @@ function buildEvolutionPoints(
   for (const row of historyRows) {
     const key = keyOf(row.createdAt)
     const existing = tallyByBucket.get(key) ?? {
+      [LifecycleStage.COLD]: 0,
       [LifecycleStage.LEAD]: 0,
       [LifecycleStage.QUALIFIED]: 0,
       [LifecycleStage.OPPORTUNITY]: 0,
@@ -166,6 +169,7 @@ function buildEvolutionPoints(
         ? MONTH_LABELS_PT_BR[getMonth(bucketStart)]
         : format(bucketStart, 'dd/MM')
     const stageTally = tallyByBucket.get(bucketKey) ?? {
+      [LifecycleStage.COLD]: 0,
       [LifecycleStage.LEAD]: 0,
       [LifecycleStage.QUALIFIED]: 0,
       [LifecycleStage.OPPORTUNITY]: 0,
@@ -174,6 +178,7 @@ function buildEvolutionPoints(
     return {
       label,
       bucketKey,
+      COLD: stageTally[LifecycleStage.COLD],
       LEAD: stageTally[LifecycleStage.LEAD],
       QUALIFIED: stageTally[LifecycleStage.QUALIFIED],
       OPPORTUNITY: stageTally[LifecycleStage.OPPORTUNITY],
@@ -324,6 +329,9 @@ async function fetchLifecycleFunnelMetrics(
       periodCount: currentTally[stage],
       prevPeriodCount: prevTally[stage],
       stockCount: stockTally[stage],
+    }
+    if (stage === LifecycleStage.COLD) {
+      return base
     }
     if (stage === LifecycleStage.LEAD) {
       return { ...base, autoCaptureCount: autoCaptureLeadCount }

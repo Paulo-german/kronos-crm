@@ -5,6 +5,7 @@ import {
   CheckSquare,
   CalendarClock,
   BarChart3,
+  Filter,
 } from 'lucide-react'
 import { NavItem } from '@/_components/layout/sidebars/nav-item'
 
@@ -27,6 +28,11 @@ export const CrmSidebar = ({ orgSlug }: CrmSidebarProps) => {
           href={`${base}/contacts`}
           icon={<Users className="h-4 w-4" />}
           label="Contatos"
+        />
+        <NavItem
+          href={`${base}/segments`}
+          icon={<Filter className="h-4 w-4" />}
+          label="Segmentações"
         />
         <NavItem
           href={`${base}/reports/overview`}

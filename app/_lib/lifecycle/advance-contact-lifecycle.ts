@@ -12,10 +12,11 @@ import { persistOne } from '../../../trigger/lib/persist-health-score'
 import { revalidateCopilotCache } from '@/_lib/revalidate-copilot-cache'
 
 const STAGE_ORDER: Record<LifecycleStage, number> = {
-  LEAD: 0,
-  QUALIFIED: 1,
-  OPPORTUNITY: 2,
-  CUSTOMER: 3,
+  COLD: 0,
+  LEAD: 1,
+  QUALIFIED: 2,
+  OPPORTUNITY: 3,
+  CUSTOMER: 4,
 }
 
 interface AdvanceLifecycleParams {
@@ -50,6 +51,7 @@ export async function advanceContactLifecycle(
     OPPORTUNITY: { becameOpportunityAt: now },
     CUSTOMER: { becameCustomerAt: now, customerStatus: CustomerStatus.ACTIVE },
     LEAD: {},
+    COLD: {},
   }[toStage]
 
   await db.$transaction([

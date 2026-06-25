@@ -1,4 +1,4 @@
-import { Home, Users, Bot, FolderOpen, BarChart3 } from 'lucide-react'
+import { Home, Users, Bot, FolderOpen, BarChart3, Filter } from 'lucide-react'
 import { NavItem } from '@/_components/layout/sidebars/nav-item'
 
 interface AgentsSidebarProps {
@@ -11,14 +11,40 @@ export const AgentsSidebar = ({ orgSlug }: AgentsSidebarProps) => {
   return (
     <aside className="group/sidebar relative hidden h-full w-16 flex-col overflow-hidden bg-primary-dark text-white transition-[width] duration-300 ease-in-out hover:w-60 md:flex">
       <nav className="flex flex-1 flex-col gap-1 px-2 py-4">
-        <NavItem href={`${base}/home`} icon={<Home className="h-4 w-4" />} label="Início" />
-        <NavItem href={`${base}/contacts`} icon={<Users className="h-4 w-4" />} label="Contatos" />
-        <NavItem href={`${base}/reports`} icon={<BarChart3 className="h-4 w-4" />} label="Analisar" />
+        <NavItem
+          href={`${base}/home`}
+          icon={<Home className="h-4 w-4" />}
+          label="Início"
+        />
+        <NavItem
+          href={`${base}/contacts`}
+          icon={<Users className="h-4 w-4" />}
+          label="Contatos"
+        />
+        <NavItem
+          href={`${base}/segments`}
+          icon={<Filter className="h-4 w-4" />}
+          label="Segmentações"
+        />
+        <NavItem
+          href={`${base}/reports`}
+          icon={<BarChart3 className="h-4 w-4" />}
+          label="Analisar"
+        />
 
         <div className="my-1 h-px bg-white/10 dark:bg-border/50" />
 
-        <NavItem href={`${base}/ai-agent`} icon={<Bot className="h-4 w-4" />} label="Agentes" exact />
-        <NavItem href={`${base}/ai-agent/groups`} icon={<FolderOpen className="h-4 w-4" />} label="Grupos" />
+        <NavItem
+          href={`${base}/ai-agent`}
+          icon={<Bot className="h-4 w-4" />}
+          label="Agentes"
+          exact
+        />
+        <NavItem
+          href={`${base}/ai-agent/groups`}
+          icon={<FolderOpen className="h-4 w-4" />}
+          label="Grupos"
+        />
       </nav>
     </aside>
   )

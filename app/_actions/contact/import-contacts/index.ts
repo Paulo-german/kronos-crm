@@ -129,9 +129,13 @@ export const importContacts = orgActionClient
         select: { id: true },
       })
 
-      // Registrar entrada no histórico de lifecycle para cada contato
+      // Registrar entrada no histórico de lifecycle para cada contato.
+      // COLD e LEAD são entradas novas (contato criado); estágios à frente
+      // representam histórico de negócio reconstruído (backfill).
       const causeType =
-        data.lifecycleStage === 'LEAD' ? 'CONTACT_CREATED' : 'BACKFILL'
+        data.lifecycleStage === 'LEAD' || data.lifecycleStage === 'COLD'
+          ? 'CONTACT_CREATED'
+          : 'BACKFILL'
       await tx.contactLifecycleHistory.createMany({
         data: createdContacts.map((contact) => ({
           contactId: contact.id,

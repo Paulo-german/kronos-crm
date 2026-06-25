@@ -4,7 +4,22 @@ import type { Plan } from '@prisma/client'
 import { db } from '@/_lib/prisma'
 
 // Mapeamento de entidade RBAC para feature key no catálogo
-export type QuotaEntity = 'contact' | 'deal' | 'product' | 'member' | 'agent' | 'inbox' | 'follow_up_monthly' | 'follow_up' | 'automation' | 'agent_group' | 'pipeline' | 'squad' | 'capture_form' | 'custom_field'
+export type QuotaEntity =
+  | 'contact'
+  | 'deal'
+  | 'product'
+  | 'member'
+  | 'agent'
+  | 'inbox'
+  | 'follow_up_monthly'
+  | 'follow_up'
+  | 'automation'
+  | 'agent_group'
+  | 'pipeline'
+  | 'squad'
+  | 'capture_form'
+  | 'custom_field'
+  | 'segment'
 
 // Slug do plano efetivo (usado pela UI)
 export type PlanType = 'light' | 'essential' | 'scale' | 'enterprise'
@@ -25,6 +40,7 @@ const ENTITY_FEATURE_MAP: Record<QuotaEntity, string> = {
   squad: 'crm.max_squads',
   capture_form: 'crm.max_capture_forms',
   custom_field: 'crm.max_custom_fields',
+  segment: 'crm.max_segments',
 }
 
 /**
@@ -33,76 +49,80 @@ const ENTITY_FEATURE_MAP: Record<QuotaEntity, string> = {
  * 2. trialEndsAt no futuro → retorna o plano 'essential' do DB
  * 3. Nenhum → null (bloqueia quota)
  */
-export const getEffectivePlan = cache(async (orgId: string): Promise<Plan | null> => {
-  const getCachedPlan = unstable_cache(
-    async () => {
-      // 1. Checar plan override (equipe interna / parceiros)
-      const org = await db.organization.findUnique({
-        where: { id: orgId },
-        select: { trialEndsAt: true, planOverride: true },
-      })
+export const getEffectivePlan = cache(
+  async (orgId: string): Promise<Plan | null> => {
+    const getCachedPlan = unstable_cache(
+      async () => {
+        // 1. Checar plan override (equipe interna / parceiros)
+        const org = await db.organization.findUnique({
+          where: { id: orgId },
+          select: { trialEndsAt: true, planOverride: true },
+        })
 
-      if (org?.planOverride) {
-        return org.planOverride
-      }
+        if (org?.planOverride) {
+          return org.planOverride
+        }
 
-      // 2. Subscription ativa/trialing com planId
-      const subscription = await db.subscription.findFirst({
-        where: {
-          organizationId: orgId,
-          status: { in: ['active', 'trialing'] },
-        },
-        include: { plan: true },
-        orderBy: { createdAt: 'desc' },
-      })
+        // 2. Subscription ativa/trialing com planId
+        const subscription = await db.subscription.findFirst({
+          where: {
+            organizationId: orgId,
+            status: { in: ['active', 'trialing'] },
+          },
+          include: { plan: true },
+          orderBy: { createdAt: 'desc' },
+        })
 
-      if (subscription?.plan) {
-        return subscription.plan
-      }
+        if (subscription?.plan) {
+          return subscription.plan
+        }
 
-      // 3. Fallback para trial da org
-      if (org?.trialEndsAt && org.trialEndsAt > new Date()) {
-        return db.plan.findUnique({ where: { slug: 'essential' } })
-      }
+        // 3. Fallback para trial da org
+        if (org?.trialEndsAt && org.trialEndsAt > new Date()) {
+          return db.plan.findUnique({ where: { slug: 'essential' } })
+        }
 
-      return null
-    },
-    [`effective-plan-${orgId}`],
-    {
-      tags: [`subscriptions:${orgId}`],
-      revalidate: 3600,
-    },
-  )
+        return null
+      },
+      [`effective-plan-${orgId}`],
+      {
+        tags: [`subscriptions:${orgId}`],
+        revalidate: 3600,
+      },
+    )
 
-  return getCachedPlan()
-})
+    return getCachedPlan()
+  },
+)
 
 /**
  * Lê o limite numérico de uma feature para um plano do banco de dados.
  * Retorna 0 se não encontrado.
  */
-const getPlanLimit = cache(async (planId: string, featureKey: string): Promise<number> => {
-  const getCachedLimit = unstable_cache(
-    async () => {
-      const planLimit = await db.planLimit.findFirst({
-        where: {
-          planId,
-          feature: { key: featureKey },
-        },
-        select: { valueNumber: true },
-      })
+const getPlanLimit = cache(
+  async (planId: string, featureKey: string): Promise<number> => {
+    const getCachedLimit = unstable_cache(
+      async () => {
+        const planLimit = await db.planLimit.findFirst({
+          where: {
+            planId,
+            feature: { key: featureKey },
+          },
+          select: { valueNumber: true },
+        })
 
-      return planLimit?.valueNumber ?? 0
-    },
-    [`plan-limit-${planId}-${featureKey}`],
-    {
-      tags: ['plan-limits'],
-      revalidate: 3600,
-    },
-  )
+        return planLimit?.valueNumber ?? 0
+      },
+      [`plan-limit-${planId}-${featureKey}`],
+      {
+        tags: ['plan-limits'],
+        revalidate: 3600,
+      },
+    )
 
-  return getCachedLimit()
-})
+    return getCachedLimit()
+  },
+)
 
 // Tags de cache que cada entidade já usa nas suas actions de create/delete
 const ENTITY_COUNT_TAGS: Record<QuotaEntity, (orgId: string) => string[]> = {
@@ -120,13 +140,17 @@ const ENTITY_COUNT_TAGS: Record<QuotaEntity, (orgId: string) => string[]> = {
   squad: (orgId) => [`squads:${orgId}`],
   capture_form: (orgId) => [`capture-forms:${orgId}`],
   custom_field: (orgId) => [`field-definitions:${orgId}`],
+  segment: (orgId) => [`segments:${orgId}`],
 }
 
 /**
  * Conta registros existentes para uma entidade (Cacheado)
  * Revalida automaticamente quando a entidade é criada/deletada via tag compartilhada
  */
-async function countRecords(orgId: string, entity: QuotaEntity): Promise<number> {
+async function countRecords(
+  orgId: string,
+  entity: QuotaEntity,
+): Promise<number> {
   const getCachedCount = unstable_cache(
     async () => {
       switch (entity) {
@@ -179,6 +203,8 @@ async function countRecords(orgId: string, entity: QuotaEntity): Promise<number>
           return db.fieldDefinition.count({
             where: { organizationId: orgId, isSystem: false, isActive: true },
           })
+        case 'segment':
+          return db.contactSegment.count({ where: { organizationId: orgId } })
         default:
           return 0
       }
@@ -223,7 +249,10 @@ export async function checkPlanQuota(
  * (ex: ai.max_workers_per_group — limite por grupo, não por org).
  * Retorna 0 se a org não tem plano ou a feature key não existe.
  */
-export async function getFeatureLimit(orgId: string, featureKey: string): Promise<number> {
+export async function getFeatureLimit(
+  orgId: string,
+  featureKey: string,
+): Promise<number> {
   const plan = await getEffectivePlan(orgId)
   if (!plan) return 0
   return getPlanLimit(plan.id, featureKey)
@@ -233,7 +262,9 @@ export async function getFeatureLimit(orgId: string, featureKey: string): Promis
  * Retorna o slug do plano efetivo da organização, para uso na UI.
  * Retorna null quando a org não tem plano ativo nem trial.
  */
-export async function getPlanLimits(orgId: string): Promise<{ plan: PlanType | null }> {
+export async function getPlanLimits(
+  orgId: string,
+): Promise<{ plan: PlanType | null }> {
   const plan = await getEffectivePlan(orgId)
 
   if (!plan) {
@@ -247,7 +278,10 @@ export async function getPlanLimits(orgId: string): Promise<{ plan: PlanType | n
  * Lança erro se a quota foi excedida.
  * Use antes de criar novos registros.
  */
-export async function requireQuota(orgId: string, entity: QuotaEntity): Promise<void> {
+export async function requireQuota(
+  orgId: string,
+  entity: QuotaEntity,
+): Promise<void> {
   const plan = await getEffectivePlan(orgId)
 
   if (!plan) {
@@ -274,6 +308,7 @@ export async function requireQuota(orgId: string, entity: QuotaEntity): Promise<
       squad: 'squads',
       capture_form: 'formulários de captura',
       custom_field: 'campos personalizados',
+      segment: 'segmentações',
     }
 
     throw new Error(

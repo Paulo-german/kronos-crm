@@ -18,6 +18,7 @@ export const createWebhookSource = orgActionClient
         name: data.name,
         platform: data.platform,
         eventType: data.eventType,
+        providerEvent: data.providerEvent ?? null,
         fieldMapping: data.fieldMapping as Prisma.InputJsonValue,
         isActive: data.isActive,
         secretKey: data.secretKey ?? null,

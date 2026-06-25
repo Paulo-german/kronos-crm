@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAction } from 'next-safe-action/hooks'
 import { formatDistanceToNow } from 'date-fns/formatDistanceToNow'
 import { subDays } from 'date-fns/subDays'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, Eye } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Eye, Wand2, Lightbulb } from 'lucide-react'
 import {
   Sheet,
   SheetContent,
@@ -13,6 +13,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/_components/ui/sheet'
+import { Alert, AlertDescription } from '@/_components/ui/alert'
 import { Badge } from '@/_components/ui/badge'
 import { Button } from '@/_components/ui/button'
 import { Skeleton } from '@/_components/ui/skeleton'
@@ -20,6 +21,7 @@ import { getWebhookLogs } from '@/_actions/webhook-source/get-webhook-logs'
 import type { WebhookLogDto } from '@/_actions/webhook-source/schema'
 import { WebhookLogsFilters } from './webhook-logs-filters'
 import { WebhookLogDetailDialog } from './webhook-log-detail-dialog'
+import { shouldSuggestAutodetect } from '../_lib/should-suggest-autodetect'
 
 type PeriodFilter = '1d' | '7d' | '30d' | 'all'
 
@@ -44,6 +46,9 @@ interface WebhookLogsSheetProps {
   orgSlug: string
   open: boolean
   onOpenChange: (open: boolean) => void
+  // Abre a configuração do webhook (onde fica o detector de campos). Quando
+  // ausente, a sugestão proativa vira só texto, sem botão de ação.
+  onConfigure?: () => void
 }
 
 export function WebhookLogsSheet({
@@ -52,6 +57,7 @@ export function WebhookLogsSheet({
   orgSlug,
   open,
   onOpenChange,
+  onConfigure,
 }: WebhookLogsSheetProps) {
   const [page, setPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState<string[]>([])
@@ -84,9 +90,18 @@ export function WebhookLogsSheet({
     loadLogs()
   }, [loadLogs])
 
-  const logs = result?.data?.logs ?? []
+  const logs = useMemo(() => result?.data?.logs ?? [], [result])
   const totalPages = result?.data?.totalPages ?? 1
   const total = result?.data?.total ?? 0
+
+  // Sugestão proativa só sobre a 1ª página sem filtro de status — assim a
+  // amostra reflete o fluxo real (filtrar por ERROR enviesaria a heurística).
+  const suggestion = useMemo(() => {
+    if (statusFilter.length > 0 || page > 1) {
+      return { suggest: false, reason: null }
+    }
+    return shouldSuggestAutodetect(logs)
+  }, [logs, statusFilter, page])
 
   const handleStatusChange = (newStatus: string[]) => {
     setPage(1)
@@ -117,6 +132,27 @@ export function WebhookLogsSheet({
             periodFilter={periodFilter}
             onPeriodChange={handlePeriodChange}
           />
+
+          {suggestion.suggest && suggestion.reason && (
+            <Alert variant="warning">
+              <Lightbulb className="h-4 w-4" />
+              <AlertDescription className="flex flex-col gap-2 text-xs">
+                <span>{suggestion.reason}</span>
+                {onConfigure && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-fit gap-1.5"
+                    onClick={onConfigure}
+                  >
+                    <Wand2 className="h-3.5 w-3.5" />
+                    Ajustar configuração
+                  </Button>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
 
           <div className="flex-1 space-y-1">
             {isPending ? (

@@ -27,6 +27,7 @@ import { markDealWon } from '@/_actions/deal/mark-deal-won'
 import { reopenDeal } from '@/_actions/deal/reopen-deal'
 import type { DealDetailsDto } from '@/_data-access/deal/get-deal-details'
 import type { PipelineStageOption } from '@/_data-access/pipeline/get-pipeline-stages'
+import type { FieldDefinitionDto } from '@/_lib/custom-fields/types'
 import type { MemberRole } from '@prisma/client'
 
 import TabSummary from './tab-summary'
@@ -50,6 +51,8 @@ interface DealDetailClientProps {
   tasksTabSlot: ReactNode
   appointmentsTabSlot: ReactNode
   orgSlug: string
+  customFieldDefinitions?: FieldDefinitionDto[]
+  customFieldValues?: Record<string, string | null>
 }
 
 const DealDetailClient = ({
@@ -64,6 +67,8 @@ const DealDetailClient = ({
   tasksTabSlot,
   appointmentsTabSlot,
   orgSlug,
+  customFieldDefinitions = [],
+  customFieldValues = {},
 }: DealDetailClientProps) => {
   const [activeTab, setActiveTab] = useState('summary')
   const { celebrate } = useDealWonCelebration()
@@ -252,6 +257,8 @@ const DealDetailClient = ({
             deal={deal}
             contactsSlot={contactsSlot}
             onTabChange={setActiveTab}
+            customFieldDefinitions={customFieldDefinitions}
+            customFieldValues={customFieldValues}
           />
         </TabsContent>
 

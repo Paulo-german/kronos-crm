@@ -338,8 +338,10 @@ const StepDetailPanel = ({
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="none">Nenhum</SelectItem>
+                        {/* COLD nunca é destino de avanço (não se move alguém PARA frio),
+                            mas LEAD sim — é o salto de uma lista fria que respondeu ao agente. */}
                         {LIFECYCLE_STAGE_ORDER.filter(
-                          (stage) => stage !== LifecycleStage.LEAD,
+                          (stage) => stage !== LifecycleStage.COLD,
                         ).map((stage) => {
                           const cfg = LIFECYCLE_STAGE_CONFIG[stage]
                           return (

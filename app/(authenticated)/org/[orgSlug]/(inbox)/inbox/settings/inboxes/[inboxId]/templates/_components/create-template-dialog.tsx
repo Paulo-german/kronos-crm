@@ -23,7 +23,7 @@ import {
   type CreateWhatsAppTemplateInput,
 } from '@/_actions/inbox/create-whatsapp-template/schema'
 import { TemplateFormFields } from './template-form-fields'
-import { TemplatePreview } from './template-preview'
+import { TemplatePreview } from '@/_components/whatsapp/template-preview'
 
 interface CreateTemplateDialogProps {
   open: boolean
@@ -101,8 +101,8 @@ export function CreateTemplateDialog({
         <DialogHeader className="px-6 pt-6">
           <DialogTitle>Criar template</DialogTitle>
           <DialogDescription>
-            Templates precisam ser aprovados pelo Meta antes de serem usados.
-            O processo de aprovação pode levar alguns minutos.
+            Templates precisam ser aprovados pelo Meta antes de serem usados. O
+            processo de aprovação pode levar alguns minutos.
           </DialogDescription>
         </DialogHeader>
 
@@ -110,7 +110,10 @@ export function CreateTemplateDialog({
 
         <div className="flex min-h-0 flex-1">
           {/* Formulário */}
-          <div className="flex-1 overflow-y-auto px-6 py-4" style={{ maxHeight: '65vh' }}>
+          <div
+            className="flex-1 overflow-y-auto px-6 py-4"
+            style={{ maxHeight: '65vh' }}
+          >
             <Form {...form}>
               <form onSubmit={handleSubmit} id="create-template-form">
                 <TemplateFormFields form={form} />
@@ -121,7 +124,10 @@ export function CreateTemplateDialog({
           <Separator orientation="vertical" />
 
           {/* Painel de preview — sticky, não scrolla com o form */}
-          <div className="flex w-80 shrink-0 flex-col px-5 py-4" style={{ maxHeight: '65vh', overflowY: 'auto' }}>
+          <div
+            className="flex w-80 shrink-0 flex-col px-5 py-4"
+            style={{ maxHeight: '65vh', overflowY: 'auto' }}
+          >
             <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Preview
             </p>
@@ -149,7 +155,9 @@ export function CreateTemplateDialog({
                   </div>
                   {watchedCategory && (
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">Categoria</span>
+                      <span className="text-xs text-muted-foreground">
+                        Categoria
+                      </span>
                       <span className="text-xs text-foreground">
                         {CATEGORY_LABELS[watchedCategory] ?? watchedCategory}
                       </span>
@@ -157,8 +165,12 @@ export function CreateTemplateDialog({
                   )}
                   {watchedLanguage && (
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">Idioma</span>
-                      <span className="text-xs text-foreground">{watchedLanguage}</span>
+                      <span className="text-xs text-muted-foreground">
+                        Idioma
+                      </span>
+                      <span className="text-xs text-foreground">
+                        {watchedLanguage}
+                      </span>
                     </div>
                   )}
                 </div>
