@@ -11,6 +11,7 @@ interface ChannelItem {
   id: string
   name: string
   connectionType: string
+  evolutionConnected: boolean
   metaPhoneNumberId: string | null
   zapiInstanceId: string | null
 }
@@ -21,10 +22,12 @@ interface ChannelsListProps {
   withinQuota: boolean
 }
 
-const isChannelConnected = (channel: ChannelItem) =>
-  channel.connectionType === 'META_CLOUD'
-    ? Boolean(channel.metaPhoneNumberId)
-    : Boolean(channel.zapiInstanceId)
+const isChannelConnected = (channel: ChannelItem) => {
+  if (channel.connectionType === 'META_CLOUD')
+    return Boolean(channel.metaPhoneNumberId)
+  if (channel.connectionType === 'Z_API') return Boolean(channel.zapiInstanceId)
+  return channel.evolutionConnected
+}
 
 export function ChannelsList({
   channels,
@@ -39,8 +42,8 @@ export function ChannelsList({
         </div>
         <p className="mt-1 text-sm font-medium">Nenhum canal conectado</p>
         <p className="max-w-sm text-xs text-muted-foreground">
-          Conecte um número de WhatsApp (Meta Cloud API ou Z-API) para começar a
-          disparar suas campanhas.
+          Conecte um número de WhatsApp (Meta Cloud, Z-API ou Evolution
+          self-hosted) para começar a disparar suas campanhas.
         </p>
         <CreateChannelDialog
           orgSlug={orgSlug}

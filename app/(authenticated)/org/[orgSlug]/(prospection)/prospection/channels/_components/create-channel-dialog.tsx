@@ -37,15 +37,17 @@ import { Input } from '@/_components/ui/input'
 import { Button } from '@/_components/ui/button'
 import { createInbox } from '@/_actions/inbox/create-inbox'
 
-// Provedores de WhatsApp expostos no Prospection (Meta oficial + Z-API)
+// Provedores que podem disparar (todos menos o Evolution interno da plataforma)
 const PROVIDER_OPTIONS = [
   { value: 'META_CLOUD', label: 'WhatsApp Cloud API (Meta, oficial)' },
   { value: 'Z_API', label: 'Z-API (não oficial)' },
+  { value: 'EVOLUTION', label: 'Evolution API (servidor próprio)' },
+  { value: 'EVOLUTION_GO', label: 'Evolution Go (servidor próprio)' },
 ] as const
 
 const formSchema = z.object({
   name: z.string().min(2, 'Dê um nome com pelo menos 2 caracteres.'),
-  connectionType: z.enum(['META_CLOUD', 'Z_API'], {
+  connectionType: z.enum(['META_CLOUD', 'Z_API', 'EVOLUTION', 'EVOLUTION_GO'], {
     message: 'Selecione um provedor.',
   }),
 })
@@ -151,8 +153,9 @@ export const CreateChannelDialog = ({
                     </SelectContent>
                   </Select>
                   <FormDescription>
-                    A Cloud API exige templates aprovados para listas frias; a
-                    Z-API envia texto livre (maior risco de bloqueio).
+                    A Cloud API exige templates aprovados para listas frias;
+                    Z-API e Evolution enviam texto livre. Evolution exige
+                    servidor próprio.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { Plus } from 'lucide-react'
 import { isElevated } from '@/_lib/rbac'
 import { getOrgContext } from '@/_data-access/organization/get-organization-context'
-import { getInboxes } from '@/_data-access/inbox/get-inboxes'
+import { getProspectionChannels } from '@/_data-access/broadcast/get-prospection-channels'
 import { checkPlanQuota } from '@/_lib/rbac/plan-limits'
 import Header, {
   HeaderLeft,
@@ -13,9 +13,6 @@ import Header, {
 import { Button } from '@/_components/ui/button'
 import { ChannelsList } from './_components/channels-list'
 import { CreateChannelDialog } from './_components/create-channel-dialog'
-
-// Provedores de WhatsApp suportados no Prospection
-const PROSPECTION_CHANNEL_TYPES = new Set(['META_CLOUD', 'Z_API'])
 
 interface ProspectionChannelsPageProps {
   params: Promise<{ orgSlug: string }>
@@ -32,16 +29,10 @@ const ProspectionChannelsPage = async ({
     redirect(`/org/${orgSlug}/prospection/home`)
   }
 
-  const [inboxes, quota] = await Promise.all([
-    getInboxes(ctx.orgId),
+  const [channels, quota] = await Promise.all([
+    getProspectionChannels(ctx.orgId),
     checkPlanQuota(ctx.orgId, 'inbox'),
   ])
-
-  const channels = inboxes.filter(
-    (inbox) =>
-      inbox.channel === 'WHATSAPP' &&
-      PROSPECTION_CHANNEL_TYPES.has(inbox.connectionType),
-  )
 
   return (
     <div className="flex flex-col gap-6 p-6">

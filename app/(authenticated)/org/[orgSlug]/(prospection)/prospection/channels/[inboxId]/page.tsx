@@ -12,7 +12,15 @@ import Header, {
 import { getConnectionLabel } from '../../_lib/broadcast-labels'
 import { ChannelConnection } from './_components/channel-connection'
 
-const PROSPECTION_CHANNEL_TYPES = new Set(['META_CLOUD', 'Z_API'])
+// Provedores com card de conexão no Prospection (Evolution ainda em configuração
+// é permitido aqui para o usuário informar o servidor próprio).
+const PROSPECTION_CHANNEL_TYPES = new Set([
+  'META_CLOUD',
+  'Z_API',
+  'EVOLUTION',
+  'EVOLUTION_JS',
+  'EVOLUTION_GO',
+])
 
 interface ChannelDetailPageProps {
   params: Promise<{ orgSlug: string; inboxId: string }>
