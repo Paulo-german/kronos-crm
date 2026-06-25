@@ -10,146 +10,154 @@ datasource db {
 }
 
 model User {
-  id                      String            @id @default(uuid())
-  email                   String            @unique
-  fullName                String?           @map("full_name")
-  avatarUrl               String?           @map("avatar_url")
-  createdAt               DateTime          @default(now()) @map("created_at")
-  updatedAt               DateTime          @updatedAt @map("updated_at")
-  phone                   String?
-  notificationPreferences Json?             @map("notification_preferences")
-  isSuperAdmin            Boolean           @default(false) @map("is_super_admin")
-  isSupportAgent          Boolean           @default(false) @map("is_support_agent")
-  activitiesPerformed     Activity[]        @relation("ActivityPerformer")
-  announcements           Announcement[]
-  appointments            Appointment[]     @relation("AppointmentAssignee")
-  contactsAssigned        Contact[]         @relation("ContactAssignee")
-  conversationsAssigned   Conversation[]    @relation("ConversationAssignee")
-  dealsAssigned           Deal[]            @relation("DealAssignee")
-  memberships             Member[]
-  notifications           Notification[]
-  tasksAssigned           CrmTask[]         @relation("TaskAssignee")
-  tasksCreated            CrmTask[]         @relation("TaskCreator")
-  integrations            UserIntegration[]
-  automationsCreated      Automation[]      @relation("AutomationCreator")
-  userProfiles            UserProfile[]
-  tutorialCompletions     TutorialCompletion[]
-  changelogEntries        ChangelogEntry[]
-  professional            Professional?     @relation("ProfessionalUser")
-  goals                   Goal[]
-  broadcastsCreated       Broadcast[]       @relation("BroadcastCreator")
-  contactSegmentsCreated  ContactSegment[]  @relation("ContactSegmentCreator")
+  id                       String                   @id @default(uuid())
+  email                    String                   @unique
+  fullName                 String?                  @map("full_name")
+  avatarUrl                String?                  @map("avatar_url")
+  createdAt                DateTime                 @default(now()) @map("created_at")
+  updatedAt                DateTime                 @updatedAt @map("updated_at")
+  phone                    String?
+  notificationPreferences  Json?                    @map("notification_preferences")
+  isSuperAdmin             Boolean                  @default(false) @map("is_super_admin")
+  isSupportAgent           Boolean                  @default(false) @map("is_support_agent")
+  activitiesPerformed      Activity[]               @relation("ActivityPerformer")
+  announcements            Announcement[]
+  appointments             Appointment[]            @relation("AppointmentAssignee")
+  contactsAssigned         Contact[]                @relation("ContactAssignee")
+  conversationsAssigned    Conversation[]           @relation("ConversationAssignee")
+  dealsAssigned            Deal[]                   @relation("DealAssignee")
+  memberships              Member[]
+  notifications            Notification[]
+  tasksAssigned            CrmTask[]                @relation("TaskAssignee")
+  tasksCreated             CrmTask[]                @relation("TaskCreator")
+  integrations             UserIntegration[]
+  automationsCreated       Automation[]             @relation("AutomationCreator")
+  userProfiles             UserProfile[]
+  tutorialCompletions      TutorialCompletion[]
+  changelogEntries         ChangelogEntry[]
+  professional             Professional?            @relation("ProfessionalUser")
+  goals                    Goal[]
+  broadcastsCreated        Broadcast[]              @relation("BroadcastCreator")
+  contactSegmentsCreated   ContactSegment[]         @relation("ContactSegmentCreator")
+  projectWorkspacesCreated ProjectWorkspace[]       @relation("ProjectWorkspaceCreator")
+  projectWorkspaceMembers  ProjectWorkspaceMember[] @relation("ProjectWorkspaceMemberUser")
+  projectTasksCreated      ProjectTask[]            @relation("ProjectTaskCreator")
+
   @@map("users")
 }
 
 model Organization {
-  id                     String                  @id @default(uuid())
-  name                   String
-  slug                   String                  @unique
-  website                String?                 @map("website")
-  stripeCustomerId       String?                 @unique @map("stripe_customer_id")
-  createdAt              DateTime                @default(now()) @map("created_at")
-  updatedAt              DateTime                @updatedAt @map("updated_at")
-  billingCity            String?                 @map("billing_city")
-  billingComplement      String?                 @map("billing_complement")
-  billingContactEmail    String?                 @map("billing_contact_email")
-  billingContactName     String?                 @map("billing_contact_name")
-  billingContactPhone    String?                 @map("billing_contact_phone")
-  billingCountry         String?                 @default("BR") @map("billing_country")
-  billingNeighborhood    String?                 @map("billing_neighborhood")
-  billingNumber          String?                 @map("billing_number")
-  billingState           String?                 @map("billing_state")
-  billingStreet          String?                 @map("billing_street")
-  billingZipCode         String?                 @map("billing_zip_code")
-  isSimples              Boolean                 @default(false) @map("is_simples")
-  legalName              String?                 @map("legal_name")
-  personType             PersonType?             @map("person_type")
-  taxId                  String?                 @map("tax_id")
-  tradeName              String?                 @map("trade_name")
-  trialEndsAt            DateTime?               @map("trial_ends_at")
-  isReadOnly             Boolean                 @default(false) @map("is_read_only")
-  grantType              GrantType?              @map("grant_type")
-  planOverrideId         String?                 @map("plan_override_id")
-  niche                  String?                 @map("niche")
-  onboardingCompleted    Boolean                 @default(false) @map("onboarding_completed")
-  hidePiiFromMembers     Boolean                 @default(false) @map("hide_pii_from_members")
-  privacyPolicyUrl       String?                 @map("privacy_policy_url")
-  businessModel      BusinessModel @default(B2C) @map("business_model")
-  dormantAfterMonths Int           @default(12)  @map("dormant_after_months")
-  bookingAutoDeal    Boolean       @default(false) @map("booking_auto_deal")
-  facilitatorDealWonToCustomer  Boolean                @default(true) @map("facilitator_deal_won_to_customer")
-  facilitatorDealCreatedToOppty Boolean                @default(true) @map("facilitator_deal_created_to_oppty")
-  salesDistributionModel        SalesDistributionModel @default(ROUND_ROBIN) @map("sales_distribution_model")
-  agentExecutions        AgentExecution[]
-  agentGroups            AgentGroup[]
-  agentTestConversations AgentTestConversation[]
-  agents                 Agent[]
-  aiUsage                AiUsage[]
-  appointments           Appointment[]
-  companies              Company[]
-  contacts               Contact[]
-  conversations          Conversation[]
-  creditWallet           CreditWallet?
-  lostReasons            DealLostReason[]
-  Deal                   Deal[]
-  inboxes                Inbox[]
-  squads                 Squad[]
-  members                Member[]
-  notifications          Notification[]
-  planOverride           Plan?                   @relation("PlanOverride", fields: [planOverrideId], references: [id])
-  pipelines              Pipeline[]
-  goals                  Goal[]
-  products               Product[]
-  productMedia           ProductMedia[]
-  subscriptions          Subscription[]
-  tasks                  CrmTask[]
-  userIntegrations       UserIntegration[]
-  followUps                    FollowUp[]
-  automations                  Automation[]
-  automationExecutions         AutomationExecution[]
-  conversationLabels           ConversationLabel[]
-  userProfiles                 UserProfile[]
-  tutorialCompletions          TutorialCompletion[]
+  id                            String                    @id @default(uuid())
+  name                          String
+  slug                          String                    @unique
+  website                       String?                   @map("website")
+  stripeCustomerId              String?                   @unique @map("stripe_customer_id")
+  createdAt                     DateTime                  @default(now()) @map("created_at")
+  updatedAt                     DateTime                  @updatedAt @map("updated_at")
+  billingCity                   String?                   @map("billing_city")
+  billingComplement             String?                   @map("billing_complement")
+  billingContactEmail           String?                   @map("billing_contact_email")
+  billingContactName            String?                   @map("billing_contact_name")
+  billingContactPhone           String?                   @map("billing_contact_phone")
+  billingCountry                String?                   @default("BR") @map("billing_country")
+  billingNeighborhood           String?                   @map("billing_neighborhood")
+  billingNumber                 String?                   @map("billing_number")
+  billingState                  String?                   @map("billing_state")
+  billingStreet                 String?                   @map("billing_street")
+  billingZipCode                String?                   @map("billing_zip_code")
+  isSimples                     Boolean                   @default(false) @map("is_simples")
+  legalName                     String?                   @map("legal_name")
+  personType                    PersonType?               @map("person_type")
+  taxId                         String?                   @map("tax_id")
+  tradeName                     String?                   @map("trade_name")
+  trialEndsAt                   DateTime?                 @map("trial_ends_at")
+  isReadOnly                    Boolean                   @default(false) @map("is_read_only")
+  grantType                     GrantType?                @map("grant_type")
+  planOverrideId                String?                   @map("plan_override_id")
+  niche                         String?                   @map("niche")
+  onboardingCompleted           Boolean                   @default(false) @map("onboarding_completed")
+  hidePiiFromMembers            Boolean                   @default(false) @map("hide_pii_from_members")
+  privacyPolicyUrl              String?                   @map("privacy_policy_url")
+  businessModel                 BusinessModel             @default(B2C) @map("business_model")
+  dormantAfterMonths            Int                       @default(12) @map("dormant_after_months")
+  bookingAutoDeal               Boolean                   @default(false) @map("booking_auto_deal")
+  facilitatorDealWonToCustomer  Boolean                   @default(true) @map("facilitator_deal_won_to_customer")
+  facilitatorDealCreatedToOppty Boolean                   @default(true) @map("facilitator_deal_created_to_oppty")
+  salesDistributionModel        SalesDistributionModel    @default(ROUND_ROBIN) @map("sales_distribution_model")
+  agentExecutions               AgentExecution[]
+  agentGroups                   AgentGroup[]
+  agentTestConversations        AgentTestConversation[]
+  agents                        Agent[]
+  aiUsage                       AiUsage[]
+  appointments                  Appointment[]
+  companies                     Company[]
+  contacts                      Contact[]
+  conversations                 Conversation[]
+  creditWallet                  CreditWallet?
+  lostReasons                   DealLostReason[]
+  Deal                          Deal[]
+  inboxes                       Inbox[]
+  squads                        Squad[]
+  members                       Member[]
+  notifications                 Notification[]
+  planOverride                  Plan?                     @relation("PlanOverride", fields: [planOverrideId], references: [id])
+  pipelines                     Pipeline[]
+  goals                         Goal[]
+  products                      Product[]
+  productMedia                  ProductMedia[]
+  subscriptions                 Subscription[]
+  tasks                         CrmTask[]
+  userIntegrations              UserIntegration[]
+  followUps                     FollowUp[]
+  automations                   Automation[]
+  automationExecutions          AutomationExecution[]
+  conversationLabels            ConversationLabel[]
+  userProfiles                  UserProfile[]
+  tutorialCompletions           TutorialCompletion[]
   // Scheduling v2
-  distributionModel            DistributionModel  @default(UTILIZATION) @map("distribution_model")
-  secondaryDistributionModel   DistributionModel? @map("secondary_distribution_model")
-  professionals                Professional[]
-  serviceCategories            ServiceCategory[]
-  services                     Service[]
-  manualProfessionalOrders     ManualProfessionalOrder[]
-  promotions                   Promotion[]
-  dealLineItems                DealLineItem[]
-  captureSources               CaptureSource[]
-  campaigns                    Campaign[]
-  captureEvents                CaptureEvent[]
-  lifecycleHistory             ContactLifecycleHistory[]
-  scoreHistory                 ContactScoreHistory[]
-  companyContacts              CompanyContact[]
-  webhookSources               WebhookSource[]
-  captureForms                 CaptureForm[]
-  fieldDefinitions             FieldDefinition[]
-  processingActivities         ProcessingActivity[]
-  emailBlocklist               EmailBlocklist[]
-  dsrRequests                  DsrRequest[]
-  broadcasts                   Broadcast[]
-  contactSegments              ContactSegment[]
+  distributionModel             DistributionModel         @default(UTILIZATION) @map("distribution_model")
+  secondaryDistributionModel    DistributionModel?        @map("secondary_distribution_model")
+  professionals                 Professional[]
+  serviceCategories             ServiceCategory[]
+  services                      Service[]
+  manualProfessionalOrders      ManualProfessionalOrder[]
+  promotions                    Promotion[]
+  dealLineItems                 DealLineItem[]
+  captureSources                CaptureSource[]
+  campaigns                     Campaign[]
+  captureEvents                 CaptureEvent[]
+  lifecycleHistory              ContactLifecycleHistory[]
+  scoreHistory                  ContactScoreHistory[]
+  companyContacts               CompanyContact[]
+  webhookSources                WebhookSource[]
+  captureForms                  CaptureForm[]
+  fieldDefinitions              FieldDefinition[]
+  processingActivities          ProcessingActivity[]
+  emailBlocklist                EmailBlocklist[]
+  dsrRequests                   DsrRequest[]
+  broadcasts                    Broadcast[]
+  contactSegments               ContactSegment[]
+  projectWorkspaces             ProjectWorkspace[]
+  projectFolders                ProjectFolder[]
+  projectLists                  ProjectList[]
+  projectTasks                  ProjectTask[]
 
   @@map("organizations")
 }
 
 model Member {
-  id              String       @id @default(uuid())
-  organizationId  String       @map("organization_id")
-  userId          String?      @map("user_id")
-  email           String
-  role            MemberRole   @default(MEMBER)
-  status          MemberStatus @default(PENDING)
-  invitationToken String?      @unique @map("invitation_token")
-  createdAt       DateTime     @default(now()) @map("created_at")
-  updatedAt       DateTime     @updatedAt @map("updated_at")
-  organization      Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user              User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  squadMemberships  SquadMember[]
+  id               String        @id @default(uuid())
+  organizationId   String        @map("organization_id")
+  userId           String?       @map("user_id")
+  email            String
+  role             MemberRole    @default(MEMBER)
+  status           MemberStatus  @default(PENDING)
+  invitationToken  String?       @unique @map("invitation_token")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+  organization     Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user             User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  squadMemberships SquadMember[]
 
   @@unique([organizationId, email])
   @@index([organizationId, status, createdAt])
@@ -179,20 +187,20 @@ model Subscription {
 }
 
 model Company {
-  id             String       @id @default(uuid())
-  name           String
-  domain         String?
-  cnpj           String?
-  segment        String?
-  industry       String?
-  size           CompanySize?
-  address        String?
-  createdAt      DateTime     @default(now()) @map("created_at")
-  updatedAt      DateTime     @updatedAt @map("updated_at")
-  organizationId String       @map("organization_id")
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  contacts       Contact[]
-  deals          Deal[]
+  id              String           @id @default(uuid())
+  name            String
+  domain          String?
+  cnpj            String?
+  segment         String?
+  industry        String?
+  size            CompanySize?
+  address         String?
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  organizationId  String           @map("organization_id")
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contacts        Contact[]
+  deals           Deal[]
   companyContacts CompanyContact[]
 
   @@index([organizationId, name])
@@ -202,46 +210,47 @@ model Company {
 }
 
 model Contact {
-  id              String         @id @default(uuid())
-  companyId       String?        @map("company_id")
-  name            String
-  email           String?
-  phone           String?
-  role            String?
-  isDecisionMaker Boolean        @default(false) @map("is_decision_maker")
-  createdAt       DateTime       @default(now()) @map("created_at")
-  updatedAt       DateTime       @updatedAt @map("updated_at")
-  organizationId  String         @map("organization_id")
-  assignedTo      String?        @map("assigned_to")
-  lifecycleStage      LifecycleStage  @default(LEAD)         @map("lifecycle_stage")
-  customerStatus      CustomerStatus  @default(NEVER_BOUGHT) @map("customer_status")
-  firstCaptureChannel CaptureChannel? @map("first_capture_channel")
-  firstCaptureAt      DateTime?       @map("first_capture_at")
-  lastCaptureChannel  CaptureChannel? @map("last_capture_channel")
-  lastCaptureAt       DateTime?       @map("last_capture_at")
-  healthScore         Float?          @map("health_score")
-  scoredAt            DateTime?       @map("scored_at")
-  lastInteractionAt   DateTime?       @map("last_interaction_at")
-  qualifiedAt         DateTime?       @map("qualified_at")
-  becameOpportunityAt DateTime?       @map("became_opportunity_at")
-  becameCustomerAt    DateTime?       @map("became_customer_at")
-  assignee        User?          @relation("ContactAssignee", fields: [assignedTo], references: [id])
-  company         Company?       @relation(fields: [companyId], references: [id])
-  organization    Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  conversations   Conversation[]
-  deals           DealContact[]
-  appointments    Appointment[]
-  captureEvents   CaptureEvent[] @relation("ContactCaptureEvents")
-  referrals       CaptureEvent[] @relation("ReferredByContact")
-  lifecycleHistory ContactLifecycleHistory[]
-  scoreHistory     ContactScoreHistory[]
-  companies        CompanyContact[]
+  id                   String                    @id @default(uuid())
+  companyId            String?                   @map("company_id")
+  name                 String
+  email                String?
+  phone                String?
+  role                 String?
+  isDecisionMaker      Boolean                   @default(false) @map("is_decision_maker")
+  createdAt            DateTime                  @default(now()) @map("created_at")
+  updatedAt            DateTime                  @updatedAt @map("updated_at")
+  organizationId       String                    @map("organization_id")
+  assignedTo           String?                   @map("assigned_to")
+  lifecycleStage       LifecycleStage            @default(LEAD) @map("lifecycle_stage")
+  customerStatus       CustomerStatus            @default(NEVER_BOUGHT) @map("customer_status")
+  firstCaptureChannel  CaptureChannel?           @map("first_capture_channel")
+  firstCaptureAt       DateTime?                 @map("first_capture_at")
+  lastCaptureChannel   CaptureChannel?           @map("last_capture_channel")
+  lastCaptureAt        DateTime?                 @map("last_capture_at")
+  healthScore          Float?                    @map("health_score")
+  scoredAt             DateTime?                 @map("scored_at")
+  lastInteractionAt    DateTime?                 @map("last_interaction_at")
+  qualifiedAt          DateTime?                 @map("qualified_at")
+  becameOpportunityAt  DateTime?                 @map("became_opportunity_at")
+  becameCustomerAt     DateTime?                 @map("became_customer_at")
+  assignee             User?                     @relation("ContactAssignee", fields: [assignedTo], references: [id])
+  company              Company?                  @relation(fields: [companyId], references: [id])
+  organization         Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  conversations        Conversation[]
+  deals                DealContact[]
+  appointments         Appointment[]
+  captureEvents        CaptureEvent[]            @relation("ContactCaptureEvents")
+  referrals            CaptureEvent[]            @relation("ReferredByContact")
+  lifecycleHistory     ContactLifecycleHistory[]
+  scoreHistory         ContactScoreHistory[]
+  companies            CompanyContact[]
   automationExecutions AutomationExecution[]
   captureSubmissions   CaptureSubmission[]
-  anonymizedAt         DateTime?            @map("anonymized_at")
+  anonymizedAt         DateTime?                 @map("anonymized_at")
   privacy              ContactPrivacy?
   consentEvents        ConsentEvent[]
   broadcastRecipients  BroadcastRecipient[]
+  projectTasks         ProjectTask[]
 
   @@unique([organizationId, email])
   @@index([organizationId, assignedTo, createdAt(sort: Desc)])
@@ -273,8 +282,8 @@ model Pipeline {
 }
 
 model Goal {
-  id             String     @id @default(uuid())
-  organizationId String     @map("organization_id")
+  id             String @id @default(uuid())
+  organizationId String @map("organization_id")
 
   type        GoalType
   scope       GoalScope
@@ -282,18 +291,18 @@ model Goal {
   periodStart DateTime   @map("period_start")
   periodEnd   DateTime   @map("period_end")
 
-  targetUserId     String?  @map("target_user_id")
-  targetPipelineId String?  @map("target_pipeline_id")
+  targetUserId     String? @map("target_user_id")
+  targetPipelineId String? @map("target_pipeline_id")
 
-  targetValue Decimal  @db.Decimal(15, 2) @map("target_value")
-  createdBy   String   @map("created_by")
+  targetValue Decimal @map("target_value") @db.Decimal(15, 2)
+  createdBy   String  @map("created_by")
 
-  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  targetUser     User?         @relation(fields: [targetUserId], references: [id], onDelete: SetNull)
-  targetPipeline Pipeline?     @relation(fields: [targetPipelineId], references: [id], onDelete: SetNull)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  targetUser     User?        @relation(fields: [targetUserId], references: [id], onDelete: SetNull)
+  targetPipeline Pipeline?    @relation(fields: [targetPipelineId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt      @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([organizationId, type, periodStart, periodEnd])
   @@index([organizationId, scope, targetUserId, targetPipelineId])
@@ -305,7 +314,7 @@ model CaptureSource {
   organizationId  String         @map("organization_id")
   channel         CaptureChannel
   name            String
-  isActive        Boolean        @default(true)  @map("is_active")
+  isActive        Boolean        @default(true) @map("is_active")
   isAdHoc         Boolean        @default(false) @map("is_ad_hoc")
   createdByUserId String?        @map("created_by_user_id")
   deactivatedAt   DateTime?      @map("deactivated_at")
@@ -316,7 +325,7 @@ model CaptureSource {
   captureForms CaptureForm[]
 
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt      @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([organizationId, channel, isActive])
   @@index([organizationId, isAdHoc])
@@ -324,37 +333,37 @@ model CaptureSource {
 }
 
 model CaptureForm {
-  id              String   @id @default(uuid())
-  organizationId  String   @map("organization_id")
+  id                  String   @id @default(uuid())
+  organizationId      String   @map("organization_id")
   // Token público usado na URL /f/[token] — único, regenerável sem trocar a PK
-  publicToken     String   @unique @default(uuid()) @map("public_token")
-  name            String
+  publicToken         String   @unique @default(uuid()) @map("public_token")
+  name                String
   // Config dos campos: { name:{visible,required,label?}, email:{...}, phone:{...}, role:{...} }
-  fields          Json     @default("{}")
+  fields              Json     @default("{}")
   // Aparência visual: cores, título, descrição, logo e estilo de bordas
-  appearance      Json     @default("{}") @map("appearance")
-  buttonLabel     String   @default("Enviar") @map("button_label")
-  successMessage  String   @default("Obrigado! Recebemos seus dados.") @map("success_message")
-  redirectUrl     String?  @map("redirect_url")
+  appearance          Json     @default("{}") @map("appearance")
+  buttonLabel         String   @default("Enviar") @map("button_label")
+  successMessage      String   @default("Obrigado! Recebemos seus dados.") @map("success_message")
+  redirectUrl         String?  @map("redirect_url")
   // Distribuição round-robin: lista de membros que recebem leads em rodízio (vazio = sem membros)
   distributionUserIds String[] @default([]) @map("distribution_user_ids") @db.Uuid
   // Distribuição via squad: usa o distributionModel do próprio squad (mutuamente exclusivo com distributionUserIds)
   squadId             String?  @map("squad_id")
-  isActive        Boolean  @default(true) @map("is_active")
+  isActive            Boolean  @default(true) @map("is_active")
   // CaptureSource gerada automaticamente ao criar o form (1:1 lógico)
-  captureSourceId String   @map("capture_source_id")
+  captureSourceId     String   @map("capture_source_id")
   // Compliance: true = exibe checkbox obrigatório de consentimento no form público (base legal = CONSENT)
   // false = sem checkbox (base legal = LEGITIMATE_INTEREST)
-  consentRequired Boolean  @default(true) @map("consent_required")
+  consentRequired     Boolean  @default(true) @map("consent_required")
 
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt      @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization       Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   // Restrict: não deixa deletar a source enquanto o form existir — o delete do form trata a source explicitamente na action
-  captureSource     CaptureSource      @relation(fields: [captureSourceId], references: [id], onDelete: Restrict)
-  squad             Squad?             @relation(fields: [squadId], references: [id], onDelete: SetNull)
-  captureFormFields CaptureFormField[]
+  captureSource      CaptureSource       @relation(fields: [captureSourceId], references: [id], onDelete: Restrict)
+  squad              Squad?              @relation(fields: [squadId], references: [id], onDelete: SetNull)
+  captureFormFields  CaptureFormField[]
   captureSubmissions CaptureSubmission[]
 
   @@index([organizationId, isActive])
@@ -379,7 +388,7 @@ model Campaign {
   events       CaptureEvent[]
 
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt      @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([organizationId, channel])
   @@index([organizationId, utmCampaign])
@@ -401,12 +410,12 @@ model CaptureEvent {
   capturedAutomatically Boolean        @map("captured_automatically")
   metadata              Json           @default("{}")
 
-  contact      Contact       @relation("ContactCaptureEvents", fields: [contactId],           references: [id], onDelete: Cascade)
-  organization Organization  @relation(fields: [organizationId],  references: [id], onDelete: Cascade)
-  source       CaptureSource @relation(fields: [sourceId],        references: [id], onDelete: Restrict)
-  campaign     Campaign?     @relation(fields: [campaignId],      references: [id])
-  referredBy   Contact?      @relation("ReferredByContact",       fields: [referredByContactId], references: [id], onDelete: SetNull)
-  deals        DealCaptureEvent[]
+  contact           Contact            @relation("ContactCaptureEvents", fields: [contactId], references: [id], onDelete: Cascade)
+  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  source            CaptureSource      @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  campaign          Campaign?          @relation(fields: [campaignId], references: [id])
+  referredBy        Contact?           @relation("ReferredByContact", fields: [referredByContactId], references: [id], onDelete: SetNull)
+  deals             DealCaptureEvent[]
   captureSubmission CaptureSubmission?
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -420,9 +429,9 @@ model CaptureEvent {
 }
 
 model ContactLifecycleHistory {
-  id             String             @id @default(uuid())
-  contactId      String             @map("contact_id")
-  organizationId String             @map("organization_id")
+  id             String @id @default(uuid())
+  contactId      String @map("contact_id")
+  organizationId String @map("organization_id")
 
   fromStage       LifecycleStage?    @map("from_stage")
   toStage         LifecycleStage     @map("to_stage")
@@ -432,7 +441,7 @@ model ContactLifecycleHistory {
   causeRefId      String?            @map("cause_ref_id")
   changedByUserId String?            @map("changed_by_user_id")
 
-  contact      Contact      @relation(fields: [contactId],      references: [id], onDelete: Cascade)
+  contact      Contact      @relation(fields: [contactId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -443,14 +452,14 @@ model ContactLifecycleHistory {
 }
 
 model ContactScoreHistory {
-  id             String   @id @default(uuid())
-  contactId      String   @map("contact_id")
-  organizationId String   @map("organization_id")
+  id             String @id @default(uuid())
+  contactId      String @map("contact_id")
+  organizationId String @map("organization_id")
 
   score    Float
   snapshot Json  @default("{}")
 
-  contact      Contact      @relation(fields: [contactId],      references: [id], onDelete: Cascade)
+  contact      Contact      @relation(fields: [contactId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -461,22 +470,22 @@ model ContactScoreHistory {
 }
 
 model CompanyContact {
-  id             String   @id @default(uuid())
-  companyId      String   @map("company_id")
-  contactId      String   @map("contact_id")
-  organizationId String   @map("organization_id")
+  id             String @id @default(uuid())
+  companyId      String @map("company_id")
+  contactId      String @map("contact_id")
+  organizationId String @map("organization_id")
 
   role      String?
   isPrimary Boolean   @default(false) @map("is_primary")
   startDate DateTime? @map("start_date")
   endDate   DateTime? @map("end_date")
 
-  company      Company      @relation(fields: [companyId],      references: [id], onDelete: Cascade)
-  contact      Contact      @relation(fields: [contactId],      references: [id], onDelete: Cascade)
+  company      Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  contact      Contact      @relation(fields: [contactId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt      @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([companyId, isPrimary])
   @@index([contactId, endDate])
@@ -485,16 +494,16 @@ model CompanyContact {
 }
 
 model DealCaptureEvent {
-  id             String          @id @default(uuid())
-  dealId         String          @map("deal_id")
-  captureEventId String          @map("capture_event_id")
+  id             String @id @default(uuid())
+  dealId         String @map("deal_id")
+  captureEventId String @map("capture_event_id")
 
   attribution DealAttribution
   weight      Float?
 
   removedAt DateTime? @map("removed_at")
 
-  deal         Deal         @relation(fields: [dealId],         references: [id], onDelete: Cascade)
+  deal         Deal         @relation(fields: [dealId], references: [id], onDelete: Cascade)
   captureEvent CaptureEvent @relation(fields: [captureEventId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -519,37 +528,38 @@ model PipelineStage {
 }
 
 model Deal {
-  id                String          @id @default(uuid())
-  pipelineStageId   String          @map("pipeline_stage_id")
-  companyId         String?         @map("company_id")
-  title             String
-  expectedCloseDate DateTime?       @map("expected_close_date")
-  assignedTo        String          @map("assigned_to")
-  createdAt         DateTime        @default(now()) @map("created_at")
-  updatedAt         DateTime        @updatedAt @map("updated_at")
-  lostReason        String?
-  notes             String?
-  pausedAt          DateTime?       @map("paused_at")
-  priority          DealPriority    @default(medium)
-  status            DealStatus      @default(OPEN)
-  organizationId    String          @map("organization_id")
-  lossReasonId      String?         @map("loss_reason_id")
-  value             Decimal         @default(0) @db.Decimal(15, 2)
-  mrr               Decimal         @default(0) @map("mrr") @db.Decimal(15, 2)
-  squadId           String?         @map("squad_id")
+  id                   String                @id @default(uuid())
+  pipelineStageId      String                @map("pipeline_stage_id")
+  companyId            String?               @map("company_id")
+  title                String
+  expectedCloseDate    DateTime?             @map("expected_close_date")
+  assignedTo           String                @map("assigned_to")
+  createdAt            DateTime              @default(now()) @map("created_at")
+  updatedAt            DateTime              @updatedAt @map("updated_at")
+  lostReason           String?
+  notes                String?
+  pausedAt             DateTime?             @map("paused_at")
+  priority             DealPriority          @default(medium)
+  status               DealStatus            @default(OPEN)
+  organizationId       String                @map("organization_id")
+  lossReasonId         String?               @map("loss_reason_id")
+  value                Decimal               @default(0) @db.Decimal(15, 2)
+  mrr                  Decimal               @default(0) @map("mrr") @db.Decimal(15, 2)
+  squadId              String?               @map("squad_id")
   activities           Activity[]
   appointments         Appointment[]
   conversations        Conversation[]
   contacts             DealContact[]
   dealProducts         DealProduct[]
   lineItems            DealLineItem[]
-  assignee             User            @relation("DealAssignee", fields: [assignedTo], references: [id])
-  company              Company?        @relation(fields: [companyId], references: [id])
-  lossReason           DealLostReason? @relation(fields: [lossReasonId], references: [id])
-  organization         Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  squad                Squad?          @relation(fields: [squadId], references: [id], onDelete: SetNull)
-  stage                PipelineStage   @relation(fields: [pipelineStageId], references: [id])
+  assignee             User                  @relation("DealAssignee", fields: [assignedTo], references: [id])
+  company              Company?              @relation(fields: [companyId], references: [id])
+  lossReason           DealLostReason?       @relation(fields: [lossReasonId], references: [id])
+  organization         Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  squad                Squad?                @relation(fields: [squadId], references: [id], onDelete: SetNull)
+  stage                PipelineStage         @relation(fields: [pipelineStageId], references: [id])
   tasks                CrmTask[]
+  projectTasks         ProjectTask[]
   automationExecutions AutomationExecution[]
   captureEvents        DealCaptureEvent[]
 
@@ -586,6 +596,172 @@ model CrmTask {
   @@map("crm_tasks")
 }
 
+// ============================================================
+// KRONOS PROJECTS — gestão de projetos/tarefas estilo ClickUp
+// Hierarquia: Organization > ProjectWorkspace > ProjectFolder? > ProjectList > ProjectTask
+// Fase 1 (fundação). Colunas de fases futuras nascem nullable para evitar
+// ALTER TABLE repetido na tabela quente (project_tasks). Relações para models
+// de fases futuras (assignees/comments/tags/custom fields/views) entram depois.
+// ============================================================
+
+model ProjectWorkspace {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  name           String
+  description    String?
+  color          String? // hex do avatar do workspace na UI
+  icon           String? // nome do ícone lucide (opcional)
+  position       Int      @default(0) // ordenação manual na sidebar
+  isArchived     Boolean  @default(false) @map("is_archived")
+  isPrivate      Boolean  @default(false) @map("is_private") // privado = só membros + elevated
+  createdBy      String   @map("created_by")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  creator      User                     @relation("ProjectWorkspaceCreator", fields: [createdBy], references: [id])
+  folders      ProjectFolder[]
+  lists        ProjectList[]
+  statuses     ProjectTaskStatus[]
+  members      ProjectWorkspaceMember[]
+
+  @@index([organizationId, isArchived, position])
+  @@map("project_workspaces")
+}
+
+model ProjectWorkspaceMember {
+  id          String   @id @default(uuid())
+  workspaceId String   @map("workspace_id")
+  userId      String   @map("user_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  workspace ProjectWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User             @relation("ProjectWorkspaceMemberUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId]) // "quais workspaces privados eu acesso" — filtro de visibilidade
+  @@map("project_workspace_members")
+}
+
+model ProjectTaskStatus {
+  id          String                    @id @default(uuid())
+  workspaceId String                    @map("workspace_id")
+  name        String // "To Do", "In Progress", "Done"
+  color       String // hex (badge / coluna do kanban)
+  position    Int // ordem das colunas no board
+  category    ProjectTaskStatusCategory @default(ACTIVE) // semântica p/ métricas e "done"
+  createdAt   DateTime                  @default(now()) @map("created_at")
+  updatedAt   DateTime                  @updatedAt @map("updated_at")
+
+  workspace ProjectWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  tasks     ProjectTask[]
+
+  @@index([workspaceId, position])
+  @@map("project_task_statuses")
+}
+
+enum ProjectTaskStatusCategory {
+  NOT_STARTED // To Do
+  ACTIVE // In Progress
+  DONE // concluído (usado p/ "% complete" e ocultar concluídos)
+
+  @@map("project_task_status_category")
+}
+
+model ProjectFolder {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  workspaceId    String   @map("workspace_id")
+  name           String
+  position       Int      @default(0)
+  isArchived     Boolean  @default(false) @map("is_archived")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workspace    ProjectWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  lists        ProjectList[]
+
+  @@index([organizationId, workspaceId, position])
+  @@map("project_folders")
+}
+
+model ProjectList {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  workspaceId    String   @map("workspace_id")
+  folderId       String?  @map("folder_id") // NULLABLE: List pode pendurar direto no Workspace
+  name           String
+  color          String?
+  position       Int      @default(0)
+  isArchived     Boolean  @default(false) @map("is_archived")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workspace    ProjectWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  folder       ProjectFolder?   @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  tasks        ProjectTask[]
+
+  @@index([organizationId, workspaceId, folderId, position])
+  @@map("project_lists")
+}
+
+model ProjectTask {
+  id             String  @id @default(uuid())
+  organizationId String  @map("organization_id")
+  listId         String  @map("list_id")
+  statusId       String  @map("status_id") // FK p/ ProjectTaskStatus do Workspace
+  parentTaskId   String? @map("parent_task_id") // self-ref → subtask, profundidade arbitrária
+
+  title       String
+  description String? @db.Text
+  position    Int     @default(0) // ordem dentro da coluna/lista (kanban + lista)
+
+  // ── Colunas usadas a partir da Fase 2 (prazos/prioridade) — nascem nullable ──
+  priority    ProjectTaskPriority @default(NONE)
+  startDate   DateTime?           @map("start_date")
+  dueDate     DateTime?           @map("due_date")
+  completedAt DateTime?           @map("completed_at") // setado ao entrar em status DONE
+
+  // ── Colunas usadas a partir da Fase 3 ──
+  timeEstimate Int?    @map("time_estimate") // estimativa em minutos
+  dealId       String? @map("deal_id") // vínculo híbrido CRM — OPCIONAL
+  contactId    String? @map("contact_id")
+
+  deletedAt DateTime? @map("deleted_at") // soft-delete / lixeira (null = ativa)
+  createdBy String    @map("created_by")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  list         ProjectList       @relation(fields: [listId], references: [id], onDelete: Cascade)
+  status       ProjectTaskStatus @relation(fields: [statusId], references: [id], onDelete: Restrict)
+  parent       ProjectTask?      @relation("ProjectSubtasks", fields: [parentTaskId], references: [id], onDelete: Cascade)
+  subtasks     ProjectTask[]     @relation("ProjectSubtasks")
+  creator      User              @relation("ProjectTaskCreator", fields: [createdBy], references: [id])
+  deal         Deal?             @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  contact      Contact?          @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, listId, statusId, position]) // board: colunas por status numa list
+  @@index([organizationId, listId, position]) // list view
+  @@index([organizationId, dueDate]) // calendário / "minhas tarefas"
+  @@index([parentTaskId]) // expandir subtasks
+  @@index([organizationId, dealId]) // Fase 3: tasks de um deal
+  @@index([organizationId, contactId])
+  @@map("project_tasks")
+}
+
+enum ProjectTaskPriority {
+  NONE
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+
+  @@map("project_task_priority")
+}
+
 model Activity {
   id          String       @id @default(uuid())
   dealId      String       @map("deal_id")
@@ -610,7 +786,7 @@ model Appointment {
   description    String?
   notes          String?
   startDate      DateTime          @map("start_date") @db.Timestamptz
-  endDate        DateTime          @map("end_date")   @db.Timestamptz
+  endDate        DateTime          @map("end_date") @db.Timestamptz
   status         AppointmentStatus @default(SCHEDULED)
   assignedTo     String            @map("assigned_to")
   // dealId virou opcional: obrigatório apenas para MEETING, enforced na application layer
@@ -753,7 +929,7 @@ model Promotion {
   price          Decimal  @db.Decimal(15, 2)
   // Desconto aplicado sobre o subtotal dos itens
   discountType   String   @default("PERCENTAGE") @map("discount_type")
-  discountValue  Decimal  @default(0) @db.Decimal(15, 2) @map("discount_value")
+  discountValue  Decimal  @default(0) @map("discount_value") @db.Decimal(15, 2)
   isActive       Boolean  @default(true) @map("is_active")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
@@ -941,79 +1117,79 @@ model PlanModule {
 }
 
 model Agent {
-  id                    String                  @id @default(uuid())
-  organizationId        String                  @map("organization_id")
-  name                  String
-  systemPrompt          String                  @map("system_prompt")
-  isActive              Boolean                 @default(true) @map("is_active")
-  pipelineIds           String[]                @map("pipeline_ids") @db.Uuid
-  createdAt             DateTime                @default(now()) @map("created_at")
-  updatedAt             DateTime                @updatedAt @map("updated_at")
-  debounceSeconds       Int                     @default(3) @map("debounce_seconds")
-  modelId               String                  @default("google/gemini-2.5-pro") @map("model_id")
-  agentVersion          String                  @default("single-v1") @map("agent_version")
-  businessHoursConfig   Json?                   @map("business_hours_config")
-  businessHoursEnabled  Boolean                 @default(false) @map("business_hours_enabled")
-  businessHoursTimezone String                  @default("America/Sao_Paulo") @map("business_hours_timezone")
-  outOfHoursMessage                String?                 @map("out_of_hours_message")
-  followUpBusinessHoursEnabled     Boolean                 @default(false) @map("follow_up_business_hours_enabled")
-  followUpBusinessHoursConfig      Json?                   @map("follow_up_business_hours_config")
-  followUpBusinessHoursTimezone    String                  @default("America/Sao_Paulo") @map("follow_up_business_hours_timezone")
-  promptConfig                     Json?                   @map("prompt_config")
-  followUpExhaustedAction          String                  @default("NONE") @map("follow_up_exhausted_action")
-  followUpExhaustedConfig          Json?                   @map("follow_up_exhausted_config")
-  globalTools                      Json?                   @map("global_tools")
-  agentMode                        AgentMode               @default(PRODUCT) @map("agent_mode")
-  executions            AgentExecution[]
-  groupMemberships      AgentGroupMember[]
-  knowledgeChunks       AgentKnowledgeChunk[]
-  knowledgeFiles        AgentKnowledgeFile[]
-  steps                 AgentStep[]
-  testConversations     AgentTestConversation[]
-  organization          Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  inboxes               Inbox[]
-  followUps             FollowUp[]
+  id                            String                  @id @default(uuid())
+  organizationId                String                  @map("organization_id")
+  name                          String
+  systemPrompt                  String                  @map("system_prompt")
+  isActive                      Boolean                 @default(true) @map("is_active")
+  pipelineIds                   String[]                @map("pipeline_ids") @db.Uuid
+  createdAt                     DateTime                @default(now()) @map("created_at")
+  updatedAt                     DateTime                @updatedAt @map("updated_at")
+  debounceSeconds               Int                     @default(3) @map("debounce_seconds")
+  modelId                       String                  @default("google/gemini-2.5-pro") @map("model_id")
+  agentVersion                  String                  @default("single-v1") @map("agent_version")
+  businessHoursConfig           Json?                   @map("business_hours_config")
+  businessHoursEnabled          Boolean                 @default(false) @map("business_hours_enabled")
+  businessHoursTimezone         String                  @default("America/Sao_Paulo") @map("business_hours_timezone")
+  outOfHoursMessage             String?                 @map("out_of_hours_message")
+  followUpBusinessHoursEnabled  Boolean                 @default(false) @map("follow_up_business_hours_enabled")
+  followUpBusinessHoursConfig   Json?                   @map("follow_up_business_hours_config")
+  followUpBusinessHoursTimezone String                  @default("America/Sao_Paulo") @map("follow_up_business_hours_timezone")
+  promptConfig                  Json?                   @map("prompt_config")
+  followUpExhaustedAction       String                  @default("NONE") @map("follow_up_exhausted_action")
+  followUpExhaustedConfig       Json?                   @map("follow_up_exhausted_config")
+  globalTools                   Json?                   @map("global_tools")
+  agentMode                     AgentMode               @default(PRODUCT) @map("agent_mode")
+  executions                    AgentExecution[]
+  groupMemberships              AgentGroupMember[]
+  knowledgeChunks               AgentKnowledgeChunk[]
+  knowledgeFiles                AgentKnowledgeFile[]
+  steps                         AgentStep[]
+  testConversations             AgentTestConversation[]
+  organization                  Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  inboxes                       Inbox[]
+  followUps                     FollowUp[]
 
   @@index([organizationId, isActive])
   @@map("agents")
 }
 
 model AgentGroup {
-  id             String             @id @default(uuid())
-  organizationId String             @map("organization_id")
+  id             String  @id @default(uuid())
+  organizationId String  @map("organization_id")
   name           String
   description    String?
-  isActive       Boolean            @default(true) @map("is_active")
+  isActive       Boolean @default(true) @map("is_active")
 
   // Router embutido — não é um Agent separado
-  routerModelId  String             @default("google/gemini-2.5-flash") @map("router_model_id")
-  routerPrompt   String?            @map("router_prompt")
-  routerConfig   Json?              @map("router_config")
+  routerModelId String  @default("google/gemini-2.5-flash") @map("router_model_id")
+  routerPrompt  String? @map("router_prompt")
+  routerConfig  Json?   @map("router_config")
 
-  createdAt      DateTime           @default(now()) @map("created_at")
-  updatedAt      DateTime           @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  organization     Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  members          AgentGroupMember[]
-  inboxes          Inbox[]
-  agentExecutions  AgentExecution[]
+  organization    Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members         AgentGroupMember[]
+  inboxes         Inbox[]
+  agentExecutions AgentExecution[]
 
   @@index([organizationId, isActive])
   @@map("agent_groups")
 }
 
 model AgentGroupMember {
-  id         String     @id @default(uuid())
-  groupId    String     @map("group_id")
-  agentId    String     @map("agent_id")
+  id         String   @id @default(uuid())
+  groupId    String   @map("group_id")
+  agentId    String   @map("agent_id")
   // Descrição curta do escopo deste agente — injetada no prompt do router para classificação
-  scopeLabel String     @map("scope_label")
-  isActive   Boolean    @default(true) @map("is_active")
-  createdAt  DateTime   @default(now()) @map("created_at")
-  updatedAt  DateTime   @updatedAt @map("updated_at")
+  scopeLabel String   @map("scope_label")
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
 
-  group  AgentGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  agent  Agent      @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  group AgentGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  agent Agent      @relation(fields: [agentId], references: [id], onDelete: Cascade)
 
   @@unique([groupId, agentId])
   @@index([agentId])
@@ -1021,24 +1197,24 @@ model AgentGroupMember {
 }
 
 model AgentStep {
-  id                    String                    @id @default(uuid())
-  agentId               String                    @map("agent_id")
-  name                  String
-  objective             String
-  allowedActions        String[]                  @default([]) @map("allowed_actions")
-  activationRequirement String?                   @map("activation_requirement")
-  order                 Int
-  createdAt             DateTime                  @default(now()) @map("created_at")
-  updatedAt             DateTime                  @updatedAt @map("updated_at")
-  actions               Json?                     @map("actions")
-  keyQuestion           String?                   @map("key_question")
-  messageTemplate       String?                   @map("message_template")
-  lifecycleTrigger        LifecycleStage? @map("lifecycle_trigger")
-  lifecycleDealPipelineId String?         @map("lifecycle_deal_pipeline_id")
-  autoDealStageId         String?         @map("auto_deal_stage_id")
-  autoTasks               Json?           @map("auto_tasks")
-  agent                 Agent                     @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  followUpLinks         FollowUpAgentStep[]
+  id                      String              @id @default(uuid())
+  agentId                 String              @map("agent_id")
+  name                    String
+  objective               String
+  allowedActions          String[]            @default([]) @map("allowed_actions")
+  activationRequirement   String?             @map("activation_requirement")
+  order                   Int
+  createdAt               DateTime            @default(now()) @map("created_at")
+  updatedAt               DateTime            @updatedAt @map("updated_at")
+  actions                 Json?               @map("actions")
+  keyQuestion             String?             @map("key_question")
+  messageTemplate         String?             @map("message_template")
+  lifecycleTrigger        LifecycleStage?     @map("lifecycle_trigger")
+  lifecycleDealPipelineId String?             @map("lifecycle_deal_pipeline_id")
+  autoDealStageId         String?             @map("auto_deal_stage_id")
+  autoTasks               Json?               @map("auto_tasks")
+  agent                   Agent               @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  followUpLinks           FollowUpAgentStep[]
 
   @@index([agentId, order])
   @@map("agent_steps")
@@ -1080,15 +1256,15 @@ model AgentKnowledgeChunk {
 }
 
 model FollowUp {
-  id             String              @id @default(uuid())
-  agentId        String              @map("agent_id")
-  organizationId String              @map("organization_id")
-  delayMinutes   Int                 @map("delay_minutes")
-  messageContent String              @map("message_content")
-  order          Int                 @default(0)
-  isActive       Boolean             @default(true) @map("is_active")
-  createdAt      DateTime            @default(now()) @map("created_at")
-  updatedAt      DateTime            @updatedAt @map("updated_at")
+  id             String   @id @default(uuid())
+  agentId        String   @map("agent_id")
+  organizationId String   @map("organization_id")
+  delayMinutes   Int      @map("delay_minutes")
+  messageContent String   @map("message_content")
+  order          Int      @default(0)
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
   agent          Agent               @relation(fields: [agentId], references: [id], onDelete: Cascade)
   organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -1100,12 +1276,12 @@ model FollowUp {
 }
 
 model FollowUpAgentStep {
-  id          String    @id @default(uuid())
-  followUpId  String    @map("follow_up_id")
-  agentStepId String    @map("agent_step_id")
+  id          String @id @default(uuid())
+  followUpId  String @map("follow_up_id")
+  agentStepId String @map("agent_step_id")
 
-  followUp    FollowUp  @relation(fields: [followUpId], references: [id], onDelete: Cascade)
-  agentStep   AgentStep @relation(fields: [agentStepId], references: [id], onDelete: Cascade)
+  followUp  FollowUp  @relation(fields: [followUpId], references: [id], onDelete: Cascade)
+  agentStep AgentStep @relation(fields: [agentStepId], references: [id], onDelete: Cascade)
 
   @@unique([followUpId, agentStepId])
   @@index([agentStepId])
@@ -1113,11 +1289,11 @@ model FollowUpAgentStep {
 }
 
 model Inbox {
-  id                    String         @id @default(uuid())
-  organizationId        String         @map("organization_id")
-  name                  String
-  channel               InboxChannel   @default(WHATSAPP)
-  isActive              Boolean        @default(true) @map("is_active")
+  id                     String         @id @default(uuid())
+  organizationId         String         @map("organization_id")
+  name                   String
+  channel                InboxChannel   @default(WHATSAPP)
+  isActive               Boolean        @default(true) @map("is_active")
   evolutionInstanceName  String?        @unique @map("evolution_instance_name")
   evolutionInstanceId    String?        @map("evolution_instance_id")
   evolutionConnected     Boolean        @default(false) @map("evolution_connected")
@@ -1125,36 +1301,36 @@ model Inbox {
   evolutionApiUrl        String?        @map("evolution_api_url")
   evolutionApiKey        String?        @map("evolution_api_key")
   evolutionWebhookSecret String?        @map("evolution_webhook_secret")
-  agentId               String?        @map("agent_id")
-  createdAt             DateTime       @default(now()) @map("created_at")
-  updatedAt             DateTime       @updatedAt @map("updated_at")
-  autoCreateDeal        Boolean        @default(false) @map("auto_create_deal")
-  distributionUserIds   String[]       @map("distribution_user_ids") @db.Uuid
-  pipelineId            String?        @map("pipeline_id") @db.Uuid
-  connectionType        ConnectionType @default(EVOLUTION) @map("connection_type")
-  metaAccessToken       String?        @map("meta_access_token")
-  metaPhoneDisplay      String?        @map("meta_phone_display")
-  metaPhoneNumberId     String?        @map("meta_phone_number_id")
-  metaWabaId            String?        @map("meta_waba_id")
+  agentId                String?        @map("agent_id")
+  createdAt              DateTime       @default(now()) @map("created_at")
+  updatedAt              DateTime       @updatedAt @map("updated_at")
+  autoCreateDeal         Boolean        @default(false) @map("auto_create_deal")
+  distributionUserIds    String[]       @map("distribution_user_ids") @db.Uuid
+  pipelineId             String?        @map("pipeline_id") @db.Uuid
+  connectionType         ConnectionType @default(EVOLUTION) @map("connection_type")
+  metaAccessToken        String?        @map("meta_access_token")
+  metaPhoneDisplay       String?        @map("meta_phone_display")
+  metaPhoneNumberId      String?        @map("meta_phone_number_id")
+  metaWabaId             String?        @map("meta_waba_id")
   // Identificadores Instagram (mutuamente exclusivos com metaPhoneNumberId)
-  metaIgUserId          String?        @unique @map("meta_ig_user_id")
-  metaIgPageId          String?        @map("meta_ig_page_id")
-  metaIgUsername        String?        @map("meta_ig_username")
-  zapiInstanceId        String?        @unique @map("zapi_instance_id")
-  zapiToken             String?        @map("zapi_token")
-  zapiClientToken       String?        @map("zapi_client_token")
-  showAttendantName     Boolean        @default(false) @map("show_attendant_name")
+  metaIgUserId           String?        @unique @map("meta_ig_user_id")
+  metaIgPageId           String?        @map("meta_ig_page_id")
+  metaIgUsername         String?        @map("meta_ig_username")
+  zapiInstanceId         String?        @unique @map("zapi_instance_id")
+  zapiToken              String?        @map("zapi_token")
+  zapiClientToken        String?        @map("zapi_client_token")
+  showAttendantName      Boolean        @default(false) @map("show_attendant_name")
   // Modo grupo (mutuamente exclusivo com agentId — validado na action)
-  agentGroupId          String?        @map("agent_group_id")
-  captureSourceId       String?        @map("capture_source_id")
-  squadId               String?        @map("squad_id")
-  conversations         Conversation[]
-  agent                 Agent?         @relation(fields: [agentId], references: [id], onDelete: SetNull)
-  agentGroup            AgentGroup?    @relation(fields: [agentGroupId], references: [id], onDelete: SetNull)
-  organization          Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  captureSource         CaptureSource? @relation(fields: [captureSourceId], references: [id], onDelete: SetNull)
-  squad                 Squad?         @relation(fields: [squadId], references: [id], onDelete: SetNull)
-  broadcasts            Broadcast[]
+  agentGroupId           String?        @map("agent_group_id")
+  captureSourceId        String?        @map("capture_source_id")
+  squadId                String?        @map("squad_id")
+  conversations          Conversation[]
+  agent                  Agent?         @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  agentGroup             AgentGroup?    @relation(fields: [agentGroupId], references: [id], onDelete: SetNull)
+  organization           Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  captureSource          CaptureSource? @relation(fields: [captureSourceId], references: [id], onDelete: SetNull)
+  squad                  Squad?         @relation(fields: [squadId], references: [id], onDelete: SetNull)
+  broadcasts             Broadcast[]
 
   @@index([organizationId])
   @@index([agentId])
@@ -1172,50 +1348,50 @@ model Inbox {
 // ─────────────────────────────────────────────────────────────
 
 model Broadcast {
-  id              String          @id @default(uuid())
-  organizationId  String          @map("organization_id")
-  inboxId         String          @map("inbox_id")
+  id                    String          @id @default(uuid())
+  organizationId        String          @map("organization_id")
+  inboxId               String          @map("inbox_id")
   // Snapshot do tipo de conexão usada (auditoria e dashboards históricos)
-  connectionType  ConnectionType  @map("connection_type")
-  name            String
+  connectionType        ConnectionType  @map("connection_type")
+  name                  String
   // Texto livre (EVOLUTION/Z_API). Para META_CLOUD o conteúdo vem do template HSM.
-  messageContent  String?         @map("message_content")
+  messageContent        String?         @map("message_content")
   // Template HSM — obrigatório para META_CLOUD (Meta exige template fora da janela de 24h).
   // templateParams: valores fixos das variáveis, iguais para todos os contatos (v1).
-  templateName     String?        @map("template_name")
-  templateLanguage String?        @map("template_language")
-  templateParams   Json?          @map("template_params")
+  templateName          String?         @map("template_name")
+  templateLanguage      String?         @map("template_language")
+  templateParams        Json?           @map("template_params")
   // Throttle entre mensagens do MESMO broadcast (não entre broadcasts diferentes)
-  throttleMs      Int             @default(30000) @map("throttle_ms")
-  status          BroadcastStatus @default(DRAFT)
+  throttleMs            Int             @default(30000) @map("throttle_ms")
+  status                BroadcastStatus @default(DRAFT)
   // Janela de envio: restringe o disparo a horários/dias (reusa BusinessHoursConfig).
   // Fora da janela a run dorme (wait.until) até a próxima abertura.
-  sendingWindowEnabled  Boolean  @default(false) @map("sending_window_enabled")
-  sendingWindowConfig   Json?    @map("sending_window_config")
-  sendingWindowTimezone String   @default("America/Sao_Paulo") @map("sending_window_timezone")
+  sendingWindowEnabled  Boolean         @default(false) @map("sending_window_enabled")
+  sendingWindowConfig   Json?           @map("sending_window_config")
+  sendingWindowTimezone String          @default("America/Sao_Paulo") @map("sending_window_timezone")
   // Run durável do Trigger.dev que processa este disparo (cancelamento + liveness)
-  triggerRunId    String?         @map("trigger_run_id")
+  triggerRunId          String?         @map("trigger_run_id")
   // Próximo envio previsto (ritmo) ou abertura da janela — alimenta o label da UI
-  nextSendAt      DateTime?       @map("next_send_at")
+  nextSendAt            DateTime?       @map("next_send_at")
   // Contadores denormalizados — atualizados pela task após cada chunk
-  totalRecipients Int             @default(0) @map("total_recipients")
-  sentCount       Int             @default(0) @map("sent_count")
-  failedCount     Int             @default(0) @map("failed_count")
+  totalRecipients       Int             @default(0) @map("total_recipients")
+  sentCount             Int             @default(0) @map("sent_count")
+  failedCount           Int             @default(0) @map("failed_count")
   // Denormalizado: definido na criação (sem telefone/opt-out/anonimizado) e
   // incrementado no cancel (PENDING→SKIPPED). Evita groupBy na listagem.
-  skippedCount    Int             @default(0) @map("skipped_count")
+  skippedCount          Int             @default(0) @map("skipped_count")
   // null = começa imediato
-  scheduledFor    DateTime?       @map("scheduled_for")
-  startedAt       DateTime?       @map("started_at")
-  completedAt     DateTime?       @map("completed_at")
-  cancelledAt     DateTime?       @map("cancelled_at")
+  scheduledFor          DateTime?       @map("scheduled_for")
+  startedAt             DateTime?       @map("started_at")
+  completedAt           DateTime?       @map("completed_at")
+  cancelledAt           DateTime?       @map("cancelled_at")
   // Quem criou — para filtro RBAC de MEMBER
-  createdBy       String          @map("created_by")
+  createdBy             String          @map("created_by")
   // Segmento que originou o disparo (auditoria). Os recipients são o snapshot
   // real do envio — apagar o segmento não quebra disparos passados (SetNull).
-  segmentId       String?         @map("segment_id")
-  createdAt       DateTime        @default(now()) @map("created_at")
-  updatedAt       DateTime        @updatedAt @map("updated_at")
+  segmentId             String?         @map("segment_id")
+  createdAt             DateTime        @default(now()) @map("created_at")
+  updatedAt             DateTime        @updatedAt @map("updated_at")
 
   organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   inbox        Inbox                @relation(fields: [inboxId], references: [id], onDelete: Restrict)
@@ -1274,11 +1450,11 @@ model BroadcastRecipient {
   broadcast Broadcast @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
   contact   Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
 
+  // Garante que um contato não receba o mesmo disparo duas vezes
+  @@unique([broadcastId, contactId])
   // Index crítico do worker — usado pelo SELECT FOR UPDATE SKIP LOCKED
   @@index([broadcastId, status])
   @@index([contactId])
-  // Garante que um contato não receba o mesmo disparo duas vezes
-  @@unique([broadcastId, contactId])
   @@map("broadcast_recipients")
 }
 
@@ -1298,12 +1474,12 @@ model Squad {
   createdAt         DateTime               @default(now()) @map("created_at")
   updatedAt         DateTime               @updatedAt @map("updated_at")
 
-  organization      Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  members           SquadMember[]
-  inboxes           Inbox[]
-  deals             Deal[]
-  webhookSources    WebhookSource[]
-  captureForms      CaptureForm[]
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members        SquadMember[]
+  inboxes        Inbox[]
+  deals          Deal[]
+  webhookSources WebhookSource[]
+  captureForms   CaptureForm[]
 
   @@index([organizationId])
   @@map("squads")
@@ -1318,8 +1494,8 @@ model SquadMember {
   weight   Int       @default(5)
   joinedAt DateTime  @default(now()) @map("joined_at")
 
-  squad    Squad     @relation(fields: [squadId], references: [id], onDelete: Cascade)
-  member   Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  squad  Squad  @relation(fields: [squadId], references: [id], onDelete: Cascade)
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
   @@unique([squadId, memberId])
   @@index([squadId])
@@ -1327,45 +1503,45 @@ model SquadMember {
 }
 
 model Conversation {
-  id                     String              @id @default(uuid())
-  inboxId                String              @map("inbox_id")
-  organizationId         String              @map("organization_id")
-  contactId              String              @map("contact_id")
-  dealId                 String?             @map("deal_id")
+  id                    String                        @id @default(uuid())
+  inboxId               String                        @map("inbox_id")
+  organizationId        String                        @map("organization_id")
+  contactId             String                        @map("contact_id")
+  dealId                String?                       @map("deal_id")
   // Responsável pela conversa — herdado do contato na criação, usado para filtro RBAC (MEMBER)
-  assignedTo             String?             @map("assigned_to")
-  channel                InboxChannel        @default(WHATSAPP)
-  aiPaused               Boolean             @default(false) @map("ai_paused")
-  pausedAt               DateTime?           @map("paused_at")
-  remoteJid              String?             @map("remote_jid")
-  summary                String?
-  currentStepOrder       Int                 @default(0) @map("current_step_order")
-  unreadCount            Int                 @default(0) @map("unread_count")
+  assignedTo            String?                       @map("assigned_to")
+  channel               InboxChannel                  @default(WHATSAPP)
+  aiPaused              Boolean                       @default(false) @map("ai_paused")
+  pausedAt              DateTime?                     @map("paused_at")
+  remoteJid             String?                       @map("remote_jid")
+  summary               String?
+  currentStepOrder      Int                           @default(0) @map("current_step_order")
+  unreadCount           Int                           @default(0) @map("unread_count")
   // Role da última mensagem da conversa (denormalizado para filtro "não respondidos")
-  lastMessageRole        String?             @map("last_message_role")
+  lastMessageRole       String?                       @map("last_message_role")
   // Fixar conversa no topo — null = não fixada, preenchido = fixada (serve como flag E timestamp)
-  pinnedAt               DateTime?           @map("pinned_at")
-  createdAt              DateTime            @default(now()) @map("created_at")
-  updatedAt              DateTime            @updatedAt @map("updated_at")
-  nextFollowUpAt         DateTime?           @map("next_follow_up_at")
-  followUpCount          Int                 @default(0) @map("follow_up_count")
-  lastCustomerMessageAt  DateTime?           @map("last_customer_message_at")
+  pinnedAt              DateTime?                     @map("pinned_at")
+  createdAt             DateTime                      @default(now()) @map("created_at")
+  updatedAt             DateTime                      @updatedAt @map("updated_at")
+  nextFollowUpAt        DateTime?                     @map("next_follow_up_at")
+  followUpCount         Int                           @default(0) @map("follow_up_count")
+  lastCustomerMessageAt DateTime?                     @map("last_customer_message_at")
   // Worker ativo nesta conversa — campo de tracking leve sem FK (agente pode sair do grupo)
-  activeAgentId          String?             @map("active_agent_id")
+  activeAgentId         String?                       @map("active_agent_id")
   // Status da conversa: OPEN por default, RESOLVED quando marcada manualmente
-  status                 ConversationStatus  @default(OPEN)
+  status                ConversationStatus            @default(OPEN)
   // Rastreamento de resolução — null quando status é OPEN
-  resolvedAt             DateTime?           @map("resolved_at")
-  resolvedBy             String?             @map("resolved_by")
-  agentExecutions        AgentExecution[]
-  events                 ConversationEvent[]
-  labels                 ConversationLabelAssignment[]
-  assignee               User?               @relation("ConversationAssignee", fields: [assignedTo], references: [id])
-  contact                Contact             @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  deal                   Deal?               @relation(fields: [dealId], references: [id])
-  inbox                  Inbox               @relation(fields: [inboxId], references: [id], onDelete: Cascade)
-  organization           Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  messages               Message[]
+  resolvedAt            DateTime?                     @map("resolved_at")
+  resolvedBy            String?                       @map("resolved_by")
+  agentExecutions       AgentExecution[]
+  events                ConversationEvent[]
+  labels                ConversationLabelAssignment[]
+  assignee              User?                         @relation("ConversationAssignee", fields: [assignedTo], references: [id])
+  contact               Contact                       @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  deal                  Deal?                         @relation(fields: [dealId], references: [id])
+  inbox                 Inbox                         @relation(fields: [inboxId], references: [id], onDelete: Cascade)
+  organization          Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  messages              Message[]
 
   @@unique([inboxId, contactId, channel])
   @@index([organizationId, inboxId])
@@ -1382,16 +1558,16 @@ model Conversation {
 }
 
 model ConversationLabel {
-  id             String       @id @default(uuid())
-  organizationId String       @map("organization_id")
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
   name           String
   // Chave da paleta de cores fixa (ex: "red", "blue", "green")
   color          String
-  createdAt      DateTime     @default(now()) @map("created_at")
-  updatedAt      DateTime     @updatedAt @map("updated_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
-  organization   Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  assignments    ConversationLabelAssignment[]
+  organization Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assignments  ConversationLabelAssignment[]
 
   @@unique([organizationId, name])
   @@index([organizationId])
@@ -1399,13 +1575,13 @@ model ConversationLabel {
 }
 
 model ConversationLabelAssignment {
-  id             String            @id @default(uuid())
-  conversationId String            @map("conversation_id")
-  labelId        String            @map("label_id")
-  createdAt      DateTime          @default(now()) @map("created_at")
+  id             String   @id @default(uuid())
+  conversationId String   @map("conversation_id")
+  labelId        String   @map("label_id")
+  createdAt      DateTime @default(now()) @map("created_at")
 
-  conversation   Conversation      @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  label          ConversationLabel @relation(fields: [labelId], references: [id], onDelete: Cascade)
+  conversation Conversation      @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  label        ConversationLabel @relation(fields: [labelId], references: [id], onDelete: Cascade)
 
   @@unique([conversationId, labelId])
   @@index([conversationId])
@@ -1480,32 +1656,32 @@ model AgentTestMessage {
 }
 
 model AgentExecution {
-  id               String                @id @default(uuid())
+  id               String               @id @default(uuid())
   // Nullable: null quando a execução é do router embutido (não de um agent worker)
-  agentId          String?               @map("agent_id")
+  agentId          String?              @map("agent_id")
   // Preenchido quando a execução é do router do AgentGroup
-  agentGroupId     String?               @map("agent_group_id")
-  organizationId   String                @map("organization_id")
-  conversationId   String                @map("conversation_id")
-  triggerMessageId String?               @map("trigger_message_id")
+  agentGroupId     String?              @map("agent_group_id")
+  organizationId   String               @map("organization_id")
+  conversationId   String               @map("conversation_id")
+  triggerMessageId String?              @map("trigger_message_id")
   status           AgentExecutionStatus
-  startedAt        DateTime              @map("started_at")
-  completedAt      DateTime?             @map("completed_at")
-  durationMs       Int?                  @map("duration_ms")
-  modelId          String?               @map("model_id")
-  inputTokens      Int?                  @map("input_tokens")
-  outputTokens     Int?                  @map("output_tokens")
-  creditsCost      Int?                  @map("credits_cost")
-  errorMessage     String?               @map("error_message")
-  finishReason     String?               @map("finish_reason")
+  startedAt        DateTime             @map("started_at")
+  completedAt      DateTime?            @map("completed_at")
+  durationMs       Int?                 @map("duration_ms")
+  modelId          String?              @map("model_id")
+  inputTokens      Int?                 @map("input_tokens")
+  outputTokens     Int?                 @map("output_tokens")
+  creditsCost      Int?                 @map("credits_cost")
+  errorMessage     String?              @map("error_message")
+  finishReason     String?              @map("finish_reason")
   metadata         Json?
-  createdAt        DateTime              @default(now()) @map("created_at")
-  updatedAt        DateTime              @updatedAt @map("updated_at")
+  createdAt        DateTime             @default(now()) @map("created_at")
+  updatedAt        DateTime             @updatedAt @map("updated_at")
 
-  agent        Agent?             @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  agentGroup   AgentGroup?        @relation(fields: [agentGroupId], references: [id], onDelete: Cascade)
-  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  conversation Conversation       @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  agent        Agent?               @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  agentGroup   AgentGroup?          @relation(fields: [agentGroupId], references: [id], onDelete: Cascade)
+  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  conversation Conversation         @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   steps        AgentExecutionStep[]
 
   @@index([agentId, createdAt(sort: Desc)])
@@ -1596,20 +1772,20 @@ model Announcement {
 }
 
 model Notification {
-  id             String           @id @default(uuid())
-  organizationId String           @map("organization_id")
-  userId         String           @map("user_id")
+  id             String                @id @default(uuid())
+  organizationId String                @map("organization_id")
+  userId         String                @map("user_id")
   type           NotificationType
   title          String
   body           String
   category       NotificationCategory?
-  actionUrl      String?          @map("action_url")
-  resourceType   String?          @map("resource_type")
-  resourceId     String?          @map("resource_id")
-  readAt         DateTime?        @map("read_at")
-  createdAt      DateTime         @default(now()) @map("created_at")
-  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  actionUrl      String?               @map("action_url")
+  resourceType   String?               @map("resource_type")
+  resourceId     String?               @map("resource_id")
+  readAt         DateTime?             @map("read_at")
+  createdAt      DateTime              @default(now()) @map("created_at")
+  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, readAt, createdAt(sort: Desc)])
   @@index([organizationId, userId, createdAt(sort: Desc)])
@@ -1959,23 +2135,23 @@ enum InboxChannel {
 }
 
 enum BroadcastStatus {
-  DRAFT       // reservado para edição pré-disparo; v1 nasce SCHEDULED ou RUNNING
-  SCHEDULED   // aguardando scheduledFor
-  QUEUED      // aguardando a inbox liberar (serialização: 1 disparo ativo por número)
-  RUNNING     // worker está processando
-  COMPLETED   // todos recipients finalizados (sent ou failed)
-  CANCELLED   // cancelado manualmente
-  FAILED      // falha fatal no broadcast (ex.: inbox desconectada)
+  DRAFT // reservado para edição pré-disparo; v1 nasce SCHEDULED ou RUNNING
+  SCHEDULED // aguardando scheduledFor
+  QUEUED // aguardando a inbox liberar (serialização: 1 disparo ativo por número)
+  RUNNING // worker está processando
+  COMPLETED // todos recipients finalizados (sent ou failed)
+  CANCELLED // cancelado manualmente
+  FAILED // falha fatal no broadcast (ex.: inbox desconectada)
 
   @@map("broadcast_status")
 }
 
 enum BroadcastRecipientStatus {
   PENDING
-  SENDING     // pego pelo worker, antes de chamar o provedor
+  SENDING // pego pelo worker, antes de chamar o provedor
   SENT
   FAILED
-  SKIPPED     // contato sem telefone válido, ou broadcast cancelado
+  SKIPPED // contato sem telefone válido, ou broadcast cancelado
 
   @@map("broadcast_recipient_status")
 }
@@ -2107,25 +2283,25 @@ enum AutomationExecutionStatus {
 }
 
 model Automation {
-  id              String              @id @default(uuid())
-  organizationId  String              @map("organization_id")
+  id              String            @id @default(uuid())
+  organizationId  String            @map("organization_id")
   name            String
   description     String?
-  isActive        Boolean             @default(true) @map("is_active")
-  triggerType     AutomationTrigger   @map("trigger_type")
-  triggerConfig   Json                @map("trigger_config")
-  conditions      Json                @default("[]")
-  actionType      AutomationAction    @map("action_type")
-  actionConfig    Json                @map("action_config")
-  createdBy       String              @map("created_by")
-  lastTriggeredAt DateTime?           @map("last_triggered_at")
-  executionCount  Int                 @default(0) @map("execution_count")
-  createdAt       DateTime            @default(now()) @map("created_at")
-  updatedAt       DateTime            @updatedAt @map("updated_at")
+  isActive        Boolean           @default(true) @map("is_active")
+  triggerType     AutomationTrigger @map("trigger_type")
+  triggerConfig   Json              @map("trigger_config")
+  conditions      Json              @default("[]")
+  actionType      AutomationAction  @map("action_type")
+  actionConfig    Json              @map("action_config")
+  createdBy       String            @map("created_by")
+  lastTriggeredAt DateTime?         @map("last_triggered_at")
+  executionCount  Int               @default(0) @map("execution_count")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
 
-  organization    Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  creator         User                @relation("AutomationCreator", fields: [createdBy], references: [id])
-  executions      AutomationExecution[]
+  organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  creator      User                  @relation("AutomationCreator", fields: [createdBy], references: [id])
+  executions   AutomationExecution[]
 
   @@index([organizationId, isActive, triggerType])
   @@index([organizationId, createdAt(sort: Desc)])
@@ -2145,10 +2321,10 @@ model AutomationExecution {
   executedAt     DateTime                  @default(now()) @map("executed_at")
   durationMs     Int?                      @map("duration_ms")
 
-  automation     Automation                @relation(fields: [automationId], references: [id], onDelete: Cascade)
-  organization   Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  deal           Deal?                     @relation(fields: [dealId], references: [id], onDelete: SetNull)
-  contact        Contact?                  @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  automation   Automation   @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  deal         Deal?        @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  contact      Contact?     @relation(fields: [contactId], references: [id], onDelete: SetNull)
 
   @@index([automationId, executedAt(sort: Desc)])
   @@index([organizationId, executedAt(sort: Desc)])
@@ -2158,20 +2334,20 @@ model AutomationExecution {
 }
 
 model UserProfile {
-  id                 String       @id @default(uuid())
-  userId             String       @map("user_id")
-  organizationId     String       @map("organization_id")
+  id                 String    @id @default(uuid())
+  userId             String    @map("user_id")
+  organizationId     String    @map("organization_id")
   role               String
-  teamSize           String       @map("team_size")
-  crmExperience      String       @map("crm_experience")
-  mainChallenge      String       @map("main_challenge")
-  referralSource     String       @map("referral_source")
-  profileCompletedAt DateTime?    @map("profile_completed_at")
-  createdAt          DateTime     @default(now()) @map("created_at")
-  updatedAt          DateTime     @updatedAt @map("updated_at")
+  teamSize           String    @map("team_size")
+  crmExperience      String    @map("crm_experience")
+  mainChallenge      String    @map("main_challenge")
+  referralSource     String    @map("referral_source")
+  profileCompletedAt DateTime? @map("profile_completed_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
 
-  user               User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([userId, organizationId])
   @@index([organizationId])
@@ -2179,13 +2355,13 @@ model UserProfile {
 }
 
 model TutorialCompletion {
-  id             String       @id @default(uuid())
-  userId         String       @map("user_id")
-  organizationId String       @map("organization_id")
-  tutorialId     String       @map("tutorial_id")
-  completedAt    DateTime     @default(now()) @map("completed_at")
-  createdAt      DateTime     @default(now()) @map("created_at")
-  updatedAt      DateTime     @updatedAt @map("updated_at")
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  organizationId String   @map("organization_id")
+  tutorialId     String   @map("tutorial_id")
+  completedAt    DateTime @default(now()) @map("completed_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -2230,16 +2406,16 @@ model ChangelogEntry {
 // ─────────────────────────────────────────────────────────────
 
 model BusinessReport {
-  id               String   @id @default(uuid())
-  singletonKey     String   @unique @default("singleton") @map("singleton_key")
+  id           String @id @default(uuid())
+  singletonKey String @unique @default("singleton") @map("singleton_key")
 
-  aiMonthlyCostBrl Decimal  @default(0)    @map("ai_monthly_cost_brl") @db.Decimal(12, 2)
-  costItems        Json     @default("[]") @map("cost_items")
-  targetMarginPct  Decimal  @default(30)   @map("target_margin_pct")   @db.Decimal(5, 2)
+  aiMonthlyCostBrl Decimal @default(0) @map("ai_monthly_cost_brl") @db.Decimal(12, 2)
+  costItems        Json    @default("[]") @map("cost_items")
+  targetMarginPct  Decimal @default(30) @map("target_margin_pct") @db.Decimal(5, 2)
 
-  updatedById      String?  @map("updated_by_id")
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt      @map("updated_at")
+  updatedById String?  @map("updated_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@map("business_reports")
 }
@@ -2445,20 +2621,20 @@ enum WebhookLogStatus {
 }
 
 model WebhookSource {
-  id             String           @id @default(uuid())
-  organizationId String           @map("organization_id")
-  squadId        String?          @map("squad_id")
-  name           String
-  token          String           @unique @default(uuid())
+  id              String           @id @default(uuid())
+  organizationId  String           @map("organization_id")
+  squadId         String?          @map("squad_id")
+  name            String
+  token           String           @unique @default(uuid())
   // Chave secreta para HMAC (Fase 2). NULL = aceita sem verificação.
-  secretKey      String?          @map("secret_key")
-  platform       WebhookPlatform  @default(GENERIC)
-  eventType      WebhookEventType @map("event_type")
+  secretKey       String?          @map("secret_key")
+  platform        WebhookPlatform  @default(GENERIC)
+  eventType       WebhookEventType @map("event_type")
   // Evento curado do provedor selecionado na UI (ex: "orders/paid", "PURCHASE_APPROVED").
   // NULL = sem filtro de gatilho (comportamento legado: aceita qualquer evento).
-  providerEvent  String?          @map("provider_event")
+  providerEvent   String?          @map("provider_event")
   // Mapa dot-notation: { "email": "data.customer.email", ... }
-  fieldMapping   Json             @default("{}") @map("field_mapping")
+  fieldMapping    Json             @default("{}") @map("field_mapping")
   isActive        Boolean          @default(true) @map("is_active")
   lastReceivedAt  DateTime?        @map("last_received_at")
   lastTestPayload Json?            @map("last_test_payload")
@@ -2466,8 +2642,8 @@ model WebhookSource {
   createdAt       DateTime         @default(now()) @map("created_at")
   updatedAt       DateTime         @updatedAt @map("updated_at")
 
-  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  squad        Squad?         @relation(fields: [squadId], references: [id], onDelete: SetNull)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  squad        Squad?       @relation(fields: [squadId], references: [id], onDelete: SetNull)
   logs         WebhookLog[]
 
   @@index([organizationId, isActive])
@@ -2551,7 +2727,7 @@ model CaptureFormField {
   labelOverride     String? @map("label_override")
   position          Int
 
-  captureForm     CaptureForm     @relation(fields: [captureFormId],     references: [id], onDelete: Cascade)
+  captureForm     CaptureForm     @relation(fields: [captureFormId], references: [id], onDelete: Cascade)
   fieldDefinition FieldDefinition @relation(fields: [fieldDefinitionId], references: [id], onDelete: Cascade)
 
   @@id([captureFormId, fieldDefinitionId])
@@ -2567,9 +2743,9 @@ model CaptureSubmission {
   snapshot       Json
   submittedAt    DateTime @default(now()) @map("submitted_at")
 
-  captureForm  CaptureForm  @relation(fields: [captureFormId],  references: [id], onDelete: Cascade)
+  captureForm  CaptureForm  @relation(fields: [captureFormId], references: [id], onDelete: Cascade)
   captureEvent CaptureEvent @relation(fields: [captureEventId], references: [id], onDelete: Cascade)
-  contact      Contact?     @relation(fields: [contactId],      references: [id], onDelete: SetNull)
+  contact      Contact?     @relation(fields: [contactId], references: [id], onDelete: SetNull)
 
   @@index([captureFormId, submittedAt(sort: Desc)])
   @@index([contactId])
@@ -2745,4 +2921,3 @@ model DsrRequest {
   @@index([organizationId, status])
   @@map("dsr_requests")
 }
-
