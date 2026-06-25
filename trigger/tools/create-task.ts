@@ -60,7 +60,7 @@ export function createCreateTaskTool(ctx: ToolContext, opts?: { triggerHint?: st
 
         await withRetry(
           () =>
-            db.task.create({
+            db.crmTask.create({
               data: {
                 organizationId: ctx.organizationId,
                 title,
@@ -71,7 +71,7 @@ export function createCreateTaskTool(ctx: ToolContext, opts?: { triggerHint?: st
                 type: 'TASK',
               },
             }),
-          'db.task.create',
+          'db.crmTask.create',
         )
 
         await safeBestEffort(

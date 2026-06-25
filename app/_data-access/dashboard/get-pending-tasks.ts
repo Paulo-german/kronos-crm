@@ -9,7 +9,7 @@ async function fetchPendingTasks(
   orgId: string,
   userId: string,
 ): Promise<PendingTask[]> {
-  const tasks = await db.task.findMany({
+  const tasks = await db.crmTask.findMany({
     where: {
       organizationId: orgId,
       isCompleted: false,

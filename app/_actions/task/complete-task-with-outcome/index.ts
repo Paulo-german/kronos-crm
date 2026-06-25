@@ -19,13 +19,13 @@ export const completeTaskWithOutcome = orgActionClient
   .schema(completeTaskWithOutcomeSchema)
   .action(async ({ parsedInput: data, ctx }) => {
     // 1. Permissão base
-    requirePermission(canPerformAction(ctx, 'task', 'update'))
+    requirePermission(canPerformAction(ctx, 'crmTask', 'update'))
 
     // 2. RBAC: garante acesso à task
     await findTaskWithRBAC(data.id, ctx)
 
     // 3. Dados completos (type/title não vêm do helper RBAC)
-    const task = await db.task.findFirst({
+    const task = await db.crmTask.findFirst({
       where: { id: data.id },
       select: {
         id: true,
@@ -44,7 +44,7 @@ export const completeTaskWithOutcome = orgActionClient
       throw new Error('Tarefa já está concluída.')
     }
 
-    await db.task.update({
+    await db.crmTask.update({
       where: { id: data.id },
       data: {
         isCompleted: true,

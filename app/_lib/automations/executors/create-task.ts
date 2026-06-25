@@ -19,7 +19,7 @@ const END_OF_DAY_MINUTES = 59
 /**
  * Executor de criação de task — execução de sistema, sem RBAC.
  * Cria a Task vinculada ao deal disparador e a Activity correspondente.
- * Toca Prisma diretamente (db.task.create / db.activity.create) seguindo o padrão
+ * Toca Prisma diretamente (db.crmTask.create / db.activity.create) seguindo o padrão
  * dos demais executors — NÃO chama a server action createTask (que exige orgActionClient).
  * Notifica o responsável após o response, mesmo padrão de executeReassignDeal.
  */
@@ -81,7 +81,7 @@ export async function executeCreateTask(ctx: ExecutorContext): Promise<ExecutorR
   // 4. Criar Task + Activity
   // createdBy: na ausência de ctx.userId em execução de sistema, gravamos o assignee
   // como criador (Task.createdBy é FK NOT NULL para User — não usar UUID fake).
-  const task = await db.task.create({
+  const task = await db.crmTask.create({
     data: {
       organizationId: ctx.orgId,
       title: resolvedTitle,

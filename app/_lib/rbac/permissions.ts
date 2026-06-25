@@ -30,7 +30,7 @@ const PERMISSION_MATRIX: Record<
     delete: ['OWNER', 'ADMIN', 'SUPPORT'],
     transfer: ['OWNER', 'ADMIN', 'SUPPORT'],
   },
-  task: {
+  crmTask: {
     create: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'],
     read: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'], // MEMBER: só próprias
     update: ['OWNER', 'ADMIN', 'MEMBER', 'SUPPORT'], // MEMBER: só próprias

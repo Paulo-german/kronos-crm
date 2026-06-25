@@ -23,7 +23,7 @@ async function fetchTeamMemberTaskBreakdown(
 ): Promise<TeamMemberTaskBreakdownItem[]> {
   // Convenção do projeto: "tarefa concluída no período" = isCompleted=true AND dueDate ∈ [start, end].
   // Motivo: o model Task não possui campo completedAt — apenas isCompleted (boolean) + dueDate.
-  const rows = await db.task.groupBy({
+  const rows = await db.crmTask.groupBy({
     by: ['type'],
     _count: { id: true },
     where: {

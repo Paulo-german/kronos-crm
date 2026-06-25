@@ -12,7 +12,7 @@ const fetchDealTasksFromDb = async (
   userId: string,
   elevated: boolean,
 ): Promise<DealTaskDto[]> => {
-  const tasks = await db.task.findMany({
+  const tasks = await db.crmTask.findMany({
     where: {
       dealId,
       // RBAC pelo dono do deal — MEMBER só acessa os próprios.

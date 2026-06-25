@@ -20,10 +20,10 @@ export const updateTask = orgActionClient
   .schema(updateTaskSchema)
   .action(async ({ parsedInput: data, ctx }) => {
     // 1. Verificar permissão base
-    requirePermission(canPerformAction(ctx, 'task', 'update'))
+    requirePermission(canPerformAction(ctx, 'crmTask', 'update'))
 
     // 2. Buscar tarefa existente
-    const existingTask = await db.task.findFirst({
+    const existingTask = await db.crmTask.findFirst({
       where: {
         id: data.id,
         organizationId: ctx.orgId,
@@ -56,7 +56,7 @@ export const updateTask = orgActionClient
     }
 
     // Monta o payload tipado; assignedTo só entra se informado (campo obrigatório no schema)
-    const updateData: Prisma.TaskUncheckedUpdateInput = {
+    const updateData: Prisma.CrmTaskUncheckedUpdateInput = {
       title: data.title,
       dueDate: data.dueDate,
       dealId: data.dealId,
@@ -65,7 +65,7 @@ export const updateTask = orgActionClient
       ...(data.assignedTo != null ? { assignedTo: data.assignedTo } : {}),
     }
 
-    await db.task.update({
+    await db.crmTask.update({
       where: { id: data.id },
       data: updateData,
     })

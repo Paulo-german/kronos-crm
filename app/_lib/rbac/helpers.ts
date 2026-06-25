@@ -41,7 +41,7 @@ export async function findTaskWithRBAC(
   taskId: string,
   ctx: PermissionContext
 ): Promise<{ id: string; assignedTo: string; dealId: string | null; isCompleted: boolean }> {
-  const task = await db.task.findFirst({
+  const task = await db.crmTask.findFirst({
     where: {
       id: taskId,
       organizationId: ctx.orgId,

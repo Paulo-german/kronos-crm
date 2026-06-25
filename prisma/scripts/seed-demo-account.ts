@@ -590,7 +590,7 @@ async function main() {
   await db.agent.deleteMany({ where: { organizationId: org.id } })
   await db.appointment.deleteMany({ where: { organizationId: org.id } })
   await db.activity.deleteMany({ where: { deal: { organizationId: org.id } } })
-  await db.task.deleteMany({ where: { organizationId: org.id } })
+  await db.crmTask.deleteMany({ where: { organizationId: org.id } })
   await db.dealProduct.deleteMany({ where: { deal: { organizationId: org.id } } })
   await db.dealContact.deleteMany({ where: { deal: { organizationId: org.id } } })
   await db.deal.deleteMany({ where: { organizationId: org.id } })
@@ -813,7 +813,7 @@ async function main() {
     const isPast = idx < 5
     const isCompleted = isPast && Math.random() > 0.3
 
-    await db.task.create({
+    await db.crmTask.create({
       data: {
         organizationId: org.id,
         dealId: targetDeal.id,

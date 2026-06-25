@@ -204,7 +204,7 @@ async function createTasks(params: {
 
       await withRetry(
         () =>
-          db.task.create({
+          db.crmTask.create({
             data: {
               organizationId,
               title: task.title,
@@ -215,7 +215,7 @@ async function createTasks(params: {
               type: 'TASK',
             },
           }),
-        'db.task.create(auto_task)',
+        'db.crmTask.create(auto_task)',
       )
 
       await safeBestEffort(

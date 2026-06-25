@@ -10,13 +10,13 @@ export const toggleTask = orgActionClient
   .schema(toggleTaskSchema)
   .action(async ({ parsedInput: data, ctx }) => {
     // 1. Verificar permissão base
-    requirePermission(canPerformAction(ctx, 'task', 'update'))
+    requirePermission(canPerformAction(ctx, 'crmTask', 'update'))
 
     // 2. Busca a tarefa com verificação RBAC
     const task = await findTaskWithRBAC(data.taskId, ctx)
 
     // 3. Toggle o status (reabertura limpa o outcome para evitar estado inconsistente)
-    await db.task.update({
+    await db.crmTask.update({
       where: { id: data.taskId },
       data: {
         isCompleted: !task.isCompleted,

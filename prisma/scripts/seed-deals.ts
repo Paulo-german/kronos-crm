@@ -746,7 +746,7 @@ async function cleanup(): Promise<void> {
     await db.automationExecution.deleteMany({ where: { dealId: { in: dealIds } } })
     await db.appointment.deleteMany({ where: { dealId: { in: dealIds } } })
     await db.activity.deleteMany({ where: { dealId: { in: dealIds } } })
-    await db.task.deleteMany({ where: { dealId: { in: dealIds } } })
+    await db.crmTask.deleteMany({ where: { dealId: { in: dealIds } } })
     await db.dealProduct.deleteMany({ where: { dealId: { in: dealIds } } })
     await db.dealContact.deleteMany({ where: { dealId: { in: dealIds } } })
   }
@@ -1413,7 +1413,7 @@ export async function seedDeals(): Promise<void> {
 
     for (let taskIdx = 0; taskIdx < taskSpecs.length; taskIdx++) {
       const spec = taskSpecs[taskIdx]
-      await db.task.create({
+      await db.crmTask.create({
         data: {
           id: seedChildId('tsk', config.idx, taskIdx),
           dealId,

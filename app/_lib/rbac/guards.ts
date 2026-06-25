@@ -137,7 +137,7 @@ function getEntityLabel(entity: RBACEntity): string {
   const labels: Record<RBACEntity, string> = {
     contact: 'contatos',
     deal: 'negócios',
-    task: 'tarefas',
+    crmTask: 'tarefas',
     product: 'produtos',
     pipeline: 'pipeline',
     company: 'empresas',

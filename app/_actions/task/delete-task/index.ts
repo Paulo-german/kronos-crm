@@ -14,10 +14,10 @@ export const deleteTask = orgActionClient
   .schema(deleteTaskSchema)
   .action(async ({ parsedInput: data, ctx }) => {
     // 1. Verificar permissão base
-    requirePermission(canPerformAction(ctx, 'task', 'delete'))
+    requirePermission(canPerformAction(ctx, 'crmTask', 'delete'))
 
     // 2. Buscar tarefa
-    const task = await db.task.findFirst({
+    const task = await db.crmTask.findFirst({
       where: {
         id: data.id,
         organizationId: ctx.orgId,
@@ -31,7 +31,7 @@ export const deleteTask = orgActionClient
     // 3. Verificar acesso ao registro (MEMBER pode deletar próprias)
     requirePermission(canAccessRecord(ctx, { assignedTo: task.assignedTo }))
 
-    await db.task.delete({
+    await db.crmTask.delete({
       where: { id: data.id },
     })
 

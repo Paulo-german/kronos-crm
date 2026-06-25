@@ -17,7 +17,7 @@ export interface RBACContext {
 export type RBACEntity =
   | 'contact'
   | 'deal'
-  | 'task'
+  | 'crmTask'
   | 'product'
   | 'pipeline'
   | 'company'

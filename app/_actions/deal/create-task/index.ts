@@ -15,7 +15,7 @@ export const createTask = orgActionClient
   .schema(createTaskSchema)
   .action(async ({ parsedInput: data, ctx }) => {
     // 1. Verificar permissão base para criar tasks
-    requirePermission(canPerformAction(ctx, 'task', 'create'))
+    requirePermission(canPerformAction(ctx, 'crmTask', 'create'))
 
     // 2. Buscar deal com verificação RBAC (acessa o deal pai)
     await findDealWithRBAC(data.dealId, ctx)
@@ -24,7 +24,7 @@ export const createTask = orgActionClient
     const assignedTo = resolveAssignedTo(ctx, data.assignedTo)
 
     // 4. Cria a tarefa
-    await db.task.create({
+    await db.crmTask.create({
       data: {
         organizationId: ctx.orgId,
         title: data.title,

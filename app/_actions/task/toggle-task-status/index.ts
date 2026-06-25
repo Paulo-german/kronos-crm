@@ -9,15 +9,15 @@ import { findTaskWithRBAC, canPerformAction, requirePermission } from '@/_lib/rb
 export const toggleTaskStatus = orgActionClient
   .schema(toggleTaskStatusSchema)
   .action(async ({ parsedInput: data, ctx }) => {
-    requirePermission(canPerformAction(ctx, 'task', 'update'))
+    requirePermission(canPerformAction(ctx, 'crmTask', 'update'))
     await findTaskWithRBAC(data.id, ctx)
 
-    const task = await db.task.findFirst({ where: { id: data.id } })
+    const task = await db.crmTask.findFirst({ where: { id: data.id } })
     if (!task) throw new Error('Tarefa não encontrada.')
 
     const willBeCompleted = !task.isCompleted
 
-    await db.task.update({
+    await db.crmTask.update({
       where: { id: data.id },
       data: {
         isCompleted: willBeCompleted,

@@ -28,7 +28,7 @@ const fetchTasksFromDb = async (
   userId: string,
   elevated: boolean,
 ): Promise<TaskDto[]> => {
-  return db.task.findMany({
+  return db.crmTask.findMany({
     where: {
       organizationId: orgId,
       // RBAC: MEMBER só vê próprias, ADMIN/OWNER vê todas

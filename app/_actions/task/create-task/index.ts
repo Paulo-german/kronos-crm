@@ -17,7 +17,7 @@ export const createTask = orgActionClient
   .schema(createTaskSchema)
   .action(async ({ parsedInput: data, ctx }) => {
     // 1. Verificar permissão base
-    requirePermission(canPerformAction(ctx, 'task', 'create'))
+    requirePermission(canPerformAction(ctx, 'crmTask', 'create'))
 
     // 2. Verificar quota do plano (tasks não têm quota separada, verificamos deals)
     // Tasks são ilimitadas por enquanto
@@ -38,7 +38,7 @@ export const createTask = orgActionClient
     }
 
     // 5. Criação
-    const task = await db.task.create({
+    const task = await db.crmTask.create({
       data: {
         organizationId: ctx.orgId,
         title: data.title,

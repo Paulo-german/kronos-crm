@@ -10,7 +10,7 @@ export const bulkDeleteTasks = orgActionClient
   .schema(bulkDeleteTasksSchema)
   .action(async ({ parsedInput: { ids }, ctx }) => {
     // 1. Verificar permissão base
-    requirePermission(canPerformAction(ctx, 'task', 'delete'))
+    requirePermission(canPerformAction(ctx, 'crmTask', 'delete'))
 
     // 2. Para MEMBER, só pode deletar próprias tasks
     // Para ADMIN/OWNER, pode deletar qualquer task da org
@@ -21,7 +21,7 @@ export const bulkDeleteTasks = orgActionClient
       ...(isElevated(ctx.userRole) ? {} : { assignedTo: ctx.userId }),
     }
 
-    const result = await db.task.deleteMany({
+    const result = await db.crmTask.deleteMany({
       where: whereClause,
     })
 
