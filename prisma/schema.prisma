@@ -1186,8 +1186,17 @@ model Broadcast {
   templateLanguage String?        @map("template_language")
   templateParams   Json?          @map("template_params")
   // Throttle entre mensagens do MESMO broadcast (não entre broadcasts diferentes)
-  throttleMs      Int             @default(1500) @map("throttle_ms")
+  throttleMs      Int             @default(30000) @map("throttle_ms")
   status          BroadcastStatus @default(DRAFT)
+  // Janela de envio: restringe o disparo a horários/dias (reusa BusinessHoursConfig).
+  // Fora da janela a run dorme (wait.until) até a próxima abertura.
+  sendingWindowEnabled  Boolean  @default(false) @map("sending_window_enabled")
+  sendingWindowConfig   Json?    @map("sending_window_config")
+  sendingWindowTimezone String   @default("America/Sao_Paulo") @map("sending_window_timezone")
+  // Run durável do Trigger.dev que processa este disparo (cancelamento + liveness)
+  triggerRunId    String?         @map("trigger_run_id")
+  // Próximo envio previsto (ritmo) ou abertura da janela — alimenta o label da UI
+  nextSendAt      DateTime?       @map("next_send_at")
   // Contadores denormalizados — atualizados pela task após cada chunk
   totalRecipients Int             @default(0) @map("total_recipients")
   sentCount       Int             @default(0) @map("sent_count")
@@ -1952,6 +1961,7 @@ enum InboxChannel {
 enum BroadcastStatus {
   DRAFT       // reservado para edição pré-disparo; v1 nasce SCHEDULED ou RUNNING
   SCHEDULED   // aguardando scheduledFor
+  QUEUED      // aguardando a inbox liberar (serialização: 1 disparo ativo por número)
   RUNNING     // worker está processando
   COMPLETED   // todos recipients finalizados (sent ou failed)
   CANCELLED   // cancelado manualmente

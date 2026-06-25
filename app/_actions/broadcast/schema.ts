@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { businessHoursConfigSchema } from '@/_actions/agent/update-agent/schema'
 
 /**
  * Whitelist de provedores externos que suportam disparo em massa.
@@ -11,9 +12,11 @@ export const ALLOWED_BROADCAST_CONNECTIONS = [
   'Z_API',
 ] as const
 
-export const DEFAULT_THROTTLE_MS = 1500
-const MIN_THROTTLE_MS = 500
-const MAX_THROTTLE_MS = 60_000
+// Ritmo de envio entre números. Default alto (30s) para preservar a reputação do
+// número; teto de 5 min para listas frias muito sensíveis.
+export const DEFAULT_THROTTLE_MS = 30_000
+const MIN_THROTTLE_MS = 5_000
+const MAX_THROTTLE_MS = 300_000
 const MAX_RECIPIENTS = 5000
 
 export const MAX_BROADCAST_RECIPIENTS = MAX_RECIPIENTS
@@ -47,6 +50,10 @@ export const createBroadcastSchema = z
         message: 'O agendamento deve ser no futuro.',
       })
       .optional(),
+    // Janela de envio: restringe o disparo a horários/dias.
+    sendingWindowEnabled: z.boolean().default(false),
+    sendingWindowConfig: businessHoursConfigSchema.optional(),
+    sendingWindowTimezone: z.string().default('America/Sao_Paulo'),
   })
   // Exatamente um modo de seleção: contatos OU segmento
   .refine(
@@ -54,6 +61,17 @@ export const createBroadcastSchema = z
     {
       message: 'Escolha contatos manualmente ou um segmento (apenas um).',
       path: ['contactIds'],
+    },
+  )
+  // Janela habilitada exige config com ao menos um dia ativo
+  .refine(
+    (data) =>
+      !data.sendingWindowEnabled ||
+      (data.sendingWindowConfig != null &&
+        Object.values(data.sendingWindowConfig).some((day) => day.enabled)),
+    {
+      message: 'Habilite ao menos um dia na janela de envio.',
+      path: ['sendingWindowConfig'],
     },
   )
 
