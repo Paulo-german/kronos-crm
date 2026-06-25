@@ -226,6 +226,22 @@ export const CreateBroadcastSheet = ({
     }
   }
 
+  // Volta o formulário ao estado inicial (usado ao fechar o sheet ou após criar)
+  const resetForm = () => {
+    form.reset()
+    setSelectedContacts([])
+    setSegmentId('')
+    setRecipientMode('manual')
+    setTemplates([])
+    setBodyValues([])
+  }
+
+  // Reseta ao fechar o sheet sem salvar — senão os dados ficam no próximo abrir
+  const handleOpenChange = (open: boolean) => {
+    if (!open) resetForm()
+    setIsOpen(open)
+  }
+
   const { execute, isPending } = useAction(createBroadcast, {
     onSuccess: ({ data }) => {
       if (!data?.success) return
@@ -235,12 +251,7 @@ export const CreateBroadcastSheet = ({
       if (data.notFoundCount > 0)
         parts.push(`${data.notFoundCount} não encontrado(s)`)
       toast.success(`Disparo criado — ${parts.join(', ')}.`)
-      form.reset()
-      setSelectedContacts([])
-      setSegmentId('')
-      setRecipientMode('manual')
-      setTemplates([])
-      setBodyValues([])
+      resetForm()
       setIsOpen(false)
       router.refresh()
     },
@@ -336,7 +347,7 @@ export const CreateBroadcastSheet = ({
   }
 
   return (
-    <Sheet open={isOpen} onOpenChange={setIsOpen}>
+    <Sheet open={isOpen} onOpenChange={handleOpenChange}>
       <SheetTrigger asChild>{trigger}</SheetTrigger>
       <SheetContent className="overflow-y-auto sm:max-w-xl">
         <SheetHeader>
@@ -792,7 +803,7 @@ export const CreateBroadcastSheet = ({
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setIsOpen(false)}
+                  onClick={() => handleOpenChange(false)}
                 >
                   Cancelar
                 </Button>
