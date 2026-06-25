@@ -2,19 +2,17 @@
 
 import { orgActionClient } from '@/_lib/safe-action'
 import { canPerformAction, requirePermission } from '@/_lib/rbac'
-import { countContactsForSegment } from '@/_data-access/segment/count-contacts-for-segment'
+import { getSegmentPreview } from '@/_data-access/segment/get-segment-preview'
 import { contactFiltersSchema } from '../schema'
 
 /**
- * Conta ao vivo quantos contatos elegíveis casam com os filtros informados.
- * Usado no preview do dialog de segmentação ("X contatos atingidos").
+ * Preview ao vivo dos filtros informados: contagem total de contatos elegíveis
+ * + uma amostra. Usado no painel de resultado do dialog de segmentação.
  */
 export const previewSegmentCount = orgActionClient
   .schema(contactFiltersSchema)
   .action(async ({ parsedInput: filters, ctx }) => {
     requirePermission(canPerformAction(ctx, 'segment', 'read'))
 
-    const count = await countContactsForSegment(ctx, filters)
-
-    return { count }
+    return getSegmentPreview(ctx, filters)
   })

@@ -51,6 +51,7 @@ const SegmentsPage = async ({
         segments={segments}
         isScoreEnabled={isScoreEnabled}
         withinQuota={quota.withinQuota}
+        current={quota.current}
         limit={quota.limit}
       />
     </ContactCapabilitiesProvider>
