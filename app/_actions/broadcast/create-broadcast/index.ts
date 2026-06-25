@@ -12,6 +12,7 @@ import { db } from '@/_lib/prisma'
 import { canPerformAction, isElevated, requirePermission } from '@/_lib/rbac'
 import { toE164 } from '@/_utils/to-e164'
 import { buildContactFilterWhere } from '@/_data-access/contact/build-contact-filter-where'
+import { triggerBroadcastRun } from '@/../trigger/lib/broadcast-queue'
 import type { ContactFilters } from '@/_components/contacts/_lib/contact-filters'
 import {
   ALLOWED_BROADCAST_CONNECTIONS,
@@ -162,10 +163,22 @@ export const createBroadcast = orgActionClient
       ? new Set(data.contactIds).size - recipientsData.length
       : 0
 
-    // Agendado → SCHEDULED (worker promove na janela); imediato → RUNNING
-    const status = data.scheduledFor
-      ? BroadcastStatus.SCHEDULED
-      : BroadcastStatus.RUNNING
+    // Status inicial:
+    //  - agendado → SCHEDULED (watchdog promove na janela)
+    //  - imediato → serialização por número: se a inbox já tem disparo ativo
+    //    (RUNNING/QUEUED), entra na fila como QUEUED; senão começa RUNNING.
+    let status: BroadcastStatus
+    if (data.scheduledFor) {
+      status = BroadcastStatus.SCHEDULED
+    } else {
+      const inboxBusy = await db.broadcast.count({
+        where: {
+          inboxId: inbox.id,
+          status: { in: [BroadcastStatus.RUNNING, BroadcastStatus.QUEUED] },
+        },
+      })
+      status = inboxBusy > 0 ? BroadcastStatus.QUEUED : BroadcastStatus.RUNNING
+    }
 
     const broadcast = await db.$transaction(async (tx) => {
       const created = await tx.broadcast.create({
@@ -186,6 +199,12 @@ export const createBroadcast = orgActionClient
               ? data.templateParams
               : undefined,
           throttleMs: data.throttleMs,
+          // Janela de envio (restringe horários); fora dela a run dorme.
+          sendingWindowEnabled: data.sendingWindowEnabled,
+          sendingWindowConfig: data.sendingWindowEnabled
+            ? (data.sendingWindowConfig as Prisma.InputJsonValue)
+            : undefined,
+          sendingWindowTimezone: data.sendingWindowTimezone,
           status,
           totalRecipients,
           skippedCount,
@@ -212,9 +231,11 @@ export const createBroadcast = orgActionClient
 
     revalidateTag(`broadcasts:${ctx.orgId}`)
 
-    // TODO(worker): quando a task Trigger.dev existir, disparar
-    // tasks.trigger('process-broadcasts-cron') aqui para broadcasts RUNNING,
-    // evitando esperar o tick de 1 min. A cron de fundo cobre agendados/recovery.
+    // Disparo imediato: nasce RUNNING → inicia a run durável na hora (o watchdog
+    // cobre agendados, fila e recuperação). QUEUED espera a inbox liberar.
+    if (status === BroadcastStatus.RUNNING) {
+      await triggerBroadcastRun(broadcast.id, inbox.id)
+    }
 
     return {
       success: true as const,

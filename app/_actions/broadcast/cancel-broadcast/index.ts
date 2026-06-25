@@ -1,6 +1,7 @@
 'use server'
 
 import { BroadcastRecipientStatus, BroadcastStatus } from '@prisma/client'
+import { runs } from '@trigger.dev/sdk/v3'
 import { revalidateTag } from 'next/cache'
 import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
@@ -9,12 +10,14 @@ import {
   canPerformAction,
   requirePermission,
 } from '@/_lib/rbac'
+import { promoteNextQueuedForInbox } from '@/../trigger/lib/broadcast-queue'
 import { cancelBroadcastSchema } from '../schema'
 
 // Estados que ainda podem ser cancelados (têm trabalho pendente ou agendado)
 const CANCELLABLE_STATUSES: BroadcastStatus[] = [
   BroadcastStatus.DRAFT,
   BroadcastStatus.SCHEDULED,
+  BroadcastStatus.QUEUED,
   BroadcastStatus.RUNNING,
 ]
 
@@ -27,7 +30,13 @@ export const cancelBroadcast = orgActionClient
     // 2. Disparo precisa existir e pertencer à organização
     const broadcast = await db.broadcast.findFirst({
       where: { id: broadcastId, organizationId: ctx.orgId },
-      select: { id: true, status: true, createdBy: true },
+      select: {
+        id: true,
+        status: true,
+        createdBy: true,
+        inboxId: true,
+        triggerRunId: true,
+      },
     })
 
     if (!broadcast) {
@@ -59,6 +68,12 @@ export const cancelBroadcast = orgActionClient
         },
       })
     })
+
+    // 6. Cancela a run durável (se houver) e libera a inbox para o próximo da fila.
+    if (broadcast.triggerRunId) {
+      await runs.cancel(broadcast.triggerRunId).catch(() => {})
+    }
+    await promoteNextQueuedForInbox(broadcast.inboxId)
 
     revalidateTag(`broadcasts:${ctx.orgId}`)
     revalidateTag(`broadcast:${broadcastId}`)
