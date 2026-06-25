@@ -54,7 +54,13 @@ export const createBroadcast = orgActionClient
     if (!inbox.isActive) {
       throw new Error('Esta caixa de entrada está inativa.')
     }
-    if (!inbox.evolutionConnected) {
+    // Só os provedores Evolution exigem o WhatsApp vinculado (evolutionConnected);
+    // Meta Cloud e Z-API não usam esse flag.
+    const isEvolution =
+      inbox.connectionType === 'EVOLUTION' ||
+      inbox.connectionType === 'EVOLUTION_JS' ||
+      inbox.connectionType === 'EVOLUTION_GO'
+    if (isEvolution && !inbox.evolutionConnected) {
       throw new Error(
         'A conexão desta caixa de entrada não está ativa no momento.',
       )

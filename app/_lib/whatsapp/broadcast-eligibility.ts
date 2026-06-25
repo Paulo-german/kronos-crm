@@ -1,23 +1,20 @@
 import type { ConnectionType, Prisma } from '@prisma/client'
 
 /**
- * Critério único de canal elegível para disparo em massa: apenas SELFHOSTED real.
+ * Critério único de canal elegível para disparo em massa: TODO canal real,
+ * EXCETO o Evolution interno da plataforma e o Simulador.
  *
- * O `connectionType` sozinho não distingue interno de selfhosted no Evolution —
- * tanto a conexão pela infra da plataforma (QR) quanto o servidor próprio do
- * cliente são gravados como `EVOLUTION`. O que separa é ter servidor próprio
- * (`evolutionApiUrl` + `evolutionApiKey`). Evolution Go é sempre selfhosted.
- *
- * Elegível:
- *  - EVOLUTION_GO (sempre)
- *  - EVOLUTION / EVOLUTION_JS COM servidor próprio
- * Excluído: EVOLUTION interno (infra da plataforma), Meta Cloud, Z-API, Simulador.
+ * - Meta Cloud, Z-API e Evolution Go disparam sempre.
+ * - Evolution / Evolution JS disparam só com servidor próprio
+ *   (`evolutionApiUrl` + `evolutionApiKey`); sem isso é o Evolution interno
+ *   (infra compartilhada da plataforma), que NÃO pode disparar em massa.
+ * - SIMULATOR e quaisquer tipos internos futuros ficam de fora por padrão.
  */
 
 // Fragmento de where do Prisma — fonte da verdade da query de inboxes elegíveis.
 export const BROADCAST_ELIGIBLE_WHERE: Prisma.InboxWhereInput = {
   OR: [
-    { connectionType: 'EVOLUTION_GO' },
+    { connectionType: { in: ['META_CLOUD', 'Z_API', 'EVOLUTION_GO'] } },
     {
       connectionType: { in: ['EVOLUTION', 'EVOLUTION_JS'] },
       evolutionApiUrl: { not: null },
@@ -36,7 +33,13 @@ export interface BroadcastInboxEligibility {
 export function isInboxEligibleForBroadcast(
   inbox: BroadcastInboxEligibility,
 ): boolean {
-  if (inbox.connectionType === 'EVOLUTION_GO') return true
+  if (
+    inbox.connectionType === 'META_CLOUD' ||
+    inbox.connectionType === 'Z_API' ||
+    inbox.connectionType === 'EVOLUTION_GO'
+  ) {
+    return true
+  }
   if (
     inbox.connectionType === 'EVOLUTION' ||
     inbox.connectionType === 'EVOLUTION_JS'
