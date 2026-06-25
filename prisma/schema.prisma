@@ -10,38 +10,42 @@ datasource db {
 }
 
 model User {
-  id                       String                   @id @default(uuid())
-  email                    String                   @unique
-  fullName                 String?                  @map("full_name")
-  avatarUrl                String?                  @map("avatar_url")
-  createdAt                DateTime                 @default(now()) @map("created_at")
-  updatedAt                DateTime                 @updatedAt @map("updated_at")
-  phone                    String?
-  notificationPreferences  Json?                    @map("notification_preferences")
-  isSuperAdmin             Boolean                  @default(false) @map("is_super_admin")
-  isSupportAgent           Boolean                  @default(false) @map("is_support_agent")
-  activitiesPerformed      Activity[]               @relation("ActivityPerformer")
-  announcements            Announcement[]
-  appointments             Appointment[]            @relation("AppointmentAssignee")
-  contactsAssigned         Contact[]                @relation("ContactAssignee")
-  conversationsAssigned    Conversation[]           @relation("ConversationAssignee")
-  dealsAssigned            Deal[]                   @relation("DealAssignee")
-  memberships              Member[]
-  notifications            Notification[]
-  tasksAssigned            CrmTask[]                @relation("TaskAssignee")
-  tasksCreated             CrmTask[]                @relation("TaskCreator")
-  integrations             UserIntegration[]
-  automationsCreated       Automation[]             @relation("AutomationCreator")
-  userProfiles             UserProfile[]
-  tutorialCompletions      TutorialCompletion[]
-  changelogEntries         ChangelogEntry[]
-  professional             Professional?            @relation("ProfessionalUser")
-  goals                    Goal[]
-  broadcastsCreated        Broadcast[]              @relation("BroadcastCreator")
-  contactSegmentsCreated   ContactSegment[]         @relation("ContactSegmentCreator")
-  projectWorkspacesCreated ProjectWorkspace[]       @relation("ProjectWorkspaceCreator")
-  projectWorkspaceMembers  ProjectWorkspaceMember[] @relation("ProjectWorkspaceMemberUser")
-  projectTasksCreated      ProjectTask[]            @relation("ProjectTaskCreator")
+  id                         String                            @id @default(uuid())
+  email                      String                            @unique
+  fullName                   String?                           @map("full_name")
+  avatarUrl                  String?                           @map("avatar_url")
+  createdAt                  DateTime                          @default(now()) @map("created_at")
+  updatedAt                  DateTime                          @updatedAt @map("updated_at")
+  phone                      String?
+  notificationPreferences    Json?                             @map("notification_preferences")
+  isSuperAdmin               Boolean                           @default(false) @map("is_super_admin")
+  isSupportAgent             Boolean                           @default(false) @map("is_support_agent")
+  activitiesPerformed        Activity[]                        @relation("ActivityPerformer")
+  announcements              Announcement[]
+  appointments               Appointment[]                     @relation("AppointmentAssignee")
+  contactsAssigned           Contact[]                         @relation("ContactAssignee")
+  conversationsAssigned      Conversation[]                    @relation("ConversationAssignee")
+  dealsAssigned              Deal[]                            @relation("DealAssignee")
+  memberships                Member[]
+  notifications              Notification[]
+  tasksAssigned              CrmTask[]                         @relation("TaskAssignee")
+  tasksCreated               CrmTask[]                         @relation("TaskCreator")
+  integrations               UserIntegration[]
+  automationsCreated         Automation[]                      @relation("AutomationCreator")
+  userProfiles               UserProfile[]
+  tutorialCompletions        TutorialCompletion[]
+  changelogEntries           ChangelogEntry[]
+  professional               Professional?                     @relation("ProfessionalUser")
+  goals                      Goal[]
+  broadcastsCreated          Broadcast[]                       @relation("BroadcastCreator")
+  contactSegmentsCreated     ContactSegment[]                  @relation("ContactSegmentCreator")
+  projectWorkspacesCreated   ProjectWorkspace[]                @relation("ProjectWorkspaceCreator")
+  projectWorkspaceMembers    ProjectWorkspaceMember[]          @relation("ProjectWorkspaceMemberUser")
+  projectTasksCreated        ProjectTask[]                     @relation("ProjectTaskCreator")
+  projectTaskAssignments     ProjectTaskAssignee[]             @relation("ProjectTaskAssigneeUser")
+  projectTaskComments        ProjectTaskComment[]              @relation("ProjectTaskCommentAuthor")
+  projectAttachmentsUploaded ProjectTaskAttachment[]           @relation("ProjectAttachmentUploader")
+  projectFieldExceptions     ProjectFieldPermissionException[] @relation("ProjectFieldExceptionUser")
 
   @@map("users")
 }
@@ -141,6 +145,9 @@ model Organization {
   projectFolders                ProjectFolder[]
   projectLists                  ProjectList[]
   projectTasks                  ProjectTask[]
+  projectListViews              ProjectListView[]
+  projectTaskComments           ProjectTaskComment[]
+  projectTemplates              ProjectTemplate[]
 
   @@map("organizations")
 }
@@ -618,12 +625,14 @@ model ProjectWorkspace {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  organization Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  creator      User                     @relation("ProjectWorkspaceCreator", fields: [createdBy], references: [id])
-  folders      ProjectFolder[]
-  lists        ProjectList[]
-  statuses     ProjectTaskStatus[]
-  members      ProjectWorkspaceMember[]
+  organization     Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  creator          User                     @relation("ProjectWorkspaceCreator", fields: [createdBy], references: [id])
+  folders          ProjectFolder[]
+  lists            ProjectList[]
+  statuses         ProjectTaskStatus[]
+  members          ProjectWorkspaceMember[]
+  tags             ProjectTag[]
+  fieldDefinitions ProjectFieldDefinition[]
 
   @@index([organizationId, isArchived, position])
   @@map("project_workspaces")
@@ -698,10 +707,11 @@ model ProjectList {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  workspace    ProjectWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  folder       ProjectFolder?   @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workspace    ProjectWorkspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  folder       ProjectFolder?    @relation(fields: [folderId], references: [id], onDelete: Cascade)
   tasks        ProjectTask[]
+  views        ProjectListView[]
 
   @@index([organizationId, workspaceId, folderId, position])
   @@map("project_lists")
@@ -734,14 +744,20 @@ model ProjectTask {
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
 
-  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  list         ProjectList       @relation(fields: [listId], references: [id], onDelete: Cascade)
-  status       ProjectTaskStatus @relation(fields: [statusId], references: [id], onDelete: Restrict)
-  parent       ProjectTask?      @relation("ProjectSubtasks", fields: [parentTaskId], references: [id], onDelete: Cascade)
-  subtasks     ProjectTask[]     @relation("ProjectSubtasks")
-  creator      User              @relation("ProjectTaskCreator", fields: [createdBy], references: [id])
-  deal         Deal?             @relation(fields: [dealId], references: [id], onDelete: SetNull)
-  contact      Contact?          @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  organization   Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  list           ProjectList             @relation(fields: [listId], references: [id], onDelete: Cascade)
+  status         ProjectTaskStatus       @relation(fields: [statusId], references: [id], onDelete: Restrict)
+  parent         ProjectTask?            @relation("ProjectSubtasks", fields: [parentTaskId], references: [id], onDelete: Cascade)
+  subtasks       ProjectTask[]           @relation("ProjectSubtasks")
+  creator        User                    @relation("ProjectTaskCreator", fields: [createdBy], references: [id])
+  deal           Deal?                   @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  contact        Contact?                @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  assignees      ProjectTaskAssignee[]
+  tags           ProjectTaskTag[]
+  fieldValues    ProjectFieldValue[]
+  comments       ProjectTaskComment[]
+  checklistItems ProjectChecklistItem[]
+  attachments    ProjectTaskAttachment[]
 
   @@index([organizationId, listId, statusId, position]) // board: colunas por status numa list
   @@index([organizationId, listId, position]) // list view
@@ -760,6 +776,238 @@ enum ProjectTaskPriority {
   URGENT
 
   @@map("project_task_priority")
+}
+
+// ── Fase 2: Views, Custom Fields, Tags, Assignees ──
+
+model ProjectTaskAssignee {
+  taskId     String   @map("task_id")
+  userId     String   @map("user_id")
+  assignedAt DateTime @default(now()) @map("assigned_at")
+
+  task ProjectTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User        @relation("ProjectTaskAssigneeUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, userId])
+  @@index([userId, taskId]) // "Minhas Tarefas": tasks onde sou um dos responsáveis
+  @@map("project_task_assignees")
+}
+
+model ProjectListView {
+  id             String              @id @default(uuid())
+  organizationId String              @map("organization_id")
+  listId         String              @map("list_id")
+  name           String
+  type           ProjectListViewType
+  config         Json? // filtros + agrupamento + ordenação serializados
+  isDefault      Boolean             @default(false) @map("is_default")
+  position       Int                 @default(0)
+  createdAt      DateTime            @default(now()) @map("created_at")
+  updatedAt      DateTime            @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  list         ProjectList  @relation(fields: [listId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, listId, position])
+  @@map("project_list_views")
+}
+
+enum ProjectListViewType {
+  BOARD
+  LIST
+  CALENDAR
+
+  @@map("project_list_view_type")
+}
+
+model ProjectTag {
+  id          String   @id @default(uuid())
+  workspaceId String   @map("workspace_id")
+  name        String
+  color       String // hex
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  workspace ProjectWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  tasks     ProjectTaskTag[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+  @@map("project_tags")
+}
+
+model ProjectTaskTag {
+  taskId String @map("task_id")
+  tagId  String @map("tag_id")
+
+  task ProjectTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  tag  ProjectTag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, tagId])
+  @@index([tagId])
+  @@map("project_task_tags")
+}
+
+model ProjectFieldDefinition {
+  id           String           @id @default(uuid())
+  workspaceId  String           @map("workspace_id") // campos POR WORKSPACE (estilo ClickUp)
+  name         String
+  type         ProjectFieldType
+  options      Json? // SELECT/MULTI_SELECT: [{ label, color }]
+  description  String? // ajuda ("explique como usar este campo")
+  defaultValue String?          @map("default_value") // serializado
+  position     Int              @default(0)
+
+  // ── Config de exibição — Fase 2 ──
+  isRequired Boolean @default(false) @map("is_required") // obrigatório em tarefas
+  isPinned   Boolean @default(false) @map("is_pinned") // fixado/destacado
+
+  // ── Permissões granulares — Fase 3 ──
+  editPolicy ProjectFieldEditPolicy @default(SPACE_DEFAULT) @map("edit_policy")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  workspace  ProjectWorkspace                  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  values     ProjectFieldValue[]
+  exceptions ProjectFieldPermissionException[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId, position])
+  @@map("project_field_definitions")
+}
+
+enum ProjectFieldType {
+  TEXT
+  LONG_TEXT // área de texto (texto longo)
+  NUMBER
+  MONEY // número formatado como moeda
+  SELECT // dropdown (opções com cor)
+  MULTI_SELECT // rótulos: múltiplas opções com cor
+  DATE
+  CHECKBOX
+  URL
+  RATING // estrelas (config: max em options)
+  PROGRESS // percentual 0–100 (barra)
+  PERSON // membro(s) da org
+
+  @@map("project_field_type")
+}
+
+model ProjectFieldValue {
+  id        String   @id @default(uuid())
+  fieldId   String   @map("field_id")
+  taskId    String   @map("task_id")
+  value     String?  @db.Text // serializado via serialize.ts (reuso de util)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  field ProjectFieldDefinition @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  task  ProjectTask            @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@unique([fieldId, taskId])
+  @@index([taskId])
+  @@map("project_field_values")
+}
+
+// ── Fase 3: Comentários, Checklist, Anexos, Permissões de campo, Templates ──
+
+model ProjectTaskComment {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  taskId         String   @map("task_id")
+  authorId       String   @map("author_id")
+  body           String   @db.Text
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  task         ProjectTask  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author       User         @relation("ProjectTaskCommentAuthor", fields: [authorId], references: [id])
+
+  @@index([taskId, createdAt(sort: Desc)])
+  @@map("project_task_comments")
+}
+
+model ProjectChecklistItem {
+  id        String   @id @default(uuid())
+  taskId    String   @map("task_id")
+  content   String
+  isDone    Boolean  @default(false) @map("is_done")
+  position  Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  task ProjectTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId, position])
+  @@map("project_checklist_items")
+}
+
+model ProjectTaskAttachment {
+  id         String   @id @default(uuid())
+  taskId     String   @map("task_id")
+  fileName   String   @map("file_name")
+  filePath   String   @map("file_path") // path no bucket de storage
+  fileSize   Int      @map("file_size")
+  mimeType   String   @map("mime_type")
+  uploadedBy String   @map("uploaded_by")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  task     ProjectTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  uploader User        @relation("ProjectAttachmentUploader", fields: [uploadedBy], references: [id])
+
+  @@index([taskId, createdAt(sort: Desc)])
+  @@map("project_task_attachments")
+}
+
+enum ProjectFieldEditPolicy {
+  SPACE_DEFAULT // herda o padrão do Workspace
+  EVERYONE // qualquer um com acesso ao Workspace edita o valor
+  ELEVATED_ONLY // só OWNER/ADMIN/SUPPORT edita o valor
+
+  @@map("project_field_edit_policy")
+}
+
+model ProjectFieldPermissionException {
+  id      String                      @id @default(uuid())
+  fieldId String                      @map("field_id")
+  userId  String                      @map("user_id")
+  level   ProjectFieldPermissionLevel
+
+  field ProjectFieldDefinition @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  user  User                   @relation("ProjectFieldExceptionUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([fieldId, userId])
+  @@map("project_field_permission_exceptions")
+}
+
+enum ProjectFieldPermissionLevel {
+  NONE // não vê
+  VIEW // vê mas não edita
+  EDIT // edita
+
+  @@map("project_field_permission_level")
+}
+
+model ProjectTemplate {
+  id             String               @id @default(uuid())
+  organizationId String               @map("organization_id")
+  scope          ProjectTemplateScope
+  name           String
+  config         Json // serializa status/campos/folders/lists/views
+  createdAt      DateTime             @default(now()) @map("created_at")
+  updatedAt      DateTime             @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, scope])
+  @@map("project_templates")
+}
+
+enum ProjectTemplateScope {
+  WORKSPACE
+  LIST
+
+  @@map("project_template_scope")
 }
 
 model Activity {
