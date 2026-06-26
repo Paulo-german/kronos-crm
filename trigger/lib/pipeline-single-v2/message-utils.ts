@@ -1,5 +1,9 @@
 import type { ModelMessage } from 'ai'
-import { ACTION_TOOL_LABELS, QUERY_TOOL_NAMES, KNOWN_TOOL_NAMES } from './constants'
+import {
+  ACTION_TOOL_LABELS,
+  QUERY_TOOL_NAMES,
+  KNOWN_TOOL_NAMES,
+} from './constants'
 
 // ---------------------------------------------------------------------------
 // buildLlmMessages — monta o array de mensagens que vai para o LLM
@@ -128,9 +132,11 @@ export function formatQueryToolResult(
     }
     const lines = slots.map((slot: unknown) => {
       const entry = slot as Record<string, unknown>
-      const dayOfWeek = typeof entry.dayOfWeek === 'string' ? entry.dayOfWeek : ''
+      const dayOfWeek =
+        typeof entry.dayOfWeek === 'string' ? entry.dayOfWeek : ''
       const date = typeof entry.date === 'string' ? entry.date : ''
-      const startTime = typeof entry.startTime === 'string' ? entry.startTime : ''
+      const startTime =
+        typeof entry.startTime === 'string' ? entry.startTime : ''
       const endTime = typeof entry.endTime === 'string' ? entry.endTime : ''
       return `- ${dayOfWeek}, ${date} às ${startTime}–${endTime}`
     })
@@ -179,29 +185,33 @@ export function sanitizeToolMessages(messages: ModelMessage[]): ModelMessage[] {
       )
 
       for (const part of message.content) {
-        if (part.type === 'text') {
-          if (part.text.trim()) textParts.push(part.text.trim())
-        } else if (
+        // Texto livre do Call 1 (part.type === 'text') é IGNORADO de propósito:
+        // o Call 1 às vezes vaza a resposta apesar da diretiva "só tools", e se ela
+        // chegasse ao Call 2 o Responder veria uma resposta pronta e retornaria vazio
+        // (caindo no fallback). Mantemos apenas os rótulos das ações executadas.
+        if (
           part.type === 'tool-call' &&
-          !toolCallIdsWithContent.has(part.toolCallId)
+          !toolCallIdsWithContent.has(part.toolCallId) &&
+          !QUERY_TOOL_NAMES.has(part.toolName)
         ) {
           const label = ACTION_TOOL_LABELS[part.toolName]
-          if (!QUERY_TOOL_NAMES.has(part.toolName)) {
-            textParts.push(
-              label
-                ? `[Ação executada: ${label}]`
-                : `[Ação executada: ${part.toolName}]`,
-            )
-          }
+          textParts.push(
+            label
+              ? `[Ação executada: ${label}]`
+              : `[Ação executada: ${part.toolName}]`,
+          )
         }
       }
 
       if (toolCallPartsWithContent.length > 0) {
+        // Mantém SÓ os tool-calls com conteúdo; descarta o texto vazado do Call 1.
+        // Se o texto seguisse adiante, o Call 2 veria uma resposta assistant já
+        // pronta no histórico e retornaria vazio (caindo no fallback). O Responder
+        // deve gerar a mensagem do zero, com base apenas nos resultados das tools.
         const filteredContent = message.content.filter(
           (part) =>
-            (part.type === 'text' && part.text.trim()) ||
-            (part.type === 'tool-call' &&
-              toolCallIdsWithContent.has(part.toolCallId)),
+            part.type === 'tool-call' &&
+            toolCallIdsWithContent.has(part.toolCallId),
         )
         return [{ ...message, content: filteredContent } as ModelMessage]
       }

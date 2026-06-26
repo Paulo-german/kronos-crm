@@ -1,14 +1,13 @@
 import { logger } from '@trigger.dev/sdk/v3'
-import { generateObject, generateText, Output } from 'ai'
+import { generateText } from 'ai'
 import type { ModelMessage } from 'ai'
-import { z } from 'zod'
 import { getModel } from '@/_lib/ai/provider'
 import { langfuseTracer } from '../langfuse'
 import {
   buildResponderGroundingDirective,
   sanitizeToolMessages,
+  stripLeakedToolCalls,
 } from './message-utils'
-import { buildFallbackSchema } from './step-classifier'
 import { LLM_TEMPERATURE, MAX_OUTPUT_TOKENS } from './constants'
 
 // ---------------------------------------------------------------------------
@@ -39,19 +38,6 @@ export interface RunResponderOutput {
 }
 
 // ---------------------------------------------------------------------------
-// Schema fixo do Responder — reutilizado no call normal e no path de erro
-// ---------------------------------------------------------------------------
-
-const responderSchema = z.object({
-  message: z
-    .string()
-    .describe(
-      'Sua resposta ao cliente. Texto natural que será enviado diretamente ao lead. ' +
-        'NUNCA inclua JSONs, nomes de ferramentas, UUIDs ou qualquer metadado técnico neste campo.',
-    ),
-})
-
-// ---------------------------------------------------------------------------
 // runResponder — Call 2 + tool_only_fallback embutido
 // Output.object no fallback funciona pq não há tools — exatamente o que motivou
 // a separação Call 1 / Call 2 na v2 (tools+Output.object travam o modelo).
@@ -64,8 +50,6 @@ export async function runResponder(
     toolCallSteps,
     toolCallResponseMessages,
     llmMessages,
-    hasSteps,
-    stepIds,
     modelId,
     agentId,
     conversationId,
@@ -79,16 +63,22 @@ export async function runResponder(
   const groundingDirective = buildResponderGroundingDirective(toolCallSteps)
   const sanitizedToolMessages = sanitizeToolMessages(toolCallResponseMessages)
 
-  // ---- Call 2: Responder principal ----------------------------------------
+  // ---- Call 2: Responder principal (texto puro) ---------------------------
+  // Texto livre em vez de generateObject: o schema era apenas `{ message: string }`
+  // (o currentStep vem do Call 3 / classifier), então não havia nada estruturado a
+  // ganhar. O custo era alto: o modelo entrava em loop de repetição
+  // ({"message":...}{"message":...}) e o parse all-or-nothing do generateObject
+  // descartava a resposta válida da primeira cópia → NoObjectGeneratedError.
+  // Texto livre não tem parse fatal; stripLeakedToolCalls cobre o vazamento de JSON
+  // que o schema antes prevenia.
   try {
-    const responderResult = await generateObject({
+    const responderResult = await generateText({
       model: getModel(modelId),
       messages: [
         ...llmMessages,
         ...sanitizedToolMessages,
         { role: 'system', content: groundingDirective },
       ],
-      schema: responderSchema,
       temperature: LLM_TEMPERATURE,
       maxOutputTokens: MAX_OUTPUT_TOKENS,
       experimental_telemetry: {
@@ -104,7 +94,7 @@ export async function runResponder(
       },
     })
 
-    const message = responderResult.object.message ?? ''
+    const message = stripLeakedToolCalls(responderResult.text ?? '').trim()
     if (message) {
       return {
         message,
@@ -133,11 +123,14 @@ export async function runResponder(
   if (!hasToolCalls) {
     // Call 2 falhou ou retornou vazio sem tool calls — tenta uma última chamada
     // simples com o contexto da conversa, sem referência a ferramentas.
-    logger.info('Responder failed without tool calls — attempting last-resort fallback', {
-      conversationId,
-      organizationId,
-      reason: responderError ? 'responder_error' : 'empty_message',
-    })
+    logger.info(
+      'Responder failed without tool calls — attempting last-resort fallback',
+      {
+        conversationId,
+        organizationId,
+        reason: responderError ? 'responder_error' : 'empty_message',
+      },
+    )
     let lastResortError: string | undefined
     try {
       const lastResortResult = await generateText({
@@ -206,14 +199,14 @@ export async function runResponder(
     },
   ]
 
-  const fallbackSchema = buildFallbackSchema(hasSteps ? stepIds : null)
-
   try {
+    // Texto puro também aqui: Output.object tinha o mesmo risco de loop de
+    // repetição → parse all-or-nothing → fallback que deveria salvar a resposta
+    // acabava derrubando ela. O currentStep do fallback foi removido — o Call 3
+    // (classifier) é a fonte do avanço de etapa.
     const fallbackResult = await generateText({
       model: getModel(modelId),
       messages: fallbackMessages,
-      output:
-        hasSteps && stepIds ? Output.object({ schema: fallbackSchema }) : undefined,
       temperature: LLM_TEMPERATURE,
       maxOutputTokens: MAX_OUTPUT_TOKENS,
       experimental_telemetry: {
@@ -228,10 +221,7 @@ export async function runResponder(
       },
     })
 
-    const fallbackOutput = fallbackResult.output as
-      | { message: string; currentStep?: string | null }
-      | undefined
-    const message = fallbackOutput?.message ?? fallbackResult.text ?? ''
+    const message = stripLeakedToolCalls(fallbackResult.text ?? '').trim()
 
     return {
       message,
@@ -239,7 +229,6 @@ export async function runResponder(
         inputTokens: fallbackResult.usage?.inputTokens ?? 0,
         outputTokens: fallbackResult.usage?.outputTokens ?? 0,
       },
-      fallbackClassifiedId: fallbackOutput?.currentStep ?? undefined,
       responderError,
       usedFallback: true,
     }
