@@ -1738,8 +1738,10 @@ export const processAgentMessageSingleV2 = task({
         try {
           if ('skipped' in dispatchResult) return dispatchResult
           return await runSingleV2(dispatchResult.ctx)
-        } finally {
-          // Emite idle com failed antes do flushLangfuse — idempotente se completed já foi emitido
+        } catch (runError) {
+          // Emite failed APENAS no caminho de erro real. Os caminhos de sucesso
+          // (completed) e de skip (skipped) já emitiram seu próprio terminalReason
+          // antes de retornar — emitir aqui no finally sobrescrevia com failed.
           if (!('skipped' in dispatchResult)) {
             await emitAgentStatus({
               conversationId: dispatchResult.ctx.conversationId,
@@ -1749,6 +1751,8 @@ export const processAgentMessageSingleV2 = task({
               terminalReason: 'failed',
             })
           }
+          throw runError
+        } finally {
           await flushLangfuse()
         }
       },
