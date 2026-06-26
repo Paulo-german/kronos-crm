@@ -1,7 +1,7 @@
 import { tool } from 'ai'
 import { z } from 'zod'
 import { logger } from '@trigger.dev/sdk/v3'
-import { searchKnowledge } from '../utils/search-knowledge'
+import { searchKnowledgeRelevant } from '../utils/search-knowledge'
 import type { ToolContext } from './types'
 
 interface SearchKnowledgeResult {
@@ -17,11 +17,13 @@ export function createSearchKnowledgeTool(ctx: ToolContext) {
     inputSchema: z.object({
       query: z
         .string()
-        .describe('Pergunta ou termo de busca para encontrar informações relevantes na base de conhecimento'),
+        .describe(
+          'Pergunta ou termo de busca para encontrar informações relevantes na base de conhecimento',
+        ),
     }),
     execute: async ({ query }): Promise<SearchKnowledgeResult> => {
       try {
-        const results = await searchKnowledge(ctx.agentId, query, 5, 0.65)
+        const results = await searchKnowledgeRelevant(ctx.agentId, query)
 
         if (results.length === 0) {
           logger.info('Tool search_knowledge: no results', {
@@ -32,7 +34,8 @@ export function createSearchKnowledgeTool(ctx: ToolContext) {
 
           return {
             success: true,
-            message: 'Nenhum resultado encontrado na base de conhecimento para esta consulta.',
+            message:
+              'Nenhum resultado encontrado na base de conhecimento para esta consulta.',
           }
         }
 
@@ -57,7 +60,8 @@ export function createSearchKnowledgeTool(ctx: ToolContext) {
 
         return {
           success: false,
-          message: 'Erro interno ao buscar na base de conhecimento. Tente novamente.',
+          message:
+            'Erro interno ao buscar na base de conhecimento. Tente novamente.',
         }
       }
     },

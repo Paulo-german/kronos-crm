@@ -58,11 +58,13 @@ import {
   LLM_TEMPERATURE,
   MAX_OUTPUT_TOKENS,
   MESSAGE_HISTORY_LIMIT,
+  QUERY_TOOL_NAMES,
 } from './lib/pipeline-single-v2/constants'
 import {
   buildLlmMessages,
   stripLeakedToolCalls,
 } from './lib/pipeline-single-v2/message-utils'
+import { prefetchKnowledgeBlock } from './lib/pipeline-single-v2/knowledge-prefetch'
 import { runStepClassifier } from './lib/pipeline-single-v2/step-classifier'
 import { runResponder } from './lib/pipeline-single-v2/responder'
 import { applyStepAdvance } from './lib/pipeline-single-v2/step-advance'
@@ -554,6 +556,21 @@ export async function runSingleV2(
     messageHistory,
   )
 
+  // Retrieval determinístico da base de conhecimento: em vez de depender do
+  // modelo chamar search_knowledge (pula às vezes, repete em loop outras), o
+  // código busca e injeta os trechos relevantes logo após o system prompt.
+  if (promptContext.hasKnowledgeBase) {
+    const kbBlock = await prefetchKnowledgeBlock({
+      agentId: ctx.effectiveAgentId,
+      history: messageHistory,
+      conversationId: ctx.conversationId,
+    })
+    if (kbBlock) {
+      llmMessages.splice(1, 0, { role: 'system', content: kbBlock })
+      ctx.log('step:4a kb_prefetch', 'PASS', { injected: true })
+    }
+  }
+
   // -----------------------------------------------------------------------
   // 4b. Optimistic credit debit (antes do LLM para evitar race condition)
   // Estima input tokens com o conteúdo REAL (system + summary + history)
@@ -735,28 +752,35 @@ export async function runSingleV2(
     maxOutputTokens: MAX_OUTPUT_TOKENS,
 
     // Barreira estrutural contra tool-call loops — idêntico a tool-agent.ts:166-191.
+    // Barra duas classes após 1 execução bem-sucedida no turno:
+    // - mutações idempotentes (não devem repetir);
+    // - tools de busca (QUERY_TOOL_NAMES): evita o loop de search_knowledge/
+    //   list_availability/search_products chamados N vezes seguidas.
     prepareStep: async ({ steps }) => {
       if (!tools) return {}
 
-      const executedIdempotent = new Set<string>()
+      const executedOnce = new Set<string>()
       for (const step of steps) {
         for (const toolResult of step.toolResults ?? []) {
           const toolName = toolResult.toolName
-          if (!IDEMPOTENT_TOOL_NAMES.includes(toolName as never)) continue
+          const isBarrable =
+            IDEMPOTENT_TOOL_NAMES.includes(toolName as never) ||
+            QUERY_TOOL_NAMES.has(toolName)
+          if (!isBarrable) continue
 
           const output = toolResult.output as unknown
           const didSucceed =
             typeof output !== 'object' ||
             output === null ||
             (output as Record<string, unknown>).success !== false
-          if (didSucceed) executedIdempotent.add(toolName)
+          if (didSucceed) executedOnce.add(toolName)
         }
       }
 
-      if (executedIdempotent.size === 0) return {}
+      if (executedOnce.size === 0) return {}
 
       const activeTools = Object.keys(tools).filter(
-        (name) => !executedIdempotent.has(name),
+        (name) => !executedOnce.has(name),
       ) as Array<keyof typeof tools>
 
       return { activeTools }
