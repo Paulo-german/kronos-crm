@@ -34,6 +34,7 @@ import { TemplateMessageDialog } from './template-message-dialog'
 import { ConversationWindowBanner } from './conversation-window-banner'
 import { InstagramWindowBanner } from './instagram-window-banner'
 import { AgentTypingIndicator } from './agent-typing-indicator'
+import { SimulatorDebugSheet } from './simulator-debug-sheet'
 import type { MessageDto, TimelineItem } from './chat-types'
 import type { AgentStatusPayload } from '@/_lib/inbox/agent-status-types'
 
@@ -49,6 +50,8 @@ interface ChatViewProps {
   onStatusChange?: (conversationId: string, status: 'OPEN' | 'RESOLVED') => void
   onBack?: () => void
   onSimulatorEnded?: () => void
+  /** Reinicia a simulação selecionando a conversa nova que a action recria. */
+  onSimulatorReset?: (conversation: ConversationListDto) => void
   /** Função de lookup do Map de status do agente — injetada pelo InboxClient */
   getAgentStatus?: (conversationId: string) => AgentStatusPayload | null
 }
@@ -65,10 +68,12 @@ export function ChatView({
   onStatusChange,
   onBack,
   onSimulatorEnded,
+  onSimulatorReset,
   getAgentStatus,
 }: ChatViewProps) {
   const [text, setText] = useState('')
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [debugOpen, setDebugOpen] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [mediaPreviewUrl, setMediaPreviewUrl] = useState<string | null>(null)
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false)
@@ -424,7 +429,17 @@ export function ChatView({
             isSimulator
               ? () =>
                   mutations.resetSimulator.mutate(conversation.id, {
-                    onSuccess: () => toast.success('Simulação reiniciada.'),
+                    onSuccess: (result) => {
+                      // A action recria a conversa com novo ID — seleciona ela,
+                      // senão a UI fica presa na conversa que acabou de ser deletada.
+                      const newConversation = result?.data?.conversation
+                      if (!newConversation) {
+                        toast.error('Erro ao reiniciar simulação.')
+                        return
+                      }
+                      toast.success('Simulação reiniciada.')
+                      onSimulatorReset?.(newConversation)
+                    },
                     onError: () => toast.error('Erro ao reiniciar simulação.'),
                   })
               : undefined
@@ -445,6 +460,7 @@ export function ChatView({
             mutations.resetSimulator.isPending ||
             mutations.endSimulator.isPending
           }
+          onOpenDebug={isSimulator ? () => setDebugOpen(true) : undefined}
         />
         <ChatBanners
           connectionError={connectionError}
@@ -556,6 +572,14 @@ export function ChatView({
             mutations.toggleLabel.mutate({ conversationId: id, labelId })
           }
         />
+
+        {isSimulator && (
+          <SimulatorDebugSheet
+            conversationId={conversation.id}
+            open={debugOpen}
+            onOpenChange={setDebugOpen}
+          />
+        )}
       </div>
     </TooltipProvider>
   )

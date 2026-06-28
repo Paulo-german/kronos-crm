@@ -5,7 +5,10 @@ import { useSearchParams } from 'next/navigation'
 import { MessageSquare, WifiOff } from 'lucide-react'
 import { cn } from '@/_lib/utils'
 import type { MemberRole } from '@prisma/client'
-import type { ConversationListDto, ConversationLabelDto } from '@/_data-access/conversation/get-conversations'
+import type {
+  ConversationListDto,
+  ConversationLabelDto,
+} from '@/_data-access/conversation/get-conversations'
 import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
 import type { ContactOptionDto } from '@/_data-access/contact/get-contacts-options'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
@@ -42,7 +45,19 @@ interface InboxClientProps {
   agents: AgentDto[]
 }
 
-export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug, orgId, members, userRole, currentUserId, availableLabels, isSuperAdmin, agents }: InboxClientProps) {
+export function InboxClient({
+  inboxOptions,
+  dealOptions,
+  contactOptions,
+  orgSlug,
+  orgId,
+  members,
+  userRole,
+  currentUserId,
+  availableLabels,
+  isSuperAdmin,
+  agents,
+}: InboxClientProps) {
   const elevated = isElevated(userRole)
   const searchParams = useSearchParams()
 
@@ -51,7 +66,8 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
   const [selectedInboxId, setSelectedInboxId] = useState<string | null>(null)
   const [filter, setFilter] = useState<FilterTab>('all')
   const [search, setSearch] = useState('')
-  const [selectedConversation, setSelectedConversation] = useState<ConversationListDto | null>(null)
+  const [selectedConversation, setSelectedConversation] =
+    useState<ConversationListDto | null>(null)
   const [statusFilter, setStatusFilter] = useState<'OPEN' | 'RESOLVED'>('OPEN')
   const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([])
   const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>([])
@@ -96,8 +112,14 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
   const markAsReadMutate = mutations.markAsRead.mutate
 
   // Ao mudar status, remover da lista se não bate com o filtro ativo (ex: resolver no filtro de abertas)
-  const handleStatusChange = (conversationId: string, newStatus: 'OPEN' | 'RESOLVED') => {
-    const statusMutation = newStatus === 'RESOLVED' ? mutations.resolveConversation : mutations.reopenConversation
+  const handleStatusChange = (
+    conversationId: string,
+    newStatus: 'OPEN' | 'RESOLVED',
+  ) => {
+    const statusMutation =
+      newStatus === 'RESOLVED'
+        ? mutations.resolveConversation
+        : mutations.reopenConversation
     statusMutation.mutate(conversationId)
     if (newStatus === statusFilter) return
     setSelectedConversation(null)
@@ -124,14 +146,24 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
     // O objeto persiste mesmo após a conversa sair da lista filtrada (ex: marcada como lida
     // enquanto no filtro "não lidas"), evitando fechar o ChatView involuntariamente
     if (selectedConversation) return
-  }, [conversations, isLoading, deepLinkConversationId, deepLinkConversation, deepLinkContact, selectedConversation, markAsReadMutate])
+  }, [
+    conversations,
+    isLoading,
+    deepLinkConversationId,
+    deepLinkConversation,
+    deepLinkContact,
+    selectedConversation,
+    markAsReadMutate,
+  ])
 
   // Sincroniza selectedConversation com a lista viva a cada polling cycle.
   // Guard por referência de objeto (Object.is): TanStack Query retorna novo objeto quando
   // qualquer campo muda — incluindo labels, que não alteram updatedAt na conversa.
   useEffect(() => {
     if (!selectedConversation) return
-    const live = conversations.find((conv) => conv.id === selectedConversation.id)
+    const live = conversations.find(
+      (conv) => conv.id === selectedConversation.id,
+    )
     if (!live || Object.is(live, selectedConversation)) return
     setSelectedConversation(live)
   }, [conversations, selectedConversation])
@@ -155,7 +187,17 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
   }
 
   // Se terminou de carregar e não tem conversas (sem filtros ativos) e não é deep link de contato
-  if (!isLoading && conversations.length === 0 && !search && filter === 'all' && !selectedInboxId && !deepLinkContact && statusFilter === 'OPEN' && selectedLabelIds.length === 0 && selectedAssigneeIds.length === 0) {
+  if (
+    !isLoading &&
+    conversations.length === 0 &&
+    !search &&
+    filter === 'all' &&
+    !selectedInboxId &&
+    !deepLinkContact &&
+    statusFilter === 'OPEN' &&
+    selectedLabelIds.length === 0 &&
+    selectedAssigneeIds.length === 0
+  ) {
     return <EmptyInbox orgSlug={orgSlug} />
   }
 
@@ -168,104 +210,120 @@ export function InboxClient({ inboxOptions, dealOptions, contactOptions, orgSlug
         </div>
       )}
       <div className="flex min-h-0 flex-1 border-t border-border/50">
-      {/* Sidebar */}
-      <div data-tour="inbox-list" className={cn(
-        'w-full md:w-96 md:shrink-0',
-        selectedId && 'hidden md:block',
-      )}>
-        <ConversationList
-          conversations={conversations}
-          selectedId={selectedId}
-          onSelect={handleSelect}
-          inboxOptions={inboxOptions}
-          selectedInboxId={selectedInboxId}
-          onInboxSelect={setSelectedInboxId}
-          search={search}
-          onSearchChange={setSearch}
-          filter={filter}
-          onFilterChange={setFilter}
-          totalCount={totalCount}
-          totalUnread={totalUnread}
-          totalUnanswered={totalUnanswered}
-          isLoading={isLoading}
-          isLoadingMore={isLoadingMore}
-          hasMore={hasMore}
-          sentinelRef={sentinelRef}
-          orgSlug={orgSlug}
-          onToggleRead={(id) => mutations.toggleReadStatus.mutate(id)}
-          isElevated={elevated}
-          statusFilter={statusFilter}
-          onStatusFilterChange={setStatusFilter}
-          selectedLabelIds={selectedLabelIds}
-          onLabelIdsChange={setSelectedLabelIds}
-          availableLabels={availableLabels}
-          selectedAssigneeIds={selectedAssigneeIds}
-          onAssigneeIdsChange={setSelectedAssigneeIds}
-          currentUserId={currentUserId}
-          onResolve={(id) => mutations.resolveConversation.mutate(id)}
-          onReopen={(id) => mutations.reopenConversation.mutate(id)}
-          onToggleLabel={(conversationId, labelId) => mutations.toggleLabel.mutate({ conversationId, labelId })}
-          onAssign={(conversationId, assignedTo) => mutations.assignConversation.mutate({ conversationId, assignedTo })}
-          members={members}
-          isSuperAdmin={isSuperAdmin}
-          agents={agents}
-          onSimulatorConversationCreated={handleConversationCreated}
-          onNewConversationCreated={handleConversationCreated}
-          isConversationActive={isConversationActive}
-        />
-      </div>
-
-      {/* Chat panel */}
-      <div data-tour="inbox-chat" className={cn(
-        'flex-1 flex-col',
-        selectedId ? 'flex' : 'hidden md:flex',
-      )}>
-        {selectedConversation ? (
-          <ChatView
-            key={selectedConversation.id}
-            conversation={selectedConversation}
-            dealOptions={dealOptions}
-            contactOptions={contactOptions}
-            orgSlug={orgSlug}
-            members={members}
-            isElevated={elevated}
-            availableLabels={availableLabels}
-            onToggleAiPause={(id, aiPaused) => mutations.toggleAiPause.mutate({ conversationId: id, aiPaused })}
-            onStatusChange={handleStatusChange}
-            onBack={() => setSelectedConversation(null)}
-            onSimulatorEnded={() => setSelectedConversation(null)}
-            getAgentStatus={getStatus}
-          />
-        ) : deepLinkContact && !selectedConversation ? (
-          <StartConversationPanel
-            contact={deepLinkContact}
+        {/* Sidebar */}
+        <div
+          data-tour="inbox-list"
+          className={cn(
+            'w-full md:w-96 md:shrink-0',
+            selectedId && 'hidden md:block',
+          )}
+        >
+          <ConversationList
+            conversations={conversations}
+            selectedId={selectedId}
+            onSelect={handleSelect}
             inboxOptions={inboxOptions}
+            selectedInboxId={selectedInboxId}
+            onInboxSelect={setSelectedInboxId}
+            search={search}
+            onSearchChange={setSearch}
+            filter={filter}
+            onFilterChange={setFilter}
+            totalCount={totalCount}
+            totalUnread={totalUnread}
+            totalUnanswered={totalUnanswered}
+            isLoading={isLoading}
+            isLoadingMore={isLoadingMore}
+            hasMore={hasMore}
+            sentinelRef={sentinelRef}
             orgSlug={orgSlug}
-            onConversationCreated={handleConversationCreated}
+            onToggleRead={(id) => mutations.toggleReadStatus.mutate(id)}
+            isElevated={elevated}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+            selectedLabelIds={selectedLabelIds}
+            onLabelIdsChange={setSelectedLabelIds}
+            availableLabels={availableLabels}
+            selectedAssigneeIds={selectedAssigneeIds}
+            onAssigneeIdsChange={setSelectedAssigneeIds}
+            currentUserId={currentUserId}
+            onResolve={(id) => mutations.resolveConversation.mutate(id)}
+            onReopen={(id) => mutations.reopenConversation.mutate(id)}
+            onToggleLabel={(conversationId, labelId) =>
+              mutations.toggleLabel.mutate({ conversationId, labelId })
+            }
+            onAssign={(conversationId, assignedTo) =>
+              mutations.assignConversation.mutate({
+                conversationId,
+                assignedTo,
+              })
+            }
+            members={members}
+            isSuperAdmin={isSuperAdmin}
+            agents={agents}
+            onSimulatorConversationCreated={handleConversationCreated}
+            onNewConversationCreated={handleConversationCreated}
+            isConversationActive={isConversationActive}
           />
-        ) : (
-          <div className="flex h-full flex-col items-center justify-center gap-4 p-6">
-            <div className="relative">
-              <div className="absolute inset-0 animate-pulse rounded-full bg-primary/10 blur-xl" />
-              <div className="relative flex size-16 items-center justify-center rounded-full bg-gradient-to-br from-primary/80 to-primary/50 shadow-md shadow-primary/15">
-                <MessageSquare className="size-8 text-white" />
+        </div>
+
+        {/* Chat panel */}
+        <div
+          data-tour="inbox-chat"
+          className={cn(
+            'flex-1 flex-col',
+            selectedId ? 'flex' : 'hidden md:flex',
+          )}
+        >
+          {selectedConversation ? (
+            <ChatView
+              key={selectedConversation.id}
+              conversation={selectedConversation}
+              dealOptions={dealOptions}
+              contactOptions={contactOptions}
+              orgSlug={orgSlug}
+              members={members}
+              isElevated={elevated}
+              availableLabels={availableLabels}
+              onToggleAiPause={(id, aiPaused) =>
+                mutations.toggleAiPause.mutate({ conversationId: id, aiPaused })
+              }
+              onStatusChange={handleStatusChange}
+              onBack={() => setSelectedConversation(null)}
+              onSimulatorEnded={() => setSelectedConversation(null)}
+              onSimulatorReset={handleConversationCreated}
+              getAgentStatus={getStatus}
+            />
+          ) : deepLinkContact && !selectedConversation ? (
+            <StartConversationPanel
+              contact={deepLinkContact}
+              inboxOptions={inboxOptions}
+              orgSlug={orgSlug}
+              onConversationCreated={handleConversationCreated}
+            />
+          ) : (
+            <div className="flex h-full flex-col items-center justify-center gap-4 p-6">
+              <div className="relative">
+                <div className="absolute inset-0 animate-pulse rounded-full bg-primary/10 blur-xl" />
+                <div className="relative flex size-16 items-center justify-center rounded-full bg-gradient-to-br from-primary/80 to-primary/50 shadow-md shadow-primary/15">
+                  <MessageSquare className="size-8 text-white" />
+                </div>
+              </div>
+              <div className="max-w-sm space-y-1 text-center">
+                <h3 className="text-base font-semibold tracking-tight">
+                  {!isLoading && conversations.length === 0
+                    ? 'Nenhuma conversa encontrada'
+                    : 'Selecione uma conversa'}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {!isLoading && conversations.length === 0
+                    ? 'Nenhuma conversa corresponde aos filtros aplicados.'
+                    : 'Escolha uma conversa na lista ao lado para visualizar as mensagens e interagir.'}
+                </p>
               </div>
             </div>
-            <div className="max-w-sm space-y-1 text-center">
-              <h3 className="text-base font-semibold tracking-tight">
-                {!isLoading && conversations.length === 0
-                  ? 'Nenhuma conversa encontrada'
-                  : 'Selecione uma conversa'}
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                {!isLoading && conversations.length === 0
-                  ? 'Nenhuma conversa corresponde aos filtros aplicados.'
-                  : 'Escolha uma conversa na lista ao lado para visualizar as mensagens e interagir.'}
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
       </div>
 
       <PageTourTrigger tourId="inbox" steps={INBOX_TOUR_STEPS} />

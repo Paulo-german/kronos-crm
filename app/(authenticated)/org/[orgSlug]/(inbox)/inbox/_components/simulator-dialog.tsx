@@ -27,7 +27,13 @@ import {
   TooltipTrigger,
 } from '@/_components/ui/tooltip'
 import { Label } from '@/_components/ui/label'
+import { Input } from '@/_components/ui/input'
+import { LIFECYCLE_STAGE_CONFIG } from '@/_lib/lifecycle/lifecycle-stage-config'
 import { createSimulatorConversation } from '@/_actions/inbox/create-simulator-conversation'
+import {
+  SIMULATOR_SEEDABLE_STAGES,
+  type CreateSimulatorConversationInput,
+} from '@/_actions/inbox/create-simulator-conversation/schema'
 import type { ConversationListDto } from '@/_data-access/conversation/get-conversations'
 
 interface AgentOption {
@@ -41,11 +47,31 @@ interface SimulatorDialogProps {
   onConversationCreated: (conversation: ConversationListDto) => void
 }
 
-export function SimulatorDialog({ agents, onConversationCreated }: SimulatorDialogProps) {
+type SeedableStage = (typeof SIMULATOR_SEEDABLE_STAGES)[number]
+
+const DEFAULT_STAGE: SeedableStage = 'LEAD'
+
+export function SimulatorDialog({
+  agents,
+  onConversationCreated,
+}: SimulatorDialogProps) {
   const [open, setOpen] = useState(false)
   const [selectedAgentId, setSelectedAgentId] = useState<string>('')
+  const [lifecycleStage, setLifecycleStage] =
+    useState<SeedableStage>(DEFAULT_STAGE)
+  const [personaName, setPersonaName] = useState('')
+  const [personaEmail, setPersonaEmail] = useState('')
+  const [personaRole, setPersonaRole] = useState('')
 
   const activeAgents = agents.filter((agent) => agent.isActive)
+
+  const resetForm = () => {
+    setSelectedAgentId('')
+    setLifecycleStage(DEFAULT_STAGE)
+    setPersonaName('')
+    setPersonaEmail('')
+    setPersonaRole('')
+  }
 
   const { execute, isPending } = useAction(createSimulatorConversation, {
     onSuccess: (result) => {
@@ -56,7 +82,7 @@ export function SimulatorDialog({ agents, onConversationCreated }: SimulatorDial
       }
       toast.success('Simulação iniciada.')
       setOpen(false)
-      setSelectedAgentId('')
+      resetForm()
       onConversationCreated(conversation)
     },
     onError: (error) => {
@@ -70,12 +96,31 @@ export function SimulatorDialog({ agents, onConversationCreated }: SimulatorDial
       toast.error('Selecione um agente para simular.')
       return
     }
-    execute({ agentId: selectedAgentId })
+
+    // Só envia persona quando algum campo foi preenchido — senão o contato usa o default.
+    const hasPersona = !!(
+      personaName.trim() ||
+      personaEmail.trim() ||
+      personaRole.trim()
+    )
+    const persona: CreateSimulatorConversationInput['persona'] = hasPersona
+      ? {
+          name: personaName.trim() || undefined,
+          email: personaEmail.trim() || undefined,
+          role: personaRole.trim() || undefined,
+        }
+      : undefined
+
+    execute({
+      agentId: selectedAgentId,
+      initialLifecycleStage: lifecycleStage,
+      persona,
+    })
   }
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
-      setSelectedAgentId('')
+      resetForm()
     }
     setOpen(nextOpen)
   }
@@ -106,11 +151,13 @@ export function SimulatorDialog({ agents, onConversationCreated }: SimulatorDial
             Testar Agente no Inbox
           </DialogTitle>
           <DialogDescription>
-            Selecione um agente para iniciar uma conversa simulada. As mensagens não são enviadas via WhatsApp — o pipeline completo da IA é executado normalmente.
+            Selecione um agente para iniciar uma conversa simulada. As mensagens
+            não são enviadas via WhatsApp — o pipeline completo da IA é
+            executado normalmente.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3 py-2">
+        <div className="space-y-4 py-2">
           <div className="space-y-2">
             <Label htmlFor="agent-select">Agente</Label>
             <Select
@@ -137,8 +184,64 @@ export function SimulatorDialog({ agents, onConversationCreated }: SimulatorDial
             </Select>
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="lifecycle-select">
+              Ponto de partida (lifecycle)
+            </Label>
+            <Select
+              value={lifecycleStage}
+              onValueChange={(value) =>
+                setLifecycleStage(value as SeedableStage)
+              }
+              disabled={isPending}
+            >
+              <SelectTrigger id="lifecycle-select">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SIMULATOR_SEEDABLE_STAGES.map((stage) => (
+                  <SelectItem key={stage} value={stage}>
+                    {LIFECYCLE_STAGE_CONFIG[stage].label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Semeia o contato neste estágio do funil para testar o agente no
+              meio do fluxo. Reiniciar a simulação volta o contato para Lead.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-muted-foreground">Persona (opcional)</Label>
+            <div className="grid gap-2">
+              <Input
+                placeholder="Nome do contato"
+                value={personaName}
+                onChange={(event) => setPersonaName(event.target.value)}
+                disabled={isPending}
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  type="email"
+                  placeholder="E-mail"
+                  value={personaEmail}
+                  onChange={(event) => setPersonaEmail(event.target.value)}
+                  disabled={isPending}
+                />
+                <Input
+                  placeholder="Cargo"
+                  value={personaRole}
+                  onChange={(event) => setPersonaRole(event.target.value)}
+                  disabled={isPending}
+                />
+              </div>
+            </div>
+          </div>
+
           <p className="text-xs text-muted-foreground">
-            A conversa anterior com este agente (se existir) será descartada e uma nova sessão será iniciada.
+            A conversa anterior com este agente (se existir) será descartada e
+            uma nova sessão será iniciada.
           </p>
         </div>
 

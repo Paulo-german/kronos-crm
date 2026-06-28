@@ -1,10 +1,12 @@
 'use server'
 
 import { revalidateTag } from 'next/cache'
+import { LifecycleCauseType, LifecycleStage, Prisma } from '@prisma/client'
 import { orgActionClient } from '@/_lib/safe-action'
 import { db } from '@/_lib/prisma'
 import { canPerformAction, requirePermission, isElevated } from '@/_lib/rbac'
 import { getConversationAsDto } from '@/_data-access/conversation/get-conversations'
+import { advanceContactLifecycle } from '@/_lib/lifecycle/advance-contact-lifecycle'
 import {
   SIMULATOR_CONTACT_PHONE,
   SIMULATOR_DEAL_TITLE,
@@ -15,6 +17,9 @@ import {
   resetSimulatorContactState,
 } from '../_lib/simulator-contact'
 import { createSimulatorConversationSchema } from './schema'
+
+// Nome padrão do contato simulado quando nenhuma persona é informada.
+const DEFAULT_SIMULATOR_CONTACT_NAME = 'Você (Simulador)'
 
 export const createSimulatorConversation = orgActionClient
   .schema(createSimulatorConversationSchema)
@@ -95,22 +100,49 @@ export const createSimulatorConversation = orgActionClient
 
     const inboxId = inbox.id
 
-    // 5. Buscar ou criar contato virtual para esta org
+    // 5. Buscar ou criar contato virtual para esta org, aplicando a persona (MVP: campos
+    // nativos). Sem persona, o contato volta ao default — torna o contato determinístico por run.
+    const personaName =
+      data.persona?.name?.trim() || DEFAULT_SIMULATOR_CONTACT_NAME
+    const personaEmail = data.persona?.email?.trim() || null
+    const personaRole = data.persona?.role?.trim() || null
+
     let contact = await db.contact.findFirst({
       where: { organizationId: ctx.orgId, phone: SIMULATOR_CONTACT_PHONE },
       select: { id: true },
     })
 
-    if (!contact) {
-      contact = await db.contact.create({
-        data: {
-          organizationId: ctx.orgId,
-          name: 'Você (Simulador)',
-          phone: SIMULATOR_CONTACT_PHONE,
-          assignedTo: ctx.userId,
-        },
-        select: { id: true },
-      })
+    // Contact tem @@unique([organizationId, email]); um e-mail de persona que já exista em
+    // outro contato da org dispara P2002 — traduzimos para mensagem amigável.
+    try {
+      if (contact) {
+        await db.contact.update({
+          where: { id: contact.id },
+          data: { name: personaName, email: personaEmail, role: personaRole },
+        })
+      } else {
+        contact = await db.contact.create({
+          data: {
+            organizationId: ctx.orgId,
+            name: personaName,
+            email: personaEmail,
+            role: personaRole,
+            phone: SIMULATOR_CONTACT_PHONE,
+            assignedTo: ctx.userId,
+          },
+          select: { id: true },
+        })
+      }
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new Error(
+          'Já existe um contato com este e-mail nesta organização.',
+        )
+      }
+      throw error
     }
 
     const contactId = contact.id
@@ -124,19 +156,29 @@ export const createSimulatorConversation = orgActionClient
     })
 
     if (existing) {
-      await db.conversation.delete({ where: { id: existing.id } })
-      if (existing.dealId) {
-        await db.deal.delete({ where: { id: existing.dealId } })
-      }
+      // Transação: conversa e deal somem juntos ou nada some — evita deal órfão.
+      await db.$transaction([
+        db.conversation.delete({ where: { id: existing.id } }),
+        ...(existing.dealId
+          ? [db.deal.delete({ where: { id: existing.dealId } })]
+          : []),
+      ])
     }
 
     // 6b. Resetar todo o estado de lifecycle do contato (reutilizado entre
     // simulações) para que triggers de lifecycle voltem a disparar do zero.
     await resetSimulatorContactState(contactId, ctx.orgId)
 
+    // Stage inicial semeado (default LEAD). Quando semeamos >= OPPORTUNITY, o lifecycle não vai
+    // re-disparar (é monotônico e o contato já estará no stage), então PRECISAMOS criar o deal
+    // aqui — senão a simulação ficaria em OPPORTUNITY sem negociação vinculada.
+    const seededStage = data.initialLifecycleStage ?? 'LEAD'
+    const seedAtOrPastOpportunity =
+      seededStage === 'OPPORTUNITY' || seededStage === 'CUSTOMER'
+    const shouldCreateDeal =
+      !!firstStage && (seedAtOrPastOpportunity || !lifecycleCreatesDeal)
+
     // 7. Criar conversa + deal em transação atômica.
-    // Deal só é criado com pipeline configurado E quando o agente NÃO cria o
-    // deal via lifecycle (nesse caso o deal nasce ao chegar em OPPORTUNITY).
     const created = await db.$transaction(async (tx) => {
       const newConversation = await tx.conversation.create({
         data: {
@@ -151,7 +193,7 @@ export const createSimulatorConversation = orgActionClient
         select: { id: true },
       })
 
-      if (!firstStage || lifecycleCreatesDeal) {
+      if (!shouldCreateDeal) {
         return {
           conversationId: newConversation.id,
           dealId: null as string | null,
@@ -178,6 +220,20 @@ export const createSimulatorConversation = orgActionClient
 
       return { conversationId: newConversation.id, dealId: newDeal.id }
     })
+
+    // 7b. Semear o lifecycle no ponto de partida escolhido. advanceContactLifecycle é monotônico
+    // (do LEAD pós-reset só avança), seta timestamps/customerStatus, grava ContactLifecycleHistory
+    // e recalcula health score — reuso direto, sem reimplementar a transição.
+    if (seededStage !== 'LEAD') {
+      await advanceContactLifecycle({
+        contactId,
+        organizationId: ctx.orgId,
+        toStage: seededStage as LifecycleStage,
+        causeType: LifecycleCauseType.MANUAL,
+        causeRefId: created.conversationId,
+        changedByUserId: ctx.userId,
+      })
+    }
 
     // 8. Invalidar caches relevantes (inbox + CRM, já que o deal aparece em queries filtradas)
     revalidateTag(`conversations:${ctx.orgId}`)

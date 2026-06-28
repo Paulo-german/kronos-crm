@@ -80,13 +80,19 @@ export const resetSimulatorConversation = orgActionClient
     )
 
     // Delete conversa atual (cascade em messages + events) e deal (FK Restrict — explícito).
-    await db.conversation.delete({ where: { id: conversation.id } })
-    if (conversation.dealId) {
-      await db.deal.delete({ where: { id: conversation.dealId } })
-    }
+    // Transação: conversa e deal somem juntos ou nada some — evita deal órfão se quebrar no meio.
+    await db.$transaction([
+      db.conversation.delete({ where: { id: conversation.id } }),
+      ...(conversation.dealId
+        ? [db.deal.delete({ where: { id: conversation.dealId } })]
+        : []),
+    ])
 
     // Resetar todo o estado de lifecycle do contato para que triggers voltem a
     // disparar do zero na nova simulação.
+    // NOTA: por decisão de produto, "Reiniciar" SEMPRE volta o contato a LEAD — o
+    // cenário (lifecycle inicial) escolhido no dialog NÃO é re-semeado aqui. A persona
+    // (name/email/role), porém, é preservada (não tocamos no contato além do reset de estado).
     await resetSimulatorContactState(contactId, ctx.orgId)
 
     // Recria conversa. Deal só é criado com pipeline configurado E quando o
@@ -132,6 +138,8 @@ export const resetSimulatorConversation = orgActionClient
 
     revalidateTag(`conversations:${ctx.orgId}`)
     revalidateTag(`conversation-messages:${conversation.id}`)
+    // Reset zera o estado do contato (lifecycle/score) — invalida o cache de contatos.
+    revalidateTag(`contacts:${ctx.orgId}`)
     revalidateTag(`deals:${ctx.orgId}`)
     revalidateTag(`deals-options:${ctx.orgId}`)
     revalidateTag(`pipeline:${ctx.orgId}`)

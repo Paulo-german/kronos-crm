@@ -15,6 +15,7 @@ import {
   Trash2,
   UserCog,
   Users,
+  Wrench,
 } from 'lucide-react'
 import type { ConversationWindowState } from '../_hooks/use-conversation-window'
 import { cn } from '@/_lib/utils'
@@ -68,6 +69,7 @@ interface ChatHeaderProps {
   isSimulator?: boolean
   onResetSimulator?: () => void
   onEndSimulator?: () => void
+  onOpenDebug?: () => void
   isSimulatorActionPending?: boolean
 }
 
@@ -92,6 +94,7 @@ export function ChatHeader({
   isSimulator,
   onResetSimulator,
   onEndSimulator,
+  onOpenDebug,
   isSimulatorActionPending,
 }: ChatHeaderProps) {
   const [endDialogOpen, setEndDialogOpen] = useState(false)
@@ -326,6 +329,25 @@ export function ChatHeader({
             <p>Detalhes da conversa</p>
           </TooltipContent>
         </Tooltip>
+
+        {/* Painel de debug — exclusivo do simulador */}
+        {isSimulator && onOpenDebug && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="hover:bg-[var(--kronos-cyan)]/20 bg-[var(--kronos-cyan)]/10 h-8 w-8 text-[var(--kronos-cyan)] hover:text-[var(--kronos-cyan)]"
+                onClick={onOpenDebug}
+              >
+                <Wrench className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <p>Debug do agente</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
 
         {/* Resolver/Reabrir só faz sentido em conversas reais — simulação usa Reiniciar/Encerrar */}
         {!isSimulator && <Separator orientation="vertical" className="h-6" />}
