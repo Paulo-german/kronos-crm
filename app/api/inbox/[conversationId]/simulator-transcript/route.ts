@@ -2,8 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { cookies } from 'next/headers'
 import { createClient } from '@/_lib/supabase/server'
 import { validateMembership } from '@/_data-access/organization/validate-membership'
-import { getSimulatorDebugTimeline } from '@/_data-access/conversation/get-simulator-debug-timeline'
-import { getSimulatorDebugExecutions } from '@/_data-access/conversation/get-simulator-debug-executions'
+import { getSimulatorTranscript } from '@/_data-access/conversation/get-simulator-transcript'
 import { ORG_SLUG_COOKIE } from '@/_lib/constants'
 import { db } from '@/_lib/prisma'
 
@@ -23,7 +22,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // 2. Guard: o painel de debug é exclusivo de super admins (como as actions do simulador).
+    // 2. Guard: export é exclusivo de super admins (como o restante do simulador).
     const dbUser = await db.user.findUnique({
       where: { id: user.id },
       select: { isSuperAdmin: true },
@@ -45,7 +44,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'No access' }, { status: 403 })
     }
 
-    // 3. Validar conversa pertence à org E é de fato simulada (404 se não for, sem vazar existência).
+    // 3. Conversa precisa ser da org E simulada (404 sem vazar existência).
     const { conversationId } = await context.params
 
     const conversation = await db.conversation.findFirst({
@@ -61,14 +60,17 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    const [entries, executions] = await Promise.all([
-      getSimulatorDebugTimeline(conversationId),
-      getSimulatorDebugExecutions(conversationId),
-    ])
+    const { markdown, filename } = await getSimulatorTranscript(conversationId)
 
-    return NextResponse.json({ entries, executions })
+    return new NextResponse(markdown, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/markdown; charset=utf-8',
+        'Content-Disposition': `attachment; filename="${filename}"`,
+      },
+    })
   } catch (error) {
-    console.error('[simulator-debug-api] Error:', error)
+    console.error('[simulator-transcript-api] Error:', error)
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 }

@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { db } from '@/_lib/prisma'
+import { redactPiiInText } from '@/_lib/pii-mask'
 import type {
   ConversationEventType,
   ConversationEventDto,
@@ -27,6 +28,22 @@ export type SimulatorDebugEntry =
 function truncate(text: string): string {
   if (text.length <= PREVIEW_MAX_LENGTH) return text
   return `${text.slice(0, PREVIEW_MAX_LENGTH)}…`
+}
+
+// Segurança: NÃO devolvemos o metadata bruto do evento (pode conter IDs internos,
+// payloads, detalhes de erro). Só liberamos as chaves seguras que a UI realmente usa.
+const SAFE_METADATA_KEYS = ['subtype'] as const
+
+function sanitizeEventMetadata(
+  metadata: unknown,
+): Record<string, unknown> | null {
+  if (!metadata || typeof metadata !== 'object') return null
+  const source = metadata as Record<string, unknown>
+  const safe: Record<string, unknown> = {}
+  for (const key of SAFE_METADATA_KEYS) {
+    if (typeof source[key] === 'string') safe[key] = source[key]
+  }
+  return Object.keys(safe).length > 0 ? safe : null
 }
 
 /**
@@ -65,8 +82,9 @@ export async function getSimulatorDebugTimeline(
     createdAt: event.createdAt.toISOString(),
     type: event.type as ConversationEventType,
     toolName: event.toolName,
-    content: event.content,
-    metadata: event.metadata as Record<string, unknown> | null,
+    // Redige PII embutida no texto descritivo do evento antes de ir ao client.
+    content: redactPiiInText(event.content) ?? event.content,
+    metadata: sanitizeEventMetadata(event.metadata),
   }))
 
   const messageEntries: SimulatorDebugEntry[] = messages.map((message) => ({

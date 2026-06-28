@@ -5,7 +5,10 @@ import type { MemberRole } from '@prisma/client'
  * Determina se PII deve ser mascarado para este usuario/org.
  * Retorna true quando: a org ativou o toggle E o usuario e MEMBER.
  */
-export function shouldMaskPii(userRole: MemberRole, hidePiiFromMembers: boolean): boolean {
+export function shouldMaskPii(
+  userRole: MemberRole,
+  hidePiiFromMembers: boolean,
+): boolean {
   if (!hidePiiFromMembers) return false
   return !isElevated(userRole)
 }
@@ -37,4 +40,24 @@ export function maskRemoteJid(jid: string | null): string | null {
   if (digits.length < 4) return '***'
   const lastFour = digits.slice(-4)
   return `(**) *****-${lastFour}`
+}
+
+/**
+ * Redige PII embutida em TEXTO LIVRE (ex.: `content` de eventos, `errorMessage`).
+ * Diferente das máscaras acima (campos de formato conhecido), varre o texto e
+ * substitui e-mails, UUIDs, tokens longos e sequências de telefone. Defense-in-depth
+ * para campos que podem inadvertidamente carregar dados sensíveis antes de ir ao client.
+ *
+ * Ordem importa: e-mail → UUID → token longo → telefone (evita rótulo errado).
+ */
+export function redactPiiInText(text: string | null): string | null {
+  if (!text) return text
+  return text
+    .replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, '[email]')
+    .replace(
+      /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi,
+      '[id]',
+    )
+    .replace(/\b[A-Za-z0-9_-]{32,}\b/g, '[token]')
+    .replace(/\b\d{10,13}\b/g, '[telefone]')
 }
