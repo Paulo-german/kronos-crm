@@ -1232,6 +1232,11 @@ export async function runSingleV1(
       outputTokens: result.usage?.outputTokens ?? 0,
       creditsCost: transferActualCost,
       finishReason: 'transfer',
+      // Caixa-branca do simulador: persiste o prompt compilado só em simulação.
+      metadata:
+        ctx.message.provider === 'simulator'
+          ? { systemPrompt: promptContext.systemPrompt }
+          : undefined,
     })
     await emitAgentStatus({
       conversationId: ctx.conversationId,
@@ -1784,6 +1789,11 @@ export async function runSingleV1(
     outputTokens: result.usage?.outputTokens ?? 0,
     creditsCost: actualCost,
     finishReason: result.finishReason,
+    // Caixa-branca do simulador: persiste o prompt compilado só em simulação.
+    metadata:
+      ctx.message.provider === 'simulator'
+        ? { systemPrompt: promptContext.systemPrompt }
+        : undefined,
   })
 
   await emitAgentStatus({
