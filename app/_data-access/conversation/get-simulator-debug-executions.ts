@@ -1,7 +1,7 @@
 import 'server-only'
 
 import { db } from '@/_lib/prisma'
-import { redactPiiInText } from '@/_lib/pii-mask'
+import { redactPiiInText, redactJson } from '@/_lib/pii-mask'
 import type {
   AgentExecutionStatus,
   AgentExecutionStepType,
@@ -17,6 +17,9 @@ export interface SimulatorDebugStep {
   status: AgentExecutionStepStatus
   toolName: string | null
   durationMs: number | null
+  // Args e resultado da tool, com PII redigida (preservando estrutura para render).
+  input: unknown
+  output: unknown
 }
 
 export interface SimulatorDebugExecution {
@@ -30,7 +33,16 @@ export interface SimulatorDebugExecution {
   creditsCost: number | null
   finishReason: string | null
   errorMessage: string | null
+  // System prompt compilado do turno (só em simulação; null em execuções antigas/produção).
+  systemPrompt: string | null
   steps: SimulatorDebugStep[]
+}
+
+// Extrai SÓ o systemPrompt do metadata (whitelist) — nunca dump cru do Json.
+function extractSystemPrompt(metadata: unknown): string | null {
+  if (!metadata || typeof metadata !== 'object') return null
+  const value = (metadata as Record<string, unknown>).systemPrompt
+  return typeof value === 'string' ? redactPiiInText(value) : null
 }
 
 /**
@@ -56,6 +68,7 @@ export async function getSimulatorDebugExecutions(
       creditsCost: true,
       finishReason: true,
       errorMessage: true,
+      metadata: true,
       steps: {
         orderBy: { order: 'asc' },
         select: {
@@ -64,6 +77,8 @@ export async function getSimulatorDebugExecutions(
           status: true,
           toolName: true,
           durationMs: true,
+          input: true,
+          output: true,
         },
       },
     },
@@ -81,6 +96,12 @@ export async function getSimulatorDebugExecutions(
     finishReason: execution.finishReason,
     // errorMessage pode carregar PII/detalhes internos — redige antes de ir ao client.
     errorMessage: redactPiiInText(execution.errorMessage),
-    steps: execution.steps,
+    systemPrompt: extractSystemPrompt(execution.metadata),
+    steps: execution.steps.map((step) => ({
+      ...step,
+      // input/output são dados de teste (SIMULATOR), mas redigimos PII por segurança.
+      input: redactJson(step.input),
+      output: redactJson(step.output),
+    })),
   }))
 }

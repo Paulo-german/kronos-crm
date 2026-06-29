@@ -7,10 +7,14 @@ import {
   AlertTriangle,
   Bot,
   CheckCircle2,
+  ChevronDown,
+  ChevronRight,
   Copy,
   Download,
+  FileText,
   Info,
   Loader2,
+  Target,
   User,
   Wrench,
   XCircle,
@@ -35,9 +39,34 @@ interface SimulatorDebugSheetProps {
   onOpenChange: (open: boolean) => void
 }
 
+interface CurrentStep {
+  order: number
+  name: string
+}
+
 interface DebugResponse {
   entries: SimulatorDebugEntry[]
   executions: SimulatorDebugExecution[]
+  currentStep: CurrentStep | null
+}
+
+// Chunk de KB recuperado pela tool search_knowledge (shape do output).
+interface KnowledgeChunk {
+  content: string
+  fileName: string
+  similarity: number
+}
+
+function extractKnowledgeChunks(output: unknown): KnowledgeChunk[] {
+  if (!output || typeof output !== 'object') return []
+  const results = (output as { results?: unknown }).results
+  if (!Array.isArray(results)) return []
+  return results.filter(
+    (item): item is KnowledgeChunk =>
+      !!item &&
+      typeof item === 'object' &&
+      typeof (item as KnowledgeChunk).content === 'string',
+  )
 }
 
 type TimelineFilter = 'all' | 'tools' | 'errors'
@@ -134,23 +163,130 @@ function ExecutionCard({ execution }: { execution: SimulatorDebugExecution }) {
       )}
 
       {execution.steps.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1">
+        <div className="mt-2 space-y-1">
           {execution.steps.map((step) => (
-            <span
-              key={`${execution.id}-${step.order}`}
-              className={cn(
-                'rounded px-1.5 py-0.5 text-[10px]',
-                step.status === 'FAILED'
-                  ? 'bg-red-500/10 text-red-500'
-                  : step.status === 'SKIPPED'
-                    ? 'bg-muted text-muted-foreground/60'
-                    : 'bg-muted text-muted-foreground',
-              )}
-            >
-              {step.toolName ?? step.type}
-              {step.durationMs != null && ` ${formatDuration(step.durationMs)}`}
-            </span>
+            <StepRow key={`${execution.id}-${step.order}`} step={step} />
           ))}
+        </div>
+      )}
+
+      {execution.systemPrompt && (
+        <SystemPromptBlock prompt={execution.systemPrompt} />
+      )}
+    </div>
+  )
+}
+
+function SystemPromptBlock({ prompt }: { prompt: string }) {
+  const [open, setOpen] = useState(false)
+  const Chevron = open ? ChevronDown : ChevronRight
+
+  return (
+    <div className="mt-2">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        className="flex items-center gap-1 text-[10px] font-medium uppercase text-muted-foreground/70 hover:text-muted-foreground"
+      >
+        <Chevron className="h-3 w-3" />
+        System prompt
+      </button>
+      {open && (
+        <pre className="mt-1 max-h-72 overflow-auto whitespace-pre-wrap break-words rounded bg-muted/50 p-1.5 text-[10px] leading-relaxed text-muted-foreground">
+          {prompt}
+        </pre>
+      )}
+    </div>
+  )
+}
+
+type DebugStep = SimulatorDebugExecution['steps'][number]
+
+function JsonBlock({ label, value }: { label: string; value: unknown }) {
+  if (value === null || value === undefined) return null
+  return (
+    <div>
+      <p className="text-[10px] font-medium uppercase text-muted-foreground/70">
+        {label}
+      </p>
+      <pre className="mt-0.5 max-h-48 overflow-auto whitespace-pre-wrap break-words rounded bg-muted/50 p-1.5 text-[10px] leading-relaxed text-muted-foreground">
+        {JSON.stringify(value, null, 2)}
+      </pre>
+    </div>
+  )
+}
+
+function KnowledgeChunks({ chunks }: { chunks: KnowledgeChunk[] }) {
+  return (
+    <div className="space-y-1">
+      <p className="text-[10px] font-medium uppercase text-muted-foreground/70">
+        Conhecimento ({chunks.length})
+      </p>
+      {chunks.map((chunk, index) => (
+        <div key={index} className="rounded bg-muted/50 p-1.5">
+          <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+            <FileText className="h-3 w-3 shrink-0" />
+            <span className="truncate">{chunk.fileName}</span>
+            <span className="ml-auto shrink-0 text-muted-foreground/60">
+              {Math.round(chunk.similarity * 100)}%
+            </span>
+          </div>
+          <p className="mt-0.5 line-clamp-3 break-words text-[10px] text-muted-foreground/80">
+            {chunk.content}
+          </p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function StepRow({ step }: { step: DebugStep }) {
+  const [open, setOpen] = useState(false)
+  const hasDetail = step.input != null || step.output != null
+  const knowledgeChunks =
+    step.toolName === 'search_knowledge'
+      ? extractKnowledgeChunks(step.output)
+      : []
+  const Chevron = open ? ChevronDown : ChevronRight
+
+  return (
+    <div className="rounded bg-muted/40">
+      <button
+        type="button"
+        disabled={!hasDetail}
+        onClick={() => setOpen((value) => !value)}
+        className={cn(
+          'flex w-full items-center gap-1 px-1.5 py-1 text-left text-[10px]',
+          step.status === 'FAILED'
+            ? 'text-red-500'
+            : step.status === 'SKIPPED'
+              ? 'text-muted-foreground/60'
+              : 'text-muted-foreground',
+          hasDetail && 'hover:bg-muted',
+        )}
+      >
+        {hasDetail ? (
+          <Chevron className="h-3 w-3 shrink-0" />
+        ) : (
+          <span className="w-3 shrink-0" />
+        )}
+        <span className="font-medium">{step.toolName ?? step.type}</span>
+        {step.durationMs != null && (
+          <span className="text-muted-foreground/50">
+            {formatDuration(step.durationMs)}
+          </span>
+        )}
+      </button>
+
+      {open && hasDetail && (
+        <div className="space-y-1.5 px-1.5 pb-1.5">
+          {knowledgeChunks.length > 0 && (
+            <KnowledgeChunks chunks={knowledgeChunks} />
+          )}
+          <JsonBlock label="input" value={step.input} />
+          {knowledgeChunks.length === 0 && (
+            <JsonBlock label="output" value={step.output} />
+          )}
         </div>
       )}
     </div>
@@ -280,6 +416,7 @@ export function SimulatorDebugSheet({
 
   const entries = data?.entries ?? []
   const executions = data?.executions ?? []
+  const currentStep = data?.currentStep ?? null
   const filteredEntries = entries.filter((entry) =>
     matchesFilter(entry, filter),
   )
@@ -380,6 +517,16 @@ export function SimulatorDebugSheet({
         </SheetHeader>
 
         <ScrollArea className="flex-1">
+          {currentStep && (
+            <div className="flex items-center gap-1.5 border-b border-border/40 px-4 py-2 text-xs">
+              <Target className="h-3.5 w-3.5 shrink-0 text-kronos-purple" />
+              <span className="text-muted-foreground">Etapa atual:</span>
+              <span className="font-medium">
+                {currentStep.order} — {currentStep.name}
+              </span>
+            </div>
+          )}
+
           {failedExecution && (
             <div className="flex gap-2 border-b border-red-500/20 bg-red-500/10 px-4 py-2.5 text-xs text-red-500">
               <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />

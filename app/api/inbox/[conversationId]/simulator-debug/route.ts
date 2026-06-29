@@ -54,19 +54,37 @@ export async function GET(_request: NextRequest, context: RouteContext) {
         organizationId: membership.orgId,
         inbox: { connectionType: 'SIMULATOR' },
       },
-      select: { id: true },
+      select: {
+        id: true,
+        currentStepOrder: true,
+        inbox: {
+          select: {
+            agent: {
+              select: { steps: { select: { order: true, name: true } } },
+            },
+          },
+        },
+      },
     })
 
     if (!conversation) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
+    // Etapa atual do processo do agente (best-effort: omite se não resolver).
+    const activeStep = conversation.inbox.agent?.steps.find(
+      (step) => step.order === conversation.currentStepOrder,
+    )
+    const currentStep = activeStep
+      ? { order: activeStep.order, name: activeStep.name }
+      : null
+
     const [entries, executions] = await Promise.all([
       getSimulatorDebugTimeline(conversationId),
       getSimulatorDebugExecutions(conversationId),
     ])
 
-    return NextResponse.json({ entries, executions })
+    return NextResponse.json({ entries, executions, currentStep })
   } catch (error) {
     console.error('[simulator-debug-api] Error:', error)
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })

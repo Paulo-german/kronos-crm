@@ -61,3 +61,44 @@ export function redactPiiInText(text: string | null): string | null {
     .replace(/\b[A-Za-z0-9_-]{32,}\b/g, '[token]')
     .replace(/\b\d{10,13}\b/g, '[telefone]')
 }
+
+// Limites para evitar payload gigante ao redigir JSON arbitrário (input/output de tools).
+const REDACT_JSON_MAX_DEPTH = 6
+const REDACT_JSON_MAX_STRING = 2000
+
+/**
+ * Redige PII em um valor JSON ARBITRÁRIO (objeto/array/primitivo), preservando a
+ * estrutura — aplica `redactPiiInText` em cada folha string, passa números/bool/null
+ * e recursa em objetos/arrays. Trunca strings longas e limita profundidade para não
+ * vazar payloads enormes. Usado em input/output de steps antes de ir ao client.
+ */
+export function redactJson(value: unknown, depth = 0): unknown {
+  if (value === null || value === undefined) return value
+  if (typeof value === 'number' || typeof value === 'boolean') return value
+
+  if (typeof value === 'string') {
+    const truncated =
+      value.length > REDACT_JSON_MAX_STRING
+        ? `${value.slice(0, REDACT_JSON_MAX_STRING)}…`
+        : value
+    return redactPiiInText(truncated)
+  }
+
+  if (depth >= REDACT_JSON_MAX_DEPTH) return '[…]'
+
+  if (Array.isArray(value)) {
+    return value.map((item) => redactJson(item, depth + 1))
+  }
+
+  if (typeof value === 'object') {
+    const result: Record<string, unknown> = {}
+    for (const [key, item] of Object.entries(
+      value as Record<string, unknown>,
+    )) {
+      result[key] = redactJson(item, depth + 1)
+    }
+    return result
+  }
+
+  return undefined
+}
