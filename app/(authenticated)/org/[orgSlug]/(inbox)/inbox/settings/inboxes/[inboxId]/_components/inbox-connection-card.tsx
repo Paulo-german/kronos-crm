@@ -70,6 +70,10 @@ const InboxConnectionCard = ({
   const [connectionState, setConnectionState] = useState<ConnectionState>(
     hasInstance ? 'checking' : 'disconnected',
   )
+  // Espelho do estado atual para ler dentro de callbacks de action sem depender de
+  // closures defasadas (ex.: decidir o destino quando a verificação de status falha).
+  const connectionStateRef = useRef(connectionState)
+  connectionStateRef.current = connectionState
 
   const [qrBase64, setQrBase64] = useState<string | null>(null)
   const [qrCode, setQrCode] = useState<string | null>(null)
@@ -130,8 +134,18 @@ const InboxConnectionCard = ({
       if (data.pairingCode) setPairingCode(data.pairingCode)
     },
     onError: ({ error }) => {
-      toast.error(error.serverError || 'Não foi possível verificar o status da conexão.')
-      setConnectionState((prev) => (prev === 'checking' ? 'connecting' : prev))
+      // Só avisa quando o usuário está ativamente conectando (fluxo de QR). Em
+      // verificação automática (checking) ou já desconectado, a falha significa
+      // instância fora do ar — estado ESPERADO numa self-hosted: cair para
+      // "desconectado" em silêncio, sem entrar em loop de polling em "conectando".
+      if (connectionStateRef.current === 'connecting') {
+        toast.error(
+          error.serverError ||
+            'Não foi possível verificar o status da conexão.',
+        )
+        return
+      }
+      setConnectionState('disconnected')
     },
   })
 
@@ -183,15 +197,14 @@ const InboxConnectionCard = ({
       setQrCode(null)
       setPairingCode(null)
       setIsQrExpired(true)
-      toast.error('QR Code expirou. Clique em "Gerar novo QR Code" para tentar novamente.')
+      toast.error(
+        'QR Code expirou. Clique em "Gerar novo QR Code" para tentar novamente.',
+      )
     }, QR_TIMEOUT)
   }, [inboxId, executeGetQR, stopPolling])
 
   useEffect(() => {
-    if (
-      connectionState === 'checking' ||
-      connectionState === 'connecting'
-    ) {
+    if (connectionState === 'checking' || connectionState === 'connecting') {
       startPolling()
     }
 
@@ -219,7 +232,9 @@ const InboxConnectionCard = ({
                 />
               </div>
               <div>
-                <CardTitle className="text-base font-semibold">WhatsApp</CardTitle>
+                <CardTitle className="text-base font-semibold">
+                  WhatsApp
+                </CardTitle>
                 <CardDescription>Conecte escaneando o QR Code</CardDescription>
               </div>
             </div>
@@ -273,7 +288,9 @@ const InboxConnectionCard = ({
                 />
               </div>
               <div>
-                <CardTitle className="text-base font-semibold">WhatsApp</CardTitle>
+                <CardTitle className="text-base font-semibold">
+                  WhatsApp
+                </CardTitle>
                 <CardDescription>Verificando conexão...</CardDescription>
               </div>
             </div>
@@ -312,8 +329,12 @@ const InboxConnectionCard = ({
               />
             </div>
             <div>
-              <CardTitle className="text-base font-semibold">WhatsApp</CardTitle>
-              <CardDescription>Escaneie o QR Code para conectar</CardDescription>
+              <CardTitle className="text-base font-semibold">
+                WhatsApp
+              </CardTitle>
+              <CardDescription>
+                Escaneie o QR Code para conectar
+              </CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -329,8 +350,8 @@ const InboxConnectionCard = ({
                 </p>
               </div>
               <p className="max-w-xs text-center text-xs text-muted-foreground">
-                No WhatsApp → Configurações → Dispositivos conectados →
-                Conectar com número de telefone → insira o código acima.
+                No WhatsApp → Configurações → Dispositivos conectados → Conectar
+                com número de telefone → insira o código acima.
               </p>
             </div>
           ) : (
@@ -382,7 +403,9 @@ const InboxConnectionCard = ({
                     <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
                       {step}
                     </span>
-                    <span className="text-sm text-muted-foreground">{text}</span>
+                    <span className="text-sm text-muted-foreground">
+                      {text}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -430,7 +453,9 @@ const InboxConnectionCard = ({
                 />
               </div>
               <div>
-                <CardTitle className="text-base font-semibold">WhatsApp</CardTitle>
+                <CardTitle className="text-base font-semibold">
+                  WhatsApp
+                </CardTitle>
                 <CardDescription>Gerenciado pela Kronos</CardDescription>
               </div>
             </div>

@@ -14,6 +14,14 @@ function buildHeaders(apiKey: string) {
   }
 }
 
+// Timeout curto para as LEITURAS DE STATUS da Evolution (estado da conexão e info
+// da instância) — usadas tanto no render de páginas quanto no guard de envio.
+// A instância pode ser self-hosted na VPS do cliente e cair a qualquer momento;
+// sem isto o fetch herda o default do undici (~10s) e segura quem chama: no render
+// derruba a tela, no envio pendura a request. Falhar rápido faz a UI cair em
+// "desconectado" e o envio abortar logo, em vez de travar.
+const STATUS_FETCH_TIMEOUT_MS = 4000
+
 const PRODUCTION_URL = 'https://app.kronoshub.com.br'
 
 /**
@@ -177,6 +185,7 @@ export async function getEvolutionConnectionState(
     {
       method: 'GET',
       headers: buildHeaders(apiKey),
+      signal: AbortSignal.timeout(STATUS_FETCH_TIMEOUT_MS),
     },
   )
 
@@ -256,29 +265,42 @@ export async function getEvolutionInstanceInfo(
 ): Promise<EvolutionInstanceInfo | null> {
   const { apiUrl, apiKey } = credentials
 
-  const response = await fetch(
-    `${apiUrl}/instance/fetchInstances?instanceName=${encodeURIComponent(instanceName)}`,
-    {
-      method: 'GET',
-      headers: buildHeaders(apiKey),
-    },
-  )
+  try {
+    const response = await fetch(
+      `${apiUrl}/instance/fetchInstances?instanceName=${encodeURIComponent(instanceName)}`,
+      {
+        method: 'GET',
+        headers: buildHeaders(apiKey),
+        signal: AbortSignal.timeout(STATUS_FETCH_TIMEOUT_MS),
+      },
+    )
 
-  if (!response.ok) return null
+    if (!response.ok) return null
 
-  const data = await response.json()
-  // A resposta pode ser um array ou objeto único
-  const instance = Array.isArray(data) ? data[0] : data
+    const data = await response.json()
+    // A resposta pode ser um array ou objeto único
+    const instance = Array.isArray(data) ? data[0] : data
 
-  if (!instance) return null
+    if (!instance) return null
 
-  return {
-    ownerJid: instance.instance?.owner ?? instance.owner ?? null,
-    profileName: instance.instance?.profileName ?? instance.profileName ?? null,
-    profilePictureUrl:
-      instance.instance?.profilePictureUrl ??
-      instance.profilePictureUrl ??
-      null,
+    return {
+      ownerJid: instance.instance?.owner ?? instance.owner ?? null,
+      profileName:
+        instance.instance?.profileName ?? instance.profileName ?? null,
+      profilePictureUrl:
+        instance.instance?.profilePictureUrl ??
+        instance.profilePictureUrl ??
+        null,
+    }
+  } catch (error) {
+    // Instância inacessível (fora do ar, timeout, DNS) é estado ESPERADO numa
+    // instância self-hosted — tratar como desconectado e NUNCA propagar, senão
+    // derruba a página de detalhe (agente/inbox) que faz esta leitura no render.
+    console.warn('[evolution] getEvolutionInstanceInfo unreachable:', {
+      instanceName,
+      error: error instanceof Error ? error.message : String(error),
+    })
+    return null
   }
 }
 
