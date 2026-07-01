@@ -15,7 +15,6 @@ import {
   Loader2,
   Phone,
   Save,
-  Tag,
   Unlink,
   User,
   UserCog,
@@ -57,12 +56,10 @@ import {
 } from '@/_components/ui/sheet'
 import { updateContact } from '@/_actions/contact/update-contact'
 import { updateConversation } from '@/_actions/inbox/update-conversation'
-import type { ConversationListDto, ConversationLabelDto } from '@/_data-access/conversation/get-conversations'
+import type { ConversationListDto } from '@/_data-access/conversation/get-conversations'
 import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
 import type { ContactOptionDto } from '@/_data-access/contact/get-contacts-options'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
-import { getLabelColor } from '@/_lib/constants/label-colors'
-import { Checkbox } from '@/_components/ui/checkbox'
 import { inboxKeys } from '../_lib/inbox-query-keys'
 
 interface ChatSettingsSheetProps {
@@ -74,8 +71,6 @@ interface ChatSettingsSheetProps {
   orgSlug: string
   members: AcceptedMemberDto[]
   isElevated: boolean
-  availableLabels: ConversationLabelDto[]
-  onToggleLabel?: (conversationId: string, labelId: string) => void
 }
 
 function getMemberInitials(name: string | null): string {
@@ -97,8 +92,6 @@ export function ChatSettingsSheet({
   orgSlug,
   members,
   isElevated,
-  availableLabels,
-  onToggleLabel,
 }: ChatSettingsSheetProps) {
   // Inline name edit
   const [editName, setEditName] = useState(conversation.contactName)
@@ -168,7 +161,9 @@ export function ChatSettingsSheet({
     })
   }
 
-  const [pendingTransferName, setPendingTransferName] = useState<string | null>(null)
+  const [pendingTransferName, setPendingTransferName] = useState<string | null>(
+    null,
+  )
 
   const transferAction = useAction(updateConversation, {
     onSuccess: () => {
@@ -186,10 +181,6 @@ export function ChatSettingsSheet({
     },
   })
 
-  const handleToggleLabel = (labelId: string) => {
-    onToggleLabel?.(conversation.id, labelId)
-  }
-
   const handleTransferAssignee = (assignedTo: string) => {
     const targetMember = members.find((member) => member.userId === assignedTo)
     const targetName = targetMember?.user?.fullName ?? null
@@ -197,7 +188,8 @@ export function ChatSettingsSheet({
     transferAction.execute({ conversationId: conversation.id, assignedTo })
   }
 
-  const channelLabel = conversation.channel === 'WHATSAPP' ? 'WhatsApp' : 'Web Chat'
+  const channelLabel =
+    conversation.channel === 'WHATSAPP' ? 'WhatsApp' : 'Web Chat'
 
   const connectionTypeLabels: Record<string, string> = {
     EVOLUTION: 'Evolution (QR Code)',
@@ -232,7 +224,10 @@ export function ChatSettingsSheet({
 
             {/* Nome editável */}
             <div className="space-y-2">
-              <Label htmlFor="contact-name" className="text-xs text-muted-foreground">
+              <Label
+                htmlFor="contact-name"
+                className="text-xs text-muted-foreground"
+              >
                 Nome
               </Label>
               <div className="flex gap-2">
@@ -268,7 +263,9 @@ export function ChatSettingsSheet({
             {/* Telefone (read-only) */}
             {conversation.contactPhone && (
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Telefone</Label>
+                <Label className="text-xs text-muted-foreground">
+                  Telefone
+                </Label>
                 <div className="flex items-center gap-2 text-sm">
                   <Phone className="h-3.5 w-3.5 text-muted-foreground" />
                   {conversation.contactPhone}
@@ -277,7 +274,12 @@ export function ChatSettingsSheet({
             )}
 
             {/* Link para contato */}
-            <Button variant="link" size="sm" className="h-auto p-0 text-xs" asChild>
+            <Button
+              variant="link"
+              size="sm"
+              className="h-auto p-0 text-xs"
+              asChild
+            >
               <Link href={`/org/${orgSlug}/contacts/${conversation.contactId}`}>
                 Ver contato
                 <ExternalLink className="ml-1 h-3 w-3" />
@@ -286,8 +288,13 @@ export function ChatSettingsSheet({
 
             {/* Trocar contato */}
             <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">Trocar contato</Label>
-              <Popover open={contactPopoverOpen} onOpenChange={setContactPopoverOpen}>
+              <Label className="text-xs text-muted-foreground">
+                Trocar contato
+              </Label>
+              <Popover
+                open={contactPopoverOpen}
+                onOpenChange={setContactPopoverOpen}
+              >
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
@@ -300,7 +307,10 @@ export function ChatSettingsSheet({
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                <PopoverContent
+                  className="w-[--radix-popover-trigger-width] p-0"
+                  align="start"
+                >
                   <Command>
                     <CommandInput placeholder="Buscar contato..." />
                     <CommandList>
@@ -354,8 +364,15 @@ export function ChatSettingsSheet({
                   {conversation.dealTitle}
                 </Badge>
                 <div className="flex items-center gap-1">
-                  <Button variant="link" size="sm" className="h-auto p-0 text-xs" asChild>
-                    <Link href={`/org/${orgSlug}/crm/deals/${conversation.dealId}`}>
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="h-auto p-0 text-xs"
+                    asChild
+                  >
+                    <Link
+                      href={`/org/${orgSlug}/crm/deals/${conversation.dealId}`}
+                    >
                       Ver negociação
                       <ExternalLink className="ml-1 h-3 w-3" />
                     </Link>
@@ -377,7 +394,9 @@ export function ChatSettingsSheet({
             {/* Combobox deal */}
             <div className="space-y-2">
               <Label className="text-xs text-muted-foreground">
-                {conversation.dealId ? 'Trocar negociação' : 'Vincular negociação'}
+                {conversation.dealId
+                  ? 'Trocar negociação'
+                  : 'Vincular negociação'}
               </Label>
               <Popover open={dealPopoverOpen} onOpenChange={setDealPopoverOpen}>
                 <PopoverTrigger asChild>
@@ -392,11 +411,16 @@ export function ChatSettingsSheet({
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                <PopoverContent
+                  className="w-[--radix-popover-trigger-width] p-0"
+                  align="start"
+                >
                   <Command>
                     <CommandInput placeholder="Buscar negociação..." />
                     <CommandList>
-                      <CommandEmpty>Nenhuma negociação encontrada.</CommandEmpty>
+                      <CommandEmpty>
+                        Nenhuma negociação encontrada.
+                      </CommandEmpty>
                       <CommandGroup>
                         {dealOptions.map((deal) => (
                           <CommandItem
@@ -444,7 +468,9 @@ export function ChatSettingsSheet({
               {conversation.assigneeName ? (
                 <>
                   <Avatar className="h-7 w-7">
-                    <AvatarImage src={conversation.assigneeAvatarUrl ?? undefined} />
+                    <AvatarImage
+                      src={conversation.assigneeAvatarUrl ?? undefined}
+                    />
                     <AvatarFallback className="bg-primary/10 text-[10px] font-medium text-primary">
                       {getMemberInitials(conversation.assigneeName)}
                     </AvatarFallback>
@@ -452,7 +478,9 @@ export function ChatSettingsSheet({
                   <span className="text-sm">{conversation.assigneeName}</span>
                 </>
               ) : (
-                <span className="text-sm text-muted-foreground">Sem responsável</span>
+                <span className="text-sm text-muted-foreground">
+                  Sem responsável
+                </span>
               )}
             </div>
 
@@ -473,7 +501,9 @@ export function ChatSettingsSheet({
                   <SelectContent>
                     {members.map((member) => {
                       const displayName = member.user?.fullName ?? member.email
-                      const initials = getMemberInitials(member.user?.fullName ?? null)
+                      const initials = getMemberInitials(
+                        member.user?.fullName ?? null,
+                      )
 
                       return (
                         <SelectItem
@@ -483,7 +513,9 @@ export function ChatSettingsSheet({
                         >
                           <div className="flex items-center gap-2">
                             <Avatar className="h-5 w-5 shrink-0">
-                              <AvatarImage src={member.user?.avatarUrl ?? undefined} />
+                              <AvatarImage
+                                src={member.user?.avatarUrl ?? undefined}
+                              />
                               <AvatarFallback className="bg-primary/10 text-[9px] font-medium text-primary">
                                 {initials}
                               </AvatarFallback>
@@ -507,51 +539,6 @@ export function ChatSettingsSheet({
 
           <Separator />
 
-          {/* Seção 4 - Etiquetas */}
-          {availableLabels.length > 0 && (
-            <section className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Tag className="h-4 w-4 text-muted-foreground" />
-                <h3 className="text-sm font-semibold">Etiquetas</h3>
-                <span className="text-xs text-muted-foreground">
-                  {conversation.labels.length}/5
-                </span>
-              </div>
-
-              <div className="space-y-0.5">
-                {availableLabels.map((label) => {
-                  const isAssigned = conversation.labels.some((assigned) => assigned.id === label.id)
-                  const isAtLimit = conversation.labels.length >= 5
-                  const colorConfig = getLabelColor(label.color)
-
-                  const isDisabled = isAtLimit && !isAssigned
-
-                  return (
-                    <label
-                      key={label.id}
-                      className={cn(
-                        'flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent/50',
-                        isAssigned && 'bg-accent/30',
-                        isDisabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
-                      )}
-                    >
-                      <Checkbox
-                        checked={isAssigned}
-                        onCheckedChange={() => handleToggleLabel(label.id)}
-                        disabled={isDisabled}
-                        className="h-4 w-4 shrink-0"
-                      />
-                      <span className={cn('h-2.5 w-2.5 shrink-0 rounded-full', colorConfig.dot)} />
-                      <span className="flex-1 text-left">{label.name}</span>
-                    </label>
-                  )
-                })}
-              </div>
-            </section>
-          )}
-
-          {availableLabels.length > 0 && <Separator />}
-
           {/* Seção 5 - Info */}
           <section className="space-y-4">
             <div className="flex items-center gap-2">
@@ -573,7 +560,8 @@ export function ChatSettingsSheet({
                   <span className="text-sm">{conversation.inboxName}</span>
                   {conversation.channel === 'WHATSAPP' && (
                     <p className="text-xs text-muted-foreground">
-                      {connectionTypeLabels[conversation.inboxConnectionType] ?? conversation.inboxConnectionType}
+                      {connectionTypeLabels[conversation.inboxConnectionType] ??
+                        conversation.inboxConnectionType}
                     </p>
                   )}
                 </div>
@@ -581,7 +569,9 @@ export function ChatSettingsSheet({
 
               {conversation.agentName && (
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Agente IA</span>
+                  <span className="text-xs text-muted-foreground">
+                    Agente IA
+                  </span>
                   <Badge
                     variant="outline"
                     className="gap-1 border-kronos-purple/20 bg-kronos-purple/10 text-xs text-kronos-purple"

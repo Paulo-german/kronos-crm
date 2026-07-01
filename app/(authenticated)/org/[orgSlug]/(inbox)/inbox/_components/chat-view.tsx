@@ -573,10 +573,6 @@ export function ChatView({
           orgSlug={orgSlug}
           members={members}
           isElevated={isElevated}
-          availableLabels={availableLabels}
-          onToggleLabel={(id, labelId) =>
-            mutations.toggleLabel.mutate({ conversationId: id, labelId })
-          }
         />
 
         {isSimulator && (
