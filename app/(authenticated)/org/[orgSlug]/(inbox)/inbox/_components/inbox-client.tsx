@@ -214,7 +214,7 @@ export function InboxClient({
         <div
           data-tour="inbox-list"
           className={cn(
-            'w-full md:w-96 md:shrink-0',
+            'w-full md:w-[28rem] md:shrink-0',
             selectedId && 'hidden md:block',
           )}
         >
