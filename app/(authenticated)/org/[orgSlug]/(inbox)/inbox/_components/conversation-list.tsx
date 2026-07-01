@@ -6,6 +6,7 @@ import { ptBR } from 'date-fns/locale'
 import {
   Bot,
   FlaskConical,
+  Inbox,
   Instagram,
   Loader2,
   MoreVertical,
@@ -459,6 +460,18 @@ export function ConversationList({
                         )}
 
                         <div className="mt-1.5 flex items-center gap-1.5">
+                          {/* Badge da caixa de entrada — só quando há mais de um canal, senão é ruído */}
+                          {inboxOptions && inboxOptions.length > 1 && (
+                            <Badge
+                              variant="outline"
+                              className="h-5 max-w-[100px] gap-1 border-border px-1.5 text-[10px] text-muted-foreground"
+                            >
+                              <Inbox className="h-3 w-3 shrink-0" />
+                              <span className="truncate">
+                                {conversation.inboxName}
+                              </span>
+                            </Badge>
+                          )}
                           {agentDisplayName && (
                             <Badge
                               variant="outline"
