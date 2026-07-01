@@ -21,6 +21,7 @@ import { useInboxMutations } from '../_hooks/use-inbox-mutations'
 import { inboxKeys } from '../_lib/inbox-query-keys'
 import { useAudioRecorder } from '../_hooks/use-audio-recorder'
 import { useConversationWindow } from '../_hooks/use-conversation-window'
+import { useChannelConnectionStatus } from '../_hooks/use-channel-connection-status'
 import {
   IG_CONVERSATION_WINDOW_MS,
   IG_HUMAN_AGENT_WINDOW_MS,
@@ -116,6 +117,10 @@ export function ChatView({
     conversation.lastCustomerMessageAt
       ? new Date(conversation.lastCustomerMessageAt)
       : null,
+    conversation.inboxConnectionType,
+  )
+  const { disconnected: channelDisconnected } = useChannelConnectionStatus(
+    conversation.inboxId,
     conversation.inboxConnectionType,
   )
   const isWindowClosed =
@@ -418,6 +423,7 @@ export function ChatView({
           onToggleAi={handleToggleAi}
           onOpenSettings={() => setSettingsOpen(true)}
           assigneeName={conversation.assigneeName}
+          channelDisconnected={channelDisconnected}
           onBack={onBack}
           conversationStatus={conversation.status}
           isStatusPending={false}

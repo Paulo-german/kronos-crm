@@ -15,6 +15,7 @@ import {
   Trash2,
   UserCog,
   Users,
+  WifiOff,
   Wrench,
 } from 'lucide-react'
 import type { ConversationWindowState } from '../_hooks/use-conversation-window'
@@ -60,6 +61,8 @@ interface ChatHeaderProps {
   onToggleAi: (checked: boolean) => void
   onOpenSettings: () => void
   assigneeName: string | null
+  /** Canal (inbox) desta conversa confirmado desconectado via health-check ao vivo */
+  channelDisconnected?: boolean
   onBack?: () => void
   conversationStatus: 'OPEN' | 'RESOLVED'
   isStatusPending: boolean
@@ -85,6 +88,7 @@ export function ChatHeader({
   onToggleAi,
   onOpenSettings,
   assigneeName,
+  channelDisconnected,
   onBack,
   conversationStatus,
   isStatusPending,
@@ -159,6 +163,25 @@ export function ChatHeader({
                   <FlaskConical className="h-3 w-3" />
                   Simulação
                 </Badge>
+              )}
+
+              {/* Canal desconectado — health-check ao vivo, nunca vem do banco */}
+              {channelDisconnected && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge
+                      variant="destructive"
+                      className="h-5 shrink-0 gap-1 text-[10px]"
+                    >
+                      <WifiOff className="h-3 w-3" />
+                      Canal desconectado
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">
+                    O WhatsApp desta caixa de entrada está desconectado.
+                    Reconecte em Configurações da caixa de entrada.
+                  </TooltipContent>
+                </Tooltip>
               )}
 
               {/* Menu de ações da simulação — reiniciar / encerrar */}
