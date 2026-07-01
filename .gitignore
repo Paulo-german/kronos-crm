@@ -55,3 +55,7 @@ certificates
 
 # Claude Code (local AI tooling)
 .claude/
+.claire/
+
+# engine-v1 dev harness (histórico de chat local)
+scripts/.engine-chat-history.json

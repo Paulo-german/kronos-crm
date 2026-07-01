@@ -44,3 +44,9 @@ jobs:
 
       - name: Unit test (webhook HMAC)
         run: pnpm tsx trigger/lib/__tests__/webhook-hmac.test.ts
+
+      - name: Unit test (engine-v1 ledger merge)
+        run: pnpm tsx trigger/engine-v1/ledger/__tests__/merge-attributes.test.ts
+
+      - name: Unit test (engine-v1 gate)
+        run: pnpm tsx trigger/engine-v1/gate/__tests__/decide-gate.test.ts
