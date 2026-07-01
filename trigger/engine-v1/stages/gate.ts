@@ -1,4 +1,5 @@
 import { logger } from '@trigger.dev/sdk/v3'
+import { buildQualificationBlock } from '../gate/build-qualification-block'
 import { decideGate } from '../gate/decide-gate'
 import { loadStepRequirements } from '../gate/load-requirements'
 import { parseSessionState } from '../ledger/schema'
@@ -9,7 +10,7 @@ import type { Stage } from '../types'
 // e decide onde o turno opera: HOLD na etapa (cobra o que falta) ou AVANÇA. Sem LLM.
 // O resultado alimenta o qualificationBlock (generate cobra) e a gravação (persist grava
 // currentStepOrder + reinicia currentStepEnteredAtTurn no avanço).
-export const gate: Stage = async ({ ctx, session, sessionState }) => {
+export const gate: Stage = async ({ ctx, session, sessionState, steps }) => {
   if (!session) return {}
 
   const requirements = await loadStepRequirements(ctx.effectiveAgentId)
@@ -23,13 +24,22 @@ export const gate: Stage = async ({ ctx, session, sessionState }) => {
     stepEnteredAtTurn: session.currentStepEnteredAtTurn,
   })
 
+  // Instrução de FOCO pro redator (Call 2): onde está + o que puxar agora. O funil (mapa)
+  // dá a visão geral; este bloco diz o que fazer neste turno.
+  const currentStep = steps?.find((step) => step.id === decision.nextStepId)
+  const qualificationBlock = currentStep
+    ? buildQualificationBlock(currentStep, decision.pendingRequired)
+    : null
+
   logger.info('[engine-v1 gate]', {
     conversationId: ctx.conversationId,
     from: session.currentStepId,
     to: decision.nextStepId,
     advanced: decision.advanced,
-    pendingRequired: decision.pendingRequired,
+    pendingRequired: decision.pendingRequired.map(
+      (field) => `${field.key}:${field.posture}`,
+    ),
   })
 
-  return { gate: decision }
+  return { gate: decision, qualificationBlock }
 }

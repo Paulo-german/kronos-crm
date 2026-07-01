@@ -5,6 +5,7 @@ import type { ToolContext } from '../tools/types'
 import type { GateDecision } from './gate/decide-gate'
 import type { AgentSessionState } from './ledger/schema'
 import type { CompiledPrompt } from './prompt/compile-prompt'
+import type { EngineStep } from './prompt/context'
 
 // Resultado terminal do turno — o que a task devolve (compatível com v1/v2).
 export type TurnResult = { success: true } | { skipped: true; reason: string }
@@ -37,12 +38,14 @@ export interface AgentTurnState {
   toolContext?: ToolContext // contexto que as tools recebem (org/agent/conversation/deal…)
   knowledgeBlock?: string | null // KB pré-buscada (prefetch) pro redator — reforço além da tool
   estimatedCost?: number // custo do débito otimista (load) — pro persist reconciliar
+  steps?: EngineStep[] // etapas do funil (do profile) — o gate acha a atual pra montar o foco
 
   // --- extract (1a): popula o ledger ---
   sessionState?: AgentSessionState // ledger atualizado (attributes/control) — o persist grava
 
   // --- gate (1b): decisão determinística de avanço de etapa ---
-  gate?: GateDecision // nextStepOrder + pendingRequired + advanced — generate cobra, persist grava
+  gate?: GateDecision // nextStepId + pendingRequired + advanced — generate cobra, persist grava
+  qualificationBlock?: string | null // instrução de FOCO do turno pro redator (Call 2)
 
   // --- generate: produz a resposta ---
   responseText?: string // texto final, limpo (pós stripLeakedToolCalls), pronto pro send

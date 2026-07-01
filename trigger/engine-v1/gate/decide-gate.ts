@@ -18,24 +18,59 @@ export interface GateSessionState {
   stepEnteredAtTurn: number
 }
 
+// Janela do `await`: por quantos turnos o gate respeita um adiamento antes de reconduzir.
+// W=1 = respeita SÓ o turno do adiamento; no seguinte volta a puxar (probe). Curto de
+// propósito: se o campo é required, um await longo TRAVARIA o funil pra sempre. O corte da
+// insistência (adiamento crônico → escala) é por CONTAGEM de adiamentos, não aqui (2.c).
+const AWAIT_TURN_WINDOW = 1
+
+// Postura de cobrança de um campo pendente — deriva da NATUREZA da última resposta (no
+// ledger). É o que faz o gate "conversar": adiar não é recusar. `probe` = trazer à tona /
+// puxar de volta (campo novo ou evadido); `await` = adiado há ≤1 turno, respeita e retoma na
+// brecha; `reinforce` = recusado, reforça com jeito. (O corte da recusa firme → handoff = 2.c.)
+export type Posture = 'probe' | 'await' | 'reinforce'
+
+export interface PendingField {
+  key: string
+  posture: Posture
+}
+
 export interface GateDecision {
   nextStepId: string | null // etapa onde o turno opera (persist grava); null = sem funil
-  pendingRequired: string[] // required ainda não coletados da etapa final (generate cobra)
+  pendingRequired: PendingField[] // required não coletados da etapa final (generate cobra)
   advanced: boolean // mudou de etapa neste turno (persist reinicia o contador de turno)
 }
 
 // Um campo required está SATISFEITO quando o ledger tem um valor de fato informado.
 // Na 1b: nature 'provided' + value não-vazio. Adiar/recusar/evadir NÃO satisfaz (fica
-// pendente). A camada de polaridade (POSITIVE_ONLY → desvio) e de natureza vem depois.
+// pendente com a postura correspondente). A polaridade (POSITIVE_ONLY → desvio) vem na 2.b.
 function isSatisfied(observed: Observed | undefined): boolean {
   return observed?.nature === 'provided' && observed.value.trim().length > 0
+}
+
+// Traduz a natureza da resposta em postura. O `deferred` só vira `await` DENTRO da janela
+// (senão reconduz como probe — não trava o required). Default `probe` cobre o campo ainda
+// não perguntado, o evadido e o edge provided-vazio — todos "traga à tona".
+function postureFor(
+  observed: Observed | undefined,
+  turnCount: number,
+): Posture {
+  if (observed?.nature === 'deferred') {
+    const turnsSince = turnCount - observed.observedAtTurn
+    return turnsSince < AWAIT_TURN_WINDOW ? 'await' : 'probe'
+  }
+  if (observed?.nature === 'refused') return 'reinforce'
+  return 'probe'
 }
 
 function pendingOf(
   step: StepRequirements,
   attributes: AgentSessionState['attributes'],
-): string[] {
-  return step.requiredKeys.filter((key) => !isSatisfied(attributes[key]))
+  turnCount: number,
+): PendingField[] {
+  return step.requiredKeys
+    .filter((key) => !isSatisfied(attributes[key]))
+    .map((key) => ({ key, posture: postureFor(attributes[key], turnCount) }))
 }
 
 // O GATE (Forma 1): decisão determinística de avanço — sem LLM, só `required ⊆ ledger`.
@@ -62,7 +97,7 @@ export function decideGate(
 
   const decisionAt = (
     step: StepRequirements,
-    pending: string[],
+    pending: PendingField[],
   ): GateDecision => ({
     nextStepId: step.id,
     pendingRequired: pending,
@@ -71,7 +106,7 @@ export function decideGate(
 
   for (let idx = startIdx; idx < ordered.length; idx++) {
     const step = ordered[idx]
-    const pending = pendingOf(step, attributes)
+    const pending = pendingOf(step, attributes, turnCount)
     if (pending.length > 0) return decisionAt(step, pending) // required pendente → cobra
 
     // Etapa completa. Se NÃO tem required, é etapa de aviso: precisa rodar ≥1 turno. Só a

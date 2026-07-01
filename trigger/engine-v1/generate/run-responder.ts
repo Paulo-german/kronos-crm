@@ -9,6 +9,7 @@ interface RunResponderInput {
   modelId: string
   systemPrompt: string // COM persona (Call 2)
   messages: ModelMessage[]
+  qualificationBlock: string | null // foco do turno: etapa atual + o que puxar (gate)
   knowledgeBlock: string | null // prefetch de KB (load)
   groundingBlock: string | null // dados das buscas via tool (P7)
   handedOff: boolean // transfer → despedida
@@ -26,6 +27,7 @@ export async function runResponder(
 ): Promise<{ text: string; usage: LlmUsage }> {
   const system = [
     input.systemPrompt,
+    input.qualificationBlock, // foco do turno logo após a persona
     input.knowledgeBlock,
     input.groundingBlock,
     input.handedOff ? HANDOFF_DIRECTIVE : null,

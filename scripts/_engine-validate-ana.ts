@@ -35,7 +35,6 @@ async function main() {
       openDeals: [],
       nextMeeting: null,
       summary: null,
-      currentStepId: null, // null → o compilador trata a primeira etapa como atual
     },
     nowIso: new Date().toISOString(),
   }

@@ -1,17 +1,19 @@
 /**
- * Teste de unidade do gate determinístico (engine-v1, Fase 1b.1).
+ * Teste de unidade do gate determinístico (engine-v1, Fase 1b).
  *
  * COMO RODAR:
  *   pnpm tsx trigger/engine-v1/gate/__tests__/decide-gate.test.ts
  *
  * Função pura, sem banco. Cobre `required ⊆ ledger` → hold/advance, avanço múltiplo num
  * turno, "satisfeito" (provided + value não-vazio), a etapa de aviso (sem required roda ≥1
- * turno) e o ponteiro por ID (fallback quando currentStepId é null/inexistente).
+ * turno), o ponteiro por ID (fallback quando currentStepId é null/inexistente) e a POSTURA
+ * de cobrança derivada da natureza (probe/await/reinforce — Fase 1b.2.a).
  */
 import assert from 'node:assert/strict'
 import {
   decideGate,
   type GateSessionState,
+  type PendingField,
   type StepRequirements,
 } from '../decide-gate'
 import type { AgentSessionState, Observed } from '../../ledger/schema'
@@ -44,6 +46,11 @@ function session(overrides: Partial<GateSessionState> = {}): GateSessionState {
 }
 
 type Attributes = AgentSessionState['attributes']
+
+// Atalho: pendentes com a postura default (campo novo/não perguntado → probe).
+function probe(...keys: string[]): PendingField[] {
+  return keys.map((key) => ({ key, posture: 'probe' as const }))
+}
 
 // ---------------------------------------------------------------------------
 // Harness
@@ -84,7 +91,7 @@ test('etapa atual incompleta → HOLD com os pendentes', () => {
     session({ currentStepId: 'a' }),
   )
   assert.equal(decision.nextStepId, 'a')
-  assert.deepEqual(decision.pendingRequired, ['city'])
+  assert.deepEqual(decision.pendingRequired, probe('city'))
   assert.equal(decision.advanced, false)
 })
 
@@ -100,7 +107,7 @@ test('etapa completa + próxima com pendência → AVANÇA uma', () => {
     session({ currentStepId: 'a' }),
   )
   assert.equal(decision.nextStepId, 'b')
-  assert.deepEqual(decision.pendingRequired, ['vehicle'])
+  assert.deepEqual(decision.pendingRequired, probe('vehicle'))
   assert.equal(decision.advanced, true)
 })
 
@@ -120,7 +127,7 @@ test('lead despeja tudo → pula VÁRIAS etapas até a pendência', () => {
     session({ currentStepId: 'a' }),
   )
   assert.equal(decision.nextStepId, 'c')
-  assert.deepEqual(decision.pendingRequired, ['city'])
+  assert.deepEqual(decision.pendingRequired, probe('city'))
   assert.equal(decision.advanced, true)
 })
 
@@ -155,9 +162,9 @@ test('adiar/recusar/evadir NÃO satisfaz (fica pendente)', () => {
       attributes,
       session({ currentStepId: 'a' }),
     )
-    assert.deepEqual(
-      decision.pendingRequired,
-      ['city'],
+    assert.equal(
+      decision.pendingRequired[0]?.key,
+      'city',
       `nature "${nature}" deveria ficar pendente`,
     )
   }
@@ -175,7 +182,7 @@ test('provided com value vazio NÃO satisfaz', () => {
     attributes,
     session({ currentStepId: 'a' }),
   )
-  assert.deepEqual(decision.pendingRequired, ['city'])
+  assert.deepEqual(decision.pendingRequired, probe('city'))
 })
 
 test('já na última etapa com pendência → HOLD, não avança', () => {
@@ -190,7 +197,7 @@ test('já na última etapa com pendência → HOLD, não avança', () => {
     session({ currentStepId: 'b' }),
   )
   assert.equal(decision.nextStepId, 'b')
-  assert.deepEqual(decision.pendingRequired, ['vehicle'])
+  assert.deepEqual(decision.pendingRequired, probe('vehicle'))
   assert.equal(decision.advanced, false)
 })
 
@@ -218,7 +225,91 @@ test('múltiplos required numa etapa → pendentes só os que faltam, em ordem',
     attributes,
     session({ currentStepId: 'a' }),
   )
-  assert.deepEqual(decision.pendingRequired, ['version', 'usage'])
+  assert.deepEqual(decision.pendingRequired, probe('version', 'usage'))
+})
+
+// ---------------------------------------------------------------------------
+// Cenários — postura por natureza (1b.2.a)
+// ---------------------------------------------------------------------------
+
+test('postura: adiado → await, recusado → reinforce, evadido/novo → probe', () => {
+  const steps: StepRequirements[] = [
+    { id: 'a', order: 0, requiredKeys: ['city', 'usage', 'budget', 'name'] },
+  ]
+  const attributes: Attributes = {
+    city: obs({ nature: 'deferred', value: 'depois' }),
+    usage: obs({ nature: 'refused', value: 'não quero' }),
+    budget: obs({ nature: 'evasive', value: '' }),
+    // `name` não observado → também probe.
+  }
+  const decision = decideGate(
+    steps,
+    attributes,
+    session({ currentStepId: 'a' }),
+  )
+  assert.deepEqual(decision.pendingRequired, [
+    { key: 'city', posture: 'await' },
+    { key: 'usage', posture: 'reinforce' },
+    { key: 'budget', posture: 'probe' },
+    { key: 'name', posture: 'probe' },
+  ])
+})
+
+test('postura NÃO afeta avanço — adiado/recusado seguem sendo pendência', () => {
+  const steps: StepRequirements[] = [
+    { id: 'a', order: 0, requiredKeys: ['city'] },
+    { id: 'b', order: 1, requiredKeys: ['vehicle'] },
+  ]
+  const attributes: Attributes = {
+    city: obs({ nature: 'deferred', value: 'depois' }),
+  }
+  const decision = decideGate(
+    steps,
+    attributes,
+    session({ currentStepId: 'a' }),
+  )
+  // segura na etapa 'a' (não avança), mas com postura await pra city
+  assert.equal(decision.nextStepId, 'a')
+  assert.deepEqual(decision.pendingRequired, [
+    { key: 'city', posture: 'await' },
+  ])
+  assert.equal(decision.advanced, false)
+})
+
+test('await DENTRO da janela (adiado neste turno) → await', () => {
+  const steps: StepRequirements[] = [
+    { id: 'a', order: 0, requiredKeys: ['city'] },
+  ]
+  // adiou no turno 3; ainda é turno 3 → turnsSince 0 < W(1) → respeita.
+  const attributes: Attributes = {
+    city: obs({ nature: 'deferred', value: 'depois', observedAtTurn: 3 }),
+  }
+  const decision = decideGate(
+    steps,
+    attributes,
+    session({ currentStepId: 'a', turnCount: 3, stepEnteredAtTurn: 0 }),
+  )
+  assert.deepEqual(decision.pendingRequired, [
+    { key: 'city', posture: 'await' },
+  ])
+})
+
+test('await VENCE após 1 turno — adiado no passado reconduz (probe), não trava o required', () => {
+  const steps: StepRequirements[] = [
+    { id: 'a', order: 0, requiredKeys: ['city'] },
+  ]
+  // adiou no turno 2; agora é turno 3 → turnsSince 1 ≥ W(1) → volta a puxar.
+  const attributes: Attributes = {
+    city: obs({ nature: 'deferred', value: 'depois', observedAtTurn: 2 }),
+  }
+  const decision = decideGate(
+    steps,
+    attributes,
+    session({ currentStepId: 'a', turnCount: 3, stepEnteredAtTurn: 0 }),
+  )
+  assert.deepEqual(decision.pendingRequired, [
+    { key: 'city', posture: 'probe' },
+  ])
 })
 
 // ---------------------------------------------------------------------------
@@ -253,7 +344,7 @@ test('etapa de aviso de partida JÁ-visitada → avança', () => {
     session({ currentStepId: 'a', turnCount: 1, stepEnteredAtTurn: 0 }),
   )
   assert.equal(decision.nextStepId, 'b')
-  assert.deepEqual(decision.pendingRequired, ['vehicle'])
+  assert.deepEqual(decision.pendingRequired, probe('vehicle'))
   assert.equal(decision.advanced, true)
 })
 
@@ -301,7 +392,7 @@ test('currentStepId null (sessão nova) → resolve pra primeira etapa', () => {
   ]
   const decision = decideGate(steps, {}, session({ currentStepId: null }))
   assert.equal(decision.nextStepId, 'a')
-  assert.deepEqual(decision.pendingRequired, ['name'])
+  assert.deepEqual(decision.pendingRequired, probe('name'))
 })
 
 test('currentStepId inexistente (etapa deletada) → fallback pra primeira, ledger reconstrói', () => {
@@ -318,7 +409,7 @@ test('currentStepId inexistente (etapa deletada) → fallback pra primeira, ledg
   )
   // re-resolve do início, pula 'a' (satisfeita) e para em 'c' — sem tropeçar no buraco.
   assert.equal(decision.nextStepId, 'c')
-  assert.deepEqual(decision.pendingRequired, ['city'])
+  assert.deepEqual(decision.pendingRequired, probe('city'))
 })
 
 // ---------------------------------------------------------------------------

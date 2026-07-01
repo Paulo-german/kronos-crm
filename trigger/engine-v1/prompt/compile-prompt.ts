@@ -171,30 +171,24 @@ function buildGuardrailsSection(ctx: EngineContext): string {
   return lines.join('\n')
 }
 
-// --- Processo de atendimento (funil) ---
+// --- Processo de atendimento (MAPA do funil) ---
+// Só a visão geral das etapas. Deliberadamente NÃO diz "conduza na ordem" nem marca a etapa
+// atual — quem diz onde o agente está e o que puxar agora é o qualificationBlock (montado
+// pelo gate, injetado no Call 2). Aqui é só o contexto de cada etapa.
 function buildFunnelSection(ctx: EngineContext): string | null {
   const { steps } = ctx.profile
   if (steps.length === 0) return null
 
-  // `steps` já vem ordenado por `order`; null (sessão nova) → a primeira etapa é a atual.
-  const currentStepId = ctx.conversation.currentStepId ?? steps[0]?.id
   const lines: string[] = [
     '## Processo de atendimento',
     '',
-    'Conduza a conversa pelas etapas, na ordem, de forma natural:',
+    'Mapa das etapas (visão geral). A etapa em que você está agora e o que ela precisa vêm na seção "Foco agora".',
   ]
 
   for (const step of steps) {
-    const isCurrent = step.id === currentStepId
     lines.push('')
-    lines.push(
-      `### ${step.order + 1}. ${step.name}${isCurrent ? ' (etapa atual)' : ''}`,
-    )
+    lines.push(`### ${step.order + 1}. ${step.name}`)
     lines.push(step.goal)
-
-    if (step.keyQuestion) {
-      lines.push(`Pergunta-chave: "${step.keyQuestion}"`)
-    }
 
     const actionLines = compileStepActions(step.actions)
     if (actionLines.length > 0) {
@@ -203,14 +197,6 @@ function buildFunnelSection(ctx: EngineContext): string | null {
 
     if (step.guidanceNote) {
       lines.push(`Observação: ${step.guidanceNote}`)
-    }
-
-    // Few-shot de estilo — só na etapa atual (economia de tokens + contextual)
-    if (isCurrent && step.messageExamples.length > 0) {
-      lines.push(
-        'Exemplos de mensagens nesta etapa (use como referência de tom e abordagem; adapte ao contexto, não copie literalmente):',
-      )
-      lines.push(...step.messageExamples.map((example) => `- "${example}"`))
     }
   }
 

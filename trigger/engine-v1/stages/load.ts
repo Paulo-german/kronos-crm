@@ -46,10 +46,7 @@ export const load: Stage = async ({ ctx }) => {
   const context: EngineContext = {
     profile,
     capabilities,
-    conversation: {
-      ...conversationBase,
-      currentStepId: session.currentStepId,
-    },
+    conversation: conversationBase,
     nowIso: now.toISOString(),
   }
 
@@ -102,5 +99,6 @@ export const load: Stage = async ({ ctx }) => {
     toolContext,
     knowledgeBlock,
     estimatedCost,
+    steps: profile.steps,
   }
 }

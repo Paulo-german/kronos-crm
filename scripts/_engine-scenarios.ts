@@ -83,7 +83,6 @@ async function main() {
       openDeals: [],
       nextMeeting: null,
       summary: null,
-      currentStepId: null,
     },
     nowIso: new Date().toISOString(),
   }

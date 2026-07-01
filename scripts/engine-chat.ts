@@ -91,12 +91,13 @@ async function main() {
     loadCapabilities(agent.id, ORG_ID),
   ])
 
-  // --step=N (order) → resolve o id da etapa; sem arg → null (compilador usa a primeira).
-  const currentStepId =
+  // --step=N (order) → só pro rótulo do log; o funil compilado virou MAPA (não depende da
+  // etapa atual — o foco por etapa é do gate, que este harness não roda).
+  const stepLabel =
     stepOrder === null
-      ? null
-      : (profile.steps.find((step) => step.order === stepOrder)?.id ?? null)
-  const stepLabel = currentStepId ?? 'início'
+      ? 'início'
+      : (profile.steps.find((step) => step.order === stepOrder)?.name ??
+        'início')
 
   const ctx: EngineContext = {
     profile,
@@ -108,7 +109,6 @@ async function main() {
       openDeals: [],
       nextMeeting: null,
       summary: null,
-      currentStepId,
     },
     nowIso: new Date().toISOString(),
   }

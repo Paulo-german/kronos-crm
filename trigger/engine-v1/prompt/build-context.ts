@@ -111,7 +111,7 @@ export async function loadCapabilities(
 export async function loadConversationState(
   conversationId: string,
   now: Date,
-): Promise<Omit<ConversationState, 'currentStepId'>> {
+): Promise<ConversationState> {
   const conversation = await db.conversation.findUniqueOrThrow({
     where: { id: conversationId },
     select: {

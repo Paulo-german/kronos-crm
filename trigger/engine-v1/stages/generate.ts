@@ -6,7 +6,14 @@ import type { LlmUsage, Stage } from '../types'
 // Gera a resposta do agente em 2 chamadas: Call 1 (buscar — executa ferramentas de
 // leitura/handoff, texto descartado) e Call 2 (escrever — texto puro).
 export const generate: Stage = async (state) => {
-  const { modelId, prompt, messages, tools, knowledgeBlock } = state
+  const {
+    modelId,
+    prompt,
+    messages,
+    tools,
+    knowledgeBlock,
+    qualificationBlock,
+  } = state
   if (!modelId || !prompt || !messages || !tools) {
     // O load garante estes campos; se chegou aqui sem eles, é bug de pipeline.
     throw new Error('generate: estado incompleto — load precisa rodar antes.')
@@ -31,6 +38,8 @@ export const generate: Stage = async (state) => {
     modelId,
     systemPrompt: prompt.systemPrompt,
     messages,
+    // Se transferiu, a despedida manda — não cobra o pendente neste turno.
+    qualificationBlock: handedOff ? null : (qualificationBlock ?? null),
     knowledgeBlock: knowledgeBlock ?? null,
     groundingBlock,
     handedOff,
