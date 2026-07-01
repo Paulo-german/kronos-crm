@@ -14,9 +14,12 @@ export const createAgent = orgActionClient
   .action(async ({ parsedInput: data, ctx }) => {
     requirePermission(canPerformAction(ctx, 'agent', 'create'))
 
-    // Durante o rollout controlado, single-v2 só é selecionável por superadmins.
-    // Gate visual bloqueia no UI; este check fecha o loop contra client forjado.
-    if (data.agentVersion === 'single-v2') {
+    // Durante o rollout controlado, single-v2 e engine-v1 só são selecionáveis por
+    // superadmins. Gate visual bloqueia no UI; este check fecha o loop contra client forjado.
+    if (
+      data.agentVersion === 'single-v2' ||
+      data.agentVersion === 'engine-v1'
+    ) {
       const user = await getUserById(ctx.userId)
       if (!user?.isSuperAdmin) {
         throw new Error('Versão indisponível.')
@@ -39,5 +42,10 @@ export const createAgent = orgActionClient
 
     const quota = await checkPlanQuota(ctx.orgId, 'agent')
 
-    return { success: true, agentId: agent.id, current: quota.current, limit: quota.limit }
+    return {
+      success: true,
+      agentId: agent.id,
+      current: quota.current,
+      limit: quota.limit,
+    }
   })

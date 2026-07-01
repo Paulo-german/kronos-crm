@@ -16,7 +16,12 @@ import { EXPORT_VERSION, type ImportAgentInput } from '../import-agent/schema'
 const stepActionsSchema = z.array(stepActionSchema)
 const autoTasksSchema = z.array(autoTaskItemSchema)
 
-const AGENT_VERSIONS = ['single-v1', 'single-v2', 'crew-v1'] as const
+const AGENT_VERSIONS = [
+  'single-v1',
+  'single-v2',
+  'crew-v1',
+  'engine-v1',
+] as const
 const AGENT_MODES = ['PRODUCT', 'SERVICE', 'HYBRID'] as const
 const EXHAUSTED_ACTIONS = ['NONE', 'NOTIFY_HUMAN', 'MOVE_DEAL_STAGE'] as const
 

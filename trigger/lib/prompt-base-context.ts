@@ -64,7 +64,9 @@ const dealContextSchema = z.object({
   appointments: z.array(dealAppointmentSchema),
 })
 
-const autoTaskSchema = z.array(z.object({ title: z.string(), dueInDays: z.number().int().positive() }))
+const autoTaskSchema = z.array(
+  z.object({ title: z.string(), dueInDays: z.number().int().positive() }),
+)
 
 // Mantido 1:1 com o schema existente em app/_actions/agent/shared/step-action-schema.ts
 const agentStepSchema = z.object({
@@ -110,7 +112,7 @@ export const promptBaseContextSchema = z.object({
   // Identidade do agente
   agentId: z.string().uuid(),
   agentName: z.string(),
-  agentVersion: z.enum(['single-v1', 'single-v2', 'crew-v1']),
+  agentVersion: z.enum(['single-v1', 'single-v2', 'crew-v1', 'engine-v1']),
   modelId: z.string(),
 
   // Persona configurada
@@ -326,19 +328,26 @@ export async function buildPromptBaseContext(
     return parsed.success ? parsed.data : []
   })
 
-  const baseEffectiveTools = [...new Set(allStepActions.map((action) => action.type))]
+  const baseEffectiveTools = [
+    ...new Set(allStepActions.map((action) => action.type)),
+  ]
 
   // update_event não é type de action — é ativado via allowReschedule no create_event
   const hasReschedulableEvent = allStepActions.some(
     (action) => action.type === 'create_event' && action.allowReschedule,
   )
-  const schedulingTools: string[] = hasReschedulableEvent ? ['update_event'] : []
+  const schedulingTools: string[] = hasReschedulableEvent
+    ? ['update_event']
+    : []
 
   // search_knowledge é implícita — injetada automaticamente quando há KB ativa
-  const knowledgeTools: string[] = completedFileCount > 0 ? ['search_knowledge'] : []
+  const knowledgeTools: string[] =
+    completedFileCount > 0 ? ['search_knowledge'] : []
 
-  const productSearchTools: string[] = activeProductCount > 0 ? ['search_products'] : []
-  const productMediaTools: string[] = activeProductMediaCount > 0 ? ['send_product_media'] : []
+  const productSearchTools: string[] =
+    activeProductCount > 0 ? ['search_products'] : []
+  const productMediaTools: string[] =
+    activeProductMediaCount > 0 ? ['send_product_media'] : []
   const mediaUrlTools: string[] = ['send_media']
 
   const toolsEnabled = [
@@ -400,7 +409,10 @@ export async function buildPromptBaseContext(
           productName: dealProduct.product.name,
           quantity: dealProduct.quantity,
           unitPrice: dealProduct.unitPrice.toString(),
-          discountType: dealProduct.discountType as 'percentage' | 'fixed' | null,
+          discountType: dealProduct.discountType as
+            | 'percentage'
+            | 'fixed'
+            | null,
           discountValue: dealProduct.discountValue.toString(),
         })),
         tasks: conversation.deal.tasks.map((task) => ({
@@ -417,8 +429,8 @@ export async function buildPromptBaseContext(
     : null
 
   // Serializar eventos de tool — achatar metadata.subtype para campo top-level tipado
-  const serializedToolEvents: PromptBaseContext['recentToolEvents'] = recentToolEvents.map(
-    (event) => {
+  const serializedToolEvents: PromptBaseContext['recentToolEvents'] =
+    recentToolEvents.map((event) => {
       const meta = event.metadata as { subtype?: string } | null
       return {
         type: event.type as 'TOOL_SUCCESS' | 'TOOL_FAILURE',
@@ -426,8 +438,7 @@ export async function buildPromptBaseContext(
         subtype: meta?.subtype ?? null,
         createdAtIso: event.createdAt.toISOString(),
       }
-    },
-  )
+    })
 
   // Parsear promptConfig (Json?) — fallback null quando inválido
   const parsedConfig = promptConfigSchema.safeParse(agent.promptConfig)
@@ -437,15 +448,18 @@ export async function buildPromptBaseContext(
   const agentVersion = resolveCanonicalAgentVersion(agent.agentVersion)
 
   // Parsear globalTools — apenas single-v2 usa; v1/crew-v1 recebem [] para isolar o comportamento
-  const parsedGlobalTools = agentVersion === 'single-v2'
-    ? globalToolsArraySchema.safeParse(agent.globalTools ?? [])
-    : { success: true as const, data: [] as GlobalTool[] }
+  const parsedGlobalTools =
+    agentVersion === 'single-v2'
+      ? globalToolsArraySchema.safeParse(agent.globalTools ?? [])
+      : { success: true as const, data: [] as GlobalTool[] }
 
   if (!parsedGlobalTools.success) {
     console.warn('[prompt-base-context] Invalid globalTools for agent', agentId)
   }
 
-  const globalTools: GlobalTool[] = parsedGlobalTools.success ? parsedGlobalTools.data : []
+  const globalTools: GlobalTool[] = parsedGlobalTools.success
+    ? parsedGlobalTools.data
+    : []
 
   // Incluir types das global tools no conjunto de tools disponíveis — sem duplicatas
   const globalToolTypes = globalTools.map((tool) => tool.type)
@@ -464,7 +478,8 @@ export async function buildPromptBaseContext(
     hasKnowledgeBase: completedFileCount > 0,
     hasActiveProducts: activeProductCount > 0,
     hasActiveProductsWithMedia: activeProductMediaCount > 0,
-    hasActiveServicesWithProfessionals: activeServicesWithProfessionalsCount > 0,
+    hasActiveServicesWithProfessionals:
+      activeServicesWithProfessionalsCount > 0,
     agentMode: agent.agentMode,
     recentToolEvents: serializedToolEvents,
     toolsEnabled: allToolsEnabled,

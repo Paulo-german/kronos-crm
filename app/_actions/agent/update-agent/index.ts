@@ -22,8 +22,11 @@ export const updateAgent = orgActionClient
       throw new Error('Agente não encontrado.')
     }
 
-    // Durante o rollout controlado, single-v2 só é selecionável por superadmins.
-    if (data.agentVersion === 'single-v2') {
+    // Durante o rollout controlado, single-v2 e engine-v1 só são selecionáveis por superadmins.
+    if (
+      data.agentVersion === 'single-v2' ||
+      data.agentVersion === 'engine-v1'
+    ) {
       const user = await getUserById(ctx.userId)
       if (!user?.isSuperAdmin) {
         throw new Error('Versão indisponível.')
@@ -38,7 +41,8 @@ export const updateAgent = orgActionClient
           systemPrompt: data.systemPrompt,
         }),
         ...(data.promptConfig !== undefined && {
-          promptConfig: data.promptConfig === null ? Prisma.DbNull : data.promptConfig,
+          promptConfig:
+            data.promptConfig === null ? Prisma.DbNull : data.promptConfig,
         }),
         ...pickDefined(data, OPTIONAL_AGENT_FIELDS),
       },

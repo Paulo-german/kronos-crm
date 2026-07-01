@@ -33,7 +33,9 @@ const exportedAgentSchema = z.object({
   systemPrompt: z.string().default(''),
   promptConfig: promptConfigSchema.nullable().default(null),
   modelId: z.enum(AGENT_MODEL_IDS).optional(),
-  agentVersion: z.enum(['single-v1', 'single-v2', 'crew-v1']).optional(),
+  agentVersion: z
+    .enum(['single-v1', 'single-v2', 'crew-v1', 'engine-v1'])
+    .optional(),
   agentMode: z.enum(['PRODUCT', 'SERVICE', 'HYBRID']).default('PRODUCT'),
   debounceSeconds: z.number().int().min(0).max(120).default(3),
   isActive: z.boolean().default(false),
