@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { FlaskConical, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAction } from 'next-safe-action/hooks'
@@ -45,6 +45,8 @@ interface AgentOption {
 interface SimulatorDialogProps {
   agents: AgentOption[]
   onConversationCreated: (conversation: ConversationListDto) => void
+  /** Trigger customizado (ex: botão grande no empty-state). Se ausente, usa o ícone padrão da sidebar */
+  trigger?: ReactNode
 }
 
 type SeedableStage = (typeof SIMULATOR_SEEDABLE_STAGES)[number]
@@ -54,6 +56,7 @@ const DEFAULT_STAGE: SeedableStage = 'LEAD'
 export function SimulatorDialog({
   agents,
   onConversationCreated,
+  trigger,
 }: SimulatorDialogProps) {
   const [open, setOpen] = useState(false)
   const [selectedAgentId, setSelectedAgentId] = useState<string>('')
@@ -127,22 +130,26 @@ export function SimulatorDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <DialogTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
-            >
-              <FlaskConical className="h-3.5 w-3.5" />
-            </Button>
-          </DialogTrigger>
-        </TooltipTrigger>
-        <TooltipContent side="right">
-          <p>Testar Agente (Simulador)</p>
-        </TooltipContent>
-      </Tooltip>
+      {trigger ? (
+        <DialogTrigger asChild>{trigger}</DialogTrigger>
+      ) : (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
+              >
+                <FlaskConical className="h-3.5 w-3.5" />
+              </Button>
+            </DialogTrigger>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            <p>Testar Agente (Simulador)</p>
+          </TooltipContent>
+        </Tooltip>
+      )}
 
       <DialogContent className="sm:max-w-[420px]">
         <DialogHeader>

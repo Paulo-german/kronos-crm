@@ -2,8 +2,15 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { MessageSquare, WifiOff } from 'lucide-react'
+import {
+  FlaskConical,
+  MessageSquare,
+  MessageSquarePlus,
+  WifiOff,
+} from 'lucide-react'
 import { cn } from '@/_lib/utils'
+import { Button } from '@/_components/ui/button'
+import { Skeleton } from '@/_components/ui/skeleton'
 import type { MemberRole } from '@prisma/client'
 import type {
   ConversationListDto,
@@ -19,6 +26,8 @@ import { ConversationList, type FilterTab } from './conversation-list'
 import { ChatView } from './chat-view'
 import { EmptyInbox } from './empty-inbox'
 import { StartConversationPanel } from './start-conversation-panel'
+import { NewConversationDialog } from './new-conversation-dialog'
+import { SimulatorDialog } from './simulator-dialog'
 import { useInboxConversations } from '../_hooks/use-inbox-conversations'
 import { useInboxMutations } from '../_hooks/use-inbox-mutations'
 import { useAgentStatuses } from '../_hooks/use-agent-statuses'
@@ -184,13 +193,17 @@ export function InboxClient({
     setSelectedConversation(conversation)
   }
 
-  // Se não tem nenhuma inbox, mostrar empty state com CTA
+  // Sem nenhuma inbox: substituir a tela toda faz sentido — não há de onde disparar
+  // Nova Conversa/Simulador sem uma caixa, e o CTA é "Criar Caixa de Entrada"
   if (inboxOptions.length === 0) {
     return <EmptyInbox orgSlug={orgSlug} hasNoInbox />
   }
 
-  // Se terminou de carregar e não tem conversas (sem filtros ativos) e não é deep link de contato
-  if (
+  // Primeira execução vazia: tem inbox, mas zero conversas e nenhum filtro ativo.
+  // NÃO substitui a tela — mantém a sidebar viva (Nova Conversa/Simulador sempre
+  // acessíveis) e mostra o empty-state com CTA só no painel de chat, evitando que o
+  // usuário precise sair do inbox para criar a primeira conversa.
+  const isFirstRunEmpty =
     !isLoading &&
     conversations.length === 0 &&
     !search &&
@@ -200,9 +213,6 @@ export function InboxClient({
     statusFilter === 'OPEN' &&
     selectedLabelIds.length === 0 &&
     selectedAssigneeIds.length === 0
-  ) {
-    return <EmptyInbox orgSlug={orgSlug} />
-  }
 
   return (
     <div className="flex h-full flex-col">
@@ -306,6 +316,67 @@ export function InboxClient({
               orgSlug={orgSlug}
               onConversationCreated={handleConversationCreated}
             />
+          ) : isLoading ? (
+            /* Carregando: mesmo layout centralizado do empty-state, mas com skeletons
+               no lugar de título/subtítulo. O ícone fica fixo, então quando assenta no
+               estado final (CTA ou "Selecione uma conversa") o texto entra no espaço já
+               reservado — sem o swap de "Selecione uma conversa" → "Comece sua primeira" */
+            <div className="flex h-full flex-col items-center justify-center gap-5 p-6">
+              <div className="relative">
+                <div className="absolute inset-0 animate-pulse rounded-full bg-primary/10 blur-xl" />
+                <div className="relative flex size-16 items-center justify-center rounded-full bg-gradient-to-br from-primary/80 to-primary/50 shadow-md shadow-primary/15">
+                  <MessageSquare className="size-8 text-white" />
+                </div>
+              </div>
+              <div className="flex w-full max-w-sm flex-col items-center gap-2">
+                <Skeleton className="h-5 w-44" />
+                <Skeleton className="h-4 w-64" />
+                <Skeleton className="h-4 w-52" />
+              </div>
+            </div>
+          ) : isFirstRunEmpty ? (
+            <div className="flex h-full flex-col items-center justify-center gap-5 p-6">
+              <div className="relative">
+                <div className="absolute inset-0 animate-pulse rounded-full bg-primary/10 blur-xl" />
+                <div className="relative flex size-16 items-center justify-center rounded-full bg-gradient-to-br from-primary/80 to-primary/50 shadow-md shadow-primary/15">
+                  <MessageSquare className="size-8 text-white" />
+                </div>
+              </div>
+              <div className="max-w-sm space-y-1 text-center">
+                <h3 className="text-base font-semibold tracking-tight">
+                  Comece sua primeira conversa
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Inicie uma conversa no WhatsApp com um contato — ou teste seu
+                  agente no simulador, sem sair desta tela.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <NewConversationDialog
+                  inboxOptions={inboxOptions}
+                  orgSlug={orgSlug}
+                  onConversationCreated={handleConversationCreated}
+                  trigger={
+                    <Button className="gap-1.5">
+                      <MessageSquarePlus className="h-4 w-4" />
+                      Nova Conversa
+                    </Button>
+                  }
+                />
+                {isSuperAdmin && agents.length > 0 && (
+                  <SimulatorDialog
+                    agents={agents}
+                    onConversationCreated={handleConversationCreated}
+                    trigger={
+                      <Button variant="outline" className="gap-1.5">
+                        <FlaskConical className="h-4 w-4" />
+                        Simulador
+                      </Button>
+                    }
+                  />
+                )}
+              </div>
+            </div>
           ) : (
             <div className="flex h-full flex-col items-center justify-center gap-4 p-6">
               <div className="relative">
@@ -316,12 +387,12 @@ export function InboxClient({
               </div>
               <div className="max-w-sm space-y-1 text-center">
                 <h3 className="text-base font-semibold tracking-tight">
-                  {!isLoading && conversations.length === 0
+                  {conversations.length === 0
                     ? 'Nenhuma conversa encontrada'
                     : 'Selecione uma conversa'}
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  {!isLoading && conversations.length === 0
+                  {conversations.length === 0
                     ? 'Nenhuma conversa corresponde aos filtros aplicados.'
                     : 'Escolha uma conversa na lista ao lado para visualizar as mensagens e interagir.'}
                 </p>

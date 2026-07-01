@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useMemo, useEffect } from 'react'
+import { useState, useRef, useMemo, useEffect, type ReactNode } from 'react'
 import Link from 'next/link'
 import {
   AlertTriangle,
@@ -68,6 +68,8 @@ interface NewConversationDialogProps {
   inboxOptions: InboxOption[]
   orgSlug: string
   onConversationCreated: (conversation: ConversationListDto) => void
+  /** Trigger customizado (ex: botão grande no empty-state). Se ausente, usa o ícone padrão da sidebar */
+  trigger?: ReactNode
 }
 
 type DialogView = 'search' | 'create'
@@ -76,13 +78,16 @@ export function NewConversationDialog({
   inboxOptions,
   orgSlug,
   onConversationCreated,
+  trigger,
 }: NewConversationDialogProps) {
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<DialogView>('search')
   const [search, setSearch] = useState('')
   const [searchResults, setSearchResults] = useState<ContactResult[]>([])
   const [isSearching, setIsSearching] = useState(false)
-  const [selectedContact, setSelectedContact] = useState<ContactResult | null>(null)
+  const [selectedContact, setSelectedContact] = useState<ContactResult | null>(
+    null,
+  )
   const [inlineName, setInlineName] = useState('')
   const [inlinePhone, setInlinePhone] = useState('')
   const [selectedInboxId, setSelectedInboxId] = useState('')
@@ -96,36 +101,43 @@ export function NewConversationDialog({
   }, [view])
 
   const connectedInboxes = useMemo(
-    () => inboxOptions.filter((inbox) => inbox.channel === 'WHATSAPP' && inbox.isConnected),
+    () =>
+      inboxOptions.filter(
+        (inbox) => inbox.channel === 'WHATSAPP' && inbox.isConnected,
+      ),
     [inboxOptions],
   )
 
-  const { execute: executeCreateConversation, isPending: isCreatingConversation } = useAction(
-    createConversation,
-    {
-      onSuccess: ({ data }) => {
-        if (data?.conversation) {
-          toast.success('Conversa iniciada com sucesso!')
-          closeDialog()
-          onConversationCreated(data.conversation)
-        }
-      },
-      onError: ({ error }) => {
-        toast.error(error.serverError ?? 'Erro ao criar conversa.')
-      },
-    },
-  )
-
-  const { execute: executeCreateContact, isPending: isCreatingContact } = useAction(createContact, {
+  const {
+    execute: executeCreateConversation,
+    isPending: isCreatingConversation,
+  } = useAction(createConversation, {
     onSuccess: ({ data }) => {
-      if (data?.contactId && selectedInboxId) {
-        executeCreateConversation({ contactId: data.contactId, inboxId: selectedInboxId })
+      if (data?.conversation) {
+        toast.success('Conversa iniciada com sucesso!')
+        closeDialog()
+        onConversationCreated(data.conversation)
       }
     },
     onError: ({ error }) => {
-      toast.error(error.serverError ?? 'Erro ao criar contato.')
+      toast.error(error.serverError ?? 'Erro ao criar conversa.')
     },
   })
+
+  const { execute: executeCreateContact, isPending: isCreatingContact } =
+    useAction(createContact, {
+      onSuccess: ({ data }) => {
+        if (data?.contactId && selectedInboxId) {
+          executeCreateConversation({
+            contactId: data.contactId,
+            inboxId: selectedInboxId,
+          })
+        }
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError ?? 'Erro ao criar contato.')
+      },
+    })
 
   const isPending = isCreatingConversation || isCreatingContact
 
@@ -142,7 +154,8 @@ export function NewConversationDialog({
   }
 
   const closeDialog = () => {
-    const autoInboxId = connectedInboxes.length === 1 ? connectedInboxes[0]!.id : ''
+    const autoInboxId =
+      connectedInboxes.length === 1 ? connectedInboxes[0]!.id : ''
     setOpen(false)
     resetState(autoInboxId)
   }
@@ -152,7 +165,8 @@ export function NewConversationDialog({
       closeDialog()
       return
     }
-    const autoInboxId = connectedInboxes.length === 1 ? connectedInboxes[0]!.id : ''
+    const autoInboxId =
+      connectedInboxes.length === 1 ? connectedInboxes[0]!.id : ''
     resetState(autoInboxId)
     setOpen(true)
   }
@@ -203,7 +217,10 @@ export function NewConversationDialog({
     if (!selectedInboxId) return
 
     if (selectedContact) {
-      executeCreateConversation({ contactId: selectedContact.id, inboxId: selectedInboxId })
+      executeCreateConversation({
+        contactId: selectedContact.id,
+        inboxId: selectedInboxId,
+      })
       return
     }
 
@@ -219,27 +236,33 @@ export function NewConversationDialog({
   const hasNoConnectedInbox = connectedInboxes.length === 0
   const contactResolved =
     selectedContact !== null ||
-    (view === 'create' && inlineName.trim().length > 0 && inlinePhone.trim().length > 0)
+    (view === 'create' &&
+      inlineName.trim().length > 0 &&
+      inlinePhone.trim().length > 0)
   const canStart = contactResolved && !!selectedInboxId && !isPending
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <DialogTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary"
-            >
-              <MessageSquarePlus className="h-3.5 w-3.5" />
-            </Button>
-          </DialogTrigger>
-        </TooltipTrigger>
-        <TooltipContent side="right">
-          <p>Nova conversa</p>
-        </TooltipContent>
-      </Tooltip>
+      {trigger ? (
+        <DialogTrigger asChild>{trigger}</DialogTrigger>
+      ) : (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary"
+              >
+                <MessageSquarePlus className="h-3.5 w-3.5" />
+              </Button>
+            </DialogTrigger>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            <p>Nova conversa</p>
+          </TooltipContent>
+        </Tooltip>
+      )}
 
       <DialogContent className="sm:max-w-[440px]">
         <DialogHeader>
@@ -263,9 +286,13 @@ export function NewConversationDialog({
                   <div className="flex items-center gap-2 rounded-md border border-input bg-muted/30 px-3 py-2">
                     <User className="h-4 w-4 shrink-0 text-muted-foreground" />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{selectedContact.name}</p>
+                      <p className="truncate text-sm font-medium">
+                        {selectedContact.name}
+                      </p>
                       {selectedContact.phone && (
-                        <p className="text-xs text-muted-foreground">{selectedContact.phone}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {selectedContact.phone}
+                        </p>
                       )}
                     </div>
                     <Button
@@ -283,7 +310,10 @@ export function NewConversationDialog({
                 /* Combobox de busca */
                 <div className="space-y-2">
                   <Label>Contato</Label>
-                  <Command shouldFilter={false} className="rounded-md border border-input">
+                  <Command
+                    shouldFilter={false}
+                    className="rounded-md border border-input"
+                  >
                     <CommandInput
                       placeholder="Nome ou telefone..."
                       value={search}
@@ -301,22 +331,24 @@ export function NewConversationDialog({
                           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                         </div>
                       )}
-                      {search.length >= MIN_SEARCH_CHARS && !isSearching && searchResults.length === 0 && (
-                        <div className="px-3 py-3 text-center">
-                          <p className="mb-2 text-sm text-muted-foreground">
-                            Nenhum contato encontrado.
-                          </p>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="gap-1.5 text-xs"
-                            onClick={handleSwitchToCreate}
-                          >
-                            <UserPlus className="h-3.5 w-3.5" />
-                            Criar contato &quot;{search}&quot;
-                          </Button>
-                        </div>
-                      )}
+                      {search.length >= MIN_SEARCH_CHARS &&
+                        !isSearching &&
+                        searchResults.length === 0 && (
+                          <div className="px-3 py-3 text-center">
+                            <p className="mb-2 text-sm text-muted-foreground">
+                              Nenhum contato encontrado.
+                            </p>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-1.5 text-xs"
+                              onClick={handleSwitchToCreate}
+                            >
+                              <UserPlus className="h-3.5 w-3.5" />
+                              Criar contato &quot;{search}&quot;
+                            </Button>
+                          </div>
+                        )}
                       {searchResults.map((contact) => (
                         <CommandItem
                           key={contact.id}
@@ -325,9 +357,13 @@ export function NewConversationDialog({
                           className="cursor-pointer"
                         >
                           <div className="flex flex-col gap-0.5">
-                            <span className="text-sm font-medium">{contact.name}</span>
+                            <span className="text-sm font-medium">
+                              {contact.name}
+                            </span>
                             {contact.phone && (
-                              <span className="text-xs text-muted-foreground">{contact.phone}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {contact.phone}
+                              </span>
                             )}
                           </div>
                         </CommandItem>
@@ -415,7 +451,9 @@ export function NewConversationDialog({
             <div className="space-y-2">
               <Label>Caixa de entrada</Label>
               <div className="flex items-center gap-2 rounded-md border border-input bg-muted/30 px-3 py-2">
-                <span className="text-sm text-muted-foreground">{connectedInboxes[0]!.name}</span>
+                <span className="text-sm text-muted-foreground">
+                  {connectedInboxes[0]!.name}
+                </span>
               </div>
             </div>
           )}
@@ -425,7 +463,11 @@ export function NewConversationDialog({
           <Button variant="outline" onClick={closeDialog} disabled={isPending}>
             Cancelar
           </Button>
-          <Button onClick={handleStart} disabled={!canStart} className="gap-1.5">
+          <Button
+            onClick={handleStart}
+            disabled={!canStart}
+            className="gap-1.5"
+          >
             {isPending ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
