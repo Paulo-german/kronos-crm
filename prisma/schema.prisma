@@ -90,6 +90,7 @@ model Organization {
   salesDistributionModel        SalesDistributionModel    @default(ROUND_ROBIN) @map("sales_distribution_model")
   agentExecutions               AgentExecution[]
   agentGroups                   AgentGroup[]
+  agentSessions                 AgentSession[]
   agentTestConversations        AgentTestConversation[]
   agents                        Agent[]
   aiUsage                       AiUsage[]
@@ -1397,6 +1398,8 @@ model Agent {
   organization                  Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   inboxes                       Inbox[]
   followUps                     FollowUp[]
+  agentSessions                 AgentSession[]
+  agentEngineSteps              AgentEngineStep[]
 
   @@index([organizationId, isActive])
   @@map("agents")
@@ -1790,6 +1793,7 @@ model Conversation {
   inbox                 Inbox                         @relation(fields: [inboxId], references: [id], onDelete: Cascade)
   organization          Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   messages              Message[]
+  agentSession          AgentSession?
 
   @@unique([inboxId, contactId, channel])
   @@index([organizationId, inboxId])
@@ -2962,6 +2966,7 @@ model FieldDefinition {
   organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   values            CustomFieldValue[]
   captureFormFields CaptureFormField[]
+  agentEngineStepFields AgentEngineStepField[]
 
   @@unique([organizationId, entityType, key])
   @@index([organizationId, entityType, isActive, position])
@@ -3168,4 +3173,116 @@ model DsrRequest {
 
   @@index([organizationId, status])
   @@map("dsr_requests")
+}
+
+// =====================================================================
+// === Engine v1 === — motor de agente reconstruído (ver PLAN-agent-engine.md)
+// Modelos novos do engine-v1, agrupados e rotulados pra não confundir com o
+// fluxo single-v1/single-v2. Reuso de v1/v2 é só por import explícito; aqui
+// nada é compartilhado com as tabelas quentes do inbox.
+// =====================================================================
+
+// Sessão do agente — estado do motor como ENTIDADE PRÓPRIA (não coluna em
+// Conversation). currentStepOrder vive aqui pro engine-v1; Conversation.currentStepOrder
+// segue sendo a fonte do single-v1/v2 (caminhos disjuntos por agentVersion → sem divergência).
+model AgentSession {
+  id               String   @id @default(uuid())
+  organizationId   String   @map("organization_id")
+  agentId          String   @map("agent_id")
+  conversationId   String?  @unique @map("conversation_id") // vínculo (adapter): 1:1 hoje, nullable pro futuro sem inbox
+  state            Json     @default("{}") // ledger (AgentSessionState, validado por Zod na borda)
+  schemaVersion    Int      @default(1) @map("schema_version") // versiona o shape do JSON com segurança
+  currentStepOrder Int      @default(0) @map("current_step_order")
+  turnCount        Int      @default(0) @map("turn_count")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  conversation Conversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  agent        Agent         @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([agentId])
+  @@index([organizationId])
+  @@map("agent_sessions")
+}
+
+// Etapa do funil no engine — ENTIDADE PRÓPRIA (não reusa AgentStep do single).
+// Anatomia enxuta por structured authoring: campos semânticos com propósito único,
+// sem o legado allowedActions/activationRequirement/lifecycle do AgentStep. O avanço
+// estruturado (advanceCriterion) entra com o gate na Fase 1b.
+model AgentEngineStep {
+  id              String         @id @default(uuid())
+  agentId         String         @map("agent_id")
+  kind            EngineStepKind @default(OTHER) // tipo da etapa (Saudação/Qualificação/…) — persistido pra dar identidade e nortear config
+  name            String // nome curto da etapa (templates de etapa sugerem)
+  goal            String // objetivo: 1 frase guiada (substitui o "balde" objective do single)
+  keyQuestion     String?        @map("key_question") // pergunta-chave que conduz a etapa
+  guidanceNote    String?        @map("guidance_note") // observação de abordagem — o escape hatch de texto livre
+  messageExamples String[]       @default([]) @map("message_examples") // few-shot de estilo (não template rígido): imitar tom/abordagem
+  actions         Json? // ação ao concluir (validada por stepActionSchema — tipo neutro compartilhado)
+  order           Int
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  agent                  Agent                  @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  fields                 AgentEngineStepField[] @relation("StepFields")
+  negativeRedirectFields AgentEngineStepField[] @relation("StepNegativeRedirect") // campos cujo desvio negativo aponta pra esta etapa
+
+  @@index([agentId, order])
+  @@map("agent_engine_steps")
+}
+
+// Contrato "o que esta etapa coleta" — os 2 eixos que o dono define (obrigatoriedade +
+// polaridade) sobre um campo de UMA das duas origens (source):
+//   AGENT        → campo do catálogo de qualificação do agente; coletado vive no ledger, não sync CRM.
+//   CUSTOM_FIELD → FieldDefinition do CRM; coletado é escrito no contato/negociação (a FieldDefinition já sabe qual).
+// Exatamente uma referência preenchida conforme o source (agentFieldKey XOR fieldDefinitionId).
+model AgentEngineStepField {
+  id                String                @id @default(uuid())
+  agentEngineStepId String                @map("agent_engine_step_id")
+  source            EngineStepFieldSource @default(AGENT) // origem/destino do campo
+  agentFieldKey     String?               @map("agent_field_key") // quando AGENT: chave do catálogo de qualificação
+  fieldDefinitionId String?               @map("field_definition_id") // quando CUSTOM_FIELD: aponta a FieldDefinition do CRM
+  required          Boolean               @default(false) // eixo 1: obrigatoriedade (trava o avanço)
+  resultPolarity    FieldResultPolarity   @default(ANY) @map("result_polarity") // eixo 2: resultado esperado
+  onNegativeStepId  String?               @map("on_negative_step_id") // desvio quando a resposta é negativa
+  position          Int
+
+  agentEngineStep AgentEngineStep  @relation("StepFields", fields: [agentEngineStepId], references: [id], onDelete: Cascade)
+  onNegativeStep  AgentEngineStep? @relation("StepNegativeRedirect", fields: [onNegativeStepId], references: [id], onDelete: SetNull)
+  fieldDefinition FieldDefinition? @relation(fields: [fieldDefinitionId], references: [id], onDelete: Cascade)
+
+  @@unique([agentEngineStepId, fieldDefinitionId]) // não duplica o mesmo custom field na etapa
+  @@unique([agentEngineStepId, agentFieldKey]) // não duplica o mesmo campo de qualificação na etapa
+  @@index([agentEngineStepId, position])
+  @@map("agent_engine_step_fields")
+}
+
+enum FieldResultPolarity {
+  ANY
+  POSITIVE_ONLY
+
+  @@map("field_result_polarity")
+}
+
+// Tipo da etapa do funil — pré-preenche a autoria e dá identidade visual.
+enum EngineStepKind {
+  GREETING
+  QUALIFICATION
+  PRESENTATION
+  SCHEDULING
+  NEGOTIATION
+  CLOSING
+  POST_SALE
+  OTHER
+
+  @@map("engine_step_kind")
+}
+
+// Origem de um campo "a confirmar": catálogo do agente (ledger) ou custom field do CRM.
+enum EngineStepFieldSource {
+  AGENT
+  CUSTOM_FIELD
+
+  @@map("engine_step_field_source")
 }
