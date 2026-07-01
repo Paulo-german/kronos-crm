@@ -208,10 +208,10 @@ export function ChatHeader({
                   <TooltipTrigger asChild>
                     <Badge
                       variant="outline"
-                      className="h-5 shrink-0 gap-1 border-kronos-purple/20 bg-kronos-purple/10 text-[10px] text-kronos-purple"
+                      className="h-5 max-w-[140px] shrink-0 gap-1 border-kronos-purple/20 bg-kronos-purple/10 text-[10px] text-kronos-purple"
                     >
-                      <Users className="h-3 w-3" />
-                      {displayAgentName}
+                      <Users className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{displayAgentName}</span>
                     </Badge>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="text-xs">
@@ -226,10 +226,10 @@ export function ChatHeader({
                   <TooltipTrigger asChild>
                     <Badge
                       variant="outline"
-                      className="h-5 shrink-0 gap-1 border-kronos-purple/20 bg-kronos-purple/10 text-[10px] text-kronos-purple"
+                      className="h-5 max-w-[140px] shrink-0 gap-1 border-kronos-purple/20 bg-kronos-purple/10 text-[10px] text-kronos-purple"
                     >
-                      <Users className="h-3 w-3" />
-                      {agentGroupName}
+                      <Users className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{agentGroupName}</span>
                     </Badge>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="text-xs">
@@ -242,10 +242,10 @@ export function ChatHeader({
               {!isGroupMode && displayAgentName && (
                 <Badge
                   variant="outline"
-                  className="h-5 shrink-0 gap-1 border-kronos-purple/20 bg-kronos-purple/10 text-[10px] text-kronos-purple"
+                  className="h-5 max-w-[140px] shrink-0 gap-1 border-kronos-purple/20 bg-kronos-purple/10 text-[10px] text-kronos-purple"
                 >
-                  <Bot className="h-3 w-3" />
-                  {displayAgentName}
+                  <Bot className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{displayAgentName}</span>
                 </Badge>
               )}
             </div>

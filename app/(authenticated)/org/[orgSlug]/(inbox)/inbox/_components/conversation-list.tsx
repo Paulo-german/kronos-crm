@@ -311,9 +311,7 @@ export function ConversationList({
           className="mb-3"
         >
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="all">
-              Todas
-            </TabsTrigger>
+            <TabsTrigger value="all">Todas</TabsTrigger>
             <TabsTrigger value="unread" className="gap-1.5">
               Não lidas
               {totalUnread > 0 && (
@@ -322,9 +320,7 @@ export function ConversationList({
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger
-              value="unanswered"
-                         >
+            <TabsTrigger value="unanswered">
               Sem resp.
               {totalUnanswered > 0 && (
                 <Badge className="pointer-events-none flex h-5 min-w-5 items-center justify-center rounded-full bg-kronos-yellow px-1 text-[10px] font-medium text-white hover:bg-kronos-yellow">
@@ -391,7 +387,9 @@ export function ConversationList({
                       )}
                     >
                       <Avatar className="h-10 w-10 shrink-0">
-                        <AvatarImage src={`/api/inbox/${conversation.id}/contact-avatar`} />
+                        <AvatarImage
+                          src={`/api/inbox/${conversation.id}/contact-avatar`}
+                        />
                         <AvatarFallback className="bg-primary/10 text-xs font-medium text-primary">
                           {getInitials(conversation.contactName)}
                         </AvatarFallback>
@@ -465,18 +463,20 @@ export function ConversationList({
                             <Badge
                               variant="outline"
                               className={cn(
-                                'h-5 gap-1 px-1.5 text-[10px] transition-colors duration-300',
+                                'h-5 max-w-[120px] gap-1 px-1.5 text-[10px] transition-colors duration-300',
                                 isConversationActive?.(conversation.id)
                                   ? 'border-kronos-green/20 bg-kronos-green/10 text-kronos-green'
                                   : 'border-kronos-purple/20 bg-kronos-purple/10 text-kronos-purple',
                               )}
                             >
                               {isConversationActive?.(conversation.id) ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
+                                <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
                               ) : (
-                                <Bot className="h-3 w-3" />
+                                <Bot className="h-3 w-3 shrink-0" />
                               )}
-                              {agentDisplayName}
+                              <span className="truncate">
+                                {agentDisplayName}
+                              </span>
                             </Badge>
                           )}
                           {conversation.aiPaused ? (
@@ -486,7 +486,8 @@ export function ConversationList({
                             >
                               <Pause className="h-3 w-3 fill-current" />
                             </Badge>
-                          ) : (conversation.agentName ?? conversation.agentGroupName) ? (
+                          ) : (conversation.agentName ??
+                            conversation.agentGroupName) ? (
                             <Badge
                               variant="outline"
                               className="h-5 w-5 items-center justify-center border-kronos-green/20 bg-kronos-green/10 p-0 text-kronos-green"
@@ -524,16 +525,19 @@ export function ConversationList({
                               <Badge
                                 key={label.id}
                                 className={cn(
-                                  'h-5 gap-1 border-transparent px-1.5 text-[10px]',
+                                  'h-5 max-w-[100px] gap-1 border-transparent px-1.5 text-[10px]',
                                   colorConfig.bg,
                                   colorConfig.text,
                                   colorConfig.dark_text,
                                 )}
                               >
                                 <Tag
-                                  className={cn('h-3 w-3', colorConfig.text)}
+                                  className={cn(
+                                    'h-3 w-3 shrink-0',
+                                    colorConfig.text,
+                                  )}
                                 />
-                                {label.name}
+                                <span className="truncate">{label.name}</span>
                               </Badge>
                             )
                           })}
