@@ -28,11 +28,16 @@ const EXTRACTOR_SYSTEM = `Você extrai fatos de uma conversa de atendimento come
 
 Para cada campo que o cliente abordou, classifique:
 - value: o valor informado, limpo e canônico (ex: "Honda Civic", "Niterói"). Vazio se não houver valor.
-- nature: "provided" (informou de fato), "deferred" (adiou — "te mando depois"), "refused" (recusou explicitamente), "evasive" (desviou sem responder).
+- nature:
+  - "provided": informou o dado de fato.
+  - "deferred": pediu EXPLICITAMENTE pra deixar pra depois, com sinal claro de adiamento ("te mando depois", "agora não tô com o documento", "quando chegar em casa"). Tem que haver a intenção declarada de responder mais tarde.
+  - "refused": recusou dar a informação ("não quero dizer", "prefiro não informar").
+  - "evasive": NÃO respondeu o que foi perguntado e NÃO sinalizou adiamento — mudou de assunto, fez OUTRA pergunta, ou ignorou. ATENÇÃO: fazer uma pergunta em vez de responder é "evasive", NUNCA "deferred". Só é "deferred" quando o cliente diz que responde depois.
 - polarity: "positive" / "negative" / "neutral" — relevante quando nature="provided" (ex: "não tenho interesse" → negative).
 
 Regras:
 - Retorne SOMENTE os campos que o cliente realmente abordou. Ignore os não mencionados.
+- Só marque um campo como "deferred"/"refused"/"evasive" se ele foi de fato PERGUNTADO ou trazido à tona nesta conversa. Não presuma adiamento/recusa de um campo que ninguém tocou — esse fica de fora.
 - Baseie-se apenas no que o cliente disse, nunca invente.
 - handoffRequested: true apenas se o cliente pediu EXPLICITAMENTE falar com um atendente humano.`
 
