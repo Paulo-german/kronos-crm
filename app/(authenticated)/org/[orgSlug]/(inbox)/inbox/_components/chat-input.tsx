@@ -1,7 +1,14 @@
 'use client'
 
-import { forwardRef, useImperativeHandle, useRef, type KeyboardEvent, type ChangeEvent } from 'react'
+import {
+  forwardRef,
+  useImperativeHandle,
+  useRef,
+  type KeyboardEvent,
+  type ChangeEvent,
+} from 'react'
 import { Loader2, Mic, Paperclip, Send, Square, Trash2 } from 'lucide-react'
+import { cn } from '@/_lib/utils'
 import { Button } from '@/_components/ui/button'
 import { Textarea } from '@/_components/ui/textarea'
 import {
@@ -104,7 +111,12 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
 
     return (
       <div className="px-3 pb-3 pt-1.5">
-        <div className={`flex flex-col gap-1 rounded-xl border border-border/60 bg-card p-2 shadow-md ring-1 ring-border/20 transition-opacity${windowClosed ? ' opacity-60' : ''}`}>
+        <div
+          className={cn(
+            'flex flex-col gap-1 rounded-xl border border-border/60 bg-card p-2 shadow-md ring-1 ring-border/20 transition-opacity focus-within:border-primary',
+            windowClosed && 'opacity-60',
+          )}
+        >
           {selectedFile && (
             <MediaPreview
               file={selectedFile}
