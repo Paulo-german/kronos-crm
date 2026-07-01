@@ -65,7 +65,7 @@ export interface ConversationState {
     serviceName: string | null
   } | null
   summary: string | null // memória comprimida da conversa (infra neutra)
-  currentStepOrder: number // fonte: AgentSession (não Conversation)
+  currentStepId: string | null // ponteiro da etapa atual (fonte: AgentSession); null = início
 }
 
 // Tudo que o compilador de prompt do engine precisa, modelado pelo eixo de mudança.

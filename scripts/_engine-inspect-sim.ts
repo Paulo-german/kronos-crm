@@ -54,12 +54,12 @@ async function main() {
 
   const session = await prisma.agentSession.findUnique({
     where: { conversationId: conversation.id },
-    select: { currentStepOrder: true, turnCount: true, state: true },
+    select: { currentStepId: true, turnCount: true, state: true },
   })
   console.log('\n=== AgentSession (ledger) ===')
   console.log(
-    'currentStepOrder:',
-    session?.currentStepOrder,
+    'currentStepId:',
+    session?.currentStepId,
     '| turnCount:',
     session?.turnCount,
   )

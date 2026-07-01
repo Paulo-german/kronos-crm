@@ -20,8 +20,8 @@ export async function getOrCreateSession(
   })
   if (existing) return existing
 
-  // engine-v1 não herda estado de v1/v2: a sessão nasce do zero (currentStepOrder = 0,
-  // via @default). Migrar um agente pra engine-v1 = recomeçar a conversa do zero.
+  // engine-v1 não herda estado de v1/v2: a sessão nasce do zero (currentStepId = null,
+  // via @default → o gate resolve pra primeira etapa). Migrar pra engine-v1 = recomeçar.
   return db.agentSession.create({
     data: { organizationId, agentId, conversationId },
   })

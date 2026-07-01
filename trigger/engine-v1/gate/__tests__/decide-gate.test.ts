@@ -5,10 +5,15 @@
  *   pnpm tsx trigger/engine-v1/gate/__tests__/decide-gate.test.ts
  *
  * Função pura, sem banco. Cobre `required ⊆ ledger` → hold/advance, avanço múltiplo num
- * turno, etapa sem portão, e o que conta como "satisfeito" (provided + value não-vazio).
+ * turno, "satisfeito" (provided + value não-vazio), a etapa de aviso (sem required roda ≥1
+ * turno) e o ponteiro por ID (fallback quando currentStepId é null/inexistente).
  */
 import assert from 'node:assert/strict'
-import { decideGate, type StepRequirements } from '../decide-gate'
+import {
+  decideGate,
+  type GateSessionState,
+  type StepRequirements,
+} from '../decide-gate'
 import type { AgentSessionState, Observed } from '../../ledger/schema'
 
 // ---------------------------------------------------------------------------
@@ -27,10 +32,21 @@ function obs(overrides: Partial<Observed> = {}): Observed {
   }
 }
 
+// Default: já rodou 1 turno na etapa atual (turnCount 1 > enteredAt 0). Cada teste passa o
+// `currentStepId` da etapa onde "já estamos" (ou null pra testar o fallback).
+function session(overrides: Partial<GateSessionState> = {}): GateSessionState {
+  return {
+    currentStepId: null,
+    turnCount: 1,
+    stepEnteredAtTurn: 0,
+    ...overrides,
+  }
+}
+
 type Attributes = AgentSessionState['attributes']
 
 // ---------------------------------------------------------------------------
-// Harness (mesmo estilo dos outros testes do engine)
+// Harness
 // ---------------------------------------------------------------------------
 
 interface TestResult {
@@ -54,80 +70,91 @@ function test(name: string, fn: () => void): void {
 }
 
 // ---------------------------------------------------------------------------
-// Cenários
+// Cenários — required (hold/advance)
 // ---------------------------------------------------------------------------
 
 test('etapa atual incompleta → HOLD com os pendentes', () => {
   const steps: StepRequirements[] = [
-    { order: 0, requiredKeys: ['vehicle', 'city'] },
+    { id: 'a', order: 0, requiredKeys: ['vehicle', 'city'] },
   ]
   const attributes: Attributes = { vehicle: obs({ value: 'Honda Civic' }) }
-  const decision = decideGate(steps, attributes, 0)
-  assert.equal(decision.nextStepOrder, 0)
+  const decision = decideGate(
+    steps,
+    attributes,
+    session({ currentStepId: 'a' }),
+  )
+  assert.equal(decision.nextStepId, 'a')
   assert.deepEqual(decision.pendingRequired, ['city'])
   assert.equal(decision.advanced, false)
 })
 
 test('etapa completa + próxima com pendência → AVANÇA uma', () => {
   const steps: StepRequirements[] = [
-    { order: 0, requiredKeys: ['name'] },
-    { order: 1, requiredKeys: ['vehicle'] },
+    { id: 'a', order: 0, requiredKeys: ['name'] },
+    { id: 'b', order: 1, requiredKeys: ['vehicle'] },
   ]
   const attributes: Attributes = { name: obs({ value: 'Paulo' }) }
-  const decision = decideGate(steps, attributes, 0)
-  assert.equal(decision.nextStepOrder, 1)
+  const decision = decideGate(
+    steps,
+    attributes,
+    session({ currentStepId: 'a' }),
+  )
+  assert.equal(decision.nextStepId, 'b')
   assert.deepEqual(decision.pendingRequired, ['vehicle'])
   assert.equal(decision.advanced, true)
 })
 
 test('lead despeja tudo → pula VÁRIAS etapas até a pendência', () => {
   const steps: StepRequirements[] = [
-    { order: 0, requiredKeys: ['name'] },
-    { order: 1, requiredKeys: ['vehicle'] },
-    { order: 2, requiredKeys: ['city'] },
+    { id: 'a', order: 0, requiredKeys: ['name'] },
+    { id: 'b', order: 1, requiredKeys: ['vehicle'] },
+    { id: 'c', order: 2, requiredKeys: ['city'] },
   ]
   const attributes: Attributes = {
     name: obs({ value: 'Paulo' }),
     vehicle: obs({ value: 'Civic' }),
   }
-  const decision = decideGate(steps, attributes, 0)
-  assert.equal(decision.nextStepOrder, 2)
+  const decision = decideGate(
+    steps,
+    attributes,
+    session({ currentStepId: 'a' }),
+  )
+  assert.equal(decision.nextStepId, 'c')
   assert.deepEqual(decision.pendingRequired, ['city'])
   assert.equal(decision.advanced, true)
 })
 
 test('todas as etapas completas → para na última, sem pendência', () => {
   const steps: StepRequirements[] = [
-    { order: 0, requiredKeys: ['name'] },
-    { order: 1, requiredKeys: ['vehicle'] },
+    { id: 'a', order: 0, requiredKeys: ['name'] },
+    { id: 'b', order: 1, requiredKeys: ['vehicle'] },
   ]
   const attributes: Attributes = {
     name: obs({ value: 'Paulo' }),
     vehicle: obs({ value: 'Civic' }),
   }
-  const decision = decideGate(steps, attributes, 0)
-  assert.equal(decision.nextStepOrder, 1)
+  const decision = decideGate(
+    steps,
+    attributes,
+    session({ currentStepId: 'a' }),
+  )
+  assert.equal(decision.nextStepId, 'b')
   assert.deepEqual(decision.pendingRequired, [])
   assert.equal(decision.advanced, true)
 })
 
-test('etapa sem required (portão aberto) → avança por ela', () => {
-  const steps: StepRequirements[] = [
-    { order: 0, requiredKeys: [] },
-    { order: 1, requiredKeys: ['vehicle'] },
-  ]
-  const decision = decideGate(steps, {}, 0)
-  assert.equal(decision.nextStepOrder, 1)
-  assert.deepEqual(decision.pendingRequired, ['vehicle'])
-})
-
 test('adiar/recusar/evadir NÃO satisfaz (fica pendente)', () => {
-  const steps: StepRequirements[] = [{ order: 0, requiredKeys: ['city'] }]
+  const steps: StepRequirements[] = [
+    { id: 'a', order: 0, requiredKeys: ['city'] },
+  ]
   const natures: Observed['nature'][] = ['deferred', 'refused', 'evasive']
   for (const nature of natures) {
-    // value preenchido de propósito: é a NATUREZA que decide, não só o texto.
     const attributes: Attributes = { city: obs({ nature, value: 'depois' }) }
-    const decision = decideGate(steps, attributes, 0)
+    const decision = decideGate(
+      steps,
+      attributes,
+      session({ currentStepId: 'a' }),
+    )
     assert.deepEqual(
       decision.pendingRequired,
       ['city'],
@@ -137,43 +164,161 @@ test('adiar/recusar/evadir NÃO satisfaz (fica pendente)', () => {
 })
 
 test('provided com value vazio NÃO satisfaz', () => {
-  const steps: StepRequirements[] = [{ order: 0, requiredKeys: ['city'] }]
+  const steps: StepRequirements[] = [
+    { id: 'a', order: 0, requiredKeys: ['city'] },
+  ]
   const attributes: Attributes = {
     city: obs({ nature: 'provided', value: '   ' }),
   }
-  const decision = decideGate(steps, attributes, 0)
+  const decision = decideGate(
+    steps,
+    attributes,
+    session({ currentStepId: 'a' }),
+  )
   assert.deepEqual(decision.pendingRequired, ['city'])
 })
 
 test('já na última etapa com pendência → HOLD, não avança', () => {
   const steps: StepRequirements[] = [
-    { order: 0, requiredKeys: ['name'] },
-    { order: 1, requiredKeys: ['vehicle'] },
+    { id: 'a', order: 0, requiredKeys: ['name'] },
+    { id: 'b', order: 1, requiredKeys: ['vehicle'] },
   ]
   const attributes: Attributes = { name: obs({ value: 'Paulo' }) }
-  const decision = decideGate(steps, attributes, 1)
-  assert.equal(decision.nextStepOrder, 1)
+  const decision = decideGate(
+    steps,
+    attributes,
+    session({ currentStepId: 'b' }),
+  )
+  assert.equal(decision.nextStepId, 'b')
   assert.deepEqual(decision.pendingRequired, ['vehicle'])
   assert.equal(decision.advanced, false)
 })
 
-test('agente sem etapas → sem gate (conversa livre)', () => {
-  const decision = decideGate([], {}, 0)
-  assert.equal(decision.nextStepOrder, 0)
+test('agente sem etapas → sem gate (nextStepId null)', () => {
+  const decision = decideGate([], {}, session({ currentStepId: null }))
+  assert.equal(decision.nextStepId, null)
   assert.deepEqual(decision.pendingRequired, [])
   assert.equal(decision.advanced, false)
 })
 
 test('múltiplos required numa etapa → pendentes só os que faltam, em ordem', () => {
   const steps: StepRequirements[] = [
-    { order: 0, requiredKeys: ['vehicle', 'version', 'city', 'usage'] },
+    {
+      id: 'a',
+      order: 0,
+      requiredKeys: ['vehicle', 'version', 'city', 'usage'],
+    },
   ]
   const attributes: Attributes = {
     vehicle: obs({ value: 'Civic' }),
     city: obs({ value: 'Niterói' }),
   }
-  const decision = decideGate(steps, attributes, 0)
+  const decision = decideGate(
+    steps,
+    attributes,
+    session({ currentStepId: 'a' }),
+  )
   assert.deepEqual(decision.pendingRequired, ['version', 'usage'])
+})
+
+// ---------------------------------------------------------------------------
+// Cenários — etapa de aviso (sem required roda ≥1 turno)
+// ---------------------------------------------------------------------------
+
+test('etapa de aviso de partida NÃO-visitada → HOLD (roda o turno)', () => {
+  const steps: StepRequirements[] = [
+    { id: 'a', order: 0, requiredKeys: [] }, // aviso/saudação
+    { id: 'b', order: 1, requiredKeys: ['vehicle'] },
+  ]
+  // turnCount === stepEnteredAtTurn → ainda não rodou nenhum turno nesta etapa.
+  const decision = decideGate(
+    steps,
+    {},
+    session({ currentStepId: 'a', turnCount: 0, stepEnteredAtTurn: 0 }),
+  )
+  assert.equal(decision.nextStepId, 'a')
+  assert.deepEqual(decision.pendingRequired, [])
+  assert.equal(decision.advanced, false)
+})
+
+test('etapa de aviso de partida JÁ-visitada → avança', () => {
+  const steps: StepRequirements[] = [
+    { id: 'a', order: 0, requiredKeys: [] },
+    { id: 'b', order: 1, requiredKeys: ['vehicle'] },
+  ]
+  // turnCount (1) > stepEnteredAtTurn (0) → já rodou → pode avançar.
+  const decision = decideGate(
+    steps,
+    {},
+    session({ currentStepId: 'a', turnCount: 1, stepEnteredAtTurn: 0 }),
+  )
+  assert.equal(decision.nextStepId, 'b')
+  assert.deepEqual(decision.pendingRequired, ['vehicle'])
+  assert.equal(decision.advanced, true)
+})
+
+test('avanço múltiplo PARA na etapa de aviso alcançada (ela roda 1 turno)', () => {
+  const steps: StepRequirements[] = [
+    { id: 'a', order: 0, requiredKeys: ['name'] }, // satisfeita → pula
+    { id: 'b', order: 1, requiredKeys: [] }, // aviso alcançado → para aqui
+    { id: 'c', order: 2, requiredKeys: ['vehicle'] },
+  ]
+  const attributes: Attributes = { name: obs({ value: 'Paulo' }) }
+  const decision = decideGate(
+    steps,
+    attributes,
+    session({ currentStepId: 'a', turnCount: 1, stepEnteredAtTurn: 0 }),
+  )
+  assert.equal(decision.nextStepId, 'b')
+  assert.deepEqual(decision.pendingRequired, [])
+  assert.equal(decision.advanced, true)
+})
+
+test('última etapa de aviso alcançada → fica nela (roda a partir daí)', () => {
+  const steps: StepRequirements[] = [
+    { id: 'a', order: 0, requiredKeys: ['name'] }, // satisfeita → pula
+    { id: 'b', order: 1, requiredKeys: [] }, // aviso, é a última → fica
+  ]
+  const attributes: Attributes = { name: obs({ value: 'Paulo' }) }
+  const decision = decideGate(
+    steps,
+    attributes,
+    session({ currentStepId: 'a', turnCount: 1, stepEnteredAtTurn: 0 }),
+  )
+  assert.equal(decision.nextStepId, 'b')
+  assert.deepEqual(decision.pendingRequired, [])
+  assert.equal(decision.advanced, true)
+})
+
+// ---------------------------------------------------------------------------
+// Cenários — ponteiro por ID (fallback)
+// ---------------------------------------------------------------------------
+
+test('currentStepId null (sessão nova) → resolve pra primeira etapa', () => {
+  const steps: StepRequirements[] = [
+    { id: 'a', order: 0, requiredKeys: ['name'] },
+    { id: 'b', order: 1, requiredKeys: ['vehicle'] },
+  ]
+  const decision = decideGate(steps, {}, session({ currentStepId: null }))
+  assert.equal(decision.nextStepId, 'a')
+  assert.deepEqual(decision.pendingRequired, ['name'])
+})
+
+test('currentStepId inexistente (etapa deletada) → fallback pra primeira, ledger reconstrói', () => {
+  const steps: StepRequirements[] = [
+    { id: 'a', order: 0, requiredKeys: ['name'] },
+    { id: 'c', order: 2, requiredKeys: ['city'] }, // 'b' (order 1) foi deletada → buraco
+  ]
+  // Estava em 'b' (deletada) → currentStepId órfão; name já coletado.
+  const attributes: Attributes = { name: obs({ value: 'Paulo' }) }
+  const decision = decideGate(
+    steps,
+    attributes,
+    session({ currentStepId: 'b' }),
+  )
+  // re-resolve do início, pula 'a' (satisfeita) e para em 'c' — sem tropeçar no buraco.
+  assert.equal(decision.nextStepId, 'c')
+  assert.deepEqual(decision.pendingRequired, ['city'])
 })
 
 // ---------------------------------------------------------------------------

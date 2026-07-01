@@ -1,5 +1,6 @@
 import type { DispatcherCtx } from '../dispatcher-types'
 import { extract } from './stages/extract'
+import { gate } from './stages/gate'
 import { generate } from './stages/generate'
 import { guard } from './stages/guard'
 import { load } from './stages/load'
@@ -13,6 +14,7 @@ import type { AgentTurnState, Stage, TurnResult } from './types'
 const STAGES: ReadonlyArray<{ name: string; run: Stage }> = [
   { name: 'load', run: load },
   { name: 'extract', run: extract }, // Fase 1a: popula o ledger (telemetria, não trava)
+  { name: 'gate', run: gate }, // Fase 1b: decide avanço de etapa (determinístico)
   { name: 'generate', run: generate },
   { name: 'guard', run: guard },
   { name: 'persist', run: persist },

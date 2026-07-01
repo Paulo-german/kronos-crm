@@ -73,7 +73,7 @@ async function main() {
   const reset = args.includes('--reset')
   const showPrompt = args.includes('--prompt')
   const stepArg = args.find((arg) => arg.startsWith('--step='))
-  const currentStepOrder = stepArg ? Number(stepArg.split('=')[1]) : 0
+  const stepOrder = stepArg ? Number(stepArg.split('=')[1]) : null
   const messages = args.filter((arg) => !arg.startsWith('--'))
 
   const agent = await prisma.agent.findFirst({
@@ -91,6 +91,13 @@ async function main() {
     loadCapabilities(agent.id, ORG_ID),
   ])
 
+  // --step=N (order) → resolve o id da etapa; sem arg → null (compilador usa a primeira).
+  const currentStepId =
+    stepOrder === null
+      ? null
+      : (profile.steps.find((step) => step.order === stepOrder)?.id ?? null)
+  const stepLabel = currentStepId ?? 'início'
+
   const ctx: EngineContext = {
     profile,
     capabilities,
@@ -101,7 +108,7 @@ async function main() {
       openDeals: [],
       nextMeeting: null,
       summary: null,
-      currentStepOrder,
+      currentStepId,
     },
     nowIso: new Date().toISOString(),
   }
@@ -110,7 +117,7 @@ async function main() {
 
   if (showPrompt) {
     console.log(systemPrompt)
-    console.log(`\n[~${estimatedTokens} tokens · etapa ${currentStepOrder}]`)
+    console.log(`\n[~${estimatedTokens} tokens · etapa ${stepLabel}]`)
     return
   }
 
@@ -118,7 +125,7 @@ async function main() {
   if (reset) saveHistory(history)
 
   console.log(
-    `\n💬 ${profile.agentName} (${profile.modelId}) · etapa ${currentStepOrder} · ${history.length / 2} turno(s) no histórico\n`,
+    `\n💬 ${profile.agentName} (${profile.modelId}) · etapa ${stepLabel} · ${history.length / 2} turno(s) no histórico\n`,
   )
 
   // Modo roteiro: roda as mensagens passadas por argumento e sai.

@@ -2,6 +2,7 @@ import type { AgentSession } from '@prisma/client'
 import type { ModelMessage, ToolSet } from 'ai'
 import type { DispatcherCtx } from '../dispatcher-types'
 import type { ToolContext } from '../tools/types'
+import type { GateDecision } from './gate/decide-gate'
 import type { AgentSessionState } from './ledger/schema'
 import type { CompiledPrompt } from './prompt/compile-prompt'
 
@@ -39,6 +40,9 @@ export interface AgentTurnState {
 
   // --- extract (1a): popula o ledger ---
   sessionState?: AgentSessionState // ledger atualizado (attributes/control) — o persist grava
+
+  // --- gate (1b): decisão determinística de avanço de etapa ---
+  gate?: GateDecision // nextStepOrder + pendingRequired + advanced — generate cobra, persist grava
 
   // --- generate: produz a resposta ---
   responseText?: string // texto final, limpo (pós stripLeakedToolCalls), pronto pro send

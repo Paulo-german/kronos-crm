@@ -13,6 +13,7 @@ export async function loadStepRequirements(
     where: { agentId },
     orderBy: { order: 'asc' },
     select: {
+      id: true,
       order: true,
       fields: {
         where: { source: 'AGENT', required: true },
@@ -23,6 +24,7 @@ export async function loadStepRequirements(
   })
 
   return steps.map((step) => ({
+    id: step.id,
     order: step.order,
     requiredKeys: step.fields
       .map((field) => field.agentFieldKey)

@@ -3192,14 +3192,19 @@ model AgentSession {
   conversationId   String?  @unique @map("conversation_id") // vínculo (adapter): 1:1 hoje, nullable pro futuro sem inbox
   state            Json     @default("{}") // ledger (AgentSessionState, validado por Zod na borda)
   schemaVersion    Int      @default(1) @map("schema_version") // versiona o shape do JSON com segurança
-  currentStepOrder Int      @default(0) @map("current_step_order")
+  // Ponteiro da etapa atual por ID (não índice posicional): imune a reordenação/deleção.
+  // null = sessão nova → o gate resolve pra primeira etapa.
+  currentStepId    String?  @map("current_step_id")
+  // turnCount de quando entrou na etapa atual — gate exige que etapa sem required rode ≥1 turno
+  currentStepEnteredAtTurn Int @default(0) @map("current_step_entered_at_turn")
   turnCount        Int      @default(0) @map("turn_count")
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
-  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  conversation Conversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  agent        Agent         @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  conversation Conversation?    @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  agent        Agent            @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  currentStep  AgentEngineStep? @relation("SessionCurrentStep", fields: [currentStepId], references: [id], onDelete: SetNull)
 
   @@index([agentId])
   @@index([organizationId])
@@ -3227,6 +3232,7 @@ model AgentEngineStep {
   agent                  Agent                  @relation(fields: [agentId], references: [id], onDelete: Cascade)
   fields                 AgentEngineStepField[] @relation("StepFields")
   negativeRedirectFields AgentEngineStepField[] @relation("StepNegativeRedirect") // campos cujo desvio negativo aponta pra esta etapa
+  currentInSessions      AgentSession[]         @relation("SessionCurrentStep") // sessões posicionadas nesta etapa
 
   @@index([agentId, order])
   @@map("agent_engine_steps")

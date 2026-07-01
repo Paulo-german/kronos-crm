@@ -176,7 +176,8 @@ function buildFunnelSection(ctx: EngineContext): string | null {
   const { steps } = ctx.profile
   if (steps.length === 0) return null
 
-  const currentOrder = ctx.conversation.currentStepOrder
+  // `steps` já vem ordenado por `order`; null (sessão nova) → a primeira etapa é a atual.
+  const currentStepId = ctx.conversation.currentStepId ?? steps[0]?.id
   const lines: string[] = [
     '## Processo de atendimento',
     '',
@@ -184,7 +185,7 @@ function buildFunnelSection(ctx: EngineContext): string | null {
   ]
 
   for (const step of steps) {
-    const isCurrent = step.order === currentOrder
+    const isCurrent = step.id === currentStepId
     lines.push('')
     lines.push(
       `### ${step.order + 1}. ${step.name}${isCurrent ? ' (etapa atual)' : ''}`,

@@ -48,7 +48,7 @@ export const load: Stage = async ({ ctx }) => {
     capabilities,
     conversation: {
       ...conversationBase,
-      currentStepOrder: session.currentStepOrder,
+      currentStepId: session.currentStepId,
     },
     nowIso: now.toISOString(),
   }
