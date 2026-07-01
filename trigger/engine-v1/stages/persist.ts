@@ -14,6 +14,7 @@ export const persist: Stage = async ({
   usage,
   modelId,
   sessionState,
+  gate,
 }) => {
   if (estimatedCost !== undefined && modelId) {
     await settleCredits({
@@ -34,13 +35,23 @@ export const persist: Stage = async ({
     })
   }
 
-  // turnCount++ sempre; grava o ledger novo quando o extract produziu um (Fase 1a).
+  // turnCount++ sempre; grava o ledger novo (1a) e o avanço de etapa do gate (1b). Ao
+  // AVANÇAR, reinicia currentStepEnteredAtTurn com o turnCount ATUAL (antes do increment) —
+  // é o turno em que a nova etapa "entra", base pra regra "etapa de aviso roda ≥1 turno".
   if (session) {
     await db.agentSession.update({
       where: { id: session.id },
       data: {
         turnCount: { increment: 1 },
         ...(sessionState ? { state: sessionState } : {}),
+        ...(gate
+          ? {
+              currentStepId: gate.nextStepId,
+              ...(gate.advanced
+                ? { currentStepEnteredAtTurn: session.turnCount }
+                : {}),
+            }
+          : {}),
       },
     })
   }
