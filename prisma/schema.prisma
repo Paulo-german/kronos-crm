@@ -1777,6 +1777,10 @@ model Conversation {
   nextFollowUpAt        DateTime?                     @map("next_follow_up_at")
   followUpCount         Int                           @default(0) @map("follow_up_count")
   lastCustomerMessageAt DateTime?                     @map("last_customer_message_at")
+  // Ordenação da lista do inbox: mantido por trigger de banco (touch_conversation_last_activity)
+  // em todo INSERT de mensagem não arquivada — nunca setado manualmente pelo código da aplicação,
+  // ao contrário de updatedAt (que muda em qualquer update, ex: marcar como lida, pausar IA)
+  lastActivityAt        DateTime                      @default(now()) @map("last_activity_at")
   // Worker ativo nesta conversa — campo de tracking leve sem FK (agente pode sair do grupo)
   activeAgentId         String?                       @map("active_agent_id")
   // Status da conversa: OPEN por default, RESOLVED quando marcada manualmente
@@ -1802,10 +1806,10 @@ model Conversation {
   @@index([remoteJid, inboxId])
   @@index([dealId])
   @@index([nextFollowUpAt, aiPaused])
-  // Índice composto para a query "não respondidos": WHERE org = X AND last_message_role = 'user' ORDER BY updated_at DESC
-  @@index([organizationId, lastMessageRole, updatedAt(sort: Desc)])
-  // Índice composto para filtro por status no inbox: WHERE org = X AND status = Y ORDER BY updated_at DESC
-  @@index([organizationId, status, updatedAt(sort: Desc)])
+  // Índice composto para a query "não respondidos": WHERE org = X AND last_message_role = 'user' ORDER BY last_activity_at DESC, id DESC
+  @@index([organizationId, lastMessageRole, lastActivityAt(sort: Desc), id(sort: Desc)])
+  // Índice composto para filtro por status no inbox: WHERE org = X AND status = Y ORDER BY last_activity_at DESC, id DESC
+  @@index([organizationId, status, lastActivityAt(sort: Desc), id(sort: Desc)])
   @@map("conversations")
 }
 

@@ -1,3 +1,5 @@
+import type { ConversationSortMode } from '@/_data-access/conversation/get-conversations'
+
 interface ConversationsFilters {
   inboxId: string | null
   unreadOnly: boolean
@@ -7,6 +9,7 @@ interface ConversationsFilters {
   status: 'OPEN' | 'RESOLVED'
   labelIds: string[]
   assigneeIds: string[]
+  sortMode: ConversationSortMode
 }
 
 export const inboxKeys = {

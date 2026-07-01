@@ -2,7 +2,11 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { cookies } from 'next/headers'
 import { createClient } from '@/_lib/supabase/server'
 import { validateMembership } from '@/_data-access/organization/validate-membership'
-import { getConversationsPaginated, getConversationAsDto } from '@/_data-access/conversation/get-conversations'
+import {
+  getConversationsPaginated,
+  getConversationAsDto,
+  type ConversationSortMode,
+} from '@/_data-access/conversation/get-conversations'
 import { ORG_SLUG_COOKIE } from '@/_lib/constants'
 import { db } from '@/_lib/prisma'
 import { isElevated } from '@/_lib/rbac'
@@ -41,11 +45,25 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') ?? undefined
     const contactId = searchParams.get('contactId') ?? undefined
     const statusParam = searchParams.get('status')
-    const status = (statusParam === 'OPEN' || statusParam === 'RESOLVED') ? statusParam : undefined
+    const status =
+      statusParam === 'OPEN' || statusParam === 'RESOLVED'
+        ? statusParam
+        : undefined
     const labelIdsParam = searchParams.get('labelIds')
-    const labelIds = labelIdsParam ? labelIdsParam.split(',').filter(Boolean) : undefined
+    const labelIds = labelIdsParam
+      ? labelIdsParam.split(',').filter(Boolean)
+      : undefined
     const assigneeIdsParam = searchParams.get('assigneeIds')
-    const assigneeIds = assigneeIdsParam ? assigneeIdsParam.split(',').filter(Boolean) : undefined
+    const assigneeIds = assigneeIdsParam
+      ? assigneeIdsParam.split(',').filter(Boolean)
+      : undefined
+    const sortParam = searchParams.get('sort')
+    const sortMode: ConversationSortMode | undefined =
+      sortParam === 'oldest' ||
+      sortParam === 'unanswered_first' ||
+      sortParam === 'recent'
+        ? sortParam
+        : undefined
 
     // Determinar escopo RBAC do usuario e config de PII para filtrar conversas
     const elevated = isElevated(membership.userRole!)
@@ -58,12 +76,23 @@ export async function GET(request: NextRequest) {
       hidePiiFromMembers,
       limit,
       cursor,
-      { inboxId, unreadOnly, unansweredOnly, search, status, labelIds, assigneeIds },
+      {
+        inboxId,
+        unreadOnly,
+        unansweredOnly,
+        search,
+        status,
+        labelIds,
+        assigneeIds,
+        sortMode,
+      },
     )
 
     let deepLinkConversationId: string | undefined
     let deepLinkConversation = undefined
-    let deepLinkContact: { id: string; name: string; phone: string | null } | undefined
+    let deepLinkContact:
+      | { id: string; name: string; phone: string | null }
+      | undefined
     if (contactId) {
       const match = await db.conversation.findFirst({
         where: {
@@ -73,11 +102,18 @@ export async function GET(request: NextRequest) {
           ...(elevated ? {} : { assignedTo: user.id }),
         },
         select: { id: true },
-        orderBy: { updatedAt: 'desc' },
+        // Deep-link abre a conversa com a última atividade real (mensagem enviada/recebida),
+        // coerente com a ordenação da lista — não a última tocada por um update qualquer
+        orderBy: { lastActivityAt: 'desc' },
       })
       if (match) {
         deepLinkConversationId = match.id
-        deepLinkConversation = await getConversationAsDto(membership.orgId, match.id, elevated, hidePiiFromMembers)
+        deepLinkConversation = await getConversationAsDto(
+          membership.orgId,
+          match.id,
+          elevated,
+          hidePiiFromMembers,
+        )
       } else {
         const contact = await db.contact.findFirst({
           where: { id: contactId, organizationId: membership.orgId },

@@ -16,13 +16,16 @@ export interface LastMessageMetadataDto {
   deliveryError?: unknown
 }
 
-function toLastMessageSafeMetadata(raw: unknown): LastMessageMetadataDto | null {
+function toLastMessageSafeMetadata(
+  raw: unknown,
+): LastMessageMetadataDto | null {
   if (raw === null || typeof raw !== 'object') return null
   const meta = raw as Record<string, unknown>
   return {
     media: meta.media,
     sentBy: typeof meta.sentBy === 'string' ? meta.sentBy : undefined,
-    sentByName: typeof meta.sentByName === 'string' ? meta.sentByName : undefined,
+    sentByName:
+      typeof meta.sentByName === 'string' ? meta.sentByName : undefined,
     sentFrom: typeof meta.sentFrom === 'string' ? meta.sentFrom : undefined,
     template: meta.template,
     deliveryError: meta.deliveryError,
@@ -55,6 +58,7 @@ export interface ConversationListDto {
   dealId: string | null
   dealTitle: string | null
   lastCustomerMessageAt: Date | null
+  lastActivityAt: Date
   unreadCount: number
   lastMessageRole: string | null
   lastMessage: {
@@ -73,6 +77,11 @@ export interface ConversationListDto {
   labels: ConversationLabelDto[]
 }
 
+// 'unanswered_first' ordena pelo servidor como 'recent' — o agrupamento por
+// "não respondida primeiro" é aplicado no re-sort client-side (use-inbox-conversations),
+// que já refaz a ordenação de todas as páginas carregadas a cada refetch
+export type ConversationSortMode = 'recent' | 'oldest' | 'unanswered_first'
+
 export interface ConversationFilters {
   inboxId?: string
   unreadOnly?: boolean
@@ -82,9 +91,19 @@ export interface ConversationFilters {
   labelIds?: string[]
   // assigneeIds aceita userIds reais + sentinela 'unassigned' para conversas sem dono
   assigneeIds?: string[]
+  sortMode?: ConversationSortMode
 }
 
 const UNASSIGNED_SENTINEL = 'unassigned'
+
+// Desempate por id: sem ele, conversas com lastActivityAt empatado (comum em cargas
+// iniciais) não têm ordem estável entre si e podem balançar a cada refetch
+function buildConversationOrderBy(
+  sortMode: ConversationSortMode | undefined,
+): Prisma.ConversationOrderByWithRelationInput[] {
+  const direction = sortMode === 'oldest' ? 'asc' : 'desc'
+  return [{ lastActivityAt: direction }, { id: direction }]
+}
 
 function buildAssigneeFilter(
   assigneeIds: string[] | undefined,
@@ -159,16 +178,19 @@ function mapConversationToDto(
 ): ConversationListDto {
   // Resolve nome do worker ativo via membros do grupo (sem FK explícita)
   const groupMembers = conversation.inbox.agentGroup?.members ?? []
-  const activeAgentName =
-    conversation.activeAgentId
-      ? (groupMembers.find((member) => member.agentId === conversation.activeAgentId)?.agent.name ?? null)
-      : null
+  const activeAgentName = conversation.activeAgentId
+    ? (groupMembers.find(
+        (member) => member.agentId === conversation.activeAgentId,
+      )?.agent.name ?? null)
+    : null
 
   return {
     id: conversation.id,
     contactId: conversation.contactId,
     contactName: conversation.contact.name,
-    contactPhone: masked ? maskPhone(conversation.contact.phone) : conversation.contact.phone,
+    contactPhone: masked
+      ? maskPhone(conversation.contact.phone)
+      : conversation.contact.phone,
     agentName: conversation.inbox.agent?.name ?? null,
     agentGroupName: conversation.inbox.agentGroup?.name ?? null,
     activeAgentId: conversation.activeAgentId,
@@ -179,10 +201,13 @@ function mapConversationToDto(
     channel: conversation.channel,
     aiPaused: conversation.aiPaused,
     pausedAt: conversation.pausedAt,
-    remoteJid: masked ? maskRemoteJid(conversation.remoteJid) : conversation.remoteJid,
+    remoteJid: masked
+      ? maskRemoteJid(conversation.remoteJid)
+      : conversation.remoteJid,
     dealId: conversation.deal?.id ?? null,
     dealTitle: conversation.deal?.title ?? null,
     lastCustomerMessageAt: conversation.lastCustomerMessageAt,
+    lastActivityAt: conversation.lastActivityAt,
     unreadCount: conversation.unreadCount,
     lastMessageRole: conversation.lastMessageRole,
     lastMessage: conversation.messages[0]
@@ -192,7 +217,9 @@ function mapConversationToDto(
           createdAt: conversation.messages[0].createdAt,
           // Whitelist explícita: expõe apenas campos seguros de metadata ao frontend.
           // agentTrajectory, model e llmDurationMs são internos e não devem vazar.
-          metadata: toLastMessageSafeMetadata(conversation.messages[0].metadata),
+          metadata: toLastMessageSafeMetadata(
+            conversation.messages[0].metadata,
+          ),
         }
       : null,
     messageCount: conversation._count.messages,
@@ -234,17 +261,19 @@ async function fetchConversationsPaginatedFromDb(
   filters?: ConversationFilters,
 ): Promise<PaginatedConversationsResult> {
   // Filtro RBAC: MEMBER ve apenas conversas atribuidas a ele; ADMIN/OWNER ve tudo
-  const rbacFilter: Prisma.ConversationWhereInput = elevated ? {} : { assignedTo: userId }
+  const rbacFilter: Prisma.ConversationWhereInput = elevated
+    ? {}
+    : { assignedTo: userId }
   const masked = !elevated && hidePiiFromMembers
 
   // Normaliza busca: remove espaços, parênteses, traços e '+' para comparar telefones
   const searchTerm = filters?.search?.trim() ?? ''
-  const normalizedPhone = searchTerm
-    ? searchTerm.replace(/[\s()\-+]/g, '')
-    : ''
+  const normalizedPhone = searchTerm ? searchTerm.replace(/[\s()\-+]/g, '') : ''
   // Detecta UUID completo para busca direta pelo id da conversa
   const isFullUuid =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(searchTerm)
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      searchTerm,
+    )
 
   // Filtro de status aplicado consistentemente a todas as queries
   const statusFilter: Prisma.ConversationWhereInput = filters?.status
@@ -278,17 +307,41 @@ async function fetchConversationsPaginatedFromDb(
             {
               contact: {
                 OR: [
-                  { name: { contains: searchTerm, mode: 'insensitive' as const } },
+                  {
+                    name: {
+                      contains: searchTerm,
+                      mode: 'insensitive' as const,
+                    },
+                  },
                   ...(!masked
                     ? [
-                        { email: { contains: searchTerm, mode: 'insensitive' as const } },
+                        {
+                          email: {
+                            contains: searchTerm,
+                            mode: 'insensitive' as const,
+                          },
+                        },
                         // Busca telefone com termo normalizado (sem formatação)
                         ...(normalizedPhone.length >= 3
-                          ? [{ phone: { contains: normalizedPhone, mode: 'insensitive' as const } }]
+                          ? [
+                              {
+                                phone: {
+                                  contains: normalizedPhone,
+                                  mode: 'insensitive' as const,
+                                },
+                              },
+                            ]
                           : []),
                       ]
                     : []),
-                  { company: { name: { contains: searchTerm, mode: 'insensitive' as const } } },
+                  {
+                    company: {
+                      name: {
+                        contains: searchTerm,
+                        mode: 'insensitive' as const,
+                      },
+                    },
+                  },
                 ],
               },
             },
@@ -315,24 +368,31 @@ async function fetchConversationsPaginatedFromDb(
     ...(filters?.inboxId ? { inboxId: filters.inboxId } : {}),
   }
 
-  const [conversations, totalCount, totalUnread, totalUnanswered] = await Promise.all([
-    db.conversation.findMany({
-      where,
-      take: limit + 1,
-      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-      orderBy: { updatedAt: 'desc' },
-      include: conversationListInclude,
-    }),
-    db.conversation.count({ where }),
-    db.conversation.count({ where: unreadWhere }),
-    db.conversation.count({ where: unansweredWhere }),
-  ])
+  const [conversations, totalCount, totalUnread, totalUnanswered] =
+    await Promise.all([
+      db.conversation.findMany({
+        where,
+        take: limit + 1,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+        orderBy: buildConversationOrderBy(filters?.sortMode),
+        include: conversationListInclude,
+      }),
+      db.conversation.count({ where }),
+      db.conversation.count({ where: unreadWhere }),
+      db.conversation.count({ where: unansweredWhere }),
+    ])
 
   const hasMore = conversations.length > limit
   const sliced = hasMore ? conversations.slice(0, limit) : conversations
   const mapped = sliced.map((conv) => mapConversationToDto(conv, masked))
 
-  return { conversations: mapped, hasMore, totalCount, totalUnread, totalUnanswered }
+  return {
+    conversations: mapped,
+    hasMore,
+    totalCount,
+    totalUnread,
+    totalUnanswered,
+  }
 }
 
 export const getConversationsPaginated = cache(
@@ -347,9 +407,20 @@ export const getConversationsPaginated = cache(
   ): Promise<PaginatedConversationsResult> => {
     const filterKey = JSON.stringify(filters ?? {})
     const getCached = unstable_cache(
-      async () => fetchConversationsPaginatedFromDb(orgId, userId, elevated, hidePiiFromMembers, limit, cursor, filters),
+      async () =>
+        fetchConversationsPaginatedFromDb(
+          orgId,
+          userId,
+          elevated,
+          hidePiiFromMembers,
+          limit,
+          cursor,
+          filters,
+        ),
       // Cache key inclui userId para isolar entradas MEMBER vs ADMIN/OWNER, e hidePiiFromMembers para reagir a mudanças no toggle
-      [`conversations-${orgId}-${userId}-${elevated}-${hidePiiFromMembers}-${limit}-${cursor ?? 'none'}-${filterKey}`],
+      [
+        `conversations-${orgId}-${userId}-${elevated}-${hidePiiFromMembers}-${limit}-${cursor ?? 'none'}-${filterKey}`,
+      ],
       { tags: [`conversations:${orgId}`], revalidate: 3600 },
     )
     return getCached()

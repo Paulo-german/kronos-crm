@@ -2,7 +2,10 @@
 
 import { useMemo, useCallback, useRef, useEffect, useState } from 'react'
 import { useInfiniteQuery } from '@tanstack/react-query'
-import type { ConversationListDto } from '@/_data-access/conversation/get-conversations'
+import type {
+  ConversationListDto,
+  ConversationSortMode,
+} from '@/_data-access/conversation/get-conversations'
 import { inboxKeys } from '../_lib/inbox-query-keys'
 
 const DEBOUNCE_MS = 300
@@ -16,6 +19,34 @@ export interface UseConversationsOptions {
   status: 'OPEN' | 'RESOLVED'
   labelIds: string[]
   assigneeIds: string[]
+  sortMode: ConversationSortMode
+}
+
+// Comparador client-side: reordena todas as páginas já carregadas a cada refetch/merge.
+// 'unanswered_first' agrupa por lastMessageRole aqui (não no servidor) para manter a
+// paginação por cursor simples e estável em todos os modos de ordenação.
+function compareConversations(
+  sortMode: ConversationSortMode,
+  conversationA: ConversationListDto,
+  conversationB: ConversationListDto,
+): number {
+  if (sortMode === 'unanswered_first') {
+    const isAUnanswered = conversationA.lastMessageRole === 'user'
+    const isBUnanswered = conversationB.lastMessageRole === 'user'
+    if (isAUnanswered !== isBUnanswered) return isAUnanswered ? -1 : 1
+  }
+
+  const direction = sortMode === 'oldest' ? 1 : -1
+  const activityDiff =
+    new Date(conversationA.lastActivityAt).getTime() -
+    new Date(conversationB.lastActivityAt).getTime()
+  if (activityDiff !== 0) return activityDiff * direction
+
+  // Desempate por id — DEVE espelhar o orderBy do servidor ({ id: direction }): asc no
+  // modo 'oldest', desc nos demais. Se divergir, a ordem exibida discorda da paginação
+  // por cursor no limite de timestamps empatados.
+  const idAscending = conversationA.id < conversationB.id ? -1 : 1
+  return idAscending * direction
 }
 
 interface DeepLinkContact {
@@ -60,13 +91,28 @@ function buildUrl(options: UseConversationsOptions, cursor?: string): string {
   if (options.search) params.set('search', options.search)
   if (options.contactId) params.set('contactId', options.contactId)
   if (options.status) params.set('status', options.status)
-  if (options.labelIds.length > 0) params.set('labelIds', options.labelIds.join(','))
-  if (options.assigneeIds.length > 0) params.set('assigneeIds', options.assigneeIds.join(','))
+  if (options.labelIds.length > 0)
+    params.set('labelIds', options.labelIds.join(','))
+  if (options.assigneeIds.length > 0)
+    params.set('assigneeIds', options.assigneeIds.join(','))
+  if (options.sortMode !== 'recent') params.set('sort', options.sortMode)
   return `/api/inbox/conversations?${params.toString()}`
 }
 
-export function useInboxConversations(options: UseConversationsOptions): UseInboxConversationsReturn {
-  const { inboxId, unreadOnly, unansweredOnly, search, contactId, status, labelIds, assigneeIds } = options
+export function useInboxConversations(
+  options: UseConversationsOptions,
+): UseInboxConversationsReturn {
+  const {
+    inboxId,
+    unreadOnly,
+    unansweredOnly,
+    search,
+    contactId,
+    status,
+    labelIds,
+    assigneeIds,
+    sortMode,
+  } = options
 
   // Debounce da busca para não disparar query a cada keystroke
   const [debouncedSearch, setDebouncedSearch] = useState(search)
@@ -85,8 +131,19 @@ export function useInboxConversations(options: UseConversationsOptions): UseInbo
       status,
       labelIds,
       assigneeIds,
+      sortMode,
     }),
-    [inboxId, unreadOnly, unansweredOnly, debouncedSearch, contactId, status, labelIds, assigneeIds],
+    [
+      inboxId,
+      unreadOnly,
+      unansweredOnly,
+      debouncedSearch,
+      contactId,
+      status,
+      labelIds,
+      assigneeIds,
+      sortMode,
+    ],
   )
 
   // Deep link: só passa contactId na primeira carga para não filtrar após navegação
@@ -97,7 +154,10 @@ export function useInboxConversations(options: UseConversationsOptions): UseInbo
     queryFn: async ({ pageParam, signal }) => {
       // Suprime o filtro de contactId após o deep link inicial já ter sido resolvido
       const fetchContactId = !didDeepLink.current ? filters.contactId : null
-      const filtersWithContact: UseConversationsOptions = { ...filters, contactId: fetchContactId }
+      const filtersWithContact: UseConversationsOptions = {
+        ...filters,
+        contactId: fetchContactId,
+      }
       const url = buildUrl(filtersWithContact, pageParam)
 
       const response = await fetch(url, { signal })
@@ -105,7 +165,10 @@ export function useInboxConversations(options: UseConversationsOptions): UseInbo
       const data = (await response.json()) as ApiResponse
 
       // Registrar deep link na primeira vez que o servidor retorna os dados de deep link
-      if (!didDeepLink.current && (data.deepLinkConversationId ?? data.deepLinkContact)) {
+      if (
+        !didDeepLink.current &&
+        (data.deepLinkConversationId ?? data.deepLinkContact)
+      ) {
         didDeepLink.current = true
       }
 
@@ -122,7 +185,7 @@ export function useInboxConversations(options: UseConversationsOptions): UseInbo
     refetchIntervalInBackground: false,
   })
 
-  // Flatten de todas as páginas, deduplicação por id e ordenação por updatedAt DESC
+  // Flatten de todas as páginas, deduplicação por id e ordenação conforme sortMode
   const conversations = useMemo(() => {
     if (!query.data) return []
     const map = new Map<string, ConversationListDto>()
@@ -131,10 +194,10 @@ export function useInboxConversations(options: UseConversationsOptions): UseInbo
         map.set(conv.id, conv)
       }
     }
-    return Array.from(map.values()).sort(
-      (convA, convB) => new Date(convB.updatedAt).getTime() - new Date(convA.updatedAt).getTime(),
+    return Array.from(map.values()).sort((convA, convB) =>
+      compareConversations(sortMode, convA, convB),
     )
-  }, [query.data])
+  }, [query.data, sortMode])
 
   // Contadores são autoritativos na primeira página (refetch atualiza automaticamente)
   const firstPage = query.data?.pages[0]
@@ -156,7 +219,11 @@ export function useInboxConversations(options: UseConversationsOptions): UseInbo
       if (!node) return
       observerRef.current = new IntersectionObserver(
         (entries) => {
-          if (entries[0]?.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          if (
+            entries[0]?.isIntersecting &&
+            hasNextPage &&
+            !isFetchingNextPage
+          ) {
             void fetchNextPage()
           }
         },

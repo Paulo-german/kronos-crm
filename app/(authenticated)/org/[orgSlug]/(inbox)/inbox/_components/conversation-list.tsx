@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
+  ArrowUpDown,
   Bot,
   FlaskConical,
   Inbox,
@@ -40,11 +41,16 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/_components/ui/dropdown-menu'
 import type {
   ConversationListDto,
   ConversationLabelDto,
+  ConversationSortMode,
 } from '@/_data-access/conversation/get-conversations'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import type { AgentDto } from '@/_data-access/agent/get-agents'
@@ -94,6 +100,8 @@ interface ConversationListProps {
   isElevated: boolean
   statusFilter: 'OPEN' | 'RESOLVED'
   onStatusFilterChange: (status: 'OPEN' | 'RESOLVED') => void
+  sortMode: ConversationSortMode
+  onSortModeChange: (sortMode: ConversationSortMode) => void
   selectedLabelIds: string[]
   onLabelIdsChange: (ids: string[]) => void
   availableLabels: ConversationLabelDto[]
@@ -137,6 +145,12 @@ const channelLabels: Record<string, string> = {
   WHATSAPP: 'WhatsApp',
   WEB_CHAT: 'Web Chat',
   INSTAGRAM_DM: 'Instagram Direct',
+}
+
+const sortModeLabels: Record<ConversationSortMode, string> = {
+  recent: 'Mais recentes',
+  oldest: 'Mais antigas',
+  unanswered_first: 'Não respondidas primeiro',
 }
 
 // ---------------------------------------------------------------------------
@@ -198,6 +212,8 @@ export function ConversationList({
   isElevated,
   statusFilter,
   onStatusFilterChange,
+  sortMode,
+  onSortModeChange,
   selectedLabelIds,
   onLabelIdsChange,
   availableLabels,
@@ -256,6 +272,43 @@ export function ConversationList({
           </Badge>
           <div className="flex-1" />
           <TooltipProvider>
+            <Tooltip>
+              <DropdownMenu>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground"
+                    >
+                      <ArrowUpDown className="h-3.5 w-3.5" />
+                      <span className="sr-only">Ordenar conversas</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <DropdownMenuContent align="start" className="w-56">
+                  <DropdownMenuLabel>Ordenar por</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuRadioGroup
+                    value={sortMode}
+                    onValueChange={(value) =>
+                      onSortModeChange(value as ConversationSortMode)
+                    }
+                  >
+                    {(
+                      Object.keys(sortModeLabels) as ConversationSortMode[]
+                    ).map((mode) => (
+                      <DropdownMenuRadioItem key={mode} value={mode}>
+                        {sortModeLabels[mode]}
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <TooltipContent side="bottom">
+                <p>{sortModeLabels[sortMode]}</p>
+              </TooltipContent>
+            </Tooltip>
             <ConversationFilterPanel
               statusFilter={statusFilter}
               onStatusFilterChange={onStatusFilterChange}

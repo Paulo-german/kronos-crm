@@ -13,6 +13,7 @@ import type { DealOptionDto } from '@/_data-access/deal/get-deals-options'
 import type { ContactOptionDto } from '@/_data-access/contact/get-contacts-options'
 import type { AcceptedMemberDto } from '@/_data-access/organization/get-organization-members'
 import type { AgentDto } from '@/_data-access/agent/get-agents'
+import type { ConversationSortMode } from '@/_data-access/conversation/get-conversations'
 import { isElevated } from '@/_lib/rbac/permissions'
 import { ConversationList, type FilterTab } from './conversation-list'
 import { ChatView } from './chat-view'
@@ -69,6 +70,7 @@ export function InboxClient({
   const [selectedConversation, setSelectedConversation] =
     useState<ConversationListDto | null>(null)
   const [statusFilter, setStatusFilter] = useState<'OPEN' | 'RESOLVED'>('OPEN')
+  const [sortMode, setSortMode] = useState<ConversationSortMode>('recent')
   const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([])
   const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>([])
   const didApplyDeepLink = useRef(false)
@@ -100,6 +102,7 @@ export function InboxClient({
     status: statusFilter,
     labelIds: selectedLabelIds,
     assigneeIds: selectedAssigneeIds,
+    sortMode,
   })
 
   const mutations = useInboxMutations({
@@ -241,6 +244,8 @@ export function InboxClient({
             isElevated={elevated}
             statusFilter={statusFilter}
             onStatusFilterChange={setStatusFilter}
+            sortMode={sortMode}
+            onSortModeChange={setSortMode}
             selectedLabelIds={selectedLabelIds}
             onLabelIdsChange={setSelectedLabelIds}
             availableLabels={availableLabels}
