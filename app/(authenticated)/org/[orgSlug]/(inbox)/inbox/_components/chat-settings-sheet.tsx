@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAction } from 'next-safe-action/hooks'
@@ -11,13 +11,14 @@ import {
   ChevronsUpDown,
   ExternalLink,
   Handshake,
-  Info,
+  Inbox,
   Loader2,
+  MessageCircle,
   Phone,
-  Save,
   Unlink,
   User,
   UserCog,
+  type LucideIcon,
 } from 'lucide-react'
 
 import { cn } from '@/_lib/utils'
@@ -46,7 +47,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/_components/ui/select'
-import { Separator } from '@/_components/ui/separator'
 import {
   Sheet,
   SheetContent,
@@ -54,6 +54,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/_components/ui/sheet'
+import { LIFECYCLE_STAGE_CONFIG } from '@/_lib/lifecycle/lifecycle-stage-config'
 import { updateContact } from '@/_actions/contact/update-contact'
 import { updateConversation } from '@/_actions/inbox/update-conversation'
 import type { ConversationListDto } from '@/_data-access/conversation/get-conversations'
@@ -81,6 +82,44 @@ function getMemberInitials(name: string | null): string {
     .map((word) => word[0])
     .join('')
     .toUpperCase()
+}
+
+const brlFormatter = new Intl.NumberFormat('pt-BR', {
+  style: 'currency',
+  currency: 'BRL',
+})
+
+// Linha rótulo → valor (rótulo à esquerda em muted, valor à direita), reutilizada
+// para os detalhes de contato, negociação, caixa de entrada e agente.
+function InfoRow({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <span className="shrink-0 text-xs text-muted-foreground">{label}</span>
+      <span className="truncate text-right text-sm">{value}</span>
+    </div>
+  )
+}
+
+// Card de seção: dá contenção visual (superfície + borda) a cada bloco do sheet,
+// substituindo os antigos <Separator /> planos por um ritmo mais legível.
+function SettingsSection({
+  icon: Icon,
+  title,
+  children,
+}: {
+  icon: LucideIcon
+  title: string
+  children: ReactNode
+}) {
+  return (
+    <section className="space-y-4 rounded-lg border border-border/50 bg-muted/30 p-4">
+      <div className="flex items-center gap-2">
+        <Icon className="h-4 w-4 text-muted-foreground" />
+        <h3 className="text-sm font-semibold">{title}</h3>
+      </div>
+      {children}
+    </section>
+  )
 }
 
 export function ChatSettingsSheet({
@@ -204,9 +243,23 @@ export function ChatSettingsSheet({
     (deal) => deal.id === conversation.dealId,
   )
 
+  // Defensivo: objeto pode chegar de um cache antigo sem o campo — não renderiza o badge
+  const lifecycleConfig = conversation.contactLifecycleStage
+    ? LIFECYCLE_STAGE_CONFIG[conversation.contactLifecycleStage]
+    : null
+
+  // Agente da conversa: no modo grupo o worker ativo prevalece sobre o agente do inbox
+  const displayAgentName =
+    conversation.activeAgentName ?? conversation.agentName
+  const agentRouteId = conversation.activeAgentId ?? conversation.agentId
+  const hasAgent = Boolean(displayAgentName ?? conversation.agentGroupName)
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="overflow-y-auto sm:max-w-md">
+      <SheetContent
+        overlayClassName="bg-black/50"
+        className="overflow-y-auto sm:max-w-lg"
+      >
         <SheetHeader>
           <SheetTitle>Configurações da Conversa</SheetTitle>
           <SheetDescription>
@@ -214,14 +267,44 @@ export function ChatSettingsSheet({
           </SheetDescription>
         </SheetHeader>
 
-        <div className="mt-6 space-y-6">
-          {/* Seção 1 - Contato */}
-          <section className="space-y-4">
-            <div className="flex items-center gap-2">
-              <User className="h-4 w-4 text-muted-foreground" />
-              <h3 className="text-sm font-semibold">Contato</h3>
-            </div>
+        {/* Hero — identidade do contato: avatar, nome, telefone e canal */}
+        <div className="mt-6 flex flex-col items-center gap-3 rounded-lg border border-primary/15 bg-gradient-to-b from-primary/10 to-transparent p-5 text-center">
+          <Avatar className="h-16 w-16">
+            <AvatarFallback className="bg-primary/10 text-lg font-semibold text-primary">
+              {getMemberInitials(conversation.contactName)}
+            </AvatarFallback>
+          </Avatar>
+          <div className="space-y-1">
+            <p className="text-base font-semibold leading-none">
+              {conversation.contactName}
+            </p>
+            {conversation.contactPhone && (
+              <div className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
+                <Phone className="h-3.5 w-3.5" />
+                {conversation.contactPhone}
+              </div>
+            )}
+          </div>
+          <Badge variant="outline" className="gap-1 text-xs">
+            <MessageCircle className="h-3 w-3" />
+            {channelLabel}
+          </Badge>
+          <Button
+            variant="link"
+            size="sm"
+            className="h-auto p-0 text-xs"
+            asChild
+          >
+            <Link href={`/org/${orgSlug}/contacts/${conversation.contactId}`}>
+              Ver contato
+              <ExternalLink className="ml-1 h-3 w-3" />
+            </Link>
+          </Button>
+        </div>
 
+        <div className="mt-4 space-y-3">
+          {/* Contato — dados, renomear e trocar */}
+          <SettingsSection icon={User} title="Contato">
             {/* Nome editável */}
             <div className="space-y-2">
               <Label
@@ -235,13 +318,12 @@ export function ChatSettingsSheet({
                   id="contact-name"
                   value={editName}
                   onChange={(event) => setEditName(event.target.value)}
-                  className="h-9"
+                  className="h-9 bg-background"
                   onKeyDown={(event) => {
                     if (event.key === 'Enter') handleSaveName()
                   }}
                 />
                 <Button
-                  variant="outline"
                   size="icon"
                   className="h-9 w-9 shrink-0"
                   onClick={handleSaveName}
@@ -254,37 +336,38 @@ export function ChatSettingsSheet({
                   {updateContactAction.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    <Save className="h-4 w-4" />
+                    <Check className="h-4 w-4" />
                   )}
                 </Button>
               </div>
             </div>
 
-            {/* Telefone (read-only) */}
-            {conversation.contactPhone && (
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">
-                  Telefone
-                </Label>
-                <div className="flex items-center gap-2 text-sm">
-                  <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-                  {conversation.contactPhone}
-                </div>
-              </div>
-            )}
-
-            {/* Link para contato */}
-            <Button
-              variant="link"
-              size="sm"
-              className="h-auto p-0 text-xs"
-              asChild
-            >
-              <Link href={`/org/${orgSlug}/contacts/${conversation.contactId}`}>
-                Ver contato
-                <ExternalLink className="ml-1 h-3 w-3" />
-              </Link>
-            </Button>
+            {/* Dados do contato (read-only) */}
+            <div className="space-y-2 border-t border-border/50 pt-3">
+              {lifecycleConfig && (
+                <InfoRow
+                  label="Estágio"
+                  value={
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        'gap-1 text-xs',
+                        lifecycleConfig.badgeClassName,
+                      )}
+                    >
+                      <lifecycleConfig.icon className="h-3 w-3" />
+                      {lifecycleConfig.label}
+                    </Badge>
+                  }
+                />
+              )}
+              {conversation.contactEmail && (
+                <InfoRow label="Email" value={conversation.contactEmail} />
+              )}
+              {conversation.contactCompany && (
+                <InfoRow label="Empresa" value={conversation.contactCompany} />
+              )}
+            </div>
 
             {/* Trocar contato */}
             <div className="space-y-2">
@@ -300,7 +383,7 @@ export function ChatSettingsSheet({
                     variant="outline"
                     role="combobox"
                     aria-expanded={contactPopoverOpen}
-                    className="w-full justify-between"
+                    className="w-full justify-between bg-background"
                     size="sm"
                   >
                     {selectedContact?.name ?? 'Selecione um contato...'}
@@ -346,47 +429,59 @@ export function ChatSettingsSheet({
                 </PopoverContent>
               </Popover>
             </div>
-          </section>
+          </SettingsSection>
 
-          <Separator />
-
-          {/* Seção 2 - Negociação */}
-          <section className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Handshake className="h-4 w-4 text-muted-foreground" />
-              <h3 className="text-sm font-semibold">Negociação</h3>
-            </div>
-
+          {/* Negociação */}
+          <SettingsSection icon={Handshake} title="Negociação">
             {/* Deal vinculado */}
             {conversation.dealId && conversation.dealTitle && (
-              <div className="flex items-center justify-between">
-                <Badge variant="secondary" className="max-w-[200px] truncate">
-                  {conversation.dealTitle}
-                </Badge>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="link"
-                    size="sm"
-                    className="h-auto p-0 text-xs"
-                    asChild
-                  >
-                    <Link
-                      href={`/org/${orgSlug}/crm/deals/${conversation.dealId}`}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Badge variant="secondary" className="max-w-[200px] truncate">
+                    {conversation.dealTitle}
+                  </Badge>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="h-auto p-0 text-xs"
+                      asChild
                     >
-                      Ver negociação
-                      <ExternalLink className="ml-1 h-3 w-3" />
-                    </Link>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs text-destructive hover:text-destructive"
-                    onClick={handleUnlinkDeal}
-                    disabled={updateConversationAction.isPending}
-                  >
-                    <Unlink className="mr-1 h-3 w-3" />
-                    Desvincular
-                  </Button>
+                      <Link
+                        href={`/org/${orgSlug}/crm/deals/${conversation.dealId}`}
+                      >
+                        Ver negociação
+                        <ExternalLink className="ml-1 h-3 w-3" />
+                      </Link>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs text-destructive hover:text-destructive"
+                      onClick={handleUnlinkDeal}
+                      disabled={updateConversationAction.isPending}
+                    >
+                      <Unlink className="mr-1 h-3 w-3" />
+                      Desvincular
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Detalhes do deal (read-only) */}
+                <div className="space-y-2 border-t border-border/50 pt-3">
+                  {conversation.dealValue !== null && (
+                    <InfoRow
+                      label="Valor"
+                      value={
+                        <span className="font-medium">
+                          {brlFormatter.format(conversation.dealValue)}
+                        </span>
+                      }
+                    />
+                  )}
+                  {conversation.dealStage && (
+                    <InfoRow label="Etapa" value={conversation.dealStage} />
+                  )}
                 </div>
               </div>
             )}
@@ -404,7 +499,7 @@ export function ChatSettingsSheet({
                     variant="outline"
                     role="combobox"
                     aria-expanded={dealPopoverOpen}
-                    className="w-full justify-between"
+                    className="w-full justify-between bg-background"
                     size="sm"
                   >
                     {selectedDeal?.title ?? 'Selecione uma negociação...'}
@@ -452,17 +547,10 @@ export function ChatSettingsSheet({
                 </PopoverContent>
               </Popover>
             </div>
-          </section>
+          </SettingsSection>
 
-          <Separator />
-
-          {/* Seção 3 - Responsável */}
-          <section className="space-y-4">
-            <div className="flex items-center gap-2">
-              <UserCog className="h-4 w-4 text-muted-foreground" />
-              <h3 className="text-sm font-semibold">Responsável</h3>
-            </div>
-
+          {/* Responsável */}
+          <SettingsSection icon={UserCog} title="Responsável">
             {/* Responsável atual */}
             <div className="flex items-center gap-2">
               {conversation.assigneeName ? (
@@ -535,54 +623,126 @@ export function ChatSettingsSheet({
                 )}
               </div>
             )}
-          </section>
+          </SettingsSection>
 
-          <Separator />
-
-          {/* Seção 5 - Info */}
-          <section className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Info className="h-4 w-4 text-muted-foreground" />
-              <h3 className="text-sm font-semibold">Informações</h3>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">Canal</span>
-                <Badge variant="outline" className="text-xs">
-                  {channelLabel}
-                </Badge>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">Inbox</span>
-                <div className="text-right">
-                  <span className="text-sm">{conversation.inboxName}</span>
-                  {conversation.channel === 'WHATSAPP' && (
-                    <p className="text-xs text-muted-foreground">
-                      {connectionTypeLabels[conversation.inboxConnectionType] ??
-                        conversation.inboxConnectionType}
+          {/* Agente IA — sempre visível: mostra o agente vinculado ou um empty-state
+              com atalho para vincular na config da caixa */}
+          <SettingsSection icon={Bot} title="Agente IA">
+            {hasAgent ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-kronos-purple/10">
+                    <Bot className="size-4 text-kronos-purple" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">
+                      {displayAgentName ?? conversation.agentGroupName}
                     </p>
+                    {conversation.agentGroupName && displayAgentName && (
+                      <p className="truncate text-xs text-muted-foreground">
+                        Grupo: {conversation.agentGroupName}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-2 border-t border-border/50 pt-3">
+                  <InfoRow
+                    label="Status"
+                    value={
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          'text-xs',
+                          conversation.aiPaused
+                            ? 'text-muted-foreground'
+                            : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-600',
+                        )}
+                      >
+                        {conversation.aiPaused ? 'Pausado' : 'Ativo'}
+                      </Badge>
+                    }
+                  />
+                  {conversation.currentStepName && (
+                    <InfoRow
+                      label="Etapa atual"
+                      value={
+                        <Badge variant="secondary" className="text-xs">
+                          {conversation.currentStepName}
+                        </Badge>
+                      }
+                    />
                   )}
                 </div>
-              </div>
 
-              {conversation.agentName && (
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">
-                    Agente IA
-                  </span>
-                  <Badge
-                    variant="outline"
-                    className="gap-1 border-kronos-purple/20 bg-kronos-purple/10 text-xs text-kronos-purple"
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="h-auto p-0 text-xs"
+                  asChild
+                >
+                  <Link
+                    href={
+                      agentRouteId
+                        ? `/org/${orgSlug}/agents/ai-agent/${agentRouteId}`
+                        : `/org/${orgSlug}/agents/ai-agent/groups`
+                    }
                   >
-                    <Bot className="h-3 w-3" />
-                    {conversation.agentName}
-                  </Badge>
-                </div>
+                    Ver agente
+                    <ExternalLink className="ml-1 h-3 w-3" />
+                  </Link>
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Nenhum agente de IA vinculado a esta caixa de entrada.
+                </p>
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="h-auto p-0 text-xs"
+                  asChild
+                >
+                  <Link
+                    href={`/org/${orgSlug}/inbox/settings/inboxes/${conversation.inboxId}`}
+                  >
+                    Vincular agente
+                    <ExternalLink className="ml-1 h-3 w-3" />
+                  </Link>
+                </Button>
+              </div>
+            )}
+          </SettingsSection>
+
+          {/* Caixa de entrada — origem da conversa + atalho para a config */}
+          <SettingsSection icon={Inbox} title="Caixa de Entrada">
+            <div className="space-y-3">
+              <InfoRow label="Nome" value={conversation.inboxName} />
+              {conversation.channel === 'WHATSAPP' && (
+                <InfoRow
+                  label="Conexão"
+                  value={
+                    connectionTypeLabels[conversation.inboxConnectionType] ??
+                    conversation.inboxConnectionType
+                  }
+                />
               )}
+              <Button
+                variant="link"
+                size="sm"
+                className="h-auto p-0 text-xs"
+                asChild
+              >
+                <Link
+                  href={`/org/${orgSlug}/inbox/settings/inboxes/${conversation.inboxId}`}
+                >
+                  Ver configurações da caixa
+                  <ExternalLink className="ml-1 h-3 w-3" />
+                </Link>
+              </Button>
             </div>
-          </section>
+          </SettingsSection>
         </div>
       </SheetContent>
     </Sheet>

@@ -2,7 +2,7 @@ import 'server-only'
 import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { db } from '@/_lib/prisma'
-import type { Prisma, ConversationStatus } from '@prisma/client'
+import type { Prisma, ConversationStatus, LifecycleStage } from '@prisma/client'
 import { maskPhone, maskRemoteJid } from '@/_lib/pii-mask'
 
 // Whitelist explícita de campos de metadata da última mensagem expostos ao cliente.
@@ -43,7 +43,13 @@ export interface ConversationListDto {
   contactId: string
   contactName: string
   contactPhone: string | null
+  contactEmail: string | null
+  contactCompany: string | null
+  contactLifecycleStage: LifecycleStage
+  agentId: string | null
   agentName: string | null
+  // Nome da etapa atual do agente nesta conversa (resolvido de currentStepOrder)
+  currentStepName: string | null
   // Campos para modo grupo (Multi-Agent Routing)
   agentGroupName: string | null
   activeAgentId: string | null
@@ -57,6 +63,8 @@ export interface ConversationListDto {
   remoteJid: string | null
   dealId: string | null
   dealTitle: string | null
+  dealValue: number | null
+  dealStage: string | null
   lastCustomerMessageAt: Date | null
   lastActivityAt: Date
   unreadCount: number
@@ -128,13 +136,28 @@ export interface PaginatedConversationsResult {
 }
 
 const conversationListInclude = {
-  contact: { select: { name: true, phone: true } },
+  contact: {
+    select: {
+      name: true,
+      phone: true,
+      email: true,
+      lifecycleStage: true,
+      company: { select: { name: true } },
+    },
+  },
   inbox: {
     select: {
       id: true,
       name: true,
       connectionType: true,
-      agent: { select: { name: true } },
+      // steps para resolver o nome da etapa atual (via currentStepOrder da conversa)
+      agent: {
+        select: {
+          id: true,
+          name: true,
+          steps: { select: { name: true, order: true } },
+        },
+      },
       // Grupo vinculado ao inbox (modo multi-agent)
       agentGroup: {
         select: {
@@ -150,7 +173,14 @@ const conversationListInclude = {
       },
     },
   },
-  deal: { select: { id: true, title: true } },
+  deal: {
+    select: {
+      id: true,
+      title: true,
+      value: true,
+      stage: { select: { name: true } },
+    },
+  },
   messages: {
     where: { isArchived: false },
     orderBy: { createdAt: 'desc' as const },
@@ -191,7 +221,17 @@ function mapConversationToDto(
     contactPhone: masked
       ? maskPhone(conversation.contact.phone)
       : conversation.contact.phone,
+    // Email é PII: ocultado para MEMBER quando a org esconde PII
+    contactEmail: masked ? null : conversation.contact.email,
+    contactCompany: conversation.contact.company?.name ?? null,
+    contactLifecycleStage: conversation.contact.lifecycleStage,
+    agentId: conversation.inbox.agent?.id ?? null,
     agentName: conversation.inbox.agent?.name ?? null,
+    // Casa o índice da etapa atual com o AgentStep de mesma ordem
+    currentStepName:
+      conversation.inbox.agent?.steps.find(
+        (step) => step.order === conversation.currentStepOrder,
+      )?.name ?? null,
     agentGroupName: conversation.inbox.agentGroup?.name ?? null,
     activeAgentId: conversation.activeAgentId,
     activeAgentName,
@@ -206,6 +246,9 @@ function mapConversationToDto(
       : conversation.remoteJid,
     dealId: conversation.deal?.id ?? null,
     dealTitle: conversation.deal?.title ?? null,
+    // Decimal do Prisma → number para serializar limpo no JSON da API
+    dealValue: conversation.deal ? Number(conversation.deal.value) : null,
+    dealStage: conversation.deal?.stage?.name ?? null,
     lastCustomerMessageAt: conversation.lastCustomerMessageAt,
     lastActivityAt: conversation.lastActivityAt,
     unreadCount: conversation.unreadCount,
